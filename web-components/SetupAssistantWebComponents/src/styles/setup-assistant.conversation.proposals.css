@@ -1,0 +1,161 @@
+/*
+ * Conversation proposals
+ *
+ * Extracted from setup-assistant.conversation.css. Owns the visual
+ * vocabulary for "the agent is proposing something and the user is
+ * about to decide on it" -- the recommendation review block, the
+ * generic status chip pill used inside review/receipt surfaces, the
+ * consent receipt + artifact row cards with their per-state border
+ * and shadow treatments, and the receipt status / error / progress
+ * widgets the receipts render inline.
+ *
+ * Sibling files in the same conversation surface:
+ *   - setup-assistant.conversation.css          (core chrome + motion)
+ *   - setup-assistant.conversation.messages.css (bubble system + acknowledgment chip)
+ *   - setup-assistant.conversation.inline-cards.css (email context, Dill draft, setup visual cards)
+ *
+ * Rules in this file rely on the `conversationCardEnter` and
+ * `receiptProgressPulse` keyframes plus the `prefers-reduced-motion`
+ * suppression that live in the core conversation file.
+ */
+
+.recommendation-review {
+  margin-top: var(--padding-m);
+}
+
+.recommendation-review.empty {
+  opacity: 0.88;
+}
+
+.recommendation-review > p:not(.eyebrow) {
+  max-width: 680px;
+}
+
+.recommendation-review > h3 {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-headline);
+  margin: var(--padding-l) 0 0;
+}
+
+.status-chip {
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  border-radius: 999px;
+  color: var(--primary);
+  display: inline-flex;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  font-weight: 600;
+  padding: 6px 9px;
+}
+
+.consent-receipt,
+.artifact-row-card {
+  animation: conversationCardEnter 200ms ease-out;
+  position: relative;
+}
+
+.consent-receipt.state-approving,
+.consent-receipt.state-executing,
+.artifact-row-card:has(.receipt-progress) {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--separator-color));
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+.consent-receipt.state-executed,
+.consent-receipt.state-approved {
+  border-color: color-mix(in srgb, var(--success-base) 42%, var(--separator-color));
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--success-base) 10%, transparent);
+}
+
+.consent-receipt.state-failed {
+  border-color: color-mix(in srgb, var(--error-base) 48%, var(--separator-color));
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--error-base) 10%, transparent);
+}
+
+.receipt-status-message,
+.receipt-error-message {
+  animation: conversationCardEnter 160ms ease-out both;
+  line-height: 1.4;
+  margin: 8px 0 0;
+}
+
+.receipt-status-message {
+  color: var(--text-secondary);
+}
+
+.receipt-error-message {
+  color: var(--error-base);
+  font-family: var(--font-family-medium);
+}
+
+.receipt-progress {
+  animation: receiptProgressPulse 920ms ease-in-out infinite;
+  background: var(--primary);
+  border-radius: 999px;
+  display: inline-flex;
+  height: 8px;
+  margin-left: 8px;
+  width: 8px;
+}
+
+.appearance-change-summary {
+  background: var(--background-tertiary);
+  border: 0.5px solid var(--separator-color);
+  border-radius: var(--corner-radius-medium);
+  margin: 8px 0 0;
+  padding: 10px 12px;
+}
+
+.appearance-change-rows {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.appearance-change-row {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.appearance-change-label {
+  color: var(--text-secondary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+}
+
+.appearance-change-values {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
+.appearance-change-swatch {
+  border: 0.5px solid var(--separator-color);
+  border-radius: 4px;
+  display: inline-block;
+  height: 18px;
+  width: 18px;
+}
+
+.appearance-change-arrow {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.appearance-change-font-name {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+}
+
+.appearance-change-contrast-warning {
+  color: var(--warning-base);
+  font-size: var(--font-size-status-small);
+  line-height: 1.4;
+  margin: 8px 0 0;
+}

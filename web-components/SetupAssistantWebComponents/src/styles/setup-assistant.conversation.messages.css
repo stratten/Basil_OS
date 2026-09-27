@@ -1,0 +1,135 @@
+/*
+ * Conversation messages
+ *
+ * Extracted from setup-assistant.conversation.css (the core chrome
+ * file) so the message-bubble system can be read and edited as one
+ * focused module. The acknowledgment chip variant lives here because
+ * it is a bubble-shape variant of `.basil-message.user` and shares
+ * the bubble cascade.
+ *
+ * Sibling files in the same conversation surface:
+ *   - setup-assistant.conversation.css          (core chrome + motion)
+ *   - setup-assistant.conversation.proposals.css (consent receipts, recommendation review, status chip)
+ *   - setup-assistant.conversation.inline-cards.css (email context, Dill draft, setup visual cards)
+ *
+ * Rules in this file rely on the `conversationCardEnter` keyframe
+ * and the `prefers-reduced-motion` suppression that live in the
+ * core conversation file.
+ */
+
+.basil-message {
+  animation: conversationCardEnter 180ms ease-out;
+  border-radius: var(--corner-radius-medium);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.045);
+  max-width: 88%;
+  padding: 14px 16px;
+}
+
+.basil-message.user > span:first-child {
+  display: block;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.basil-message.assistant,
+.basil-message.basil,
+.basil-message.system {
+  align-self: flex-start;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--primary) 10%, var(--background-primary)),
+    color-mix(in srgb, var(--secondary) 7%, var(--background-primary))
+  );
+  border: 0.5px solid color-mix(in srgb, var(--primary) 18%, var(--separator-color));
+}
+
+.basil-message.user {
+  align-self: flex-end;
+  background: var(--primary);
+  border: 0.5px solid color-mix(in srgb, var(--primary) 82%, var(--text-primary));
+  color: white;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
+.basil-message.user > span:first-child,
+.basil-message.user .basil-message-content p,
+.basil-message.user .basil-message-content ol,
+.basil-message.user .basil-message-content li,
+.basil-message.user .basil-message-content strong {
+  color: white;
+}
+
+/*
+ * Right-aligned acknowledgment chip variant. Distinct from a typed
+ * user bubble: smaller footprint, no "You" label, a status dot, and
+ * a compact blue background that visually echoes user-side action
+ * without competing with full message bubbles. Used when the user
+ * resolves a structured inline interaction such as a consent receipt
+ * or agenda confirmation card.
+ */
+.basil-message.user.is-acknowledgment {
+  animation: conversationCardEnter 140ms ease-out;
+  background: color-mix(in srgb, var(--primary) 88%, var(--background-primary));
+  border: 0.5px solid color-mix(in srgb, var(--primary) 72%, var(--text-primary));
+  box-shadow: 0 5px 12px color-mix(in srgb, var(--primary) 16%, transparent);
+  max-width: max-content;
+  padding: 6px 12px;
+}
+
+.user-acknowledgment-chip {
+  align-items: center;
+  color: white;
+  display: inline-flex;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  font-weight: 600;
+  gap: 6px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.user-acknowledgment-chip > .user-acknowledgment-dot {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+  height: 6px;
+  width: 6px;
+}
+
+.basil-message.user.is-acknowledgment.decision-deferred .user-acknowledgment-dot,
+.basil-message.user.is-acknowledgment.decision-skipped .user-acknowledgment-dot,
+.basil-message.user.is-acknowledgment.decision-not_quite .user-acknowledgment-dot {
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.basil-message-content {
+  display: grid;
+  gap: 10px;
+}
+
+.basil-message-content p,
+.basil-message-content ol {
+  color: var(--text-primary);
+  line-height: 1.48;
+  margin: 0;
+}
+
+.basil-message-content ol {
+  padding-left: 22px;
+}
+
+.basil-message.assistant .basil-message-content p,
+.basil-message.assistant .basil-message-content ol,
+.basil-message.basil .basil-message-content p,
+.basil-message.basil .basil-message-content ol,
+.basil-message.system .basil-message-content p,
+.basil-message.system .basil-message-content ol {
+  line-height: normal;
+}
+
+.basil-message-content li + li {
+  margin-top: 6px;
+}

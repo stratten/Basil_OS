@@ -1,0 +1,8 @@
+- Standing Orders monitor the app you actually name — when you ask Basil to watch a specific email app, it now targets exactly that client instead of silently substituting another installed one, so the wrong mailbox is no longer picked during setup
+- Faster, more reliable email monitoring — email Standing Orders now read a bounded window of your most recent messages and apply filters as they go, instead of scanning the entire mailbox; setup and ongoing checks no longer stall or time out on large accounts
+- Multi-account Apple Mail support — Basil now lists your unified Inbox alongside each account's mailboxes by name (shown as "Account / Mailbox"), so you can point a Standing Order at the exact account and folder you mean rather than a single generic inbox
+- Clearer source setup — the Standing Orders setup assistant now verifies it can actually reach the email source you asked for and reports back plainly when it cannot, instead of guessing or quietly falling back
+- Detached agent tasks — delegated (Paprika) work can now run in the background and be revisited later, making long-running tasks easier to start, track, and return to without blocking the rest of the app
+- Agent task interface refresh — the delegated task and result surfaces have been reorganized for clearer status, follow-up handling, and review of past work
+- Better audio and transcription handling — improvements to audio processing and transcription flows deliver steadier results on longer and noisier recordings, with clearer diagnostics when something goes wrong
+- Stability and polish — ongoing reliability, performance, and quality improvements throughout

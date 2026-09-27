@@ -1,0 +1,135 @@
+.transcription-api-models-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.transcription-api-models-provider {
+  background: color-mix(in srgb, var(--background-primary) 92%, var(--primary));
+  border: 1px solid var(--field-border);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.transcription-api-models-provider-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.transcription-api-models-provider-name {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: 14px;
+}
+
+.transcription-api-models-key-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.transcription-api-models-key-active {
+  color: var(--success-base, #1a7f37);
+  font-family: var(--font-family-light);
+  font-size: 12px;
+  margin: 0;
+}
+
+.transcription-api-models-key-row {
+  display: flex;
+  gap: 8px;
+}
+
+.transcription-api-models-key-input {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  flex: 1;
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  padding: 6px 10px;
+}
+
+.transcription-api-models-key-input:disabled {
+  opacity: 0.6;
+}
+
+.transcription-api-models-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.transcription-api-models-row {
+  align-items: center;
+  background: color-mix(in srgb, var(--background-primary) 96%, var(--primary));
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 10px 12px;
+}
+
+.transcription-api-models-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.transcription-api-models-row-name {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+}
+
+.transcription-api-models-row-description {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 12px;
+}
+
+.transcription-api-models-status,
+.transcription-api-models-status-success {
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  margin: 0;
+}
+
+.transcription-api-models-status {
+  color: var(--text-secondary);
+}
+
+.transcription-api-models-status-success {
+  color: var(--success-base, #1a7f37);
+}
+
+.transcription-api-models-status-error {
+  color: var(--warning-base, #b54708);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  margin: 0;
+}
+
+.transcription-api-models-error {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 650px;
+}
+
+.transcription-api-models-error p {
+  color: var(--warning-base, #b54708);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  margin: 0;
+}

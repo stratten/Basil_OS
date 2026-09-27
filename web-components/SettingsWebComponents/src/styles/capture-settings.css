@@ -1,0 +1,11 @@
+.capture-settings-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.capture-settings-content {
+  display: flex;
+  flex-direction: column;
+}

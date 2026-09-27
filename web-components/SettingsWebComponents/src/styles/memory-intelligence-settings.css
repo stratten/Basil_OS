@@ -1,0 +1,223 @@
+.memory-intelligence-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 920px;
+  width: 100%;
+}
+
+.memory-intelligence-section {
+  background: color-mix(in srgb, var(--background-primary) 92%, var(--primary));
+  border: 1px solid var(--field-border);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 10%), 0 8px 20px rgb(0 0 0 / 8%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+}
+
+.memory-intelligence-section h2 {
+  color: color-mix(in srgb, var(--text-primary) 78%, var(--text-secondary));
+  font-family: var(--font-family-light);
+  font-size: 15px;
+  margin: 0;
+}
+
+.memory-intelligence-section-header {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+}
+
+.memory-intelligence-cadence {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 12px;
+  margin: 2px 0 0;
+}
+
+.memory-intelligence-section-header > .secondary-button {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+  padding: 6px 12px;
+  white-space: nowrap;
+}
+
+.memory-intelligence-section-header > .secondary-button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.memory-intelligence-row {
+  display: flex;
+  gap: 20px;
+}
+
+.memory-intelligence-field {
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  gap: 4px;
+}
+
+.memory-intelligence-field input[type='time'],
+.memory-intelligence-select {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  padding: 6px 8px;
+}
+
+.memory-intelligence-field input:disabled,
+.memory-intelligence-select:disabled {
+  opacity: 0.6;
+}
+
+.memory-intelligence-field input:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.memory-intelligence-select:focus-visible,
+.memory-intelligence-section button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.memory-intelligence-status,
+.memory-intelligence-status-info,
+.memory-intelligence-status-error,
+.memory-intelligence-empty {
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  margin: 0;
+}
+
+.memory-intelligence-status,
+.memory-intelligence-status-info,
+.memory-intelligence-empty {
+  color: var(--text-secondary);
+}
+
+.memory-intelligence-status-error {
+  color: var(--warning-base, #b54708);
+}
+
+.memory-intelligence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.memory-intelligence-list-row {
+  align-items: center;
+  background: color-mix(in srgb, var(--background-primary) 96%, var(--primary));
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 10px 12px;
+}
+
+.memory-intelligence-list-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.memory-intelligence-list-title {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.memory-intelligence-list-detail {
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.memory-intelligence-list-meta {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.memory-intelligence-list-actions {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.memory-intelligence-list-actions > .secondary-button {
+  background: transparent;
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--primary);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: 12px;
+  padding: 5px 10px;
+}
+
+.memory-intelligence-decline-button {
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--error-base, #d9363e) 55%, var(--field-border));
+  border-radius: 6px;
+  color: var(--error-base, #d9363e);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: 12px;
+  padding: 5px 10px;
+}
+
+.memory-intelligence-decline-button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.memory-intelligence-error {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 650px;
+}
+
+.memory-intelligence-error p {
+  color: var(--warning-base, #b54708);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  margin: 0;
+}
+
+.memory-intelligence-error > .secondary-button {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+  padding: 8px 16px;
+}

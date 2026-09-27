@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.stratten.basil.validation</string>
+    <key>CFBundleExecutable</key>
+    <string>Basil Validation</string>
+    <key>CFBundleName</key>
+    <string>Basil Validation</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+    <key>CFBundleSupportedPlatforms</key>
+    <array>
+        <string>MacOSX</string>
+    </array>
+    <key>LSUIElement</key>
+    <false/>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Basil Validation requests microphone access only for an explicitly user-initiated validation workflow.</string>
+    <key>NSAudioCaptureUsageDescription</key>
+    <string>Basil Validation requests audio capture access only for an explicitly user-initiated validation workflow.</string>
+    <key>NSAccessibilityUsageDescription</key>
+    <string>Basil Validation uses accessibility only for explicitly user-initiated automation workflows.</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Basil Validation uses Apple Events only after an existing user approval gate permits the action.</string>
+    <key>NSScreenCaptureUsageDescription</key>
+    <string>Basil Validation requests screen recording only for an explicitly user-initiated validation workflow.</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>Basil Validation reads calendar data only after an explicitly user-initiated validation workflow.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>Basil Validation reads calendar data only after an explicitly user-initiated validation workflow.</string>
+    <key>NSContactsUsageDescription</key>
+    <string>Basil Validation reads contacts only after an explicitly user-initiated validation workflow.</string>
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+    <key>NSSupportsAutomaticTermination</key>
+    <true/>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.stratten.basil.validation</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>basil-validation</string>
+            </array>
+        </dict>
+    </array>
+</dict>
+</plist>

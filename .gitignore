@@ -1,0 +1,85 @@
+.DS_Store
+.AppleDouble
+._*
+
+# Local IDE and agent configuration
+.cursor/
+.claude/
+.vscode/
+.idea/
+*.swp
+*.swo
+.sf/
+
+# Owner-only working notes, release configuration, and local credentials.
+local/
+
+# Historical development telemetry and live-smoke records.
+backend/scripts/01_plan_b_telemetry/
+
+# Python environments, caches, runtime state, local secrets, and user data
+.venv/
+venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.env
+.env.*
+!.env.example
+.backend.pid
+.server_port
+.huey.pid
+*.pid
+*.log
+*.db
+*.sqlite
+*.sqlite3
+*.faiss
+backend/src/api/vendor/models/
+
+# Swift/Xcode build and user state
+.build/
+.swiftpm/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+
+# JavaScript dependencies and generated bundles
+node_modules/
+**/dist/
+client/Sources/Resources/*WebAssets/assets/*.js
+client/Sources/Resources/*WebAssets/assets/*.css
+client/Sources/Resources/*WebAssets/assets/*.map
+client/Sources/Resources/*Assets/assets/*.js
+client/Sources/Resources/*Assets/assets/*.css
+client/Sources/Resources/*Assets/assets/*.map
+client/Sources/Resources/*Assets/assets/
+
+# Generated API output; regenerate from documented source commands.
+api_spec.json
+generated_models/
+generated_models.backup.*/
+
+# Build output, local certificates, archives, and dependency caches.
+build/outputs/
+build/dmg_staging/
+build/environment_backups/
+build/test_ffmpeg_output/
+build/appcast.xml
+build/certs/
+build/dependencies/
+build/third_party/
+build/cache/
+build/python/python/
+build/python/python-*.tar.gz
+build/wheelhouse/
+*.cer
+*.certSigningRequest
+*.p12
+

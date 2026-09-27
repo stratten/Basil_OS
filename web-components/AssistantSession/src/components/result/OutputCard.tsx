@@ -1,0 +1,88 @@
+import { useState } from 'react';
+import { copyMarkdown, copyRichText } from '../../bridge/assistantSessionBridge';
+import { MarkdownView } from '../MarkdownView';
+import { NativeSymbol } from '../NativeSymbol';
+
+export function OutputCard({
+  output,
+  isEditMode,
+  editedContent,
+  onEditedContentChange,
+  fallbackModelUsed,
+}: {
+  output: string;
+  isEditMode: boolean;
+  editedContent: string;
+  onEditedContentChange: (value: string) => void;
+  fallbackModelUsed?: string | null;
+}) {
+  const [hovering, setHovering] = useState(false);
+  const [copiedKind, setCopiedKind] = useState<'richText' | 'markdown' | null>(null);
+
+  const flash = (kind: 'richText' | 'markdown') => {
+    setCopiedKind(kind);
+    window.setTimeout(() => {
+      setCopiedKind((current) => (current === kind ? null : current));
+    }, 1500);
+  };
+
+  return (
+    <div className="assistant-session-result__output-wrap">
+      <div className="assistant-session-result__output-label">
+        AssistantSession Output:
+        {fallbackModelUsed && (
+          <span
+            className="assistant-session-result__fallback-badge"
+            title={`Preferred model was unreachable before any response; answered by local fallback: ${fallbackModelUsed}`}
+          >
+            Answered with local fallback
+          </span>
+        )}
+      </div>
+      <div
+        className="assistant-session-result__output-card"
+        onMouseEnter={() => setHovering(true)}
+        onMouseLeave={() => setHovering(false)}
+      >
+        {isEditMode ? (
+          <textarea
+            className="assistant-session-result__edit-textarea"
+            value={editedContent}
+            onChange={(event) => onEditedContentChange(event.target.value)}
+            autoFocus
+          />
+        ) : (
+          <div className="assistant-session-result__output">
+            <MarkdownView content={output} />
+          </div>
+        )}
+        {!isEditMode && (
+          <div className={`assistant-session-result__copy-group${hovering || copiedKind ? ' assistant-session-result__copy-group--visible' : ''}`}>
+            <button
+              type="button"
+              title="Copy rich text"
+              className="assistant-session-result__copy-btn"
+              onClick={() => {
+                copyRichText();
+                flash('richText');
+              }}
+            >
+              <NativeSymbol name={copiedKind === 'richText' ? 'copied' : 'copyRich'} size={12} />
+            </button>
+            <button
+              type="button"
+              title="Copy markdown"
+              className="assistant-session-result__copy-btn"
+              onClick={() => {
+                copyMarkdown();
+                flash('markdown');
+              }}
+            >
+              <NativeSymbol name={copiedKind === 'markdown' ? 'copied' : 'copyMarkdown'} size={12} />
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

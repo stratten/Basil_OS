@@ -1,0 +1,342 @@
+.meeting-transcript-tools-card {
+  position: relative;
+  flex: 0 0 auto;
+  padding: 8px 16px;
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  background: var(--background-secondary);
+}
+
+.meeting-tools-header,
+.meeting-tools-row,
+.meeting-tools-model,
+.meeting-tools-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meeting-tools-header {
+  margin-bottom: 8px;
+}
+
+.meeting-tools-header h2 {
+  margin: 0;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-headline);
+  font-weight: 400;
+}
+
+.meeting-automation-control {
+  position: relative;
+  margin-left: auto;
+}
+
+.meeting-automation-button,
+.meeting-tools-actions button {
+  border: 0;
+  background: color-mix(in srgb, var(--primary) 85%, transparent);
+  color: white;
+}
+
+.meeting-tools-model {
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-small);
+}
+
+.meeting-tools-actions {
+  margin-left: auto;
+  gap: 12px;
+}
+
+.meeting-automation-popover {
+  /* Positioned via inline style (left/top/position: fixed) by
+     TranscriptToolsCard, since it is rendered through a portal into
+     document.body so it can escape the Transcript Tools card's bounds
+     instead of being clipped by a scrolling ancestor. */
+  z-index: 1000;
+  box-sizing: border-box;
+  width: 320px;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  padding: 16px;
+  border: 1px solid var(--field-border);
+  border-radius: 10px;
+  background: var(--background-tertiary);
+  box-shadow: var(--shadow-dark);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-body);
+}
+
+.meeting-automation-popover h3 {
+  margin: 0 0 8px;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-headline);
+  font-weight: 400;
+}
+
+.meeting-automation-popover > p {
+  margin: 0 0 12px;
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-small);
+}
+
+.meeting-switch-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 10px 0;
+  font-size: var(--font-size-body);
+}
+
+.meeting-automation-analysis-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--separator-color);
+}
+
+.meeting-automation-analysis-options fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* The fieldset already spaces its children with `gap`, so the switch
+   control's own vertical margin (needed when it sits directly in the
+   popover, above) would otherwise stack on top of that gap and double the
+   space between adjacent mode toggles. */
+.meeting-automation-analysis-options .meeting-switch-control {
+  margin: 0;
+}
+
+.meeting-automation-analysis-options fieldset label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-body);
+}
+
+.meeting-automation-analysis-options input[type='radio'] {
+  accent-color: var(--secondary);
+}
+
+.meeting-automation-analysis-options legend,
+.meeting-automation-instructions {
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-small);
+}
+
+.meeting-automation-instructions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.meeting-automation-instructions textarea {
+  min-height: 60px;
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+}
+
+.meeting-analysis-card {
+  flex: 0 0 auto;
+  padding: 0 2px;
+}
+
+.meeting-analysis-disclosure {
+  margin: 0;
+  font-size: var(--font-size-headline);
+}
+
+.meeting-analysis-chevron {
+  width: 14px;
+  height: 14px;
+  color: var(--secondary);
+  transition: transform 0.18s ease;
+}
+
+.meeting-analysis-chevron.is-expanded {
+  transform: rotate(90deg);
+}
+
+.meeting-analysis-running {
+  color: var(--secondary);
+  font-size: var(--font-size-status-small);
+}
+
+.meeting-analysis-configuration {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.meeting-analysis-intro,
+.meeting-analysis-config-body {
+  display: grid;
+  grid-template-columns: 250px minmax(260px, 1fr);
+  gap: 16px;
+}
+
+.meeting-analysis-intro p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-small);
+}
+
+.meeting-analysis-model-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  margin: 0;
+  flex-direction: column;
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-small);
+}
+
+.meeting-analysis-mode-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.meeting-analysis-mode-checkbox {
+  align-items: flex-start;
+}
+
+.meeting-analysis-mode-checkbox input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.meeting-analysis-mode-checkbox .meeting-switch-track {
+  position: relative;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: 31px;
+  height: 18px;
+  margin-top: 1px;
+  border-radius: 999px;
+  background: var(--text-tertiary);
+  transition: background 0.15s ease;
+}
+
+.meeting-analysis-mode-checkbox .meeting-switch-track::after {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--background-primary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  content: '';
+  transition: transform 0.15s ease;
+}
+
+.meeting-analysis-mode-checkbox input:checked + .meeting-switch-track {
+  background: color-mix(in srgb, var(--secondary) 85%, transparent);
+}
+
+.meeting-analysis-mode-checkbox input:checked + .meeting-switch-track::after {
+  transform: translateX(13px);
+}
+
+.meeting-analysis-mode-checkbox input:focus-visible + .meeting-switch-track {
+  outline: 2px solid var(--secondary);
+  outline-offset: 2px;
+}
+
+.meeting-analysis-mode-checkbox input:disabled + .meeting-switch-track {
+  opacity: 0.45;
+}
+
+.meeting-analysis-mode-copy {
+  display: flex;
+  flex-direction: column;
+}
+
+.meeting-analysis-mode-checkbox strong {
+  font-family: var(--font-family-light);
+  font-weight: 400;
+}
+
+.meeting-analysis-mode-checkbox small,
+.meeting-analysis-field-label {
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-tiny);
+}
+
+.meeting-analysis-mode-icon {
+  color: var(--secondary);
+  margin-top: 1px;
+}
+
+.meeting-analysis-instructions-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.meeting-analysis-custom-instructions {
+  min-height: 140px;
+  margin: 0;
+  background: var(--background-secondary);
+}
+
+.meeting-analysis-progress > span {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-small);
+}
+
+.meeting-analysis-history-table {
+  min-width: 480px;
+  overflow-x: auto;
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+}
+
+.meeting-analysis-history-header,
+.meeting-analysis-history-item {
+  display: grid;
+  grid-template-columns: 140px minmax(140px, 1fr) 100px 100px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  font-size: var(--font-size-caption);
+}
+
+.meeting-analysis-history-header {
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--separator-color);
+}
+
+.meeting-analysis-history-item {
+  background: var(--background-primary);
+}
+
+.meeting-analysis-history-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.meeting-analysis-history-actions button {
+  border: 0;
+  background: transparent;
+  color: var(--secondary);
+}
+
+.meeting-analysis-history-actions .meeting-analysis-history-delete {
+  color: var(--error-base);
+}

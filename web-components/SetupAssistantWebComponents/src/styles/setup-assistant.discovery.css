@@ -1,0 +1,175 @@
+.discovery-intro {
+  margin-bottom: var(--padding-m);
+}
+
+.discovery-intro h2 {
+  margin-bottom: 8px;
+}
+
+.discovery-intro p:not(.eyebrow) {
+  max-width: 680px;
+}
+
+.discovery-orientation-status {
+  align-items: center;
+  color: var(--secondary);
+  display: inline-flex;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+  gap: 8px;
+  margin: 12px 0 10px;
+}
+
+.discovery-orientation-status::before {
+  animation: discoveryPulse 1.6s ease-in-out infinite;
+  background: color-mix(in srgb, var(--primary) 70%, var(--background-primary));
+  border-radius: 999px;
+  content: '';
+  height: 8px;
+  width: 8px;
+}
+
+.discovery-orientation-status--ready::before {
+  animation: none;
+  background: var(--success-base);
+}
+
+.discovery-orientation-status-text {
+  animation: discoveryHintFade 360ms ease;
+}
+
+.discovery-ready-note {
+  margin: 12px 0 0;
+}
+
+@keyframes discoveryHintFade {
+  from { opacity: 0.35; }
+  to { opacity: 1; }
+}
+
+.discovery-observation-list {
+  display: grid;
+  gap: 10px;
+  position: relative;
+}
+
+.discovery-observation-list::before {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--primary) 22%, transparent),
+    color-mix(in srgb, var(--secondary) 12%, transparent)
+  );
+  border-radius: 999px;
+  bottom: 16px;
+  content: '';
+  left: 18px;
+  position: absolute;
+  top: 16px;
+  width: 2px;
+}
+
+.discovery-observation-card {
+  --discovery-accent: var(--primary);
+  --discovery-accent-soft: color-mix(in srgb, var(--discovery-accent) 10%, var(--background-primary));
+  animation: discoveryObservationIn 520ms ease both;
+  background:
+    linear-gradient(135deg, var(--discovery-accent-soft), var(--background-primary) 42%),
+    var(--background-primary);
+  border: 0.5px solid color-mix(in srgb, var(--discovery-accent) 24%, var(--separator-color));
+  border-radius: 16px;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.045);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 38px minmax(0, 1fr);
+  overflow: hidden;
+  padding: 12px 16px 12px 12px;
+  position: relative;
+}
+
+.discovery-observation-card.tone-email {
+  --discovery-accent: rgb(29, 132, 210);
+}
+
+.discovery-observation-card.tone-profile {
+  --discovery-accent: rgb(129, 82, 190);
+}
+
+.discovery-observation-card.tone-privacy {
+  --discovery-accent: rgb(49, 150, 112);
+}
+
+.discovery-observation-card.tone-tools {
+  --discovery-accent: rgb(202, 127, 32);
+}
+
+.discovery-observation-card.tone-ready {
+  --discovery-accent: var(--primary);
+}
+
+.discovery-observation-marker {
+  align-self: start;
+  background:
+    radial-gradient(circle at 50% 50%, var(--background-primary) 0 28%, transparent 30%),
+    color-mix(in srgb, var(--discovery-accent) 88%, var(--background-primary));
+  border: 5px solid color-mix(in srgb, var(--discovery-accent) 14%, var(--background-primary));
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--discovery-accent) 30%, transparent);
+  height: 36px;
+  position: relative;
+  width: 36px;
+  z-index: 1;
+}
+
+.discovery-observation-label {
+  color: color-mix(in srgb, var(--discovery-accent) 82%, var(--text-primary));
+  display: block;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.discovery-observation-card h3 {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-headline);
+  letter-spacing: -0.01em;
+  margin: 0 0 4px;
+}
+
+.discovery-observation-card p {
+  color: var(--text-secondary);
+  line-height: 1.42;
+  margin: 0;
+}
+
+@keyframes discoveryObservationIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes discoveryPulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.86);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .discovery-observation-card,
+  .discovery-orientation-status::before {
+    animation: none;
+  }
+}

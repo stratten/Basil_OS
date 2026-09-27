@@ -1,0 +1,481 @@
+@import '../../../../shared/rich-text-followup.css';
+
+/* Content area wrapper — constrains height so .main-content scrolls */
+.content-area {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  --progress-overlay-clearance: 0px;
+}
+
+.agent-task-pending-surface {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.agent-task-pending-surface > :first-child {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.agent-task-selection-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--padding-s);
+  background: color-mix(in srgb, var(--background-primary, #ffffff) 92%, transparent);
+  color: var(--text-primary, #111111);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-body);
+  pointer-events: all;
+}
+
+.agent-task-selection-loading-overlay::before {
+  width: 32px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--primary, #2563eb);
+  content: "";
+}
+
+.result-content-shell {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.result-presence-region {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+
+.result-presence-region[data-presence-phase='entering'] {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.result-presence-region[data-presence-phase='exiting'] {
+  opacity: 0;
+  transform: translateY(-4px);
+  transition-timing-function: ease-in;
+  pointer-events: none;
+}
+
+.result-content-shell > .main-content {
+  flex: 1 1 auto;
+}
+
+.agent-detail-layout {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.agent-detail-layout .content-area {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Main content area */
+.main-content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--padding-l) var(--padding-l) var(--padding-m);
+}
+
+/* AgentTask card (history item) — matches Swift's AgentTaskHistoryCard */
+.agent-task-card {
+  border-radius: var(--corner-radius-medium, 8px);
+  border-style: solid;
+  margin-bottom: var(--padding-m);
+  cursor: pointer;
+  transition: background 0.3s ease-in-out;
+}
+
+/* Current AgentTask header — matches Swift's CurrentAgentTaskHeader */
+.current-task-label {
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-footnote);
+  color: var(--text-secondary);
+  margin-bottom: var(--padding-xs);
+}
+
+.current-task-text {
+  font-family: var(--font-family-light);
+  font-size: 10px;
+  color: var(--text-primary);
+  opacity: 0.85;
+  margin-bottom: var(--padding-m);
+  padding: 0 2px;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Result header — "Result:" label + inline verifying status */
+.result-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--padding-s);
+  margin-bottom: var(--padding-xs);
+  padding: 0 2px;
+}
+
+.result-label {
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-body);
+  color: var(--text-primary);
+}
+
+.result-fallback-badge {
+  font-size: var(--font-size-caption);
+  color: var(--text-secondary);
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+}
+
+/* Quiet "still working" indicator shown while the outcome is verified
+   off the critical path. Reuses the app's processing semantic (purple dot +
+   pulse-dot) and muted secondary text rather than a heavy filled pill. */
+.result-verifying {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-xs);
+  margin: var(--padding-xs) 0;
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-footnote);
+  color: var(--text-secondary);
+}
+
+.result-verifying-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--processing-base);
+  animation: pulse-dot 0.8s ease-in-out infinite alternate;
+}
+
+.copy-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--padding-xs);
+  color: var(--secondary);
+  display: flex;
+  align-items: center;
+  opacity: 0.8;
+  transition: opacity 0.15s;
+}
+
+.copy-btn:hover {
+  opacity: 1;
+}
+
+.copy-btn-overlay {
+  position: absolute;
+  top: var(--padding-s);
+  right: var(--padding-s);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--corner-radius-small);
+  color: var(--text-tertiary);
+  opacity: 0.4;
+  transition: opacity 0.2s, color 0.2s, background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.copy-btn-overlay:hover {
+  opacity: 1;
+  color: var(--secondary);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+/* Result content container — matches Swift's Color(.textBackgroundColor) + border */
+.result-container {
+  background: var(--background-tertiary);
+  border-radius: var(--corner-radius-medium);
+  border: var(--border-thin) solid color-mix(in srgb, var(--secondary) 20%, transparent);
+  padding: var(--padding-m);
+}
+
+/* Result content */
+.result-section {
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-callout);
+  color: var(--text-primary);
+}
+
+.result-section h1 {
+  font-size: var(--font-size-title2);
+  font-family: var(--font-family-medium);
+  color: var(--secondary);
+  margin: 16px 0 8px;
+}
+
+.result-section h2 {
+  font-size: var(--font-size-title3);
+  font-family: var(--font-family-medium);
+  color: color-mix(in srgb, var(--secondary) 82%, var(--text-primary));
+  margin: 14px 0 6px;
+}
+
+.result-section h3 {
+  font-size: var(--font-size-headline);
+  font-family: var(--font-family-medium);
+  color: color-mix(in srgb, var(--secondary) 64%, var(--text-primary));
+  margin: 12px 0 4px;
+}
+
+.result-section hr {
+  border: 0;
+  border-top: var(--border-thin) solid color-mix(in srgb, var(--secondary) 18%, transparent);
+  margin: 14px 0;
+}
+
+.result-section p {
+  margin: 6px 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.result-section ul, .result-section ol { padding-left: 20px; margin: 6px 0; }
+.result-section li {
+  margin: 3px 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.result-section table {
+  width: 100%;
+  margin: 10px 0 14px;
+  border: var(--border-thin) solid var(--separator-color);
+  border-collapse: collapse;
+  background: var(--background-primary);
+  font-size: var(--font-size-status-small);
+}
+
+.result-section th,
+.result-section td {
+  padding: var(--padding-xs) var(--padding-s);
+  border: var(--border-thin) solid var(--separator-color);
+  overflow-wrap: anywhere;
+  text-align: left;
+  vertical-align: top;
+}
+
+.result-section th {
+  background: color-mix(in srgb, var(--primary) 7%, var(--background-primary));
+  color: var(--secondary);
+  font-family: var(--font-family-medium);
+  font-weight: 500;
+}
+
+.result-section pre {
+  background: var(--background-secondary);
+  border-radius: var(--corner-radius-small);
+  padding: var(--padding-m);
+  padding-bottom: calc(var(--padding-m) + 10px);
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 8px 0 12px;
+  border: var(--border-thin) solid var(--separator-color);
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.result-section code {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-code-small);
+}
+
+.result-section :not(pre) > code {
+  background: var(--background-secondary);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+/* Action buttons row — matches Swift's actionButtonsSection layout */
+.result-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--padding-s);
+  padding: var(--padding-s) var(--padding-l) 0;
+}
+
+.result-action-message {
+  margin-top: var(--padding-s);
+  padding: var(--padding-s) var(--padding-m);
+  border-radius: var(--corner-radius-medium);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-callout);
+  line-height: 1.4;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.result-action-message.success {
+  border: var(--border-thin) solid color-mix(in srgb, var(--success-base) 28%, transparent);
+  background: color-mix(in srgb, var(--success-base) 8%, transparent);
+  color: var(--success-base);
+}
+
+.result-action-message.info {
+  border: var(--border-thin) solid color-mix(in srgb, var(--primary) 28%, transparent);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  color: var(--secondary);
+}
+
+.result-action-message.error {
+  border: var(--border-thin) solid color-mix(in srgb, var(--error-base) 30%, transparent);
+  background: color-mix(in srgb, var(--error-base) 6%, transparent);
+  color: var(--error-base);
+}
+
+.action-btn.success {
+  background: color-mix(in srgb, var(--success-base) 85%, transparent);
+}
+
+.action-btn.danger {
+  background: var(--error-base);
+}
+
+.action-icon-btn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--corner-radius-small);
+  color: var(--text-secondary);
+  background: transparent;
+  cursor: pointer;
+  opacity: 0.35;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.action-icon-btn:hover,
+.action-icon-btn:focus-visible {
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+.action-icon-btn:disabled {
+  cursor: default;
+  opacity: 0.2;
+  transform: none;
+}
+
+.action-icon-btn svg {
+  display: block;
+}
+
+.action-icon-btn svg path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.action-icon-btn--save {
+  color: var(--secondary);
+}
+
+.action-icon-btn--good {
+  color: var(--success-base);
+}
+
+.action-icon-btn--bad {
+  color: var(--error-base);
+}
+
+/* Error section */
+.error-section {
+  color: var(--error-base);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-callout);
+  padding: var(--padding-m);
+  background: color-mix(in srgb, var(--error-base) 5%, transparent);
+  border-radius: var(--corner-radius-medium);
+  border: var(--border-thin) solid color-mix(in srgb, var(--error-base) 20%, transparent);
+}
+
+/* File display */
+.file-list {
+  margin-top: var(--padding-s);
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-s);
+  padding: var(--padding-xs) var(--padding-s);
+  border-radius: var(--corner-radius-small);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.file-item:hover {
+  background: var(--background-secondary);
+}
+
+.file-icon {
+  font-size: 14px;
+  color: var(--secondary);
+}
+
+.file-name {
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-footnote);
+  color: var(--text-primary);
+}
+
+.file-operation {
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-tiny);
+  color: var(--text-tertiary);
+  margin-left: auto;
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .result-presence-region {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

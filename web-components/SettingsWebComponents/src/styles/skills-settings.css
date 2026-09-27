@@ -1,0 +1,212 @@
+.skills-settings-shell {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-family-light);
+  gap: 16px;
+  max-width: 920px;
+  width: 100%;
+}
+
+.skills-settings-shell button,
+.skills-settings-shell input,
+.skills-settings-shell select {
+  font-family: inherit;
+}
+
+.skills-settings-section {
+  background: color-mix(in srgb, var(--background-primary) 92%, var(--primary));
+  border: 1px solid var(--field-border);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 10%), 0 8px 20px rgb(0 0 0 / 8%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+}
+
+.skills-settings-section h2 {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: 16px;
+  margin: 0;
+}
+
+.skills-settings-header-row {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+}
+
+.skills-settings-header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.skills-settings-row {
+  align-items: center;
+  color: var(--text-primary);
+  display: flex;
+  flex-wrap: wrap;
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  gap: 10px;
+}
+
+.skills-settings-row select,
+.skills-settings-row input[type='time'] {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  padding: 6px 8px;
+}
+
+.skills-settings-stepper {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.skills-settings-stepper button {
+  min-width: 28px;
+}
+
+.skills-settings-field-hint {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 12px;
+  margin: 0;
+}
+
+.skills-settings-lists-wrapper {
+  position: relative;
+}
+
+.skills-settings-lists {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.skills-settings-lists-locked {
+  filter: blur(1px);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.skills-settings-lock-overlay {
+  align-items: center;
+  background: color-mix(in srgb, var(--background-primary) 65%, transparent);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  inset: 0;
+  justify-content: center;
+  padding: 24px;
+  position: absolute;
+  text-align: center;
+}
+
+.skills-settings-lock-overlay p {
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  margin: 0;
+}
+
+.skills-settings-table {
+  border-collapse: collapse;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 12px;
+  max-width: 100%;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.skills-settings-table th {
+  border-bottom: 2px solid color-mix(in srgb, var(--field-border) 65%, var(--primary));
+  color: var(--text-secondary);
+  font-family: var(--font-family-medium);
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.skills-settings-table td {
+  border-top: 1px solid var(--field-border);
+  overflow-wrap: anywhere;
+  padding: 8px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.skills-settings-table tbody tr:hover {
+  background: color-mix(in srgb, var(--background-primary) 92%, var(--primary));
+}
+
+/* "When to use" is prose and needs the lion's share of the row; the
+   opposite end (Ver / Seen, Seen) is a couple of characters and Actions is
+   a stack of buttons, so neither needs anywhere near an even 1/N share of
+   the table's width. table-layout: fixed sizes each column from the width
+   set on its header cell, so we size every column explicitly per table
+   (the two tables have different column counts/positions) rather than
+   leaving them to split the space evenly. */
+.skills-settings-table-saved th:nth-child(1) { width: 14%; }
+.skills-settings-table-saved th:nth-child(2) { width: 34%; }
+.skills-settings-table-saved th:nth-child(3) { width: 10%; }
+.skills-settings-table-saved th:nth-child(4) { width: 13%; }
+.skills-settings-table-saved th:nth-child(5) { width: 11%; }
+.skills-settings-table-saved th:nth-child(6) { width: 18%; }
+
+.skills-settings-table-candidates th:nth-child(1) { width: 14%; }
+.skills-settings-table-candidates th:nth-child(2) { width: 16%; }
+.skills-settings-table-candidates th:nth-child(3) { width: 42%; }
+.skills-settings-table-candidates th:nth-child(4) { width: 10%; }
+.skills-settings-table-candidates th:nth-child(5) { width: 18%; }
+
+.skills-settings-candidate-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.skills-settings-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.skills-settings-actions button {
+  white-space: nowrap;
+  width: 100%;
+}
+
+.skills-settings-destructive {
+  color: var(--error-base, #9b1c1c);
+}
+
+.skills-settings-show-workspace {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--background-primary);
+}
+
+.skills-settings-status,
+.skills-settings-inline-error {
+  margin: 0;
+}
+
+.skills-settings-status {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+}
+
+.skills-settings-inline-error {
+  color: var(--warning-base, #b54708);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+}

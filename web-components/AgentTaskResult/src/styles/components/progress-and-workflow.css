@@ -1,0 +1,505 @@
+/* Execution steps — collapsible section matching Swift's ExecutionStepsView */
+.execution-steps-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(var(--padding-xs) + 2px) var(--padding-s);
+  background: color-mix(in srgb, var(--text-tertiary) 10%, transparent);
+  border-radius: var(--corner-radius-small);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.execution-steps-header:hover {
+  background: color-mix(in srgb, var(--text-tertiary) 15%, transparent);
+}
+
+.execution-live-beacon {
+  position: relative;
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+  border: 1px solid color-mix(in srgb, var(--processing-base) 48%, transparent);
+  border-radius: 50%;
+}
+
+.execution-live-beacon::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: inherit;
+  background: var(--processing-base);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--processing-base) 14%, transparent);
+  animation: execution-live-beacon-pulse 2.4s ease-out infinite;
+}
+
+@keyframes execution-live-beacon-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--processing-base) 14%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--processing-base) 0%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .execution-live-beacon::after {
+    animation: none;
+  }
+}
+
+.execution-steps-body {
+  max-height: 200px;
+  overflow-y: auto;
+  background: color-mix(in srgb, var(--text-tertiary) 5%, transparent);
+  border-radius: var(--corner-radius-small);
+  padding: var(--padding-s);
+  margin-top: var(--padding-xs);
+}
+
+/* Smooth height collapse for the reasoning body. Animating grid-template-rows
+   from 1fr to 0fr transitions to the content's natural height without JS
+   measurement, so the reasoning glides closed when the result starts arriving
+   instead of popping shut. The inner wrapper clips content mid-transition. */
+.thinking-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: grid-template-rows 240ms ease, opacity 180ms ease, transform 240ms ease;
+}
+
+.thinking-collapse.expanded {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.thinking-collapse-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.thinking-segments,
+.thinking-section {
+  padding: 0 var(--padding-xs);
+  margin-bottom: var(--padding-s);
+}
+
+.thinking-pill + .thinking-pill {
+  margin-top: var(--padding-s);
+}
+
+/* Collapsible "N earlier reasoning steps" group (see ThinkingSections.tsx's
+   ThinkingHistoryGroup) that replaces stacking every earlier
+   ThinkingSegment as its own always-visible pill. Sits before the latest
+   segment's standalone pill, so needs the same sibling gap .thinking-pill
+   already gets from its own neighbor rule above. */
+.thinking-history-group + .thinking-pill {
+  margin-top: var(--padding-s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thinking-collapse {
+    transition: none;
+  }
+}
+
+.execution-step-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--padding-s);
+  width: 100%;
+  min-width: 0;
+  padding: 3px 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: default;
+  border-radius: var(--corner-radius-small);
+}
+
+.execution-step-row.has-detail {
+  cursor: pointer;
+}
+
+.execution-step-row.has-detail:hover,
+.execution-step-row.selected {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+.execution-step-row:disabled {
+  color: inherit;
+}
+
+.execution-step-text {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.execution-step-icon {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.activity-summary {
+  margin-bottom: var(--padding-xs);
+  border: var(--border-thin) solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  overflow: hidden;
+}
+
+.activity-summary-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: calc(var(--padding-xs) + 2px) var(--padding-s);
+  border: 0;
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  text-align: left;
+  cursor: pointer;
+}
+
+.activity-summary-header:hover {
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+}
+
+.activity-summary-header:focus-visible {
+  outline: 2px solid var(--secondary);
+  outline-offset: 2px;
+}
+
+.activity-summary-header-count {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.activity-summary-header-latest {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+}
+
+.activity-summary-list {
+  padding: var(--padding-xs) var(--padding-s);
+}
+
+.activity-summary-row {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-s);
+  width: 100%;
+  min-width: 0;
+  padding: 3px 0;
+  border: 0;
+  border-radius: var(--corner-radius-small);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-small);
+  text-align: left;
+}
+
+.activity-summary-row.has-detail {
+  cursor: pointer;
+}
+
+.activity-summary-row.has-detail:hover,
+.activity-summary-row.selected {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+.activity-summary-phase {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-summary-count {
+  flex: 0 0 auto;
+  color: var(--text-tertiary);
+  font-family: var(--font-family-medium);
+}
+
+/* Full-details expander embedded as the last row of the activity feed. */
+.activity-fulldetails-toggle {
+  cursor: pointer;
+  align-items: center;
+  margin-top: var(--padding-xs);
+  padding-top: calc(var(--padding-xs) + 2px);
+  border-top: var(--border-thin) solid var(--separator-color);
+}
+
+.activity-fulldetails-toggle:hover .execution-step-text {
+  color: var(--text-secondary);
+}
+
+.execution-activity-dock {
+  flex: 0 0 auto;
+  min-width: 0;
+  margin-bottom: var(--progress-overlay-clearance, 0px);
+  border-top: var(--border-thin) solid var(--separator-color);
+  background: var(--background-primary);
+  box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.05);
+}
+
+.execution-activity-dock-header {
+  display: grid;
+  grid-template-columns: 10px 7.5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--padding-s);
+  width: 100%;
+  min-height: 32px;
+  padding: 5px var(--padding-l);
+  border: 0;
+  background: var(--background-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.execution-activity-dock-header[aria-expanded='true'] {
+  min-height: 38px;
+  padding: var(--padding-s) var(--padding-l);
+}
+
+.execution-activity-dock-beacon-slot {
+  display: flex;
+  width: 10px;
+  height: 10px;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-1px);
+}
+
+.execution-activity-dock-count {
+  width: 7.5rem;
+  transform: translateY(-1px);
+  white-space: nowrap;
+}
+
+.execution-activity-dock-header:focus-visible,
+.execution-activity-dock-jump:focus-visible,
+.execution-activity-dock-control:focus-visible,
+.execution-activity-dock-collapse:focus-visible {
+  outline: 2px solid var(--secondary);
+  outline-offset: 2px;
+}
+
+.execution-activity-dock-latest {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.execution-activity-dock-jump {
+  display: block;
+  width: calc(100% - (2 * var(--padding-l)));
+  margin: 0 var(--padding-l) var(--padding-xs);
+  min-height: 28px;
+  border: var(--border-thin) solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  background: var(--background-secondary);
+  color: var(--secondary);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+}
+
+.execution-activity-dock-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: grid-template-rows 220ms ease, opacity 180ms ease, transform 220ms ease;
+}
+
+.execution-activity-dock-body.is-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.execution-activity-dock-body-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.execution-activity-dock-list {
+  padding: var(--padding-xs) var(--padding-l) 0;
+}
+
+.execution-activity-dock-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-xs);
+  padding: 0 var(--padding-l) var(--padding-s);
+}
+
+.execution-activity-dock-control {
+  width: 100%;
+}
+
+.execution-activity-dock-collapse {
+  min-height: 28px;
+  border: 0;
+  border-radius: var(--corner-radius-small);
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  text-align: left;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .execution-activity-dock-body,
+  .execution-activity-dock-header,
+  .execution-activity-dock-jump,
+  .execution-activity-dock-control,
+  .execution-activity-dock-collapse {
+    transition: none;
+    scroll-behavior: auto;
+  }
+}
+
+/* Workflow plan section */
+.workflow-plan {
+  background: var(--background-secondary);
+  border-radius: var(--corner-radius-medium);
+  border: var(--border-thin) solid var(--separator-color);
+  margin-bottom: var(--padding-m);
+  overflow: hidden;
+}
+
+.workflow-plan-header {
+  padding: var(--padding-s) var(--padding-m);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-footnote);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.workflow-plan-body {
+  padding: 0 var(--padding-m) var(--padding-m);
+}
+
+.workflow-todo {
+  margin-bottom: var(--padding-s);
+}
+
+.workflow-todo-title {
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-footnote);
+  color: var(--text-primary);
+  margin-bottom: var(--padding-xs);
+}
+
+.workflow-step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--padding-s);
+  padding: 2px 0;
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-small);
+  color: var(--text-secondary);
+}
+
+.step-status-icon {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid var(--text-tertiary);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.step-status-icon.running { border-color: var(--processing-base); border-style: dashed; animation: spin 2s linear infinite; }
+.step-status-icon.completed { background: var(--success-base); border-color: var(--success-base); }
+.step-status-icon.failed { background: var(--error-base); border-color: var(--error-base); }
+
+/* Empty/loading states */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--padding-xl);
+  color: var(--text-tertiary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-callout);
+  gap: var(--padding-s);
+}
+
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--separator-color);
+  border-top-color: var(--secondary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Selection highlight for text */
+.result-section ::selection {
+  background: var(--primary);
+  color: white;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.result-section {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--text-primary) 15%, transparent);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--text-primary) 25%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workflow-plan,
+  .progress-steps {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

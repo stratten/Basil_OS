@@ -1,0 +1,226 @@
+{
+  "web-components/AgentTaskResult/src/styles/components/artifact-review-workspace.css": [
+    "119:background: var(--background-primary, #ffffff);",
+    "159:background: var(--background-primary, #ffffff);",
+    "187:background: var(--background-primary, #ffffff);",
+    "301:background: var(--background-primary, #ffffff);"
+  ],
+  "web-components/AgentTaskResult/src/styles/components/checkpoint-flow.css": [
+    "29:background: rgba(0, 0, 0, 0.18);",
+    "368:color: #FFFFFF;",
+    "387:color: #FFFFFF;",
+    "404:color: #FFFFFF;"
+  ],
+  "web-components/AgentTaskResult/src/styles/components/detail-tray/agent-run-rail.css": [
+    "132:color: #fff;",
+    "173:color: #fff;",
+    "342:color: #fff;"
+  ],
+  "web-components/AgentTaskResult/src/styles/components/detail-tray/execution-detail-tray.css": [
+    "132:color: #fff;",
+    "138:color: #fff;",
+    "145:color: #fff;"
+  ],
+  "web-components/AgentTaskResult/src/styles/components/overlays-and-approvals.css": [
+    "85:background: rgba(0, 0, 0, 0.3);"
+  ],
+  "web-components/AgentTaskResult/src/styles/components/result-content.css": [
+    "40:background: color-mix(in srgb, var(--background-primary, #ffffff) 92%, transparent);"
+  ],
+  "web-components/AgentTaskResult/src/styles/components/shell-and-sidebar.css": [
+    "535:color: rgba(255, 255, 255, 0.8);",
+    "539:color: rgba(255, 255, 255, 0.7);",
+    "566:color: rgba(255, 255, 255, 0.85);",
+    "571:background: rgba(255, 255, 255, 0.12);"
+  ],
+  "web-components/AmbientSuggestionsPanel/src/styles/panel.css": [
+    "129:background: rgba(0, 0, 0, 0.03);",
+    "155:background: rgba(0, 0, 0, 0.06);",
+    "295:color: #ffffff;",
+    "359:color: #ffffff;",
+    "461:background: rgba(0, 0, 0, 0.04);"
+  ],
+  "web-components/AssistantSession/src/styles/assistant-output-history/detail.css": [
+    "48:background: var(--background-primary, #ffffff);",
+    "111:background: color-mix(in srgb, var(--secondary, #4c7bf0) 8%, var(--background-primary, #ffffff));",
+    "160:background: color-mix(in srgb, var(--error-base, #b42318) 10%, var(--background-primary, #ffffff));",
+    "161:border: 1px solid color-mix(in srgb, var(--error-base, #b42318) 35%, var(--background-primary, #ffffff));",
+    "176:color: #ffffff;"
+  ],
+  "web-components/AssistantSession/src/styles/assistant-output-history/shell.css": [
+    "33:background: var(--background-primary, #ffffff);",
+    "117:background: color-mix(in srgb, var(--background-primary, #ffffff) 88%, transparent);"
+  ],
+  "web-components/AssistantSession/src/styles/assistant-output-history/sidebar.css": [
+    "6:background: var(--background-primary, #ffffff);",
+    "77:background: var(--background-primary, #ffffff);",
+    "189:color: rgba(255, 255, 255, 0.82);"
+  ],
+  "web-components/AssistantSession/src/styles/assistant-session/recording.css": [
+    "15:background: var(--background-primary, #ffffff);"
+  ],
+  "web-components/AssistantSession/src/styles/assistant-session/result.css": [
+    "160:background: var(--background-primary, #ffffff);",
+    "202:background: color-mix(in srgb, var(--secondary, #4c7bf0) 8%, var(--background-primary, #ffffff));",
+    "287:color: #ffffff;",
+    "333:color: #ffffff;"
+  ],
+  "web-components/AssistantSession/src/styles/assistant-session/shell.css": [
+    "35:background: var(--background-primary, #ffffff);"
+  ],
+  "web-components/AssistantSession/src/styles/assistant-session/typed-input.css": [
+    "123:background: var(--background-primary, #ffffff);",
+    "170:color: #ffffff;"
+  ],
+  "web-components/BasilBoard/src/styles/chats-artifact-sidebar.css": [
+    "26:background: var(--background-primary, #ffffff);"
+  ],
+  "web-components/BasilBoard/src/styles/chats-messages.css": [
+    "57:color: #ffffff;",
+    "93:color: #ffffff;",
+    "117:color: #ffffff;",
+    "121:background: rgba(255, 255, 255, 0.18);",
+    "122:color: #ffffff;",
+    "126:background: rgba(0, 0, 0, 0.2);",
+    "127:color: #ffffff;",
+    "270:background: #ffffff;",
+    "472:color: #ffffff;",
+    "545:color: #ffffff;",
+    "561:color: #ffffff;",
+    "704:color: #ffffff;"
+  ],
+  "web-components/BasilBoard/src/styles/chats.css": [
+    "4:background: var(--background-primary, #ffffff);",
+    "15:background: var(--background-primary, #ffffff);",
+    "29:background: var(--background-primary, #ffffff);",
+    "43:background: var(--background-primary, #ffffff);",
+    "272:color: #ffffff;",
+    "278:color: #ffffff;",
+    "335:color: rgba(255, 255, 255, 0.82);",
+    "406:color: rgba(255, 255, 255, 0.82);",
+    "544:color: #ffffff;"
+  ],
+  "web-components/BasilBoard/src/styles/home.css": [
+    "8:background: var(--background-primary, #ffffff);",
+    "69:background: var(--background-primary, #ffffff);",
+    "101:background: var(--background-primary, #ffffff);",
+    "193:background: var(--background-primary, #ffffff);",
+    "258:background: var(--background-primary, #ffffff);",
+    "305:background: var(--background-primary, #ffffff);",
+    "313:background: var(--background-primary, #ffffff);",
+    "462:background: var(--background-primary, #ffffff);"
+  ],
+  "web-components/BasilBoard/src/styles/todos.css": [
+    "7:background: var(--background-primary, #ffffff);",
+    "24:background: var(--background-primary, #ffffff);",
+    "208:color: #ffffff;",
+    "356:color: #ffffff;",
+    "361:color: rgba(255, 255, 255, 0.82);",
+    "610:color: #ffffff !important;",
+    "621:color: rgba(255, 255, 255, 0.72) !important;",
+    "759:color: #fff;",
+    "1134:color: #ffffff;"
+  ],
+  "web-components/MeetingAssistant/src/styles/meeting-assistant/foundation.css": [
+    "231:color: #ffffff;",
+    "358:color: #ffffff;"
+  ],
+  "web-components/MeetingAssistant/src/styles/meeting-assistant/parity-shell.css": [
+    "173:color: #fff;",
+    "411:color: rgba(255, 255, 255, 0.78);",
+    "444:color: #ffffff;",
+    "498:background: rgba(255, 255, 255, 0.12);",
+    "499:color: rgba(255, 255, 255, 0.85);"
+  ],
+  "web-components/MeetingDetectedMiniPanel/src/styles/panel.css": [
+    "165:color: #ffffff;"
+  ],
+  "web-components/ModelDownloadMiniPanel/src/styles/panel.css": [
+    "80:.model-row-action button { border: 0; border-radius: 4px; padding: 2px 6px; background: var(--primary); color: #fff; cursor: pointer; font-family: var(--font-family-medium); font-size: 10px; }"
+  ],
+  "web-components/ScheduledRunMiniPanel/src/styles/panel.css": [
+    "59:color: #ffffff;",
+    "89:background: rgba(0, 0, 0, 0.05);",
+    "110:background: rgba(0, 0, 0, 0.04);",
+    "198:background: rgba(0, 0, 0, 0.06);"
+  ],
+  "web-components/SettingsWebComponents/src/styles/account-settings.css": [
+    "174:color: #fff;",
+    "376:color: #fff;"
+  ],
+  "web-components/SettingsWebComponents/src/styles/appearance-settings.css": [
+    "24:color: #fff;"
+  ],
+  "web-components/SettingsWebComponents/src/styles/connections-settings.css": [
+    "393:color: #fff;",
+    "593:color: #fff;"
+  ],
+  "web-components/SettingsWebComponents/src/styles/custom-models.css": [
+    "84:color: #fff;",
+    "107:color: #fff;",
+    "400:color: #fff;",
+    "405:background: rgba(0, 0, 0, 0.5);"
+  ],
+  "web-components/SettingsWebComponents/src/styles/models-settings.css": [
+    "29:color: #ffffff;"
+  ],
+  "web-components/SettingsWebComponents/src/styles/permissions-settings.css": [
+    "553:color: #fff;"
+  ],
+  "web-components/SettingsWebComponents/src/styles/profile-settings.css": [
+    "131:color: #fff;"
+  ],
+  "web-components/SettingsWebComponents/src/styles/transcription-settings.css": [
+    "163:color: #fff;",
+    "310:color: #fff;",
+    "430:color: #fff;"
+  ],
+  "web-components/SettingsWebComponents/src/styles/writing-examples-settings.css": [
+    "36:color: #ffffff;"
+  ],
+  "web-components/SetupAssistantWebComponents/src/styles/setup-assistant.agenda.css": [
+    "42:0 0 0 0.5px rgba(0, 0, 0, 0.04),",
+    "43:0 2px 10px 1px rgba(0, 0, 0, 0.03);",
+    "150:0 1px 2px rgba(0, 0, 0, 0.025),",
+    "151:0 1px 3px rgba(0, 0, 0, 0.03);",
+    "181:0 1px 2px rgba(0, 0, 0, 0.04),",
+    "182:0 4px 10px rgba(0, 0, 0, 0.05);",
+    "191:0 1px 2px rgba(0, 0, 0, 0.04),"
+  ],
+  "web-components/SetupAssistantWebComponents/src/styles/setup-assistant.conversation.messages.css": [
+    "70:background: rgba(255, 255, 255, 0.9);",
+    "81:background: rgba(255, 255, 255, 0.65);"
+  ],
+  "web-components/SetupAssistantWebComponents/src/styles/setup-assistant.shared.css": [
+    "111:0 0 0 0.5px rgba(0, 0, 0, 0.05),",
+    "112:0 1px 12px 3px rgba(0, 0, 0, 0.025);"
+  ],
+  "web-components/SkillReconciliationWorkspace/src/styles/components.css": [
+    "142:background: rgba(0, 0, 0, 0.08);",
+    "188:background: rgba(0, 0, 0, 0.04);",
+    "457:.action-btn.primary { background: var(--primary); border-color: var(--primary); color: #FFFFFF; }",
+    "458:.action-btn.success { background: var(--success-base); border-color: var(--success-base); color: #FFFFFF; }",
+    "459:.action-btn.danger { background: var(--error-base); border-color: var(--error-base); color: #FFFFFF; }"
+  ],
+  "web-components/TranscriptionWidget/src/styles/audio-file-upload.css": [
+    "25:background: var(--background-primary, #ffffff);",
+    "186:color: #fff;"
+  ],
+  "web-components/TranscriptionWidget/src/styles/transcription-widget.css": [
+    "218:background: var(--background-primary, #fff);",
+    "297:color: #fff;",
+    "319:color: rgba(255, 255, 255, 0.7);"
+  ],
+  "web-components/shared/history-sidebar-controls.css": [
+    "6:.shared-history-search-shell { align-items: center; background: var(--background-primary, #fff); border: 1px solid color-mix(in srgb, var(--secondary) 18%, transparent); border-radius: 6px; display: flex; gap: 6px; margin: 4px 12px; padding: 6px 8px; }"
+  ],
+  "web-components/shared/rich-text-followup.css": [
+    "80:.model-selector-dropdown { position: absolute; bottom: calc(100% + 4px); left: 0; min-width: 200px; max-width: 280px; max-height: 240px; overflow-y: auto; background: var(--background-primary); border: 1px solid var(--separator-color); border-radius: var(--corner-radius-medium); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12); z-index: 100; padding: var(--padding-xs) 0; }",
+    "98:background: var(--background-primary, #ffffff);",
+    "228:color: #ffffff;",
+    "240:color: rgba(255, 255, 255, 0.72);"
+  ],
+  "web-components/shared/switch.css": [
+    "27:background: #fff;"
+  ]
+}

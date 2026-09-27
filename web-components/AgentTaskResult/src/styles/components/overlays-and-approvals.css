@@ -1,0 +1,184 @@
+/* Progress overlay — matches Swift's ProgressIndicatorOverlay */
+.progress-overlay {
+  position: absolute;
+  bottom: 2px;
+  left: 2px;
+  right: 2px;
+  pointer-events: none;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+
+.progress-overlay[data-presence-phase='entering'],
+.progress-overlay[data-presence-phase='exiting'] {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.approval-presence-region {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  opacity: 1;
+  transition: opacity 200ms ease-out;
+}
+
+.approval-presence-region[data-presence-phase='entering'],
+.approval-presence-region[data-presence-phase='exiting'] {
+  opacity: 0;
+}
+
+.progress-step {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-s);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-small);
+  color: var(--text-primary);
+  padding: var(--padding-s) calc(var(--padding-s) + 2px);
+  background: var(--background-primary);
+  border-radius: var(--corner-radius-medium);
+}
+
+.progress-step-stack {
+  display: grid;
+}
+
+.progress-step-stack-layer {
+  grid-area: 1 / 1;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.progress-step-stack-layer[data-presence-phase='entering'],
+.progress-step-stack-layer[data-presence-phase='exiting'] {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.progress-step-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--secondary);
+}
+
+.progress-step-icon.active {
+  color: var(--secondary);
+}
+
+.progress-step-icon.complete {
+  color: var(--success-base);
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Approval overlay */
+.overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  border-radius: var(--corner-radius-large);
+}
+
+.overlay-card {
+  background: var(--background-primary);
+  border-radius: var(--corner-radius-medium);
+  padding: var(--padding-l);
+  max-width: 90%;
+  max-height: 90%;
+  overflow-y: auto;
+  box-shadow: var(--shadow-dark);
+  border: var(--border-thin) solid var(--separator-color);
+}
+
+.overlay-title {
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-headline);
+  color: var(--text-primary);
+  margin-bottom: var(--padding-m);
+}
+
+.overlay-body {
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-body);
+  color: var(--text-primary);
+  margin-bottom: var(--padding-l);
+}
+
+.overlay-actions {
+  display: flex;
+  gap: var(--padding-s);
+  justify-content: flex-end;
+}
+
+/* Wraps each embedded ApprovalOverlay when multiple approvals are stacked
+   inside ApprovalSetOverlay's aggregate card (see ApprovalSetOverlay.tsx --
+   the single-approval case renders ApprovalOverlay directly and never uses
+   this class). Previously inert (no rule at all); this divider replaces
+   relying on the grid gap alone to separate stacked items now that each
+   item's own title is suppressed for the plain shell-command case. */
+.approval-set-card + .approval-set-card {
+  border-top: var(--border-thin) solid var(--separator-color);
+  padding-top: var(--padding-m);
+}
+
+/* Risk level badges */
+.risk-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--corner-radius-small);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  text-transform: uppercase;
+}
+
+.risk-badge.low { background: color-mix(in srgb, var(--success-base) 15%, transparent); color: var(--success-base); }
+.risk-badge.medium { background: color-mix(in srgb, var(--warning-base) 15%, transparent); color: var(--warning-base); }
+.risk-badge.high { background: color-mix(in srgb, var(--error-base) 15%, transparent); color: var(--error-base); }
+
+
+/* Checkbox */
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-s);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-body);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+/* Command text display (approval) */
+.command-display {
+  background: var(--background-secondary);
+  border-radius: var(--corner-radius-small);
+  padding: var(--padding-m);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-code-small);
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 120px;
+  overflow-y: auto;
+  border: var(--border-thin) solid var(--separator-color);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-overlay,
+  .approval-presence-region,
+  .progress-step-stack-layer {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+

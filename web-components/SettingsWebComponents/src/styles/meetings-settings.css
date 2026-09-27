@@ -1,0 +1,234 @@
+.meetings-settings-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 700px;
+  width: 100%;
+}
+
+.meetings-settings-section {
+  background: color-mix(in srgb, var(--background-primary) 92%, var(--primary));
+  border: 1px solid var(--field-border);
+  border-radius: 10px;
+  /* Spot-test (2026-09-02): the shared 0 3px 10px @ 8% shadow used across
+     every other migrated tab reads as almost nothing next to a 1px border.
+     Layering a tight low-opacity shadow with a softer, wider one gives real
+     card separation from the background without looking glossy. If this
+     feels right, roll the same two-layer value out to the other tabs. */
+  box-shadow: 0 1px 3px rgb(0 0 0 / 10%), 0 8px 20px rgb(0 0 0 / 8%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+}
+
+.meetings-settings-section h2 {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: 16px;
+  margin: 0;
+}
+
+.meetings-settings-hint {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 12px;
+  margin: 0;
+}
+
+.meetings-numeric-field {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.meetings-numeric-field label {
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+}
+
+.meetings-numeric-field input {
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  padding: 4px 6px;
+  text-align: right;
+  width: 64px;
+}
+
+.meetings-numeric-field span {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+}
+
+.meetings-exclusions-textarea {
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  min-height: 70px;
+  padding: 8px;
+  resize: vertical;
+  width: 100%;
+}
+
+/* .meetings-settings-section is a flex column with the default stretch
+   cross-axis alignment, so this lone action button was inheriting the
+   textarea's full width above it instead of sizing to its own content. */
+.meetings-settings-section > .secondary-button {
+  align-self: flex-start;
+}
+
+.meetings-settings-status,
+.meetings-settings-inline-error,
+.meetings-settings-error p {
+  margin: 0;
+}
+
+.meetings-settings-status {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+}
+
+.meetings-settings-inline-error,
+.meetings-settings-error p {
+  color: var(--warning-base, #b54708);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+}
+
+.meetings-settings-error {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 700px;
+}
+
+.app-exclusion-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+}
+
+.app-exclusion-search-input {
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  padding: 8px 10px;
+  width: 100%;
+}
+
+.app-exclusion-dropdown {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.app-exclusion-dropdown-item {
+  align-items: center;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  gap: 8px;
+  padding: 7px 10px;
+  text-align: left;
+}
+
+.app-exclusion-dropdown-item:hover {
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+.app-exclusion-chips {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.app-exclusion-chip {
+  align-items: center;
+  background: color-mix(in srgb, var(--background-primary) 96%, var(--secondary, var(--primary)));
+  border: 1px solid var(--field-border);
+  border-radius: 999px;
+  color: var(--text-primary);
+  display: inline-flex;
+  font-family: var(--font-family-light);
+  font-size: 12px;
+  gap: 8px;
+  max-width: 100%;
+  padding: 6px 10px;
+  width: fit-content;
+}
+
+.app-exclusion-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-exclusion-icon {
+  border-radius: 3px;
+  height: 16px;
+  width: 16px;
+}
+
+.app-exclusion-required {
+  color: var(--text-secondary);
+  margin-left: auto;
+}
+
+.app-exclusion-remove {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  margin-left: auto;
+  padding: 0;
+}
+
+.app-exclusion-hint {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 12px;
+  margin: 0;
+}
+
+.meetings-automation-modes {
+  border: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+}
+
+.meetings-automation-modes legend {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 12px;
+  margin-bottom: 4px;
+  padding: 0;
+}
+
+.meetings-automation-mode-toggle {
+  align-items: center;
+  display: flex;
+}

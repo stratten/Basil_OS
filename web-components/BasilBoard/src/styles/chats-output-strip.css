@@ -1,0 +1,69 @@
+.chats-agent-task-files {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.chats-agent-task-files-label {
+  color: var(--text-secondary, #33559b);
+  font-family: var(--font-family-medium);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.chats-agent-task-file-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chats-agent-task-file-chip {
+  max-width: 220px;
+  overflow: hidden;
+  padding: 3px 7px;
+  border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent);
+  border-radius: var(--corner-radius-small, 6px);
+  background: color-mix(in srgb, var(--primary, #003087) 6%, transparent);
+  color: var(--secondary, #33559b);
+  font-family: var(--font-family-medium);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.chats-agent-task-file-chip:hover {
+  background: color-mix(in srgb, var(--primary, #003087) 12%, transparent);
+}
+
+.chats-agent-task-file-chip:focus-visible {
+  outline: 1px solid var(--primary, #003087);
+  outline-offset: 1px;
+}
+
+.chats-agent-task-files-view-all {
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--corner-radius-small, 6px);
+  background: transparent;
+  color: var(--text-secondary, #33559b);
+  font-family: var(--font-family-medium);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.chats-agent-task-files-view-all:hover {
+  border-color: color-mix(in srgb, var(--secondary) 30%, transparent);
+  background: color-mix(in srgb, var(--secondary) 8%, transparent);
+}
+
+.chats-agent-task-files-view-all:focus-visible {
+  outline: 1px solid var(--primary, #003087);
+  outline-offset: 1px;
+}

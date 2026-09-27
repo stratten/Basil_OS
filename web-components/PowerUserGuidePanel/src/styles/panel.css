@@ -1,0 +1,245 @@
+@import '../../../shared/webkit-window-chrome.css';
+
+:root {
+  --background-primary: #ffffff;
+  --background-secondary: #f5f5f7;
+  --primary: #0a84ff;
+  --text-primary: #000000;
+  --text-secondary: rgba(0, 0, 0, 0.6);
+  --text-inverse: #ffffff;
+  --font-family-light: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-family-medium: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-family-bold: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { width: 100%; height: 100%; margin: 0; background: transparent; }
+body { color: var(--text-primary); font-family: var(--font-family-light); }
+
+.pug-placeholder { width: 100%; height: 100%; }
+.pug-frame { height: 100%; }
+.pug-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: var(--background-primary);
+}
+
+.pug-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.pug-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 0 0 44px;
+  padding: 0 12px 0 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+
+.pug-header-title {
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.pug-header-close {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary, rgba(60, 60, 67, 0.6));
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.pug-header-close:hover {
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  color: var(--text-primary);
+}
+
+.pug-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 220px;
+  padding: 16px 8px;
+  background: var(--background-secondary);
+  overflow-y: auto;
+}
+.pug-sidebar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+  text-align: left;
+}
+.pug-sidebar-row:hover { background: color-mix(in srgb, var(--text-primary) 6%, transparent); }
+.pug-sidebar-row--selected {
+  background: var(--primary);
+  color: var(--text-inverse);
+}
+.pug-sidebar-icon { font-size: 16px; width: 20px; text-align: center; }
+.pug-sidebar-icon-image { width: 18px; height: 18px; border-radius: 4px; object-fit: cover; }
+
+.pug-content {
+  flex: 1;
+  min-width: 0;
+  padding: 28px 32px;
+  overflow-y: auto;
+}
+
+.pug-section { display: flex; flex-direction: column; gap: 20px; }
+.pug-section-header { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
+.pug-section-header-row { display: flex; align-items: center; gap: 10px; }
+.pug-section-icon { font-size: 24px; }
+.pug-section-header h1 {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-family-bold);
+  font-size: 22px;
+  font-weight: 700;
+}
+.pug-section-subtitle {
+  margin: 0;
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.pug-group { display: flex; flex-direction: column; gap: 10px; }
+.pug-group-title-row { display: flex; align-items: center; gap: 8px; }
+.pug-group-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-family-bold);
+  font-size: 15px;
+  font-weight: 600;
+}
+.pug-group-badge {
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: color-mix(in srgb, var(--primary) 15%, transparent);
+  color: var(--primary);
+  font-family: var(--font-family-medium);
+  font-size: 11px;
+  font-weight: 600;
+}
+.pug-group-body { display: flex; flex-direction: column; gap: 8px; }
+
+.pug-bullet {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.pug-bullet-dot { color: var(--primary); font-size: 14px; line-height: 1.6; }
+
+.pug-model-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+.pug-model-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--background-secondary);
+}
+.pug-model-card--secondary { background: color-mix(in srgb, var(--background-secondary) 60%, transparent); }
+.pug-model-card-header { display: flex; align-items: center; gap: 8px; }
+.pug-model-card-icon { font-size: 18px; }
+.pug-model-card-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-family-bold);
+  font-size: 15px;
+  font-weight: 600;
+}
+.pug-model-card-bullets { display: flex; flex-direction: column; gap: 6px; }
+.pug-model-card-bullet {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.pug-model-card-dot {
+  width: 5px;
+  height: 5px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+  flex-shrink: 0;
+}
+
+.pug-privacy-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.pug-table {
+  display: flex;
+  flex-direction: column;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--background-secondary);
+}
+.pug-table-row { display: grid; grid-template-columns: 1.4fr 1fr 1fr; }
+.pug-table-row + .pug-table-row { border-top: 1px solid color-mix(in srgb, var(--text-primary) 8%, transparent); }
+.pug-table-header { font-family: var(--font-family-bold); font-weight: 700; }
+.pug-table-cell {
+  padding: 10px 12px;
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.pug-table-header .pug-table-cell { color: var(--text-secondary); font-size: 12px; }
+
+.pug-footer {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid color-mix(in srgb, var(--text-primary) 8%, transparent);
+  padding: 12px 20px;
+}
+.pug-done-button {
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 20px;
+  background: var(--primary);
+  color: var(--text-inverse);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+button:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }

@@ -1,0 +1,243 @@
+@import '../../../shared/webkit-window-chrome.css';
+
+:root {
+  --background-primary: #ffffff;
+  --background-secondary: #f0f0f0;
+  --background-tertiary: #e5e5e5;
+  --primary: #1d4ed8;
+  --secondary: #6b7280;
+  /* Status accents. Swift publishes these from AestheticSystem.Colors
+     so they stay in lockstep with the rest of the app's theme. The
+     fallbacks below are the previous hard-coded values, preserved so
+     the panel keeps rendering correctly on the first frame before the
+     theme message arrives. */
+  --processing-base: #7c3aed;
+  --processing-rgb: 124, 58, 237;
+  --processing-accent: #c8a8f5;
+  --success-base: #16a34a;
+  --warning-base: #ffa500;
+  --error-base: #dc2626;
+  --text-primary: #111827;
+  --text-secondary: rgba(17, 24, 39, 0.6);
+  --text-tertiary: rgba(17, 24, 39, 0.4);
+  --separator-color: rgba(0, 0, 0, 0.06);
+  --field-border: rgba(0, 0, 0, 0.08);
+  --recording-base: #8b0000;
+  --recording-accent: #c94f4f;
+  --ready-base: #16a34a;
+  --ready-accent: #c8f0cb;
+  --font-family-light: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-family-medium: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-family-bold: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
+
+body {
+  font-family: var(--font-family-light);
+  color: var(--text-primary);
+}
+
+.mini-panel {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The header doubles as the drag handle (Swift overlays a transparent
+   WindowDragAreaView). Showing a subtle move cursor when the user
+   hovers the bare header chrome (away from the dismiss button) is a
+   small but useful affordance — without it the panel feels static. */
+.mini-panel-header {
+  cursor: grab;
+}
+.mini-panel-header:active {
+  cursor: grabbing;
+}
+.mini-panel-header .mini-panel-dismiss {
+  cursor: pointer;
+}
+
+.mini-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--separator-color);
+  font-family: var(--font-family-medium);
+  /* Softer header weight + sentence case to match the capture
+     widget's title treatment. The previous BOLD UPPERCASE LOOK was
+     the dominant visual jar against the rest of the app -- see the
+     U1 plan node for the user-facing complaint. */
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--text-primary);
+}
+
+.mini-panel-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mini-panel-header-count {
+  background: var(--primary);
+  color: #ffffff;
+  border-radius: 10px;
+  font-size: 10px;
+  padding: 1px 7px;
+  min-width: 18px;
+  text-align: center;
+  letter-spacing: 0;
+  font-weight: 600;
+  font-family: var(--font-family-bold);
+}
+
+/* Cluster the minimize + dismiss controls on the right side of the
+   header so they read as a single window-controls group instead of
+   two unrelated affordances. */
+.mini-panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.mini-panel-dismiss {
+  background: transparent;
+  border: none;
+  color: var(--secondary);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.mini-panel-dismiss:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-primary);
+}
+
+.mini-panel-rows {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0 8px;
+}
+
+.mini-panel-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 0;
+  transition: background 0.12s ease;
+}
+
+.mini-panel-row:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* Rows still waiting for their agent_task_id to be allocated: the
+   click handler intentionally no-ops there, so we surface that to the
+   user visually (muted text + not-allowed cursor + no hover highlight)
+   instead of presenting an indistinguishable "live" row that silently
+   does nothing on click. */
+.mini-panel-row--awaiting {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.mini-panel-row--awaiting:hover {
+  background: transparent;
+}
+
+.mini-panel-row + .mini-panel-row {
+  border-top: 1px solid color-mix(in srgb, var(--separator-color) 67%, transparent);
+}
+
+.mini-panel-row-status {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.mini-panel-row-status.running {
+  background: var(--processing-base);
+  box-shadow: 0 0 0 0 var(--processing-base);
+  animation: mini-panel-pulse 1.6s ease-out infinite;
+}
+
+.mini-panel-row-status.completed {
+  background: var(--success-base);
+}
+
+.mini-panel-row-status.failed {
+  background: var(--error-base);
+}
+
+@keyframes mini-panel-pulse {
+  /* Pulse halo uses --processing-rgb so it tracks any theme swap. The
+     fallback in :root keeps the previous processing hue in case the
+     Swift host hasn't published tokens yet (first paint). */
+  0%   { box-shadow: 0 0 0 0 rgba(var(--processing-rgb), 0.45); }
+  70%  { box-shadow: 0 0 0 6px rgba(var(--processing-rgb), 0); }
+  100% { box-shadow: 0 0 0 0 rgba(var(--processing-rgb), 0); }
+}
+
+.mini-panel-row-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.mini-panel-row-title {
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini-panel-row-step {
+  font-family: var(--font-family-light);
+  font-size: 11px;
+  color: var(--secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.mini-panel-row-dismiss {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: var(--secondary);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.1s ease, background 0.12s ease;
+}
+
+.mini-panel-row:hover .mini-panel-row-dismiss {
+  opacity: 1;
+}
+
+.mini-panel-row-dismiss:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-primary);
+}

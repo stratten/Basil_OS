@@ -1,0 +1,12 @@
+{
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 30.0,
+      "speaker": "Presenter"
+    }
+  ],
+  "speakers": "{'Presenter'}",
+  "duration": 30.0,
+  "scenario": "Long Single Speaker"
+}

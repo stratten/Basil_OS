@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Basil Live Transcription</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            background-color: #f8f9fa;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #2d3748;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .controls-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 2rem;
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .button-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        #recordButton {
+            width: 50px;
+            height: 50px;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: white;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        #recordButton.recording {
+            width: 180px;
+            border-radius: 25px;
+            justify-content: flex-start;
+            padding-left: 15px;
+        }
+
+        .recordIcon {
+            width: 25px;
+            height: 25px;
+            background-color: #e53e3e;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        #recordButton.recording .recordIcon {
+            border-radius: 4px;
+        }
+
+        #recordButton:disabled .recordIcon {
+            background-color: #a0aec0;
+        }
+
+        .recording-info {
+            display: none;
+            align-items: center;
+            margin-left: 15px;
+        }
+
+        #recordButton.recording .recording-info {
+            display: flex;
+            align-items: center;
+        }
+
+        .audio-visualizer {
+            width: 60px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .audio-bar {
+            width: 3px;
+            height: 5px;
+            background-color: #4a5568;
+            border-radius: 1px;
+            transition: height 0.2s ease;
+        }
+
+        .timer {
+            margin-left: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #4a5568;
+        }
+
+        .settings-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1rem;
+            width: 100%;
+        }
+
+        .setting-group {
+            display: flex;
+            flex-direction: column;
+            min-width: 200px;
+        }
+
+        .setting-group label {
+            font-size: 14px;
+            margin-bottom: 5px;
+            color: #4a5568;
+        }
+
+        select, input {
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+            font-size: 14px;
+            background-color: white;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: #4299e1;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15);
+        }
+
+        #status {
+            text-align: center;
+            margin: 1rem 0;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #edf2f7;
+            color: #4a5568;
+            font-size: 14px;
+        }
+
+        #transcription {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            min-height: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .transcript-line {
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+
+        .speaker-label {
+            display: inline-block;
+            background-color: #4299e1;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 15px;
+            margin-right: 8px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .interim-text {
+            color: #718096;
+            font-style: italic;
+        }
+
+        footer {
+            margin-top: 2rem;
+            text-align: center;
+            color: #718096;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Basil Live Transcription</h1>
+
+    <div class="controls-container">
+        <div class="button-container">
+            <button id="recordButton">
+                <div class="recordIcon"></div>
+                <div class="recording-info">
+                    <div class="audio-visualizer" id="visualizer">
+                        <div class="audio-bar"></div>
+                        <div class="audio-bar"></div>
+                        <div class="audio-bar"></div>
+                        <div class="audio-bar"></div>
+                        <div class="audio-bar"></div>
+                    </div>
+                    <div class="timer" id="recordingTime">00:00</div>
+                </div>
+            </button>
+        </div>
+
+        <div class="settings-container">
+            <div class="setting-group">
+                <label for="chunkSizeSelector">Audio Chunk Size:</label>
+                <select id="chunkSizeSelector">
+                    <option value="1024">1024 samples</option>
+                    <option value="2048">2048 samples</option>
+                    <option value="4096" selected>4096 samples</option>
+                    <option value="8192">8192 samples</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label for="websocketInput">WebSocket URL:</label>
+                <input type="text" id="websocketInput" value="" placeholder="Auto-detected" />
+            </div>
+        </div>
+    </div>
+
+    <div id="status">Ready to start transcription</div>
+
+    <div id="transcription"></div>
+
+    <footer>
+        <p>Powered by WhisperLive | Basil</p>
+    </footer>
+
+    <script>
+        // DOM elements
+        const recordButton = document.getElementById('recordButton');
+        const visualizer = document.getElementById('visualizer');
+        const recordingTime = document.getElementById('recordingTime');
+        const status = document.getElementById('status');
+        const transcription = document.getElementById('transcription');
+        const chunkSizeSelector = document.getElementById('chunkSizeSelector');
+        const websocketInput = document.getElementById('websocketInput');
+        
+        // Recording state
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let socket = null;
+        let isRecording = false;
+        let startTime = 0;
+        let recordingInterval = null;
+        
+        // Auto-detect WebSocket URL
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        const wsBase = window.location.host + window.location.pathname;
+        const wsEndpoint = wsBase.endsWith('/') ? 'asr' : '/asr';
+        const defaultWsUrl = `${wsProtocol}${wsBase}${wsEndpoint}`;
+        websocketInput.placeholder = defaultWsUrl;
+        
+        // Audio visualization
+        function updateVisualization() {
+            if (!isRecording) return;
+            
+            const bars = visualizer.querySelectorAll('.audio-bar');
+            bars.forEach(bar => {
+                const height = Math.floor(Math.random() * 15) + 5;
+                bar.style.height = `${height}px`;
+            });
+        }
+        
+        // Timer function
+        function updateTimer() {
+            if (!isRecording) return;
+            
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+            const seconds = (elapsed % 60).toString().padStart(2, '0');
+            recordingTime.textContent = `${minutes}:${seconds}`;
+        }
+        
+        // Connect to WebSocket
+        function connectWebSocket() {
+            const wsUrl = websocketInput.value || defaultWsUrl;
+            
+            try {
+                socket = new WebSocket(wsUrl);
+                
+                socket.onopen = () => {
+                    status.textContent = 'Connected to server';
+                    recordButton.disabled = false;
+                };
+                
+                socket.onclose = () => {
+                    status.textContent = 'Disconnected from server';
+                    recordButton.disabled = true;
+                    stopRecording();
+                };
+                
+                socket.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    status.textContent = 'Error connecting to server';
+                    recordButton.disabled = true;
+                };
+                
+                socket.onmessage = (event) => {
+                    handleTranscription(JSON.parse(event.data));
+                };
+                
+                return true;
+            } catch (error) {
+                console.error('Failed to connect:', error);
+                status.textContent = 'Failed to connect to server';
+                return false;
+            }
+        }
+        
+        // Handle transcription results
+        function handleTranscription(data) {
+            console.log("Received data:", data);
+            
+            // Our backend sends data in a different format than what was originally expected
+            const transcriptDiv = document.getElementById('transcription');
+            
+            // Build transcript HTML
+            let html = '';
+            let currentSpeakers = {};
+            
+            // Process lines from the response (which contains speaker information)
+            if (data.lines && data.lines.length > 0) {
+                data.lines.forEach(line => {
+                    if (line.text && line.text.trim()) {
+                        const speaker = line.speaker || 1;
+                        
+                        // Track text by speaker to replace previous content from same speaker
+                        if (!currentSpeakers[speaker]) {
+                            currentSpeakers[speaker] = {
+                                text: line.text,
+                                beg: line.beg,
+                                end: line.end
+                            };
+                        } else {
+                            // Update existing speaker's text if needed
+                            currentSpeakers[speaker].text = line.text;
+                            currentSpeakers[speaker].end = line.end;
+                        }
+                    }
+                });
+                
+                // Generate HTML for each speaker (ordered by speaker ID)
+                Object.keys(currentSpeakers).sort((a, b) => parseInt(a) - parseInt(b)).forEach(speaker => {
+                    const speakerData = currentSpeakers[speaker];
+                    html += `<div class="transcript-line" data-speaker="${speaker}">`;
+                    html += `<span class="speaker-label">Speaker ${speaker}</span>`;
+                    html += speakerData.text;
+                    html += `</div>`;
+                });
+            }
+            
+            // Add buffer transcription as interim text if available
+            if (data.buffer_transcription && data.buffer_transcription.trim()) {
+                html += `<div class="transcript-line interim-text">${data.buffer_transcription}</div>`;
+            }
+            
+            // Update the transcript if we have content
+            if (html) {
+                transcriptDiv.innerHTML = html;
+                transcriptDiv.scrollTop = transcriptDiv.scrollHeight;
+            }
+        }
+        
+        // Start recording
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        channelCount: 1,
+                        sampleRate: 16000,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    } 
+                });
+                
+                // Specify codec explicitly for better compatibility
+                const options = { 
+                    mimeType: 'audio/webm;codecs=opus',
+                    audioBitsPerSecond: 16000
+                };
+                
+                mediaRecorder = new MediaRecorder(stream, options);
+                
+                const chunkSize = parseInt(chunkSizeSelector.value);
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0 && socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(event.data);
+                    }
+                };
+                
+                mediaRecorder.onstop = () => {
+                    stream.getTracks().forEach(track => track.stop());
+                };
+                
+                // Connect to WebSocket server
+                if (!socket || socket.readyState !== WebSocket.OPEN) {
+                    if (!connectWebSocket()) return;
+                }
+                
+                // Start recording
+                mediaRecorder.start(100); // Capture in 100ms chunks
+                isRecording = true;
+                recordButton.classList.add('recording');
+                
+                // Start timers
+                startTime = Date.now();
+                recordingInterval = setInterval(() => {
+                    updateTimer();
+                    updateVisualization();
+                }, 100);
+                
+                status.textContent = 'Recording and transcribing...';
+            } catch (error) {
+                console.error('Error starting recording:', error);
+                status.textContent = 'Error accessing microphone';
+            }
+        }
+        
+        // Stop recording
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+            
+            clearInterval(recordingInterval);
+            isRecording = false;
+            recordButton.classList.remove('recording');
+            status.textContent = 'Ready to start transcription';
+        }
+        
+        // Event listeners
+        recordButton.addEventListener('click', () => {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        });
+        
+        websocketInput.addEventListener('change', () => {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.close();
+            }
+        });
+        
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            // Check for WebSocket support
+            if (!window.WebSocket) {
+                status.textContent = 'WebSocket not supported by this browser';
+                recordButton.disabled = true;
+                return;
+            }
+            
+            // Connect automatically on page load
+            connectWebSocket();
+        });
+    </script>
+</body>
+
+</html> 

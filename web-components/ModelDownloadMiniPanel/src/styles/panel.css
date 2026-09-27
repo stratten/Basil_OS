@@ -1,0 +1,120 @@
+@import '../../../shared/webkit-window-chrome.css';
+
+:root {
+  --background-primary: #ffffff;
+  --background-secondary: #f0f0f0;
+  --background-tertiary: #e5e5e5;
+  --primary: #33559b;
+  --secondary: #003087;
+  --text-primary: #000000;
+  --text-secondary: rgba(0, 0, 0, 0.6);
+  --text-tertiary: rgba(0, 0, 0, 0.4);
+  --separator-color: rgba(0, 0, 0, 0.1);
+  --field-border: rgba(0, 0, 0, 0.18);
+  --recording-base: #8b0000;
+  --recording-accent: #c94f4f;
+  --success-base: #348738;
+  --warning-base: #ffa500;
+  --error-base: #ff0000;
+  --processing-base: #7c3aed;
+  --processing-accent: #c8a8f5;
+  --ready-base: #348738;
+  --ready-accent: #c8f0cb;
+  --font-family-light: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-family-medium: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-family-bold: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { width: 100%; height: 100%; margin: 0; background: transparent; }
+body { color: var(--text-primary); font-family: var(--font-family-light); }
+
+.model-download-panel-placeholder { width: 100%; height: 100%; }
+.model-download-panel-frame { height: auto; }
+.model-download-panel {
+  display: flex;
+  flex-direction: column;
+  width: 272px;
+  height: auto;
+  max-height: 420px;
+  padding: 10px 12px 0;
+  background: var(--background-primary);
+}
+
+.model-download-header {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  min-height: 18px;
+  color: var(--secondary);
+  font-family: var(--font-family-medium);
+  font-size: 11px;
+}
+.model-download-dismiss {
+  position: absolute;
+  top: -2px;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--secondary) 16%, transparent);
+  color: var(--secondary);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 16px;
+}
+
+.model-download-summary { display: flex; align-items: center; gap: 12px; padding: 6px 0; }
+.model-download-ring {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--background-primary) 77%, transparent 78%), conic-gradient(var(--primary) var(--progress), color-mix(in srgb, var(--secondary) 18%, transparent) 0);
+}
+.model-download-ring--complete { background: radial-gradient(closest-side, var(--background-primary) 77%, transparent 78%), conic-gradient(var(--success-base) 100%, transparent 0); }
+.model-download-ring img { width: 24px; height: 24px; border-radius: 5px; object-fit: cover; }
+.model-download-ring span { color: var(--primary); font-family: var(--font-family-bold); font-size: 16px; }
+.model-download-ring--complete span { color: var(--success-base); }
+.model-download-summary-copy { min-width: 0; }
+.model-download-phase { overflow: hidden; color: var(--text-primary); font-family: var(--font-family-medium); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.model-download-percentage { color: var(--primary); font-family: var(--font-family-bold); font-size: 15px; }
+.model-download-percentage--complete { color: var(--success-base); }
+.model-download-divider { height: 1px; margin: 0 -4px; background: color-mix(in srgb, var(--secondary) 16%, transparent); }
+
+.model-download-rows { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; gap: 1px; overflow-y: auto; padding: 4px 0 7px; }
+.model-row { flex: 0 0 auto; padding: 3px 4px; }
+.model-row-summary { display: flex; align-items: center; min-width: 0; gap: 8px; }
+.model-row-icon { width: 14px; flex: 0 0 14px; font-family: var(--font-family-bold); font-size: 14px; text-align: center; }
+.model-row-icon--completed { color: var(--success-base); }
+.model-row-icon--active, .model-row-icon--retrying { color: var(--primary); }
+.model-row-icon--stalled { color: var(--warning-base); }
+.model-row-labels { display: flex; min-width: 0; flex: 1; flex-direction: column; }
+.model-row-title { overflow: hidden; color: var(--text-primary); font-family: var(--font-family-medium); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.model-row-technical { overflow: hidden; color: var(--secondary); font-size: 9px; opacity: 0.75; text-overflow: ellipsis; white-space: nowrap; }
+.model-row-action { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; font-size: 10px; }
+.model-row-done { color: var(--success-base); }
+.model-row-pending { color: var(--secondary); }
+.model-row-percent { color: var(--primary); }
+.model-row-action button { border: 0; border-radius: 4px; padding: 2px 6px; background: var(--primary); color: #fff; cursor: pointer; font-family: var(--font-family-medium); font-size: 10px; }
+.model-row-action .model-row-stop { width: 14px; height: 14px; padding: 0; border-radius: 50%; background: var(--recording-base); font-size: 7px; }
+.model-row-progress { height: 3px; margin: 3px 0 0 22px; overflow: hidden; border-radius: 3px; background: color-mix(in srgb, var(--secondary) 18%, transparent); }
+.model-row-progress-fill { display: block; height: 100%; border-radius: inherit; background: var(--warning-base); transition: width 0.3s ease; }
+.model-row-progress-fill--active { background: var(--primary); }
+.model-row-bytes { display: block; margin: 2px 0 0 22px; color: var(--secondary); font-size: 9px; text-align: right; }
+
+.explanation-tray { margin: auto -12px 0; border-top: 1px solid color-mix(in srgb, var(--secondary) 16%, transparent); }
+.explanation-toggle { width: 100%; padding: 6px; border: 0; background: transparent; color: var(--secondary); cursor: pointer; font-size: 10px; }
+.explanation-content { padding: 9px 12px 10px; border-top: 1px solid color-mix(in srgb, var(--secondary) 16%, transparent); }
+.explanation-item { display: flex; gap: 8px; }
+.explanation-item + .explanation-item { margin-top: 8px; }
+.explanation-icon { width: 14px; color: var(--primary); font-size: 11px; text-align: center; }
+.explanation-title { color: var(--text-primary); font-family: var(--font-family-medium); font-size: 10px; }
+.explanation-detail { margin-top: 2px; color: var(--secondary); font-size: 10px; line-height: 1.25; }
+
+button:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+@media (prefers-reduced-motion: reduce) { .model-row-progress-fill { transition: none; } }

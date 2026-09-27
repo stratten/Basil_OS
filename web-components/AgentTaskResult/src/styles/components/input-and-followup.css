@@ -1,0 +1,87 @@
+@import '../../../../shared/rich-text-followup.css';
+
+.text-followup-presence-region {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+
+.text-followup-presence-region[data-presence-phase='entering'],
+.text-followup-presence-region[data-presence-phase='exiting'] {
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+}
+
+/* Inline capture bar */
+.inline-capture {
+  background: var(--background-secondary);
+  border-radius: var(--corner-radius-medium);
+  border: var(--border-thin) solid var(--separator-color);
+  padding: var(--padding-m) var(--padding-l);
+  margin-top: var(--padding-m);
+  animation: slide-up 0.3s ease-in-out;
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.inline-capture-header {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-s);
+}
+
+.inline-capture-mic {
+  color: var(--recording-base);
+  font-size: 16px;
+}
+
+.inline-capture-label {
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-callout);
+  color: var(--text-secondary);
+  flex: 1;
+}
+
+.inline-capture-words {
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-body);
+  color: var(--text-primary);
+  margin-top: var(--padding-s);
+  font-style: italic;
+}
+
+/* Done button (matches AgentTaskWidgetTheme) */
+.done-btn {
+  background: var(--success-base);
+  color: white;
+  border: none;
+  border-radius: var(--corner-radius-small);
+  padding: var(--padding-xs) var(--padding-s);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-footnote);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.done-btn:hover { opacity: 0.9; }
+
+/* Cancel button inside inline capture — match Done button sizing */
+.inline-capture .action-btn {
+  padding: var(--padding-xs) var(--padding-s);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-footnote);
+  background: color-mix(in srgb, var(--primary) 45%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .text-followup-presence-region {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+

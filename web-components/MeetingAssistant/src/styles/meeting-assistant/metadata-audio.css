@@ -1,0 +1,299 @@
+.meeting-main-column {
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 8px 16px 16px;
+  gap: 8px;
+}
+
+.meeting-section-heading-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meeting-section-heading {
+  margin: 0 0 6px;
+  color: var(--text-tertiary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-small);
+  font-weight: 400;
+}
+
+.meeting-past-meeting-badge {
+  margin-bottom: 6px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--secondary) 10%, transparent);
+  color: var(--secondary);
+  font-size: var(--font-size-status-tiny);
+}
+
+.meeting-metadata-section {
+  flex: 0 0 auto;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--separator-color);
+}
+
+.meeting-metadata-form {
+  gap: 8px;
+}
+
+.meeting-metadata-name-input,
+.meeting-metadata-purpose-input {
+  border-color: var(--field-border);
+  background: var(--background-tertiary);
+}
+
+.meeting-participant-field {
+  display: flex;
+  grid-column: 1 / -1;
+  min-height: 31px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  background: var(--background-tertiary);
+}
+
+.meeting-participant-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px 3px 8px;
+  border: 1px solid var(--field-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--secondary) 12%, transparent);
+  white-space: nowrap;
+}
+
+.meeting-participant-chip button {
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--secondary);
+}
+
+.meeting-participant-chip svg {
+  width: 13px;
+  height: 13px;
+  fill: currentColor;
+}
+
+.meeting-participant-draft {
+  min-width: 140px;
+  flex: 1;
+  padding: 2px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.meeting-audio-source-section {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 16px;
+  padding: 2px 0;
+}
+
+.meeting-audio-toggle,
+.meeting-system-audio-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-primary);
+  font-size: var(--font-size-caption);
+}
+
+.meeting-inline-icon {
+  width: 13px;
+  height: 13px;
+  color: var(--secondary);
+}
+
+.meeting-audio-toggle input,
+.meeting-switch-control input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.meeting-audio-switch,
+.meeting-switch-track {
+  position: relative;
+  box-sizing: border-box;
+  width: 31px;
+  height: 18px;
+  margin-left: 4px;
+  border-radius: 999px;
+  background: var(--text-tertiary);
+  transition: background 0.15s ease;
+}
+
+.meeting-audio-switch::after,
+.meeting-switch-track::after {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--background-primary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  content: '';
+  transition: transform 0.15s ease;
+}
+
+.meeting-audio-toggle input:checked + .meeting-audio-switch,
+.meeting-switch-control input:checked + .meeting-switch-track {
+  background: color-mix(in srgb, var(--secondary) 85%, transparent);
+}
+
+.meeting-audio-toggle input:checked + .meeting-audio-switch::after,
+.meeting-switch-control input:checked + .meeting-switch-track::after {
+  transform: translateX(13px);
+}
+
+.meeting-audio-toggle input:focus-visible + .meeting-audio-switch,
+.meeting-switch-control input:focus-visible + .meeting-switch-track {
+  outline: 2px solid var(--secondary);
+  outline-offset: 2px;
+}
+
+.meeting-audio-mode-select {
+  display: inline-flex;
+  width: 260px;
+  align-items: center;
+  gap: 6px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.meeting-audio-mode-select:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.meeting-audio-source-picker {
+  position: relative;
+}
+
+.meeting-audio-source-value {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meeting-audio-source-chevron {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+  color: var(--text-secondary);
+}
+
+.meeting-audio-source-menu {
+  position: absolute;
+  z-index: 100;
+  top: calc(100% + 4px);
+  right: 0;
+  box-sizing: border-box;
+  width: 260px;
+  max-height: min(320px, 55vh);
+  padding: 5px;
+  overflow-y: auto;
+  border: 1px solid var(--meeting-control-border);
+  border-radius: var(--corner-radius-small);
+  background: var(--background-primary);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--text-primary) 16%, transparent);
+}
+
+.meeting-audio-source-group {
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid var(--separator-color);
+}
+
+.meeting-audio-source-group-label {
+  display: block;
+  padding: 3px 7px;
+  color: var(--text-secondary);
+  font-family: var(--font-family-medium);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.meeting-audio-source-option {
+  display: flex;
+  width: 100%;
+  min-height: 28px;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 7px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-small);
+  text-align: left;
+  cursor: pointer;
+}
+
+.meeting-audio-source-option:hover,
+.meeting-audio-source-option.is-selected {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+.meeting-audio-source-option:focus-visible {
+  outline: 1px solid var(--meeting-control-focus-border);
+  outline-offset: -1px;
+}
+
+.meeting-audio-source-option > span {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meeting-audio-process-icon,
+.meeting-audio-source-option > .meeting-inline-icon,
+.meeting-audio-mode-select > .meeting-inline-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  object-fit: contain;
+}
+
+.meeting-audio-process-fallback-icon {
+  color: var(--text-secondary);
+}
+
+.meeting-audio-active-icon {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+  color: var(--primary);
+}
+
+.meeting-audio-source-checkmark {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+  color: var(--secondary);
+}
+
+.meeting-audio-recovery-notice {
+  margin: 0 0 0 auto;
+  font-size: var(--font-size-status-small);
+}

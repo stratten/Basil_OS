@@ -1,0 +1,70 @@
+:root {
+  /* User-configurable colors (defaults from AestheticSystem) */
+  --background-primary: #FFFFFF;
+  --primary: #33559B;
+  --secondary: #003087;
+  --text-primary: #000000;
+
+  /* Semantic text colors */
+  --text-secondary: rgba(60, 60, 67, 0.6);
+  --text-tertiary: #8E8E93;
+
+  /* Background variants (approximating macOS system colors) */
+  --background-secondary: #F0F0F0;
+  --separator-color: rgba(0, 0, 0, 0.1);
+
+  /* State colors. Recording defaults match AestheticSystem.Colors so the
+     React widget looks right even before the Swift host pushes its theme
+     payload. The Swift host overrides --recording-* and --processing-* via
+     App.tsx when the user customizes them via /settings/appearance.
+
+     Note: `--processing-base` / `--processing-accent` defaults are
+     intentionally NOT declared here. App.tsx initialises them at module
+     load from `theme/generated-defaults.ts`, which is regenerated from the
+     canonical Swift literal in AestheticSystem.swift by
+     `scripts/generate_processing_color_defaults.py`. Hard-coding values
+     here would silently drift from Swift if either side changed. */
+  --recording-base: #8B0000;
+  --recording-accent: #FF6347;
+  /* Ready/ambient bubble colors. Green signals "Basil is ready to receive
+     input" for the idle (non-capturing/non-processing) bubble state. Fixed
+     (not user-configurable), matching AestheticSystem.Colors.readyBase /
+     readyAccent and AgentTaskResult's identical, deliberate choice
+     (`05_Bridge_Contract_And_Types.md` section 5.9). */
+  --ready-base: #348738;
+  --ready-accent: #C8F0CB;
+  --warning-base: #FFA500;
+
+  /* Layout constants */
+  --corner-radius-small: 6px;
+  --corner-radius-medium: 8px;
+  --corner-radius-large: 16px;
+  --padding-xs: 4px;
+  --padding-s: 8px;
+  --padding-m: 12px;
+  --padding-l: 16px;
+
+  /* Shadow definitions */
+  --shadow-light: 0 1px 2px rgba(0, 0, 0, 0.03);
+
+  /* Typography - user font (defaults) */
+  --font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-family-light: 'HelveticaNeue-Light', 'Helvetica Neue Light', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-family-medium: 'HelveticaNeue-Medium', 'Helvetica Neue Medium', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-family-bold: 'HelveticaNeue-Bold', 'Helvetica Neue Bold', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+
+  /* Font sizes actually used by this widget's components (Packages 14-15) */
+  --font-size-footnote: 12px;
+  --font-size-callout: 13px;
+  --font-size-status-small: 11px;
+  --font-size-status-tiny: 10px;
+
+}
+
+html,
+body {
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-callout);
+  line-height: 1.4;
+}

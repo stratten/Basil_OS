@@ -1,0 +1,501 @@
+@import '../../../shared/webkit-window-chrome.css';
+
+:root {
+  --background-primary: #ffffff;
+  --background-secondary: #f0f0f0;
+  --background-tertiary: #e5e5e5;
+  --primary: #1d4ed8;
+  --secondary: #6b7280;
+  --processing-base: #7c3aed;
+  --processing-rgb: 124, 58, 237;
+  --processing-accent: #c8a8f5;
+  --success-base: #16a34a;
+  --warning-base: #ffa500;
+  --error-base: #dc2626;
+  --text-primary: #111827;
+  --text-secondary: rgba(60, 60, 67, 0.6);
+  --text-tertiary: rgba(60, 60, 67, 0.4);
+  --separator-color: rgba(0, 0, 0, 0.1);
+  --field-border: rgba(0, 0, 0, 0.14);
+  --recording-base: #8b0000;
+  --recording-accent: #c94f4f;
+  --ready-base: #16a34a;
+  --ready-accent: #c8f0cb;
+  --corner-radius-small: 6px;
+  --corner-radius-medium: 8px;
+  --corner-radius-large: 16px;
+  --border-thin: 1px;
+  --font-family-light: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-family-medium: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-family-bold: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
+body {
+  font-family: var(--font-family-light);
+  color: var(--text-primary);
+}
+
+.ambient-panel {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.ambient-panel.collapsed .ambient-controls,
+.ambient-panel.collapsed .ambient-status-detail,
+.ambient-panel.collapsed .ambient-body {
+  display: none;
+}
+
+.ambient-panel.collapsed .ambient-header {
+  border-bottom: 0;
+}
+
+.ambient-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 6px;
+  border-bottom: 1px solid var(--separator-color);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: grab;
+}
+
+.ambient-controls {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--separator-color);
+}
+
+.ambient-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-family-medium);
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.ambient-status::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--secondary);
+}
+
+.ambient-status.running {
+  color: var(--success-base);
+}
+
+.ambient-status.running::before {
+  background: var(--success-base);
+}
+
+.ambient-runtime-button {
+  min-width: 48px;
+  height: 26px;
+  padding: 0 9px;
+  background: var(--background-secondary);
+  border: var(--border-thin) solid color-mix(in srgb, var(--primary) 25%, transparent);
+  border-radius: var(--corner-radius-small);
+  color: var(--secondary);
+  font-family: var(--font-family-medium);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.ambient-runtime-button:hover:not(:disabled),
+.ambient-runtime-button:focus-visible {
+  background: var(--background-primary);
+  border-color: var(--secondary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--secondary) 18%, transparent);
+  outline: none;
+}
+
+.ambient-runtime-button.running {
+  color: var(--text-primary);
+}
+
+.ambient-runtime-button:disabled,
+.ambient-picker-button:disabled,
+.ambient-frequency-control button:disabled,
+.ambient-frequency-control input:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.ambient-model-picker {
+  position: relative;
+  min-width: 0;
+}
+
+.ambient-picker-button {
+  width: 100%;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 0 7px;
+  background: rgba(0, 0, 0, 0.03);
+  border: var(--border-thin) solid transparent;
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 10px;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.ambient-picker-button span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ambient-picker-chevron {
+  color: var(--secondary);
+  font-family: var(--font-family-medium);
+  font-size: 10px;
+  flex: 0 0 auto;
+}
+
+.ambient-picker-button:hover:not(:disabled),
+.ambient-picker-button:focus-visible {
+  background: rgba(0, 0, 0, 0.06);
+  border-color: color-mix(in srgb, var(--secondary) 18%, transparent);
+  outline: none;
+}
+
+.ambient-frequency-control {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  border: var(--border-thin) solid color-mix(in srgb, var(--primary) 25%, transparent);
+  border-radius: var(--corner-radius-small);
+  background: var(--background-primary);
+  overflow: hidden;
+}
+
+.ambient-frequency-control button {
+  width: 22px;
+  height: 26px;
+  border: 0;
+  background: transparent;
+  color: var(--secondary);
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ambient-frequency-control button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--secondary) 8%, transparent);
+}
+
+.ambient-frequency-control input {
+  width: 36px;
+  height: 26px;
+  border: 0;
+  border-left: var(--border-thin) solid var(--separator-color);
+  border-right: var(--border-thin) solid var(--separator-color);
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: 11px;
+  text-align: center;
+  outline: none;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.ambient-frequency-control:focus-within {
+  border-color: var(--secondary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--secondary) 18%, transparent);
+}
+
+.ambient-status-detail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 8px;
+  border-bottom: 1px solid var(--separator-color);
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.ambient-pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--secondary);
+  flex: 0 0 auto;
+}
+
+.ambient-pulse.active {
+  background: var(--processing-base);
+  box-shadow: 0 0 0 4px rgba(var(--processing-rgb), 0.16);
+  animation: ambientPulse 1s ease-in-out infinite;
+}
+
+.ambient-status-message {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+
+@keyframes ambientPulse {
+  0%,
+  100% {
+    transform: scale(0.9);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+}
+
+.ambient-header:active {
+  cursor: grabbing;
+}
+
+.ambient-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ambient-header-left {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.ambient-header-btn {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.85;
+  transition: opacity 0.15s;
+}
+
+.ambient-header-btn:hover,
+.ambient-header-btn:focus-visible {
+  opacity: 1;
+  outline: none;
+}
+
+.ambient-header-count {
+  background: var(--primary);
+  color: #ffffff;
+  border-radius: 10px;
+  font-size: 10px;
+  padding: 1px 7px;
+  min-width: 18px;
+  text-align: center;
+  font-weight: 600;
+  font-family: var(--font-family-bold);
+}
+
+.ambient-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 7px 10px 9px;
+}
+
+.ambient-empty {
+  padding: 18px 10px;
+  color: var(--secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.ambient-card {
+  border: var(--border-thin) solid color-mix(in srgb, var(--primary) 25%, transparent);
+  border-radius: var(--corner-radius-medium);
+  padding: 8px 9px;
+  background: var(--background-primary);
+}
+
+.ambient-card + .ambient-card {
+  margin-top: 7px;
+}
+
+.ambient-card-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ambient-card-title h3 {
+  margin: 0;
+  min-width: 0;
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.18;
+  color: var(--text-primary);
+}
+
+.ambient-card-tags {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.ambient-capability-pill {
+  border-radius: 999px;
+  padding: 1px 7px;
+  background: var(--primary);
+  color: #ffffff;
+  font-family: var(--font-family-bold);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ambient-card-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  margin-top: 5px;
+}
+
+.ambient-card-copy {
+  min-width: 0;
+}
+
+.ambient-card-summary {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.28;
+  color: var(--text-primary);
+}
+
+.ambient-provenance {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--secondary);
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.ambient-proposed-request {
+  margin: 4px 0 0;
+  color: var(--secondary);
+  font-size: 11px;
+  line-height: 1.25;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ambient-proposed-request span {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+}
+
+.ambient-details {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--secondary);
+}
+
+.ambient-details summary {
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+}
+
+.ambient-details p {
+  margin: 4px 0 0;
+  line-height: 1.28;
+}
+
+.ambient-details strong {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+}
+
+.ambient-meta {
+  color: var(--secondary);
+  font-size: 10px;
+  text-transform: capitalize;
+  line-height: 1.2;
+}
+
+.ambient-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 1px;
+  white-space: nowrap;
+}
+
+.ambient-actions button {
+  border: var(--border-thin) solid color-mix(in srgb, var(--primary) 25%, transparent);
+  border-radius: var(--corner-radius-small);
+  padding: 4px 8px;
+  background: var(--background-primary);
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.ambient-actions button:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.ambient-actions .primary {
+  background: var(--background-secondary);
+  border-color: color-mix(in srgb, var(--primary) 35%, transparent);
+  color: var(--secondary);
+  font-family: var(--font-family-bold);
+}
+
+.ambient-actions .primary:hover {
+  box-shadow: inset 0 0 0 999px rgba(0, 0, 0, 0.08);
+}

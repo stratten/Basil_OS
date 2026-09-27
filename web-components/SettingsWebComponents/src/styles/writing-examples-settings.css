@@ -1,0 +1,260 @@
+.writing-examples-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 920px;
+  width: 100%;
+}
+
+.writing-examples-intro {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 12px;
+  margin: 0;
+}
+
+.writing-examples-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.writing-examples-filter-tab {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
+.writing-examples-filter-tab-selected {
+  background: var(--secondary, var(--primary));
+  border-color: var(--secondary, var(--primary));
+  color: #ffffff;
+}
+
+.writing-examples-style-section,
+.writing-examples-samples-section {
+  background: color-mix(in srgb, var(--background-primary) 92%, var(--primary));
+  border: 1px solid var(--field-border);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 10%), 0 8px 20px rgb(0 0 0 / 8%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+}
+
+.writing-examples-style-header,
+.writing-examples-samples-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.writing-examples-style-section h2,
+.writing-examples-samples-section h2 {
+  color: color-mix(in srgb, var(--text-primary) 78%, var(--text-secondary));
+  font-family: var(--font-family-light);
+  font-size: 15px;
+  margin: 0;
+}
+
+.writing-examples-style-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.writing-examples-style-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.writing-examples-style-metric-label,
+.writing-examples-style-metric-detail {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 11px;
+}
+
+.writing-examples-style-metric-value {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+}
+
+.writing-examples-tone-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.writing-examples-tone-chip {
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 11px;
+  padding: 3px 8px;
+}
+
+.writing-examples-style-summary {
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+
+.writing-examples-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.writing-examples-list-row {
+  background: color-mix(in srgb, var(--background-primary) 96%, var(--primary));
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+}
+
+.writing-examples-list-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.writing-examples-list-date {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 12px;
+}
+
+.writing-examples-context-badge {
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  border-radius: 4px;
+  color: var(--primary);
+  font-family: var(--font-family-medium);
+  font-size: 11px;
+  padding: 3px 8px;
+}
+
+.writing-examples-list-preview {
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.writing-examples-list-recipient {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 12px;
+  margin: 0;
+}
+
+.writing-examples-list-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.writing-examples-list-actions > .secondary-button {
+  background: transparent;
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--primary);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: 12px;
+  padding: 5px 10px;
+}
+
+.writing-examples-delete-button,
+.writing-examples-delete-all-button {
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--error-base, #d9363e) 55%, var(--field-border));
+  border-radius: 6px;
+  color: var(--error-base, #d9363e);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: 12px;
+  padding: 5px 10px;
+}
+
+.writing-examples-delete-button:disabled,
+.writing-examples-delete-all-button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.writing-examples-status,
+.writing-examples-status-info,
+.writing-examples-status-error,
+.writing-examples-empty {
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  margin: 0;
+}
+
+.writing-examples-status,
+.writing-examples-status-info,
+.writing-examples-empty {
+  color: var(--text-secondary);
+}
+
+.writing-examples-status-error {
+  color: var(--warning-base, #b54708);
+}
+
+.writing-examples-error {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 650px;
+}
+
+.writing-examples-error p {
+  color: var(--warning-base, #b54708);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  margin: 0;
+}
+
+.writing-examples-style-header > .secondary-button,
+.writing-examples-error > .secondary-button {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+  padding: 6px 12px;
+}
+
+.writing-examples-style-header > .secondary-button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.writing-examples-filter-tab:focus-visible,
+.writing-examples-style-section button:focus-visible,
+.writing-examples-samples-section button:focus-visible,
+.writing-examples-error button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}

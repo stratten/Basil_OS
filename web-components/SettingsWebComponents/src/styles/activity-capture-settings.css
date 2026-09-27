@@ -1,0 +1,290 @@
+.activity-capture-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 700px;
+  width: 100%;
+  font-family: var(--font-family-light);
+}
+
+.activity-capture-shell button,
+.activity-capture-shell input,
+.activity-capture-shell select,
+.activity-capture-shell textarea {
+  font-family: inherit;
+}
+
+.activity-capture-shell input[type='checkbox'] {
+  accent-color: var(--secondary, var(--primary));
+}
+
+.activity-capture-card {
+  background: color-mix(in srgb, var(--background-primary) 92%, var(--primary));
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.activity-capture-card h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.activity-capture-subcard {
+  background: color-mix(in srgb, var(--background-primary) 96%, var(--primary));
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.activity-capture-hint {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin: 0;
+}
+
+.activity-capture-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.activity-capture-field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.activity-capture-field-row-stacked {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.activity-capture-field-row input[type='text'],
+.activity-capture-field-row input[type='time'],
+.activity-capture-field-row input[type='number'] {
+  width: 96px;
+  text-align: right;
+}
+
+.activity-capture-exclusions-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+}
+
+.activity-capture-exclusions-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  background: var(--background-primary);
+  color: var(--text-primary);
+  font-size: 13px;
+  padding: 8px 10px;
+}
+
+.activity-capture-exclusions-dropdown {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  background: var(--background-primary);
+  overflow: hidden;
+}
+
+.activity-capture-exclusions-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: none;
+  border-bottom: 1px solid var(--field-border);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.activity-capture-exclusions-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.activity-capture-exclusions-dropdown-item:hover {
+  background: color-mix(in srgb, var(--background-primary) 92%, var(--primary));
+}
+
+.activity-capture-exclusions-empty {
+  padding: 10px;
+}
+
+.activity-capture-exclusions-chips {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.activity-capture-exclusions-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--field-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--background-primary) 96%, var(--secondary, var(--primary)));
+  font-size: 12px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.activity-capture-exclusions-chip > span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-capture-exclusions-chip-remove {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.activity-capture-exclusions-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.activity-capture-exclusions-icon-placeholder {
+  background: color-mix(in srgb, var(--background-primary) 80%, var(--text-secondary));
+}
+
+.activity-capture-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.activity-capture-status-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.activity-capture-status-column {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.activity-capture-status-column-heading {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+@media (max-width: 520px) {
+  .activity-capture-status-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.activity-capture-value-warning {
+  color: color-mix(in srgb, var(--warning-base, #b54708) 80%, var(--text-primary));
+}
+
+.activity-capture-value-danger {
+  color: color-mix(in srgb, var(--error-base, #d9363e) 35%, var(--text-primary));
+}
+
+.activity-capture-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.activity-capture-badge::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.activity-capture-badge-running {
+  color: var(--success-base, #1a7f37);
+}
+
+.activity-capture-badge-stopped {
+  color: var(--text-secondary);
+}
+
+.activity-capture-manual-actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.activity-capture-manual-actions-destructive {
+  padding-top: 10px;
+  border-top: 1px solid var(--field-border);
+}
+
+.activity-capture-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.activity-capture-progress progress {
+  width: 100%;
+  accent-color: var(--primary);
+}
+
+.activity-capture-cancel-button {
+  color: color-mix(in srgb, var(--error-base, #d9363e) 70%, var(--text-primary));
+  align-self: flex-start;
+}
+
+.activity-capture-destructive-button {
+  color: color-mix(in srgb, var(--error-base, #d9363e) 70%, var(--text-primary));
+}
+
+.activity-capture-status,
+.activity-capture-error {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.activity-capture-status-message {
+  font-size: 12px;
+  color: var(--primary);
+}
+
+.activity-capture-status-error {
+  color: color-mix(in srgb, var(--error-base, #d9363e) 75%, var(--text-primary));
+}

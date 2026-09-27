@@ -1,0 +1,45 @@
+name: Validate Basil
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: snok/install-poetry@v1
+      - run: poetry install --no-interaction
+      - run: PYTHONPATH=.:backend/src poetry run pytest backend/src/tests -q
+
+  web-components:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: "web-components/**/package-lock.json"
+      - name: Install, test, and build each web component
+        run: |
+          for package_dir in web-components/*; do
+            [ -f "$package_dir/package.json" ] || continue
+            (
+              cd "$package_dir"
+              npm ci
+              npm run test --if-present
+              npm run build
+            )
+          done
+
+  macos-client:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test --package-path client

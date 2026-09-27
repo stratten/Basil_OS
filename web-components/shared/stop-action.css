@@ -1,0 +1,21 @@
+.basil-stop-action {
+  min-width: 64px;
+  min-height: 28px;
+  padding: 5px 10px;
+  border: 1px solid color-mix(in srgb, var(--error-base) 60%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--error-base) 12%, transparent);
+  color: #701414;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-tiny, 11px);
+  cursor: pointer;
+}
+
+.basil-stop-action:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--error-base) 20%, transparent);
+}
+
+.basil-stop-action:disabled {
+  opacity: 0.7;
+  cursor: default;
+}

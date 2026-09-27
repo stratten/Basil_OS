@@ -1,0 +1,174 @@
+.inline-artifact-preview {
+  min-width: 0;
+  margin: var(--padding-m);
+  padding: var(--padding-m);
+  border: var(--border-thin) solid var(--separator-color);
+  border-radius: var(--corner-radius-medium);
+  background: var(--background-primary);
+  color: var(--text-primary);
+}
+
+.inline-artifact-preview-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--padding-s);
+}
+
+.inline-artifact-preview-heading > div:first-child {
+  min-width: 0;
+}
+
+.inline-artifact-preview-eyebrow {
+  margin: 0;
+  color: var(--secondary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-tiny);
+}
+
+.inline-artifact-preview h3 {
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inline-artifact-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--padding-xs);
+}
+
+.inline-artifact-preview-actions button,
+.inline-artifact-preview-message button {
+  border: var(--border-thin) solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  padding: var(--padding-xs) var(--padding-s);
+  color: var(--secondary);
+  background: var(--background-secondary);
+  font-family: var(--font-family-medium);
+  cursor: pointer;
+}
+
+.inline-artifact-preview-actions button:hover,
+.inline-artifact-preview-actions button:focus-visible,
+.inline-artifact-preview-message button:hover,
+.inline-artifact-preview-message button:focus-visible {
+  border-color: var(--secondary);
+  outline: none;
+}
+
+.inline-artifact-preview-body {
+  display: grid;
+  min-width: 0;
+  min-height: 120px;
+  margin-top: var(--padding-m);
+  overflow: hidden;
+}
+
+.inline-artifact-preview-body-layer {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  min-height: inherit;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.inline-artifact-preview-body-layer[data-presence-phase='entering'],
+.inline-artifact-preview-body-layer[data-presence-phase='exiting'] {
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+}
+
+.inline-artifact-preview-body-layer .local-web-preview-frame {
+  min-height: 240px;
+  border: 0;
+  border-radius: var(--corner-radius-small);
+}
+
+.inline-artifact-preview-body-layer .local-web-preview-server-setup {
+  width: 100%;
+}
+
+.inline-artifact-native-preview-slot {
+  position: relative;
+  min-height: 12rem;
+  overflow: hidden;
+  border: var(--border-thin) solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  background: var(--background-secondary);
+  box-sizing: border-box;
+}
+
+.inline-artifact-native-preview-slot > p {
+  margin: var(--padding-m);
+  color: var(--text-secondary);
+}
+
+.inline-artifact-preview-body pre {
+  min-height: 100px;
+  margin: 0;
+  overflow: auto;
+  padding: var(--padding-m);
+  border: var(--border-thin) solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  color: var(--text-primary);
+  background: var(--background-tertiary);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-code-small);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.inline-artifact-preview-message {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--padding-s);
+  margin: 0;
+  padding: var(--padding-m);
+  border: var(--border-thin) solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  color: var(--text-primary);
+  background: var(--background-secondary);
+  overflow-wrap: anywhere;
+}
+
+.inline-artifact-preview-message p {
+  margin: 0;
+}
+
+.inline-artifact-preview-message--error {
+  border-color: var(--error-base);
+  color: var(--error-base);
+}
+
+.inline-artifact-preview-message--unsupported {
+  color: var(--text-secondary);
+}
+
+@media (max-width: 560px) {
+  .inline-artifact-preview-heading {
+    flex-direction: column;
+  }
+
+  .inline-artifact-preview-actions {
+    justify-content: flex-start;
+  }
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .inline-artifact-preview-body-layer {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

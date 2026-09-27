@@ -1,0 +1,54 @@
+.assistant-session-recording {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 236px;
+  max-width: 100%;
+}
+
+.assistant-session-recording__status {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 124px;
+  padding: 8px 16px;
+  background: var(--background-primary, #ffffff);
+  border-radius: 8px;
+  box-shadow: 0 1px 1px color-mix(in srgb, var(--secondary, #4c7bf0) 5%, transparent);
+}
+
+.assistant-session-recording__timer {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary, #5b6270);
+}
+
+.assistant-session-recording__stop-btn {
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  color: var(--recording-base, #8b0000);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.assistant-session-recording__hint {
+  font-size: 10px;
+  color: var(--text-tertiary, #9aa1ac);
+  margin-top: -6px;
+  text-align: center;
+}
+
+.assistant-session-recording__placeholder {
+  height: 44px;
+}
+
+.assistant-session-recording__error {
+  font-size: 12px;
+  color: var(--error-base, #d33b3b);
+  padding: 2px 6px;
+}

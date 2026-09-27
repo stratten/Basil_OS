@@ -1,0 +1,428 @@
+/*
+ * Conversation inline cards
+ *
+ * Extracted from setup-assistant.conversation.css. Owns the three
+ * sibling inline-card families that the agent emits into the
+ * conversation flow: the email context card (the email the agent is
+ * acting on), the Dill draft card (the draft Dill produced against
+ * it), and the setup visual card (a curated screenshot or icon the
+ * setup agent shows as part of literacy / orientation).
+ *
+ * All three share an intentionally identical shape -- gradient
+ * background, primary-tinted left-border accent, eyebrow + body
+ * block + footer -- so the conversation reads as a consistent
+ * vocabulary of inline cards. The "sibling of" cross-references in
+ * the per-card block comments are accurate because the siblings now
+ * literally live in this file.
+ *
+ * Sibling files in the same conversation surface:
+ *   - setup-assistant.conversation.css          (core chrome + motion)
+ *   - setup-assistant.conversation.messages.css (bubble system + acknowledgment chip)
+ *   - setup-assistant.conversation.proposals.css (consent receipts, recommendation review, status chip)
+ *
+ * Rules in this file rely on the `conversationCardEnter` keyframe
+ * and the `prefers-reduced-motion` suppression that live in the
+ * core conversation file.
+ */
+
+.inline-email-context-card {
+  animation: conversationCardEnter 220ms ease both;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--primary) 5%, var(--background-primary)), var(--background-primary) 70%),
+    var(--background-primary);
+  border: 0.5px solid color-mix(in srgb, var(--primary) 22%, var(--separator-color));
+  border-left: 3px solid color-mix(in srgb, var(--primary) 60%, var(--separator-color));
+  border-radius: var(--corner-radius-medium);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 12px 14px 14px;
+}
+
+.inline-email-context-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inline-email-context-eyebrow {
+  color: color-mix(in srgb, var(--primary) 70%, var(--text-secondary));
+  font-family: var(--font-family-medium);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.inline-email-context-subject {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: 15px;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.inline-email-context-meta {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.inline-email-context-sender {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+}
+
+.inline-email-context-sender-address {
+  color: var(--text-secondary);
+  font-family: var(--font-family-regular);
+}
+
+.inline-email-context-body {
+  background: color-mix(in srgb, var(--primary) 3%, var(--background-tertiary));
+  border-left: 2px solid color-mix(in srgb, var(--primary) 30%, var(--separator-color));
+  border-radius: var(--corner-radius-small);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 10px 12px;
+}
+
+.inline-email-context-body p {
+  margin: 0 0 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.inline-email-context-body p:last-child {
+  margin-bottom: 0;
+}
+
+.inline-email-context-empty {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.inline-email-context-footer {
+  align-items: center;
+  color: var(--text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  gap: 10px;
+  justify-content: flex-start;
+}
+
+.inline-email-context-toggle {
+  padding: 4px 10px;
+}
+
+.inline-email-context-truncated {
+  color: var(--text-secondary);
+}
+
+/*
+ * Dill draft card — sibling of inline-email-context-card. Same shape
+ * (eyebrow + heading + body block + footer) so the conversation reads
+ * with consistent visual language as the user's eye moves from
+ * "this is the email we're working from" -> "this is what Dill drafted
+ * against it". Border-left accent shifts from primary-tinted to
+ * success-tinted on completed and to danger-tinted on failed, so the
+ * outcome is parseable at a glance without reading text.
+ */
+.inline-dill-draft-card {
+  animation: conversationCardEnter 220ms ease both;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--primary) 5%, var(--background-primary)), var(--background-primary) 70%),
+    var(--background-primary);
+  border: 0.5px solid color-mix(in srgb, var(--primary) 22%, var(--separator-color));
+  border-left: 3px solid color-mix(in srgb, var(--primary) 60%, var(--separator-color));
+  border-radius: var(--corner-radius-medium);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 12px 14px 14px;
+}
+
+.inline-dill-draft-card.state-failed {
+  border-left-color: color-mix(in srgb, var(--danger, #c0392b) 70%, var(--separator-color));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--danger, #c0392b) 4%, var(--background-primary)), var(--background-primary) 70%),
+    var(--background-primary);
+}
+
+.inline-dill-draft-header {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.inline-dill-draft-eyebrow {
+  color: color-mix(in srgb, var(--primary) 70%, var(--text-secondary));
+  font-family: var(--font-family-medium);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.inline-dill-draft-card.state-failed .inline-dill-draft-eyebrow {
+  color: color-mix(in srgb, var(--danger, #c0392b) 80%, var(--text-secondary));
+}
+
+.inline-dill-draft-status-pill {
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--primary) 80%, var(--text-primary));
+  font-family: var(--font-family-medium);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  text-transform: uppercase;
+}
+
+.inline-dill-draft-card.state-failed .inline-dill-draft-status-pill {
+  background: color-mix(in srgb, var(--danger, #c0392b) 14%, transparent);
+  color: color-mix(in srgb, var(--danger, #c0392b) 80%, var(--text-primary));
+}
+
+.inline-dill-draft-heading {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: 15px;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.inline-dill-draft-application {
+  color: var(--text-secondary);
+  font-family: var(--font-family-regular);
+  font-size: 12px;
+  margin: 0;
+}
+
+.inline-dill-draft-body {
+  background: color-mix(in srgb, var(--primary) 3%, var(--background-tertiary));
+  border-left: 2px solid color-mix(in srgb, var(--primary) 30%, var(--separator-color));
+  border-radius: var(--corner-radius-small);
+  color: var(--text-primary);
+  font-size: 13px;
+  margin: 0;
+  overflow-y: auto;
+  padding: 10px 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.inline-dill-draft-body.is-collapsed {
+  max-height: 140px;
+}
+
+.inline-dill-draft-body.is-expanded {
+  max-height: 480px;
+}
+
+.inline-dill-draft-error {
+  background: color-mix(in srgb, var(--danger, #c0392b) 5%, var(--background-tertiary));
+  border-left: 2px solid color-mix(in srgb, var(--danger, #c0392b) 50%, var(--separator-color));
+  border-radius: var(--corner-radius-small);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+  padding: 10px 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.inline-dill-draft-footer {
+  align-items: center;
+  color: var(--text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  gap: 10px;
+  justify-content: flex-start;
+}
+
+.inline-dill-draft-toggle {
+  padding: 4px 10px;
+}
+
+.inline-dill-draft-hint {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/*
+ * Setup visual card — sibling of inline-email-context-card and
+ * inline-dill-draft-card. Same eyebrow + body block rhythm; the body
+ * is one or two <img>s plus a caption instead of email text or draft
+ * text, but the shape, accent border, and motion match exactly so
+ * the conversation reads as a consistent vocabulary of inline cards.
+ *
+ * Three layout shapes via the kind-* modifier:
+ *   - kind-screenshot: full-bleed image + caption below
+ *   - kind-composite:  two images side-by-side + caption below
+ *   - kind-icon-pair:  two compact icon tiles + caption below
+ *   - kind-bubble-sequence: three rendered status bubbles + labels
+ *   - kind-icon:       small image laid out next to the caption
+ */
+.inline-setup-visual-card {
+  animation: conversationCardEnter 220ms ease both;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--primary) 5%, var(--background-primary)), var(--background-primary) 70%),
+    var(--background-primary);
+  border: 0.5px solid color-mix(in srgb, var(--primary) 22%, var(--separator-color));
+  border-left: 3px solid color-mix(in srgb, var(--primary) 60%, var(--separator-color));
+  border-radius: var(--corner-radius-medium);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 12px 14px 14px;
+}
+
+.inline-setup-visual-header {
+  display: flex;
+}
+
+.inline-setup-visual-eyebrow {
+  color: color-mix(in srgb, var(--primary) 70%, var(--text-secondary));
+  font-family: var(--font-family-medium);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.inline-setup-visual-image {
+  background: color-mix(in srgb, var(--primary) 3%, var(--background-tertiary));
+  border: 0.5px solid color-mix(in srgb, var(--primary) 12%, var(--separator-color));
+  border-radius: var(--corner-radius-small);
+  display: block;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.inline-setup-visual-card.kind-screenshot .inline-setup-visual-image {
+  max-height: 360px;
+  width: 100%;
+}
+
+.inline-setup-visual-composite {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.inline-setup-visual-composite .inline-setup-visual-image {
+  max-height: 200px;
+  width: 100%;
+}
+
+.inline-setup-visual-icon-pair {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.inline-setup-visual-icon-pair .inline-setup-visual-image {
+  height: 88px;
+  padding: 12px;
+  width: 88px;
+}
+
+.inline-setup-bubble-sequence {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.inline-setup-bubble-state {
+  align-items: center;
+  background: color-mix(in srgb, var(--primary) 3%, var(--background-tertiary));
+  border: 0.5px solid color-mix(in srgb, var(--primary) 12%, var(--separator-color));
+  border-radius: var(--corner-radius-small);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px 10px 10px;
+  text-align: center;
+}
+
+.inline-setup-bubble-preview {
+  align-items: center;
+  display: flex;
+  height: 78px;
+  justify-content: center;
+  width: 78px;
+}
+
+.inline-setup-bubble-label {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: 12.5px;
+  line-height: 1.2;
+}
+
+.inline-setup-bubble-description {
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.inline-setup-visual-icon-row {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.inline-setup-visual-card.kind-icon .inline-setup-visual-icon {
+  background: color-mix(in srgb, var(--primary) 3%, var(--background-tertiary));
+  border: 0.5px solid color-mix(in srgb, var(--primary) 12%, var(--separator-color));
+  border-radius: var(--corner-radius-small);
+  flex-shrink: 0;
+  height: 48px;
+  object-fit: contain;
+  padding: 6px;
+  width: 48px;
+}
+
+.inline-setup-visual-card.kind-icon .inline-setup-visual-caption {
+  flex: 1 1 auto;
+  margin: 0;
+}
+
+.inline-setup-visual-caption {
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .inline-setup-visual-composite {
+    grid-template-columns: 1fr;
+  }
+
+  .inline-setup-visual-icon-pair {
+    flex-wrap: wrap;
+  }
+
+  .inline-setup-bubble-sequence {
+    grid-template-columns: 1fr;
+  }
+}

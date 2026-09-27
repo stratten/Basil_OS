@@ -1,0 +1,1 @@
+"""Domain-scoped components for the SQLite knowledge service."""

@@ -1,0 +1,492 @@
+@import '../../../shared/webkit-window-chrome.css';
+
+.capture-widget {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding: var(--padding-xs) var(--padding-s) var(--padding-s);
+  background: var(--background-primary);
+  position: relative;
+  overflow: hidden;
+}
+
+.capture-widget--loading {
+  background: var(--background-primary);
+}
+
+/* Header row (CaptureHeader.tsx) — matches dossier 1.2's HStack layout. */
+.capture-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-top: 0;
+  flex: 0 0 auto;
+}
+
+.capture-header__leading,
+.capture-header__trailing {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: center;
+}
+
+/* Matches the archived `AgentTaskCaptureWidget.swift`'s leading
+   `VStack(spacing: 3) { Button; Color.clear.frame(width: 16, height: 16) }`. */
+.capture-header__leading-spacer {
+  width: 16px;
+  height: 16px;
+}
+
+/* Matches the archived widget's trailing `VStack(spacing: 5)` — wider than
+   the leading side's `VStack(spacing: 3)` because it stacks two icons
+   instead of one icon plus a spacer. */
+.capture-header__trailing {
+  gap: 5px;
+}
+
+.capture-header__center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--secondary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-footnote);
+}
+
+/* The -8px visual nudge lives here, not on `.capture-header__center` — see
+   that rule's sibling comment in CaptureHeader.tsx for why. */
+.capture-header__center-inner {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  transform: translateX(-8px);
+}
+
+.capture-header__team-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.capture-header__icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-tertiary);
+}
+
+.capture-header__icon-button--secondary {
+  color: var(--secondary);
+  opacity: 0.4;
+  transition: opacity 0.15s ease-in-out;
+}
+
+.capture-header__icon-button--secondary:hover {
+  opacity: 0.8;
+}
+
+/* Voice capture body (VoiceCaptureView.tsx) — dossier 1.3. */
+.voice-capture-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  flex: 1;
+  min-height: 0;
+  padding-top: 0;
+}
+
+.voice-capture-body__detected {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  height: 26px;
+  flex: 0 0 26px;
+  overflow: hidden;
+}
+
+.voice-capture-body__detected-label {
+  font-family: var(--font-family);
+  font-size: var(--font-size-status-tiny);
+  line-height: 12px;
+  color: var(--text-secondary);
+}
+
+.voice-capture-body__words {
+  font-family: var(--font-family);
+  font-size: var(--font-size-status-small);
+  line-height: 12px;
+  color: var(--secondary);
+  min-height: 14px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.voice-capture-body__words--idle {
+  font-size: var(--font-size-status-tiny);
+  color: var(--text-secondary);
+}
+
+.voice-capture-body__bubble-wrap {
+  position: relative;
+  flex: 0 0 56px;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.voice-capture-body__timer {
+  position: absolute;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--secondary);
+}
+
+.voice-capture-body__status-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 0 var(--padding-xs) 2px;
+}
+
+.voice-capture-body__status {
+  font-family: var(--font-family);
+  font-size: var(--font-size-status-small);
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.voice-capture-body__hotkey {
+  font-family: var(--font-family);
+  font-size: var(--font-size-status-tiny);
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.voice-capture-body__actions {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  min-height: 16px;
+  flex: 0 0 16px;
+  /* `.voice-capture-body`'s siblings above this one are all fixed-height, so
+     the extra room from the voice-mode height correction (180 -> 206) would
+     otherwise sit as unused space below this row instead of moving it down.
+     This margin claims a portion of that room for this row only, without
+     shifting any earlier row's position. */
+  margin-top: 10px;
+}
+
+.voice-capture-body__attach {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  font-family: var(--font-family);
+  font-size: var(--font-size-status-tiny);
+  padding-bottom: 2px;
+}
+
+.voice-capture-body__model-picker {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.voice-capture-body__model-picker .capture-model-picker {
+  min-width: 14px;
+  max-width: 14px;
+}
+
+.capture-model-picker__native-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--secondary);
+  opacity: 0.65;
+  cursor: pointer;
+}
+
+.capture-model-picker__native-trigger:hover,
+.capture-model-picker__native-trigger:focus-visible {
+  opacity: 1;
+}
+
+.capture-model-picker__native-trigger:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.voice-capture-body__model-picker .capture-model-picker__error {
+  display: none;
+}
+
+/* Text entry body (TextCaptureView.tsx) — dossier 1.4. */
+.text-capture-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-s);
+  flex: 1;
+  min-height: 0;
+  padding-top: var(--padding-xs);
+}
+
+.text-capture-body__label {
+  display: block;
+  text-align: center;
+  font-family: var(--font-family);
+  font-size: var(--font-size-footnote);
+  color: var(--text-secondary);
+}
+
+.text-capture-editor {
+  min-height: 0;
+  max-height: none;
+  flex: 1 1 auto;
+}
+
+.text-capture-body > .rich-text-composer {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* The composer itself consumes all height offered by the native window.
+   Its direct editor shell must consume that same surplus so the action row
+   remains against the bottom edge rather than leaving unused space below it. */
+.text-capture-body > .rich-text-composer > .rich-text-composer-editor-shell {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.text-capture-body .text-capture-editor {
+  flex: 1 1 auto;
+  min-height: 60px;
+}
+
+.text-capture-attach-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  color: color-mix(in srgb, var(--secondary) 70%, transparent);
+  cursor: pointer;
+}
+
+.text-capture-attach-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.capture-model-picker {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* This fixed-width native panel must never let the model picker push the
+   send button onto its own line -- flex-wrap on the shared
+   .rich-text-composer-actions row decides whether to wrap based on each
+   item's *unshrunk* natural width, not its truncated-label width, so a
+   long model name could still force a wrap even with the ellipsis
+   truncation above. Force this row to stay single-line here (other
+   consumers of the shared composer, e.g. BasilBoard's conversation
+   composer, have richer bottom-row content that may legitimately still
+   need to wrap on a narrow panel, so this override is scoped to just this
+   widget rather than changed in the shared CSS). Combined with min-width:
+   0 on .capture-model-picker/.rich-text-model-picker below, this lets the
+   picker actually shrink -- and its label actually truncate -- instead of
+   overflowing once wrapping is no longer an escape valve. */
+.text-capture-body .rich-text-composer-actions {
+  flex-wrap: nowrap;
+}
+
+.text-capture-body .rich-text-model-picker {
+  min-width: 0;
+}
+
+.capture-model-picker__error {
+  font-family: var(--font-family);
+  font-size: var(--font-size-status-tiny);
+  color: var(--error-base);
+  white-space: nowrap;
+}
+
+/* Reference materials list (ReferencePathsList.tsx) — dossier 1.2 item 3.
+   Row/header metrics mirror `ReferencePathsList.rowHeight` (18px),
+   `.headerHeight` (12px), `.rowSpacing` (2px), and `.maxVisibleRows` (3)
+   from `AgentTaskCaptureWidget.swift` lines 599-604, so the section's
+   maximum footprint before scrolling matches the oracle's own
+   `calculatedHeight(forReferenceCount:)` (12 + 3*18 + 2*2 = 70px interior,
+   plus this element's own padding). */
+.reference-paths-list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 0 0 auto;
+  padding: 3px var(--padding-xs);
+  margin: 0 var(--padding-xs);
+  background: color-mix(in srgb, var(--background-secondary) 50%, transparent);
+  border-radius: var(--corner-radius-small);
+}
+
+.reference-paths-list__header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 12px;
+  padding: 0 4px;
+  color: var(--text-tertiary);
+  font-family: var(--font-family);
+  font-size: var(--font-size-status-tiny);
+}
+
+.reference-paths-list__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 62px; /* 3 rows * 18px + 2 * 2px inter-row gap */
+  overflow-y: auto;
+}
+
+.reference-paths-list__row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 18px;
+  padding: 0 4px;
+  font-family: var(--font-family);
+  font-size: var(--font-size-status-tiny);
+}
+
+.reference-paths-list__row-icon {
+  display: flex;
+  flex: 0 0 auto;
+}
+
+.reference-paths-list__row-name {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--primary);
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Snappy hover tooltip for the full path, replacing the native `title`
+   attribute's slow OS delay — same visual language as
+   `.artifact-review-tab-tooltip` in AgentTaskResult's
+   `artifact-review-workspace.css` (80ms opacity/transform fade). Anchored to
+   `.reference-paths-list` (positioned, unclipped) rather than to the
+   individual row — `.reference-paths-list__rows` below scrolls past 3 rows
+   and would clip a tooltip anchored inside it. Opens *upward*
+   (`bottom: 100%`) because the list sits near the widget's bottom edge, where
+   a downward-opening tooltip would get clipped by `.capture-widget`'s own
+   `overflow: hidden` instead. Visibility is toggled via the `.is-visible`
+   modifier (driven by React state in `ReferencePathsList.tsx`), not `:hover`
+   — see that component's comment for why. */
+.reference-paths-list__tooltip {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 4px;
+  right: 4px;
+  z-index: 3;
+  padding: 5px 8px;
+  border: 1px solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  background: var(--background-primary);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 18%);
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-tiny);
+  line-height: 1.25;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity 80ms ease-out, transform 80ms ease-out;
+}
+
+.reference-paths-list__tooltip.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reference-paths-list__row-remove {
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  opacity: 0.6;
+  cursor: pointer;
+  flex: 0 0 auto;
+  font-size: var(--font-size-status-tiny);
+  line-height: 1;
+  transition: opacity 0.15s ease-in-out;
+}
+
+.reference-paths-list__row-remove:hover {
+  opacity: 1;
+}
+
+/* Drop zone overlay — faithful port of DropZoneOverlay (AgentTaskCaptureWidget.swift lines 559-583). */
+.capture-drop-overlay {
+  position: absolute;
+  inset: 4px;
+  border-radius: var(--corner-radius-large);
+  background: color-mix(in srgb, var(--secondary) 15%, transparent);
+  border: 2px dashed var(--secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.capture-drop-overlay span {
+  font-family: var(--font-family);
+  font-size: var(--font-size-footnote);
+  color: var(--secondary);
+}

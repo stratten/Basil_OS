@@ -1,0 +1,124 @@
+[tool.poetry]
+name = "basil"
+version = "0.1.0"
+description = "AI Assistant with local model support"
+authors = ["Stratten Waldt"]
+packages = [
+    { include = "backend/src", from = "." }
+]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.12"
+fastapi = "^0.109.0"
+uvicorn = "^0.31.1"
+pydantic = "^2.7.4"
+pydantic-settings = "^2.1.0"
+huggingface-hub = "^0.30.0"
+setuptools = "^69.2.0"
+llama-cpp-python = ">=0.3.19,<0.4.0"
+gguf = "^0.10.0"
+transformers = "4.53.1"
+tqdm = "^4.67.1"
+aiohttp = "^3.8.6"
+websockets = "^10.4"
+rich = "^13.7.0"
+python-dotenv = "^1.0.1"
+PyYAML = "^6.0.1"
+torch = "2.5.1"
+accelerate = "0.31.0"
+aiosqlite = "^0.20.0"
+pytesseract = "^0.3.10"
+Pillow = "^10.2.0"
+python-multipart = "^0.0.9"
+soundfile = "^0.13.1"
+pyperclip = "^1.8.2"
+pynput = "^1.7.7"
+python-Levenshtein = "^0.26.1"
+sentencepiece = "^0.2.0"
+# Dependencies for whisper live functionality
+ffmpeg-python = "^0.2.0"
+librosa = "^0.10.1"
+faster-whisper = "^1.1.1"
+torchaudio = "^2.5.1"
+rx = "^3.2.0"
+
+# Speaker diarization 
+diart = "^0.9.2"
+pyannote-audio = "^3.1.1"
+# Sentence segmentation for buffer trimming
+mosestokenizer = "^1.2.1"
+wtpsplit = "^1.0.0"
+anthropic = "0.120.0"
+google-generativeai = "^0.8.3"
+aiofiles = "^24.1.0"
+openwakeword = "^0.6.0"
+# ONNX runtime for Parakeet TDT ASR (already pulled in transitively by
+# openwakeword and faster-whisper; pinned explicitly so Parakeet's runtime
+# requirement survives upgrades of those packages).
+onnxruntime = "^1.22.1"
+instructor = "^1.9.2"
+opencv-python = "4.11.0.86"
+sentence-transformers = "^5.0.0"
+langgraph = {extras = ["sqlite"], version = "^1.2"}
+langgraph-checkpoint-sqlite = "^3.1.0"
+langchain = "^1.0"
+langchain-classic = "^1.0"
+langchain-anthropic = "1.5.3"
+langchain-openai = "^1.0"
+python-docx = "^1.1.2"
+PyPDF2 = "^3.0.1"
+pdfplumber = "^0.11.4"
+# MCP (Model Context Protocol) client SDK for remote connector integrations.
+# Pulls httpx>=0.27.1, pydantic>=2.11, anyio>=4.5, httpx-sse>=0.4, sse-starlette>=1.6.1
+# transitively; existing pins (httpx ^0.25.2 dev-only, pydantic ^2.5.3) are widened
+# implicitly because they use caret ranges that already permit the required minors.
+mcp = "^1.27.0"
+# Promoted from dev to main deps because the MCP SDK requires it at runtime
+# and the connector layer imports httpx.AsyncClient directly.
+httpx = "^0.27.1"
+slack-sdk = "^3.42.0"
+pyobjc-framework-contacts = "^12.2"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.4"
+pytest-asyncio = "^0.21.1"
+onnx-asr = {version = "^0.11.0", extras = ["cpu", "hub"]}
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.mypy]
+# Exclude build artifacts and virtual environments
+exclude = [
+    "^builds/",
+    "^dist/",
+    "^venv/",
+    "\\.venv/",
+]
+# Type checking strictness
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+# Note: There's a known benign warning about models.py being found under two module names
+# This doesn't affect functionality and can be safely ignored
+
+[tool.system-dependencies]
+# FFmpeg is built from the pinned LGPL source by build/scripts/build_ffmpeg_lgpl.sh.
+macos = [
+    "libsndfile",   # Required for audio file handling (brew install libsndfile)
+    "portaudio",    # Required for audio capture (brew install portaudio)
+    "coreutils",    # Required for stable sentence tokenization (brew install coreutils)
+]
+linux = [
+    "libsndfile-dev",  # For Debian/Ubuntu
+    "portaudio19-dev", # Required for audio capture
+    "coreutils",       # Required for stable sentence tokenization (contains stdbuf)
+]
+
+# Note: The coreutils package must be installed and in PATH for MosesSentenceSplitter to work 
+# properly during long transcription sessions. On macOS, add to PATH with:
+# export PATH="/opt/homebrew/opt/coreutils/libexec/gnubin:$PATH"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api" 

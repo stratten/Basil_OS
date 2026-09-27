@@ -1,0 +1,19 @@
+Basil
+Copyright 2026 Stratten Waldt
+
+This repository includes the following vendored third-party source:
+
+diart
+Copyright 2021 Université Paris-Saclay and CNRS
+MIT License
+License text: backend/src/api/vendor/diart/diart-main/LICENSE
+
+pyannote.audio
+Copyright 2020-2024 CNRS
+MIT License
+License text: backend/src/api/vendor/pyannote/LICENSE
+
+WeSpeaker-derived source within pyannote.audio
+Copyright 2021-2023 Shuai Wang, Zhengyang Chen, and Bing Han
+Apache License 2.0
+License text: backend/src/api/vendor/pyannote/audio/models/embedding/wespeaker/LICENSE.WeSpeaker

@@ -1,0 +1,357 @@
+@import '../../../AgentTaskResult/src/styles/theme.css';
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+:root {
+  /* Wireframe-feel experiment (2026-09-02; made palette-aware 2026-09-17):
+     tint text-primary/separator/field-border away from flat black/gray,
+     derived from the live --secondary so it still respects whatever accent
+     color the user picked in Appearance & Format. This used to mix toward a
+     hardcoded #000000 with !important, which forced every dark palette
+     (Midnight, Precursor Metal) to render invisible near-black text -- the
+     !important was needed only because useHostThemeSync() (see hostTheme.ts)
+     pushes the real theme values as inline styles on :root, which otherwise
+     beats a plain stylesheet rule regardless of selector specificity, and a
+     stylesheet rule cannot reference the very custom property an inline
+     style also sets (that is a circular reference, not a cascade order).
+     hostTheme.ts now publishes the raw palette values under --host-text-primary/
+     --host-separator-color instead, so this rule can derive from the actual
+     palette text/separator color -- black on light palettes (unchanged
+     result), near-white on dark palettes (stays near-white with a faint
+     secondary tint) -- without any !important collision. To revert, restore
+     hostTheme.ts's --host-text-primary/--host-separator-color/--host-field-border
+     writes to --text-primary/--separator-color/--field-border and delete this
+     rule block. */
+  --text-primary: color-mix(in srgb, var(--secondary) 14%, var(--host-text-primary, #000000));
+  --separator-color: color-mix(in srgb, var(--secondary) 22%, var(--host-separator-color, rgba(0, 0, 0, 0.22)));
+  --field-border: color-mix(in srgb, var(--secondary) 22%, var(--host-separator-color, rgba(0, 0, 0, 0.22)));
+}
+
+/* Shared button/focus-ring baseline (2026-09-02). Several leaves render
+   `.primary-button`/`.secondary-button` (Browser Automation, Invocation,
+   Memories, Proactive Suggestions, Reasoning API Models, Skills,
+   Transcription API Models, Meetings' Retry button, Activity Capture,
+   Appearance) with no matching CSS anywhere in the bundle at all -- every
+   leaf was expected to scope its own copy (see the precedent comment in
+   account-settings.css), and several never did, so those buttons rendered
+   as bare unstyled <button> elements with no hover/focus feedback. This is
+   a low-specificity base class selector, so any leaf that already scopes
+   its own version with a combinator (e.g.
+   `.account-auth-actions > .primary-button`) keeps winning via normal CSS
+   specificity -- this only fills the gap for leaves with no existing rule,
+   and adds hover/focus-visible everywhere uniformly. Do not delete this
+   block believing it's now unused just because most leaves also have their
+   own scoped rule; several genuinely depend on this as their only styling. */
+.primary-button {
+  background: var(--secondary, var(--primary));
+  border: 1px solid color-mix(in srgb, var(--secondary, var(--primary)) 70%, black);
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+  padding: 8px 16px;
+}
+
+.secondary-button {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+  padding: 8px 16px;
+}
+
+.primary-button:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+.secondary-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--background-primary) 92%, var(--secondary, var(--primary)));
+}
+
+.primary-button:disabled,
+.secondary-button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.primary-button:focus-visible,
+.secondary-button:focus-visible {
+  outline: 2px solid var(--secondary, var(--primary));
+  outline-offset: 1px;
+}
+
+/* Generic focus-ring fallback for any text-entry control that doesn't
+   already scope its own (e.g. `.meetings-exclusions-textarea`, reused for
+   Meeting Automation's "Custom instructions" field, had none, so clicking
+   into it showed the browser's raw default blue ring instead of an on-brand
+   one). Tag+attribute specificity is low, so leaves with their own class-
+   scoped focus-visible rule (profile-settings-textarea, appearance-color-
+   field-trigger, hotkey-key-cap's edit button, etc.) are unaffected. */
+input[type='text']:focus-visible,
+input[type='number']:focus-visible,
+input[type='email']:focus-visible,
+input[type='password']:focus-visible,
+input[type='search']:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  /* box-shadow (not outline) so the ring follows the field's own
+     border-radius instead of rendering as a hard rectangle. */
+  outline: none;
+  box-shadow: 0 0 0 2px var(--secondary, var(--primary));
+}
+
+.appearance-settings-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px;
+}
+
+.appearance-settings-status {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin: 0;
+}
+
+.appearance-external-change-banner {
+  align-items: center;
+  background: var(--background-secondary);
+  border: 1px solid var(--separator-color);
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 8px 12px;
+}
+
+.appearance-settings-section h2 {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+  margin: 0 0 8px;
+}
+
+.appearance-color-field {
+  align-items: center;
+  border-bottom: 1px solid var(--field-border);
+  display: flex;
+  gap: 12px;
+  padding: 6px 0;
+}
+
+.appearance-color-field-label {
+  color: var(--text-primary);
+  width: 120px;
+}
+
+.appearance-color-field-trigger {
+  border: 1px solid var(--field-border);
+  border-radius: 999px;
+  cursor: pointer;
+  height: 14px;
+  padding: 0;
+  width: 22px;
+}
+
+.appearance-color-field-trigger:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.appearance-color-field-hex {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+}
+
+.appearance-preset-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.appearance-preset-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 64px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.appearance-preset-swatch:hover,
+.appearance-preset-swatch:focus-visible {
+  background: var(--background-secondary);
+  outline: none;
+}
+
+.appearance-preset-swatch:focus-visible {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.appearance-preset-swatch-bg {
+  position: relative;
+  display: block;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--field-border);
+  overflow: hidden;
+}
+
+.appearance-preset-swatch-primary,
+.appearance-preset-swatch-secondary {
+  position: absolute;
+  bottom: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.appearance-preset-swatch-primary {
+  left: 6px;
+}
+
+.appearance-preset-swatch-secondary {
+  right: 6px;
+}
+
+.appearance-preset-swatch-name {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-tiny, 10px);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.appearance-finish-toggle {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.appearance-finish-label {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+}
+
+.appearance-finish-option {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-callout);
+  padding: 4px 12px;
+}
+
+.appearance-finish-option:hover,
+.appearance-finish-option:focus-visible {
+  background: var(--background-secondary);
+  outline: none;
+}
+
+.appearance-finish-option.is-selected {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  font-family: var(--font-family-medium);
+}
+
+.appearance-font-label {
+  color: var(--text-primary);
+  display: inline-block;
+  width: 120px;
+}
+
+.appearance-font-select {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  padding: 4px 8px;
+}
+
+.appearance-preview-card {
+  border: 1px solid var(--separator-color);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.appearance-preview-headline {
+  font-family: var(--font-family-medium);
+  margin: 0 0 8px;
+}
+
+.appearance-preview-buttons {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.appearance-preview-button-primary,
+.appearance-preview-button-secondary {
+  border: 0;
+  border-radius: 6px;
+  color: white;
+  font-family: var(--font-family-light);
+  padding: 6px 12px;
+}
+
+.appearance-preview-button-bordered {
+  background: transparent;
+  border-radius: 6px;
+  border-width: 1px;
+  font-family: var(--font-family-light);
+  padding: 6px 12px;
+}
+
+.appearance-preview-text-secondary {
+  color: var(--text-secondary);
+}
+
+.appearance-save-bar-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.appearance-reset-button {
+  color: var(--error-base, #ff0000);
+}
+
+.appearance-save-bar-error {
+  color: var(--error-base, #ff0000);
+}
+
+.appearance-save-bar-hint {
+  color: var(--warning-base, #b54708);
+}
+
+.appearance-save-bar-hint-saved {
+  color: var(--success-base);
+}

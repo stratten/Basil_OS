@@ -1,0 +1,618 @@
+.permissions-settings-shell {
+  container-name: permissions;
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.permissions-sub-tab-hidden {
+  display: none;
+}
+
+.permissions-application-panel,
+.permissions-command-security-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.permissions-application-panel {
+  max-width: 920px;
+  width: 100%;
+}
+
+/* Flex column defaults to stretch, so the lone Retry button in the
+   command-security-panel error state would otherwise inherit the panel's
+   full width instead of sizing to its own content. */
+.permissions-command-security-panel > .permissions-application-refresh {
+  align-self: flex-start;
+}
+
+.permissions-settings-shell button,
+.permissions-settings-shell input {
+  font-family: inherit;
+}
+
+.permissions-settings-shell input[type='checkbox'],
+.permissions-settings-shell input[type='radio'] {
+  accent-color: var(--secondary, var(--primary));
+}
+
+.permissions-application-header,
+.permissions-command-security-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.permissions-command-security-header h2 {
+  font-size: 15px;
+  margin: 0 0 4px;
+}
+
+.permissions-command-security-header p {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin: 0;
+}
+
+.permissions-application-header h2 {
+  font-family: var(--font-family-light);
+  font-size: 28px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin: 0 0 6px;
+}
+
+.permissions-application-header p {
+  color: var(--text-secondary);
+  font-size: var(--font-size-body);
+  line-height: 1.42;
+  margin: 0;
+  max-width: 720px;
+}
+
+.permissions-application-refresh {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
+.permissions-application-refresh:hover,
+.permissions-application-action-secondary:hover,
+.permissions-whitelist-add-button:hover {
+  background: var(--background-secondary);
+}
+
+.permissions-application-action-primary:hover {
+  background: var(--secondary, var(--primary));
+}
+
+.permissions-settings-shell input:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--secondary, var(--primary));
+}
+
+.permissions-settings-shell button:focus-visible {
+  outline: 2px solid var(--secondary, var(--primary));
+  outline-offset: 2px;
+}
+
+.permissions-settings-shell button:disabled,
+.permissions-settings-shell input:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.permission-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.permission-row {
+  align-items: flex-start;
+  background: var(--background-primary);
+  border: 1px solid color-mix(in srgb, var(--permission-accent) 20%, transparent);
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 6%);
+  display: flex;
+  gap: 14px;
+  min-height: 84px;
+  padding: 14px 190px 14px 14px;
+  position: relative;
+}
+
+.permission-microphone { --permission-accent: rgb(51 153 219); }
+.permission-accessibility { --permission-accent: rgb(140 89 191); }
+.permission-input_monitoring { --permission-accent: rgb(29 132 210); }
+.permission-apple_events { --permission-accent: rgb(242 128 51); }
+.permission-screen_recording { --permission-accent: rgb(77 179 128); }
+
+.permission-icon {
+  align-items: center;
+  background: color-mix(in srgb, var(--permission-accent) 15%, transparent);
+  border-radius: 999px;
+  color: var(--permission-accent);
+  display: inline-flex;
+  flex-shrink: 0;
+  height: 40px;
+  justify-content: center;
+  margin-top: 2px;
+  width: 40px;
+}
+
+.permission-icon svg {
+  fill: currentColor;
+  height: 18px;
+  width: 18px;
+}
+
+.permission-row-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.permission-row-heading {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.permission-row-heading h3 {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.22;
+  margin: 0;
+}
+
+.permission-row p {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  font-weight: 300;
+  line-height: 1.35;
+  margin: 6px 0 0;
+}
+
+.permission-status {
+  align-items: center;
+  border-radius: 6px;
+  display: inline-flex;
+  font-family: var(--font-family-light);
+  font-size: 12px;
+  font-weight: 300;
+  gap: 4px;
+  padding: 3px 8px;
+}
+
+.permission-status.granted {
+  background: color-mix(in srgb, var(--success-base) 10%, transparent);
+  color: var(--success-base);
+}
+
+.permission-status.denied {
+  background: color-mix(in srgb, var(--error-base) 10%, transparent);
+  color: var(--error-base);
+}
+
+.permission-status.not-determined {
+  background: color-mix(in srgb, var(--warning-base) 10%, transparent);
+  color: var(--warning-base);
+}
+
+.permission-status.unknown {
+  background: color-mix(in srgb, #808080 10%, transparent);
+  color: #808080;
+}
+
+.permission-actions {
+  align-items: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: flex-end;
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 140px;
+}
+
+.permission-actions .primary-button,
+.permission-actions .secondary-button {
+  font-family: var(--font-family-light);
+  font-size: 12px;
+  font-weight: 300;
+  padding: 6px 12px;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.permission-actions .primary-button {
+  background: color-mix(in srgb, var(--primary) 85%, transparent);
+}
+
+.permission-actions .secondary-button {
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--primary) 85%, transparent);
+  color: color-mix(in srgb, var(--primary) 85%, transparent);
+}
+
+.permissions-command-security-section {
+  background: color-mix(in srgb, var(--background-primary) 91%, var(--secondary, var(--primary)));
+  border: 1px solid color-mix(in srgb, var(--field-border) 78%, var(--secondary, var(--primary)));
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 8%), 0 12px 28px rgb(0 0 0 / 6%);
+  padding: 16px;
+}
+
+.permissions-command-security-section-title {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: 14px;
+  margin: 0 0 6px;
+}
+
+.permissions-command-security-section-description {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 0 0 12px;
+}
+
+.permissions-toggle-row {
+  align-items: center;
+  border-top: 1px solid color-mix(in srgb, var(--field-border) 75%, transparent);
+  display: flex;
+  gap: 8px;
+  padding: 9px 0;
+}
+
+.permissions-toggle-row:first-of-type {
+  border-top: 0;
+}
+
+.permissions-toggle-row-label {
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.permissions-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.permissions-radio-option {
+  align-items: center;
+  background: color-mix(in srgb, var(--background-primary) 94%, var(--secondary, var(--primary)));
+  border: 1px solid transparent;
+  border-radius: 7px;
+  display: flex;
+  gap: 6px;
+  font-size: 12px;
+  padding: 7px 8px;
+}
+
+.permissions-radio-option:hover {
+  border-color: color-mix(in srgb, var(--secondary, var(--primary)) 35%, var(--field-border));
+}
+
+.permissions-timeout-stepper {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.permissions-timeout-stepper input {
+  border: 1px solid var(--field-border);
+  border-radius: 4px;
+  padding: 3px 6px;
+  width: 64px;
+}
+
+.permissions-whitelist-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.permissions-whitelist-add-button {
+  background: color-mix(in srgb, var(--background-primary) 88%, var(--secondary, var(--primary)));
+  border: 1px solid color-mix(in srgb, var(--secondary, var(--primary)) 45%, var(--field-border));
+  border-radius: 6px;
+  color: var(--secondary, var(--primary));
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
+.permissions-whitelist-empty {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-style: italic;
+  padding: 8px 0;
+}
+
+.permissions-whitelist-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.permissions-whitelist-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.permissions-whitelist-row {
+  align-items: center;
+  background: color-mix(in srgb, var(--background-primary) 94%, var(--secondary, var(--primary)));
+  border: 1px solid color-mix(in srgb, var(--field-border) 84%, var(--secondary, var(--primary)));
+  border-radius: 9px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 6%);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  padding: 10px 12px;
+}
+
+.permissions-whitelist-row:hover {
+  border-color: color-mix(in srgb, var(--secondary, var(--primary)) 42%, var(--field-border));
+}
+
+.permissions-whitelist-pattern {
+  display: block;
+  font-family: monospace;
+  font-size: 12px;
+  max-width: 24ch;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.permissions-whitelist-pattern-heading {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 50px minmax(0, 1fr);
+  min-width: 0;
+}
+
+.permissions-whitelist-details {
+  min-width: 0;
+}
+
+.permissions-whitelist-type {
+  background: color-mix(in srgb, var(--secondary, var(--primary)) 13%, transparent);
+  border-radius: 4px;
+  color: var(--secondary, var(--primary));
+  font-family: var(--font-family-medium);
+  font-size: 10px;
+  overflow: hidden;
+  padding: 3px 5px;
+  text-align: center;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.permissions-whitelist-description,
+.permissions-whitelist-use-count {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.permissions-whitelist-description {
+  display: block;
+  margin: 5px 0 0 58px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.permissions-whitelist-use-count {
+  min-width: 42px;
+  text-align: right;
+}
+
+.permissions-whitelist-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.permissions-whitelist-action-button {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 4px 7px;
+}
+
+.permissions-whitelist-action-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--background-primary) 80%, var(--secondary, var(--primary)));
+  border-color: color-mix(in srgb, var(--secondary, var(--primary)) 35%, var(--field-border));
+  color: var(--text-primary);
+}
+
+.permissions-whitelist-delete-button {
+  color: var(--error-base, #d9363e);
+}
+
+.permissions-whitelist-form {
+  background: color-mix(in srgb, var(--background-primary) 87%, var(--secondary, var(--primary)));
+  border: 1px solid color-mix(in srgb, var(--secondary, var(--primary)) 36%, var(--field-border));
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 0 2px;
+  padding: 14px;
+}
+
+.permissions-whitelist-form label {
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  gap: 6px;
+}
+
+.permissions-pattern-type-picker {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.permissions-pattern-type-picker legend {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin-bottom: 6px;
+  padding: 0;
+}
+
+.permissions-pattern-type-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.permissions-pattern-type-option {
+  align-items: center;
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 12px;
+  gap: 6px;
+  padding: 7px 10px;
+  text-transform: capitalize;
+}
+
+.permissions-pattern-type-option:hover {
+  border-color: color-mix(in srgb, var(--secondary, var(--primary)) 45%, var(--field-border));
+  background: color-mix(in srgb, var(--background-primary) 88%, var(--secondary, var(--primary)));
+}
+
+.permissions-pattern-type-option-selected {
+  background: color-mix(in srgb, var(--secondary, var(--primary)) 14%, var(--background-primary));
+  border-color: var(--secondary, var(--primary));
+  color: var(--secondary, var(--primary));
+  font-family: var(--font-family-medium);
+}
+
+.permissions-whitelist-form input {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  padding: 7px 9px;
+}
+
+.permissions-whitelist-form-error {
+  color: var(--error-base, #d9363e);
+  font-size: 12px;
+}
+
+.permissions-whitelist-form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.permissions-whitelist-form-actions > .primary-button,
+.permissions-whitelist-form-actions > .secondary-button {
+  min-width: 92px;
+}
+
+.permissions-whitelist-form-actions > .primary-button {
+  background: var(--secondary, var(--primary));
+  border: 1px solid color-mix(in srgb, var(--secondary, var(--primary)) 70%, black);
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: 12px;
+  padding: 7px 12px;
+}
+
+.permissions-whitelist-form-actions > .secondary-button {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: 12px;
+  padding: 7px 12px;
+}
+
+.permissions-whitelist-form-actions > .primary-button:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+.permissions-whitelist-form-actions > .secondary-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--background-primary) 88%, var(--secondary, var(--primary)));
+  border-color: color-mix(in srgb, var(--secondary, var(--primary)) 45%, var(--field-border));
+}
+
+@container permissions (max-width: 720px) {
+  .permission-row {
+    flex-wrap: wrap;
+    padding-right: 14px;
+  }
+
+  .permission-row-body {
+    flex: 1 1 calc(100% - 54px);
+  }
+
+  .permission-actions {
+    flex: 1 0 calc(100% - 54px);
+    flex-direction: column;
+    margin-left: 54px;
+    margin-top: 12px;
+    position: static;
+    transform: none;
+    width: calc(100% - 54px);
+  }
+
+  .permission-actions .primary-button,
+  .permission-actions .secondary-button {
+    width: 100%;
+  }
+
+  .permissions-whitelist-row {
+    align-items: flex-start;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .permissions-whitelist-actions {
+    border-top: 1px solid color-mix(in srgb, var(--field-border) 75%, transparent);
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+    padding-top: 8px;
+  }
+}

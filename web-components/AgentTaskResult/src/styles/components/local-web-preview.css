@@ -1,0 +1,175 @@
+.local-web-preview-status {
+  display: flex;
+  align-items: center;
+  min-height: 20px;
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-small);
+}
+
+.local-web-preview-body {
+  padding: 0;
+  overflow: hidden;
+}
+
+.local-web-preview-historical-note {
+  margin: 0;
+  padding: var(--padding-xs) var(--padding-l);
+  color: var(--text-tertiary, #6b7280);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-tiny);
+  background: var(--background-secondary);
+  border-bottom: var(--border-thin) solid var(--separator-color);
+}
+
+.local-web-preview-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--background-primary);
+}
+
+.local-web-preview-server-setup {
+  width: min(640px, calc(100% - var(--padding-xl)));
+}
+
+.local-web-preview-server-setup p {
+  margin: 0 0 var(--padding-m);
+}
+
+.local-web-preview-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--padding-m);
+}
+
+.local-web-preview-field-grid label {
+  display: grid;
+  gap: var(--padding-xs);
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-footnote);
+}
+
+.local-web-preview-field-grid input,
+.local-web-preview-feedback-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: var(--border-thin) solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  padding: var(--padding-s) var(--padding-m);
+  color: var(--text-primary);
+  background: var(--background-primary);
+  font: inherit;
+}
+
+.local-web-preview-start-action,
+.local-web-preview-send-action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--padding-xs);
+  margin-top: var(--padding-m);
+}
+
+.local-web-preview-feedback {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-s);
+  padding: var(--padding-m) var(--padding-l);
+  border-top: var(--border-thin) solid var(--separator-color);
+  background: var(--background-primary);
+}
+
+.local-web-preview-feedback-header,
+.local-web-preview-feedback-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-s);
+}
+
+.local-web-preview-feedback-header {
+  justify-content: space-between;
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-footnote);
+}
+
+.local-web-preview-feedback-header label {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+}
+
+.local-web-preview-icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: var(--border-thin) solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  color: var(--secondary);
+  background: var(--background-secondary);
+  cursor: pointer;
+}
+
+.local-web-preview-icon-button img {
+  width: 14px;
+  height: 14px;
+}
+
+.local-web-preview-icon-button:hover {
+  background: var(--background-tertiary);
+}
+
+.local-web-preview-feedback-input {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.local-web-preview-feedback-error {
+  margin: 0;
+  color: var(--recording-base);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-footnote);
+}
+
+@media (max-width: 640px) {
+  .local-web-preview-field-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.local-web-preview-lifecycle {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--padding-xs) var(--padding-m);
+  padding: var(--padding-s) var(--padding-l);
+  border-bottom: var(--border-thin) solid var(--separator-color);
+  background: var(--background-secondary);
+  font-size: var(--font-size-footnote);
+}
+
+.local-web-preview-lifecycle dt {
+  color: var(--text-secondary);
+  font-family: var(--font-family-medium);
+}
+
+.local-web-preview-lifecycle dd {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-s);
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+}
+
+.local-web-preview-stop-action {
+  flex: none;
+  background: var(--recording-base);
+  color: var(--background-primary);
+}

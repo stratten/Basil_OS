@@ -1,0 +1,523 @@
+/* AgentTask input surface */
+.checkpoint-presence-region {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+
+.checkpoint-presence-region--overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+}
+
+.checkpoint-presence-region[data-presence-phase='entering'],
+.checkpoint-presence-region[data-presence-phase='exiting'] {
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+}
+
+.agent-task-input-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--padding-xl);
+  background: rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.agent-task-input-dialog {
+  width: min(520px, 100%);
+  max-height: min(720px, calc(100% - var(--padding-xl) - var(--padding-xl)));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: var(--padding-l);
+  background: var(--background-primary);
+  border: var(--border-thin) solid var(--separator-color);
+  border-radius: var(--corner-radius-large);
+  box-shadow: var(--shadow-dark);
+  animation: checkpoint-dialog-enter 0.16s ease-out;
+}
+
+@keyframes checkpoint-dialog-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.agent-task-input-eyebrow {
+  margin-bottom: var(--padding-s);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  line-height: 1.3;
+  color: var(--warning-base);
+}
+
+.agent-task-input-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.agent-task-input-backdrop--reviewing-output {
+  align-items: flex-end;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  pointer-events: none;
+}
+
+.agent-task-input-dialog--reviewing-output {
+  width: min(720px, 100%);
+  max-height: min(440px, calc(100% - var(--padding-xl)));
+  pointer-events: auto;
+}
+
+.agent-task-input-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--padding-s);
+}
+
+.checkpoint-review-output-action {
+  margin-right: auto;
+  background: var(--background-primary);
+  border: var(--border-thin) solid var(--secondary);
+  color: var(--secondary);
+}
+
+.checkpoint-flow-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-m);
+}
+
+.checkpoint-flow-content--overlay {
+  flex: 1;
+  min-height: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+.checkpoint-prompt-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-m);
+  min-width: 0;
+}
+
+.checkpoint-flow-content--overlay .checkpoint-prompt-details {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: var(--padding-xs);
+}
+
+.checkpoint-response-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-m);
+  min-width: 0;
+}
+
+.checkpoint-response-scroll-region {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--padding-m);
+  min-height: 0;
+  min-width: 0;
+}
+
+.checkpoint-flow-content--overlay .checkpoint-response-scroll-region {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: var(--padding-xs);
+}
+
+.checkpoint-submit-actions {
+  flex-shrink: 0;
+  padding-top: var(--padding-m);
+  border-top: var(--border-thin) solid var(--separator-color);
+}
+
+.checkpoint-flow-content--overlay .checkpoint-response-controls {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: var(--padding-m);
+  padding-top: var(--padding-m);
+  border-top: var(--border-thin) solid var(--separator-color);
+  background: var(--background-primary);
+}
+
+.checkpoint-control-group {
+  min-width: 0;
+}
+
+.checkpoint-choice-with-clarification {
+  display: flex;
+  flex-direction: column;
+}
+
+.checkpoint-clarification {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-s);
+  padding-top: var(--padding-m);
+  border-top: var(--border-thin) solid var(--separator-color);
+}
+
+.checkpoint-clarification-label {
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-footnote);
+  line-height: 1.35;
+  color: var(--text-primary);
+}
+
+.checkpoint-clarification-help {
+  margin: 0;
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-small);
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.checkpoint-inline-card {
+  padding: var(--padding-m);
+  border-color: var(--warning-base);
+  border-width: var(--border-medium);
+}
+
+.checkpoint-inline-card .checkpoint-prompt {
+  font-size: var(--font-size-body);
+}
+
+/* Checkpoint / clarification prompt — MarkdownRenderer uses .result-section
+   defaults tuned for the result pane, so keep prompt markdown visually aligned
+   with the former overlay title treatment. */
+.checkpoint-prompt {
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-body);
+  color: var(--text-primary);
+}
+
+.checkpoint-prompt .result-section--checkpoint {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+
+.checkpoint-prompt .result-section--checkpoint > :first-child {
+  margin-top: 0;
+}
+
+.checkpoint-prompt .result-section--checkpoint > :last-child {
+  margin-bottom: 0;
+}
+
+.checkpoint-prompt .result-section--checkpoint h1,
+.checkpoint-prompt .result-section--checkpoint h2,
+.checkpoint-prompt .result-section--checkpoint h3 {
+  margin: var(--padding-m) 0 var(--padding-xs);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-body);
+  line-height: 1.35;
+  color: var(--text-primary);
+}
+
+.checkpoint-prompt .result-section--checkpoint p {
+  margin: 0 0 var(--padding-s);
+}
+
+.checkpoint-prompt .result-section--checkpoint ul,
+.checkpoint-prompt .result-section--checkpoint ol {
+  margin: 0 0 var(--padding-s);
+  padding-left: 20px;
+}
+
+.checkpoint-prompt .result-section--checkpoint li {
+  margin: 2px 0;
+}
+
+.checkpoint-prompt .result-section--checkpoint strong {
+  font-family: var(--font-family-medium);
+}
+
+.checkpoint-prompt .result-section--checkpoint pre {
+  margin: var(--padding-s) 0;
+  padding: var(--padding-s);
+}
+
+.browser-permission-repair {
+  padding: var(--padding-m);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
+  border-radius: var(--corner-radius-medium);
+  font-family: var(--font-family-light);
+  color: var(--text-primary);
+}
+
+.browser-permission-repair-title {
+  margin-bottom: var(--padding-xs);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  line-height: 1.35;
+}
+
+.browser-permission-repair-body {
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-footnote);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.browser-permission-repair-steps {
+  margin: var(--padding-s) 0 0;
+  padding-left: 20px;
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-footnote);
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+
+.browser-permission-repair-steps li {
+  margin-bottom: 4px;
+}
+
+.browser-permission-repair-warning {
+  margin-top: var(--padding-s);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-small);
+  line-height: 1.4;
+  color: var(--warning-base);
+}
+
+/* Checkpoint selectable option cards — rendered by CheckpointFlow for `choice`
+   (select-then-Continue) and `confirmation` (submit-on-click) checkpoints.
+   Cards use solid blue selection/intent treatment rather than flat grey-on-grey
+   so the active option reads clearly. */
+.checkpoint-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-s);
+}
+
+/* Horizontal layout for binary Yes/No confirmation cards. */
+.checkpoint-options-row {
+  flex-direction: row;
+}
+
+.checkpoint-options-row .checkpoint-choice-card {
+  flex: 1;
+  justify-content: center;
+}
+
+.checkpoint-options-row .checkpoint-choice-body {
+  align-items: center;
+}
+
+.checkpoint-options-row .checkpoint-choice-indicator {
+  display: none;
+}
+
+@media (max-width: 360px) {
+  .checkpoint-options-row {
+    flex-direction: column;
+  }
+}
+
+.checkpoint-choice-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--padding-s);
+  width: 100%;
+  text-align: left;
+  padding: var(--padding-s) var(--padding-m);
+  background: var(--background-primary);
+  border: var(--border-medium) solid var(--separator-color);
+  border-radius: var(--corner-radius-medium);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.checkpoint-choice-card:hover:not(:disabled) {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+}
+
+.checkpoint-choice-card.selected {
+  border-color: var(--secondary);
+  background: var(--secondary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.checkpoint-choice-card.selected .checkpoint-choice-title,
+.checkpoint-choice-card.selected .checkpoint-choice-description,
+.checkpoint-choice-card.selected .checkpoint-choice-indicator {
+  color: #FFFFFF;
+}
+
+.checkpoint-choice-card:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Intent variants (used by confirmation cards and rich options). */
+.checkpoint-choice-card.primary {
+  border-color: var(--primary);
+}
+
+.checkpoint-choice-card.primary:hover:not(:disabled) {
+  background: var(--secondary);
+  border-color: var(--secondary);
+}
+
+.checkpoint-choice-card.primary:hover:not(:disabled) .checkpoint-choice-title {
+  color: #FFFFFF;
+}
+
+.checkpoint-choice-card.warning {
+  border-color: var(--warning-base);
+}
+
+.checkpoint-choice-card.danger {
+  border-color: var(--error-base);
+}
+
+.checkpoint-choice-card.danger:hover:not(:disabled) {
+  background: var(--error-base);
+  border-color: var(--error-base);
+}
+
+.checkpoint-choice-card.danger:hover:not(:disabled) .checkpoint-choice-title {
+  color: #FFFFFF;
+}
+
+.checkpoint-choice-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.checkpoint-choice-title {
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-body);
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+
+.checkpoint-choice-description {
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-footnote);
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+
+.checkpoint-choice-indicator {
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+  font-family: var(--font-family-bold);
+  font-size: var(--font-size-body);
+  color: var(--secondary);
+}
+
+/* Checkpoint / clarification textarea — used by CheckpointFlow for any
+   free-text input branch (data, file, review, or fallback). Matches the
+   .text-followup composer's chrome (white surface, blue-tinted border,
+   medium radius, light Helvetica) so the prompt feels like a first-class
+   Basil control instead of a default browser textarea. */
+.text-followup-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 72px;
+  padding: var(--padding-s) var(--padding-m);
+  background: var(--background-primary);
+  border: var(--border-thin) solid color-mix(in srgb, var(--primary) 25%, transparent);
+  border-radius: var(--corner-radius-medium);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-body);
+  line-height: 1.5;
+  color: var(--text-primary);
+  caret-color: var(--text-primary);
+  -webkit-caret-color: var(--text-primary);
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.text-followup-input::placeholder {
+  color: var(--text-tertiary);
+  opacity: 1;
+}
+
+.text-followup-input:focus,
+.text-followup-input:focus-visible {
+  border-color: var(--secondary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.text-followup-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.checkpoint-provider-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-m);
+}
+
+.checkpoint-provider-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-xs);
+}
+
+fieldset.checkpoint-provider-form-field {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.checkpoint-provider-form-field-label {
+  display: block;
+  padding: 0;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-footnote);
+  color: var(--text-secondary);
+}
+
+.checkpoint-provider-form-field-input {
+  min-height: 0;
+  height: 40px;
+  resize: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .checkpoint-presence-region {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

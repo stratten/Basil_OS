@@ -1,0 +1,195 @@
+.profile-settings-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 920px;
+  width: 100%;
+}
+
+.profile-settings-intro {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  margin: 0;
+}
+
+.profile-settings-columns {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.profile-settings-section {
+  background: color-mix(in srgb, var(--background-primary) 92%, var(--primary));
+  border: 1px solid var(--field-border);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 10%), 0 8px 20px rgb(0 0 0 / 8%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+}
+
+.profile-settings-section h2 {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: 15px;
+  margin: 0;
+}
+
+.mac-contacts-settings-description,
+.mac-contacts-settings-status,
+.mac-contacts-settings-error {
+  font-family: var(--font-family-light);
+  font-size: 12px;
+  margin: 0;
+}
+
+.mac-contacts-settings-description,
+.mac-contacts-settings-status {
+  color: var(--text-secondary);
+}
+
+.mac-contacts-settings-status-enabled {
+  color: var(--success-base);
+}
+
+.mac-contacts-settings-error {
+  color: var(--warning-base, #b54708);
+}
+
+.mac-contacts-settings-card > .secondary-button {
+  align-self: flex-start;
+}
+
+.profile-settings-field {
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  gap: 4px;
+}
+
+.profile-settings-field input[type='text'],
+.profile-settings-select {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  padding: 6px 8px;
+}
+
+.profile-settings-field input[type='text']:focus-visible,
+.profile-settings-select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.profile-settings-field input:disabled,
+.profile-settings-select:disabled {
+  opacity: 0.6;
+}
+
+.profile-settings-textarea {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  padding: 6px 8px;
+  resize: vertical;
+}
+
+.profile-settings-textarea:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.profile-settings-textarea:disabled {
+  opacity: 0.6;
+}
+
+.profile-settings-field-hint {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 11px;
+}
+
+.profile-settings-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.profile-settings-actions > .primary-button {
+  background: var(--primary);
+  border: 1px solid color-mix(in srgb, var(--primary) 70%, black);
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+  padding: 8px 16px;
+}
+
+.profile-settings-actions > .primary-button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.profile-settings-actions > .profile-settings-clear-button {
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--error-base, #d9363e) 55%, var(--field-border));
+  border-radius: 6px;
+  color: var(--error-base, #d9363e);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+  padding: 8px 16px;
+}
+
+.profile-settings-actions > .profile-settings-clear-button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.profile-settings-status,
+.profile-settings-inline-error,
+.profile-settings-error p {
+  margin: 0;
+}
+
+.profile-settings-status {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+}
+
+.profile-settings-inline-error,
+.profile-settings-error p {
+  color: var(--warning-base, #b54708);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+}
+
+.profile-settings-error {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 650px;
+}
+
+.profile-settings-error > .secondary-button {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+  padding: 8px 16px;
+}

@@ -1,0 +1,14 @@
+@import './components/shell-and-sidebar.css';
+@import './components/detail-tray/agent-run-rail.css';
+@import './components/detail-tray/execution-detail-tray.css';
+@import './components/result-content.css';
+@import './components/detail-tray/agent-task-work-summary.css';
+@import './components/detail-tray/inline-artifact-preview.css';
+@import './components/artifact-review-workspace.css';
+@import './components/file-preview.css';
+@import './components/local-web-preview.css';
+@import './components/overlays-and-approvals.css';
+@import './components/checkpoint-flow.css';
+@import './components/input-and-followup.css';
+@import './components/progress-and-workflow.css';
+@import './components/request-display.css';

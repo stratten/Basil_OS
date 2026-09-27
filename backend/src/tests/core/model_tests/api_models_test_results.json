@@ -1,0 +1,39 @@
+{
+  "api_key_management": {
+    "set_user_api_key": "PASS",
+    "get_api_key_user": "PASS",
+    "use_application_key": "PASS",
+    "clear_user_api_key": "PASS",
+    "get_anthropic_key": "PASS"
+  },
+  "claude_model": {
+    "initialization": {
+      "create_instance": "PASS",
+      "model_names": "PASS",
+      "load_model": "PASS",
+      "model_configuration": "PASS"
+    },
+    "generation": {
+      "generate_response": "PASS",
+      "chat_completion_streaming": "PASS"
+    },
+    "validation": {
+      "comprehensive_response": "PASS"
+    }
+  },
+  "openai_model": {
+    "initialization": {
+      "create_instance": "PASS",
+      "model_names": "PASS",
+      "load_model": "PASS",
+      "model_configuration": "PASS"
+    },
+    "generation": {
+      "generate_response": "PASS",
+      "chat_completion_streaming": "PASS"
+    },
+    "validation": {
+      "comprehensive_response": "PASS"
+    }
+  }
+}

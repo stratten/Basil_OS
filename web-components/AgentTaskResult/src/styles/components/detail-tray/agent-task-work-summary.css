@@ -1,0 +1,219 @@
+/* Agent Task artifact presentation */
+.agent-task-work-summary {
+  min-width: 0;
+  margin: var(--padding-m);
+  padding: var(--padding-m);
+  border: var(--border-thin) solid var(--separator-color);
+  border-radius: var(--corner-radius-medium);
+  background: var(--background-primary);
+  color: var(--text-primary);
+}
+
+.agent-task-work-summary-heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--padding-s);
+}
+
+.agent-task-work-summary h2 {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.agent-task-work-summary-progress {
+  color: var(--secondary);
+  font-family: var(--font-family-medium);
+}
+
+.agent-task-work-summary-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--padding-s);
+  margin: var(--padding-s) 0 0;
+}
+
+.agent-task-work-summary-metrics div {
+  min-width: 0;
+}
+
+.agent-task-work-summary-metrics dt {
+  color: var(--text-tertiary);
+  font-size: var(--font-size-status-tiny);
+}
+
+.agent-task-work-summary-metrics dd {
+  margin: 2px 0 0;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.agent-task-work-summary-error {
+  margin: var(--padding-s) 0 0;
+  color: var(--error-base);
+  font-family: var(--font-family-medium);
+  overflow-wrap: anywhere;
+}
+
+.agent-task-work-summary-verification--resolved {
+  color: var(--success-base);
+}
+
+.agent-task-work-summary-verification--pending {
+  color: var(--warning-base);
+}
+
+.agent-task-work-summary-verification--unknown {
+  color: var(--text-tertiary);
+}
+
+.delegated-provider-work-chip {
+  min-width: 0;
+  margin: var(--padding-m);
+  border: var(--border-thin) solid var(--separator-color);
+  border-radius: 999px;
+  background: var(--background-secondary);
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-tiny);
+}
+
+.delegated-provider-work-chip-toggle {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: var(--padding-s);
+  padding: var(--padding-xs) var(--padding-s);
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.delegated-provider-work-chip-toggle:hover {
+  background: color-mix(in srgb, var(--secondary) 8%, transparent);
+}
+
+.delegated-provider-work-chip-toggle:focus-visible {
+  outline: 2px solid var(--secondary);
+  outline-offset: -2px;
+}
+
+.delegated-provider-work-chip-indicator {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+}
+
+.delegated-provider-work-chip-label {
+  color: var(--text-primary);
+}
+
+.delegated-provider-work-chip-count {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.delegated-provider-work-chip-state {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.delegated-provider-work-chip-disclosure {
+  flex: 0 0 auto;
+  color: var(--text-tertiary);
+  font-size: var(--font-size-body);
+}
+
+.delegated-provider-work-details {
+  display: grid;
+  gap: var(--padding-xs);
+  margin: 0;
+  padding: var(--padding-s);
+  border-top: var(--border-thin) solid var(--separator-color);
+  background: var(--background-primary);
+  list-style: none;
+}
+
+.delegated-provider-work-details li {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  gap: 2px var(--padding-s);
+  min-width: 0;
+  color: var(--text-secondary);
+}
+
+.delegated-provider-work-details-label {
+  color: var(--text-primary);
+}
+
+.delegated-provider-work-details-summary {
+  grid-column: 2;
+  overflow-wrap: anywhere;
+}
+
+.delegated-provider-work-chip--working .delegated-provider-work-chip-indicator {
+  background: var(--warning-base);
+}
+
+.delegated-provider-work-chip--working .delegated-provider-work-chip-state {
+  color: var(--warning-base);
+}
+
+.delegated-provider-work-chip--review .delegated-provider-work-chip-indicator {
+  background: var(--error-base);
+}
+
+.delegated-provider-work-chip--review .delegated-provider-work-chip-state {
+  color: var(--error-base);
+}
+
+.delegated-provider-work-chip--verified .delegated-provider-work-chip-indicator {
+  background: var(--success-base);
+}
+
+.delegated-provider-work-chip--verified .delegated-provider-work-chip-state {
+  color: var(--success-base);
+}
+
+.delegated-provider-work-chip--completed .delegated-provider-work-chip-indicator {
+  background: var(--text-tertiary);
+}
+
+.delegated-provider-work-chip--completed .delegated-provider-work-chip-state {
+  color: var(--text-tertiary);
+}
+
+@media (max-width: 560px) {
+  .agent-task-work-summary-metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .delegated-provider-work-chip {
+    border-radius: var(--corner-radius-medium);
+  }
+
+  .delegated-provider-work-chip-state {
+    margin-left: 0;
+  }
+
+  .delegated-provider-work-chip-toggle {
+    flex-wrap: wrap;
+  }
+
+  .delegated-provider-work-details li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .delegated-provider-work-details-summary {
+    grid-column: auto;
+  }
+}

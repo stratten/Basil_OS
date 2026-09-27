@@ -1,0 +1,886 @@
+@import '../../../../shared/webkit-window-chrome.css';
+
+/* Widget root layout shell — window chrome lives on basil-webkit-window-frame/surface. */
+.widget-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.widget-root--embedded {
+  background: linear-gradient(
+    to bottom,
+    transparent 36px,
+    var(--background-primary) 36px
+  );
+}
+
+.agent-task-header-shell {
+  width: 100%;
+  flex: 0 0 52px;
+}
+
+/* Header — matches Swift's AgentTaskWidgetHeader padding */
+.widget-header {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: var(--padding-s) var(--padding-s) 0 var(--padding-s);
+  height: 52px;
+  min-height: 52px;
+  flex-shrink: 0;
+  z-index: 1000;
+}
+
+.embedded-task-toolbar {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 var(--padding-l);
+  border-bottom: 0;
+  background: transparent;
+}
+
+.embedded-task-toolbar-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.embedded-task-toolbar .agent-task-stop-action {
+  position: static;
+  flex: 0 0 auto;
+  margin-left: var(--padding-s);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding-left: 3px;
+  padding-top: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Collapsed chrome stacks the task title + status beneath the window title, so
+   the identity column must top-align there. The default (expanded) state has
+   only the window title, which stays vertically centered with the icon. */
+.widget-root.chrome-collapsed .header-left {
+  align-items: flex-start;
+  align-self: stretch;
+  min-height: 0;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.header-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: var(--secondary);
+  font-size: 20px;
+  line-height: 1;
+  opacity: 0.85;
+  transition: opacity 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+}
+
+.header-btn + .header-btn {
+  margin-left: var(--padding-xs);
+}
+
+.header-btn:hover {
+  opacity: 1;
+}
+
+.header-collapse-chevron {
+  transform-box: fill-box;
+  transform-origin: center center;
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.header-collapse-chevron.collapsed {
+  transform: rotate(-90deg);
+}
+
+/* The collapsed window is a fixed height (AGENT_TASK_COMPACT_HEIGHT). Let the
+   header fill it so the identity column has real vertical space to work with:
+   the window title stays pinned at the top with the controls while the task
+   title + status are pushed to the bottom, instead of everything clustering at
+   the top with dead space beneath. The wrapper div that holds the header is
+   content-height by default, so it must grow first. */
+.widget-root.chrome-collapsed > div {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.widget-root.chrome-collapsed .widget-header {
+  flex: 1 1 auto;
+  min-height: 44px;
+  /* Minimal bottom padding so the bottom-anchored status sits just clear of
+     the edge. This is deliberately smaller than --padding-xs: every px kept
+     here is a px taken away from the auto-margin gap that separates the task
+     title above from the status below (see .header-collapsed-status), so a
+     larger value here reads as the status crowding the task title even
+     though the widget is a fixed size. The top-anchored title/subject are
+     unaffected. */
+  padding-bottom: 2px;
+  align-items: stretch;
+}
+
+/* Fill the header height so the title can sit at the top and the task title +
+   status can be bottom-anchored beneath it. .header-left is top-aligned (so the
+   controls hug the top); the identity opts back into stretch to gain the height. */
+.widget-root.chrome-collapsed .header-identity {
+  align-self: stretch;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Keep the window title at the EXACT vertical position it has when expanded.
+   The expanded header vertically centers the title with the control buttons; the
+   collapsed identity is top-aligned, so without this the title would top-align a
+   few px higher. Centering it inside a band the height of a control button
+   (line-height:22px, matching .header-btn) reproduces the expanded center, and a
+   fixed band means the task title/status appearing below never nudge it. */
+.widget-root.chrome-collapsed .header-title {
+  min-height: 22px;
+  line-height: 22px;
+  flex-shrink: 0;
+  /* Fine visual nudge: the band center matches the expanded title mathematically,
+     but forcing an explicit line-height shifts the light-weight glyph a hair high
+     vs. the expanded (normal line-height) render. top offset re-seats it without
+     affecting the subject/status layout below. */
+  position: relative;
+  top: 1px;
+}
+
+.header-identity {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  margin-left: 3px;
+}
+
+.header-title {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-callout);
+  color: var(--secondary);
+}
+
+.header-collapsed-task-title {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  color: var(--text-secondary);
+}
+
+.header-collapsed-status {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-small);
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+/* Pull the subject up to sit just beneath the window title. The title's 22px
+   centering band leaves a few px of empty space below its 13px glyph, so the
+   subject otherwise reads as detached; this negative margin closes that so it
+   hugs the title like a subtitle. The title above is unaffected (it precedes the
+   subject) and so is the bottom-anchored status. */
+.widget-root.chrome-collapsed .header-collapsed-task-title {
+  margin-top: -4px;
+}
+
+/* Only the status is bottom-anchored. The subject sits directly beneath the
+   fixed title band, and the status's margin-top:auto claims all the remaining
+   space, so the free height becomes a single clean gap between the subject and
+   the status instead of the two sharing the free space and colliding at the
+   bottom. The window title band above stays put regardless. Zero bottom
+   padding here: the collapsed widget-header's own padding-bottom above already
+   keeps the status clear of the window edge, so any padding added here would
+   only shrink the auto-margin gap above the status and crowd it against the
+   task title instead. */
+.widget-root.chrome-collapsed .header-collapsed-status {
+  margin-top: auto;
+  padding-bottom: 0;
+}
+
+.header-team-icon {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  margin-left: calc(var(--padding-xs) + 2px);
+}
+
+.header-right {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.header-right.has-stop-action {
+  width: 44px;
+  transition: width 0.15s ease;
+}
+
+.widget-header:hover .header-right.has-stop-action,
+.header-right.has-stop-action.is-stopping {
+  width: 120px;
+}
+
+.header-bubble {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  z-index: 1001;
+  margin-left: auto;
+}
+
+.agent-task-stop-action {
+  position: absolute;
+  left: 0;
+  top: 8px;
+  z-index: 1002;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.widget-header:hover .agent-task-stop-action,
+.header-right.is-stopping .agent-task-stop-action,
+.embedded-task-toolbar:hover .agent-task-stop-action,
+.embedded-task-toolbar:focus-within .agent-task-stop-action {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Body layout */
+.widget-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.widget-body[hidden] {
+  display: flex;
+  visibility: hidden;
+}
+
+/* When the chrome is collapsed, .widget-root.chrome-collapsed > div (above)
+   gives every direct div child of widget-root flex:1 0 auto so the header
+   shell can grow to fill the fixed-height compact window. .widget-body is
+   also a direct div child, and because [hidden] above keeps it as a real
+   (invisible) flex participant rather than display:none, it inherits that
+   same flex:1 0 auto too. With flex-shrink:0 and widget-body's real content
+   (sidebar + main surface) far taller than the compact window, the row
+   overflows and the header shell never actually receives a definite height
+   to stretch into -- silently breaking every height:100%/margin-top:auto
+   rule the collapsed header relies on to bottom-anchor the status line.
+   Zeroing widget-body's flex here removes it from the collapsed row's space
+   competition entirely, so the header shell is the sole flex:1 0 auto
+   participant and reliably gets the window's full height. */
+.widget-root.chrome-collapsed > .widget-body[hidden] {
+  flex: 0 0 0;
+}
+
+.agent-task-surface-stack {
+  position: relative;
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.agent-task-surface-layer {
+  grid-area: 1 / 1;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+
+.agent-task-surface-layer[data-presence-phase='entering'] {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.agent-task-surface-layer[data-presence-phase='exiting'] {
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+}
+
+.missed-run-toast-stack {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.missed-run-toast {
+  min-width: 220px;
+  padding: 8px 10px;
+  border: 1px solid var(--warning-base);
+  border-radius: 8px;
+  background: var(--background-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+
+.missed-run-toast[data-presence-phase='entering'],
+.missed-run-toast[data-presence-phase='exiting'] {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.missed-run-toast-title {
+  color: var(--warning-base);
+  font-family: var(--font-family-medium);
+  font-size: 12px;
+}
+
+.missed-run-toast-task {
+  font-family: var(--font-family-medium);
+  font-size: 12px;
+}
+
+.missed-run-toast-reason {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+/* Sidebar */
+.sidebar {
+  position: relative;
+  flex-shrink: 0;
+  background: var(--background-primary);
+  overflow: hidden;
+  transition: width 400ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.sidebar.collapsed {
+  width: var(--sidebar-collapsed-width);
+  border-top: var(--border-thin) solid var(--separator-color);
+  border-right: 0.5px solid var(--separator-color);
+}
+
+.sidebar.expanded {
+  width: var(--sidebar-expanded-width);
+  border-top: var(--border-thin) solid var(--separator-color);
+  border-right: var(--border-thin) solid var(--separator-color);
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-content-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease-in-out;
+}
+
+.sidebar.collapsed .sidebar-content-layer--collapsed,
+.sidebar.expanded .sidebar-content-layer--expanded {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sidebar-content-layer--collapsed {
+  width: var(--sidebar-collapsed-width);
+}
+
+.sidebar-content-layer--expanded {
+  width: var(--sidebar-expanded-width);
+}
+
+.widget-root--embedded .sidebar.collapsed,
+.widget-root--embedded .sidebar.expanded {
+  border-top: 0;
+}
+
+.sidebar-toggle-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--secondary);
+  font-size: 14px;
+  padding: var(--padding-xs);
+}
+
+.sidebar-toggle-symbol {
+  display: block;
+  width: 12px;
+  height: 12px;
+  object-fit: contain;
+  opacity: 0.85;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--padding-s) var(--padding-m);
+}
+
+.sidebar-header-title {
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-callout);
+  color: var(--secondary);
+}
+
+.sidebar-search {
+  padding: 0 var(--padding-s);
+  margin-bottom: var(--padding-xs);
+}
+
+.sidebar-search-input {
+  width: 100%;
+  padding: calc(var(--padding-xs) + 2px) var(--padding-s);
+  background: var(--background-tertiary);
+  border: 0.5px solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-small);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.sidebar-search-input::placeholder {
+  color: var(--text-secondary);
+}
+
+/*
+ * Defensive reset: any <select> that ever picks up the .sidebar-search-input
+ * class would otherwise render the macOS WebKit native gradient pill and
+ * dark system popup, which clashes with the rest of the widget. We prefer
+ * the custom <Dropdown /> component, but if a native select sneaks in via
+ * this class, at least make it visually consistent.
+ */
+select.sidebar-search-input {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-secondary) 50%),
+                    linear-gradient(135deg, var(--text-secondary) 50%, transparent 50%);
+  background-position: calc(100% - 14px) calc(50% - 2px),
+                       calc(100% - 9px)  calc(50% - 2px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 24px;
+}
+
+/*
+ * Native time / datetime-local inputs ship with their own intrinsic line
+ * height that's a few pixels off .sidebar-search-input, which makes any
+ * row that mixes them with text inputs look uneven. Pin them to the same
+ * height and inherit the input's typography so the schedule form's
+ * single-row layout reads as one cohesive control bar.
+ */
+.schedule-time-input[type='time'],
+.schedule-time-input[type='datetime-local'] {
+  height: calc(1em + (var(--padding-xs) + 2px) * 2 + 2px);
+  line-height: 1;
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-small);
+  color: var(--text-primary);
+}
+
+/*
+ * The native picker indicator inherits color: from the page in WKWebView,
+ * which can render as black-on-dark in dark mode. Force it to the same
+ * secondary text color used by .sidebar-search-input::placeholder so the
+ * indicator chevron is always visible and matches the rest of the form.
+ */
+.schedule-time-input::-webkit-calendar-picker-indicator,
+.schedule-time-input::-webkit-datetime-edit-fields-wrapper {
+  color: var(--text-secondary);
+  opacity: 0.85;
+  cursor: pointer;
+}
+
+.sidebar-section-label {
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  color: var(--text-secondary);
+  padding: var(--padding-xs) var(--padding-m);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-list {
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Sidebar list row */
+.sidebar-row {
+  padding: var(--padding-xs) var(--padding-s);
+  cursor: pointer;
+  border-radius: var(--corner-radius-small);
+  margin: 0 var(--padding-xs);
+  transition: background 0.15s;
+  position: relative;
+  border-bottom: var(--border-thin) solid var(--separator-color);
+}
+
+.sidebar-row:last-child {
+  border-bottom: none;
+}
+
+.sidebar-row:hover {
+  background: rgba(128, 128, 128, 0.1);
+}
+
+.sidebar-row.selected {
+  background: color-mix(in srgb, var(--primary) 85%, transparent);
+  color: white;
+}
+
+.sidebar-row.selected .row-title,
+.sidebar-row.selected .row-preview,
+.sidebar-row.selected .row-meta {
+  color: white;
+}
+
+.sidebar-row.selected .row-preview {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.sidebar-row.selected .row-meta {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.agent-detach-btn {
+  position: absolute;
+  width: 14px;
+  height: 12px;
+  padding: 0;
+  border: none;
+  border-radius: var(--corner-radius-small);
+  background: transparent;
+  color: color-mix(in srgb, var(--text-primary) 48%, transparent);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.agent-detach-btn:hover,
+.agent-detach-btn:focus-visible {
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  color: color-mix(in srgb, var(--text-primary) 72%, transparent);
+  outline: none;
+}
+
+.sidebar-row.selected .agent-detach-btn {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.sidebar-row.selected .agent-detach-btn:hover,
+.sidebar-row.selected .agent-detach-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+}
+
+/* Swipe-to-delete button */
+.swipe-delete-btn {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 60px;
+  background: var(--error-base);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Inline "Delete this AgentTask?" confirmation, rendered in place of a
+   row's normal content (no modal/backdrop). Sized and typed to match
+   .row-title/.row-preview's density rather than the wider .overlay-title/
+   .action-btn scale those use, since this replaces content inside the
+   already-narrow sidebar column. */
+.sidebar-row--confirm-delete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--padding-s);
+  cursor: default;
+}
+
+.sidebar-row-confirm__label {
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-footnote);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.sidebar-row-confirm__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-xs);
+  flex-shrink: 0;
+}
+
+.sidebar-row-confirm__btn {
+  appearance: none;
+  border: var(--border-thin) solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  background: var(--background-primary);
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-tiny);
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+.sidebar-row-confirm__btn:hover {
+  background: rgba(128, 128, 128, 0.1);
+}
+
+.sidebar-row-confirm__btn--danger {
+  border-color: var(--error-base);
+  color: var(--error-base);
+}
+
+.sidebar-row-confirm__btn--danger:hover {
+  background: rgba(220, 38, 38, 0.08);
+}
+
+/* Right-click context menu */
+.context-menu {
+  background: var(--background-primary);
+  border: var(--border-thin) solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+  min-width: 120px;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-s);
+  width: 100%;
+  padding: var(--padding-xs) var(--padding-m);
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-footnote);
+  color: var(--text-primary);
+  transition: background 0.1s;
+}
+
+.context-menu-item:hover {
+  background: rgba(128, 128, 128, 0.1);
+}
+
+.context-menu-item.danger {
+  color: var(--error-base);
+}
+
+.row-title {
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-footnote);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row-preview {
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-tiny);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.row-meta {
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-tiny);
+  color: var(--text-tertiary);
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: var(--padding-xs);
+}
+
+/* Active agent row */
+.agent-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.agent-status-dot.processing {
+  background: var(--processing-base);
+  animation: pulse-dot 0.8s ease-in-out infinite alternate;
+}
+
+.agent-status-dot.awaiting {
+  background: var(--warning-base);
+}
+
+.agent-status-dot.completed {
+  background: var(--success-base);
+}
+
+.agent-status-dot.failed {
+  background: var(--error-base);
+}
+
+@keyframes pulse-dot {
+  from { opacity: 0.4; }
+  to { opacity: 1; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* Pulsing dots — matches Swift's HStack of 3 circles with alternating opacity */
+.pulsing-dots {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: 16px;
+  flex-shrink: 0;
+}
+
+.pulsing-dots span {
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--secondary);
+  animation: pulse-dot 0.8s ease-in-out infinite alternate;
+}
+
+.pulsing-dots span:nth-child(2) { animation-delay: 0.15s; }
+.pulsing-dots span:nth-child(3) { animation-delay: 0.3s; }
+
+/* Approval attention indicator — pulsing glow ring for pending approvals */
+.approval-attention {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--warning-base);
+  flex-shrink: 0;
+  animation: approval-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes approval-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 var(--warning-base);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 6px 3px var(--warning-base);
+    opacity: 0.7;
+  }
+}
+
+/* Cancel button on active agent row hover */
+.agent-cancel-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+/* Unread badge */
+.unread-badge {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--secondary);
+  color: white;
+  font-size: 10px;
+  font-family: var(--font-family-medium);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .sidebar-content-layer,
+  .agent-task-surface-layer,
+  .missed-run-toast {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+

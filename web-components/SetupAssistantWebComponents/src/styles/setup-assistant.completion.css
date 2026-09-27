@@ -1,0 +1,182 @@
+.setup-complete-panel {
+  display: grid;
+  gap: var(--padding-s);
+  padding: var(--padding-xl);
+  text-align: center;
+}
+
+.setup-complete-panel h1 {
+  font-family: var(--font-family-semibold);
+  font-size: var(--font-size-title2);
+  margin: 0;
+}
+
+.setup-complete-panel p {
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0 auto;
+  max-width: 560px;
+}
+
+.setup-complete-eyebrow {
+  color: var(--primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.setup-complete-panel--agent {
+  text-align: left;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: var(--padding-xl);
+}
+
+.setup-complete-panel--agent .setup-complete-eyebrow {
+  text-align: left;
+}
+
+.setup-complete-panel--agent h1 {
+  text-align: left;
+}
+
+.setup-wrapup-recap {
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-body);
+  line-height: 1.5;
+  margin: 0 0 var(--padding-l);
+  max-width: 100%;
+}
+
+.setup-wrapup-next-steps,
+.setup-wrapup-breadth {
+  background: color-mix(in srgb, var(--primary) 6%, var(--background-primary));
+  border: 0.5px solid color-mix(in srgb, var(--primary) 22%, var(--separator-color));
+  border-radius: var(--corner-radius-medium);
+  padding: var(--padding-m);
+  margin-bottom: var(--padding-m);
+}
+
+.setup-wrapup-next-steps h2,
+.setup-wrapup-breadth h2 {
+  color: var(--primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+  letter-spacing: 0.04em;
+  margin: 0 0 var(--padding-s);
+  text-transform: uppercase;
+}
+
+.setup-wrapup-next-steps ul {
+  display: grid;
+  gap: var(--padding-s);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.setup-wrapup-next-steps li {
+  background: var(--background-tertiary);
+  border: 0.5px solid var(--separator-color);
+  border-radius: var(--corner-radius-medium);
+  padding: 10px 12px;
+  display: grid;
+  gap: 4px;
+}
+
+.setup-wrapup-next-steps li strong {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+}
+
+.setup-wrapup-next-steps li span {
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.setup-wrapup-breadth p {
+  color: var(--text-primary);
+  line-height: 1.5;
+  margin: 0;
+  max-width: 100%;
+  text-align: left;
+}
+
+.setup-wrapup-export-actions {
+  align-items: center;
+  border-top: 0.5px solid color-mix(in srgb, var(--primary) 14%, var(--separator-color));
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--padding-s);
+  margin-top: var(--padding-s);
+  padding-top: var(--padding-m);
+}
+
+.setup-wrapup-export-actions .setup-wrapup-export-status {
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-small);
+  line-height: 1.35;
+  margin: 0;
+  max-width: none;
+}
+
+.setup-wrapup-settings-pointer {
+  border-top: 0.5px solid var(--separator-color);
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-footnote);
+  line-height: 1.5;
+  margin: var(--padding-m) 0 0;
+  padding-top: var(--padding-m);
+  text-align: left;
+}
+
+.setup-wrapup-settings-pointer strong {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+}
+
+.setup-complete-panel.setup-wrapup--preparing {
+  text-align: left;
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.setup-wrapup--preparing .setup-complete-eyebrow,
+.setup-wrapup--preparing h1 {
+  text-align: left;
+}
+
+.setup-wrapup--preparing p {
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+  max-width: 100%;
+  text-align: left;
+}
+
+.setup-wrapup-spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--primary) 25%, transparent);
+  border-top-color: var(--primary);
+  animation: setupWrapupSpinnerSpin 0.9s linear infinite;
+  margin-top: var(--padding-s);
+}
+
+@keyframes setupWrapupSpinnerSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.setup-wrapup--ready {
+  animation: setupWrapupReadyFadeIn 0.35s ease-out both;
+}
+
+@keyframes setupWrapupReadyFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}

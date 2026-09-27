@@ -1,0 +1,168 @@
+.hotkey-settings-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px;
+}
+
+.hotkey-settings-section {
+  background: color-mix(in srgb, var(--background-primary) 92%, var(--primary));
+  border: 1px solid var(--field-border);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 10%), 0 8px 20px rgb(0 0 0 / 8%);
+  padding: 18px;
+}
+
+.hotkey-settings-section h2 {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: 16px;
+  margin: 0 0 12px;
+}
+
+.hotkey-row {
+  border-bottom: 1px solid var(--separator-color);
+  padding: 12px 0;
+}
+
+.hotkey-row:last-child {
+  border-bottom: none;
+}
+
+.hotkey-row-main {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.hotkey-row-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  justify-content: center;
+  /* Reserves the same vertical space (title + gap + subtitle) whether or
+     not `row.subtitle` is present, so every row in the list is the same
+     height instead of subtitled rows (e.g. "Writing Partner") standing
+     taller than plain ones -- the table already has plenty of row padding
+     to absorb this without growing the section. */
+  min-height: 31px;
+}
+
+.hotkey-row-title {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: 14px;
+  line-height: 16px;
+}
+
+.hotkey-row-subtitle {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 11px;
+  line-height: 13px;
+}
+
+.hotkey-row-controls {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.hotkey-key-cap {
+  background: var(--background-primary);
+  border: 1px solid color-mix(in srgb, var(--primary) 40%, transparent);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 12px;
+  line-height: 16px;
+  min-width: 24px;
+  text-align: center;
+  padding: 2px 6px;
+  box-shadow: 0 1px 1px rgb(0 0 0 / 8%);
+}
+
+.hotkey-row-controls > .secondary-button {
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--primary) 85%, transparent);
+  border-radius: 4px;
+  color: var(--primary);
+  cursor: pointer;
+  font-family: var(--font-family-light);
+  font-size: 11px;
+  line-height: 16px;
+  padding: 3px 8px;
+}
+
+.hotkey-row-controls > .secondary-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+.hotkey-row-controls > .secondary-button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.hotkey-row-controls > .secondary-button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Styled to look like an active, focused text input (matching
+   .hotkey-key-cap's bordered-box treatment) rather than a plain italic
+   placeholder label, since the capture protocol itself is all-or-nothing
+   (there is no incremental in-progress combo from native -- see
+   HotkeyNativeEvent in types.ts, which only has a final `captured` event).
+   The blinking caret is what actually signals "recording" is live. */
+.hotkey-row-recording-indicator {
+  align-items: center;
+  background: var(--background-primary);
+  border: 1px solid color-mix(in srgb, var(--secondary, var(--primary)) 55%, transparent);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  display: inline-flex;
+  font-family: var(--font-family-light);
+  font-size: 12px;
+  gap: 4px;
+  line-height: 16px;
+  min-width: 90px;
+  padding: 2px 6px;
+}
+
+.hotkey-row-recording-indicator::after {
+  animation: hotkey-caret-blink 1s step-end infinite;
+  background: var(--secondary, var(--primary));
+  content: '';
+  display: inline-block;
+  height: 12px;
+  width: 1px;
+}
+
+@keyframes hotkey-caret-blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  50.01%, 100% {
+    opacity: 0;
+  }
+}
+
+.hotkey-row-error {
+  color: var(--warning-base, #ffa500);
+  font-family: var(--font-family-light);
+  font-size: 12px;
+  margin: 6px 0 0;
+}
+
+.hotkey-settings-status {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  margin: 0;
+}
+
+.hotkey-load-error {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}

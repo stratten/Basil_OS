@@ -1,0 +1,270 @@
+from dataclasses import dataclass, field
+from typing import Optional, List, Union, Dict, Any
+from datetime import timedelta
+
+PUNCTUATION_MARKS = {'.', '!', '?', '。', '！', '？'}
+
+def format_time(seconds: float) -> str:
+    """Format seconds as HH:MM:SS."""
+    return str(timedelta(seconds=int(seconds)))
+
+@dataclass
+class Timed:
+    start: Optional[float] = 0
+    end: Optional[float] = 0
+
+@dataclass
+class TimedText(Timed):
+    text: Optional[str] = ''
+    speaker: Optional[int] = -1
+    detected_language: Optional[str] = None
+    timeline_start_seconds: Optional[float] = None
+    timeline_end_seconds: Optional[float] = None
+    
+    def has_punctuation(self) -> bool:
+        return any(char in PUNCTUATION_MARKS for char in self.text.strip())
+    
+    def is_within(self, other: 'TimedText') -> bool:
+        return other.contains_timespan(self)
+
+    def duration(self) -> float:
+        return self.end - self.start
+
+    def contains_timespan(self, other: 'TimedText') -> bool:
+        return self.start <= other.start and self.end >= other.end
+    
+    def __bool__(self) -> bool:
+        return bool(self.text)
+    
+    def __str__(self) -> str:
+        return str(self.text)
+
+@dataclass()
+class ASRToken(TimedText):
+    
+    def with_offset(self, offset: float) -> "ASRToken":
+        """Return a new token with the time offset added."""
+        return ASRToken(
+            self.start + offset,
+            self.end + offset,
+            self.text,
+            self.speaker,
+            detected_language=self.detected_language,
+            timeline_start_seconds=self.timeline_start_seconds,
+            timeline_end_seconds=self.timeline_end_seconds,
+        )
+
+    def is_silence(self) -> bool:
+        return False
+
+
+@dataclass
+class Sentence(TimedText):
+    pass
+
+@dataclass
+class Transcript(TimedText):
+    """
+    represents a concatenation of several ASRToken
+    """
+
+    @classmethod
+    def from_tokens(
+        cls,
+        tokens: List[ASRToken],
+        sep: Optional[str] = None,
+        offset: float = 0
+    ) -> "Transcript":
+        """Collapse multiple ASR tokens into a single transcript span."""
+        sep = sep if sep is not None else ' '
+        text = sep.join(token.text for token in tokens)
+        if tokens:
+            start = offset + tokens[0].start
+            end = offset + tokens[-1].end
+        else:
+            start = None
+            end = None
+        return cls(start, end, text)
+
+
+@dataclass
+class SpeakerSegment(Timed):
+    """Represents a segment of audio attributed to a specific speaker.
+    No text nor probability is associated with this segment.
+    """
+    speaker: Optional[int] = -1
+    pass
+
+@dataclass
+class Translation(TimedText):
+    pass
+
+@dataclass
+class Silence():
+    start: Optional[float] = None
+    end: Optional[float] = None
+    duration: Optional[float] = None
+    is_starting: bool = False
+    has_ended: bool = False
+
+    def compute_duration(self) -> Optional[float]:
+        if self.start is None or self.end is None:
+            return None
+        self.duration = self.end - self.start
+        return self.duration
+    
+    def is_silence(self) -> bool:
+        return True
+
+
+@dataclass
+class Segment(TimedText):
+    """Generic contiguous span built from tokens or silence markers."""
+    start: Optional[float]
+    end: Optional[float]
+    text: Optional[str]
+    speaker: Optional[str]
+    @classmethod
+    def from_tokens(
+        cls,
+        tokens: List[Union[ASRToken, Silence]],
+        is_silence: bool = False
+    ) -> Optional["Segment"]:
+        """Return a normalized segment representing the provided tokens."""
+        if not tokens:
+            return None
+        
+        start_token = tokens[0]
+        end_token = tokens[-1]        
+        if is_silence:
+            return cls(
+                start=start_token.start,
+                end=end_token.end,
+                text="",
+                speaker=-2
+            )
+        else:
+            return cls(
+                start=start_token.start,
+                end=end_token.end,
+                text=''.join(token.text for token in tokens),
+                speaker=-1,
+                detected_language=start_token.detected_language,
+                timeline_start_seconds=getattr(start_token, "timeline_start_seconds", None),
+                timeline_end_seconds=getattr(end_token, "timeline_end_seconds", None),
+            )
+    def is_silence(self) -> bool:
+        """True when this segment represents a silence gap."""
+        return self.speaker == -2
+
+
+@dataclass
+class Line(TimedText):
+    translation: str = ''
+    line_complete: bool = False  # Indicates if this line ended with silence (new line should follow)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize the line for frontend consumption."""
+        _dict: Dict[str, Any] = {
+            'speaker': self.speaker,  # Pass through as-is (should be "speaker0", "speaker1", etc.)
+            'text': self.text,
+            'start': format_time(self.start),
+            'end': format_time(self.end),
+            'line_complete': self.line_complete,
+        }
+        if self.timeline_start_seconds is not None:
+            _dict['timeline_start_seconds'] = self.timeline_start_seconds
+        if self.timeline_end_seconds is not None:
+            _dict['timeline_end_seconds'] = self.timeline_end_seconds
+        if self.translation:
+            _dict['translation'] = self.translation
+        if self.detected_language:
+            _dict['detected_language'] = self.detected_language
+        return _dict
+    
+    def build_from_tokens(self, tokens: List[ASRToken]) -> "Line":
+        """Populate line attributes from a contiguous token list."""
+        self.text = ''.join([token.text for token in tokens])
+        self.start = tokens[0].start
+        self.end = tokens[-1].end
+        self.speaker = 1
+        self.detected_language = tokens[0].detected_language
+        self.timeline_start_seconds = getattr(tokens[0], "timeline_start_seconds", None)
+        self.timeline_end_seconds = getattr(tokens[-1], "timeline_end_seconds", None)
+        return self
+
+    def build_from_segment(self, segment: Segment) -> "Line":
+        """Populate the line fields from a pre-built segment."""
+        self.text = segment.text
+        self.start = segment.start
+        self.end = segment.end
+        self.speaker = segment.speaker
+        self.detected_language = segment.detected_language
+        self.timeline_start_seconds = segment.timeline_start_seconds
+        self.timeline_end_seconds = segment.timeline_end_seconds
+        return self
+
+    def is_silent(self) -> bool:
+        return self.speaker == -2
+
+class SilentLine(Line):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.speaker = -2
+        self.text = ''
+
+
+@dataclass  
+class FrontData():
+    status: str = ''
+    error: str = ''
+    lines: list[Line] = field(default_factory=list)
+    buffer_transcription: str = ''
+    buffer_diarization: str = ''
+    buffer_translation: str = ''
+    remaining_time_transcription: float = 0.
+    remaining_time_diarization: float = 0.
+    line_complete: bool = False  # Signal that the current line is complete (silence detected)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize the front-end data payload."""
+        _dict: Dict[str, Any] = {
+            'status': self.status,
+            'lines': [line.to_dict() for line in self.lines if (line.text or line.speaker == -2)],
+            'buffer_transcription': self.buffer_transcription,
+            'buffer_diarization': self.buffer_diarization,
+            'buffer_translation': self.buffer_translation,
+            'remaining_time_transcription': self.remaining_time_transcription,
+            'remaining_time_diarization': self.remaining_time_diarization,
+            'line_complete': self.line_complete,
+        }
+        if self.error:
+            _dict['error'] = self.error
+        return _dict
+
+@dataclass  
+class ChangeSpeaker:
+    speaker: int
+    start: int
+
+@dataclass  
+class State():
+    """Unified state class for audio processing.
+    
+    Contains both persistent state (tokens, buffers) and temporary update buffers
+    (new_* fields) that are consumed by TokensAlignment.
+    """
+    # Persistent state
+    tokens: List[ASRToken] = field(default_factory=list)
+    buffer_transcription: Transcript = field(default_factory=Transcript)
+    end_buffer: float = 0.0
+    end_attributed_speaker: float = 0.0
+    remaining_time_transcription: float = 0.0
+    remaining_time_diarization: float = 0.0
+    
+    # Temporary update buffers (consumed by TokensAlignment.update())
+    new_tokens: List[Union[ASRToken, Silence]] = field(default_factory=list)
+    new_translation: List[Any] = field(default_factory=list)
+    new_diarization: List[Any] = field(default_factory=list)
+    new_tokens_buffer: List[Any] = field(default_factory=list)  # only when local agreement
+    new_translation_buffer= TimedText()

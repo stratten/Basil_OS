@@ -1,0 +1,235 @@
+/*
+ * Conversation core (chrome + shared motion)
+ *
+ * Owns the conversation surface chrome that does not belong to a
+ * single component family: panel header, primer / guidance / working
+ * placeholder cards, the conversation root container, the messages
+ * scroll region, the working indicator and chip-row entrance
+ * animations, the input row, the shared keyframes, and the cross-
+ * cutting reduced-motion suppression.
+ *
+ * Component families have their own sibling files so this one stays
+ * small and scannable:
+ *   - setup-assistant.conversation.messages.css      (.basil-message bubbles, acknowledgment chip)
+ *   - setup-assistant.conversation.proposals.css     (consent receipts, recommendation review, status chip)
+ *   - setup-assistant.conversation.inline-cards.css  (email context, Dill draft, setup visual cards)
+ *
+ * The three sibling files depend on the keyframes
+ * (`conversationCardEnter`, `conversationWorkingPulse`,
+ * `receiptProgressPulse`) and the `prefers-reduced-motion` media
+ * block that live at the bottom of this file. Keeping them
+ * centralized means a developer pruning a motion rule only has to
+ * remember one place to look.
+ */
+
+.basil-panel-header {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.conversation-team-primer {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--primary) 11%, var(--background-primary)), var(--background-primary) 64%),
+    var(--background-primary);
+  border: 0.5px solid color-mix(in srgb, var(--primary) 26%, var(--separator-color));
+  border-radius: var(--corner-radius-medium);
+  padding: 12px 14px;
+}
+
+.conversation-team-primer p {
+  color: var(--text-primary);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.conversation-team-primer strong {
+  color: var(--primary);
+  font-family: var(--font-family-medium);
+}
+
+.basil-guidance {
+  margin-bottom: var(--padding-m);
+}
+
+.basil-guidance h3 {
+  font-family: var(--font-family-medium);
+  margin: 0 0 6px;
+}
+
+.basil-guidance p {
+  margin: 0;
+}
+
+.working-state {
+  background: color-mix(in srgb, var(--primary) 12%, var(--background-primary));
+  border: 1px solid color-mix(in srgb, var(--primary) 45%, var(--separator-color));
+  border-radius: var(--corner-radius-medium);
+  margin-bottom: var(--padding-m);
+  padding: var(--padding-m);
+}
+
+.working-state h3 {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  margin: 0 0 6px;
+}
+
+.working-state p {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.basil-conversation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-s);
+  height: 100%;
+  margin-top: var(--padding-m);
+  min-height: 0;
+}
+
+.conversation-observations,
+.conversation-working-indicator,
+.chip-row {
+  animation: conversationCardEnter 220ms ease-out both;
+}
+
+.conversation-observations .fact-list {
+  animation: conversationCardEnter 180ms ease-out both;
+}
+
+.basil-messages {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  margin: 4px 0 8px;
+  overflow: auto;
+}
+
+.conversation-working-indicator {
+  align-items: center;
+  align-self: flex-start;
+  background: color-mix(in srgb, var(--primary) 9%, var(--background-primary));
+  border: 0.5px solid color-mix(in srgb, var(--primary) 30%, var(--separator-color));
+  border-radius: var(--corner-radius-medium);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.045);
+  display: inline-flex;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.conversation-working-indicator p {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  line-height: 1.35;
+  margin: 0;
+}
+
+.conversation-working-indicator .conversation-working-substatus {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-small);
+  margin-top: 3px;
+}
+
+.conversation-working-dot {
+  animation: conversationWorkingPulse 1.1s ease-in-out infinite;
+  background: var(--primary);
+  border-radius: 999px;
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--primary) 12%, transparent);
+  height: 9px;
+  width: 9px;
+}
+
+.chip-row > div > .secondary-button {
+  animation: conversationCardEnter 180ms ease-out both;
+}
+
+.chip-row > div > .secondary-button:nth-child(2) {
+  animation-delay: 35ms;
+}
+
+.chip-row > div > .secondary-button:nth-child(3) {
+  animation-delay: 70ms;
+}
+
+.chip-row > div > .secondary-button:nth-child(4) {
+  animation-delay: 105ms;
+}
+
+.basil-input-row {
+  align-items: stretch;
+  border-top: 0.5px solid var(--separator-color);
+  padding-top: var(--padding-m);
+}
+
+.basil-input-row textarea {
+  border: 0.5px solid var(--separator-color);
+  border-radius: var(--corner-radius-medium);
+  flex: 1;
+  min-width: 0;
+  padding: var(--padding-s);
+  resize: vertical;
+}
+
+@keyframes conversationCardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes conversationWorkingPulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.86);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes receiptProgressPulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none;
+  }
+
+  .basil-message,
+  .conversation-observations,
+  .conversation-observations .fact-list,
+  .conversation-working-indicator,
+  .chip-row,
+  .chip-row > div > .secondary-button,
+  .consent-receipt,
+  .artifact-row-card,
+  .receipt-status-message,
+  .receipt-error-message,
+  .receipt-progress,
+  .conversation-working-dot,
+  .inline-email-context-card,
+  .inline-dill-draft-card,
+  .inline-setup-visual-card {
+    animation: none;
+  }
+}

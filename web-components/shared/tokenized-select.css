@@ -1,0 +1,108 @@
+.tokenized-select {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.tokenized-select__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 5px 8px;
+  border: 1px solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  background: var(--background-primary);
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.tokenized-select__trigger:hover:not(:disabled),
+.tokenized-select__trigger:focus-visible {
+  border-color: var(--primary);
+  outline: none;
+}
+
+.tokenized-select__trigger:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.tokenized-select__label {
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tokenized-select__chevron {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.tokenized-select__menu {
+  z-index: 1000;
+  max-height: min(320px, calc(100vh - 8px));
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 4px;
+  border: 1px solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  background: var(--background-primary);
+  box-shadow: var(--shadow-medium);
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+}
+
+.tokenized-select__group + .tokenized-select__group {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--separator-color);
+}
+
+.tokenized-select__group-label {
+  display: block;
+  padding: 5px 8px 3px;
+  color: var(--text-secondary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-tiny);
+  text-transform: uppercase;
+}
+
+.tokenized-select__option {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: calc(var(--corner-radius-small) - 1px);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tokenized-select__option:hover:not(:disabled),
+.tokenized-select__option:focus-visible {
+  outline: none;
+  background: var(--background-secondary);
+}
+
+.tokenized-select__option.is-selected {
+  background: var(--primary);
+  color: white;
+}
+
+.tokenized-select__option:disabled {
+  opacity: 0.55;
+  cursor: default;
+}

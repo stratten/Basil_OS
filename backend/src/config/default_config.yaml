@@ -1,0 +1,36 @@
+# Application configuration
+app:
+  name: "Basil"
+  debug: true
+  host: "127.0.0.1"
+  port: 8000
+
+# Model configuration
+model:
+  type: "mpt"  # or other open model we decide on
+  path: "~/.basil/models"
+  max_memory: "4GB"
+  
+# Storage configuration
+storage:
+  db_path: "~/.basil/db"
+  captures_path: "~/.basil/captures"
+  temp_path: "~/.basil/temp"
+
+# OCR configuration
+ocr:
+  tesseract_cmd: "/opt/homebrew/bin/tesseract"  # Default Homebrew installation path
+  lang: "eng"  # Default language
+  config: "--psm 6"  # Page segmentation mode for block of uniform text 
+
+# API Keys configuration
+# Actual keys are managed by the api_keys.py module
+# User keys are stored in ~/.basil/config/api_keys.json
+api_keys:
+  providers:
+    - name: "anthropic"
+      models: ["Claude 3 Opus", "Claude 3 Sonnet", "Claude 3 Haiku", "Claude 3.5 Sonnet", "Claude 3.5 Haiku", "Claude 3.7 Sonnet"]
+      requires_key: true
+    - name: "openai"
+      models: ["GPT-4o", "GPT-4 Turbo"]
+      requires_key: true 

@@ -1,0 +1,6 @@
+@import './assistant-session/shell.css';
+@import './assistant-session/header.css';
+@import './assistant-session/recording.css';
+@import './assistant-session/typed-input.css';
+@import './assistant-session/processing.css';
+@import './assistant-session/result.css';

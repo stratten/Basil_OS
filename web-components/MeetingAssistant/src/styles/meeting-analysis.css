@@ -1,0 +1,632 @@
+@import '../../../AgentTaskResult/src/styles/theme.css';
+@import '../../../shared/webkit-window-chrome.css';
+@import './meeting-assistant.css';
+
+.meeting-analysis-surface {
+  --meeting-window-control-fill: color-mix(in srgb, var(--primary) 15%, transparent);
+  --meeting-analysis-muted-text: color-mix(in srgb, var(--text-primary) 68%, var(--background-primary));
+  --meeting-analysis-line: color-mix(in srgb, var(--primary) 18%, var(--background-primary));
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: var(--background-primary);
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  min-width: 0;
+}
+
+.meeting-analysis-surface .meeting-window-chrome {
+  border-bottom-color: var(--meeting-analysis-line);
+}
+
+.meeting-analysis-surface button {
+  font-family: var(--font-family-light);
+  font-weight: 400;
+}
+
+.meeting-analysis-content {
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--padding-l);
+  min-width: 0;
+}
+
+.meeting-analysis-toolbar {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--meeting-analysis-line);
+  min-width: 0;
+}
+
+.meeting-analysis-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 8px 16px;
+  background: color-mix(in srgb, var(--secondary) 5%, var(--background-primary));
+  color: var(--meeting-analysis-muted-text);
+  font-size: var(--font-size-status-small);
+}
+
+.meeting-analysis-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 16px;
+}
+
+.meeting-analysis-tab {
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  padding: 8px 12px;
+  font-family: var(--font-family-light);
+  font-weight: 400;
+  color: var(--meeting-analysis-muted-text);
+  cursor: pointer;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+}
+
+.meeting-analysis-tab--active {
+  color: var(--secondary);
+  border-bottom-color: var(--secondary);
+}
+
+.meeting-analysis-failure-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--padding-m);
+  background: color-mix(in srgb, var(--error-base) 8%, var(--background-primary));
+  border: 1px solid color-mix(in srgb, var(--error-base) 24%, transparent);
+  color: var(--error-base);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+}
+
+.meeting-analysis-omission-notice {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--secondary) 28%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--secondary) 6%, var(--background-primary));
+  color: var(--secondary);
+}
+
+.meeting-analysis-omission-notice p {
+  margin: 0;
+}
+
+.meeting-analysis-omission-notice p + p {
+  margin-top: 4px;
+}
+
+.meeting-analysis-mode-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--padding-s);
+  margin-bottom: var(--padding-m);
+}
+
+.meeting-analysis-mode-header h2,
+.meeting-analysis-custom-request h3,
+.meeting-sentiment-moments h3 {
+  margin: 0 0 4px;
+  color: var(--secondary);
+  font-family: var(--font-family-medium);
+  font-weight: 400;
+}
+
+.meeting-analysis-mode-description,
+.meeting-analysis-empty-state,
+.meeting-analysis-qa-meta {
+  margin: 0;
+  color: var(--meeting-analysis-muted-text);
+  font-size: var(--font-size-status-small);
+}
+
+.meeting-analysis-fallback-badge {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: var(--font-size-status-small);
+  color: var(--meeting-analysis-muted-text);
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--meeting-analysis-border, currentColor);
+}
+
+.meeting-analysis-mode-copy {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--secondary);
+  cursor: pointer;
+}
+
+.meeting-analysis-mode-copy:hover {
+  background: color-mix(in srgb, var(--secondary) 10%, var(--background-primary));
+}
+
+.meeting-analysis-mode-copy:focus-visible {
+  outline: 2px solid var(--secondary);
+  outline-offset: 2px;
+}
+
+.meeting-analysis-result-list {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.meeting-analysis-result-list li + li {
+  margin-top: var(--padding-s);
+}
+
+.meeting-action-item-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.meeting-action-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.meeting-action-item-number {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--secondary) 20%, var(--background-primary));
+  color: var(--secondary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+}
+
+.meeting-action-item-content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.meeting-action-item-content > strong {
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-body);
+  font-weight: 400;
+}
+
+.meeting-action-item-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--meeting-analysis-muted-text);
+  font-size: var(--font-size-caption);
+}
+
+.meeting-action-item-meta svg {
+  width: 11px;
+  height: 11px;
+}
+
+.meeting-analysis-custom-request {
+  margin-bottom: var(--padding-m);
+}
+
+.meeting-analysis-failure-banner button {
+  padding: 6px var(--padding-m);
+  border: 0;
+  border-radius: var(--corner-radius-small);
+  background: color-mix(in srgb, var(--secondary) 10%, var(--background-primary));
+  color: var(--secondary);
+  font-family: var(--font-family-light);
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.meeting-proposals-bulk-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--padding-m);
+}
+
+.meeting-analysis-results--suggested-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  column-gap: 8px;
+  align-items: start;
+}
+
+.meeting-analysis-results--suggested-actions .meeting-analysis-mode-header,
+.meeting-analysis-results--suggested-actions .meeting-suggested-action-workspace {
+  display: contents;
+}
+
+.meeting-analysis-results--suggested-actions .meeting-analysis-mode-header > div {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.meeting-analysis-results--suggested-actions .meeting-analysis-mode-copy {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.meeting-analysis-results--suggested-actions .meeting-proposals-bulk-actions {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+  margin: 0;
+}
+
+.meeting-analysis-results--suggested-actions .meeting-proposal-card,
+.meeting-analysis-results--suggested-actions .meeting-proposals-empty-state,
+.meeting-analysis-results--suggested-actions .meeting-handled-proposals,
+.meeting-analysis-results--suggested-actions .meeting-dismissed-proposals {
+  grid-column: 1 / -1;
+}
+
+.meeting-analysis-results--suggested-actions .meeting-suggested-action-workspace.has-bulk-action > .meeting-proposals-bulk-actions + .meeting-proposal-card,
+.meeting-analysis-results--suggested-actions .meeting-suggested-action-workspace:not(.has-bulk-action) > .meeting-proposal-card:first-child,
+.meeting-analysis-results--suggested-actions .meeting-proposals-empty-state {
+  margin-top: var(--padding-m);
+}
+
+.meeting-proposal-group-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-s);
+  padding: var(--padding-s) 0;
+  color: var(--secondary);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+  font-weight: 400;
+  list-style: none;
+}
+
+.meeting-proposal-group-summary::-webkit-details-marker {
+  display: none;
+}
+
+.meeting-proposal-group-summary::marker {
+  content: "";
+}
+
+.meeting-proposal-group-chevron {
+  flex: 0 0 auto;
+  color: var(--secondary);
+  transform: rotate(-90deg);
+  transition: transform 0.18s ease-in-out;
+}
+
+details[open] > .meeting-proposal-group-summary .meeting-proposal-group-chevron {
+  transform: rotate(0deg);
+}
+
+.meeting-proposals-bulk-button {
+  padding: 7px var(--padding-m);
+  border: 0;
+  border-radius: var(--corner-radius-small);
+  background: color-mix(in srgb, var(--primary) 85%, transparent);
+  color: white;
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-caption);
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.meeting-proposals-bulk-button:disabled {
+  background: color-mix(in srgb, var(--text-primary) 12%, var(--background-primary));
+  color: var(--meeting-analysis-muted-text);
+  cursor: not-allowed;
+}
+
+.meeting-proposal-card {
+  border: 1px solid var(--meeting-analysis-line);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: var(--padding-s);
+  background: var(--background-primary);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.04);
+}
+
+.meeting-proposal-card--collapsed {
+  padding-block: 10px;
+}
+
+.meeting-proposal-card-disclosure {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--padding-s);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.meeting-proposal-capability-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  color: var(--secondary);
+}
+
+.meeting-proposal-card-chevron {
+  flex: 0 0 auto;
+  color: var(--secondary);
+  font-family: var(--font-family-medium);
+  transform: rotate(0deg);
+  transition: transform 0.18s ease-in-out;
+}
+
+.meeting-proposal-card-chevron.is-collapsed {
+  transform: rotate(-90deg);
+}
+
+.meeting-proposal-draft-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 60px;
+  padding: var(--padding-s);
+  border: 1px solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-callout);
+  font-weight: 400;
+}
+
+.meeting-proposal-card:has(> .meeting-proposal-actions) {
+  padding-bottom: 6px;
+}
+
+.meeting-proposal-actions {
+  margin-top: 6px;
+}
+
+.meeting-proposal-actions button {
+  margin-right: 8px;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-caption);
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.meeting-proposal-actions .meeting-proposal-action-primary {
+  background: color-mix(in srgb, var(--primary) 85%, transparent);
+  color: white;
+}
+
+.meeting-proposal-actions .meeting-proposal-action-secondary {
+  background: color-mix(in srgb, var(--secondary) 8%, var(--background-primary));
+  color: var(--secondary);
+}
+
+.meeting-proposal-actions .meeting-proposal-action-dismiss {
+  background: color-mix(in srgb, var(--text-primary) 4%, var(--background-primary));
+  color: var(--meeting-analysis-muted-text);
+}
+
+.meeting-proposal-actions button:disabled {
+  background: color-mix(in srgb, var(--text-primary) 8%, var(--background-primary));
+  color: var(--meeting-analysis-muted-text);
+  cursor: not-allowed;
+}
+
+.meeting-proposal-linked-work {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0 28px;
+  color: var(--meeting-analysis-muted-text);
+  font-size: var(--font-size-caption);
+}
+
+.meeting-proposal-linked-work-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.meeting-proposal-linked-work-link {
+  border: 0;
+  border-radius: 5px;
+  padding: 3px 7px;
+  background: color-mix(in srgb, var(--secondary) 9%, var(--background-primary));
+  color: var(--secondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.meeting-proposal-linked-work-link:hover {
+  background: color-mix(in srgb, var(--secondary) 16%, var(--background-primary));
+}
+
+.meeting-proposal-linked-work-link:focus-visible {
+  outline: 2px solid var(--secondary);
+  outline-offset: 2px;
+}
+
+.meeting-loading-state {
+  color: var(--meeting-analysis-muted-text);
+  padding: 16px;
+  text-align: center;
+}
+
+.meeting-proposal-source-task {
+  flex: 1 1 auto;
+  margin: 0;
+  font-family: var(--font-family-light);
+  font-weight: 400;
+}
+
+.meeting-proposal-card-status {
+  flex: 0 0 auto;
+  color: var(--secondary);
+  font-family: var(--font-family-light);
+  font-weight: 400;
+  font-size: var(--font-size-status-small);
+}
+
+.meeting-proposal-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--meeting-analysis-muted-text);
+  font-size: var(--font-size-caption);
+}
+
+.meeting-proposal-missing-info {
+  margin: 0 0 var(--padding-s);
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--warning-base) 16%, transparent);
+  border-radius: var(--corner-radius-small);
+  background: color-mix(in srgb, var(--warning-base) 4%, var(--background-primary));
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--warning-base) 55%, transparent);
+  color: var(--text-primary);
+  font-size: var(--font-size-caption);
+  line-height: 1.35;
+}
+
+.meeting-proposal-capability {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--secondary) 8%, var(--background-primary));
+  color: var(--secondary);
+  text-transform: capitalize;
+}
+
+.meeting-proposal-why {
+  color: var(--text-primary);
+  font-size: var(--font-size-callout);
+}
+
+.meeting-proposal-context {
+  margin: var(--padding-s) 0;
+  color: var(--secondary);
+  font-size: var(--font-size-caption);
+}
+
+.meeting-proposal-context summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.meeting-proposal-context-time {
+  color: var(--meeting-analysis-muted-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.meeting-proposal-context-time::before {
+  margin-right: 6px;
+  content: "·";
+}
+
+.meeting-proposal-context blockquote {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  border-left: 2px solid color-mix(in srgb, var(--secondary) 22%, transparent);
+  border-radius: var(--corner-radius-small);
+  background: color-mix(in srgb, var(--secondary) 3%, var(--background-primary));
+  color: var(--text-primary);
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.meeting-proposal-agent-task {
+  margin-top: var(--padding-m);
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--secondary) 14%, var(--background-primary));
+  border-radius: var(--corner-radius-medium);
+  background: color-mix(in srgb, var(--secondary) 3%, var(--background-primary));
+}
+
+.meeting-proposal-agent-task-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--secondary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-caption);
+  font-weight: 400;
+}
+
+.meeting-proposal-draft-preview {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-callout);
+  font-weight: 400;
+  white-space: pre-wrap;
+}
+
+.meeting-analysis-qa-pair {
+  padding: var(--padding-s) 0;
+  border-top: 1px solid var(--separator-color);
+}
+
+.meeting-sentiment-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--padding-m);
+  padding: var(--padding-m);
+  border-radius: var(--corner-radius-medium);
+  background: color-mix(in srgb, var(--secondary) 6%, var(--background-primary));
+}
+
+.meeting-sentiment-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.meeting-sentiment-summary span,
+.meeting-sentiment-summary small,
+.meeting-sentiment-moments time {
+  color: var(--meeting-analysis-muted-text);
+  font-size: var(--font-size-status-small);
+}
+
+.meeting-sentiment-moments p {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--padding-m);
+  margin: var(--padding-xs) 0;
+  padding-left: var(--padding-s);
+  border-left: 3px solid var(--success-base);
+}
+
+.meeting-sentiment-moments--negative p {
+  border-left-color: var(--error-base);
+}
+
+.meeting-markdown {
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meeting-proposal-card-chevron {
+    transition: none;
+  }
+}

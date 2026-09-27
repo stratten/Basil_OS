@@ -1,0 +1,145 @@
+.proactive-suggestions-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 920px;
+  width: 100%;
+}
+
+.proactive-suggestions-section {
+  background: color-mix(in srgb, var(--background-primary) 92%, var(--primary));
+  border: 1px solid var(--field-border);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 10%), 0 8px 20px rgb(0 0 0 / 8%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+}
+
+.proactive-suggestions-section h2 {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: 16px;
+  margin: 0;
+}
+
+.proactive-suggestions-section h3 {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: 14px;
+  margin: 0 0 6px;
+}
+
+.proactive-suggestions-section select {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  padding: 6px 8px;
+}
+
+.proactive-suggestions-frequency {
+  align-items: center;
+  color: var(--text-primary);
+  display: flex;
+  flex-wrap: wrap;
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  gap: 8px;
+}
+
+.proactive-suggestions-frequency input[type='number'] {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  padding: 4px 6px;
+  width: 72px;
+}
+
+.proactive-suggestions-confidence {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.proactive-suggestions-confidence label {
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+}
+
+.proactive-suggestions-confidence input[type='range'] {
+  accent-color: var(--primary);
+}
+
+.proactive-suggestions-exclusions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Flex column defaults to stretch, so the lone Apply button below the
+   textarea would otherwise inherit its full width instead of sizing to
+   its own content -- same fix as .meetings-settings-section. */
+.proactive-suggestions-exclusions > .secondary-button {
+  align-self: flex-start;
+}
+
+.proactive-suggestions-exclusions textarea {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  min-height: 82px;
+  padding: 8px;
+  resize: vertical;
+}
+
+.proactive-suggestions-field-hint {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 12px;
+  margin: 0;
+}
+
+.proactive-suggestions-inline-warning {
+  color: var(--warning-base, #b54708);
+  font-family: var(--font-family-light);
+  font-size: 12px;
+  margin: 0;
+}
+
+.proactive-suggestions-status,
+.proactive-suggestions-inline-error,
+.proactive-suggestions-error p {
+  margin: 0;
+}
+
+.proactive-suggestions-status {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+}
+
+.proactive-suggestions-inline-error,
+.proactive-suggestions-error p {
+  color: var(--warning-base, #b54708);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+}
+
+.proactive-suggestions-error {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 700px;
+}
