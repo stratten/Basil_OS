@@ -104,6 +104,18 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-bottom: 12px;
+}
+
+.reasoning-api-models-key-explainer {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 12px;
+  margin: 0;
+}
+
+.reasoning-api-models-key-explainer a {
+  color: var(--primary);
 }
 
 .reasoning-api-models-key-active {
@@ -111,6 +123,80 @@
   font-family: var(--font-family-light);
   font-size: 12px;
   margin: 0;
+}
+
+.reasoning-api-models-key-status-row {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.reasoning-api-models-key-status-row > .reasoning-api-models-key-active {
+  flex: 1;
+  min-width: 0;
+}
+
+.reasoning-api-models-key-remove-button {
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--error-base, #d9363e) 55%, var(--field-border));
+  border-radius: 6px;
+  color: var(--error-base, #d9363e);
+  cursor: pointer;
+  flex: 0 0 auto;
+  font-family: var(--font-family-medium);
+  font-size: 12px;
+  min-height: 30px;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
+.reasoning-api-models-key-remove-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--error-base, #d9363e) 10%, transparent);
+}
+
+.reasoning-api-models-key-remove-confirm {
+  background: color-mix(in srgb, var(--background-primary) 95%, var(--error-base, #d9363e));
+  border: 1px solid color-mix(in srgb, var(--error-base, #d9363e) 45%, var(--field-border));
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.reasoning-api-models-key-remove-confirm-title {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+  margin: 0 0 4px;
+}
+
+.reasoning-api-models-key-remove-confirm-body {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 12px;
+  margin: 0 0 10px;
+}
+
+.reasoning-api-models-key-remove-confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.reasoning-api-models-key-remove-confirm-button {
+  background: var(--error-base, #d9363e);
+  border: 1px solid color-mix(in srgb, var(--error-base, #d9363e) 70%, black);
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: 12px;
+  padding: 5px 10px;
+}
+
+.reasoning-api-models-key-remove-button:disabled,
+.reasoning-api-models-key-remove-confirm-button:disabled {
+  cursor: default;
+  opacity: 0.6;
 }
 
 .reasoning-api-models-key-required {

@@ -283,24 +283,17 @@ final class WindowChromeCollapseGeometryTests: XCTestCase {
         XCTAssertEqual(window.frame.size, NSSize(width: 988, height: 500))
     }
 
-    @MainActor
     func testLayoutResizeCanShrinkAndRetainsTopLeftEdge() {
-        let window = NSWindow(
-            contentRect: NSRect(x: 300, y: 300, width: 900, height: 600),
-            styleMask: [.borderless, .resizable],
-            backing: .buffered,
-            defer: false
-        )
-        window.minSize = NSSize(width: 444, height: 300)
-        let originalTopLeft = NSPoint(x: window.frame.minX, y: window.frame.maxY)
-
-        WindowChromeCollapse.applyLayoutResize(
-            window: window,
-            requestedSize: NSSize(width: 604, height: 400)
+        let originalFrame = NSRect(x: 300, y: 300, width: 900, height: 600)
+        let resizedFrame = WindowChromeCollapse.layoutResizeFrame(
+            currentFrame: originalFrame,
+            requestedSize: NSSize(width: 604, height: 400),
+            minSize: NSSize(width: 444, height: 300),
+            visibleFrame: visibleFrame
         )
 
-        XCTAssertEqual(window.frame.size, NSSize(width: 604, height: 400))
-        XCTAssertEqual(NSPoint(x: window.frame.minX, y: window.frame.maxY), originalTopLeft)
+        XCTAssertEqual(resizedFrame.size, NSSize(width: 604, height: 400))
+        XCTAssertEqual(NSPoint(x: resizedFrame.minX, y: resizedFrame.maxY), NSPoint(x: originalFrame.minX, y: originalFrame.maxY))
     }
 
     @MainActor

@@ -151,8 +151,8 @@ async def update_api_provider_settings(
         key_provider = provider
         if provider == "gemini":
             # Check if user has either google or gemini key
-            has_google_key = "google" in api_key_manager.user_keys and api_key_manager.user_keys["google"]
-            has_gemini_key = "gemini" in api_key_manager.user_keys and api_key_manager.user_keys["gemini"]
+            has_google_key = api_key_manager.has_user_key("google")
+            has_gemini_key = api_key_manager.has_user_key("gemini")
 
             # Use whichever key is available
             if has_google_key:
@@ -162,7 +162,7 @@ async def update_api_provider_settings(
 
         # If we're enabling the provider and want to use our own API key, validate it exists
         if settings.enabled and settings.use_own_api_key:
-            if key_provider not in api_key_manager.user_keys or not api_key_manager.user_keys[key_provider]:
+            if not api_key_manager.has_user_key(key_provider):
                 raise HTTPException(
                     status_code=400,
                     detail=f"You need to set your own API key for {provider} before enabling it with 'use_own_api_key=true'"

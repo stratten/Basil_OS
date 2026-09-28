@@ -11,7 +11,7 @@ const testState = vi.hoisted(() => ({
   artifactRenders: 0,
   state: {
     setupStage: 'conversation' as const,
-    setupAgentModelAccess: 'unconfigured' as const,
+    setupAgentModelAccess: null,
     observations: [],
     messages: [],
     activeArtifact: undefined,

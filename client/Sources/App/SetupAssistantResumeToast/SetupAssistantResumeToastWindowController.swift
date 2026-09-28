@@ -1,14 +1,12 @@
 import AppKit
 
-/// Window controller for the Setup Assistant resume toast. Mirrors
-/// `TrialExhaustionWindowController`'s shape: a borderless `NSPanel` hosting
-/// a WKWebView-rendered React card, with `WebKitWindowChromeAppearance`
-/// styling and `AppearanceRefreshCoordinator` registration for live theme
-/// updates. Unlike the fully-activating Trial Exhaustion alert, this toast
-/// stays non-activating and anchors near the menu-bar icon for the duration
-/// of one launch decision, auto-dismissing after 20 seconds (treated as
-/// Remind me later -- the toast returns on next launch unless the user
-/// explicitly picks Don't remind me again).
+/// Window controller for the Setup Assistant resume toast: a borderless,
+/// non-activating `NSPanel` hosting a WKWebView-rendered React card, with
+/// `WebKitWindowChromeAppearance` styling and `AppearanceRefreshCoordinator`
+/// registration for live theme updates. The toast anchors near the menu-bar
+/// icon for the duration of one launch decision, auto-dismissing after 20
+/// seconds (treated as Remind me later -- the toast returns on next launch
+/// unless the user explicitly picks Don't remind me again).
 ///
 /// The panel stays hidden (`alphaValue == 0`, not ordered front) until the
 /// web content reports its measured height via `requestResize`, so the user

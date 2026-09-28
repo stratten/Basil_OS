@@ -10,7 +10,7 @@ export type SetupAssistantPhase =
 
 export type SetupTechnicalDepth = 'plain' | 'practical' | 'technical'
 
-export type SetupAgentModelAccessMode = 'default_proxy' | 'local' | 'custom'
+export type SetupAgentModelAccessMode = 'local' | 'provider_key' | 'basil_cloud'
 
 export type SetupCalibrationEventKind =
   | 'continue'
@@ -104,8 +104,46 @@ export interface SetupModelDownloadStatusResponse {
 
 export interface SetupAgentModelAccess {
   mode: SetupAgentModelAccessMode
-  custom_model_id?: string | null
   local_model_id?: string | null
+  provider?: string | null
+  model_id?: string | null
+  resolved: boolean
+}
+
+export interface SetupAgentModelAccessOption {
+  mode: SetupAgentModelAccessMode
+  available: boolean
+  unavailable_reason?: string | null
+  local_model_id?: string | null
+  provider?: string | null
+  model_id?: string | null
+  display_name?: string | null
+  requires_provider_key_input: boolean
+  provider_models?: SetupAgentProviderModelChoice[]
+}
+
+export interface SetupAgentProviderModelChoice {
+  provider: string
+  model_id: string
+  display_name: string
+  recommended: boolean
+}
+
+export interface SetupAgentModelAccessOptionsResponse {
+  options: SetupAgentModelAccessOption[]
+}
+
+export interface SetupAgentModelAccessSelectRequest {
+  mode: SetupAgentModelAccessMode
+  local_model_id?: string | null
+  provider?: string | null
+  model_id?: string | null
+  provider_api_key?: string | null
+}
+
+export interface SetupAgentModelAccessSelectResponse {
+  access: SetupAgentModelAccess
+  model_metadata: SetupAgentModelMetadata
 }
 
 export interface SetupCalibrationEvent {

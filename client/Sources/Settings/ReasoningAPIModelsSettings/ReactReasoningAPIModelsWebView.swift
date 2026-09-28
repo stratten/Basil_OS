@@ -11,6 +11,7 @@ final class ReactReasoningAPIModelsWebView: NSObject {
     var onRequestToggleProviderKeySource: ((String, String, Bool) -> Void)?
     var onRequestToggleModel: ((String, String, String, Bool) -> Void)?
     var onRequestSaveApiKey: ((String, String, String) -> Void)?
+    var onRequestRemoveApiKey: ((String, String) -> Void)?
     var onMalformedIntent: ((String) -> Void)?
 
     init(webView: WKWebView) {
@@ -98,6 +99,13 @@ final class ReactReasoningAPIModelsWebView: NSObject {
                 return
             }
             onRequestSaveApiKey?(requestId, providerId, key)
+        case "requestRemoveApiKey":
+            guard let requestId = body["requestId"] as? String,
+                  let providerId = body["providerId"] as? String else {
+                onMalformedIntent?("requestRemoveApiKey")
+                return
+            }
+            onRequestRemoveApiKey?(requestId, providerId)
         default:
             onMalformedIntent?(type)
         }

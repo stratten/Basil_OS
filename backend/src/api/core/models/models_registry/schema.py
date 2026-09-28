@@ -144,6 +144,7 @@ class BaseModelConfig(TypedDict, total=False):
     default_enabled: bool  # Default state in preferences (default: False).
     recommended: bool  # Show as recommended (default: False).
     recommended_reason: str  # Why recommended.
+    recommended_for_onboarding: bool  # Setup Assistant default; at most one per provider (default: False).
     visible: bool  # Whether model appears in UI (default: True). Set False for internal-only models.
 
 

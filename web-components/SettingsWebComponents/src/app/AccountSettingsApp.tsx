@@ -33,7 +33,6 @@ function extractFields(event: AccountInitEvent | AccountSnapshotEvent): AccountS
     basilCloudSelected: event.basilCloudSelected,
     basilCloudBadge: event.basilCloudBadge,
     basilCloudDescription: event.basilCloudDescription,
-    trialExhausted: event.trialExhausted,
     isLoadingUsage: event.isLoadingUsage,
     currentPeriodFormatted: event.currentPeriodFormatted,
     totalCostFormatted: event.totalCostFormatted,

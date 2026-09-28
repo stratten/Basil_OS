@@ -136,9 +136,8 @@ extension SettingsShellWindowController {
                 return
             }
             // Basil Cloud goes through the same gating
-            // `selectBasilCloudAccess()` the native button uses (checks
-            // trial balance, then requires auth + payment) -- see
-            // settled decision 11.
+            // `selectBasilCloudAccess()` the native button uses (requires
+            // auth and payment).
             if parsed.isBasilCloudAlias {
                 await accountViewModel.selectBasilCloudAccess()
             } else {

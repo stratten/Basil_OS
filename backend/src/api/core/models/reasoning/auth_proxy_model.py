@@ -62,24 +62,20 @@ class AuthProxyModel(BaseReasoningModel):
     def __init__(
         self,
         model_id: str,
-        access_token: Optional[str] = None,
-        trial_key: Optional[str] = None,
-        setup_agent_key: Optional[str] = None,
-        required_capabilities: Optional[Set[ModelCapability]] = None
+        access_token: str,
+        required_capabilities: Optional[Set[ModelCapability]] = None,
     ):
         """Initialize the auth proxy model.
-        
+
         Args:
             model_id: The model ID (internal or OpenRouter format)
-            access_token: The JWT access token for auth service (for authenticated users)
-            trial_key: Trial key for unauthenticated users (allows $1 of API usage)
-            setup_agent_key: Shared setup-agent key for non-metered onboarding proxy requests
+            access_token: A confirmed authenticated-account JWT for the Auth Service
             required_capabilities: Required model capabilities
-        
-        Note: access_token, trial_key, or setup_agent_key must be provided.
+
+        Note: access_token must be a non-empty string.
         """
-        if not access_token and not trial_key and not setup_agent_key:
-            raise ValueError("access_token, trial_key, or setup_agent_key must be provided")
+        if not access_token:
+            raise ValueError("access_token must be provided")
 
         # Get model configuration from unified registry.
         cfg = _get_model_info_from_registry(model_id)
@@ -105,8 +101,6 @@ class AuthProxyModel(BaseReasoningModel):
             max_output = 8192
 
         self.access_token = access_token
-        self.trial_key = trial_key
-        self.setup_agent_key = setup_agent_key
         self._client: Optional[httpx.AsyncClient] = None
         
         # Initialize base class with a dummy path (we don't use local files).
@@ -123,8 +117,12 @@ class AuthProxyModel(BaseReasoningModel):
         self.omitted_request_parameters = get_omitted_request_parameters(model_id)
         self.state = ModelState.READY
         
-        auth_type = self._current_auth_label()
-        logger.info(f"AuthProxyModel initialized: {model_id} -> {self.openrouter_model_id} (provider: {self.provider}, auth: {auth_type})")
+        logger.info(
+            "AuthProxyModel initialized: %s -> %s (provider: %s)",
+            model_id,
+            self.openrouter_model_id,
+            self.provider,
+        )
     
     @property
     def api_key(self) -> str:
@@ -133,111 +131,14 @@ class AuthProxyModel(BaseReasoningModel):
         This allows AuthProxyModel to be used interchangeably with ClaudeModel/OpenAIModel
         in code that expects an api_key attribute (e.g., LangChain agent initialization).
         """
-        return self.access_token or ""
+        return self.access_token
     
-    def _build_headers(self, use_trial: Optional[bool] = None) -> Dict[str, str]:
-        """Build request headers with appropriate authentication.
-        
-        Returns headers with the setup-agent key, trial key, or bearer token.
-        """
-        headers = {"Content-Type": "application/json"}
-        should_use_trial = self.trial_key is not None if use_trial is None else use_trial
-
-        if self.setup_agent_key and use_trial is None:
-            headers["X-Basil-Setup-Agent-Key"] = self.setup_agent_key
-        elif should_use_trial and self.trial_key:
-            headers["X-Trial-Key"] = self.trial_key
-        elif self.access_token:
-            headers["Authorization"] = f"Bearer {self.access_token}"
-        
-        return headers
-    
-    def _current_auth_label(self, use_trial: Optional[bool] = None) -> str:
-        if self.setup_agent_key and use_trial is None:
-            return "setup_agent"
-        should_use_trial = self.trial_key is not None if use_trial is None else use_trial
-        return "trial" if should_use_trial and self.trial_key else "token"
-    
-    async def _retry_with_account_after_trial_exhaustion(
-        self,
-        client: httpx.AsyncClient,
-        payload: Dict[str, Any],
-        response: httpx.Response,
-    ) -> httpx.Response:
-        """Retry a trial-exhausted Basil Cloud request with account auth when possible."""
-        error_text = response.text.lower()
-        if response.status_code == 402 and "trial" in error_text and self.access_token:
-            await self._notify_trial_exhausted()
-            logger.info("🎫 Trial exhausted; retrying Basil Cloud request with account token")
-            return await client.post(
-                f"{AUTH_SERVICE_URL}/route/request",
-                json=payload,
-                headers=self._build_headers(use_trial=False)
-            )
-        return response
-    
-    async def _handle_trial_balance_header(self, response: httpx.Response) -> None:
-        """Read and broadcast trial remaining balance from response header.
-        
-        The Auth Service returns X-Trial-Remaining-Usd and X-Trial-Limit-Usd headers
-        with every trial request. We broadcast this to the Swift client via WebSocket.
-        """
-        if self.setup_agent_key or not self.trial_key:
-            return  # Only relevant for trial users
-        
-        remaining_usd_header = response.headers.get("X-Trial-Remaining-Usd")
-        remaining_cents_header = response.headers.get("X-Trial-Remaining-Cents")
-        limit_usd_header = response.headers.get("X-Trial-Limit-Usd")
-        
-        try:
-            remaining: float | None = None
-            if remaining_usd_header is not None:
-                remaining = float(remaining_usd_header)
-            elif remaining_cents_header is not None:
-                remaining = int(remaining_cents_header) / 100.0
-            
-            if remaining is None:
-                return
-            
-            limit = float(limit_usd_header) if limit_usd_header else None
-            logger.info(f"🎫 Trial balance remaining: ${remaining:.6f}" + (f" of ${limit:.2f}" if limit else ""))
-            await self._broadcast_trial_balance(remaining, limit)
-        except ValueError:
-            logger.warning(
-                "🎫 Invalid trial balance header values: "
-                f"remaining_usd={remaining_usd_header}, "
-                f"remaining_cents={remaining_cents_header}, limit={limit_usd_header}"
-            )
-    
-    async def _broadcast_trial_balance(self, remaining_usd: float, limit_usd: float | None = None) -> None:
-        """Broadcast trial balance update to Swift client via WebSocket."""
-        try:
-            from api.services.websocket_connection_manager import active_connections
-            
-            if not active_connections:
-                return
-            
-            message: dict = {
-                "event_type": "trial_balance_update",
-                "remaining_usd": remaining_usd,
-                "is_exhausted": remaining_usd <= 0.000001
-            }
-            if limit_usd is not None:
-                message["limit_usd"] = limit_usd
-            
-            for connection in active_connections:
-                try:
-                    await connection.send_json(message)
-                except Exception:
-                    pass  # Connection might be closed
-                    
-        except ImportError:
-            pass  # WebSocket module not available
-    
-    async def _notify_trial_exhausted(self) -> None:
-        """Notify Swift client that trial quota is exhausted."""
-        logger.info("🎫 Trial quota exhausted - notifying client")
-        await self._broadcast_trial_balance(0.0)
+    def _build_headers(self) -> Dict[str, str]:
+        """Build request headers for the authenticated account."""
+        return {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.access_token}",
+        }
     
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create async HTTP client."""
@@ -324,8 +225,11 @@ class AuthProxyModel(BaseReasoningModel):
         
         headers = self._build_headers()
         
-        auth_type = self._current_auth_label()
-        logger.info(f"🔐 AuthProxy request ({auth_type}): model={self.openrouter_model_id}, max_tokens={max_tokens}")
+        logger.info(
+            "🔐 AuthProxy request: model=%s, max_tokens=%s",
+            self.openrouter_model_id,
+            max_tokens,
+        )
         
         try:
             response = await client.post(
@@ -334,17 +238,9 @@ class AuthProxyModel(BaseReasoningModel):
                 headers=headers
             )
             
-            # Handle trial remaining balance header
-            await self._handle_trial_balance_header(response)
-            response = await self._retry_with_account_after_trial_exhaustion(client, payload, response)
-            
             if response.status_code == 401:
                 raise ValueError("Authentication required - token expired or invalid")
             elif response.status_code == 402:
-                error_text = response.text.lower()
-                if "trial" in error_text:
-                    await self._notify_trial_exhausted()
-                    raise ValueError("Included Basil Cloud credit exhausted - please sign in to continue with Basil Cloud or use your own keys")
                 raise ValueError("Payment required - please add a payment method")
             elif response.status_code == 403:
                 raise ValueError("Subscription inactive")
@@ -374,12 +270,7 @@ class AuthProxyModel(BaseReasoningModel):
     
     def validate(self) -> bool:
         """Validate model is ready."""
-        has_auth = (
-            self.access_token is not None
-            or self.trial_key is not None
-            or self.setup_agent_key is not None
-        )
-        return self.state == ModelState.READY and has_auth
+        return self.state == ModelState.READY and bool(self.access_token)
     
     def _generate(self, prompt: str, max_tokens: int) -> str:
         """Synchronous generation via auth proxy (blocks until complete).
@@ -425,8 +316,11 @@ class AuthProxyModel(BaseReasoningModel):
         
         headers = self._build_headers()
         
-        auth_type = self._current_auth_label()
-        logger.info(f"🔐 AuthProxy chat_completion ({auth_type}): model={self.openrouter_model_id}, messages={len(messages)}")
+        logger.info(
+            "🔐 AuthProxy chat_completion: model=%s, messages=%s",
+            self.openrouter_model_id,
+            len(messages),
+        )
         
         try:
             response = await client.post(
@@ -435,20 +329,12 @@ class AuthProxyModel(BaseReasoningModel):
                 headers=headers
             )
             
-            # Handle trial remaining balance header
-            await self._handle_trial_balance_header(response)
-            response = await self._retry_with_account_after_trial_exhaustion(client, payload, response)
-            
             if response.status_code >= 400:
                 error_msg = response.text
                 if response.status_code == 401:
                     error_msg = "Authentication required - token expired"
                 elif response.status_code == 402:
-                    if "trial" in error_msg.lower():
-                        await self._notify_trial_exhausted()
-                        error_msg = "Included Basil Cloud credit exhausted - please sign in to continue with Basil Cloud or use your own keys"
-                    else:
-                        error_msg = "Payment required"
+                    error_msg = "Payment required"
                 raise ValueError(f"Auth service error: {error_msg}")
             
             result = response.json()
@@ -534,61 +420,25 @@ class AuthProxyModel(BaseReasoningModel):
             self.omitted_request_parameters,
         )
         
-        headers = self._build_headers()
-        
-        auth_type = self._current_auth_label()
-        logger.info(f"🔐 AuthProxy streaming ({auth_type}): model={self.openrouter_model_id}")
-        
+        logger.info("🔐 AuthProxy streaming: model=%s", self.openrouter_model_id)
+
         async with httpx.AsyncClient(timeout=120.0) as client:
             async with client.stream(
                 "POST",
                 f"{AUTH_SERVICE_URL}/route/request",
                 json=payload,
-                headers=headers
+                headers=self._build_headers(),
             ) as response:
-                # Handle trial remaining balance metadata available before streaming starts.
-                await self._handle_trial_balance_header(response)
-                
                 if response.status_code >= 400:
                     error = await response.aread()
-                    error_text = error.decode()
-                    if response.status_code == 402 and "trial" in error_text.lower():
-                        await self._notify_trial_exhausted()
-                        if self.access_token:
-                            logger.info("🎫 Trial exhausted; retrying streaming Basil Cloud request with account token")
-                            async with client.stream(
-                                "POST",
-                                f"{AUTH_SERVICE_URL}/route/request",
-                                json=payload,
-                                headers=self._build_headers(use_trial=False)
-                            ) as retry_response:
-                                if retry_response.status_code >= 400:
-                                    retry_error = await retry_response.aread()
-                                    raise ValueError(f"Auth service error: {retry_error.decode()}")
-                                async for retry_line in retry_response.aiter_lines():
-                                    if retry_line.startswith("data: "):
-                                        retry_data = retry_line[6:]
-                                        if retry_data == "[DONE]":
-                                            break
-                                        try:
-                                            retry_chunk = json.loads(retry_data)
-                                            if retry_chunk.get("event_type") == "trial_balance_update":
-                                                remaining = retry_chunk.get("remaining_usd")
-                                                limit = retry_chunk.get("limit_usd")
-                                                if remaining is not None:
-                                                    await self._broadcast_trial_balance(float(remaining), float(limit) if limit is not None else None)
-                                            elif "choices" in retry_chunk and len(retry_chunk["choices"]) > 0:
-                                                delta = retry_chunk["choices"][0].get("delta", {})
-                                                if "content" in delta:
-                                                    yield delta["content"]
-                                            elif "content" in retry_chunk:
-                                                yield retry_chunk["content"]
-                                        except json.JSONDecodeError:
-                                            continue
-                                return
-                        raise ValueError("Included Basil Cloud credit exhausted - please sign in to continue with Basil Cloud or use your own keys")
-                    raise ValueError(f"Auth service error: {error_text}")
-                
+                    if response.status_code == 401:
+                        raise ValueError("Authentication required - token expired or invalid")
+                    if response.status_code == 402:
+                        raise ValueError("Payment required - please add a payment method")
+                    if response.status_code == 403:
+                        raise ValueError("Subscription inactive")
+                    raise ValueError(f"Auth service error: {error.decode()}")
+
                 async for line in response.aiter_lines():
                     if line.startswith("data: "):
                         data = line[6:]
@@ -596,12 +446,7 @@ class AuthProxyModel(BaseReasoningModel):
                             break
                         try:
                             chunk = json.loads(data)
-                            if chunk.get("event_type") == "trial_balance_update":
-                                remaining = chunk.get("remaining_usd")
-                                limit = chunk.get("limit_usd")
-                                if remaining is not None:
-                                    await self._broadcast_trial_balance(float(remaining), float(limit) if limit is not None else None)
-                            elif "choices" in chunk and len(chunk["choices"]) > 0:
+                            if "choices" in chunk and len(chunk["choices"]) > 0:
                                 delta = chunk["choices"][0].get("delta", {})
                                 if "content" in delta:
                                     yield delta["content"]

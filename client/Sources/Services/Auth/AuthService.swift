@@ -279,7 +279,7 @@ final class AuthService: ObservableObject {
     /// This method is kept for backwards compatibility. New code should use
     /// APIKeyPreferenceManager.shared.setPreference() directly.
     func setAPIKeyPreference(_ preference: APIKeyPreference) {
-        // Delegate to the preference manager which handles backend sync and trial key
+        // Delegate to the preference manager which handles backend sync.
         APIKeyPreferenceManager.shared.setPreference(preference)
     }
     
@@ -329,9 +329,6 @@ final class AuthService: ObservableObject {
                 logger.debug("Access token cleared from Python backend")
             }
             
-            // Always sync trial key if Basil Cloud is selected; routing uses included credit first.
-            await syncTrialKeyToBackend()
-            
             logger.debug("Auth settings synced to backend")
         } catch {
             logger.warning("Failed to sync auth settings to backend: \(error.localizedDescription)")
@@ -358,9 +355,6 @@ final class AuthService: ObservableObject {
             state = .unauthenticated
             // Restore cached hasPaymentMethod from Keychain
             hasPaymentMethod = getFromKeychain(key: hasPaymentMethodKey) == "true"
-            
-            // Sync trial key to backend for unauthenticated users
-            await syncTrialKeyToBackend()
             return
         }
         
@@ -410,28 +404,8 @@ final class AuthService: ObservableObject {
                 clearTokens()
                 state = .unauthenticated
                 await syncAuthSettingsToBackend()
-                // Also sync trial key for unauthenticated users
-                await syncTrialKeyToBackend()
                 logger.warning("Failed to restore session: \(error.localizedDescription)")
             }
-        }
-    }
-    
-    /// Sync trial key to backend when Basil Cloud is selected.
-    /// This enables $1 of API usage without requiring payment method.
-    private func syncTrialKeyToBackend() async {
-        // Sync trial key whenever Basil Cloud is selected, regardless of auth status.
-        guard apiKeyPreference.isBasilCloudAlias else {
-            logger.debug("🎫 Skipping trial key sync - preference is not Basil Cloud")
-            return
-        }
-        
-        do {
-            let trialKey = TrialKeyManager.shared.getOrCreateTrialKey()
-            try await apiClient.setTrialKey(trialKey)
-            logger.info("🎫 Trial key synced to backend (preference: basil_cloud)")
-        } catch {
-            logger.warning("Failed to sync trial key to backend: \(error.localizedDescription)")
         }
     }
     

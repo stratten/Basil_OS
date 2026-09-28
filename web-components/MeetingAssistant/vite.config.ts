@@ -24,6 +24,8 @@ export default defineConfig({
       '@shared': resolve(__dirname, '../shared'),
       react: resolve(__dirname, 'node_modules/react'),
       'react/jsx-runtime': resolve(__dirname, 'node_modules/react/jsx-runtime.js'),
+      'react/jsx-dev-runtime': resolve(__dirname, 'node_modules/react/jsx-dev-runtime.js'),
+      'react-dom': resolve(__dirname, 'node_modules/react-dom'),
     },
   },
   server: {

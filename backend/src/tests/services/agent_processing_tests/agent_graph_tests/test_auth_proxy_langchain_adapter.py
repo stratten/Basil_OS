@@ -1,11 +1,11 @@
 import pytest
 
+from api.services.agent_processing.lifecycle.execution_graph.agent_executor_factory import (
+    create_langchain_llm,
+)
 from api.services.agent_processing.lifecycle.execution_graph.auth_proxy_langchain_adapter import (
     AuthProxyLangChainAdapter,
     create_langchain_llm_from_auth_proxy,
-)
-from api.services.agent_processing.lifecycle.execution_graph.agent_executor_factory import (
-    create_langchain_llm,
 )
 
 
@@ -45,23 +45,20 @@ def ok_stream(content: str = "ok") -> FakeStreamResponse:
     return FakeStreamResponse(
         200,
         lines=[
-            'data: {"choices": [{"delta": {"content": "%s"}}]}' % content,
+            f'data: {{"choices": [{{"delta": {{"content": "{content}"}}}}]}}',
             "data: [DONE]",
         ],
     )
 
 
-def error_stream(status_code: int, body: dict) -> FakeStreamResponse:
-    import json as _json
-
-    return FakeStreamResponse(status_code, body=_json.dumps(body).encode())
+def error_stream(status_code: int, body: bytes = b"") -> FakeStreamResponse:
+    return FakeStreamResponse(status_code, body=body)
 
 
 def make_adapter(**overrides) -> AuthProxyLangChainAdapter:
     defaults = {
         "auth_service_url": "https://auth.example",
-        "access_token": None,
-        "trial_key": "trial-key",
+        "access_token": "account-token",
         "model_id": "anthropic/claude-sonnet-4-5",
         "model_name": "claude-sonnet-4-5",
         "provider": "anthropic",
@@ -73,37 +70,30 @@ def make_adapter(**overrides) -> AuthProxyLangChainAdapter:
 
 
 @pytest.mark.asyncio
-async def test_langchain_adapter_uses_trial_key_first():
-    adapter = make_adapter(access_token="account-token")
+async def test_langchain_adapter_uses_bearer_token():
+    adapter = make_adapter()
     client = FakeClient([ok_stream()])
 
     acc = await adapter._stream_route_request(client, {"messages": []}, None)
 
     assert acc.content == "ok"
-    assert client.calls[0]["headers"]["X-Trial-Key"] == "trial-key"
-    assert "Authorization" not in client.calls[0]["headers"]
+    assert client.calls[0]["headers"]["Authorization"] == "Bearer account-token"
+    assert "X-Trial-Key" not in client.calls[0]["headers"]
+    assert "X-Basil-Setup-Agent-Key" not in client.calls[0]["headers"]
 
 
 @pytest.mark.asyncio
-async def test_langchain_adapter_retries_with_account_after_trial_exhaustion():
-    adapter = make_adapter(access_token="account-token")
-    client = FakeClient([
-        error_stream(402, {"error": "trial exhausted"}),
-        ok_stream(),
-    ])
+async def test_langchain_adapter_maps_payment_required_response():
+    adapter = make_adapter()
+    client = FakeClient([error_stream(402, b'{"error":"payment required"}')])
 
-    acc = await adapter._stream_route_request(client, {"messages": []}, None)
-
-    assert acc.content == "ok"
-    assert client.calls[0]["headers"]["X-Trial-Key"] == "trial-key"
-    assert client.calls[1]["headers"]["Authorization"] == "Bearer account-token"
-    assert "X-Trial-Key" not in client.calls[1]["headers"]
+    with pytest.raises(ValueError, match="Payment required"):
+        await adapter._stream_route_request(client, {"messages": []}, None)
 
 
-def test_create_langchain_adapter_carries_trial_key_without_account_token():
+def test_create_langchain_adapter_carries_account_token():
     class FakeAuthProxyModel:
-        access_token = None
-        trial_key = "trial-key"
+        access_token = "account-token"
         openrouter_model_id = "anthropic/claude-sonnet-4-5"
         model_name = "claude-sonnet-4-5"
         provider = "anthropic"
@@ -112,29 +102,12 @@ def test_create_langchain_adapter_carries_trial_key_without_account_token():
 
     adapter = create_langchain_llm_from_auth_proxy(FakeAuthProxyModel())
 
-    assert adapter.trial_key == "trial-key"
-    assert adapter.access_token is None
+    assert adapter.access_token == "account-token"
 
 
-def test_langchain_adapter_uses_setup_agent_header_without_trial_or_bearer_headers():
-    adapter = make_adapter(
-        access_token=None,
-        trial_key=None,
-        setup_agent_key="setup-agent-secret",
-    )
-
-    headers = adapter._build_headers()
-
-    assert headers["X-Basil-Setup-Agent-Key"] == "setup-agent-secret"
-    assert "X-Trial-Key" not in headers
-    assert "Authorization" not in headers
-    assert adapter._auth_label() == "setup_agent"
-
-
-def test_agent_executor_detects_trial_only_auth_proxy():
+def test_agent_executor_detects_account_auth_proxy():
     class FakeAuthProxyModel:
-        access_token = None
-        trial_key = "trial-key"
+        access_token = "account-token"
         openrouter_model_id = "anthropic/claude-sonnet-4-5"
         model_name = "claude-sonnet-4-5"
         provider = "anthropic"
@@ -147,4 +120,4 @@ def test_agent_executor_detects_trial_only_auth_proxy():
     adapter = create_langchain_llm(FakeCoordinator())
 
     assert isinstance(adapter, AuthProxyLangChainAdapter)
-    assert adapter.trial_key == "trial-key"
+    assert adapter.access_token == "account-token"

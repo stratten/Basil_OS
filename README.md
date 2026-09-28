@@ -1,166 +1,86 @@
 # Basil
 
-Basil is a macOS AI assistant with a native Swift client, a local Python/FastAPI backend, and embedded web components. It supports local models and bring-your-own-provider keys. Basil Cloud is optional and is not required for local or BYOK use. See [Privacy and data flow](docs/privacy-and-data-flow.md) before selecting a provider, granting macOS permissions, or connecting an external service.
+Basil is a local-first macOS AI assistant. It combines a native Swift client, a local Python/FastAPI service, and focused WebKit application surfaces so that assistance, capture, transcription, meetings, automation, and personal context can live in one desktop workflow. You can use downloaded local models, models reached through your own provider key, custom model endpoints, or Basil Cloud where available.
 
-## Features
+## What Basil does
 
-- **Native macOS Client:** Built in Swift with SwiftUI for a sleek system tray interface and customizable settings.
-- **AI Assistance:** Provides transcription, contextual suggestions, and screen capture analysis.
-- **Hotkey Integration:** Use hotkeys (e.g. F10 for screen capture and F7 for toggling audio transcription) for rapid interaction.
-- **Dynamic Model Management:** Supports selection and live updating of vision, transcription, and reasoning models. Models are downloaded on-demand using a Python backend and updated with proper cache management.
-- **Python-Powered Backend:** Utilizes FastAPI, running background processing (including model downloads) in-process with asyncio, plus structured logging.
-- **Transcription History:** Maintains a searchable history of all transcriptions with audio playback capability, allowing users to review, copy, and reuse past transcriptions.
+### Workspaces, conversations, and agent work
 
-## Prerequisites
+The Basil Board is the main workspace for beginning an inquiry, reopening work, viewing meeting state, and moving among conversations, Agent Tasks, and todos. Conversations retain threaded work around an ongoing subject. Assistant Session provides a focused text-or-voice assistant surface with saved outputs, refinement, and copy controls.
 
-- macOS (currently supported only on macOS)
-- Swift toolchain / Xcode (for building the native client)
-- Python 3.11 or higher
-- [Poetry](https://python-poetry.org/) (for Python dependency management)
-- Homebrew (for installing system dependencies)
-- Required system packages:
-  - LLVM (e.g. `brew install llvm`)
-  - Tesseract OCR (`brew install tesseract`)
-  - FFmpeg is built from the pinned LGPL source by `build/scripts/build_ffmpeg_lgpl.sh`; Homebrew FFmpeg is not required.
-  - TBB (`brew install tbb`)
+Agent Tasks are goal-oriented workflows that can start from text, files, images, captured audio, or screen context. A task can show progress and intermediate activity, present results and local artifact previews, accept revisions, and request approval before taking an action. Tasks can be scheduled, reviewed, paused, or cancelled when their state supports it. The todo workspace tracks work through inbox, open, in-progress, review, and completed views, with details, ordering, dates, and status for agent-backed work.
 
-> **Note:** Features that use microphone capture, hotkeys, desktop automation, screen analysis, calendar, or contacts require the corresponding macOS permission. See [Privacy and data flow](docs/privacy-and-data-flow.md#macos-permissions).
+### Capture, OCR, and transcription
 
-## Provider configuration
+Use the menu bar, the Board, or a configurable hotkey to capture screen or window content for OCR, visual analysis, and context-assisted work. The capture result remains subject to the selected model path: a local model processes it on the Mac, while a provider-backed model may receive the content required for the request.
 
-Set provider credentials in your environment before starting the backend, for example `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `GOOGLE_API_KEY`. Basil also supports user-provided keys stored locally under `~/.basil/config/api_keys.json`. No provider credential is included in this repository. Direct-provider requests send their selected input to that provider; local-model inference stays on your Mac. See [Privacy and data flow](docs/privacy-and-data-flow.md#choose-your-model-path) for Basil Cloud and connected-service behavior.
+The transcription widget records live microphone audio, and the menu also offers transcription of a user-selected local audio file. Transcription history supports retrieval, review, copying, playback when recorded audio exists, and retranscription with an available model. Settings control the model, paste behavior, post-completion behavior, history, and text-replacement rules applied before insertion. Hotkeys are configurable; examples in this documentation are not promises of a fixed binding.
 
-For a community build, do not set `BASIL_DEVELOPER_ID_CERT`; use `build/scripts/build_app.sh --ad-hoc`. Automatic updates are disabled unless a release owner supplies both `BASIL_SPARKLE_FEED_URL` and `BASIL_SPARKLE_PUBLIC_ED_KEY` for a distinct feed. To sign an official build, the release owner supplies `BASIL_DEVELOPER_ID_CERT`; notarization also requires `BASIL_APPLE_TEAM_ID` and a local `BASIL_NOTARY_KEYCHAIN_PROFILE`. To publish a DMG with `--upload`, configure `s3cmd` locally and set `BASIL_DO_SPACES_BUCKET` plus `BASIL_RELEASE_DOWNLOAD_BASE_URL`; `BASIL_RELEASE_NOTES_FILE` selects the local release-notes file. Official signing identities, notarization credentials, update-feed keys, and hosted-service credentials are not part of the source distribution.
+### Meeting Assistant and Meeting Detection
 
-## Installation and Setup
+Open **Meeting / Call Transcription** from the Basil menu to create a manual recording. Before recording, you can set the meeting name, purpose, participants, and available microphone or system-audio source. During a meeting, the assistant exposes source meters, recording state, and a live transcript. Afterward, it retains meeting metadata and history, supports searching and reopening stored meetings, and can improve a transcript, add speaker labels, or run analysis such as summaries, action items, decisions, questions and answers, sentiment, or a custom instruction.
 
-1. **Clone the Repository:**
+Meeting Detection is a separate opt-in monitor. It observes non-excluded macOS processes that are concurrently using input and output audio, then either prompts or starts the configured detected-meeting flow. Passive detection does not create an audio tap or record audio. Calendar access can enrich a detection, require an active calendar match, or present a join prompt for a joinable event. Only one detected-meeting launch or recording can be active: after Basil begins preparing or recording a meeting, additional detections cannot open another panel.
 
-   ```bash
-   git clone <repository-url> basil
-   cd basil
-   ```
+### Personal context and proactive assistance
 
-2. **Install System Dependencies:**
+Profile, writing examples, and Personal Context let you control information that can tailor drafting and reasoning. Activity Capture can create local records on a configured schedule, with source, exclusion, retention, cleanup, and processing controls. Memories and personal-context workflows organize selected information into durable context.
 
-   ```bash
-   brew install llvm tesseract tbb
-   ```
+Skills provide reusable guidance for agent work, and the Skills settings surface includes reconciliation tools for reviewing and aligning that material. Setup and onboarding guide initial preferences, permissions, models, and connections. Proactive Suggestions can offer configured assistance based on its runtime settings. None of these capabilities silently grant permission, connect an account, or override an approval gate.
 
-3. **Set Up LLVM Environment:**
+### Automation and connected services
 
-   ```bash
-   export LLVM_CONFIG=/opt/homebrew/opt/llvm/bin/llvm-config
-   ```
+Basil can use browser automation, desktop automation, Apple Events, commands, and connected services when you configure the corresponding capability and approve the action. Connections support Model Context Protocol (MCP) services and Agent Client Protocol (ACP) provider profiles. The optional voice listener can initiate configured voice-driven workflows, but it is only an input method; any resulting automation remains subject to its normal permission and approval controls.
 
-4. **Install Python Dependencies Using Poetry:**
-   
-   ```bash
-   poetry install
-   ```
+Automation can affect local and external systems. A request to an agent is not authorization to send a message, modify a record, run a command, or perform another side effect. Review the target, requested capability, and approval prompt before allowing an action.
 
-## Quick Setup for Development
+### Models, settings, and account choices
 
-The project has three canonical source surfaces:
-- **Swift client:** `client/`
-- **Python backend:** `backend/`
-- **Embedded web components:** `web-components/`
+Settings are grouped into General, Personalization, Capabilities, and System. They cover Home, Hotkeys, Profile, Personal Context, Writing Examples, Models, Automation & Agents, Transcription, Meetings, Capture, Connections, Permissions, Account, and Appearance & Format.
 
-All source and build inputs use only `backend/`, `client/`, `web-components/`, `build/`, and `scripts/`. See `docs/repository-layout.md`.
+Choose model paths independently for supported reasoning and transcription work: downloaded local models, direct provider/API models using your key, custom models, or Basil Cloud. Provider enablement is distinct from choosing to use your own API key. Some settings make a capability available without starting its background runtime; Meeting Detection, for example, must be started from its dedicated control unless its separate start-at-launch preference applies.
 
-1. Start the full local development environment from the repository root:
+## Quick start for development
 
-   ```bash
-   ./dev.sh
-   ```
+Basil currently supports macOS. Install Xcode or the Swift toolchain, Python 3.11, [Poetry](https://python-poetry.org/), Node.js with npm, and Homebrew. The backend and packaged application require LLVM, Tesseract, TBB, libsndfile, PortAudio, and coreutils.
 
-   `./dev.sh` builds the verified LGPL FFmpeg dependency when needed, rebuilds every embedded web surface, starts the local Python backend, builds the Swift client, and launches Basil. It intentionally replaces an existing Basil development backend/client session.
-
-2. Create a local signed release after placing owner-only release exports in `local/release.env`:
-
-   ```bash
-   ./release.sh --create-dmg --version "$BASIL_RELEASE_VERSION"
-   ```
-
-   `--notarize` contacts Apple and `--upload` publishes artifacts; neither is part of ordinary local development.
-
-## Usage
-
-1. **Starting the Application:**
-
-   When you run the development script (`./dev.sh`), the backend is started and the client app is built and launched automatically. Alternatively, you can run the Python backend separately with Poetry and build the Swift client using Swift Package Manager.
-
-2. **Interacting with Basil:**
-
-   - The Basil icon will appear in your system tray.
-   - Click the icon to access options such as Start/Stop Monitoring, Settings, and Quit.
-   - Use **F10** to capture and analyze screen content.
-   - Use **F7** to toggle audio transcription.
-   - Access your transcription history in the Settings panel under the Transcription tab.
-
-3. **Transcription History:**
-
-   - View a list of your past transcriptions with date, duration, and preview text.
-   - Filter transcriptions by time period (24 hours, 7 days, 30 days, or all time).
-   - Play back the original audio for any transcription.
-   - View the full text of any transcription and copy it to your clipboard.
-   - Transcriptions are stored locally in a SQLite database for privacy and quick access.
-
-4. **Model Management:**
-
-   - The app dynamically downloads and manages AI models (for transcription, vision, and reasoning).
-   - When a model is removed via the settings (or via the API), both the local copy and the Hugging Face cache are cleared to ensure a fresh download if needed.
-
-## Development
-
-- **Adding New Dependencies:**
-
-  ```bash
-  poetry add package_name
-  ```
-  
-- **Development Dependencies:**
-
-  ```bash
-  poetry add --group dev package_name
-  ```
-  
-- **Running Tests:**
-
-  The project employs PyTest for testing along with MyPy for type checking.
-
-- **Formatting and Linting:**
-
-  The project uses Black for code formatting and Flake8 for linting. Please adhere to the established coding guidelines.
-
-## Distribution Options
-
-### Option 1: Bundled Application (Recommended)
-Bundle the Swift client and Python backend into a standalone macOS app. Tools such as PyInstaller (for the backend) and Xcode (for the client) can be used.
-
-### Option 2: Docker Container
-You can create a Docker image that contains the backend and necessary dependencies. For example:
-
-```dockerfile
-FROM python:3.11-slim
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    llvm \
-    tbb \
-    ffmpeg \
-    tesseract-ocr \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Poetry and application
-COPY . /app
-WORKDIR /app
-RUN pip install poetry && poetry install
+```bash
+git clone git@github.com:stratten/Basil_OS.git basil
+cd basil
+brew install llvm tesseract tbb libsndfile portaudio coreutils
+export LLVM_CONFIG=/opt/homebrew/opt/llvm/bin/llvm-config
+poetry install
+./dev.sh
 ```
 
-### Option 3: Platform-Specific Packages
-- **macOS:** Create a .app bundle using tools like py2app or Xcode integration.
-- **Linux / Windows:** Bundle the backend with platform-specific packaging tools (.deb, .rpm, or installer packages).
+`./dev.sh` builds the pinned LGPL FFmpeg dependency when necessary, refreshes the embedded web assets, starts the local backend, builds the native client, and launches the development app. It deliberately terminates existing Basil development backend processes and development-client instances before it starts. Do not run it over an active development session that you or another workflow needs to keep. Read [Getting started](docs/getting-started.md) for first-launch permissions, Apple Silicon LLVM guidance, and the complete local setup flow.
+
+## Privacy, providers, and permissions
+
+Local-model inference remains on your Mac. Direct-provider models send the selected request content to the provider you configure, and custom endpoints receive the content needed for their configured request. Basil Cloud is optional rather than required for local or bring-your-own-key operation. Provider credentials may be supplied through environment variables or Basil's local provider-key settings; no credentials are included in this repository.
+
+Capabilities that record microphone audio, inspect screen or window content, use Calendar or Contacts, watch global hotkeys, automate desktop applications, or contact an external service require the corresponding macOS permission, user approval, account, model, or connection. Meeting recordings, transcriptions, conversations, tasks, captures, models, and configuration can contain private information. Review [Privacy and data flow](docs/privacy-and-data-flow.md) before choosing a provider, granting access, connecting a service, or deleting local data.
+
+## Documentation
+
+- [Getting started](docs/getting-started.md) explains prerequisites, local setup, first launch, and permission prompts.
+- [Capabilities](docs/capabilities.md) is the detailed user-facing capability catalog, including entry points, persistence, dependencies, and limitations.
+- [Configuration](docs/configuration.md) explains Settings, model paths, API keys, Basil Cloud, connections, permissions, and runtime controls.
+- [Privacy and data flow](docs/privacy-and-data-flow.md) describes local storage, permission boundaries, provider data handling, connected services, and meeting data.
+- [Development](docs/development.md) documents the architecture, canonical web-asset builders, validation commands, and release boundaries.
+- [Repository layout](docs/repository-layout.md) and [generated files](docs/generated-files.md) explain source roots, generated artifacts, and resource staging.
+
+## Development and release
+
+The canonical source surfaces are `client/` for the native macOS application, `backend/` for the FastAPI service, and `web-components/` for embedded React/Vite renderers. Build the shipped WebKit resources with the canonical scripts under `scripts/`; staged bundles and local runtime data are not source files.
+
+Run the narrowest relevant validation for a change, such as `poetry run pytest`, `swift test --package-path client`, `swift build --package-path client`, or a package-local `npm test` and `npm run build`. Use [Development](docs/development.md) for the source boundaries, builders, and validation workflow.
+
+Community builds use `build/scripts/build_app.sh --ad-hoc`. Signing, notarization, update feeds, artifact upload, and DMG publication require release-owner credentials and can change external systems; they are not routine contributor operations.
+
+## Contributing and support
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Use [SUPPORT.md](SUPPORT.md) for reproducible bugs, installation problems, and feature requests. Do not report vulnerabilities publicly; follow [SECURITY.md](SECURITY.md).
 
 ## License
 

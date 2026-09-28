@@ -3,6 +3,9 @@ import type {
   SetupActionExecutionResponse,
   SetupActionSequenceValidationResponse,
   SetupAgentContractResponse,
+  SetupAgentModelAccessOptionsResponse,
+  SetupAgentModelAccessSelectRequest,
+  SetupAgentModelAccessSelectResponse,
   SetupAgentRequest,
   SetupAgentResponse,
   SetupAgentValidationResponse,
@@ -46,10 +49,24 @@ async function parseJsonResponse<T>(response: Response): Promise<T> {
   }
 }
 
+async function extractErrorDetail(response: Response): Promise<string> {
+  try {
+    const text = await response.text()
+    if (!text.trim()) return SETUP_SERVICE_UNAVAILABLE_MESSAGE
+    const parsed = JSON.parse(text) as { detail?: unknown }
+    if (typeof parsed.detail === 'string' && parsed.detail.trim()) {
+      return parsed.detail
+    }
+  } catch {
+    // fall through to the generic message below
+  }
+  return SETUP_SERVICE_UNAVAILABLE_MESSAGE
+}
+
 async function getJson<T>(path: string): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`)
   if (!response.ok) {
-    throw new Error(SETUP_SERVICE_UNAVAILABLE_MESSAGE)
+    throw new Error(await extractErrorDetail(response))
   }
   return parseJsonResponse<T>(response)
 }
@@ -61,7 +78,7 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   })
   if (!response.ok) {
-    throw new Error(SETUP_SERVICE_UNAVAILABLE_MESSAGE)
+    throw new Error(await extractErrorDetail(response))
   }
   return parseJsonResponse<T>(response)
 }
@@ -73,7 +90,7 @@ async function putJson<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   })
   if (!response.ok) {
-    throw new Error(SETUP_SERVICE_UNAVAILABLE_MESSAGE)
+    throw new Error(await extractErrorDetail(response))
   }
   return parseJsonResponse<T>(response)
 }
@@ -111,6 +128,29 @@ export async function updateMemoryIntelligenceSettings(
 
 export async function fetchSetupAgentContract(): Promise<SetupAgentContractResponse> {
   return getJson<SetupAgentContractResponse>('/setup-assistant/agent-contract')
+}
+
+export async function fetchModelAccessOptions(): Promise<SetupAgentModelAccessOptionsResponse> {
+  return getJson<SetupAgentModelAccessOptionsResponse>('/setup-assistant/model-access/options')
+}
+
+export async function selectModelAccess(
+  request: SetupAgentModelAccessSelectRequest,
+): Promise<SetupAgentModelAccessSelectResponse> {
+  return postJson<SetupAgentModelAccessSelectResponse>('/setup-assistant/model-access/select', request)
+}
+
+export interface ProviderApiKeyTestResult {
+  provider: string
+  valid: boolean
+  error?: string | null
+}
+
+export async function testProviderApiKey(
+  provider: string,
+  key: string,
+): Promise<ProviderApiKeyTestResult> {
+  return postJson<ProviderApiKeyTestResult>('/settings/api_models/api_keys/test', { provider, key })
 }
 
 export async function fetchLowRiskDiscovery(): Promise<SetupDiscoveryResponse> {

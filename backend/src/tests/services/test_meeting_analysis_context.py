@@ -262,9 +262,9 @@ def test_suggested_actions_prompt_injects_identity_and_digest() -> None:
 
     assert "USER IDENTITY (read this first):" in prompt
     assert "BASIL AGENT CAPABILITIES (custom digest):" in prompt
-    # New capability type and framing must be present.
+    # New capability type and durable candidate schema must be present.
     assert "scheduled_agent_task" in prompt
-    assert "INTERPRETER and" in prompt
+    assert '"disposition": "todo_candidate"' in prompt
 
 
 def test_metadata_section_omits_identity_when_absent() -> None:
@@ -304,5 +304,5 @@ def test_suggested_actions_prompt_scopes_second_person_to_user_facing_field() ->
     # why_basil_can_help is addressed to the user in the second person...
     assert '"why_basil_can_help" addressed to the user in the second person' in prompt
     # ...while suggested_agent_task stays a self-contained delegate instruction.
-    assert 'Keep "suggested_agent_task" a self-contained instruction' in prompt
-    assert "separate delegate with no chat context executes it" in prompt
+    assert 'When execution_mode is "agent_assisted", make suggested_agent_task a self-contained instruction' in prompt
+    assert 'do NOT use "you" because a separate delegate has no chat context.' in prompt

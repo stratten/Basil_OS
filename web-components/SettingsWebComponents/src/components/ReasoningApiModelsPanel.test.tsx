@@ -125,21 +125,93 @@ describe('ReasoningApiModelsPanel', () => {
     expect(container.querySelector('#reasoning-api-models-toggle-openai-claude-sonnet')).not.toBeNull()
   })
 
-  it('turns BYOK on without a bridge call and keeps models disabled across a stale snapshot', () => {
+  it('turning BYOK on without a saved key reveals the entry form without a bridge call', () => {
     sendInit({
-      providers: [{ ...PROVIDERS[0], usingOwnApiKey: false, models: [{ ...PROVIDERS[0].models[0], enabled: true }] }],
+      providers: [{ ...PROVIDERS[0], usingOwnApiKey: false, hasKey: false, models: [{ ...PROVIDERS[0].models[0], enabled: true }] }],
     })
     postMessage.mockClear()
     const byok = container.querySelector<HTMLInputElement>('#reasoning-api-models-key-source-anthropic')!
+    expect(byok.closest('label')?.textContent).toBe('Use your Anthropic API key')
     act(() => { byok.click() })
     expect(postMessage).not.toHaveBeenCalled()
     expect(container.querySelector<HTMLInputElement>('#reasoning-api-models-toggle-anthropic-claude-sonnet')!.checked).toBe(false)
     sendInit({
       type: 'snapshot',
-      providers: [{ ...PROVIDERS[0], usingOwnApiKey: false, models: [{ ...PROVIDERS[0].models[0], enabled: true }] }],
+      providers: [{ ...PROVIDERS[0], usingOwnApiKey: false, hasKey: false, models: [{ ...PROVIDERS[0].models[0], enabled: true }] }],
     })
     expect(container.querySelector<HTMLInputElement>('#reasoning-api-models-toggle-anthropic-claude-sonnet')!.checked).toBe(false)
     expect(container.querySelector<HTMLInputElement>('#reasoning-api-models-key-source-anthropic')!.checked).toBe(true)
+  })
+
+  it('turning BYOK on when a key is already saved confirms it with the backend immediately', () => {
+    sendInit({
+      providers: [{ ...PROVIDERS[0], usingOwnApiKey: false, hasKey: true }],
+    })
+    postMessage.mockClear()
+    const byok = container.querySelector<HTMLInputElement>('#reasoning-api-models-key-source-anthropic')!
+    act(() => { byok.click() })
+    expect(lastMessageOfType('requestToggleProviderKeySource')).toEqual(
+      expect.objectContaining({ providerId: 'anthropic', useOwnKey: true }),
+    )
+    expect(byok.checked).toBe(true)
+  })
+
+  it('requires inline confirmation before requesting removal of a saved key', () => {
+    sendInit()
+    postMessage.mockClear()
+    const removeButton = container.querySelector<HTMLButtonElement>('.reasoning-api-models-key-remove-button')!
+    act(() => { removeButton.click() })
+    expect(lastMessageOfType('requestRemoveApiKey')).toBeUndefined()
+    expect(container.querySelector('.reasoning-api-models-key-remove-confirm-title')?.textContent).toBe('Remove your Anthropic API key?')
+    expect(container.querySelector('.reasoning-api-models-key-input')).toBeNull()
+
+    const cancel = Array.from(container.querySelectorAll<HTMLButtonElement>('.reasoning-api-models-key-remove-confirm button')).find((button) => button.textContent === 'Cancel')!
+    act(() => { cancel.click() })
+    expect(container.querySelector('.reasoning-api-models-key-remove-confirm')).toBeNull()
+    expect(container.querySelector('.reasoning-api-models-key-input')).not.toBeNull()
+    expect(lastMessageOfType('requestRemoveApiKey')).toBeUndefined()
+  })
+
+  it('removes a saved key after confirmation and reflects the refreshed snapshot', () => {
+    sendInit()
+    act(() => { container.querySelector<HTMLButtonElement>('.reasoning-api-models-key-remove-button')!.click() })
+    act(() => { container.querySelector<HTMLButtonElement>('.reasoning-api-models-key-remove-confirm-button')!.click() })
+    const request = lastMessageOfType('requestRemoveApiKey')
+    expect(request).toEqual(expect.objectContaining({ providerId: 'anthropic' }))
+    expect(container.querySelector('.reasoning-api-models-key-remove-confirm-button')?.textContent).toBe('Removing...')
+    expect(container.querySelector<HTMLInputElement>('#reasoning-api-models-key-source-anthropic')!.disabled).toBe(true)
+
+    act(() => {
+      window.basilReasoningApiModels!.onEvent({
+        type: 'snapshot', isLoading: false, useApiModels: true,
+        providers: [{ ...PROVIDERS[0], usingOwnApiKey: false, hasKey: false }],
+      })
+      window.basilReasoningApiModels!.onEvent({ type: 'intentResult', requestId: request.requestId, status: 'success' })
+    })
+    expect(container.querySelector('.reasoning-api-models-key-remove-button')).toBeNull()
+    expect(container.querySelector('.reasoning-api-models-key-remove-confirm')).toBeNull()
+    expect(container.querySelector<HTMLInputElement>('#reasoning-api-models-key-source-anthropic')!.checked).toBe(false)
+    expect(container.querySelector('.reasoning-api-models-status-success')?.textContent).toBe('Your API key was removed from this Mac.')
+  })
+
+  it('keeps the saved key visible and shows the error when removal fails', () => {
+    sendInit()
+    act(() => { container.querySelector<HTMLButtonElement>('.reasoning-api-models-key-remove-button')!.click() })
+    act(() => { container.querySelector<HTMLButtonElement>('.reasoning-api-models-key-remove-confirm-button')!.click() })
+    const request = lastMessageOfType('requestRemoveApiKey')
+    act(() => {
+      window.basilReasoningApiModels!.onEvent({ type: 'intentResult', requestId: request.requestId, status: 'error', message: 'Keychain unavailable' })
+    })
+    expect(container.querySelector('.reasoning-api-models-key-remove-button')).not.toBeNull()
+    expect(container.querySelector('.reasoning-api-models-status-error')?.textContent).toBe('Keychain unavailable')
+  })
+
+  it('links to where to get an API key for a provider', () => {
+    sendInit()
+    const explainer = container.querySelector('.reasoning-api-models-key-explainer')!
+    const link = explainer.querySelector('a')!
+    expect(link.textContent).toBe('Get your Anthropic API key')
+    expect(link.getAttribute('href')).toBe('https://console.anthropic.com/settings/keys')
   })
 
   it('shows available/enabled counts in the provider header and toggles the collapse disclosure', () => {

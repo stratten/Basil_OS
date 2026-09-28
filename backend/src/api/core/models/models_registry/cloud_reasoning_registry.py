@@ -345,7 +345,117 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
         "supports_openrouter_proxy": True,
     },
     # -------------------------------------------------------------------------
-    # GPT-5.6 models (current generation).
+    # GPT-6 models (current generation). Sampling parameters are omitted because
+    # LangChain only strips them for gpt-5* model names and Astra rejects them.
+    # Ref: https://developers.openai.com/api/docs/guides/latest-model
+    # -------------------------------------------------------------------------
+    "gpt-6-astra": {
+        "handler": "openai_api",
+        "location": "cloud",
+        "provider": PROVIDER_OPENAI,
+        "display_name": "GPT-6 Astra",
+        "capabilities": ["reasoning", "vision"],
+        "features": [
+            "reasoning_effort",
+            "function_calling",
+            "streaming",
+            "structured_outputs",
+            "web_search",
+            "code_interpreter",
+            "file_search",
+            "mcp",
+        ],
+        "feature_config": {
+            "reasoning_effort": {
+                "levels": ["low", "medium", "high", "xhigh", "max"],
+                "default": "medium",
+            },
+            "request_parameters": {
+                "omit": ["temperature", "top_p"],
+            },
+        },
+        "context_window": 1050000,
+        "max_output_tokens": 128000,
+        "api_endpoint": "responses",
+        "openrouter_id": "openai/gpt-6-astra",
+        "description": "OpenAI's most capable model for the hardest reasoning, coding, research, and agentic work",
+        "display_order": -8,
+        "default_enabled": False,
+        "recommended": False,
+        "supports_openrouter_proxy": True,
+    },
+    "gpt-6-sol": {
+        "handler": "openai_api",
+        "location": "cloud",
+        "provider": PROVIDER_OPENAI,
+        "display_name": "GPT-6 Sol",
+        "capabilities": ["reasoning", "vision"],
+        "features": [
+            "reasoning_effort",
+            "function_calling",
+            "streaming",
+            "structured_outputs",
+            "web_search",
+            "code_interpreter",
+            "file_search",
+            "mcp",
+        ],
+        "feature_config": {
+            "reasoning_effort": {
+                "levels": ["none", "low", "medium", "high", "xhigh", "max"],
+                "default": "medium",
+            },
+            "request_parameters": {
+                "omit": ["temperature", "top_p"],
+            },
+        },
+        "context_window": 1050000,
+        "max_output_tokens": 128000,
+        "api_endpoint": "responses",
+        "openrouter_id": "openai/gpt-6-sol",
+        "description": "Fast GPT-6 model for complex coding and agentic workflows",
+        "display_order": -7,
+        "default_enabled": False,
+        "recommended": False,
+        "supports_openrouter_proxy": True,
+    },
+    "gpt-6-luna": {
+        "handler": "openai_api",
+        "location": "cloud",
+        "provider": PROVIDER_OPENAI,
+        "display_name": "GPT-6 Luna",
+        "capabilities": ["reasoning", "vision"],
+        "features": [
+            "reasoning_effort",
+            "function_calling",
+            "streaming",
+            "structured_outputs",
+            "web_search",
+            "code_interpreter",
+            "file_search",
+            "mcp",
+        ],
+        "feature_config": {
+            "reasoning_effort": {
+                "levels": ["none", "low", "medium", "high", "xhigh", "max"],
+                "default": "medium",
+            },
+            "request_parameters": {
+                "omit": ["temperature", "top_p"],
+            },
+        },
+        "context_window": 1050000,
+        "max_output_tokens": 128000,
+        "api_endpoint": "responses",
+        "openrouter_id": "openai/gpt-6-luna",
+        "description": "Most efficient GPT-6 model for focused, high-volume tasks",
+        "display_order": -6,
+        "default_enabled": False,
+        "recommended": False,
+        "supports_openrouter_proxy": True,
+    },
+    # -------------------------------------------------------------------------
+    # GPT-5.6 models (previous generation).
     # Ref: https://developers.openai.com/api/docs/guides/latest-model
     # -------------------------------------------------------------------------
     "gpt-5.6-sol": {
@@ -410,6 +520,7 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
         "display_order": -4,
         "default_enabled": False,
         "recommended": False,
+        "recommended_for_onboarding": True,
         "supports_openrouter_proxy": True,
     },
     "gpt-5.6-luna": {
@@ -705,6 +816,128 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
         "recommended_reason": "Google's most capable reasoning model",
         "supports_openrouter_proxy": True,
     },
+    # Gemini 3.6+ Flash: Google recommends leaving sampling at defaults on Gemini 3 (lower
+    # temperatures can cause looping) and 3.7/3.8 reject the `minimal` thinking level.
+    "gemini-3.8-flash": {
+        "handler": "gemini_api",
+        "location": "cloud",
+        "provider": PROVIDER_GOOGLE,
+        "display_name": "Gemini 3.8 Flash",
+        "capabilities": ["reasoning", "vision"],
+        "features": [
+            "function_calling",
+            "streaming",
+            "structured_outputs",
+            "thinking",
+        ],
+        "feature_config": {
+            "thinking": {
+                "levels": ["low", "medium", "high"],
+                "default": "medium",
+            },
+            "request_parameters": {
+                "omit": ["temperature", "top_p", "top_k"],
+            },
+        },
+        "context_window": 1048576,
+        "max_output_tokens": 65536,
+        "openrouter_id": "google/gemini-3.8-flash",
+        "description": "Google's most intelligent Flash model for long-horizon coding, agents, and complex workflows",
+        "display_order": -5,
+        "default_enabled": False,
+        "recommended": False,
+        "supports_openrouter_proxy": True,
+    },
+    "gemini-3.7-flash": {
+        "handler": "gemini_api",
+        "location": "cloud",
+        "provider": PROVIDER_GOOGLE,
+        "display_name": "Gemini 3.7 Flash",
+        "capabilities": ["reasoning", "vision"],
+        "features": [
+            "function_calling",
+            "streaming",
+            "structured_outputs",
+            "thinking",
+        ],
+        "feature_config": {
+            "thinking": {
+                "levels": ["low", "medium", "high"],
+                "default": "medium",
+            },
+            "request_parameters": {
+                "omit": ["temperature", "top_p", "top_k"],
+            },
+        },
+        "context_window": 1048576,
+        "max_output_tokens": 65536,
+        "openrouter_id": "google/gemini-3.7-flash",
+        "description": "Gemini 3.7 Flash for general agentic workflows, multi-step orchestration, and coding",
+        "display_order": -4,
+        "default_enabled": False,
+        "recommended": False,
+        "supports_openrouter_proxy": True,
+    },
+    "gemini-3.6-flash": {
+        "handler": "gemini_api",
+        "location": "cloud",
+        "provider": PROVIDER_GOOGLE,
+        "display_name": "Gemini 3.6 Flash",
+        "capabilities": ["reasoning", "vision"],
+        "features": [
+            "function_calling",
+            "streaming",
+            "structured_outputs",
+            "thinking",
+        ],
+        "feature_config": {
+            "thinking": {
+                "levels": ["minimal", "low", "medium", "high"],
+                "default": "medium",
+            },
+            "request_parameters": {
+                "omit": ["temperature", "top_p", "top_k"],
+            },
+        },
+        "context_window": 1048576,
+        "max_output_tokens": 65536,
+        "openrouter_id": "google/gemini-3.6-flash",
+        "description": "Fast, lower-cost Gemini Flash model for code generation and rapid agentic loops",
+        "display_order": -3,
+        "default_enabled": False,
+        "recommended": False,
+        "supports_openrouter_proxy": True,
+    },
+    "gemini-3.5-flash-lite": {
+        "handler": "gemini_api",
+        "location": "cloud",
+        "provider": PROVIDER_GOOGLE,
+        "display_name": "Gemini 3.5 Flash-Lite",
+        "capabilities": ["reasoning", "vision"],
+        "features": [
+            "function_calling",
+            "streaming",
+            "structured_outputs",
+            "thinking",
+        ],
+        "feature_config": {
+            "thinking": {
+                "levels": ["minimal", "low", "medium", "high"],
+                "default": "medium",
+            },
+            "request_parameters": {
+                "omit": ["temperature", "top_p", "top_k"],
+            },
+        },
+        "context_window": 1048576,
+        "max_output_tokens": 65536,
+        "openrouter_id": "google/gemini-3.5-flash-lite",
+        "description": "Low-latency, cost-effective Gemini model for high-volume subagent tasks and document parsing",
+        "display_order": -2,
+        "default_enabled": False,
+        "recommended": False,
+        "supports_openrouter_proxy": True,
+    },
     "gemini-3.5-flash": {
         "handler": "gemini_api",
         "location": "cloud",
@@ -730,6 +963,7 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
         "display_order": -1,
         "default_enabled": False,
         "recommended": False,
+        "recommended_for_onboarding": True,
         "supports_openrouter_proxy": True,
     },
     "gemini-3.1-flash-lite": {
@@ -826,9 +1060,110 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
     # ANTHROPIC MODELS
     # =========================================================================
     # -------------------------------------------------------------------------
-    # Claude Fable 5 / Opus 4.8 - Latest Anthropic models.
+    # Claude Opus 5.5 / Fable 5.1 / Opus 5 - Latest Anthropic models.
+    # Opus 5.5 and Fable 5.1 keep adaptive thinking always on and reject
+    # `thinking.type` "disabled"/"enabled" plus forced `tool_choice` (any/tool).
     # Ref: https://platform.claude.com/docs/en/about-claude/models/overview
     # -------------------------------------------------------------------------
+    "claude-opus-5-5": {
+        "handler": "anthropic_api",
+        "location": "cloud",
+        "provider": PROVIDER_ANTHROPIC,
+        "display_name": "Claude Opus 5.5",
+        "capabilities": ["reasoning", "vision"],
+        "features": [
+            "adaptive_thinking",
+            "function_calling",
+            "streaming",
+            "system_prompts",
+        ],
+        "feature_config": {
+            "adaptive_thinking": {
+                "type": "adaptive",
+                "effort_levels": ["low", "medium", "high", "xhigh", "max"],
+                "default_effort": "medium",
+                # Request provider summaries for Basil's reasoning UI; empty signed adaptive-thinking blocks remain valid and adapter-normalized.
+                "default_display": "summarized",
+            },
+            "request_parameters": {
+                "omit": ["temperature", "top_p", "top_k"],
+            },
+        },
+        "context_window": 1000000,
+        "max_output_tokens": 128000,
+        "openrouter_id": "anthropic/claude-opus-5.5",
+        "description": "Anthropic's recommended starting model for long-running agentic coding and knowledge work",
+        "display_order": -8,
+        "default_enabled": False,
+        "recommended": False,
+        "supports_openrouter_proxy": True,
+    },
+    "claude-fable-5-1": {
+        "handler": "anthropic_api",
+        "location": "cloud",
+        "provider": PROVIDER_ANTHROPIC,
+        "display_name": "Claude Fable 5.1",
+        "capabilities": ["reasoning", "vision"],
+        "features": [
+            "adaptive_thinking",
+            "function_calling",
+            "streaming",
+            "system_prompts",
+        ],
+        "feature_config": {
+            "adaptive_thinking": {
+                "type": "adaptive",
+                "effort_levels": ["low", "medium", "high", "xhigh", "max"],
+                "default_effort": "high",
+                # Request provider summaries for Basil's reasoning UI; empty signed adaptive-thinking blocks remain valid and adapter-normalized.
+                "default_display": "summarized",
+            },
+            "request_parameters": {
+                "omit": ["temperature", "top_p", "top_k"],
+            },
+        },
+        "context_window": 1000000,
+        "max_output_tokens": 128000,
+        "openrouter_id": "anthropic/claude-fable-5.1",
+        "description": "Anthropic's most capable model for demanding reasoning and long-horizon agentic work",
+        "display_order": -7,
+        "default_enabled": False,
+        "recommended": False,
+        "supports_openrouter_proxy": True,
+    },
+    "claude-opus-5": {
+        "handler": "anthropic_api",
+        "location": "cloud",
+        "provider": PROVIDER_ANTHROPIC,
+        "display_name": "Claude Opus 5",
+        "capabilities": ["reasoning", "vision"],
+        "features": [
+            "adaptive_thinking",
+            "function_calling",
+            "streaming",
+            "system_prompts",
+        ],
+        "feature_config": {
+            "adaptive_thinking": {
+                "type": "adaptive",
+                "effort_levels": ["low", "medium", "high", "xhigh", "max"],
+                "default_effort": "high",
+                # Request provider summaries for Basil's reasoning UI; empty signed adaptive-thinking blocks remain valid and adapter-normalized.
+                "default_display": "summarized",
+            },
+            "request_parameters": {
+                "omit": ["temperature", "top_p", "top_k"],
+            },
+        },
+        "context_window": 1000000,
+        "max_output_tokens": 128000,
+        "openrouter_id": "anthropic/claude-opus-5",
+        "description": "Previous Opus-tier Claude model with 1M context, 128K output, and adaptive thinking",
+        "display_order": -6,
+        "default_enabled": False,
+        "recommended": False,
+        "supports_openrouter_proxy": True,
+    },
     "claude-fable-5": {
         "handler": "anthropic_api",
         "location": "cloud",
@@ -894,6 +1229,7 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
         "display_order": -5,
         "default_enabled": False,
         "recommended": False,
+        "recommended_for_onboarding": True,
         "supports_openrouter_proxy": True,
     },
     "claude-opus-4-8": {
@@ -936,15 +1272,18 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
         "display_name": "Claude Opus 4.7",
         "capabilities": ["reasoning", "vision"],
         "features": [
-            "extended_thinking",
+            "adaptive_thinking",
             "function_calling",
             "streaming",
             "system_prompts",
         ],
         "feature_config": {
-            "extended_thinking": {
-                "budget_tokens": 100000,
-                "max_output_tokens_with_thinking": 128000,
+            "adaptive_thinking": {
+                "type": "adaptive",
+                "effort_levels": ["low", "medium", "high", "xhigh", "max"],
+                "default_effort": "high",
+                # Request provider summaries for Basil's reasoning UI; empty signed adaptive-thinking blocks remain valid and adapter-normalized.
+                "default_display": "summarized",
             },
             "request_parameters": {
                 "omit": ["temperature", "top_p", "top_k"],
@@ -1025,9 +1364,9 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
         "supports_openrouter_proxy": True,
     },
     # -------------------------------------------------------------------------
-    # Claude Opus 4.5 - Previous flagship (January 2026).
+    # Claude Opus 4.5 - Previous flagship (November 2025).
     # -------------------------------------------------------------------------
-    "claude-opus-4-5-20260115": {
+    "claude-opus-4-5-20251101": {
         "handler": "anthropic_api",
         "location": "cloud",
         "provider": PROVIDER_ANTHROPIC,
@@ -1045,8 +1384,8 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
                 "max_output_tokens_with_thinking": 128000,
             }
         },
-        "context_window": 500000,
-        "max_output_tokens": 128000,
+        "context_window": 200000,
+        "max_output_tokens": 64000,
         "openrouter_id": "anthropic/claude-opus-4.5",
         "description": "Most powerful Claude model with superior reasoning, extended context, and advanced capabilities",
         "display_order": 1,

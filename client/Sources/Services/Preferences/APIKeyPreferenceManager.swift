@@ -46,11 +46,6 @@ final class APIKeyPreferenceManager: ObservableObject {
         // Sync to backend
         Task {
             await syncPreferenceToBackend()
-            
-            // If switching to trial, also sync the trial key
-            if normalizedPreference == .useBasilCloud {
-                await syncTrialKeyToBackend()
-            }
         }
     }
     
@@ -98,18 +93,6 @@ final class APIKeyPreferenceManager: ObservableObject {
         }
     }
     
-    /// Sync trial key to backend when Basil Cloud is selected.
-    private func syncTrialKeyToBackend() async {
-        guard preference == .useBasilCloud else { return }
-        
-        do {
-            let trialKey = TrialKeyManager.shared.getOrCreateTrialKey()
-            try await apiClient.setTrialKey(trialKey)
-            logger.info("🎫 Trial key synced to backend (preference: basil_cloud)")
-        } catch {
-            logger.warning("🔐 Failed to sync trial key to backend: \(error.localizedDescription)")
-        }
-    }
 }
 
 // MARK: - Convenience Extensions
@@ -120,14 +103,9 @@ extension APIKeyPreferenceManager {
         preference.isBasilCloudAlias
     }
     
-    /// Whether the user is using their own API keys (not trial or app keys)
+    /// Whether the user is using their own API keys.
     var usesOwnKeys: Bool {
         preference == .useOwnKeys
-    }
-    
-    /// Whether the user is using trial keys
-    var usesTrial: Bool {
-        preference.isBasilCloudAlias
     }
     
     /// Whether the user is using app keys (billed through Basil)

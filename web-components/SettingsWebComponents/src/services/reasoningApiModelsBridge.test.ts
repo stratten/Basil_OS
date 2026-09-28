@@ -7,6 +7,7 @@ import {
   requestToggleMaster,
   requestToggleModel,
   requestToggleProvider,
+  requestRemoveApiKey,
   requestToggleProviderKeySource,
 } from './reasoningApiModelsBridge'
 
@@ -26,6 +27,11 @@ describe('reasoningApiModelsBridge', () => {
   it('sends requestToggleProvider with providerId', () => {
     const id = requestToggleProvider('anthropic', true)
     expect(postMessage).toHaveBeenCalledWith({ type: 'requestToggleProvider', requestId: id, providerId: 'anthropic', enabled: true })
+  })
+
+  it('sends requestRemoveApiKey with the provider id', () => {
+    const id = requestRemoveApiKey('gemini')
+    expect(postMessage).toHaveBeenCalledWith({ type: 'requestRemoveApiKey', requestId: id, providerId: 'gemini' })
   })
 
   it('sends requestToggleProviderKeySource with useOwnKey false', () => {

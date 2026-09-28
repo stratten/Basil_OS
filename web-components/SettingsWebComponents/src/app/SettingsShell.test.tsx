@@ -91,6 +91,10 @@ describe('SettingsShell', () => {
           selectedModelId: '',
           useApiModels: false,
           reasoningModelsAvailable: true,
+          localTranscriptionModels: [],
+          apiTranscriptionModels: [],
+          selectedTranscriptionModelId: '',
+          transcriptionModelsAvailable: true,
         },
       })
     })
@@ -264,6 +268,32 @@ describe('SettingsShell', () => {
       })
     })
     expect(container.querySelector('.models-settings-shell')).not.toBeNull()
+  })
+
+  it('exposes Models capability subtabs in the sidebar and routes them into the Models surface', () => {
+    act(() => { navigationButton('Models').click() })
+    expect(container.querySelector<HTMLButtonElement>('button[aria-label="Collapse Models sections"]')).not.toBeNull()
+    expect(Array.from(container.querySelectorAll('.settings-shell-nav-subitem')).map((item) => item.textContent))
+      .toEqual(['Reasoning', 'Transcription'])
+
+    const transcriptionSubItem = Array.from(container.querySelectorAll<HTMLButtonElement>('.settings-shell-nav-subitem'))
+      .find((button) => button.textContent === 'Transcription')!
+    act(() => { transcriptionSubItem.click() })
+    act(() => {
+      window.basilModelsSettings!.onEvent({
+        type: 'init',
+        protocolVersion: 1,
+        isLoadingModels: false,
+        localVisionFallbackEnabled: false,
+        isLocalVisionFallbackModelInstalled: false,
+        reasoningFallbackEnabled: false,
+        reasoningFallbackModelId: '',
+        reasoningGroups: [],
+        transcriptionGroups: [],
+      })
+    })
+    expect(transcriptionSubItem.classList.contains('settings-shell-nav-subitem-selected')).toBe(true)
+    expect(Array.from(container.querySelectorAll<HTMLButtonElement>('[role="tab"]')).find((tab) => tab.textContent === 'Transcription')?.getAttribute('aria-selected')).toBe('true')
   })
 
   it('enables the Automation & Agents leaf and hydrates its Settings sub-tab by default', () => {
@@ -445,9 +475,8 @@ describe('SettingsShell', () => {
         cardExpiration: '',
         apiKeyPreference: 'trial',
         basilCloudSelected: true,
-        basilCloudBadge: 'Trial',
-        basilCloudDescription: 'Try Basil Cloud free.',
-        trialExhausted: false,
+        basilCloudBadge: 'Account required',
+        basilCloudDescription: 'Sign in and add payment to use Basil Cloud.',
         isLoadingUsage: false,
         currentPeriodFormatted: '',
         totalCostFormatted: '$0.00',

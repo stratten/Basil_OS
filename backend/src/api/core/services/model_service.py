@@ -83,19 +83,14 @@ AUTH_TOKEN_REQUEST_TIMEOUT_SECONDS = 180.0
 
 @dataclass(frozen=True)
 class BasilCloudCredentials:
-    """Credential state for Basil Cloud trial-first routing."""
-    access_token: Optional[str]
-    trial_key: Optional[str]
-    label: str
-    setup_agent_key: Optional[str] = None
+    """Credential state for entitlement-confirmed Basil Cloud routing."""
+
+    access_token: str
+    label: str = "basil_cloud_account"
 
     @property
     def has_credentials(self) -> bool:
-        return (
-            self.access_token is not None
-            or self.trial_key is not None
-            or self.setup_agent_key is not None
-        )
+        return bool(self.access_token)
 
 
 def set_auth_access_token(token: str) -> None:
@@ -118,32 +113,6 @@ def clear_auth_access_token() -> None:
     global _auth_access_token
     _auth_access_token = None
     api_logger.info("🔐 Auth access token cleared")
-
-
-# In-memory storage for trial key (set by Swift client via API)
-_trial_key: Optional[str] = None
-
-
-def set_trial_key(key: str) -> None:
-    """Set the trial key for unauthenticated API routing.
-    
-    Called by Swift client on app startup for non-authenticated users.
-    """
-    global _trial_key
-    _trial_key = key
-    api_logger.info("🎫 Trial key set for session")
-
-
-def get_trial_key() -> Optional[str]:
-    """Get the current trial key."""
-    return _trial_key
-
-
-def clear_trial_key() -> None:
-    """Clear the trial key."""
-    global _trial_key
-    _trial_key = None
-    api_logger.info("🎫 Trial key cleared")
 
 
 async def request_auth_token_from_swift() -> Optional[str]:
@@ -241,45 +210,35 @@ def resolve_pending_token_request(request_id: str, token: Optional[str]) -> bool
 
 
 async def resolve_basil_cloud_credentials(context_label: str = "Basil Cloud") -> BasilCloudCredentials:
-    """Resolve trial and account credentials for Basil Cloud routes."""
-    from ..models.preferences import Preferences, APIKeyPreference
+    """Resolve an authenticated, entitlement-confirmed Basil Cloud token."""
+    from .model_access_policy import check_basil_cloud_eligibility
 
-    try:
-        pref = Preferences.load()
-        api_key_preference = pref.auth.api_key_preference
-    except Exception as e:
-        api_logger.warning(f"Failed to check API key preference: {e}")
-        api_key_preference = APIKeyPreference.BASIL_CLOUD
-
-    if api_key_preference not in {
-        APIKeyPreference.BASIL_CLOUD,
-        APIKeyPreference.TRIAL,
-        APIKeyPreference.APP_KEYS,
-    }:
-        raise RuntimeError(
-            f"Auth routing was requested for unsupported API key preference: {api_key_preference}"
-        )
-
-    trial_key = get_trial_key()
     access_token = get_auth_access_token()
-
     if access_token is None:
         api_logger.info(f"🔐 No account token cached, requesting from Swift for {context_label}")
         access_token = await request_auth_token_from_swift()
 
-    if trial_key is None and access_token is None:
-        api_logger.error(f"🚫 Basil Cloud selected but no usable credentials for {context_label}")
+    if access_token is None:
+        api_logger.error(f"🚫 Basil Cloud selected but no account token is available for {context_label}")
         raise RuntimeError(
-            "Basil Cloud is selected, but no included-credit key or account token is available. "
-            "Please restart the app, sign in, or choose another model access option."
+            "Basil Cloud is selected, but no account token is available. "
+            "Please sign in or choose another model access option."
         )
 
-    label = "basil_cloud_trial_first" if trial_key else "basil_cloud_account"
-    return BasilCloudCredentials(
-        access_token=access_token,
-        trial_key=trial_key,
-        label=label,
-    )
+    eligibility = await check_basil_cloud_eligibility(access_token)
+    if not eligibility.eligible:
+        api_logger.error(
+            "Basil Cloud entitlement check failed for %s: %s",
+            context_label,
+            eligibility.reason,
+        )
+        raise RuntimeError(
+            eligibility.message
+            or "Basil Cloud is not currently available for this account. "
+            "Please check your billing status or choose another model access option."
+        )
+
+    return BasilCloudCredentials(access_token=access_token)
 
 
 class ModelNotFoundError(Exception):
@@ -396,36 +355,30 @@ class ModelService:
             if requires_auth_routing:
                 credentials = await resolve_basil_cloud_credentials(model_id)
                 access_token_to_use = credentials.access_token
-                trial_key_to_use = credentials.trial_key
-                auth_type = credentials.label
-                
+
                 auth_proxy_model_id = registry_model_id or model_id
-                api_logger.info(f"🔐 Auth proxy required for {auth_proxy_model_id} ({auth_type})")
+                api_logger.info(
+                    f"🔐 Auth proxy required for {auth_proxy_model_id} ({credentials.label})"
+                )
                 proxy_model_id = f"auth_proxy-{auth_proxy_model_id}"
-                
-                # FIRST: Check if proxy model is already loaded and has valid auth
-                # The cached model has the token/key embedded from when it was created
+
+                # The cached model token is refreshed on each authorized request.
                 if proxy_model_id in self._active_models:
                     model = self._active_models[proxy_model_id]
                     if model.state == ModelState.READY:
                         if isinstance(model, AuthProxyModel):
-                            if access_token_to_use and not model.access_token:
-                                model.access_token = access_token_to_use
-                            if trial_key_to_use and not model.trial_key:
-                                model.trial_key = trial_key_to_use
+                            model.access_token = access_token_to_use
                         api_logger.info(f"🔐 Returning cached AuthProxyModel for {auth_proxy_model_id}")
                         return model
                     await self.model_manager.unload_model(proxy_model_id)
                     del self._active_models[proxy_model_id]
-                
-                # Create new AuthProxyModel instance
-                api_logger.info(f"🔐 Creating new AuthProxyModel for {auth_proxy_model_id} (token={access_token_to_use is not None}, trial={trial_key_to_use is not None})")
+
+                api_logger.info(f"🔐 Creating new AuthProxyModel for {auth_proxy_model_id}")
                 try:
                     model = AuthProxyModel(
                         model_id=auth_proxy_model_id,
                         access_token=access_token_to_use,
-                        trial_key=trial_key_to_use,
-                        required_capabilities=capabilities
+                        required_capabilities=capabilities,
                     )
                     await model.load()
                     self._active_models[proxy_model_id] = model

@@ -15,15 +15,14 @@ def test_auth_proxy_model_uses_configured_auth_service_url(monkeypatch):
     importlib.reload(configured_module)
 
 
-def test_auth_proxy_model_uses_setup_agent_header_without_trial_or_bearer_headers():
+def test_auth_proxy_model_uses_bearer_header():
     model = AuthProxyModel(
         model_id="claude-sonnet-4-5-20250929",
-        setup_agent_key="setup-agent-secret",
+        access_token="account-token",
     )
 
     headers = model._build_headers()
 
-    assert headers["X-Basil-Setup-Agent-Key"] == "setup-agent-secret"
+    assert headers["Authorization"] == "Bearer account-token"
     assert "X-Trial-Key" not in headers
-    assert "Authorization" not in headers
-    assert model._current_auth_label() == "setup_agent"
+    assert "X-Basil-Setup-Agent-Key" not in headers

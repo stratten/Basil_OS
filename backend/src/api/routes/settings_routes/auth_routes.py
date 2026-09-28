@@ -38,10 +38,6 @@ class AuthTokenUpdate(BaseModel):
     """Model for updating the auth access token."""
     access_token: str = Field(description="JWT access token from auth service")
 
-class TrialKeyUpdate(BaseModel):
-    """Model for updating the trial key."""
-    trial_key: str = Field(description="Trial key for unauthenticated API access")
-
 # Endpoints
 
 @router.get("", response_model=SettingsResponse[AuthSettings])
@@ -136,27 +132,4 @@ async def clear_auth_token() -> StatusResponse:
         )
     except Exception as e:
         api_logger.error(f"❌ Error clearing auth token: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Trial key management - allows Swift client to pass trial key for unauthenticated API access
-
-@router.post("/trial-key", response_model=StatusResponse)
-async def set_trial_key(key_update: TrialKeyUpdate) -> StatusResponse:
-    """Set the trial key for unauthenticated API routing.
-    
-    Called by Swift client on app startup for non-authenticated users.
-    Trial keys allow $1 of API usage without requiring account creation.
-    """
-    try:
-        from ...core.services.model_service import set_trial_key
-        set_trial_key(key_update.trial_key)
-        
-        api_logger.info("🎫 Trial key received from client")
-        
-        return StatusResponse(
-            status="success",
-            message="Trial key set successfully."
-        )
-    except Exception as e:
-        api_logger.error(f"❌ Error setting trial key: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

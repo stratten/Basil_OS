@@ -212,9 +212,8 @@ def create_langchain_llm_from_model(
     # 1. AuthProxy check (cloud models routed through auth service)
     is_auth_proxy = (
         hasattr(llm_model, 'access_token') and
-        hasattr(llm_model, 'trial_key') and
         hasattr(llm_model, 'openrouter_model_id') and
-        (llm_model.access_token is not None or llm_model.trial_key is not None)
+        llm_model.access_token is not None
     )
 
     logger.info(f"🔍 LLM model check: class={llm_model.__class__.__name__}, is_auth_proxy={is_auth_proxy}")

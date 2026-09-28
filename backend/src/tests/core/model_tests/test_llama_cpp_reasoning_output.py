@@ -53,6 +53,9 @@ class _FakeLlm:
             return list(self._tokenizer_tokens)
         return list(range(len(text.decode("utf-8").split())))
 
+    def n_ctx(self) -> int:
+        return 32_768
+
     def create_chat_completion(self, **kwargs: Any) -> Any:
         self.calls.append("chat_stream" if kwargs.get("stream") else "chat")
         self.last_messages = kwargs.get("messages")

@@ -236,11 +236,6 @@ build_one_bundle \
     "src/entries/model-download-mini-panel.html"
 
 build_one_bundle \
-    "$PROJECT_ROOT/web-components/TrialExhaustionPanel" \
-    "$PROJECT_ROOT/client/Sources/Resources/TrialExhaustionPanelAssets" \
-    "src/entries/trial-exhaustion-panel.html"
-
-build_one_bundle \
     "$PROJECT_ROOT/web-components/PowerUserGuidePanel" \
     "$PROJECT_ROOT/client/Sources/Resources/PowerUserGuidePanelAssets" \
     "src/entries/power-user-guide-panel.html"

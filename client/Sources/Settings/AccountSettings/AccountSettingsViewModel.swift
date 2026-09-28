@@ -8,7 +8,7 @@ import Combine
 /// triggering keychain access prompts when users just want to change their
 /// API key preference. Auth data is only loaded when:
 /// - User explicitly requests it (signs in, views payment/usage)
-/// - Included credit is exhausted and Basil Cloud needs account/payment status
+/// - The user selects Basil Cloud and eligibility needs checking
 @MainActor
 class AccountSettingsViewModel: ObservableObject {
     // MARK: - Published Properties
@@ -83,40 +83,33 @@ class AccountSettingsViewModel: ObservableObject {
         return "\(cardExpMonth)/\(cardExpYear)"
     }
     
-    /// Whether the trial quota has been exhausted.
-    var trialExhausted: Bool {
-        return TrialExhaustionManager.shared.isTrialExhausted
-    }
-    
     var basilCloudSelected: Bool {
         apiKeyPreference.isBasilCloudAlias
     }
     
+    var basilCloudEligible: Bool {
+        hasLoadedAuthState && isAuthenticated && hasPaymentMethod
+    }
+
     var basilCloudBadge: String {
-        if !trialExhausted {
-            return "\(TrialExhaustionManager.shared.remainingBalanceFormatted) included"
-        }
         if !hasLoadedAuthState {
             return "Account required"
         }
-        if isAuthenticated && hasPaymentMethod {
+        if basilCloudEligible {
             return "Billing ready"
         }
         return "Setup required"
     }
     
     var basilCloudDescription: String {
-        if !trialExhausted {
-            return "Use included credit first, then continue with your Basil account when credit runs out."
-        }
         if !hasLoadedAuthState {
-            return "Included credit is used up. Sign in and add payment to keep using Basil Cloud."
+            return "Sign in and add payment to use Basil Cloud."
         }
         if !isAuthenticated {
-            return "Included credit is used up. Sign in to continue with Basil Cloud."
+            return "Sign in to continue with Basil Cloud."
         }
         if !hasPaymentMethod {
-            return "Included credit is used up. Add a payment method to continue with Basil Cloud."
+            return "Add a payment method to continue with Basil Cloud."
         }
         return "Cloud AI access through your Basil account, with usage billed to your account."
     }
@@ -132,7 +125,6 @@ class AccountSettingsViewModel: ObservableObject {
         // Load preference immediately - this doesn't require keychain access
         loadPreferenceOnly()
         observePreferenceChanges()
-        observeTrialBalanceChanges()
         // NOTE: Auth state is NOT loaded here to avoid keychain prompts.
         // Call loadAuthStateIfNeeded() when auth-related features are accessed.
     }
@@ -149,15 +141,6 @@ class AccountSettingsViewModel: ObservableObject {
             .store(in: &cancellables)
     }
     
-    private func observeTrialBalanceChanges() {
-        TrialExhaustionManager.shared.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                self?.objectWillChange.send()
-            }
-            .store(in: &cancellables)
-    }
-    
     // MARK: - Public Methods
     
     /// Loads all data including auth state. Call this when the user actively
@@ -168,11 +151,6 @@ class AccountSettingsViewModel: ObservableObject {
         if isAuthenticated {
             await loadPaymentMethod()
             await loadUsage()
-        }
-        
-        // Load included-credit balance when Basil Cloud is selected.
-        if basilCloudSelected {
-            await loadTrialBalance()
         }
     }
     
@@ -196,8 +174,8 @@ class AccountSettingsViewModel: ObservableObject {
         // Use APIKeyPreferenceManager directly for decoupled preference management
         APIKeyPreferenceManager.shared.setPreference(preference)
         
-        // If selecting exhausted Basil Cloud, trigger auth loading since account routing is required.
-        if preference.isBasilCloudAlias && trialExhausted {
+        // Selecting Basil Cloud requires account and payment eligibility.
+        if preference.isBasilCloudAlias {
             Task {
                 await loadAuthStateIfNeeded()
             }
@@ -206,12 +184,6 @@ class AccountSettingsViewModel: ObservableObject {
     
     func selectBasilCloudAccess() async {
         setAPIKeyPreference(.useBasilCloud)
-        
-        if !trialExhausted {
-            await loadTrialBalance()
-            return
-        }
-        
         await loadAuthStateIfNeeded()
         
         if !isAuthenticated {
@@ -322,27 +294,5 @@ class AccountSettingsViewModel: ObservableObject {
         isLoadingUsage = false
     }
     
-    private func loadTrialBalance() async {
-        guard TrialKeyManager.shared.hasTrialKey() else {
-            #if DEBUG
-            DevLogger.shared.warning("🎫 Cannot load trial balance - no trial key available", context: "AccountSettingsViewModel")
-            #endif
-            return
-        }
-        
-        let trialKey = TrialKeyManager.shared.getOrCreateTrialKey()
-        
-        do {
-            let response = try await authClient.getTrialBalance(trialKey: trialKey)
-            TrialExhaustionManager.shared.updateBalance(remainingUsd: response.remainingUsd, limit: response.limitUsd)
-            #if DEBUG
-            DevLogger.shared.info("🎫 Trial balance fetched: $\(String(format: "%.6f", response.remainingUsd)) remaining of $\(String(format: "%.2f", response.limitUsd))", context: "AccountSettingsViewModel")
-            #endif
-        } catch {
-            #if DEBUG
-            DevLogger.shared.warning("🎫 Failed to load trial balance: \(error.localizedDescription)", context: "AccountSettingsViewModel")
-            #endif
-        }
-    }
 }
 

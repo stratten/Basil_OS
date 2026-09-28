@@ -58,7 +58,13 @@ export function useSetupAgentStream({
     phaseOverride,
     setupStageOverride,
     executionOutcomesOverride,
-  ) => ({
+  ) => {
+    const setupAgentModelAccess = store.state.setupAgentModelAccess
+    if (!setupAgentModelAccess?.resolved) {
+      throw new Error('Setup agent model access has not been confirmed yet.')
+    }
+
+    return {
     latest_message: latestMessage,
     phase: phaseOverride ?? (store.state.setupStage === 'orientation' ? 'deterministic_discovery' : 'agent_synthesis'),
     technical_depth: 'practical',
@@ -88,16 +94,14 @@ export function useSetupAgentStream({
     existing_model_choices: [],
     existing_task_offers: [],
     approved_tool_calls: [],
-    setup_agent_model_access: store.state.setupAgentModelAccess,
+    setup_agent_model_access: setupAgentModelAccess,
     calibration_events: [],
     current_step_context: {
       setup_stage: setupStageOverride ?? store.state.setupStage,
       observations: store.state.observations,
       active_artifact_id: store.state.activeArtifact?.id,
     },
-    setup_agent_model_override_id: store.state.setupAgentModelAccess.mode === 'custom'
-      ? store.state.setupAgentModelAccess.custom_model_id ?? null
-      : null,
+    setup_agent_model_override_id: null,
     // Round-trip the current agenda back to the backend on every turn so
     // the agent always sees its own session state (status pills, what's
     // pending vs. completed, what the user has skipped). Backend
@@ -120,7 +124,8 @@ export function useSetupAgentStream({
     })),
     agenda_items: [],
     execution_outcomes: executionOutcomesOverride ?? [],
-  })
+    }
+  }
 
   const startStream: SetupAgentStreamApi['startStream'] = (
     latestMessage,

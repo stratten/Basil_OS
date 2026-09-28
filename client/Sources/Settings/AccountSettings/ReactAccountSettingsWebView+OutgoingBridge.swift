@@ -47,7 +47,6 @@ extension ReactAccountSettingsWebView: ReactAccountSettingsBridgeOutput {
             "basilCloudSelected": vm.basilCloudSelected,
             "basilCloudBadge": vm.basilCloudBadge,
             "basilCloudDescription": vm.basilCloudDescription,
-            "trialExhausted": vm.trialExhausted,
             "isLoadingUsage": vm.isLoadingUsage,
             "currentPeriodFormatted": vm.currentPeriodFormatted,
             "totalCostFormatted": vm.totalCostFormatted,

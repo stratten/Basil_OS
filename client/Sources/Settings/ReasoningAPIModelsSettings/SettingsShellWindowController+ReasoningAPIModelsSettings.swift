@@ -22,6 +22,9 @@ extension SettingsShellWindowController {
         webView.onRequestSaveApiKey = { [weak self] requestId, providerId, key in
             self?.handleReasoningApiModelsSaveApiKey(requestId: requestId, providerId: providerId, key: key)
         }
+        webView.onRequestRemoveApiKey = { [weak self] requestId, providerId in
+            self?.handleReasoningApiModelsRemoveApiKey(requestId: requestId, providerId: providerId)
+        }
     }
 
     private func loadReasoningApiModelsAndSendInit() async {
@@ -182,6 +185,37 @@ extension SettingsShellWindowController {
                 reasoningApiModelsWebView?.sendIntentResult(
                     requestId: requestId, status: "error",
                     message: result.error ?? actionError ?? result.message ?? "Failed to save API key."
+                )
+            }
+        }
+    }
+
+    private func handleReasoningApiModelsRemoveApiKey(requestId: String, providerId: String) {
+        Task { @MainActor in
+            let vm = reasoningApiModelsViewModel
+            vm.error = nil
+            // The Gemini provider accepts a key saved under either credential name.
+            let credentialNames = providerId == "gemini" ? ["google", "gemini"] : [providerId]
+            var removeError: String?
+            for credentialName in credentialNames {
+                do {
+                    try await APIClient.shared.deleteApiKey(provider: credentialName)
+                } catch {
+                    removeError = error.localizedDescription
+                }
+            }
+            if removeError == nil, let index = vm.apiProviders.firstIndex(where: { $0.id == providerId }) {
+                vm.apiProviders[index].localUsingOwnApiKey = false
+            }
+            await vm.loadApiModels()
+            reasoningApiModelsWebView?.sendSnapshot(viewModel: vm)
+            let stillHasKey = vm.apiProviders.first(where: { $0.id == providerId })?.hasKey == true
+            if removeError == nil && !stillHasKey {
+                reasoningApiModelsWebView?.sendIntentResult(requestId: requestId, status: "success", message: nil)
+            } else {
+                reasoningApiModelsWebView?.sendIntentResult(
+                    requestId: requestId, status: "error",
+                    message: removeError ?? "The API key could not be removed."
                 )
             }
         }

@@ -417,14 +417,6 @@ final class StatusBarManager: StatusBarServiceProtocol {
     }
 
     #if DEBUG
-    @objc func triggerTrialExhaustionDebugAction() {
-        TrialExhaustionManager.shared.showExhaustionAlert()
-    }
-
-    @objc func resetTrialBalanceDebugAction() {
-        TrialExhaustionManager.shared.resetBalance()
-    }
-
     @objc func triggerSetupAssistantResumeToastDebugAction() {
         (NSApp.delegate as? AppDelegate)?.triggerSetupAssistantResumeToastForDebugFromDelegate()
     }

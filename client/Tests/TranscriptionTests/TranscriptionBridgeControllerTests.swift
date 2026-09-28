@@ -9,6 +9,7 @@ final class TranscriptionBridgeControllerTests: XCTestCase {
         var deltas: [(revision: Int, payload: [String: Any])] = []
         var meters: [Float] = []
         var shownModelPicker: (models: [TranscriptionModelOption], selectedModelId: String, anchorRect: [String: CGFloat])?
+        var onDelta: (() -> Void)?
 
         func sendInit(theme: [String: Any]) {
             initThemes.append(theme)
@@ -22,6 +23,7 @@ final class TranscriptionBridgeControllerTests: XCTestCase {
 
         func sendDelta(revision: Int, payload: [String: Any]) {
             deltas.append((revision, payload))
+            onDelta?()
         }
 
         func sendMeter(audioLevel: Float) {
@@ -66,9 +68,11 @@ final class TranscriptionBridgeControllerTests: XCTestCase {
         let output = MockOutput()
         let bridge = TranscriptionBridgeController(viewModel: viewModel, output: output)
         bridge.sendInitialSnapshot()
+        let deltaExpectation = expectation(description: "view-model change emits a delta")
+        output.onDelta = { deltaExpectation.fulfill() }
 
         viewModel.transcriptionText = "hello world"
-        try? await Task.sleep(nanoseconds: 80_000_000)
+        await fulfillment(of: [deltaExpectation], timeout: 1.0)
 
         XCTAssertEqual(output.snapshots.count, 1)
         XCTAssertGreaterThanOrEqual(output.deltas.count, 1)

@@ -6,7 +6,6 @@ import platform
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from api.core.models.models_registry.cloud_reasoning_registry import CLOUD_REASONING_MODELS
 from api.core.models.models_registry import get_local_reasoning_models, get_model
 from api.routes.setup_assistant.models import (
     SetupAgentModelAccess,
@@ -22,7 +21,7 @@ from api.routes.setup_assistant.models import (
 class SetupAgentModelSelection:
     model_id: str
     config: Dict[str, Any]
-    access_mode: SetupAgentModelAccessMode = SetupAgentModelAccessMode.default_proxy
+    access_mode: SetupAgentModelAccessMode = SetupAgentModelAccessMode.local
     override_model_id: Optional[str] = None
 
     @property
@@ -45,31 +44,26 @@ class SetupAssistantContextCatalogService:
         override_model_id: Optional[str] = None,
         model_access: Optional[SetupAgentModelAccess] = None,
     ) -> SetupAgentModelSelection:
-        """Resolve the user-selected setup-agent model route.
+        """Resolve the already backend-confirmed setup-agent model route."""
+        if model_access is None:
+            raise ValueError(
+                "Setup agent model access must be resolved before a model can be selected."
+            )
+        if not model_access.resolved:
+            raise ValueError("Setup agent model access has not been backend-confirmed.")
 
-        The default path uses the proxy model marked for setup-agent use. Users
-        may explicitly request a local or custom model up front.
-        """
-
-        if model_access and model_access.mode == SetupAgentModelAccessMode.local:
+        if model_access.mode == SetupAgentModelAccessMode.local:
             return self._resolve_local_setup_agent_model(model_access.local_model_id)
 
-        if model_access and model_access.mode == SetupAgentModelAccessMode.custom:
-            selected_model_id = model_access.custom_model_id or override_model_id
-            if not selected_model_id:
-                raise ValueError("Custom setup agent model selection requires a registry model id.")
-            return self._resolve_custom_setup_agent_model(selected_model_id)
-
-        if override_model_id:
-            return self._resolve_custom_setup_agent_model(override_model_id)
-
-        for model_id, config in CLOUD_REASONING_MODELS.items():
-            if config.get("used_by_setup_agent") is True:
-                if not config.get("supports_openrouter_proxy"):
-                    raise ValueError(f"Setup agent model '{model_id}' is not proxy-compatible.")
-                return SetupAgentModelSelection(model_id=model_id, config=config)
-
-        raise ValueError("No proxy-compatible model is marked used_by_setup_agent in the model registry.")
+        selected_model_id = override_model_id or model_access.model_id
+        if not selected_model_id:
+            raise ValueError(
+                f"Setup agent model access mode '{model_access.mode}' requires a registry model id."
+            )
+        return self._resolve_cloud_setup_agent_model(
+            selected_model_id,
+            model_access.mode,
+        )
 
     def build_setup_agent_model_metadata(
         self,
@@ -114,17 +108,26 @@ class SetupAssistantContextCatalogService:
             access_mode=SetupAgentModelAccessMode.local,
         )
 
-    def _resolve_custom_setup_agent_model(self, model_id: str) -> SetupAgentModelSelection:
+    def _resolve_cloud_setup_agent_model(
+        self,
+        model_id: str,
+        access_mode: SetupAgentModelAccessMode,
+    ) -> SetupAgentModelSelection:
         config = get_model(model_id)
         if not config:
-            raise ValueError(f"Setup agent model override '{model_id}' is not in the model registry.")
+            raise ValueError(f"Setup agent model '{model_id}' is not in the model registry.")
 
-        access_mode = SetupAgentModelAccessMode.custom
         if config.get("location") == "local":
-            if "reasoning" not in config.get("capabilities", []):
-                raise ValueError(f"Custom setup agent model '{model_id}' does not support reasoning.")
-        elif not config.get("supports_openrouter_proxy"):
-            raise ValueError(f"Setup agent model override '{model_id}' is not proxy-compatible.")
+            raise ValueError(
+                f"Setup agent model '{model_id}' is local but access mode is '{access_mode}'."
+            )
+        if (
+            access_mode == SetupAgentModelAccessMode.basil_cloud
+            and not config.get("supports_openrouter_proxy")
+        ):
+            raise ValueError(
+                f"Setup agent model '{model_id}' is not proxy-compatible for Basil Cloud."
+            )
 
         return SetupAgentModelSelection(
             model_id=model_id,

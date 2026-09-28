@@ -6,29 +6,27 @@ This module provides a centralized system for managing API keys for external ser
 
 - **Default Application Keys**: Built-in API keys that can be used as fallbacks
 - **User-Provided Keys**: Users can add their own API keys
-- **Secure Storage**: User keys are stored in a dedicated JSON file in the user's config directory
+- **Secure Storage**: Secret key values are stored via the OS-native credential store (`config/credential_store.py`, backed by the `keyring` package), never in a plaintext file
 - **Environment Variables**: Supports loading keys from environment variables
 - **Flexible Configuration**: Users can switch between application default keys and their own keys
 
 ## File Locations
 
 - **Config Directory**: `~/.basil/config/`
-- **API Keys File**: `~/.basil/config/api_keys.json`
+- **Key-Usage Flags File**: `~/.basil/config/api_key_flags.json` — stores only which provider currently prefers a user key (`use_user_keys`) and any custom key names; it never contains a secret value
+- **Secret Values**: stored only in the OS credential store (Keychain on macOS), keyed by provider name
 
-## JSON Structure
+## Key-Usage Flags Structure
 
-The API keys are stored in the following format:
+`api_key_flags.json` stores the following non-secret format:
 
 ```json
 {
-  "keys": {
-    "anthropic": "sk-ant-...",
-    "openai": "sk-..."
-  },
   "use_user_keys": {
     "anthropic": true,
     "openai": false
-  }
+  },
+  "custom_key_names": []
 }
 ```
 
@@ -61,8 +59,7 @@ is_user_key = api_key_manager.is_using_user_key("anthropic")
 
 ## Security Considerations
 
-- The API keys are stored in plain text in the user's config directory
-- In a production environment, more secure storage should be considered
+- Secret key values are stored via the OS-native credential store, not in plain text
 - The application default keys should be stored in environment variables, not hardcoded
 - For production use, API key usage should be monitored and rate-limited
 

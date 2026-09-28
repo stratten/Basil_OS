@@ -42,9 +42,9 @@ struct AuthTokens: Codable {
 
 /// API key preference for model access
 enum APIKeyPreference: String, Codable {
-    case useBasilCloud = "basil_cloud" // Route through Basil Cloud: included credit first, account-backed after
-    case useAppKeys = "app_keys"       // Legacy alias for Basil Cloud account-backed routing
-    case useTrial = "trial"            // Legacy alias for Basil Cloud included-credit routing
+    case useBasilCloud = "basil_cloud" // Route through Basil Cloud with account-backed billing.
+    case useAppKeys = "app_keys"       // Legacy alias normalized to Basil Cloud on save.
+    case useTrial = "trial"            // Legacy alias normalized to Basil Cloud on save.
     case useOwnKeys = "own_keys"       // Direct to providers, no billing
     case useLocalModels = "local"      // Local models only
     

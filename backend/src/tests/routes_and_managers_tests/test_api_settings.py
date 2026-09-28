@@ -159,7 +159,7 @@ class TestAPISettings(unittest.TestCase):
     def test_update_api_provider_with_own_key(self):
         """Test enabling a provider with the user's own API key."""
         provider = "openai"
-        if provider not in api_key_manager.user_keys or not api_key_manager.user_keys[provider]:
+        if not api_key_manager.has_user_key(provider):
             self.skipTest("No existing OpenAI user key configured")
         
         # Execute request
@@ -187,7 +187,7 @@ class TestAPISettings(unittest.TestCase):
         """Test error when trying to use own key that doesn't exist."""
         # Execute request
         provider = "anthropic"
-        with patch.object(api_key_manager, "user_keys", {}):
+        with patch.object(api_key_manager, "has_user_key", return_value=False):
             response = client.put(
                 f"/settings/api_models/api_providers/{provider}",
                 json={"enabled": True, "use_own_api_key": True}

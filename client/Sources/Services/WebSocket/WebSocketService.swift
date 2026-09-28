@@ -343,10 +343,6 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
                                     #endif
                                     self.handleAuthTokenRequest(json)
                                 
-                                case "trial_balance_update":
-                                    // Trial balance update from backend after API request
-                                    self.handleTrialBalanceUpdate(json)
-                                    
                                 case "agent_task_step_detail", "conversation_agent_status":
                                     #if DEBUG
                                     DevLogger.shared.info(
@@ -498,38 +494,6 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
            let jsonString = String(data: jsonData, encoding: .utf8) {
             sendMessage(jsonString)
         }
-    }
-    
-    /// Handle trial balance update from backend.
-    /// Called after each trial API request with remaining balance.
-    @MainActor
-    private func handleTrialBalanceUpdate(_ json: [String: Any]) {
-        func doubleValue(_ value: Any?) -> Double? {
-            if let double = value as? Double { return double }
-            if let int = value as? Int { return Double(int) }
-            if let number = value as? NSNumber { return number.doubleValue }
-            if let string = value as? String { return Double(string) }
-            return nil
-        }
-        
-        guard let remainingUsd = doubleValue(json["remaining_usd"]) else {
-            #if DEBUG
-            DevLogger.shared.warning("🎫 Trial balance update missing remaining_usd", context: "websocket")
-            #endif
-            return
-        }
-        
-        let limitUsd = doubleValue(json["limit_usd"])
-        let isExhausted = json["is_exhausted"] as? Bool ?? (remainingUsd <= 0.000001)
-        
-        #if DEBUG
-        DevLogger.shared.info("🎫 Trial balance update: $\(String(format: "%.6f", remainingUsd)) remaining, exhausted=\(isExhausted)", context: "websocket")
-        #endif
-        
-        // Update the TrialExhaustionManager
-        TrialExhaustionManager.shared.updateBalance(remainingUsd: remainingUsd, limit: limitUsd)
-        
-        // If exhausted, the manager will automatically show the alert
     }
     
     @MainActor

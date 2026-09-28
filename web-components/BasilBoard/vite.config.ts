@@ -12,7 +12,9 @@ export default defineConfig({
       '@shared': path.resolve(__dirname, '../shared'),
       '@agent-task': path.resolve(__dirname, '../AgentTaskResult/src'),
       'react/jsx-runtime': path.resolve(__dirname, './node_modules/react/jsx-runtime.js'),
+      'react/jsx-dev-runtime': path.resolve(__dirname, './node_modules/react/jsx-dev-runtime.js'),
       react: path.resolve(__dirname, './node_modules/react'),
+      'react-dom': path.resolve(__dirname, './node_modules/react-dom'),
     },
   },
   server: {

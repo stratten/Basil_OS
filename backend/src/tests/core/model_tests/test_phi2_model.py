@@ -10,7 +10,15 @@ import os
 import sys
 import time
 import torch
+import pytest
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+
+_RUNTIME_VALIDATION_ENV = "RUN_PHI2_RUNTIME_VALIDATION"
+
+pytestmark = pytest.mark.skipif(
+    os.getenv(_RUNTIME_VALIDATION_ENV) != "1",
+    reason=f"Set {_RUNTIME_VALIDATION_ENV}=1 to download and run the Phi-2 runtime validation.",
+)
 
 # Configure logging
 import logging

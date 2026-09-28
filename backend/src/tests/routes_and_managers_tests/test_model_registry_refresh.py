@@ -13,6 +13,7 @@ from api.core.models.models_registry import (
     get_model,
     get_omitted_request_parameters,
     get_reasoning_effort_default,
+    get_thinking_request_config,
     requires_responses_api,
 )
 from api.core.models.base_model import ModelState
@@ -182,6 +183,57 @@ def test_latest_cloud_model_entries_resolve_with_openrouter_ids() -> None:
         "gpt-5.6-sol": (PROVIDER_OPENAI, "openai/gpt-5.6-sol", 1050000, 128000),
         "gpt-5.6-terra": (PROVIDER_OPENAI, "openai/gpt-5.6-terra", 1050000, 128000),
         "gpt-5.6-luna": (PROVIDER_OPENAI, "openai/gpt-5.6-luna", 1050000, 128000),
+        "gpt-6-astra": (PROVIDER_OPENAI, "openai/gpt-6-astra", 1050000, 128000),
+        "gpt-6-sol": (PROVIDER_OPENAI, "openai/gpt-6-sol", 1050000, 128000),
+        "gpt-6-luna": (PROVIDER_OPENAI, "openai/gpt-6-luna", 1050000, 128000),
+        "claude-opus-5-5": (
+            PROVIDER_ANTHROPIC,
+            "anthropic/claude-opus-5.5",
+            1000000,
+            128000,
+        ),
+        "claude-fable-5-1": (
+            PROVIDER_ANTHROPIC,
+            "anthropic/claude-fable-5.1",
+            1000000,
+            128000,
+        ),
+        "claude-opus-5": (
+            PROVIDER_ANTHROPIC,
+            "anthropic/claude-opus-5",
+            1000000,
+            128000,
+        ),
+        "claude-opus-4-5-20251101": (
+            PROVIDER_ANTHROPIC,
+            "anthropic/claude-opus-4.5",
+            200000,
+            64000,
+        ),
+        "gemini-3.8-flash": (
+            PROVIDER_GOOGLE,
+            "google/gemini-3.8-flash",
+            1048576,
+            65536,
+        ),
+        "gemini-3.7-flash": (
+            PROVIDER_GOOGLE,
+            "google/gemini-3.7-flash",
+            1048576,
+            65536,
+        ),
+        "gemini-3.6-flash": (
+            PROVIDER_GOOGLE,
+            "google/gemini-3.6-flash",
+            1048576,
+            65536,
+        ),
+        "gemini-3.5-flash-lite": (
+            PROVIDER_GOOGLE,
+            "google/gemini-3.5-flash-lite",
+            1048576,
+            65536,
+        ),
         "claude-fable-5": (
             PROVIDER_ANTHROPIC,
             "anthropic/claude-fable-5",
@@ -252,20 +304,73 @@ def test_cloud_preference_defaults_absorb_new_model_ids() -> None:
     assert get_default_enabled_for_provider(PROVIDER_ANTHROPIC)["claude-sonnet-4-6"] is False
     assert get_default_enabled_for_provider(PROVIDER_ANTHROPIC)["claude-sonnet-5"] is False
     assert get_default_enabled_for_provider(PROVIDER_GOOGLE)["gemini-3.5-flash"] is False
+    for model_id in ("gpt-6-astra", "gpt-6-sol", "gpt-6-luna"):
+        assert get_default_enabled_for_provider(PROVIDER_OPENAI)[model_id] is False
+    for model_id in ("claude-opus-5-5", "claude-fable-5-1", "claude-opus-5", "claude-opus-4-5-20251101"):
+        assert get_default_enabled_for_provider(PROVIDER_ANTHROPIC)[model_id] is False
+    for model_id in ("gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"):
+        assert get_default_enabled_for_provider(PROVIDER_GOOGLE)[model_id] is False
+    assert get_model("claude-opus-4-5-20260115") is None
 
 
 def test_latest_anthropic_registry_entries_drive_request_parameter_omissions() -> None:
     for model_id in (
+        "claude-opus-5-5",
+        "claude-fable-5-1",
+        "claude-opus-5",
         "claude-fable-5",
         "claude-sonnet-5",
         "claude-opus-4-8",
         "claude-opus-4-7",
+        "gemini-3.8-flash",
+        "gemini-3.7-flash",
+        "gemini-3.6-flash",
+        "gemini-3.5-flash-lite",
     ):
         assert get_omitted_request_parameters(model_id) == [
             "temperature",
             "top_p",
             "top_k",
         ]
+    for model_id in ("gpt-6-astra", "gpt-6-sol", "gpt-6-luna"):
+        assert get_omitted_request_parameters(model_id) == ["temperature", "top_p"]
+
+
+def test_always_thinking_anthropic_models_request_adaptive_thinking_only() -> None:
+    expected_default_effort = {
+        "claude-opus-5-5": "medium",
+        "claude-fable-5-1": "high",
+        "claude-opus-5": "high",
+        "claude-opus-4-7": "high",
+    }
+    for model_id, default_effort in expected_default_effort.items():
+        thinking_cfg = get_thinking_request_config(model_id)
+        assert thinking_cfg == {
+            "thinking": {"type": "adaptive", "display": "summarized"},
+            "effort": default_effort,
+            "omit_sampling": True,
+        }
+        adaptive = get_model(model_id)["feature_config"]["adaptive_thinking"]
+        assert adaptive["effort_levels"] == ["low", "medium", "high", "xhigh", "max"]
+        assert "extended_thinking" not in get_model(model_id)["features"]
+
+
+def test_gpt_6_reasoning_levels_match_provider_contract() -> None:
+    for model_id in ("gpt-6-astra", "gpt-6-sol", "gpt-6-luna"):
+        assert get_api_endpoint(model_id) == "responses"
+        assert requires_responses_api(model_id) is True
+        assert get_reasoning_effort_default(model_id) == "medium"
+    astra_levels = get_model("gpt-6-astra")["feature_config"]["reasoning_effort"]["levels"]
+    assert "none" not in astra_levels
+    for model_id in ("gpt-6-sol", "gpt-6-luna"):
+        assert "none" in get_model(model_id)["feature_config"]["reasoning_effort"]["levels"]
+
+
+def test_new_gemini_thinking_levels_match_provider_contract() -> None:
+    for model_id in ("gemini-3.8-flash", "gemini-3.7-flash"):
+        assert get_model(model_id)["feature_config"]["thinking"]["levels"] == ["low", "medium", "high"]
+    for model_id in ("gemini-3.6-flash", "gemini-3.5-flash-lite"):
+        assert get_model(model_id)["feature_config"]["thinking"]["levels"] == ["minimal", "low", "medium", "high"]
 
 
 @pytest.mark.asyncio

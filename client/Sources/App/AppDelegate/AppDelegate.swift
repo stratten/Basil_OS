@@ -82,12 +82,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var ambientSuggestionsPanelController: AmbientSuggestionsPanelWindowController?
     var ambientSuggestionsObserverToken: NSObjectProtocol?
 
-    // NotificationCenter observer token for "navigateToSettings", posted by
-    // the trial-exhaustion alert (both the React panel's Swift bridge and
-    // its native SwiftUI fallback) when the user picks "Sign Up"/"Continue
-    // with Basil Cloud" or "Use Your Own Provider Account".
-    var trialExhaustionNavigateObserverToken: NSObjectProtocol?
-
     // Floating meeting-detected mini panel (shown when the mechanical
     // meeting-detection loop reports a meeting in progress). Lazily built by
     // AppDelegate_MeetingDetectedMiniPanel so it costs nothing until first use.
@@ -199,7 +193,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             registerAmbientSuggestionsObserver()
             registerMeetingDetectedMiniPanelObserver()
             registerRecordingDidStartObserver()
-            registerTrialExhaustionNavigateObserver()
         } else {
             configureValidationLaunch()
         }

@@ -61,10 +61,9 @@ class APIModelTester:
         # Clear any existing test data
         try:
             # Clear user keys for testing (we'll restore them later)
-            self.original_user_keys = api_key_manager.user_keys.copy()
             self.original_use_user_keys = api_key_manager.use_user_keys.copy()
-            api_key_manager.user_keys = {}
-            api_key_manager.use_user_keys = {}
+            for service in list(api_key_manager.use_user_keys.keys()):
+                api_key_manager.clear_user_api_key(service)
         except Exception as e:
             logger.error(f"Error setting up test environment: {e}")
     
@@ -72,10 +71,9 @@ class APIModelTester:
         """Cleanup after tests"""
         logger.info("Cleaning up test environment...")
         try:
-            # Restore original user keys
-            api_key_manager.user_keys = self.original_user_keys
+            # Restore original key-usage flags (secret values remain in the OS credential store)
             api_key_manager.use_user_keys = self.original_use_user_keys
-            api_key_manager._save_user_keys()
+            api_key_manager._save_flags()
         except Exception as e:
             logger.error(f"Error cleaning up test environment: {e}")
     
@@ -91,8 +89,8 @@ class APIModelTester:
         # Test 1: Set user API key
         try:
             api_key_manager.set_user_api_key(test_service, test_key)
-            assert test_service in api_key_manager.user_keys
-            assert api_key_manager.user_keys[test_service] == test_key
+            assert api_key_manager.has_user_key(test_service)
+            assert api_key_manager.get_api_key(test_service) == test_key
             assert api_key_manager.use_user_keys.get(test_service, False) == True
             results["set_user_api_key"] = "PASS"
         except Exception as e:
@@ -117,7 +115,7 @@ class APIModelTester:
         # Test 4: Clear user API key
         try:
             api_key_manager.clear_user_api_key(test_service)
-            assert test_service not in api_key_manager.user_keys
+            assert not api_key_manager.has_user_key(test_service)
             results["clear_user_api_key"] = "PASS"
         except Exception as e:
             results["clear_user_api_key"] = f"FAIL: {str(e)}"

@@ -4,6 +4,7 @@ import ExecutionDisclosureChevron from '@shared/ExecutionDisclosureChevron'
 import {
   notifyReasoningApiModelsReady,
   onReasoningApiModelsEvent,
+  requestRemoveApiKey,
   requestSaveApiKey,
   requestToggleMaster,
   requestToggleModel,
@@ -15,6 +16,12 @@ import type { ReasoningApiProviderSummary } from '../types'
 interface StatusMessage {
   text: string
   isError: boolean
+}
+
+const PROVIDER_KEY_HELP_URLS: Record<string, string> = {
+  anthropic: 'https://console.anthropic.com/settings/keys',
+  openai: 'https://platform.openai.com/api-keys',
+  gemini: 'https://aistudio.google.com/apikey',
 }
 
 function applyLocalByok(providers: ReasoningApiProviderSummary[], pendingByokOn: Record<string, boolean>) {
@@ -38,6 +45,8 @@ export function ReasoningApiModelsPanel() {
   const [pendingKeySources, setPendingKeySources] = useState<Record<string, string>>({})
   const [pendingKeys, setPendingKeys] = useState<Record<string, string>>({})
   const [pendingModels, setPendingModels] = useState<Record<string, string>>({})
+  const [pendingKeyRemovals, setPendingKeyRemovals] = useState<Record<string, string>>({})
+  const [confirmingKeyRemovals, setConfirmingKeyRemovals] = useState<Record<string, boolean>>({})
   const [expandedProviders, setExpandedProviders] = useState<Record<string, boolean>>({})
   const pendingByokOnRef = useRef<Record<string, boolean>>({})
   const masterPendingRef = useRef<string | null>(null)
@@ -45,11 +54,13 @@ export function ReasoningApiModelsPanel() {
   const pendingKeySourcesRef = useRef<Record<string, string>>({})
   const pendingKeysRef = useRef<Record<string, string>>({})
   const pendingModelsRef = useRef<Record<string, string>>({})
+  const pendingKeyRemovalsRef = useRef<Record<string, string>>({})
   masterPendingRef.current = masterPending
   pendingProvidersRef.current = pendingProviders
   pendingKeySourcesRef.current = pendingKeySources
   pendingKeysRef.current = pendingKeys
   pendingModelsRef.current = pendingModels
+  pendingKeyRemovalsRef.current = pendingKeyRemovals
 
   useEffect(() => {
     const unsubscribe = onReasoningApiModelsEvent((event) => {
@@ -120,6 +131,21 @@ export function ReasoningApiModelsPanel() {
       }
       return
     }
+    const removalId = Object.keys(pendingKeyRemovalsRef.current).find((id) => pendingKeyRemovalsRef.current[id] === event.requestId)
+    if (removalId) {
+      const next = { ...pendingKeyRemovalsRef.current }
+      delete next[removalId]
+      pendingKeyRemovalsRef.current = next
+      setPendingKeyRemovals(next)
+      setConfirmingKeyRemovals((current) => ({ ...current, [removalId]: false }))
+      setKeyMessages((current) => ({
+        ...current,
+        [removalId]: event.status === 'success'
+          ? { text: 'Your API key was removed from this Mac.', isError: false }
+          : { text: event.message ?? 'Failed to remove the API key.', isError: true },
+      }))
+      return
+    }
     const modelKey = Object.keys(pendingModelsRef.current).find((id) => pendingModelsRef.current[id] === event.requestId)
     if (!modelKey) return
     const next = { ...pendingModelsRef.current }
@@ -151,23 +177,30 @@ export function ReasoningApiModelsPanel() {
   function handleToggleKeySource(providerId: string, next: boolean) {
     if (pendingKeySourcesRef.current[providerId]) return
     setStatusMessage(null)
-    if (next) {
+    const provider = providers.find((candidate) => candidate.id === providerId)
+
+    if (next && !provider?.hasKey) {
+      // No saved key yet: just reveal the entry form. Saving a key below will
+      // confirm this switch to "own key" with the backend once it validates.
       pendingByokOnRef.current = { ...pendingByokOnRef.current, [providerId]: true }
-      setProviders((current) => current.map((provider) => (
-        provider.id === providerId
-          ? { ...provider, usingOwnApiKey: true, models: provider.models.map((model) => ({ ...model, enabled: false })) }
-          : provider
+      setProviders((current) => current.map((candidate) => (
+        candidate.id === providerId
+          ? { ...candidate, usingOwnApiKey: true, models: candidate.models.map((model) => ({ ...model, enabled: false })) }
+          : candidate
       )))
       return
     }
+
     const pendingByok = { ...pendingByokOnRef.current }
     delete pendingByok[providerId]
     pendingByokOnRef.current = pendingByok
-    const id = requestToggleProviderKeySource(providerId, false)
+    const id = requestToggleProviderKeySource(providerId, next)
     const nextMap = { ...pendingKeySourcesRef.current, [providerId]: id }
     pendingKeySourcesRef.current = nextMap
     setPendingKeySources(nextMap)
-    setProviders((current) => current.map((provider) => provider.id === providerId ? { ...provider, usingOwnApiKey: false } : provider))
+    setProviders((current) => current.map((candidate) => (
+      candidate.id === providerId ? { ...candidate, usingOwnApiKey: next } : candidate
+    )))
   }
 
   function handleSaveKey(providerId: string) {
@@ -182,6 +215,25 @@ export function ReasoningApiModelsPanel() {
     const nextMap = { ...pendingKeysRef.current, [providerId]: id }
     pendingKeysRef.current = nextMap
     setPendingKeys(nextMap)
+  }
+
+  function setKeyRemovalConfirming(providerId: string, confirming: boolean) {
+    if (pendingKeyRemovalsRef.current[providerId]) return
+    setKeyMessages((current) => {
+      const next = { ...current }
+      delete next[providerId]
+      return next
+    })
+    setConfirmingKeyRemovals((current) => ({ ...current, [providerId]: confirming }))
+  }
+
+  function handleRemoveKey(providerId: string) {
+    if (pendingKeyRemovalsRef.current[providerId]) return
+    setStatusMessage(null)
+    const id = requestRemoveApiKey(providerId)
+    const nextMap = { ...pendingKeyRemovalsRef.current, [providerId]: id }
+    pendingKeyRemovalsRef.current = nextMap
+    setPendingKeyRemovals(nextMap)
   }
 
   function toggleProviderExpanded(providerId: string) {
@@ -239,12 +291,17 @@ export function ReasoningApiModelsPanel() {
               providerPending={pendingProviders[provider.id] !== undefined}
               keySourcePending={pendingKeySources[provider.id] !== undefined}
               keyPending={pendingKeys[provider.id] !== undefined}
+              keyRemovalPending={pendingKeyRemovals[provider.id] !== undefined}
+              isConfirmingKeyRemoval={confirmingKeyRemovals[provider.id] ?? false}
               pendingModels={pendingModels}
               onToggleProvider={(next) => handleToggleProvider(provider.id, next)}
               onToggleExpand={() => toggleProviderExpanded(provider.id)}
               onToggleKeySource={(next) => handleToggleKeySource(provider.id, next)}
               onApiKeyChange={(value) => setApiKeyInputs((current) => ({ ...current, [provider.id]: value }))}
               onSaveKey={() => handleSaveKey(provider.id)}
+              onBeginRemoveKey={() => setKeyRemovalConfirming(provider.id, true)}
+              onCancelRemoveKey={() => setKeyRemovalConfirming(provider.id, false)}
+              onConfirmRemoveKey={() => handleRemoveKey(provider.id)}
               onToggleModel={(modelId, next) => handleToggleModel(provider.id, modelId, next)}
             />
           ))
@@ -260,8 +317,9 @@ export function ReasoningApiModelsPanel() {
 }
 
 function ProviderCard({
-  provider, isExpanded, apiKeyInput, keyMessage, providerPending, keySourcePending, keyPending, pendingModels,
-  onToggleProvider, onToggleExpand, onToggleKeySource, onApiKeyChange, onSaveKey, onToggleModel,
+  provider, isExpanded, apiKeyInput, keyMessage, providerPending, keySourcePending, keyPending, keyRemovalPending,
+  isConfirmingKeyRemoval, pendingModels, onToggleProvider, onToggleExpand, onToggleKeySource, onApiKeyChange, onSaveKey,
+  onBeginRemoveKey, onCancelRemoveKey, onConfirmRemoveKey, onToggleModel,
 }: {
   provider: ReasoningApiProviderSummary
   isExpanded: boolean
@@ -270,14 +328,20 @@ function ProviderCard({
   providerPending: boolean
   keySourcePending: boolean
   keyPending: boolean
+  keyRemovalPending: boolean
+  isConfirmingKeyRemoval: boolean
   pendingModels: Record<string, string>
   onToggleProvider: (next: boolean) => void
   onToggleExpand: () => void
   onToggleKeySource: (next: boolean) => void
   onApiKeyChange: (value: string) => void
   onSaveKey: () => void
+  onBeginRemoveKey: () => void
+  onCancelRemoveKey: () => void
+  onConfirmRemoveKey: () => void
   onToggleModel: (modelId: string, next: boolean) => void
 }) {
+  const keyControlsBusy = keyPending || keySourcePending || keyRemovalPending
   const availableCount = provider.models.length
   const enabledCount = provider.models.filter((model) => model.enabled).length
   const bodyId = `reasoning-api-models-provider-body-${provider.id}`
@@ -308,28 +372,58 @@ function ProviderCard({
         <div className="reasoning-api-models-provider-collapse-inner">
         <>
           <div className="reasoning-api-models-key-section">
-            <Switch id={`reasoning-api-models-key-source-${provider.id}`} checked={provider.usingOwnApiKey} disabled={keySourcePending} onChange={onToggleKeySource} label={`Enable ${provider.name} Models`} />
+            <Switch id={`reasoning-api-models-key-source-${provider.id}`} checked={provider.usingOwnApiKey} disabled={keySourcePending || keyRemovalPending} onChange={onToggleKeySource} label={`Use your ${provider.name} API key`} />
+            <p className="reasoning-api-models-key-explainer">
+              Turn this on if you already have your own {provider.name} API key and want to use it directly instead of
+              Basil's built-in access.{' '}
+              {PROVIDER_KEY_HELP_URLS[provider.id] && (
+                <a href={PROVIDER_KEY_HELP_URLS[provider.id]} target="_blank" rel="noreferrer">
+                  Get your {provider.name} API key
+                </a>
+              )}
+            </p>
             {provider.usingOwnApiKey ? (
               <>
-                {provider.hasKey && (
-                  <p className="reasoning-api-models-key-active">
-                    {provider.id === 'openai'
-                      ? 'Your OpenAI API key is active and ready to use. This is the same key used by transcription API models.'
-                      : `Your ${provider.name} API key is active and ready to use.`}
-                  </p>
+                {provider.hasKey && !isConfirmingKeyRemoval && (
+                  <div className="reasoning-api-models-key-status-row">
+                    <p className="reasoning-api-models-key-active">
+                      {provider.id === 'openai'
+                        ? 'Your OpenAI API key is active and ready to use. This is the same key used by transcription API models.'
+                        : `Your ${provider.name} API key is active and ready to use.`}
+                    </p>
+                    <button type="button" className="reasoning-api-models-key-remove-button" disabled={keyControlsBusy} onClick={onBeginRemoveKey}>
+                      Remove Key
+                    </button>
+                  </div>
                 )}
-                <div className="reasoning-api-models-key-row">
-                  <input type="password" className="reasoning-api-models-key-input" value={apiKeyInput} disabled={keyPending} placeholder={provider.hasKey ? `Update ${provider.name} API Key` : `Enter ${provider.name} API Key`} onChange={(event) => onApiKeyChange(event.target.value)} />
-                  <button type="button" className="secondary-button" disabled={keyPending || apiKeyInput.length === 0} onClick={onSaveKey}>
-                    {keyPending ? 'Validating...' : provider.hasKey ? 'Update Key' : 'Save & Validate'}
-                  </button>
-                </div>
-                {keyMessage && (
-                  <p className={keyMessage.isError ? 'reasoning-api-models-status-error' : 'reasoning-api-models-status-success'} role={keyMessage.isError ? 'alert' : 'status'}>{keyMessage.text}</p>
+                {provider.hasKey && isConfirmingKeyRemoval ? (
+                  <div className="reasoning-api-models-key-remove-confirm" role="group" aria-label={`Remove ${provider.name} API key?`}>
+                    <p className="reasoning-api-models-key-remove-confirm-title">Remove your {provider.name} API key?</p>
+                    <p className="reasoning-api-models-key-remove-confirm-body">
+                      This deletes the key from this Mac&rsquo;s keychain. {provider.name} models stop working until you add a key again.
+                      {provider.id === 'openai' ? ' Transcription API models that use this key stop working too.' : ''}
+                    </p>
+                    <div className="reasoning-api-models-key-remove-confirm-actions">
+                      <button type="button" className="secondary-button" disabled={keyRemovalPending} onClick={onCancelRemoveKey}>Cancel</button>
+                      <button type="button" className="reasoning-api-models-key-remove-confirm-button" disabled={keyRemovalPending} onClick={onConfirmRemoveKey}>
+                        {keyRemovalPending ? 'Removing...' : 'Remove Key'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="reasoning-api-models-key-row">
+                    <input type="password" className="reasoning-api-models-key-input" value={apiKeyInput} disabled={keyPending || keyRemovalPending} placeholder={provider.hasKey ? `Update ${provider.name} API Key` : `Enter ${provider.name} API Key`} onChange={(event) => onApiKeyChange(event.target.value)} />
+                    <button type="button" className="secondary-button" disabled={keyPending || keyRemovalPending || apiKeyInput.length === 0} onClick={onSaveKey}>
+                      {keyPending ? 'Validating...' : provider.hasKey ? 'Update Key' : 'Save & Validate'}
+                    </button>
+                  </div>
                 )}
               </>
             ) : (
-              <p className="reasoning-api-models-key-required">{provider.name} models require your API key. Enable the toggle above and provide your API key to use {provider.name} models.</p>
+              <p className="reasoning-api-models-key-required">{provider.name} models require your API key. Turn on the option above and provide your API key to use {provider.name} models.</p>
+            )}
+            {keyMessage && (
+              <p className={keyMessage.isError ? 'reasoning-api-models-status-error' : 'reasoning-api-models-status-success'} role={keyMessage.isError ? 'alert' : 'status'}>{keyMessage.text}</p>
             )}
           </div>
           <ul className="reasoning-api-models-list">

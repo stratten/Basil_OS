@@ -90,6 +90,13 @@ describe('ModelsSettingsApp', () => {
     expect(postMessage).not.toHaveBeenCalled()
   })
 
+  it('honors a sidebar request for the Transcription capability', () => {
+    act(() => { root.render(<ModelsSettingsApp requestedSubTab="transcription" />) })
+    sendInit()
+    expect(container.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toBe('Transcription')
+    expect(container.textContent).toContain('Parakeet')
+  })
+
   it('defaults the Transcription capability to the Local Models sub-tab and mounts the API Models panel only on demand', () => {
     sendInit()
     const transcriptionTab = Array.from(container.querySelectorAll('[role="tab"]')).find((tab) => tab.textContent === 'Transcription') as HTMLButtonElement

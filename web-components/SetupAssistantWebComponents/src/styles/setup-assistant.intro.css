@@ -105,8 +105,129 @@
   --choice-accent: var(--accent-green);
 }
 
-.intro-privacy .choice-option--default_proxy {
+.intro-privacy .choice-option--provider_key {
   --choice-accent: var(--accent-blue);
+}
+
+.intro-privacy .choice-option--basil_cloud {
+  --choice-accent: var(--accent-purple, var(--primary));
+}
+
+.choice-option-wrapper {
+  display: grid;
+  gap: var(--padding-xs);
+}
+
+.choice-option-unavailable {
+  color: var(--text-secondary);
+  font-size: var(--font-size-footnote, var(--font-size-callout));
+}
+
+.choice-option-provider-key-form {
+  display: grid;
+  gap: var(--padding-s);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+}
+
+.choice-option-provider-key-form label,
+.choice-option-provider-field {
+  color: var(--text-secondary);
+  display: grid;
+  font-size: var(--font-size-footnote, var(--font-size-callout));
+  gap: 4px;
+}
+
+.choice-option-provider-field .tokenized-select {
+  display: flex;
+  width: 100%;
+}
+
+.choice-option-provider-key-form input,
+.choice-option-provider-select {
+  background: var(--background-primary);
+  border: 1px solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  box-sizing: border-box;
+  color: var(--text-primary);
+  font: inherit;
+  height: 34px;
+  padding: 6px 8px;
+}
+
+.choice-option-provider-key-form input:focus,
+.choice-option-provider-select:focus-visible {
+  border-color: var(--primary);
+  outline: 2px solid color-mix(in srgb, var(--primary) 35%, transparent);
+  outline-offset: 1px;
+}
+
+.choice-option-note {
+  color: var(--text-secondary);
+  display: block;
+  font-size: var(--font-size-footnote, var(--font-size-callout));
+  margin-top: 4px;
+}
+
+.choice-option-note--positive {
+  color: var(--accent-green);
+}
+
+.choice-option-secondary-action {
+  background: none;
+  border: none;
+  color: var(--primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-footnote, var(--font-size-callout));
+  justify-self: start;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.choice-option-model-picker {
+  display: grid;
+  gap: 6px;
+  margin-top: var(--padding-s);
+}
+
+.choice-option-model-note {
+  color: var(--text-secondary);
+  font-size: var(--font-size-footnote, var(--font-size-callout));
+  margin: 0;
+}
+
+.choice-option-model-note strong {
+  color: var(--text-primary);
+}
+
+.choice-option-key-help {
+  color: var(--text-secondary);
+  font-size: var(--font-size-footnote, var(--font-size-callout));
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.choice-option-key-help a {
+  color: var(--primary);
+}
+
+.choice-option-key-validate-row {
+  align-items: center;
+  display: flex;
+  gap: var(--padding-s);
+  grid-column: 1 / -1;
+}
+
+.choice-option-key-status {
+  font-size: var(--font-size-footnote, var(--font-size-callout));
+}
+
+.choice-option-key-status--valid {
+  color: var(--accent-green);
+}
+
+.choice-option-key-status--invalid {
+  color: var(--error-base);
 }
 
 .intro-privacy .choice-option.selected,

@@ -412,6 +412,11 @@ extension APIClient {
         }
     }
 
+    /// Removes the user-supplied API key for a provider from the OS credential store.
+    func deleteApiKey(provider: String) async throws {
+        _ = try await delete("/settings/api_models/api_keys/\(provider)")
+    }
+
     /// Tests if an API key is valid
     /// - Parameters:
     ///   - provider: The provider ID (e.g., "anthropic", "openai")

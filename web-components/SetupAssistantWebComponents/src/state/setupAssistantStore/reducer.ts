@@ -43,11 +43,7 @@ import { applySetupAgentEvent } from './helpers/setupAgentEventReducer'
 
 export const initialState: SetupAssistantState = {
   setupStage: 'welcome',
-  setupAgentModelAccess: {
-    mode: 'default_proxy',
-    custom_model_id: null,
-    local_model_id: null,
-  },
+  setupAgentModelAccess: null,
   observations: [],
   messages: [],
   artifacts: [],

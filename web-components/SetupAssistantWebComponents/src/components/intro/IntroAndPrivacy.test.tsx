@@ -36,23 +36,34 @@ afterEach(() => {
 describe('IntroAndPrivacy', () => {
   it('shows saved capture preferences, current settings paths, and preserves them on continue', async () => {
     fetchMock
-      .mockResolvedValueOnce(jsonResponse({
-        status: 'success',
-        settings: {
-          memory_after_task_enabled: true,
-          skill_after_task_enabled: true,
-        },
-      }))
-      .mockResolvedValueOnce(jsonResponse({
-        status: 'updated',
-        updated_settings: {},
-      }))
+      .mockImplementation((path: string, init?: RequestInit) => {
+        if (path === '/setup-assistant/model-access/options') {
+          return Promise.resolve(jsonResponse({
+            options: [{
+              mode: 'local',
+              available: true,
+              requires_provider_key_input: false,
+              local_model_id: 'phi2-2.7b',
+            }],
+          }))
+        }
+        if (path === '/settings/memory-intelligence' && init?.method === 'PUT') {
+          return Promise.resolve(jsonResponse({ status: 'updated', updated_settings: {} }))
+        }
+        return Promise.resolve(jsonResponse({
+          status: 'success',
+          settings: {
+            memory_after_task_enabled: true,
+            skill_after_task_enabled: true,
+          },
+        }))
+      })
     const onContinue = vi.fn()
 
     await act(async () => {
       root.render(
         <IntroAndPrivacy
-          selectedModelAccess={{ mode: 'local' }}
+          selectedModelAccess={{ mode: 'local', local_model_id: 'phi2-2.7b', resolved: true }}
           onSelectModelAccess={vi.fn()}
           onContinue={onContinue}
         />,
@@ -74,7 +85,7 @@ describe('IntroAndPrivacy', () => {
       await Promise.resolve()
     })
 
-    expect(fetchMock).toHaveBeenNthCalledWith(2, '/settings/memory-intelligence', {
+    expect(fetchMock).toHaveBeenCalledWith('/settings/memory-intelligence', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -86,13 +97,25 @@ describe('IntroAndPrivacy', () => {
   })
 
   it('does not overwrite capture preferences when their initial read fails', async () => {
-    fetchMock.mockRejectedValueOnce(new Error('offline'))
+    fetchMock.mockImplementation((path: string) => {
+      if (path === '/setup-assistant/model-access/options') {
+        return Promise.resolve(jsonResponse({
+          options: [{
+            mode: 'local',
+            available: true,
+            requires_provider_key_input: false,
+            local_model_id: 'phi2-2.7b',
+          }],
+        }))
+      }
+      return Promise.reject(new Error('offline'))
+    })
     const onContinue = vi.fn()
 
     await act(async () => {
       root.render(
         <IntroAndPrivacy
-          selectedModelAccess={{ mode: 'local' }}
+          selectedModelAccess={{ mode: 'local', local_model_id: 'phi2-2.7b', resolved: true }}
           onSelectModelAccess={vi.fn()}
           onContinue={onContinue}
         />,
@@ -107,7 +130,7 @@ describe('IntroAndPrivacy', () => {
     act(() => { continueButton().click() })
     act(() => { continueButton().click() })
 
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(onContinue).toHaveBeenCalledWith('')
   })
 })

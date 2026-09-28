@@ -179,47 +179,6 @@ final class AuthClient {
         return try decoder.decode(UsageResponse.self, from: data)
     }
     
-    // MARK: - Trial Key Endpoints
-    
-    /// Response from trial balance endpoint.
-    struct TrialBalanceResponse: Codable {
-        /// Remaining balance in USD (up to 6 decimal places).
-        let remainingUsd: Double
-        /// Total limit in USD for this trial key.
-        let limitUsd: Double
-        
-        enum CodingKeys: String, CodingKey {
-            case remainingUsd = "remaining_usd"
-            case limitUsd = "limit_usd"
-        }
-    }
-    
-    /// Fetches the current trial balance for a given trial key.
-    /// - Parameter trialKey: The trial key to check balance for.
-    /// - Returns: TrialBalanceResponse with remaining and limit in USD.
-    func getTrialBalance(trialKey: String) async throws -> TrialBalanceResponse {
-        guard let url = URL(string: baseURL + "/trial/balance") else {
-            throw AuthError.networkError("Invalid URL")
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.timeoutInterval = 30
-        request.setValue(trialKey, forHTTPHeaderField: "X-Trial-Key")
-        
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw AuthError.networkError("Invalid response")
-        }
-        
-        if httpResponse.statusCode >= 400 {
-            throw AuthError.serverError(httpResponse.statusCode)
-        }
-        
-        return try decoder.decode(TrialBalanceResponse.self, from: data)
-    }
-    
     // MARK: - OpenRouter Proxy
     
     func proxyRequest(_ request: ProxyRequest, accessToken: String) async throws -> Data {

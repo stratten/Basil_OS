@@ -33,7 +33,7 @@ export function useSetupAssistantStore() {
     state,
     dispatch,
     setStage: (setupStage: SetupStage) => dispatch({ type: 'set_stage', setupStage }),
-    setModelAccess: (setupAgentModelAccess: SetupAgentModelAccess) => (
+    setModelAccess: (setupAgentModelAccess: SetupAgentModelAccess | null) => (
       dispatch({ type: 'set_model_access', setupAgentModelAccess })
     ),
     appendUserMessage: (content: string) => dispatch({ type: 'append_user_message', content }),

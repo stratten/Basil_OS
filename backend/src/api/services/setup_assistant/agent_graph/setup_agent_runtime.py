@@ -14,7 +14,6 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 
 from api.core.models.model_types import ModelCapability
-from api.core.models.reasoning.auth_proxy_model import AuthProxyModel
 from api.core.models.reasoning.model_runtime_profile import (
     resolve_runtime_model_profile,
 )
@@ -28,8 +27,8 @@ from api.routes.setup_assistant.models import (
 from api.services.setup_assistant.agent_graph.agenda_catalog import (
     applicable_catalog_seed,
 )
-from api.services.agent_processing.lifecycle.execution_graph.auth_proxy_langchain_adapter import (
-    create_langchain_llm_from_auth_proxy,
+from api.services.agent_processing.lifecycle.execution_graph.agent_executor_factory import (
+    create_langchain_llm_from_model,
 )
 from api.services.agent_processing.lifecycle.execution_graph.llama_cpp_langchain_adapter import (
     create_langchain_llm_from_llama_cpp,
@@ -48,7 +47,6 @@ from api.services.setup_assistant.context_catalog_service import (
 )
 
 logger = logging.getLogger(__name__)
-SETUP_AGENT_PROXY_MARKER = "setup_agent"
 
 
 class SetupAgentRuntime:
@@ -210,13 +208,11 @@ class SetupAgentRuntime:
                 profile=resolve_runtime_model_profile(model),
             )
 
-        proxy_model = AuthProxyModel(
-            model_id=model_selection.model_id,
-            access_token=None,
-            trial_key=None,
-            setup_agent_key=SETUP_AGENT_PROXY_MARKER,
+        loaded_model = await self.model_service.load_model_by_id(
+            model_selection.model_id,
+            capabilities={ModelCapability.REASONING},
         )
-        return create_langchain_llm_from_auth_proxy(proxy_model)
+        return create_langchain_llm_from_model(loaded_model)
 
     def _build_setup_turn_input(self, request: SetupAgentRequest) -> str:
         seeded_agenda_items = self._resolve_agenda_items_for_turn(request)

@@ -7,6 +7,7 @@ type OutgoingMessage =
   | { type: 'requestToggleProviderKeySource'; requestId: string; providerId: string; useOwnKey: boolean }
   | { type: 'requestToggleModel'; requestId: string; providerId: string; modelId: string; enabled: boolean }
   | { type: 'requestSaveApiKey'; requestId: string; providerId: string; key: string }
+  | { type: 'requestRemoveApiKey'; requestId: string; providerId: string }
 
 declare global {
   interface Window {
@@ -80,5 +81,11 @@ export function requestToggleModel(providerId: string, modelId: string, enabled:
 export function requestSaveApiKey(providerId: string, key: string): string {
   const requestIdValue = requestId('requestSaveApiKey')
   postMessage({ type: 'requestSaveApiKey', requestId: requestIdValue, providerId, key })
+  return requestIdValue
+}
+
+export function requestRemoveApiKey(providerId: string): string {
+  const requestIdValue = requestId('requestRemoveApiKey')
+  postMessage({ type: 'requestRemoveApiKey', requestId: requestIdValue, providerId })
   return requestIdValue
 }

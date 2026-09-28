@@ -328,16 +328,6 @@ if [ ! -f "$STAGED_MODEL_DOWNLOAD_PANEL_ENTRY" ]; then
     echo "❌ ERROR: Asset build reported success but $STAGED_MODEL_DOWNLOAD_PANEL_ENTRY is missing."
     exit 1
 fi
-STAGED_TRIAL_EXHAUSTION_PANEL_DIR="Sources/Resources/TrialExhaustionPanelAssets/assets"
-if [ ! -d "$STAGED_TRIAL_EXHAUSTION_PANEL_DIR" ] || [ -z "$(ls -A "$STAGED_TRIAL_EXHAUSTION_PANEL_DIR" 2>/dev/null)" ]; then
-    echo "❌ ERROR: Asset build reported success but $STAGED_TRIAL_EXHAUSTION_PANEL_DIR is empty/missing."
-    exit 1
-fi
-STAGED_TRIAL_EXHAUSTION_PANEL_ENTRY="Sources/Resources/TrialExhaustionPanelAssets/src/entries/trial-exhaustion-panel.html"
-if [ ! -f "$STAGED_TRIAL_EXHAUSTION_PANEL_ENTRY" ]; then
-    echo "❌ ERROR: Asset build reported success but $STAGED_TRIAL_EXHAUSTION_PANEL_ENTRY is missing."
-    exit 1
-fi
 STAGED_POWER_USER_GUIDE_PANEL_DIR="Sources/Resources/PowerUserGuidePanelAssets/assets"
 if [ ! -d "$STAGED_POWER_USER_GUIDE_PANEL_DIR" ] || [ -z "$(ls -A "$STAGED_POWER_USER_GUIDE_PANEL_DIR" 2>/dev/null)" ]; then
     echo "❌ ERROR: Asset build reported success but $STAGED_POWER_USER_GUIDE_PANEL_DIR is empty/missing."

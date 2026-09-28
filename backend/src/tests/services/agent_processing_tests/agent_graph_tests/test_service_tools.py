@@ -31,7 +31,6 @@ async def test_create_shell_service_tools():
     # Initialize coordinator to get services
     coordinator = WorkflowCoordinator()
     await coordinator._ensure_services_initialized()
-    await coordinator._ensure_llm_components_initialized()
     
     # Get service capabilities
     capability_cache = await coordinator.service_method_planner.plan_service_capabilities()
@@ -74,7 +73,6 @@ async def test_create_email_service_tools():
     # Initialize coordinator to get services
     coordinator = WorkflowCoordinator()
     await coordinator._ensure_services_initialized()
-    await coordinator._ensure_llm_components_initialized()
     
     # Get service capabilities
     capability_cache = await coordinator.service_method_planner.plan_service_capabilities()
@@ -116,7 +114,6 @@ async def test_tool_input_schema_validation():
     # Initialize coordinator
     coordinator = WorkflowCoordinator()
     await coordinator._ensure_services_initialized()
-    await coordinator._ensure_llm_components_initialized()
     
     # Get shell service capabilities
     capability_cache = await coordinator.service_method_planner.plan_service_capabilities()
@@ -159,7 +156,6 @@ async def test_convenience_function():
     # Initialize coordinator
     coordinator = WorkflowCoordinator()
     await coordinator._ensure_services_initialized()
-    await coordinator._ensure_llm_components_initialized()
     
     # Get all service capabilities
     capability_cache = await coordinator.service_method_planner.plan_service_capabilities()

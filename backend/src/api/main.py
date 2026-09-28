@@ -546,17 +546,18 @@ async def startup_event():
             # Initialize API models if they're enabled in preferences
             if preferences.models.use_api_models:
                 logger.info("[API] API models are enabled in preferences, initializing providers...")
-                from .core.preferences.preferences_io import get_api_key, save_preferences
+                from .core.preferences.preferences_io import save_preferences
+                from config.api_keys import has_api_key
                 
                 # Logic similar to toggle_api_models but without changing the preference value
                 if not (preferences.models.anthropic_enabled or preferences.models.openai_enabled):
                     # Enable Anthropic by default if we have a key
-                    if get_api_key("anthropic"):
+                    if has_api_key("anthropic"):
                         preferences.models.anthropic_enabled = True
                         logger.info("[API] Automatically enabling Anthropic provider at startup")
                     
                     # Enable OpenAI by default if we have a key
-                    if get_api_key("openai"):
+                    if has_api_key("openai"):
                         preferences.models.openai_enabled = True
                         logger.info("[API] Automatically enabling OpenAI provider at startup")
                     

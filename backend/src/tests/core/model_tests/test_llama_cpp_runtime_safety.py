@@ -41,6 +41,9 @@ class _ConcurrentFakeLlama:
             with self._counter_lock:
                 self.active_calls -= 1
 
+    def n_ctx(self) -> int:
+        return 128
+
 
 def _adapter_for_fake_llama(fake_llama: _ConcurrentFakeLlama):
     model = SimpleNamespace(

@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 from config.api_keys import get_api_key, list_available_providers, set_api_key
 
 from ....core.logging.api_logger import api_logger
+from ....core.services.api_key_validation import validate_provider_api_key
 
 from .helpers import _get_models_from_registry_for_provider
 from .schemas import (
@@ -105,61 +106,6 @@ async def delete_api_key(provider: str) -> APIKeyUpdateResponse:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# Format validation patterns per provider
-_KEY_FORMAT_VALIDATORS = {
-    "anthropic": lambda k: k.startswith("sk-ant-") and len(k) > 20,
-    "openai": lambda k: k.startswith("sk-") and len(k) > 20,
-    "google": lambda k: k.startswith("AI") and len(k) > 20,
-    "gemini": lambda k: k.startswith("AI") and len(k) > 20,
-}
-
-
-def _validate_key_with_api(provider: str, key: str, validation_model: str) -> None:
-    """
-    Make a minimal API call to validate the key. Raises on failure.
-
-    Args:
-        provider: Provider name (anthropic, openai, google, gemini)
-        key: API key to validate
-        validation_model: Model ID to use for validation
-    """
-    if provider == "anthropic":
-        from anthropic import Anthropic
-        client = Anthropic(api_key=key)
-        client.messages.create(
-            model=validation_model,
-            max_tokens=1,
-            messages=[{"role": "user", "content": "Hello"}]
-        )
-    elif provider == "openai":
-        from openai import OpenAI
-        client = OpenAI(api_key=key)
-        client.chat.completions.create(
-            model=validation_model,
-            max_tokens=1,
-            messages=[{"role": "user", "content": "Hello"}]
-        )
-    elif provider in ["google", "gemini"]:
-        import google.generativeai as genai
-        genai.configure(api_key=key)
-        model = genai.GenerativeModel(validation_model)
-        model.generate_content("Hi", generation_config={'max_output_tokens': 1})
-    else:
-        raise ValueError(f"No API validation logic for provider: {provider}")
-
-
-def _normalize_api_error(error_msg: str) -> str:
-    """Normalize common API error messages for user-friendly display."""
-    error_lower = error_msg.lower()
-    if "invalid api key" in error_lower or "unauthorized" in error_lower or "api_key_invalid" in error_lower:
-        return "Invalid API key"
-    elif "insufficient" in error_lower and "quota" in error_lower:
-        return "Insufficient quota or credits"
-    elif "quota" in error_lower:
-        return "Insufficient quota or API access"
-    return error_msg
-
-
 @api_key_router.post("/api_keys/test")
 async def test_api_key(request: APIKeyTestRequest) -> APIKeyTestResponse:
     """Test if an API key is valid by making a simple request to the provider's API."""
@@ -176,40 +122,10 @@ async def test_api_key(request: APIKeyTestRequest) -> APIKeyTestResponse:
     if not key or len(key) == 0:
         return APIKeyTestResponse(provider=provider, valid=False, error="No API key available")
 
-    # Normalize provider name for google/gemini
-    registry_provider = "google" if provider == "gemini" else provider
-
-    # Check format validation
-    format_validator = _KEY_FORMAT_VALIDATORS.get(provider)
-    if not format_validator:
-        return APIKeyTestResponse(provider=provider, valid=False, error=f"Unknown provider: {provider}")
-
-    if not format_validator(key):
-        return APIKeyTestResponse(
-            provider=provider,
-            valid=False,
-            error=f"Key does not appear to be a valid {provider.capitalize()} API key format"
-        )
-
-    # Get validation model from registry
-    from api.core.models.models_registry import get_validation_model_for_provider
-    validation_model = get_validation_model_for_provider(registry_provider)
-    if not validation_model:
-        return APIKeyTestResponse(
-            provider=provider,
-            valid=False,
-            error=f"No validation model configured for {provider.capitalize()} in registry"
-        )
-
-    # Make actual API call to validate
-    api_logger.info(f"Testing {provider} API key with actual API call (model: {validation_model})")
-    try:
-        _validate_key_with_api(provider, key, validation_model)
+    api_logger.info(f"Testing {provider} API key with actual API call")
+    valid, error = validate_provider_api_key(provider, key)
+    if valid:
         return APIKeyTestResponse(provider=provider, valid=True, details={"format": "valid", "api_validated": True})
-    except Exception as e:
-        api_logger.error(f"{provider.capitalize()} API key validation failed: {str(e)}")
-        return APIKeyTestResponse(
-            provider=provider,
-            valid=False,
-            error=f"API validation failed: {_normalize_api_error(str(e))}"
-        )
+
+    api_logger.error(f"{provider.capitalize()} API key validation failed: {error}")
+    return APIKeyTestResponse(provider=provider, valid=False, error=error)

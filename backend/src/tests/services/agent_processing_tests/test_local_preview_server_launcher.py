@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import socket
+import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
@@ -23,20 +24,38 @@ def _free_port() -> int:
         return sock.getsockname()[1]
 
 
+def _http_server_args(port: int) -> list[str]:
+    return ["-m", "http.server", str(port), "--bind", "127.0.0.1"]
+
+
+def _assert_running(session) -> None:
+    assert session.status == "running", (
+        f"last_error={session.last_error!r}; stdout={session.stdout_tail!r}; stderr={session.stderr_tail!r}"
+    )
+
+
 @pytest.fixture
 def registry() -> LocalPreviewSessionRegistry:
     return LocalPreviewSessionRegistry()
 
 
 @pytest.fixture
-def launcher(registry: LocalPreviewSessionRegistry) -> LocalPreviewServerLauncher:
+def launcher(
+    registry: LocalPreviewSessionRegistry,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> LocalPreviewServerLauncher:
+    monkeypatch.setattr(
+        "api.services.agent_processing.tools.direct_application_interactions.local_web_preview.local_preview_server_launcher.home_root",
+        lambda: tmp_path,
+    )
     return LocalPreviewServerLauncher(registry)
 
 
 @pytest.fixture
-def allowed_cwd() -> Path:
-    """Working directory under the user's home, satisfying the cwd allowlist."""
-    path = Path.home() / ".basil" / "local_preview_tests"
+def allowed_cwd(tmp_path: Path) -> Path:
+    """Working directory under the isolated home fixture, satisfying the cwd allowlist."""
+    path = tmp_path / "local_preview_tests"
     path.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -126,13 +145,13 @@ async def test_start_session_running_flips_status_after_port_listens(
         session = await launcher.start_session(
             agent_task_id="task-1",
             artifact_id="artifact-1",
-            command="python3",
-            args=["-m", "http.server", str(port)],
+            command=sys.executable,
+            args=_http_server_args(port),
             cwd=str(allowed_cwd),
             port=port,
         )
 
-    assert session.status == "running"
+    _assert_running(session)
     process = registry.get_process(session.session_id)
     assert process is not None
 
@@ -158,7 +177,7 @@ async def test_start_timeout_terminates_process_and_reports_error(
         session = await launcher.start_session(
             agent_task_id="task-1",
             artifact_id="artifact-timeout",
-            command="python3",
+            command=sys.executable,
             args=["-c", "import time; time.sleep(60)"],
             cwd=str(allowed_cwd),
             port=_free_port(),
@@ -186,22 +205,22 @@ async def test_stop_all_sessions_terminates_every_active_session(
         session_a = await launcher.start_session(
             agent_task_id="task-1",
             artifact_id="artifact-a",
-            command="python3",
-            args=["-m", "http.server", str(port_a)],
+            command=sys.executable,
+            args=_http_server_args(port_a),
             cwd=str(allowed_cwd),
             port=port_a,
         )
         session_b = await launcher.start_session(
             agent_task_id="task-1",
             artifact_id="artifact-b",
-            command="python3",
-            args=["-m", "http.server", str(port_b)],
+            command=sys.executable,
+            args=_http_server_args(port_b),
             cwd=str(allowed_cwd),
             port=port_b,
         )
 
-    assert session_a.status == "running"
-    assert session_b.status == "running"
+    _assert_running(session_a)
+    _assert_running(session_b)
 
     await launcher.stop_all_sessions()
 
@@ -226,8 +245,8 @@ async def test_second_session_for_same_artifact_stops_first(
         first = await launcher.start_session(
             agent_task_id="task-1",
             artifact_id="artifact-a1",
-            command="python3",
-            args=["-m", "http.server", str(port_a)],
+            command=sys.executable,
+            args=_http_server_args(port_a),
             cwd=str(allowed_cwd),
             port=port_a,
         )
@@ -237,8 +256,8 @@ async def test_second_session_for_same_artifact_stops_first(
         second = await launcher.start_session(
             agent_task_id="task-1",
             artifact_id="artifact-a1",
-            command="python3",
-            args=["-m", "http.server", str(port_b)],
+            command=sys.executable,
+            args=_http_server_args(port_b),
             cwd=str(allowed_cwd),
             port=port_b,
         )
@@ -255,6 +274,7 @@ async def test_denied_replacement_preserves_existing_artifact_session(
     allowed_cwd: Path,
 ) -> None:
     port = _free_port()
+    replacement_port = _free_port()
     approved_outcome = ExecutionApprovalOutcome(approved=True, status="approved", reason="Approved.")
     denied_outcome = ExecutionApprovalOutcome(approved=False, status="user_denied", reason="User denied.")
 
@@ -267,8 +287,8 @@ async def test_denied_replacement_preserves_existing_artifact_session(
         first = await launcher.start_session(
             agent_task_id="task-1",
             artifact_id="artifact-a1",
-            command="python3",
-            args=["-m", "http.server", str(port)],
+            command=sys.executable,
+            args=_http_server_args(port),
             cwd=str(allowed_cwd),
             port=port,
         )
@@ -276,13 +296,13 @@ async def test_denied_replacement_preserves_existing_artifact_session(
         second = await launcher.start_session(
             agent_task_id="task-1",
             artifact_id="artifact-a1",
-            command="python3",
-            args=["-m", "http.server", str(_free_port())],
+            command=sys.executable,
+            args=_http_server_args(replacement_port),
             cwd=str(allowed_cwd),
-            port=_free_port(),
+            port=replacement_port,
         )
 
-    assert first.status == "running"
+    _assert_running(first)
     assert second.status == "denied"
     assert first_process is not None and first_process.returncode is None
     assert registry.get_active_session_id_for_artifact("task-1", "artifact-a1") == first.session_id
@@ -303,22 +323,22 @@ async def test_two_tasks_can_share_an_artifact_id_without_replacing_each_other(l
         first = await launcher.start_session(
             agent_task_id="task-1",
             artifact_id="shared-artifact",
-            command="python3",
-            args=["-m", "http.server", str(port_a)],
+            command=sys.executable,
+            args=_http_server_args(port_a),
             cwd=str(allowed_cwd),
             port=port_a,
         )
         second = await launcher.start_session(
             agent_task_id="task-2",
             artifact_id="shared-artifact",
-            command="python3",
-            args=["-m", "http.server", str(port_b)],
+            command=sys.executable,
+            args=_http_server_args(port_b),
             cwd=str(allowed_cwd),
             port=port_b,
         )
 
-    assert first.status == "running"
-    assert second.status == "running"
+    _assert_running(first)
+    _assert_running(second)
     assert first.session_id != second.session_id
     assert registry.get_active_session_id_for_artifact("task-1", "shared-artifact") == first.session_id
     assert registry.get_active_session_id_for_artifact("task-2", "shared-artifact") == second.session_id

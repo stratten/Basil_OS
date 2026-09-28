@@ -1257,7 +1257,6 @@ export interface AccountSettingsFields {
   basilCloudSelected: boolean
   basilCloudBadge: string
   basilCloudDescription: string
-  trialExhausted: boolean
   isLoadingUsage: boolean
   currentPeriodFormatted: string
   totalCostFormatted: string

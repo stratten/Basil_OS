@@ -53,9 +53,7 @@ class AuthProxyLangChainAdapter(BaseChatModel):
     
     # Pydantic fields for configuration
     auth_service_url: str = Field(description="Base URL for auth service")
-    access_token: Optional[str] = Field(default=None, description="JWT access token")
-    trial_key: Optional[str] = Field(default=None, description="Included-credit trial key")
-    setup_agent_key: Optional[str] = Field(default=None, description="Setup-agent proxy key")
+    access_token: str = Field(description="JWT access token")
     model_id: str = Field(description="OpenRouter model ID")
     model_name: str = Field(description="Human-readable model name")
     provider: str = Field(description="Provider name (anthropic, openai, etc.)")
@@ -124,8 +122,6 @@ class AuthProxyLangChainAdapter(BaseChatModel):
         new_instance = AuthProxyLangChainAdapter(
             auth_service_url=self.auth_service_url,
             access_token=self.access_token,
-            trial_key=self.trial_key,
-            setup_agent_key=self.setup_agent_key,
             model_id=self.model_id,
             model_name=self.model_name,
             provider=self.provider,
@@ -308,72 +304,14 @@ class AuthProxyLangChainAdapter(BaseChatModel):
         
         return converted
     
-    def _build_headers(self, use_trial: Optional[bool] = None) -> Dict[str, str]:
-        headers = {"Content-Type": "application/json"}
-        should_use_trial = self.trial_key is not None if use_trial is None else use_trial
+    def _build_headers(self) -> Dict[str, str]:
+        return {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.access_token}",
+        }
 
-        if self.setup_agent_key and use_trial is None:
-            headers["X-Basil-Setup-Agent-Key"] = self.setup_agent_key
-        elif should_use_trial and self.trial_key:
-            headers["X-Trial-Key"] = self.trial_key
-        elif self.access_token:
-            headers["Authorization"] = f"Bearer {self.access_token}"
-        
-        return headers
-    
-    def _auth_label(self, use_trial: Optional[bool] = None) -> str:
-        if self.setup_agent_key and use_trial is None:
-            return "setup_agent"
-        should_use_trial = self.trial_key is not None if use_trial is None else use_trial
-        return "trial" if should_use_trial and self.trial_key else "token"
-    
-    async def _broadcast_trial_balance(self, remaining_usd: float, limit_usd: float | None = None) -> None:
-        try:
-            from api.services.websocket_connection_manager import active_connections
-            
-            if not active_connections:
-                return
-            
-            message: dict = {
-                "event_type": "trial_balance_update",
-                "remaining_usd": remaining_usd,
-                "is_exhausted": remaining_usd <= 0.000001
-            }
-            if limit_usd is not None:
-                message["limit_usd"] = limit_usd
-            
-            for connection in active_connections:
-                try:
-                    await connection.send_json(message)
-                except Exception:
-                    pass
-        except ImportError:
-            pass
-    
-    async def _handle_trial_balance_event(self, balance: Optional[Dict[str, Any]]) -> None:
-        """Broadcast trial balance from the SSE ``trial_balance_update`` event.
-
-        Streaming responses can't carry balance in trailing headers, so the auth
-        service emits it as an SSE event before ``[DONE]``; mirror the old
-        header-based broadcast here.
-        """
-        if self.setup_agent_key or not self.trial_key or not balance:
-            return
-        remaining_usd = balance.get("remaining_usd")
-        if remaining_usd is None and balance.get("remaining_cents") is not None:
-            try:
-                remaining_usd = int(balance["remaining_cents"]) / 100.0
-            except (TypeError, ValueError):
-                remaining_usd = None
-        if remaining_usd is None:
-            return
-        try:
-            await self._broadcast_trial_balance(float(remaining_usd))
-        except (TypeError, ValueError):
-            logger.warning(f"Invalid trial balance event from auth service: {balance}")
-    
-    async def _notify_trial_exhausted(self) -> None:
-        await self._broadcast_trial_balance(0.0)
+    def _auth_label(self) -> str:
+        return "token"
     
     def _make_token_forwarder(
         self, run_manager: Optional[CallbackManagerForLLMRun]
@@ -407,11 +345,6 @@ class AuthProxyLangChainAdapter(BaseChatModel):
         if status_code == 401:
             raise ValueError("Authentication required - token expired or invalid")
         if status_code == 402:
-            if "trial" in body.lower():
-                await self._notify_trial_exhausted()
-                raise ValueError(
-                    "Trial quota exhausted - please sign in to continue with Basil Cloud or use your own keys"
-                )
             raise ValueError("Payment required - please add a payment method")
         if status_code == 403:
             raise ValueError("Subscription inactive")
@@ -424,47 +357,18 @@ class AuthProxyLangChainAdapter(BaseChatModel):
         payload: Dict[str, Any],
         run_manager: Optional[CallbackManagerForLLMRun],
     ) -> "StreamAccumulator":
-        """POST with ``stream: true`` and fold the SSE response into an accumulator.
-
-        Retries once with the account token on a trial-exhausted (402) response,
-        mirroring the previous blocking behavior. Each ``async with`` closes before
-        a retry so no nested streams are held open.
-        """
+        """POST with ``stream: true`` and fold the SSE response into an accumulator."""
         url = f"{self.auth_service_url}/route/request"
         forward_token = self._make_token_forwarder(run_manager)
-        use_trial: Optional[bool] = None
 
-        while True:
-            headers = (
-                self._build_headers()
-                if use_trial is None
-                else self._build_headers(use_trial=use_trial)
-            )
-            async with client.stream(
-                "POST", url, json=payload, headers=headers
-            ) as response:
-                if response.status_code == 200:
-                    acc = await consume_auth_proxy_stream(
-                        response.aiter_lines(), forward_token
-                    )
-                    await self._handle_trial_balance_event(acc.trial_balance)
-                    return acc
-                body = (await response.aread()).decode(errors="replace")
+        async with client.stream(
+            "POST", url, json=payload, headers=self._build_headers()
+        ) as response:
+            if response.status_code == 200:
+                return await consume_auth_proxy_stream(response.aiter_lines(), forward_token)
+            body = (await response.aread()).decode(errors="replace")
 
-            if (
-                response.status_code == 402
-                and "trial" in body.lower()
-                and self.access_token
-                and use_trial is None
-            ):
-                await self._notify_trial_exhausted()
-                logger.info(
-                    "Trial exhausted; retrying streaming auth proxy with account token"
-                )
-                use_trial = False
-                continue
-
-            await self._raise_for_stream_status(response.status_code, body)
+        await self._raise_for_stream_status(response.status_code, body)
     
     def _parse_tool_calls(self, response_data: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], List[str]]:
         """Parse tool calls from OpenAI-format response with robust error handling.
@@ -691,8 +595,6 @@ def create_langchain_llm_from_auth_proxy(auth_proxy_model: Any) -> AuthProxyLang
     return AuthProxyLangChainAdapter(
         auth_service_url=AUTH_SERVICE_URL,
         access_token=auth_proxy_model.access_token,
-        trial_key=getattr(auth_proxy_model, "trial_key", None),
-        setup_agent_key=getattr(auth_proxy_model, "setup_agent_key", None),
         model_id=auth_proxy_model.openrouter_model_id,
         model_name=auth_proxy_model.model_name,
         provider=auth_proxy_model.provider,

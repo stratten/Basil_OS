@@ -29,6 +29,7 @@ def _write_analysis(directory) -> str:
             "capability_type": "email_draft",
             "confidence": 0.9,
             "why_basil_can_help": "Basil can draft the follow-up from meeting context.",
+            "disposition": "todo_candidate",
         }
     ])
     result = MeetingAnalysisResult(

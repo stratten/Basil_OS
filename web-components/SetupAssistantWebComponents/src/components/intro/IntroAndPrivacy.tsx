@@ -1,13 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
 
+import TokenizedSelect from '@shared/TokenizedSelect'
+
+import { SmoothReveal } from './SmoothReveal'
+
 import {
   fetchMemoryIntelligenceSettings,
+  fetchModelAccessOptions,
+  selectModelAccess,
   updateMemoryIntelligenceSettings,
 } from '@/services/api'
-import type { SetupAgentModelAccess, SetupAgentModelAccessMode } from '@/types'
+import type {
+  SetupAgentModelAccess,
+  SetupAgentModelAccessMode,
+  SetupAgentModelAccessOption,
+} from '@/types'
 
 interface Props {
-  selectedModelAccess: SetupAgentModelAccess
+  selectedModelAccess: SetupAgentModelAccess | null
   onSelectModelAccess: (modelAccess: SetupAgentModelAccess) => void
   onContinue: (initialMessage: string) => void
 }
@@ -18,27 +28,32 @@ type CaptureSettingsLoadState = 'loading' | 'ready' | 'unavailable'
 const STEP_ORDER: readonly IntroStepName[] = ['model', 'learning', 'note'] as const
 const STEP_TRANSITION_MS = 220
 
-const modelChoices: Array<{
-  mode: SetupAgentModelAccessMode
-  title: string
-  detail: string
-}> = [
-  {
-    mode: 'local',
+const modelChoices: Record<SetupAgentModelAccessMode, { title: string; detail: string }> = {
+  local: {
     title: 'Local on this machine',
     detail: 'I\'ll reason through setup here. Nothing leaves unless you choose a connection.',
   },
-  {
-    mode: 'default_proxy',
-    title: 'Recommended cloud model',
-    detail: 'Faster, smarter setup reasoning through the recommended Basil Cloud model.',
+  provider_key: {
+    title: 'My own API key',
+    detail: 'I\'ll use a model API key you provide directly to its provider.',
   },
-  {
-    mode: 'custom',
-    title: 'A model I\'ve already set up',
-    detail: 'I\'ll use the setup-compatible model you have already configured in Settings.',
+  basil_cloud: {
+    title: 'Basil Cloud',
+    detail: 'Faster setup reasoning through your eligible Basil Cloud account.',
   },
-]
+}
+
+const providerLabels: Record<string, string> = {
+  anthropic: 'Anthropic (Claude)',
+  openai: 'OpenAI',
+  google: 'Google (Gemini)',
+}
+
+const providerKeyHelpUrls: Record<string, string> = {
+  anthropic: 'https://console.anthropic.com/settings/keys',
+  openai: 'https://platform.openai.com/api-keys',
+  google: 'https://aistudio.google.com/apikey',
+}
 
 function getReduceMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -54,6 +69,7 @@ export function IntroAndPrivacy({
   const [skillAfterTaskEnabled, setSkillAfterTaskEnabled] = useState(false)
   const [captureSettingsLoadState, setCaptureSettingsLoadState] = useState<CaptureSettingsLoadState>('loading')
   const [isContinuing, setIsContinuing] = useState(false)
+  const [isConfirmingModelAccess, setIsConfirmingModelAccess] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const [currentStep, setCurrentStep] = useState<IntroStepName>('model')
@@ -63,6 +79,7 @@ export function IntroAndPrivacy({
   const stepIndex = STEP_ORDER.indexOf(currentStep)
   const isFinalStep = currentStep === 'note'
   const isTransitioning = pendingStep !== null
+  const isModelAccessResolved = Boolean(selectedModelAccess?.resolved)
 
   useEffect(() => {
     let isCurrent = true
@@ -103,6 +120,7 @@ export function IntroAndPrivacy({
   }
 
   const goNext = () => {
+    if (currentStep === 'model' && (!isModelAccessResolved || isConfirmingModelAccess)) return
     if (isFinalStep) {
       void completeAndContinue()
       return
@@ -116,7 +134,7 @@ export function IntroAndPrivacy({
   }
 
   const completeAndContinue = async () => {
-    if (isContinuing || captureSettingsLoadState === 'loading') return
+    if (isContinuing || captureSettingsLoadState === 'loading' || !isModelAccessResolved) return
     if (captureSettingsLoadState === 'unavailable') {
       onContinue(freeformNote.trim())
       return
@@ -150,6 +168,7 @@ export function IntroAndPrivacy({
           <IntroModelStep
             selectedModelAccess={selectedModelAccess}
             onSelectModelAccess={onSelectModelAccess}
+            onConfirmingChange={setIsConfirmingModelAccess}
           />
         )}
         {currentStep === 'learning' && (
@@ -197,9 +216,18 @@ export function IntroAndPrivacy({
           type="button"
           className="primary-button intro-step-primary"
           onClick={goNext}
-          disabled={isTransitioning || isContinuing || (currentStep === 'learning' && captureSettingsLoadState === 'loading')}
+          disabled={
+            isTransitioning
+            || isContinuing
+            || (currentStep === 'model' && (!isModelAccessResolved || isConfirmingModelAccess))
+            || (currentStep === 'learning' && captureSettingsLoadState === 'loading')
+          }
         >
-          {currentStep === 'learning' && captureSettingsLoadState === 'loading'
+          {currentStep === 'model' && !isModelAccessResolved
+            ? (selectedModelAccess?.mode === 'provider_key'
+              ? 'Validate your API key to continue'
+              : 'Choose a confirmed reasoning route')
+            : currentStep === 'learning' && captureSettingsLoadState === 'loading'
             ? 'Loading preferences…'
             : isFinalStep
             ? (isContinuing ? 'Saving…' : 'Continue to guided setup')
@@ -222,85 +250,404 @@ export function IntroAndPrivacy({
 }
 
 interface IntroModelStepProps {
-  selectedModelAccess: SetupAgentModelAccess
+  selectedModelAccess: SetupAgentModelAccess | null
   onSelectModelAccess: (modelAccess: SetupAgentModelAccess) => void
+  onConfirmingChange: (isConfirming: boolean) => void
 }
+
+type KeyValidationState = 'idle' | 'checking' | 'valid' | 'invalid'
 
 function IntroModelStep({
   selectedModelAccess,
   onSelectModelAccess,
+  onConfirmingChange,
 }: IntroModelStepProps) {
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'unavailable'>('loading')
+  const [options, setOptions] = useState<SetupAgentModelAccessOption[]>([])
+  const [pendingMode, setPendingMode] = useState<SetupAgentModelAccessMode | null>(null)
+  const [provider, setProvider] = useState('anthropic')
+  const [providerKey, setProviderKey] = useState('')
+  const [isEnteringNewKey, setIsEnteringNewKey] = useState(false)
+  const [keyValidation, setKeyValidation] = useState<KeyValidationState>('idle')
+  const [keyValidationError, setKeyValidationError] = useState<string | null>(null)
+  const [chosenModelId, setChosenModelId] = useState<string | null>(
+    selectedModelAccess?.mode === 'provider_key' ? selectedModelAccess.model_id ?? null : null,
+  )
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [isHelpOpen, setIsHelpOpen] = useState(false)
+
+  const providerKeyOption = options.find(option => option.mode === 'provider_key')
+  const savedProvider = providerKeyOption && !providerKeyOption.requires_provider_key_input
+    ? providerKeyOption.provider ?? null
+    : null
+  const isProviderKeySelected = selectedModelAccess?.mode === 'provider_key'
+  const isKeyFormOpen = isProviderKeySelected && (!savedProvider || isEnteringNewKey)
+  const activeProvider = savedProvider && !isEnteringNewKey ? savedProvider : provider
+  const modelsFor = (providerId: string) => (providerKeyOption?.provider_models ?? []).filter(
+    choice => choice.provider === providerId,
+  )
+  const modelFor = (providerId: string, modelId: string | null) => {
+    const models = modelsFor(providerId)
+    return models.find(choice => choice.model_id === modelId)
+      ?? models.find(choice => choice.recommended)
+      ?? models[0]
+  }
+  const activeProviderModels = modelsFor(activeProvider)
+  const activeModel = modelFor(activeProvider, chosenModelId)
+
+  useEffect(() => {
+    let isCurrent = true
+    void fetchModelAccessOptions()
+      .then(response => {
+        if (!isCurrent) return
+        setOptions(response.options)
+        setLoadState('ready')
+        const providerOption = response.options.find(option => option.mode === 'provider_key')
+        if (providerOption?.provider) {
+          setProvider(providerOption.provider)
+        }
+      })
+      .catch(() => {
+        if (isCurrent) setLoadState('unavailable')
+      })
+    return () => {
+      isCurrent = false
+    }
+  }, [])
+
+  useEffect(() => {
+    onConfirmingChange(pendingMode !== null)
+  }, [onConfirmingChange, pendingMode])
+
+  useEffect(() => () => onConfirmingChange(false), [onConfirmingChange])
+
+  const resetKeyValidation = () => {
+    setKeyValidation('idle')
+    setKeyValidationError(null)
+  }
+
+  const handleProviderChange = (nextProvider: string) => {
+    setProvider(nextProvider)
+    setChosenModelId(null)
+    resetKeyValidation()
+  }
+
+  const handleKeyChange = (nextKey: string) => {
+    setProviderKey(nextKey)
+    resetKeyValidation()
+  }
+
+  const errorText = (error: unknown, fallback: string) => (
+    error instanceof Error && error.message ? error.message : fallback
+  )
+
+  const markProviderKeyPending = (providerId: string) => {
+    onSelectModelAccess({ mode: 'provider_key', provider: providerId, resolved: false })
+  }
+
+  const confirmSavedProviderKey = async (modelId: string | undefined) => {
+    if (!savedProvider || pendingMode) return
+    setPendingMode('provider_key')
+    setErrorMessage(null)
+    try {
+      const response = await selectModelAccess({ mode: 'provider_key', provider: savedProvider, model_id: modelId })
+      onSelectModelAccess(response.access)
+    } catch (error) {
+      markProviderKeyPending(savedProvider)
+      setErrorMessage(errorText(error, 'I couldn’t confirm your saved key. Please try again.'))
+    } finally {
+      setPendingMode(null)
+    }
+  }
+
+  const confirmNewProviderKey = async () => {
+    const trimmed = providerKey.trim()
+    if (!trimmed || pendingMode) return
+    setPendingMode('provider_key')
+    setKeyValidation('checking')
+    setKeyValidationError(null)
+    setErrorMessage(null)
+    try {
+      const response = await selectModelAccess({
+        mode: 'provider_key',
+        provider,
+        model_id: modelFor(provider, chosenModelId)?.model_id,
+        provider_api_key: trimmed,
+      })
+      onSelectModelAccess(response.access)
+      setOptions(current => current.map(option => (
+        option.mode === 'provider_key'
+          ? { ...option, provider, requires_provider_key_input: false }
+          : option
+      )))
+      setProviderKey('')
+      setIsEnteringNewKey(false)
+      setKeyValidation('valid')
+    } catch (error) {
+      setKeyValidation('invalid')
+      setKeyValidationError(errorText(error, 'That key was rejected by the provider.'))
+    } finally {
+      setPendingMode(null)
+    }
+  }
+
+  const chooseRoute = async (option: SetupAgentModelAccessOption) => {
+    if (!option.available || pendingMode) return
+
+    if (option.mode === 'provider_key') {
+      if (isProviderKeySelected) return
+      setErrorMessage(null)
+      if (savedProvider) {
+        await confirmSavedProviderKey(modelFor(savedProvider, chosenModelId)?.model_id)
+      } else {
+        markProviderKeyPending(provider)
+      }
+      return
+    }
+
+    setPendingMode(option.mode)
+    setErrorMessage(null)
+    try {
+      const response = await selectModelAccess({ mode: option.mode, local_model_id: option.local_model_id })
+      onSelectModelAccess(response.access)
+      setProviderKey('')
+      setIsEnteringNewKey(false)
+      resetKeyValidation()
+    } catch (error) {
+      setErrorMessage(errorText(error, 'I couldn’t confirm that reasoning route. Please try again.'))
+    } finally {
+      setPendingMode(null)
+    }
+  }
+
+  const handleModelChange = (modelId: string) => {
+    setChosenModelId(modelId)
+    if (isProviderKeySelected && !isKeyFormOpen) void confirmSavedProviderKey(modelId)
+  }
+
+  const startEnteringNewKey = () => {
+    setIsEnteringNewKey(true)
+    setProviderKey('')
+    resetKeyValidation()
+    markProviderKeyPending(provider)
+  }
+
+  const cancelEnteringNewKey = () => {
+    setIsEnteringNewKey(false)
+    setProviderKey('')
+    resetKeyValidation()
+    if (savedProvider) void confirmSavedProviderKey(modelFor(savedProvider, chosenModelId)?.model_id)
+  }
+
   return (
     <div className="intro-step-body">
       <h3>Reasoning during setup</h3>
-      <p className="intro-step-lede">
-        There are a few ways I can do the thinking for this setup. They differ in speed,
-        how sharp the reasoning is, and whether anything leaves this machine. Pick whichever
-        fits how you want to work right now — you can change it later.
-      </p>
+      <p className="intro-step-lede">There are a few ways I can do the thinking for this setup. They differ in speed, how sharp the reasoning is, and whether anything leaves this machine. Pick whichever fits how you want to work right now. I’ll confirm it before we continue.</p>
 
-      <div className="choice-list" role="group" aria-label="Setup reasoning preference">
-        {modelChoices.map(choice => (
-          <button
-            key={choice.mode}
-            type="button"
-            className={[
-              'choice-option',
-              `choice-option--${choice.mode}`,
-              selectedModelAccess.mode === choice.mode ? 'selected' : '',
-            ].join(' ')}
-            aria-pressed={selectedModelAccess.mode === choice.mode}
-            onClick={() => onSelectModelAccess({
-              mode: choice.mode,
-              custom_model_id: null,
-              local_model_id: null,
-            })}
-          >
-            <div>
-              <strong>{choice.title}</strong>
-              <span>{choice.detail}</span>
-            </div>
-          </button>
-        ))}
-      </div>
+      <SmoothReveal open={loadState === 'loading'}>
+        <p role="status">Checking available reasoning routes…</p>
+      </SmoothReveal>
+      <SmoothReveal open={loadState === 'unavailable'}>
+        <p role="alert" style={{ color: 'var(--error-base)' }}>
+          I couldn’t reach the setup service to check available reasoning routes.
+        </p>
+      </SmoothReveal>
+      <SmoothReveal open={loadState === 'ready'}>
+        <div className="choice-list" role="group" aria-label="Setup reasoning preference">
+          {options.map(option => {
+            const choice = modelChoices[option.mode]
+            const selected = selectedModelAccess?.mode === option.mode
+            const isExpandedProviderKey = option.mode === 'provider_key' && isProviderKeySelected
+            const hasSavedProviderKey = option.mode === 'provider_key' && Boolean(savedProvider)
+            return (
+              <div key={option.mode} className="choice-option-wrapper">
+                <button
+                  type="button"
+                  className={[
+                    'choice-option',
+                    `choice-option--${option.mode}`,
+                    selected ? 'selected' : '',
+                  ].join(' ')}
+                  aria-pressed={selected}
+                  disabled={!option.available || pendingMode !== null}
+                  onClick={() => void chooseRoute(option)}
+                >
+                  <div>
+                    <strong>{choice.title}</strong>
+                    <span>{pendingMode === option.mode && !isKeyFormOpen ? 'Confirming…' : choice.detail}</span>
+                    {option.mode === 'provider_key' && (
+                      <span className="choice-option-note">
+                        Select this if you already have your own API key from a provider like Anthropic (Claude), OpenAI (ChatGPT), or Google (Gemini). I'll send setup requests directly to that provider using your key.
+                      </span>
+                    )}
+                    <SmoothReveal open={hasSavedProviderKey && !isEnteringNewKey}>
+                      <span className="choice-option-note choice-option-note--positive">
+                        Your saved {providerLabels[option.provider ?? ''] ?? option.provider} key is already validated and ready to use.
+                      </span>
+                    </SmoothReveal>
+                    {!option.available && option.unavailable_reason && (
+                      <span className="choice-option-unavailable">{option.unavailable_reason}</span>
+                    )}
+                  </div>
+                </button>
+                <SmoothReveal open={isExpandedProviderKey && hasSavedProviderKey && !isEnteringNewKey}>
+                  <div className="choice-option-reveal-body">
+                    <button
+                      type="button"
+                      className="choice-option-secondary-action"
+                      disabled={pendingMode !== null}
+                      onClick={startEnteringNewKey}
+                    >
+                      Use a different key instead
+                    </button>
+                  </div>
+                </SmoothReveal>
+                <SmoothReveal open={isExpandedProviderKey && isKeyFormOpen}>
+                  <div className="choice-option-reveal-body choice-option-provider-key-form">
+                    <div className="choice-option-provider-field">
+                      <span>Provider</span>
+                      <TokenizedSelect
+                        value={provider}
+                        options={Object.entries(providerLabels).map(([value, label]) => ({ value, label }))}
+                        onValueChange={handleProviderChange}
+                        disabled={pendingMode !== null}
+                        ariaLabel="Provider"
+                        className="choice-option-provider-select"
+                      />
+                    </div>
+                    <label>
+                      <span>API key</span>
+                      <input
+                        type="password"
+                        value={providerKey}
+                        onChange={event => handleKeyChange(event.target.value)}
+                        onKeyDown={event => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault()
+                            void confirmNewProviderKey()
+                          }
+                        }}
+                        placeholder="API key"
+                        autoComplete="off"
+                        disabled={pendingMode !== null}
+                      />
+                    </label>
+                    <p className="choice-option-key-help">
+                      Don't have one yet?{' '}
+                      <a href={providerKeyHelpUrls[provider]} target="_blank" rel="noreferrer">
+                        Get a {providerLabels[provider]} API key
+                      </a>
+                      .
+                    </p>
+                    <div className="choice-option-key-validate-row">
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={!providerKey.trim() || pendingMode !== null}
+                        onClick={() => void confirmNewProviderKey()}
+                      >
+                        {keyValidation === 'checking' ? 'Checking…' : 'Validate & use key'}
+                      </button>
+                      <SmoothReveal open={keyValidation === 'valid' || keyValidation === 'invalid'}>
+                        {keyValidation === 'valid' ? (
+                          <span className="choice-option-key-status choice-option-key-status--valid" role="status">
+                            ✓ Key confirmed with {providerLabels[provider]}
+                          </span>
+                        ) : (
+                          <span className="choice-option-key-status choice-option-key-status--invalid" role="alert">
+                            {keyValidationError ?? 'That key was rejected.'}
+                          </span>
+                        )}
+                      </SmoothReveal>
+                    </div>
+                    {isEnteringNewKey && (
+                      <button
+                        type="button"
+                        className="choice-option-secondary-action"
+                        disabled={pendingMode !== null}
+                        onClick={cancelEnteringNewKey}
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </SmoothReveal>
+                <SmoothReveal open={isExpandedProviderKey && Boolean(activeModel)}>
+                  {activeModel && (
+                    <div className="choice-option-reveal-body choice-option-model-picker">
+                      <div className="choice-option-provider-field">
+                        <span>Model</span>
+                        <TokenizedSelect
+                          value={activeModel.model_id}
+                          options={activeProviderModels.map(choice => ({
+                            value: choice.model_id,
+                            label: choice.recommended ? `${choice.display_name} (Recommended)` : choice.display_name,
+                          }))}
+                          onValueChange={handleModelChange}
+                          disabled={pendingMode !== null}
+                          ariaLabel="Setup Assistant model"
+                          className="choice-option-provider-select"
+                        />
+                      </div>
+                      <p className="choice-option-model-note">
+                        Setup Assistant will use <strong>{activeModel.display_name}</strong>
+                        {activeModel.recommended ? ', a balanced choice for speed and quality' : ''}. This only applies to setup. Your default model in Settings → Models stays the same.
+                      </p>
+                    </div>
+                  )}
+                </SmoothReveal>
+              </div>
+            )
+          })}
+        </div>
+      </SmoothReveal>
 
-      <details className="intro-help">
-        <summary>
+      <SmoothReveal open={Boolean(errorMessage)}>
+        <p role="alert" style={{ color: 'var(--error-base)', margin: 0 }}>{errorMessage}</p>
+      </SmoothReveal>
+
+      <div className={`intro-help${isHelpOpen ? ' intro-help--open' : ''}`}>
+        <button
+          type="button"
+          className="intro-help-summary"
+          aria-expanded={isHelpOpen}
+          aria-controls="intro-help-body"
+          onClick={() => setIsHelpOpen(value => !value)}
+        >
           <span>What's the difference?</span>
           <span className="intro-help-chevron" aria-hidden="true">›</span>
-        </summary>
-        <div className="intro-help-body">
-          <dl>
-            <div>
-              <dt>Local on this machine</dt>
-              <dd>
-                I reason here using a local model on your disk. Slower than the cloud option and I
-                use some memory while I'm thinking, but this setup conversation stays on this
-                machine.
-              </dd>
-            </div>
-            <div>
-              <dt>Recommended cloud model</dt>
-              <dd>
-                I reason through a stronger model hosted by Basil Cloud. Faster and smarter, but
-                the contents of this conversation are routed through Basil Cloud while I am
-                working.
-              </dd>
-            </div>
-            <div>
-              <dt>A model I've already set up</dt>
-              <dd>
-                I'll use the specific reasoning model you have already configured in Settings. Best
-                when you already know which one you want here.
-              </dd>
-            </div>
-          </dl>
-          <p className="intro-help-footnote">
-            This only governs how I think during setup. It does not lock in how I reason later —
-            you can change my main models any time in Settings.
-          </p>
-        </div>
-      </details>
+        </button>
+        <SmoothReveal open={isHelpOpen}>
+          <div className="intro-help-body" id="intro-help-body">
+            <dl>
+              <div>
+                <dt>{modelChoices.local.title}</dt>
+                <dd>
+                  I reason here using a local model on your disk. Slower than the cloud option and I
+                  use some memory while I'm thinking, but this setup conversation stays on this
+                  machine.
+                </dd>
+              </div>
+              <div>
+                <dt>{modelChoices.basil_cloud.title}</dt>
+                <dd>
+                  I reason through a stronger model hosted by Basil Cloud. Faster and smarter, but
+                  the contents of this conversation are routed through Basil Cloud while I am
+                  working.
+                </dd>
+              </div>
+              <div>
+                <dt>{modelChoices.provider_key.title}</dt>
+                <dd>I’ll send setup requests directly to the provider you choose using the API key you enter here.</dd>
+              </div>
+            </dl>
+            <p className="intro-help-footnote">
+              This only governs how I think during setup. It does not lock in how I reason later —
+              you can change my main models any time in Settings.
+            </p>
+          </div>
+        </SmoothReveal>
+      </div>
     </div>
   )
 }

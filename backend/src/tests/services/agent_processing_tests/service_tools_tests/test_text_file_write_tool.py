@@ -72,7 +72,13 @@ def test_text_write_tool_creates_utf8_file_and_verified_receipt(tmp_path: Path, 
     assert result["operation"] == "create"
     assert result["mode"] == "create"
     assert result["sha256"] == _sha256(target)
-    assert result["file_artifacts"] == [{"name": "notes.txt", "full_path": str(target), "operation": "create", "kind": "file"}]
+    assert result["file_artifacts"] == [{
+        "name": "notes.txt",
+        "full_path": str(target),
+        "operation": "create",
+        "kind": "file",
+        "sha256": _sha256(target),
+    }]
     receipt = result["material_operation"]["receipts"][0]
     assert receipt["execution_state"] == "succeeded"
     assert receipt["verification_status"] == "verified"

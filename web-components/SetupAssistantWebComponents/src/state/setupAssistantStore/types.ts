@@ -220,7 +220,7 @@ export interface SetupStreamActivity {
 
 export interface SetupAssistantState {
   setupStage: SetupStage
-  setupAgentModelAccess: SetupAgentModelAccess
+  setupAgentModelAccess: SetupAgentModelAccess | null
   observations: SetupOrientationObservation[]
   messages: SetupConversationMessage[]
   activeArtifact?: SetupArtifact
@@ -261,7 +261,7 @@ export interface SetupAssistantState {
 // know the action shape directly.
 export type SetupAssistantAction =
   | { type: 'set_stage'; setupStage: SetupStage }
-  | { type: 'set_model_access'; setupAgentModelAccess: SetupAgentModelAccess }
+  | { type: 'set_model_access'; setupAgentModelAccess: SetupAgentModelAccess | null }
   | { type: 'append_user_message'; content: string }
   | { type: 'apply_event'; event: SetupAgentEvent }
   | { type: 'set_error'; errorMessage?: string }

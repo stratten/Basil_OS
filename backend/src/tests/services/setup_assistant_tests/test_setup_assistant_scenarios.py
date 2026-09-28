@@ -13,6 +13,8 @@ import pytest
 from api.routes.setup_assistant.models import (
     SetupAgentEvent,
     SetupAgentEventKind,
+    SetupAgentModelAccess,
+    SetupAgentModelAccessMode,
     SetupAgentRequest,
     SetupArtifactKind,
     SetupAssistantPhase,
@@ -57,6 +59,11 @@ def build_request(latest_message: str = "Please set up Basil around my work.") -
     return SetupAgentRequest(
         latest_message=latest_message,
         phase=SetupAssistantPhase.agent_synthesis,
+        setup_agent_model_access=SetupAgentModelAccess(
+            mode=SetupAgentModelAccessMode.local,
+            local_model_id="qwen-8b",
+            resolved=True,
+        ),
     )
 
 

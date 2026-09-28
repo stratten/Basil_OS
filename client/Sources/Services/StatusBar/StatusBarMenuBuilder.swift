@@ -163,14 +163,6 @@ final class StatusBarMenuBuilder {
         let developerMenu = NSMenu()
         developerMenu.title = "Developer"
 
-        let triggerTrialExhaustionItem = NSMenuItem(title: "Trigger Trial Exhaustion Alert", action: #selector(StatusBarManager.triggerTrialExhaustionDebugAction), keyEquivalent: "")
-        triggerTrialExhaustionItem.target = target
-        developerMenu.addItem(triggerTrialExhaustionItem)
-
-        let resetTrialBalanceItem = NSMenuItem(title: "Reset Trial Balance", action: #selector(StatusBarManager.resetTrialBalanceDebugAction), keyEquivalent: "")
-        resetTrialBalanceItem.target = target
-        developerMenu.addItem(resetTrialBalanceItem)
-
         let triggerSetupAssistantResumeToastItem = NSMenuItem(title: "Trigger Setup Assistant Resume Toast", action: #selector(StatusBarManager.triggerSetupAssistantResumeToastDebugAction), keyEquivalent: "")
         triggerSetupAssistantResumeToastItem.target = target
         developerMenu.addItem(triggerSetupAssistantResumeToastItem)

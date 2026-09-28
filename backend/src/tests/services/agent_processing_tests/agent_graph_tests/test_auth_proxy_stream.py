@@ -2,8 +2,8 @@
 
 These verify that the streamed auth-service response is folded correctly into a
 StreamAccumulator: content deltas are forwarded live (the mechanism that drives
-live reasoning), tool-call deltas are reassembled by index, and the
-trial_balance / error / [DONE] control events are honored.
+live reasoning), tool-call deltas are reassembled by index, and error / [DONE]
+control events are honored.
 """
 
 import json
@@ -70,26 +70,6 @@ async def test_tool_call_deltas_reassemble_by_index():
     assert merged[0]["function"]["arguments"] == '{"q":"basil"}'
     # as_openai_response feeds the adapter's existing _parse_tool_calls unchanged
     assert acc.as_openai_response()["choices"][0]["message"]["tool_calls"] == merged
-
-
-@pytest.mark.asyncio
-async def test_trial_balance_event_is_captured():
-    lines = _lines([
-        _data({"choices": [{"delta": {"content": "hi"}}]}),
-        "event: trial_balance_update",
-        _data({"remaining_usd": 1.23, "remaining_cents": 123, "is_exhausted": False}),
-        "",
-        "data: [DONE]",
-    ])
-
-    acc = await consume_auth_proxy_stream(lines, None)
-
-    assert acc.content == "hi"
-    assert acc.trial_balance == {
-        "remaining_usd": 1.23,
-        "remaining_cents": 123,
-        "is_exhausted": False,
-    }
 
 
 @pytest.mark.asyncio

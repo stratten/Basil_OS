@@ -1,6 +1,7 @@
 import uuid
 import asyncio
 import json
+from hashlib import sha256
 from pathlib import Path
 
 import pytest
@@ -170,6 +171,7 @@ def test_shell_tool_returns_verified_declared_created_file():
             "full_path": str(output_path),
             "operation": "create",
             "kind": "file",
+            "sha256": sha256(output_path.read_bytes()).hexdigest(),
         }]
     finally:
         output_path.unlink(missing_ok=True)

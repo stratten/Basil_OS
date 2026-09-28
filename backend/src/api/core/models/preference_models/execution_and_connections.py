@@ -103,9 +103,9 @@ class BehaviorSettings(BaseModel):
 
 class APIKeyPreference(str, Enum):
     """User preference for how to access API models."""
-    BASIL_CLOUD = "basil_cloud"  # Included credit first, then account-backed Basil Cloud routing
-    APP_KEYS = "app_keys"        # Legacy alias for Basil Cloud account-backed routing
-    TRIAL = "trial"              # Legacy alias for Basil Cloud included-credit routing
+    BASIL_CLOUD = "basil_cloud"  # Account-backed Basil Cloud routing
+    APP_KEYS = "app_keys"        # Legacy alias normalized to Basil Cloud on save
+    TRIAL = "trial"              # Legacy alias normalized to Basil Cloud on save
     OWN_KEYS = "own_keys"        # User provides their own API keys
     LOCAL_ONLY = "local"         # Only use local models
 
@@ -119,7 +119,7 @@ class AuthSettings(BaseModel):
     """
     api_key_preference: APIKeyPreference = Field(
         default=APIKeyPreference.LOCAL_ONLY,
-        description="How to access API models: basil_cloud (included credit then account-backed routing), own_keys (user's keys), or local (local models only). app_keys and trial are accepted legacy aliases."
+        description="How to access API models: basil_cloud (account-backed routing), own_keys (user's keys), or local (local models only). app_keys and trial are accepted legacy aliases."
     )
     # Cached for UI display - backend verifies with auth service for actual routing decisions
     is_authenticated: bool = Field(default=False, description="Cached auth state for UI display")

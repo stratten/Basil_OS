@@ -96,7 +96,6 @@ ROOT_DIR="$(dirname "$CLIENT_SRC_DIR")"
 WEB_ASSETS_DEST="$CLIENT_SRC_DIR/Sources/Resources/AgentTaskWebAssets"
 MINI_PANEL_ASSETS_DEST="$CLIENT_SRC_DIR/Sources/Resources/ScheduledRunMiniPanelAssets"
 MODEL_DOWNLOAD_MINI_PANEL_ASSETS_DEST="$CLIENT_SRC_DIR/Sources/Resources/ModelDownloadMiniPanelAssets"
-TRIAL_EXHAUSTION_PANEL_ASSETS_DEST="$CLIENT_SRC_DIR/Sources/Resources/TrialExhaustionPanelAssets"
 POWER_USER_GUIDE_PANEL_ASSETS_DEST="$CLIENT_SRC_DIR/Sources/Resources/PowerUserGuidePanelAssets"
 MEETING_PANEL_ASSETS_DEST="$CLIENT_SRC_DIR/Sources/Resources/MeetingDetectedMiniPanelAssets"
 AMBIENT_SUGGESTIONS_ASSETS_DEST="$CLIENT_SRC_DIR/Sources/Resources/AmbientSuggestionsPanelAssets"
@@ -145,14 +144,6 @@ if [ ! -d "$MODEL_DOWNLOAD_MINI_PANEL_ASSETS_DEST/assets" ] || [ -z "$(ls -A "$M
 fi
 if [ ! -f "$MODEL_DOWNLOAD_MINI_PANEL_ASSETS_DEST/src/entries/model-download-mini-panel.html" ]; then
     log "❌ ERROR: Asset build reported success but $MODEL_DOWNLOAD_MINI_PANEL_ASSETS_DEST/src/entries/model-download-mini-panel.html is missing."
-    exit 1
-fi
-if [ ! -d "$TRIAL_EXHAUSTION_PANEL_ASSETS_DEST/assets" ] || [ -z "$(ls -A "$TRIAL_EXHAUSTION_PANEL_ASSETS_DEST/assets" 2>/dev/null)" ]; then
-    log "❌ ERROR: Asset build reported success but $TRIAL_EXHAUSTION_PANEL_ASSETS_DEST/assets is empty/missing."
-    exit 1
-fi
-if [ ! -f "$TRIAL_EXHAUSTION_PANEL_ASSETS_DEST/src/entries/trial-exhaustion-panel.html" ]; then
-    log "❌ ERROR: Asset build reported success but $TRIAL_EXHAUSTION_PANEL_ASSETS_DEST/src/entries/trial-exhaustion-panel.html is missing."
     exit 1
 fi
 if [ ! -d "$POWER_USER_GUIDE_PANEL_ASSETS_DEST/assets" ] || [ -z "$(ls -A "$POWER_USER_GUIDE_PANEL_ASSETS_DEST/assets" 2>/dev/null)" ]; then
@@ -231,7 +222,6 @@ log "✅ WKWebView bundles built and staged. Contents:"
 ls -la "$WEB_ASSETS_DEST/assets" | sed 's/^/   AgentTask:    /'
 ls -la "$MINI_PANEL_ASSETS_DEST/assets" | sed 's/^/   MiniPanel:    /'
 ls -la "$MODEL_DOWNLOAD_MINI_PANEL_ASSETS_DEST/assets" | sed 's/^/   ModelDownloadPanel: /'
-ls -la "$TRIAL_EXHAUSTION_PANEL_ASSETS_DEST/assets" | sed 's/^/   TrialExhaustionPanel: /'
 ls -la "$POWER_USER_GUIDE_PANEL_ASSETS_DEST/assets" | sed 's/^/   PowerUserGuidePanel: /'
 ls -la "$AMBIENT_SUGGESTIONS_ASSETS_DEST/assets" | sed 's/^/   AmbientPanel: /'
 ls -la "$MEETING_ASSISTANT_ASSETS_DEST/assets" | sed 's/^/   MeetingAssistant: /'

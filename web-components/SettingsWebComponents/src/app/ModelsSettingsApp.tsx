@@ -16,7 +16,12 @@ import {
 } from '../services/modelsBridge'
 import type { ModelProviderGroup, ModelSummary } from '../types'
 
-type CapabilityFilter = 'reasoning' | 'transcription'
+export type ModelsSubTab = 'reasoning' | 'transcription'
+
+export const MODELS_SUB_TABS = [
+  { id: 'reasoning', label: 'Reasoning' },
+  { id: 'transcription', label: 'Transcription' },
+] as const
 
 interface ModelPendingRequest {
   id: string
@@ -35,10 +40,10 @@ function formatBytes(bytes: number | null | undefined): string {
   return `${bytes} B`
 }
 
-export function ModelsSettingsApp() {
+export function ModelsSettingsApp({ requestedSubTab }: { requestedSubTab?: ModelsSubTab } = {}) {
   const [hasLoaded, setHasLoaded] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [capabilityFilter, setCapabilityFilter] = useState<CapabilityFilter>('reasoning')
+  const [capabilityFilter, setCapabilityFilter] = useState<ModelsSubTab>(requestedSubTab ?? 'reasoning')
   const [transcriptionSource, setTranscriptionSource] = useState<'local' | 'api'>('local')
   const [reasoningSource, setReasoningSource] = useState<'local' | 'api' | 'custom'>('local')
   const [reasoningGroups, setReasoningGroups] = useState<ModelProviderGroup[]>([])
@@ -60,6 +65,10 @@ export function ModelsSettingsApp() {
   pendingRef.current = pendingByModel
   visionFallbackPendingRef.current = visionFallbackPending
   reasoningFallbackPendingRef.current = reasoningFallbackPending
+
+  useEffect(() => {
+    if (requestedSubTab) setCapabilityFilter(requestedSubTab)
+  }, [requestedSubTab])
 
   useEffect(() => {
     const unsubscribe = onModelsEvent((event) => {

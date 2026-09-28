@@ -1,8 +1,7 @@
 import AppKit
 @preconcurrency import WebKit
 
-/// WKWebView bridge for the React setup-assistant resume toast. Mirrors
-/// `TrialExhaustionPanelWebView`'s shape: a dedicated
+/// WKWebView bridge for the React setup-assistant resume toast: a dedicated
 /// `WKScriptMessageHandler`/`WKNavigationDelegate` on the
 /// `setupAssistantResumeToastBridge` channel, using a versioned JSON message
 /// protocol so old/new bundle-vs-Swift mismatches fail closed rather than

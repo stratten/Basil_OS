@@ -165,8 +165,6 @@ extension AssistantSessionViewModel {
                         }
                     } catch {}
                     
-                    TrialExhaustionManager.shared.handleServerError(statusCode: httpResponse.statusCode, message: errorMessage)
-                    
                     // Parse and provide user-friendly error messages
                     let userFriendlyMessage = parseErrorMessage(errorMessage, statusCode: httpResponse.statusCode)
                     throw NSError(domain: BasilTeamIdentity.assistantSession.displayName, code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: userFriendlyMessage])
@@ -297,8 +295,6 @@ extension AssistantSessionViewModel {
                         }
                     } catch {}
 
-                    TrialExhaustionManager.shared.handleServerError(statusCode: httpResponse.statusCode, message: errorMessage)
-                    
                     let userFriendlyMessage = parseErrorMessage(errorMessage, statusCode: httpResponse.statusCode)
                     throw NSError(domain: BasilTeamIdentity.assistantSession.displayName, code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: userFriendlyMessage])
                 }
@@ -505,8 +501,6 @@ extension AssistantSessionViewModel {
             
             // Provide context based on the error type
             switch errorMessage.lowercased() {
-            case let msg where msg.contains("trial") || msg.contains("included") || msg.contains("credit exhausted"):
-                return "Your included Basil Cloud credit is used up. Sign in to continue with Basil Cloud, or switch to your own provider account."
             case let msg where msg.contains("invalid") && msg.contains("token"):
                 return "Authentication failed. Please log out and log back in."
             case let msg where msg.contains("expired") && msg.contains("token"):
@@ -528,9 +522,6 @@ extension AssistantSessionViewModel {
             return "Authentication failed. Please log out and log back in."
         case 402:
             let lowercasedError = rawError.lowercased()
-            if lowercasedError.contains("trial") || lowercasedError.contains("included") || lowercasedError.contains("credit exhausted") {
-                return "Your included Basil Cloud credit is used up. Sign in to continue with Basil Cloud, or switch to your own provider account."
-            }
             if lowercasedError.contains("threshold") {
                 return "Your Basil Cloud usage threshold was reached. Please review your billing settings to continue."
             }

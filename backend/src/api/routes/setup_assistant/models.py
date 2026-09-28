@@ -112,9 +112,9 @@ class SetupTechnicalDepth(str, Enum):
 
 
 class SetupAgentModelAccessMode(str, Enum):
-    default_proxy = "default_proxy"
     local = "local"
-    custom = "custom"
+    provider_key = "provider_key"
+    basil_cloud = "basil_cloud"
 
 
 class SetupCalibrationEventKind(str, Enum):
@@ -292,13 +292,57 @@ class SetupAgentModelMetadata(BaseModel):
     usage_scope: str = "onboarding"
     used_by_setup_agent: bool = True
     override_model_id: Optional[str] = None
-    access_mode: SetupAgentModelAccessMode = SetupAgentModelAccessMode.default_proxy
+    access_mode: SetupAgentModelAccessMode = SetupAgentModelAccessMode.local
 
 
 class SetupAgentModelAccess(BaseModel):
-    mode: SetupAgentModelAccessMode = SetupAgentModelAccessMode.default_proxy
-    custom_model_id: Optional[str] = None
+    """A backend-confirmed setup-agent model route."""
+
+    mode: SetupAgentModelAccessMode
     local_model_id: Optional[str] = None
+    provider: Optional[str] = None
+    model_id: Optional[str] = None
+    resolved: bool = False
+
+
+class SetupAgentProviderModelChoice(BaseModel):
+    """A reasoning model the provider-key route can run the Setup Assistant on."""
+
+    provider: str
+    model_id: str
+    display_name: str
+    recommended: bool = False
+
+
+class SetupAgentModelAccessOption(BaseModel):
+    """One selectable route surfaced by the model-access endpoint."""
+
+    mode: SetupAgentModelAccessMode
+    available: bool
+    unavailable_reason: Optional[str] = None
+    local_model_id: Optional[str] = None
+    provider: Optional[str] = None
+    model_id: Optional[str] = None
+    display_name: Optional[str] = None
+    requires_provider_key_input: bool = False
+    provider_models: List[SetupAgentProviderModelChoice] = Field(default_factory=list)
+
+
+class SetupAgentModelAccessOptionsResponse(BaseModel):
+    options: List[SetupAgentModelAccessOption]
+
+
+class SetupAgentModelAccessSelectRequest(BaseModel):
+    mode: SetupAgentModelAccessMode
+    local_model_id: Optional[str] = None
+    provider: Optional[str] = None
+    model_id: Optional[str] = None
+    provider_api_key: Optional[str] = None
+
+
+class SetupAgentModelAccessSelectResponse(BaseModel):
+    access: SetupAgentModelAccess
+    model_metadata: SetupAgentModelMetadata
 
 
 class SetupCalibrationEvent(BaseModel):
@@ -546,7 +590,7 @@ class SetupAgentRequest(BaseModel):
     existing_model_choices: List[Dict[str, Any]] = Field(default_factory=list)
     existing_task_offers: List[Dict[str, Any]] = Field(default_factory=list)
     approved_tool_calls: List[SetupToolCall] = Field(default_factory=list)
-    setup_agent_model_access: SetupAgentModelAccess = Field(default_factory=SetupAgentModelAccess)
+    setup_agent_model_access: SetupAgentModelAccess
     calibration_events: List[SetupCalibrationEvent] = Field(default_factory=list)
     current_step_context: Dict[str, Any] = Field(default_factory=dict)
     setup_agent_model_override_id: Optional[str] = None

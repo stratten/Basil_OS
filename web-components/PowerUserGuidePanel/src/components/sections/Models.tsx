@@ -75,7 +75,7 @@ export default function Models() {
           icon="💳"
           title="Cloud pricing"
           bullets={[
-            'Basil Cloud starts with included credit, then asks for a Basil account before paid usage.',
+            'Basil Cloud requires a Basil account with a payment method before usage.',
             'Model providers charge Basil for cloud requests; Basil passes that cost through with a small markup.',
             'If you bring your own provider account, that provider bills you directly.',
           ]}

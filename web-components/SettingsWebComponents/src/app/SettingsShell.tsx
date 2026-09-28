@@ -10,7 +10,7 @@ import { HomeSettingsApp, type HomeNavigationTarget } from './HomeSettingsApp'
 import { HotkeySettingsApp } from './HotkeySettingsApp'
 import { MeetingsSettingsApp } from './MeetingsSettingsApp'
 import { MemoryIntelligenceSettingsApp } from './MemoryIntelligenceSettingsApp'
-import { ModelsSettingsApp } from './ModelsSettingsApp'
+import { ModelsSettingsApp, MODELS_SUB_TABS, type ModelsSubTab } from './ModelsSettingsApp'
 import { PermissionsSettingsApp, PERMISSIONS_SUB_TABS, type PermissionsSubTab } from './PermissionsSettingsApp'
 import { ProfileSettingsApp } from './ProfileSettingsApp'
 import { ReasoningAutomationApp, REASONING_AUTOMATION_SUB_TABS, type ReasoningAutomationSubTab } from './ReasoningAutomationApp'
@@ -98,7 +98,7 @@ const SETTINGS_NAVIGATION: readonly SettingsNavigationGroup[] = [
     id: 'capabilities',
     label: 'Capabilities',
     tabs: [
-      { id: 'models', label: 'Models', migrated: true },
+      { id: 'models', label: 'Models', migrated: true, subTabs: MODELS_SUB_TABS },
       { id: 'reasoning', label: 'Automation & Agents', migrated: true, subTabs: REASONING_AUTOMATION_SUB_TABS },
       { id: 'transcription', label: 'Transcription', migrated: true, subTabs: TRANSCRIPTION_SUB_TABS },
       { id: 'meetings', label: 'Meetings', migrated: true },
@@ -183,6 +183,7 @@ export function SettingsShell() {
               <h2 id={`settings-group-${group.id}`} className="settings-shell-navigation-heading">{group.label}</h2>
               {group.tabs.map((tab) => {
                 const isExpanded = expandedTabs.has(tab.id)
+                const selectedSubTabId = subTabRequests[tab.id] ?? (tab.id === 'models' ? 'reasoning' : undefined)
                 return (
                   <div key={tab.id} className="settings-shell-nav-item-wrapper">
                     <div className="settings-shell-nav-item-row">
@@ -216,7 +217,7 @@ export function SettingsShell() {
                             key={subTabItem.id}
                             type="button"
                             className={
-                              selectedTab === tab.id && subTabRequests[tab.id] === subTabItem.id
+                              selectedTab === tab.id && selectedSubTabId === subTabItem.id
                                 ? 'settings-shell-nav-subitem settings-shell-nav-subitem-selected'
                                 : 'settings-shell-nav-subitem'
                             }
@@ -240,7 +241,7 @@ export function SettingsShell() {
           {selectedTab === 'profile' && <ProfileSettingsApp />}
           {selectedTab === 'memory-intelligence' && <MemoryIntelligenceSettingsApp />}
           {selectedTab === 'writing-examples' && <WritingExamplesSettingsApp />}
-          {selectedTab === 'models' && <ModelsSettingsApp />}
+          {selectedTab === 'models' && <ModelsSettingsApp requestedSubTab={subTabRequests.models as ModelsSubTab | undefined} />}
           {selectedTab === 'reasoning' && <ReasoningAutomationApp requestedSubTab={subTabRequests.reasoning as ReasoningAutomationSubTab | undefined} />}
           {selectedTab === 'capture' && <CaptureSettingsApp requestedSubTab={subTabRequests.capture as CaptureSubTab | undefined} />}
           {selectedTab === 'appearance' && <AppearanceSettingsApp />}

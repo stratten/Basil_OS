@@ -19,9 +19,7 @@ from typing import Any, AsyncIterator, Awaitable, Callable, Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 SSE_DATA_PREFIX = "data: "
-SSE_EVENT_PREFIX = "event: "
 SSE_DONE_SENTINEL = "[DONE]"
-TRIAL_BALANCE_EVENT = "trial_balance_update"
 
 
 @dataclass
@@ -33,7 +31,6 @@ class StreamAccumulator:
     input_tokens: int = 0
     output_tokens: int = 0
     request_id: Optional[str] = None
-    trial_balance: Optional[Dict[str, Any]] = None
     stream_error: Optional[str] = None
 
     @property
@@ -108,16 +105,9 @@ async def consume_auth_proxy_stream(
     each non-empty natural-language delta so the caller can forward live tokens.
     """
     acc = StreamAccumulator()
-    pending_event: Optional[str] = None
-
     async for raw_line in lines:
         line = (raw_line or "").strip()
         if not line:
-            pending_event = None
-            continue
-
-        if line.startswith(SSE_EVENT_PREFIX):
-            pending_event = line[len(SSE_EVENT_PREFIX):].strip()
             continue
 
         if not line.startswith(SSE_DATA_PREFIX):
@@ -130,11 +120,6 @@ async def consume_auth_proxy_stream(
         try:
             parsed = json.loads(data)
         except (ValueError, TypeError):
-            continue
-
-        if pending_event == TRIAL_BALANCE_EVENT:
-            acc.trial_balance = parsed if isinstance(parsed, dict) else None
-            pending_event = None
             continue
 
         if not isinstance(parsed, dict):
