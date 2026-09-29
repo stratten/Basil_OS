@@ -21,23 +21,25 @@
 
 /* ---------- Workspace layout widening ----------------------------- */
 
-/* During the conversation phase the shell ceiling jumps from the
- * narrow 820px reading width to a comfortable 1240px three-column
- * spread. Using `:has(.setup-workspace)` lets the welcome / intro /
- * orientation / wrap-up screens keep their existing centered narrow
- * column without an extra prop threading. */
+/* During the conversation phase the shell ceiling eases from the narrow 820px reading width to a 1240px three-column spread, and the card, stage frame, and workspace fill the window height so only the agenda body, the message list, and the artifact panel scroll. Using `:has(.setup-workspace)` lets the welcome / intro / orientation / wrap-up screens keep their centered narrow column without an extra prop threading. */
 .setup-shell:has(.setup-workspace) {
   grid-template-columns: minmax(0, 1240px);
+}
+
+.setup-shell:has(.setup-workspace) .setup-card,
+.setup-shell:has(.setup-workspace) .setup-stage-frame {
+  flex: 1 1 auto;
 }
 
 .setup-workspace {
   align-items: stretch;
   display: grid;
+  flex: 1 1 auto;
   gap: var(--padding-l);
   grid-template-columns: 260px minmax(0, 1fr);
-  height: calc(100dvh - var(--padding-xl) * 2 - 80px);
-  margin-top: var(--padding-m);
+  grid-template-rows: minmax(0, 1fr);
   min-height: 0;
+  transition: grid-template-columns var(--setup-motion-reveal-ms) var(--setup-motion-ease-out);
 }
 
 .setup-workspace.with-collapsed-agenda {
@@ -50,6 +52,12 @@
 
 .setup-workspace.with-artifact.with-collapsed-agenda {
   grid-template-columns: 64px minmax(0, 1fr) minmax(0, 360px);
+}
+
+.setup-workspace > .artifact-panel {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 /* ---------- Agenda sidebar (shared) ------------------------------- */
@@ -168,6 +176,7 @@
   list-style: none;
   margin: 0;
   padding: 0;
+  position: relative;
 }
 
 /* B3: each item is a proper card. A 3px colored left edge keyed to
@@ -244,6 +253,11 @@
 @keyframes setupAgendaInProgressPulse {
   0%, 100% { opacity: 0.45; }
   50%      { opacity: 0.95; }
+}
+
+.setup-agenda-sidebar-item.is-entering {
+  animation: setupEnterRise 260ms var(--setup-motion-ease-out) both;
+  animation-delay: calc(120ms + var(--agenda-enter-index, 0) * 60ms);
 }
 
 .setup-agenda-sidebar-item.state-completed {
@@ -499,39 +513,22 @@
 
 /* ---------- Responsive ------------------------------------------- */
 
-/* On narrow viewports the sidebar drops above the conversation in a
- * single column and the artifact panel stacks below. The
- * collapsed rail also expands to full width since there's no benefit
- * to a vertical strip when stacked. */
+/* The setup window's minimum width is 980px, so narrow viewports keep the fixed-height columns and just tighten them; stacking would push the composer below the fold. */
 @media (max-width: 1080px) {
-  .setup-workspace,
-  .setup-workspace.with-artifact,
-  .setup-workspace.with-collapsed-agenda,
+  .setup-workspace {
+    gap: var(--padding-m);
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .setup-workspace.with-collapsed-agenda {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .setup-workspace.with-artifact {
+    grid-template-columns: 220px minmax(0, 1fr) minmax(0, 300px);
+  }
+
   .setup-workspace.with-artifact.with-collapsed-agenda {
-    grid-template-columns: minmax(0, 1fr);
-    height: auto;
-    min-height: auto;
-  }
-
-  .setup-agenda-sidebar {
-    height: auto;
-    max-height: none;
-    min-height: auto;
-    position: static;
-  }
-
-  .setup-agenda-sidebar.is-collapsed {
-    align-items: center;
-    flex-direction: row;
-    gap: 16px;
-    justify-content: flex-start;
-    padding: 12px 16px;
-  }
-
-  .setup-agenda-collapsed-dot-strip {
-    flex-direction: row;
-    gap: 6px;
-    padding: 0;
-    width: auto;
+    grid-template-columns: 64px minmax(0, 1fr) minmax(0, 300px);
   }
 }

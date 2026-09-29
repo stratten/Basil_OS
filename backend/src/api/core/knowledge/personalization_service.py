@@ -175,7 +175,8 @@ class PersonalizationService:
         was_edited: bool = False,
         edit_distance: Optional[int] = None,
         user_id: str = "default",
-        auto_analyze_style: bool = True
+        auto_analyze_style: bool = True,
+        assistant_output_id: Optional[int] = None
     ) -> WritingSample:
         """
         Add a writing sample.
@@ -196,7 +197,8 @@ class PersonalizationService:
             relationship_type=relationship_type,
             was_edited=was_edited,
             edit_distance=edit_distance,
-            user_id=user_id
+            user_id=user_id,
+            assistant_output_id=assistant_output_id
         )
         
         # Trigger style analysis for this context
@@ -267,6 +269,38 @@ class PersonalizationService:
             user_id=user_id
         )
     
+    async def update_writing_sample(
+        self,
+        sample_id: str,
+        content: str,
+        user_id: str = "default",
+        context_type: Optional[ContextType] = None,
+        recipient: Optional[str] = None,
+        update_recipient: bool = False
+    ) -> Optional[WritingSample]:
+        """Update a writing sample's content, context type, and recipient."""
+        return await self.writing_samples.update_writing_sample(
+            sample_id=sample_id,
+            content=content,
+            user_id=user_id,
+            context_type=context_type,
+            recipient=recipient,
+            update_recipient=update_recipient
+        )
+
+    async def find_sample_for_assistant_output(
+        self,
+        assistant_output_id: int,
+        candidate_contents: List[str],
+        user_id: str = "default"
+    ) -> Optional[WritingSample]:
+        """Return the writing sample saved from an Assistant History row, if any."""
+        return await self.writing_samples.find_sample_for_assistant_output(
+            assistant_output_id=assistant_output_id,
+            candidate_contents=candidate_contents,
+            user_id=user_id
+        )
+
     async def delete_all_writing_samples(
         self,
         context_type: Optional[ContextType] = None,

@@ -1,18 +1,31 @@
 import { useEffect, useRef, useState } from 'react'
+import TokenizedSelect from '@shared/TokenizedSelect'
+import { RecipientChipList, RecipientChipsInput } from '../components/RecipientChips'
+import { WritingSampleMarkdown } from '../components/WritingSampleMarkdown'
 import {
   analyzeWritingStyle,
   copyWritingSampleToClipboard,
   notifyWritingExamplesSettingsReady,
   onWritingExamplesEvent,
+  requestAddWritingSample,
   requestDeleteAllWritingSamples,
   requestDeleteWritingSample,
+  requestUpdateWritingSample,
   setWritingExamplesContextFilter,
 } from '../services/writingExamplesBridge'
 import type { WritingExampleSample, WritingExampleStyleProfile, WritingExamplesContextFilter } from '../types'
 
 interface PendingRequest {
   id: string
-  kind: 'delete' | 'deleteAll' | 'analyze'
+  kind: 'delete' | 'deleteAll' | 'analyze' | 'update' | 'add'
+  markContexts?: string[]
+  clearContext?: string
+}
+
+interface EditDraft {
+  content: string
+  contextType: string
+  recipient: string
 }
 
 interface StatusMessage {
@@ -28,19 +41,23 @@ const FILTER_OPTIONS: { value: WritingExamplesContextFilter; label: string }[] =
   { value: 'document', label: 'Document' },
 ]
 
+const CONCRETE_CONTEXT_OPTIONS = FILTER_OPTIONS.filter((option) => option.value !== 'all')
+
+const EMPTY_EDIT_DRAFT: EditDraft = { content: '', contextType: 'email_reply', recipient: '' }
+
 function contextDisplayName(contextType: string): string {
   return FILTER_OPTIONS.find((option) => option.value === contextType)?.label ?? contextType.replace(/_/g, ' ')
+}
+
+function editContextOptions(currentContextType: string): { value: string; label: string }[] {
+  if (CONCRETE_CONTEXT_OPTIONS.some((option) => option.value === currentContextType)) return CONCRETE_CONTEXT_OPTIONS
+  return [...CONCRETE_CONTEXT_OPTIONS, { value: currentContextType, label: contextDisplayName(currentContextType) }]
 }
 
 function formatCreatedAt(iso: string): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return iso
   return date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
-}
-
-function contentPreview(content: string): string {
-  const maxLength = 100
-  return content.length <= maxLength ? content : `${content.slice(0, maxLength)}...`
 }
 
 function formalityDescription(level: number): string {
@@ -67,6 +84,15 @@ export function WritingExamplesSettingsApp() {
   const [pending, setPending] = useState<PendingRequest | null>(null)
   const [expandedSampleId, setExpandedSampleId] = useState<string | null>(null)
   const [copiedSampleId, setCopiedSampleId] = useState<string | null>(null)
+  const [editingSampleId, setEditingSampleId] = useState<string | null>(null)
+  const [editingDraft, setEditingDraft] = useState<EditDraft>(EMPTY_EDIT_DRAFT)
+  const [changedContexts, setChangedContexts] = useState<ReadonlySet<string>>(() => new Set())
+  const [isAddFormOpen, setIsAddFormOpen] = useState(false)
+  const [addDraft, setAddDraft] = useState({
+    contextType: 'email_reply' as WritingExamplesContextFilter,
+    content: '',
+    recipient: '',
+  })
   const pendingRef = useRef<PendingRequest | null>(null)
   pendingRef.current = pending
 
@@ -86,8 +112,29 @@ export function WritingExamplesSettingsApp() {
         return
       }
       if (event.type === 'intentResult' && event.requestId === pendingRef.current?.id) {
+        const completedRequest = pendingRef.current
         pendingRef.current = null
         setPending(null)
+        const markedContexts = completedRequest?.markContexts ?? []
+        if (event.status === 'success' && markedContexts.length > 0) {
+          setChangedContexts((current) => new Set([...current, ...markedContexts]))
+        }
+        const clearedContext = completedRequest?.clearContext
+        if (event.status === 'success' && clearedContext) {
+          setChangedContexts((current) => {
+            const next = new Set(current)
+            next.delete(clearedContext)
+            return next
+          })
+        }
+        if (event.status === 'success' && completedRequest?.kind === 'update') {
+          setEditingSampleId(null)
+          setEditingDraft(EMPTY_EDIT_DRAFT)
+        }
+        if (event.status === 'success' && completedRequest?.kind === 'add') {
+          setIsAddFormOpen(false)
+          setAddDraft({ contextType: 'email_reply', content: '', recipient: '' })
+        }
         if (event.status === 'cancelled') {
           setStatusMessage(null)
         } else {
@@ -106,6 +153,8 @@ export function WritingExamplesSettingsApp() {
   function handleFilterChange(filter: WritingExamplesContextFilter) {
     if (filter === activeFilter) return
     setExpandedSampleId(null)
+    setEditingSampleId(null)
+    setEditingDraft(EMPTY_EDIT_DRAFT)
     setStatusMessage(null)
     setWritingExamplesContextFilter(filter)
   }
@@ -113,15 +162,19 @@ export function WritingExamplesSettingsApp() {
   function handleAnalyze() {
     if (pendingRef.current || activeFilter === 'all') return
     setStatusMessage(null)
-    const nextPending: PendingRequest = { id: analyzeWritingStyle(activeFilter), kind: 'analyze' }
+    const nextPending: PendingRequest = { id: analyzeWritingStyle(activeFilter), kind: 'analyze', clearContext: activeFilter }
     pendingRef.current = nextPending
     setPending(nextPending)
   }
 
-  function handleDelete(sampleId: string) {
+  function handleDelete(sample: WritingExampleSample) {
     if (pendingRef.current) return
     setStatusMessage(null)
-    const nextPending: PendingRequest = { id: requestDeleteWritingSample(sampleId), kind: 'delete' }
+    const nextPending: PendingRequest = {
+      id: requestDeleteWritingSample(sample.id),
+      kind: 'delete',
+      markContexts: [sample.contextType],
+    }
     pendingRef.current = nextPending
     setPending(nextPending)
   }
@@ -129,7 +182,10 @@ export function WritingExamplesSettingsApp() {
   function handleDeleteAll() {
     if (pendingRef.current) return
     setStatusMessage(null)
-    const nextPending: PendingRequest = { id: requestDeleteAllWritingSamples(activeFilter), kind: 'deleteAll' }
+    const markContexts = activeFilter === 'all'
+      ? Array.from(new Set<string>([...CONCRETE_CONTEXT_OPTIONS.map((option) => option.value), ...samples.map((sample) => sample.contextType)]))
+      : [activeFilter]
+    const nextPending: PendingRequest = { id: requestDeleteAllWritingSamples(activeFilter), kind: 'deleteAll', markContexts }
     pendingRef.current = nextPending
     setPending(nextPending)
   }
@@ -138,6 +194,57 @@ export function WritingExamplesSettingsApp() {
     copyWritingSampleToClipboard(sample.content)
     setCopiedSampleId(sample.id)
     setTimeout(() => setCopiedSampleId((current) => (current === sample.id ? null : current)), 1200)
+  }
+
+  function handleStartEdit(sample: WritingExampleSample) {
+    if (pendingRef.current) return
+    setExpandedSampleId(sample.id)
+    setEditingSampleId(sample.id)
+    setEditingDraft({ content: sample.content, contextType: sample.contextType, recipient: sample.recipient ?? '' })
+    setStatusMessage(null)
+  }
+
+  function handleCancelEdit() {
+    setEditingSampleId(null)
+    setEditingDraft(EMPTY_EDIT_DRAFT)
+  }
+
+  function handleSaveEdit(sample: WritingExampleSample) {
+    if (pendingRef.current || !editingDraft.content.trim() || !editingDraft.contextType) return
+    setStatusMessage(null)
+    const nextPending: PendingRequest = {
+      id: requestUpdateWritingSample(sample.id, editingDraft.content, editingDraft.contextType, editingDraft.recipient.trim()),
+      kind: 'update',
+      markContexts: Array.from(new Set([sample.contextType, editingDraft.contextType])),
+    }
+    pendingRef.current = nextPending
+    setPending(nextPending)
+  }
+
+  function handleOpenAddForm() {
+    if (pendingRef.current) return
+    const contextType = activeFilter === 'all' ? 'email_reply' : activeFilter
+    setAddDraft({ contextType, content: '', recipient: '' })
+    setIsAddFormOpen(true)
+    setStatusMessage(null)
+  }
+
+  function handleCancelAddForm() {
+    setIsAddFormOpen(false)
+    setAddDraft({ contextType: 'email_reply', content: '', recipient: '' })
+  }
+
+  function handleSubmitAddForm() {
+    if (pendingRef.current || !addDraft.content.trim() || addDraft.contextType === 'all') return
+    setStatusMessage(null)
+    const recipient = addDraft.recipient.trim() || undefined
+    const nextPending: PendingRequest = {
+      id: requestAddWritingSample(addDraft.content, addDraft.contextType, recipient),
+      kind: 'add',
+      markContexts: [addDraft.contextType],
+    }
+    pendingRef.current = nextPending
+    setPending(nextPending)
   }
 
   function handleRetry() {
@@ -172,8 +279,12 @@ export function WritingExamplesSettingsApp() {
             aria-selected={option.value === activeFilter}
             className={option.value === activeFilter ? 'writing-examples-filter-tab writing-examples-filter-tab-selected' : 'writing-examples-filter-tab'}
             onClick={() => handleFilterChange(option.value)}
+            title={option.value !== 'all' && changedContexts.has(option.value) ? 'Samples changed since the last analysis' : undefined}
           >
             {option.label}
+            {option.value !== 'all' && changedContexts.has(option.value) && (
+              <span className="writing-examples-filter-tab-marker" aria-hidden="true" />
+            )}
           </button>
         ))}
       </div>
@@ -186,6 +297,16 @@ export function WritingExamplesSettingsApp() {
               {pending?.kind === 'analyze' ? 'Analyzing...' : 'Analyze'}
             </button>
           </div>
+          {changedContexts.has(activeFilter) && (
+            <div className="writing-examples-stale-notice" role="status">
+              <p>Samples in this context changed since the last analysis. Reanalyze to update the style profile.</p>
+              <div className="writing-examples-actions">
+                <button type="button" className="primary-button" disabled={busy} onClick={handleAnalyze}>
+                  {pending?.kind === 'analyze' ? 'Analyzing...' : 'Reanalyze'}
+                </button>
+              </div>
+            </div>
+          )}
           {styleProfile ? (
             <div className="writing-examples-style-details">
               <div className="writing-examples-style-metrics">
@@ -221,15 +342,59 @@ export function WritingExamplesSettingsApp() {
       <section className="writing-examples-samples-section" aria-labelledby="writing-examples-samples-heading">
         <div className="writing-examples-samples-header">
           <h2 id="writing-examples-samples-heading">Samples</h2>
-          <button type="button" className="writing-examples-delete-all-button" disabled={busy || samples.length === 0} onClick={handleDeleteAll}>
-            {pending?.kind === 'deleteAll' ? 'Deleting...' : 'Delete All Samples'}
-          </button>
+          <div className="writing-examples-samples-actions">
+            <button type="button" className="secondary-button" disabled={busy} onClick={isAddFormOpen ? handleCancelAddForm : handleOpenAddForm}>
+              {isAddFormOpen ? 'Cancel' : 'Add Sample'}
+            </button>
+            <button type="button" className="writing-examples-delete-all-button" disabled={busy || samples.length === 0} onClick={handleDeleteAll}>
+              {pending?.kind === 'deleteAll' ? 'Deleting...' : 'Delete All Samples'}
+            </button>
+          </div>
         </div>
+
+        {isAddFormOpen && (
+          <div className="writing-examples-add-form">
+            <div className="writing-examples-field">
+              <span className="writing-examples-field-label">Context</span>
+              <TokenizedSelect
+                className="writing-examples-context-select"
+                ariaLabel="New sample context"
+                value={addDraft.contextType}
+                options={CONCRETE_CONTEXT_OPTIONS}
+                onValueChange={(contextType) => setAddDraft((current) => ({ ...current, contextType }))}
+              />
+            </div>
+            <div className="writing-examples-field">
+              <label htmlFor="writing-examples-add-recipient">Recipients (optional)</label>
+              <RecipientChipsInput
+                id="writing-examples-add-recipient"
+                value={addDraft.recipient}
+                onChange={(recipient) => setAddDraft((current) => ({ ...current, recipient }))}
+              />
+            </div>
+            <div className="writing-examples-field">
+              <label htmlFor="writing-examples-add-content">Content</label>
+              <textarea
+                id="writing-examples-add-content"
+                className="writing-examples-textarea"
+                rows={5}
+                value={addDraft.content}
+                onChange={(event) => setAddDraft((current) => ({ ...current, content: event.target.value }))}
+                autoFocus
+              />
+            </div>
+            <div className="writing-examples-actions">
+              <button type="button" className="primary-button" disabled={busy || !addDraft.content.trim()} onClick={handleSubmitAddForm}>
+                {pending?.kind === 'add' ? 'Saving...' : 'Save Sample'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {isLoadingSamples ? (
           <p className="writing-examples-status" role="status">Loading writing samples...</p>
         ) : samples.length === 0 ? (
-          <p className="writing-examples-empty">No writing samples found. Writing samples will appear here after you accept AssistantSessions.</p>
+          <p className="writing-examples-empty">No writing samples found. Writing samples will appear here after you accept AssistantSessions, or you can add one with Add Sample.</p>
         ) : (
           <ul className="writing-examples-list">
             {samples.map((sample) => (
@@ -238,18 +403,65 @@ export function WritingExamplesSettingsApp() {
                   <span className="writing-examples-list-date">{formatCreatedAt(sample.createdAt)}</span>
                   <span className="writing-examples-context-badge">{contextDisplayName(sample.contextType)}</span>
                 </div>
-                <p className="writing-examples-list-preview">{expandedSampleId === sample.id ? sample.content : contentPreview(sample.content)}</p>
-                {sample.recipient && <p className="writing-examples-list-recipient">To: {sample.recipient}</p>}
+                {editingSampleId === sample.id ? (
+                  <div className="writing-examples-edit-form">
+                    <div className="writing-examples-edit-fields">
+                      <div className="writing-examples-field">
+                        <span className="writing-examples-field-label">Context</span>
+                        <TokenizedSelect
+                          className="writing-examples-context-select"
+                          ariaLabel="Sample context"
+                          value={editingDraft.contextType}
+                          options={editContextOptions(sample.contextType)}
+                          disabled={busy}
+                          onValueChange={(contextType) => setEditingDraft((current) => ({ ...current, contextType }))}
+                        />
+                      </div>
+                      <div className="writing-examples-field">
+                        <label htmlFor={`writing-examples-edit-recipient-${sample.id}`}>Recipients (optional)</label>
+                        <RecipientChipsInput
+                          id={`writing-examples-edit-recipient-${sample.id}`}
+                          value={editingDraft.recipient}
+                          disabled={busy}
+                          onChange={(recipient) => setEditingDraft((current) => ({ ...current, recipient }))}
+                        />
+                      </div>
+                    </div>
+                    <textarea
+                      className="writing-examples-textarea"
+                      aria-label="Edit writing sample"
+                      rows={5}
+                      value={editingDraft.content}
+                      onChange={(event) => setEditingDraft((current) => ({ ...current, content: event.target.value }))}
+                      autoFocus
+                    />
+                  </div>
+                ) : (
+                  <WritingSampleMarkdown content={sample.content} collapsed={expandedSampleId !== sample.id} />
+                )}
+                {editingSampleId !== sample.id && sample.recipient && <RecipientChipList recipient={sample.recipient} />}
                 <div className="writing-examples-list-actions">
-                  <button type="button" className="secondary-button" onClick={() => setExpandedSampleId((current) => (current === sample.id ? null : sample.id))}>
-                    {expandedSampleId === sample.id ? 'Show Less' : 'View Full Text'}
-                  </button>
-                  <button type="button" className="secondary-button" onClick={() => handleCopy(sample)}>
-                    {copiedSampleId === sample.id ? 'Copied' : 'Copy'}
-                  </button>
-                  <button type="button" className="writing-examples-delete-button" disabled={busy} onClick={() => handleDelete(sample.id)}>
-                    Delete
-                  </button>
+                  {editingSampleId === sample.id ? (
+                    <>
+                      <button type="button" className="secondary-button" disabled={busy} onClick={handleCancelEdit}>Cancel</button>
+                      <button type="button" className="primary-button" disabled={busy || !editingDraft.content.trim()} onClick={() => handleSaveEdit(sample)}>
+                        {pending?.kind === 'update' ? 'Saving...' : 'Save'}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button type="button" className="secondary-button" onClick={() => setExpandedSampleId((current) => (current === sample.id ? null : sample.id))}>
+                        {expandedSampleId === sample.id ? 'Show Less' : 'View Full Text'}
+                      </button>
+                      <button type="button" className="secondary-button" onClick={() => handleCopy(sample)}>
+                        {copiedSampleId === sample.id ? 'Copied' : 'Copy'}
+                      </button>
+                      <button type="button" className="secondary-button" disabled={busy} onClick={() => handleStartEdit(sample)}>Edit</button>
+                      <button type="button" className="writing-examples-delete-button" disabled={busy} onClick={() => handleDelete(sample)}>
+                        Delete
+                      </button>
+                    </>
+                  )}
                 </div>
               </li>
             ))}

@@ -3,9 +3,12 @@
 import logging
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel
 
+from api.core.knowledge.personalization_service import PersonalizationService
 from ...dependencies import get_sqlite_knowledge_service
 from .assistant_output_history_service import AssistantOutputHistoryService
+from .assistant_output_samples import attach_sample_state, save_assistant_output_as_sample
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +22,16 @@ def _get_service() -> AssistantOutputHistoryService:
     if _service_instance is None:
         _service_instance = AssistantOutputHistoryService(get_sqlite_knowledge_service())
     return _service_instance
+
+
+def _get_personalization_service() -> PersonalizationService:
+    return PersonalizationService()
+
+
+class SaveHistorySampleRequest(BaseModel):
+    """Text to save from a History row; context is used only when the row has none."""
+    content: str
+    context_type: Optional[str] = None
 
 
 @router.get("")
@@ -70,7 +83,13 @@ async def get_assistant_output_detail(assistant_output_id: int):
     detail = await service.get_assistant_output_detail(assistant_output_id)
     if not detail:
         raise HTTPException(status_code=404, detail="AssistantSession output not found")
-    return detail
+    try:
+        return await attach_sample_state(detail, _get_personalization_service())
+    except Exception as error:
+        logger.warning(f"Could not resolve writing-sample state for assistant_output {assistant_output_id}: {error}")
+        detail["sample_context_type"] = None
+        detail["saved_sample"] = None
+        return detail
 
 
 @router.delete("/{assistant_output_id}")
@@ -81,6 +100,21 @@ async def delete_assistant_output(assistant_output_id: int):
     if not deleted:
         raise HTTPException(status_code=404, detail="AssistantSession output not found")
     return {"status": "deleted", "id": assistant_output_id}
+
+
+@router.post("/{assistant_output_id}/save-sample")
+async def save_assistant_output_sample(assistant_output_id: int, request: SaveHistorySampleRequest):
+    """Save a History row's output (or an edited version) as a linked writing sample."""
+    service = _get_service()
+    detail = await service.get_assistant_output_detail(assistant_output_id)
+    if not detail:
+        raise HTTPException(status_code=404, detail="AssistantSession output not found")
+    return await save_assistant_output_as_sample(
+        detail,
+        request.content,
+        request.context_type,
+        _get_personalization_service(),
+    )
 
 
 @router.post("/{assistant_output_id}/resume")

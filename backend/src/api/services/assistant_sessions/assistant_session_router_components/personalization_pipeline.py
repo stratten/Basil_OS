@@ -28,6 +28,10 @@ from api.core.knowledge.personalization.contact_context import (
     normalize_email_address,
     parse_email_participant,
 )
+from api.core.knowledge.personalization.session_sample_context import (
+    map_session_context_type,
+    resolve_session_recipient,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -71,33 +75,8 @@ async def save_assistant_session_as_sample(
         from api.core.knowledge.personalization_models import SourceType, ContextType
         personalization = PersonalizationService()
 
-        recipient = None
-        recipient_name = None
-        if context_type in ["email_reply", "email_compose", "email_generic"]:
-            # For replies, the sender is who we're replying to;
-            # for compose, the recipient is who we're sending to.
-            recipient = (
-                metadata.get("primary_participant_email")
-                or metadata.get("sender_email")
-                or metadata.get("recipient_email")
-                or metadata.get("sender")
-                or metadata.get("recipient")
-            )
-            recipient_name = metadata.get("primary_participant_name")
-            parsed_recipient = parse_email_participant(str(recipient)) if recipient else None
-            if parsed_recipient:
-                recipient = parsed_recipient.email
-                recipient_name = recipient_name or parsed_recipient.display_name
-
-        context_type_map = {
-            "email_reply": ContextType.EMAIL_REPLY,
-            "email_compose": ContextType.EMAIL_COMPOSE,
-            "email_generic": ContextType.EMAIL_REPLY,
-            "document": ContextType.DOCUMENT,
-            "social_media": ContextType.SOCIAL_MEDIA,
-            "code": ContextType.DOCUMENT,
-        }
-        enum_context_type = context_type_map.get(context_type, ContextType.DOCUMENT)
+        recipient, recipient_name = resolve_session_recipient(context_type, metadata)
+        enum_context_type = map_session_context_type(context_type) or ContextType.DOCUMENT
         existing_contact = None
         if recipient:
             existing_contact = await personalization.get_contact_by_email(recipient)
@@ -109,6 +88,7 @@ async def save_assistant_session_as_sample(
             recipient=recipient,
             subject=metadata.get("subject"),
             relationship_type=existing_contact.relationship_type if existing_contact else None,
+            assistant_output_id=session.get("persisted_assistant_output_id"),
         )
 
         logger.info(f"📝 [ROUTER] Saved writing sample: id='{sample.id}' context='{context_type}'")

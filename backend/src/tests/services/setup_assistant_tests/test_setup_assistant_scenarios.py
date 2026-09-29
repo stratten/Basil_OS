@@ -631,4 +631,20 @@ async def test_setup_runtime_emits_executor_output_when_no_message_tool_was_call
     ]
     assert len(completed) == 1
     assert completed[0].payload["content"] == "Setup summary from the agent."
+    deltas = [
+        event.payload["delta"]
+        for event in events
+        if event.kind == SetupAgentEventKind.message_delta
+    ]
+    assert len(deltas) > 1
+    assert "".join(deltas) == "Setup summary from the agent."
+    assert {
+        event.payload["id"]
+        for event in events
+        if event.kind in {
+            SetupAgentEventKind.message_started,
+            SetupAgentEventKind.message_delta,
+            SetupAgentEventKind.message_completed,
+        }
+    } == {completed[0].payload["id"]}
 

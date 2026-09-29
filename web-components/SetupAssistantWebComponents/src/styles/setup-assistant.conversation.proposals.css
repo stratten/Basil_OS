@@ -10,13 +10,11 @@
  * widgets the receipts render inline.
  *
  * Sibling files in the same conversation surface:
- *   - setup-assistant.conversation.css          (core chrome + motion)
+ *   - setup-assistant.conversation.css          (core chrome)
  *   - setup-assistant.conversation.messages.css (bubble system + acknowledgment chip)
  *   - setup-assistant.conversation.inline-cards.css (email context, Dill draft, setup visual cards)
  *
- * Rules in this file rely on the `conversationCardEnter` and
- * `receiptProgressPulse` keyframes plus the `prefers-reduced-motion`
- * suppression that live in the core conversation file.
+ * Rules in this file rely on the `setupEnterRise` and `setupPulse` keyframes and the reduced-motion suppression in setup-assistant.motion.css.
  */
 
 .recommendation-review {
@@ -51,7 +49,7 @@
 
 .consent-receipt,
 .artifact-row-card {
-  animation: conversationCardEnter 200ms ease-out;
+  animation: setupEnterRise 200ms var(--setup-motion-ease-out);
   position: relative;
 }
 
@@ -75,7 +73,7 @@
 
 .receipt-status-message,
 .receipt-error-message {
-  animation: conversationCardEnter 160ms ease-out both;
+  animation: setupEnterRise 160ms var(--setup-motion-ease-out) both;
   line-height: 1.4;
   margin: 8px 0 0;
 }
@@ -90,7 +88,7 @@
 }
 
 .receipt-progress {
-  animation: receiptProgressPulse 920ms ease-in-out infinite;
+  animation: setupPulse 920ms ease-in-out infinite;
   background: var(--primary);
   border-radius: 999px;
   display: inline-flex;

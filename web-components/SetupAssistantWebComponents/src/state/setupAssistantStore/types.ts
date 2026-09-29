@@ -187,6 +187,8 @@ export interface SetupConversationMessage {
   content: string
   createdAt: string
   streaming?: boolean
+  // Set on Basil messages that began streaming live in this session (message_started); the row paces their text in instead of painting it at once. Restored or synthesized messages leave it unset and render immediately.
+  revealProgressively?: boolean
   inlineReceipts: SetupConsentReceipt[]
   inlineEmailContexts?: SetupInlineEmailContext[]
   inlineDillDrafts?: SetupInlineDillDraft[]

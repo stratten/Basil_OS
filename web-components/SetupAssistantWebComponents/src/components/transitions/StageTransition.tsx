@@ -1,19 +1,12 @@
-import { type ReactNode, useEffect, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
+import { prefersReducedMotion } from '@/components/motion/prefersReducedMotion'
 import type { SetupStage } from '@/state/setupAssistantStore'
 
-// Stage-keyed cross-fade. While `stageKey` is stable, the latest
-// `children` render straight through and `status` settles to 'idle'
-// after a short enter window. When `stageKey` changes we hold the prior
-// children visible while `status` is 'leaving', then swap to the new
-// children once the leave animation finishes and run the enter window
-// again. `prefers-reduced-motion: reduce` short-circuits both animation
-// phases so the swap is instantaneous for users who request it. The
-// timing constants live here (not in the parent) because they're the
-// transition's contract, not the app's.
+// Stage-keyed cross-fade driven by the frame's own CSS animations. While `stageKey` is stable the latest `children` render straight through. When `stageKey` changes, the prior children stay visible while the frame plays its leave animation. The swap happens on that animation's `animationend`, and the enter animation's `animationend` settles the frame to idle. If no animation is running (reduced motion, or an environment without Web Animations), each phase finishes immediately, so a stage change can never stall. The animation names are the transition's contract with setup-assistant.shared.css.
 
-const STAGE_LEAVE_MS = 300
-const STAGE_ENTER_MS = 300
+const STAGE_ENTER_ANIMATION = 'setupEnterRise'
+const STAGE_LEAVE_ANIMATION = 'setupLeaveRise'
 
 type StageTransitionStatus = 'entering' | 'leaving' | 'idle'
 
@@ -22,57 +15,73 @@ interface StageTransitionProps {
   children: ReactNode
 }
 
-function prefersReducedMotion(): boolean {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+function isRunningAnimation(node: HTMLElement | null, animationName: string): boolean {
+  if (!node || typeof node.getAnimations !== 'function') return false
+  return node.getAnimations().some(animation => (
+    (animation as CSSAnimation).animationName === animationName
+    && animation.playState !== 'finished'
+  ))
 }
 
 export function StageTransition({ stageKey, children }: StageTransitionProps) {
-  const latestChildrenRef = useRef(children)
-  latestChildrenRef.current = children
+  const frameRef = useRef<HTMLDivElement>(null)
+  const latestStageKeyRef = useRef(stageKey)
+  latestStageKeyRef.current = stageKey
   const [displayedStageKey, setDisplayedStageKey] = useState(stageKey)
-  const [displayedChildren, setDisplayedChildren] = useState(children)
-  const [status, setStatus] = useState<StageTransitionStatus>('entering')
+  // The leaving frame keeps the last children rendered for its own stage, not the ones captured when that stage mounted.
+  const outgoingChildrenRef = useRef(children)
+  if (stageKey === displayedStageKey) outgoingChildrenRef.current = children
+  const [status, setStatus] = useState<StageTransitionStatus>(() => (prefersReducedMotion() ? 'idle' : 'entering'))
+  const statusRef = useRef(status)
+  statusRef.current = status
+
+  const swapToLatestStageRef = useRef(() => {})
+  swapToLatestStageRef.current = () => {
+    setDisplayedStageKey(latestStageKeyRef.current)
+    setStatus(prefersReducedMotion() ? 'idle' : 'entering')
+  }
+
+  useLayoutEffect(() => {
+    if (stageKey === displayedStageKey) {
+      if (status === 'leaving') setStatus('entering')
+      return
+    }
+    if (prefersReducedMotion()) {
+      swapToLatestStageRef.current()
+      return
+    }
+    if (status !== 'leaving') setStatus('leaving')
+  }, [stageKey, displayedStageKey, status])
+
+  useLayoutEffect(() => {
+    if (status === 'idle') return
+    const expectedAnimation = status === 'leaving' ? STAGE_LEAVE_ANIMATION : STAGE_ENTER_ANIMATION
+    if (isRunningAnimation(frameRef.current, expectedAnimation)) return
+    if (status === 'leaving') swapToLatestStageRef.current()
+    else setStatus('idle')
+  }, [status, displayedStageKey])
 
   useEffect(() => {
-    if (stageKey === displayedStageKey) {
-      if (prefersReducedMotion()) {
+    const frame = frameRef.current
+    if (!frame) return undefined
+    const handleAnimationEnd = (event: AnimationEvent) => {
+      if (event.target !== frame) return
+      if (statusRef.current === 'leaving' && event.animationName === STAGE_LEAVE_ANIMATION) {
+        swapToLatestStageRef.current()
+      } else if (statusRef.current === 'entering' && event.animationName === STAGE_ENTER_ANIMATION) {
         setStatus('idle')
-        return undefined
-      }
-      const enterTimer = window.setTimeout(() => setStatus('idle'), STAGE_ENTER_MS)
-      return () => window.clearTimeout(enterTimer)
-    }
-
-    if (prefersReducedMotion()) {
-      setDisplayedStageKey(stageKey)
-      setDisplayedChildren(latestChildrenRef.current)
-      setStatus('idle')
-      return undefined
-    }
-
-    let enterTimer: number | undefined
-    setStatus('leaving')
-    const leaveTimer = window.setTimeout(() => {
-      setDisplayedStageKey(stageKey)
-      setDisplayedChildren(latestChildrenRef.current)
-      setStatus('entering')
-      enterTimer = window.setTimeout(() => setStatus('idle'), STAGE_ENTER_MS)
-    }, STAGE_LEAVE_MS)
-
-    return () => {
-      window.clearTimeout(leaveTimer)
-      if (enterTimer !== undefined) {
-        window.clearTimeout(enterTimer)
       }
     }
-  }, [displayedStageKey, stageKey])
+    frame.addEventListener('animationend', handleAnimationEnd)
+    return () => frame.removeEventListener('animationend', handleAnimationEnd)
+  }, [displayedStageKey])
 
   const currentChildren = displayedStageKey === stageKey && status !== 'leaving'
     ? children
-    : displayedChildren
+    : outgoingChildrenRef.current
 
   return (
-    <div className={`setup-stage-frame ${status}`} key={displayedStageKey}>
+    <div ref={frameRef} className={`setup-stage-frame ${status}`} key={displayedStageKey}>
       {currentChildren}
     </div>
   )

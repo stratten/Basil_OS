@@ -161,6 +161,8 @@ def migrate_assistant_outputs_table(conn: sqlite3.Connection) -> None:
         "refinements": "ALTER TABLE assistant_outputs ADD COLUMN refinements TEXT",
         "processing_time_ms": "ALTER TABLE assistant_outputs ADD COLUMN processing_time_ms INTEGER",
         "input_modality": "ALTER TABLE assistant_outputs ADD COLUMN input_modality TEXT",
+        "context_type": "ALTER TABLE assistant_outputs ADD COLUMN context_type TEXT",
+        "recipient": "ALTER TABLE assistant_outputs ADD COLUMN recipient TEXT",
     }
     for col_name, alter_sql in assistant_output_column_migrations.items():
         if col_name not in sg_columns:

@@ -1,9 +1,13 @@
 import { NativeSymbol } from '../NativeSymbol';
+import type { SampleContextType } from '../../services/historyApi';
+
+export type HistorySampleStatus = 'unsaved' | 'saved' | 'changed';
 
 export function HistoryActionButtons({
   isEditMode,
-  sampleSaved,
+  sampleStatus,
   savingSample,
+  contextPicker,
   onEnterEdit,
   onCancelEdit,
   onApplyEdits,
@@ -11,16 +15,43 @@ export function HistoryActionButtons({
   onRefine,
 }: {
   isEditMode: boolean;
-  sampleSaved: boolean;
+  sampleStatus: HistorySampleStatus;
   savingSample: boolean;
+  contextPicker: {
+    value: SampleContextType;
+    options: ReadonlyArray<{ value: SampleContextType; label: string }>;
+    onChange: (value: SampleContextType) => void;
+  } | null;
   onEnterEdit: () => void;
   onCancelEdit: () => void;
   onApplyEdits: () => void;
   onSaveAsSample: () => void;
   onRefine: () => void;
 }) {
+  const sampleButtonLabel = savingSample
+    ? 'Saving…'
+    : sampleStatus === 'changed' ? 'Update Sample' : 'Save as Sample';
+  const contextLabel = contextPicker?.options.find((option) => option.value === contextPicker.value)?.label;
+
   return (
     <div className="assistant-output-history-detail__actions">
+      {contextPicker && sampleStatus === 'unsaved' && (isEditMode ? (
+        <select
+          className="assistant-output-history-detail__context-select"
+          aria-label="Sample context"
+          value={contextPicker.value}
+          disabled={savingSample}
+          onChange={(event) => contextPicker.onChange(event.target.value as SampleContextType)}
+        >
+          {contextPicker.options.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+      ) : (
+        <span className="assistant-output-history-detail__context-chip" title="Writing sample context. Edit to change it.">
+          {contextLabel}
+        </span>
+      ))}
       {isEditMode ? (
         <>
           <button type="button" className="assistant-output-history-detail__action assistant-output-history-detail__action--muted" onClick={onCancelEdit}>
@@ -35,19 +66,31 @@ export function HistoryActionButtons({
           <NativeSymbol name="edit" size={14} /> Edit
         </button>
       )}
-      <button
-        type="button"
-        className={`assistant-output-history-detail__action${sampleSaved ? ' assistant-output-history-detail__action--success' : ' assistant-output-history-detail__action--primary'}`}
-        disabled={sampleSaved || savingSample}
-        onClick={onSaveAsSample}
-      >
-        {!savingSample && <NativeSymbol name={sampleSaved ? 'check' : 'save'} size={14} />}
-        {sampleSaved ? 'Saved' : savingSample ? 'Saving…' : 'Save as Sample'}
-      </button>
+      {sampleStatus !== 'saved' && (
+        <button
+          type="button"
+          className="assistant-output-history-detail__action assistant-output-history-detail__action--primary"
+          disabled={savingSample}
+          onClick={onSaveAsSample}
+        >
+          {!savingSample && <NativeSymbol name="save" size={14} />}
+          {sampleButtonLabel}
+        </button>
+      )}
       {!isEditMode && (
         <button type="button" className="assistant-output-history-detail__action assistant-output-history-detail__action--primary" onClick={onRefine}>
           <NativeSymbol name="refine" size={14} /> Refine
         </button>
+      )}
+      {sampleStatus !== 'unsaved' && (
+        <span
+          className="assistant-output-history-detail__saved-indicator"
+          title={sampleStatus === 'changed'
+            ? 'This output is saved as a writing sample; the text shown differs from the saved version.'
+            : 'This output is saved as a writing sample.'}
+        >
+          <NativeSymbol name="check" size={12} /> Saved as sample
+        </span>
       )}
     </div>
   );

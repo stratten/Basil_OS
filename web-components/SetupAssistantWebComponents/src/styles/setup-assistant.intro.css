@@ -58,13 +58,26 @@
   padding: 0;
 }
 
+/* The step body scrolls on its own so a reveal or key form taller than the window stays reachable. */
+.intro-privacy {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .intro-step {
-  animation: introStepIn 360ms ease both;
-  min-height: 280px;
+  animation: setupEnterRise 360ms var(--setup-motion-ease-out) both;
+  flex: 0 1 auto;
+  margin: 0 -4px;
+  min-height: min(280px, 30vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px;
 }
 
 .intro-step--leaving {
-  animation: introStepOut 220ms ease both;
+  animation: setupLeaveRise 220ms var(--setup-motion-ease-in) both;
   pointer-events: none;
 }
 
@@ -78,6 +91,20 @@
 .intro-step-body .intro-freeform,
 .intro-step-body .intro-help {
   margin-top: 0;
+}
+
+/* A collapsing SmoothReveal still occupies a grid slot until it unmounts; cancelling the step gap here and restoring it inside the revealed body keeps the surrounding content from snapping by one gap when the slot disappears. */
+.intro-step-body > .intro-step-reveal {
+  align-self: start;
+  margin-top: calc(-1 * var(--padding-m));
+}
+
+.intro-step-reveal-body {
+  padding-top: var(--padding-m);
+}
+
+.intro-step-reveal-body > p {
+  margin: 0;
 }
 
 .intro-privacy .choice-option {
@@ -113,9 +140,13 @@
   --choice-accent: var(--accent-purple, var(--primary));
 }
 
+/* Spacing lives inside each revealed section (.choice-option-reveal-body) rather than as a grid gap, so sections that expand or collapse under an option carry their own spacing with them. */
 .choice-option-wrapper {
   display: grid;
-  gap: var(--padding-xs);
+}
+
+.choice-option-reveal-body {
+  padding-top: var(--padding-xs);
 }
 
 .choice-option-unavailable {
@@ -261,15 +292,19 @@
   border: 0.5px solid var(--separator-color);
   border-radius: var(--corner-radius-medium);
   overflow: hidden;
+  transition: background-color 400ms cubic-bezier(0.2, 0.8, 0.2, 1), border-color 400ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.intro-help[open] {
+.intro-help--open {
   background: color-mix(in srgb, var(--primary) 4%, var(--background-tertiary));
   border-color: color-mix(in srgb, var(--primary) 24%, var(--separator-color));
 }
 
-.intro-help > summary {
+.intro-help-summary {
   align-items: center;
+  background: none;
+  border: 0;
+  box-sizing: border-box;
   color: var(--text-secondary);
   cursor: pointer;
   display: flex;
@@ -277,25 +312,22 @@
   font-size: var(--font-size-callout);
   gap: 8px;
   justify-content: space-between;
-  list-style: none;
   padding: 10px 14px;
+  text-align: left;
   user-select: none;
+  width: 100%;
 }
 
-.intro-help > summary::-webkit-details-marker {
-  display: none;
-}
-
-.intro-help > summary:hover {
+.intro-help-summary:hover {
   color: var(--text-primary);
 }
 
-.intro-help > summary:focus-visible {
+.intro-help-summary:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--primary) 55%, transparent);
-  outline-offset: 2px;
+  outline-offset: -2px;
 }
 
-.intro-help[open] > summary {
+.intro-help--open .intro-help-summary {
   color: var(--text-primary);
 }
 
@@ -303,10 +335,10 @@
   display: inline-block;
   font-size: 16px;
   line-height: 1;
-  transition: transform 180ms ease;
+  transition: transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.intro-help[open] .intro-help-chevron {
+.intro-help--open .intro-help-chevron {
   transform: rotate(90deg);
 }
 
@@ -348,6 +380,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .intro-help,
   .intro-help-chevron {
     transition: none;
   }
@@ -374,16 +407,12 @@
   font-family: var(--font-family-medium);
 }
 
-.intro-step-footer {
-  align-items: center;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: var(--padding-l);
+.intro-step-primary {
+  padding: 10px 22px;
 }
 
-.intro-step-primary {
-  padding: 12px 24px;
+.intro-step-back--placeholder {
+  visibility: hidden;
 }
 
 .intro-step-back {
@@ -443,21 +472,7 @@
   font-size: var(--font-size-callout);
 }
 
-@keyframes introStepIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes introStepOut {
-  from { opacity: 1; transform: translateY(0); }
-  to { opacity: 0; transform: translateY(-6px); }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .intro-step,
-  .intro-step--leaving {
-    animation: none;
-  }
   .intro-step-dot {
     transition: none;
   }

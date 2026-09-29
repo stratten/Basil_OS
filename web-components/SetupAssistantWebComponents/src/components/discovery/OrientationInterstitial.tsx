@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { requestResize } from '@/services/bridge'
+import { SmoothReveal } from '@/components/intro/SmoothReveal'
+import { SetupStepActions } from '@/components/layout/SetupStepActions'
+import { prefersReducedMotion } from '@/components/motion/prefersReducedMotion'
+import { SetupWorkingIndicator } from '@/components/motion/SetupWorkingIndicator'
+import { useStickToBottom } from '@/components/motion/useStickToBottom'
 import type { SetupProgressNarration } from '@/state/setupAssistantStore'
 import type { SetupOrientationObservation } from '@/types'
-
-// Reserve the setup shell, progress, card, navigation, shared frame insets, and 44px React window header outside the orientation section.
-const SETUP_SHELL_CHROME_PX = 242
 
 interface Props {
   observations: SetupOrientationObservation[]
@@ -40,8 +41,7 @@ function useRotatingHint(lines: string[], intervalMs = 2200, active = true) {
 
   useEffect(() => {
     if (!active || lines.length <= 1) return undefined
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduceMotion) return undefined
+    if (prefersReducedMotion()) return undefined
     const timer = window.setInterval(() => {
       setIndex(current => (current + 1) % lines.length)
     }, intervalMs)
@@ -61,10 +61,13 @@ export function OrientationInterstitial({
 }: Props) {
   const [visibleObservationCount, setVisibleObservationCount] = useState(0)
   const visibleObservations = observations.slice(0, visibleObservationCount)
-  const sectionRef = useRef<HTMLElement | null>(null)
+  const scrollRegionRef = useRef<HTMLDivElement>(null)
+  const observationListRef = useRef<HTMLDivElement>(null)
   // Bumps once when the latest narration crosses the freshness boundary so
   // statusSubline re-evaluates and falls back to the canned hint.
   const [, setNarrationStaleTick] = useState(0)
+
+  useStickToBottom(scrollRegionRef, observationListRef)
 
   // Phase derivation. Goes from discovery -> reasoning -> ready.
   const phase: 'discovery' | 'reasoning' | 'ready' = useMemo(() => {
@@ -83,8 +86,7 @@ export function OrientationInterstitial({
       return undefined
     }
 
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduceMotion) {
+    if (prefersReducedMotion()) {
       setVisibleObservationCount(observations.length)
       return undefined
     }
@@ -127,9 +129,7 @@ export function OrientationInterstitial({
   }, [latestProgressNarration])
 
   let statusSubline: string
-  if (phase === 'ready') {
-    statusSubline = 'When you\'re ready, let\'s keep going. I\'ll talk through the most useful paths first.'
-  } else if (freshNarration) {
+  if (freshNarration) {
     statusSubline = freshNarration
   } else if (phase === 'discovery') {
     statusSubline = discoveryHint
@@ -137,60 +137,8 @@ export function OrientationInterstitial({
     statusSubline = isAgentStreaming ? reasoningHint : 'Reading what landed and pulling the picture together.'
   }
 
-  // Ask the host window to grow as orientation cards land. The Swift seam
-  // clamps the requested outer height to its chrome-adjusted window limits,
-  // so the renderer only needs to report the desired total height.
-  useEffect(() => {
-    const section = sectionRef.current
-    if (!section || typeof ResizeObserver === 'undefined') {
-      return undefined
-    }
-
-    let pendingTimer: number | undefined
-    const fireResize = () => {
-      const desired = section.scrollHeight + SETUP_SHELL_CHROME_PX
-      requestResize(Math.ceil(desired))
-    }
-
-    const scheduleResize = () => {
-      if (pendingTimer !== undefined) {
-        window.clearTimeout(pendingTimer)
-      }
-      pendingTimer = window.setTimeout(() => {
-        pendingTimer = undefined
-        fireResize()
-      }, 120)
-    }
-
-    const observer = new ResizeObserver(() => {
-      scheduleResize()
-    })
-    observer.observe(section)
-
-    fireResize()
-
-    return () => {
-      observer.disconnect()
-      if (pendingTimer !== undefined) {
-        window.clearTimeout(pendingTimer)
-      }
-    }
-  }, [])
-
-  useEffect(() => {
-    const section = sectionRef.current
-    if (!section) {
-      return undefined
-    }
-    if (visibleObservationCount === observations.length && observations.length > 0) {
-      const desired = section.scrollHeight + SETUP_SHELL_CHROME_PX
-      requestResize(Math.ceil(desired))
-    }
-    return undefined
-  }, [visibleObservationCount, observations.length])
-
   return (
-    <section ref={sectionRef} className="phase-section">
+    <section className="phase-section orientation-section">
       <div className="discovery-intro">
         <p className="eyebrow">Getting oriented</p>
         <h2>{statusHeadline}</h2>
@@ -200,38 +148,35 @@ export function OrientationInterstitial({
         </p>
       </div>
 
-      {visibleObservations.length > 0 && (
-        <div className="discovery-observation-list">
+      <div ref={scrollRegionRef} className="orientation-scroll-region">
+        <div ref={observationListRef} className="discovery-observation-list">
           {visibleObservations.map(observation => (
-            <article
-              key={observation.id}
-              className={`discovery-observation-card tone-${observation.tone}`}
-            >
-              <div className="discovery-observation-marker" aria-hidden="true" />
-              <div>
-                <span className="discovery-observation-label">{observation.label}</span>
-                <h3>{observation.title}</h3>
-                <p>{observation.detail}</p>
-              </div>
-            </article>
+            <SmoothReveal key={observation.id} open appear>
+              <article className={`discovery-observation-card tone-${observation.tone}`}>
+                <div className="discovery-observation-marker" aria-hidden="true" />
+                <div>
+                  <span className="discovery-observation-label">{observation.label}</span>
+                  <h3>{observation.title}</h3>
+                  <p>{observation.detail}</p>
+                </div>
+              </article>
+            </SmoothReveal>
           ))}
         </div>
-      )}
+      </div>
 
-      {phase !== 'ready' ? (
-        <div
-          className={`discovery-orientation-status discovery-orientation-status--${phase}`}
-          aria-live="polite"
-        >
-          <span key={statusSubline} className="discovery-orientation-status-text">
-            {statusSubline}
-          </span>
-        </div>
-      ) : (
-        <p className="quiet-note discovery-ready-note">That's the picture I'm starting with.</p>
-      )}
+      <div className="orientation-footer">
+        {phase !== 'ready' ? (
+          <SetupWorkingIndicator label={statusSubline} />
+        ) : (
+          <p className="quiet-note discovery-ready-note setup-motion-enter">
+            That's the picture I'm starting with. When you're ready, let's keep going. I'll talk
+            through the most useful paths first.
+          </p>
+        )}
+      </div>
 
-      <div className="button-row button-row--center">
+      <SetupStepActions>
         <button
           type="button"
           className="primary-button"
@@ -240,7 +185,7 @@ export function OrientationInterstitial({
         >
           Continue with setup
         </button>
-      </div>
+      </SetupStepActions>
     </section>
   )
 }

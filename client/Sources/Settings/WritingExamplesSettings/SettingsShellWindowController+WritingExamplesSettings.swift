@@ -23,6 +23,27 @@ extension SettingsShellWindowController {
                 await self?.presentDeleteAllSamplesConfirmation(requestId: requestId, filter: filter)
             }
         }
+        writingExamplesWebView.onRequestUpdateSample = { [weak self] requestId, id, content, contextType, recipient in
+            Task { @MainActor in
+                await self?.updateWritingSample(
+                    requestId: requestId,
+                    id: id,
+                    content: content,
+                    contextType: contextType,
+                    recipient: recipient
+                )
+            }
+        }
+        writingExamplesWebView.onRequestAddSample = { [weak self] requestId, content, contextType, recipient in
+            Task { @MainActor in
+                await self?.addWritingSample(
+                    requestId: requestId,
+                    content: content,
+                    contextType: contextType,
+                    recipient: recipient
+                )
+            }
+        }
         writingExamplesWebView.onAnalyzeStyle = { [weak self] requestId, filter in
             Task { @MainActor in
                 await self?.analyzeWritingStyle(requestId: requestId, filter: filter)
@@ -81,6 +102,70 @@ extension SettingsShellWindowController {
         }
         let style = try? await APIClient.shared.getCommunicationStyle(contextType: apiValue)
         return (response.samples, style)
+    }
+
+    private func refreshWritingExamplesAfterMutation(requestId: String) async {
+        guard let writingExamplesWebView else { return }
+        let filter = writingExamplesCurrentFilter
+        let generation = writingExamplesFilterGeneration
+        do {
+            let (samples, style) = try await fetchWritingExamplesSamplesAndStyle(for: filter)
+            if generation == writingExamplesFilterGeneration {
+                writingExamplesSamplesCache = samples
+                writingExamplesStyleCache = style
+                writingExamplesWebView.sendSnapshot(activeFilter: filter, samples: samples, styleProfile: style, isLoadingSamples: false)
+            }
+            writingExamplesWebView.sendIntentResult(requestId: requestId, status: "success", message: nil)
+        } catch {
+            writingExamplesWebView.sendIntentResult(requestId: requestId, status: "success", message: "Sample saved, but the list could not be refreshed.")
+        }
+    }
+
+    private func updateWritingSample(
+        requestId: String,
+        id: String,
+        content: String,
+        contextType: String,
+        recipient: String
+    ) async {
+        guard let writingExamplesWebView else { return }
+        guard !contextType.isEmpty, contextType != ReactWritingExamplesFilter.all.rawValue else {
+            writingExamplesWebView.sendIntentResult(requestId: requestId, status: "error", message: "Choose a writing context.")
+            return
+        }
+        let trimmedRecipient = recipient.trimmingCharacters(in: .whitespacesAndNewlines)
+        do {
+            try await APIClient.shared.updateWritingSample(
+                id: id,
+                content: content,
+                contextType: contextType,
+                recipient: trimmedRecipient.isEmpty ? nil : trimmedRecipient
+            )
+        } catch {
+            writingExamplesWebView.sendIntentResult(requestId: requestId, status: "error", message: "Failed to update sample.")
+            return
+        }
+        await refreshWritingExamplesAfterMutation(requestId: requestId)
+    }
+
+    private func addWritingSample(
+        requestId: String,
+        content: String,
+        contextType: String,
+        recipient: String?
+    ) async {
+        guard let writingExamplesWebView else { return }
+        guard let filter = ReactWritingExamplesFilter(rawValue: contextType), filter != .all else {
+            writingExamplesWebView.sendIntentResult(requestId: requestId, status: "error", message: "Choose a writing context.")
+            return
+        }
+        do {
+            try await APIClient.shared.addWritingSample(content: content, contextType: filter.rawValue, recipient: recipient)
+        } catch {
+            writingExamplesWebView.sendIntentResult(requestId: requestId, status: "error", message: "Failed to add sample.")
+            return
+        }
+        await refreshWritingExamplesAfterMutation(requestId: requestId)
     }
 
     private func presentDeleteSampleConfirmation(requestId: String, id: String) async {

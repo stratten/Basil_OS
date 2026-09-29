@@ -10,7 +10,6 @@ type BridgeMessageName =
   | 'launchAgentTaskOffer'
   | 'launchAssistantSessionOffer'
   | 'openConnectionAuth'
-  | 'requestResize'
   | 'saveSetupReferencePdf'
   | 'closeSetupAssistant'
   | 'minimizeSetupAssistant'
@@ -91,8 +90,6 @@ function postBridgeMessageWithResult(
   })
 }
 
-let highestRequestedResizeHeight = 0
-
 export function notifySetupAssistantReady() {
   postBridgeMessage('setupAssistantReady')
 }
@@ -158,15 +155,6 @@ export function saveSetupReferencePdf(
     base64Pdf,
     suggestedFilename,
   })
-}
-
-export function requestResize(height: number) {
-  const requestedHeight = Math.ceil(height)
-  if (requestedHeight <= highestRequestedResizeHeight) {
-    return
-  }
-  highestRequestedResizeHeight = requestedHeight
-  postBridgeMessage('requestResize', { height: requestedHeight })
 }
 
 export type SetupAgentTaskObservationKind = 'progress' | 'terminal'

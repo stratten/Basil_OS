@@ -107,6 +107,7 @@ export function applySetupAgentEvent(
             content: '',
             createdAt: new Date().toISOString(),
             streaming: true,
+            revealProgressively: true,
             inlineReceipts: [],
           },
         ],

@@ -1,13 +1,14 @@
-import type { ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 
+import { useScrollEdgeFades } from '@/components/motion/useScrollEdgeFades'
 import type { SetupStage } from '@/state/setupAssistantStore'
 
+import { SetupStepActionsSlotProvider } from './SetupStepActions'
 import { SetupWindowChrome } from './SetupWindowChrome'
 
 interface Props {
   setupStage: SetupStage
   hasActiveArtifact: boolean
-  onFinish: () => void
   onSkip: () => void
   children: ReactNode
 }
@@ -49,40 +50,40 @@ function getCurrentPhaseIndex(setupStage: SetupStage): number {
 export function SetupShell({
   setupStage,
   hasActiveArtifact,
-  onFinish,
   onSkip,
   children,
 }: Props) {
   const isWrappedUp = setupStage === 'wrap_up'
+  const showsProgress = setupStage !== 'welcome'
   const currentPhaseIndex = getCurrentPhaseIndex(setupStage)
+  const [stepActionsSlot, setStepActionsSlot] = useState<HTMLDivElement | null>(null)
+  const shellRef = useRef<HTMLElement>(null)
+  useScrollEdgeFades(shellRef)
 
   return (
     <SetupWindowChrome title="Basil Setup Assistant">
-      <main className={`setup-shell ${hasActiveArtifact ? 'with-artifact' : ''}`}>
+      <main ref={shellRef} className={`setup-shell ${hasActiveArtifact ? 'with-artifact' : ''}`}>
         <section className="setup-main">
-          {setupStage !== 'welcome' && (
-            <nav className="phase-progress" aria-label="Setup progress">
-              {setupPhasePath.map((phase, index) => {
-                const isActive = index === currentPhaseIndex
-                const isComplete = index < currentPhaseIndex
-                const stateClass = isActive ? 'active' : isComplete ? 'complete' : 'upcoming'
-                return (
-                  <div
-                    key={phase.id}
-                    className={`phase-pill ${stateClass}`}
-                    aria-current={isActive ? 'step' : undefined}
-                  >
-                    <span>{isComplete || (isWrappedUp && isActive) ? '✓' : index + 1}</span>
-                    {phase.label}
-                  </div>
-                )
-              })}
-            </nav>
-          )}
-
-          <section className="setup-card">{children}</section>
-
-          <footer className="setup-navigation">
+          <header className={`setup-header ${showsProgress ? 'setup-header--with-progress' : ''}`.trim()}>
+            {showsProgress && (
+              <nav className="phase-progress" aria-label="Setup progress">
+                {setupPhasePath.map((phase, index) => {
+                  const isActive = index === currentPhaseIndex
+                  const isComplete = index < currentPhaseIndex
+                  const stateClass = isActive ? 'active' : isComplete ? 'complete' : 'upcoming'
+                  return (
+                    <div
+                      key={phase.id}
+                      className={`phase-pill ${stateClass}`}
+                      aria-current={isActive ? 'step' : undefined}
+                    >
+                      <span>{isComplete || (isWrappedUp && isActive) ? '✓' : index + 1}</span>
+                      {phase.label}
+                    </div>
+                  )
+                })}
+              </nav>
+            )}
             {!isWrappedUp && (
               <button
                 type="button"
@@ -90,12 +91,17 @@ export function SetupShell({
                 onClick={onSkip}
                 aria-label="Skip setup for now and come back later"
               >
-                Skip setup for now
+                Skip for now
               </button>
             )}
-            <button type="button" className="secondary-button" onClick={onFinish}>
-              {isWrappedUp ? 'Close' : 'Done with setup'}
-            </button>
+          </header>
+
+          <section className="setup-card">
+            <SetupStepActionsSlotProvider value={stepActionsSlot}>{children}</SetupStepActionsSlotProvider>
+          </section>
+
+          <footer className="setup-navigation">
+            <div ref={setStepActionsSlot} className="setup-navigation-step" />
           </footer>
         </section>
       </main>

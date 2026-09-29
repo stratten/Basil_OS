@@ -195,6 +195,31 @@ extension APIClient {
         let response = try decoder.decode(DeleteResponse.self, from: data)
         return response.count
     }
+
+    /// Add a manually entered writing sample.
+    func addWritingSample(content: String, contextType: String, recipient: String? = nil) async throws {
+        var payload: [String: Any] = [
+            "content": content,
+            "context_type": contextType,
+            "source_type": "manual_entry",
+        ]
+        if let recipient {
+            payload["recipient"] = recipient
+        }
+        let jsonData = try JSONSerialization.data(withJSONObject: payload)
+        _ = try await post("/user/writing-samples", body: jsonData)
+    }
+
+    /// Update an existing writing sample's content, context type, and recipient. A nil recipient clears it.
+    func updateWritingSample(id: String, content: String, contextType: String, recipient: String?) async throws {
+        let payload: [String: Any] = [
+            "content": content,
+            "context_type": contextType,
+            "recipient": recipient ?? NSNull(),
+        ]
+        let jsonData = try JSONSerialization.data(withJSONObject: payload)
+        _ = try await patch("/user/writing-samples/\(id)", body: jsonData)
+    }
     
     // MARK: - Communication Style Analysis
     

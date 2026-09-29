@@ -225,6 +225,10 @@ def get_schema_statements() -> List[str]:
             -- not applicable (screen-only / NO_INSTRUCTION_DEFAULT path).
             input_modality TEXT,
 
+            -- Writing-sample context captured from the live session so History can save samples later.
+            context_type TEXT,
+            recipient TEXT,
+
             FOREIGN KEY (activity_id) REFERENCES activities(id)
         )
         """,
@@ -719,6 +723,9 @@ def get_schema_statements() -> List[str]:
             -- Edit tracking (for future analysis)
             was_edited BOOLEAN DEFAULT FALSE,
             edit_distance INTEGER,
+
+            -- Assistant History row this sample was saved from, when known
+            assistant_output_id INTEGER,
             
             -- Timestamps
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -832,6 +839,11 @@ def get_schema_statements() -> List[str]:
         """
         CREATE INDEX IF NOT EXISTS idx_writing_samples_hash 
         ON writing_samples(content_hash)
+        """,
+
+        """
+        CREATE INDEX IF NOT EXISTS idx_writing_samples_assistant_output
+        ON writing_samples(assistant_output_id)
         """,
 
         """

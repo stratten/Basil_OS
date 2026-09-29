@@ -5,8 +5,10 @@ import {
   copyWritingSampleToClipboard,
   notifyWritingExamplesSettingsReady,
   onWritingExamplesEvent,
+  requestAddWritingSample,
   requestDeleteAllWritingSamples,
   requestDeleteWritingSample,
+  requestUpdateWritingSample,
   setWritingExamplesContextFilter,
 } from './writingExamplesBridge'
 
@@ -31,6 +33,29 @@ describe('writingExamplesBridge', () => {
   it('sends requestDeleteSample with a generated requestId and returns it', () => {
     const id = requestDeleteWritingSample('sample-1')
     expect(postMessage).toHaveBeenCalledWith({ type: 'requestDeleteSample', requestId: id, id: 'sample-1' })
+  })
+
+  it('sends requestUpdateSample with the sample id, content, context, recipient, and a generated requestId', () => {
+    const id = requestUpdateWritingSample('sample-1', 'Updated content', 'document', '')
+    expect(postMessage).toHaveBeenCalledWith({
+      type: 'requestUpdateSample',
+      requestId: id,
+      id: 'sample-1',
+      content: 'Updated content',
+      contextType: 'document',
+      recipient: '',
+    })
+  })
+
+  it('sends requestAddSample with the selected context and optional recipient', () => {
+    const id = requestAddWritingSample('New content', 'document', 'jordan@example.com')
+    expect(postMessage).toHaveBeenCalledWith({
+      type: 'requestAddSample',
+      requestId: id,
+      content: 'New content',
+      contextType: 'document',
+      recipient: 'jordan@example.com',
+    })
   })
 
   it('sends requestDeleteAllSamples with the active filter and a generated requestId', () => {

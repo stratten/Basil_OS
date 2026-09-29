@@ -14,6 +14,8 @@ from .models import (
     DeleteWithCountResponse,
     SaveWritingSampleRequest,
     SaveWritingSampleResponse,
+    UpdateWritingSampleRequest,
+    UpdateWritingSampleResponse,
     WritingSamplesCountResponse,
     WritingSamplesListResponse,
 )
@@ -62,13 +64,19 @@ async def save_writing_sample(
         }
         
         enum_context_type = context_type_map.get(request.context_type, ContextType.DOCUMENT)
+        source_type_map = {
+            "manual_entry": SourceType.MANUAL_ENTRY,
+            "suggestion_accepted": SourceType.SUGGESTION_ACCEPTED,
+        }
+        source_type = source_type_map.get(request.source_type or "suggestion_accepted", SourceType.SUGGESTION_ACCEPTED)
         
         # Save as writing sample
         sample = await service.add_writing_sample(
             content=request.content,
-            source_type=SourceType.SUGGESTION_ACCEPTED,
+            source_type=source_type,
             context_type=enum_context_type,
-            recipient=request.recipient
+            recipient=request.recipient,
+            auto_analyze_style=source_type != SourceType.MANUAL_ENTRY
         )
         
         logger.info(f"📝 [PERSONALIZATION] Saved writing sample: id='{sample.id}' context='{request.context_type}'")
@@ -180,6 +188,53 @@ async def list_writing_samples(
     except Exception as e:
         logger.error(f"Error listing writing samples: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to list writing samples: {str(e)}")
+
+
+@router.patch("/writing-samples/{sample_id}", response_model=UpdateWritingSampleResponse)
+async def update_writing_sample(
+    sample_id: str,
+    request: UpdateWritingSampleRequest,
+    service: PersonalizationService = Depends(get_personalization_service)
+) -> UpdateWritingSampleResponse:
+    """Update an existing writing sample's content, context type, and recipient."""
+    try:
+        if not request.content.strip():
+            raise HTTPException(status_code=400, detail="Writing sample content cannot be empty")
+
+        context_type = None
+        if request.context_type is not None:
+            try:
+                context_type = ContextType(request.context_type)
+            except ValueError:
+                context_type = None
+            if context_type is None or context_type == ContextType.ALL:
+                raise HTTPException(status_code=400, detail=f"Invalid context_type: {request.context_type}")
+
+        update_recipient = "recipient" in request.model_fields_set
+        recipient = (request.recipient or "").strip() or None
+
+        updated = await service.update_writing_sample(
+            sample_id=sample_id,
+            content=request.content,
+            context_type=context_type,
+            recipient=recipient,
+            update_recipient=update_recipient
+        )
+        if updated is None:
+            raise HTTPException(status_code=404, detail="Writing sample not found")
+
+        return UpdateWritingSampleResponse(
+            status="updated",
+            sample_id=updated.id,
+            content=updated.content,
+            context_type=ContextType(updated.context_type).value,
+            recipient=updated.recipient
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating writing sample: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to update writing sample: {str(e)}")
 
 
 @router.delete("/writing-samples/{sample_id}", response_model=DeleteResponse)

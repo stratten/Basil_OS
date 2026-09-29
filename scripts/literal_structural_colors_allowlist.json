@@ -176,7 +176,8 @@
     "430:color: #fff;"
   ],
   "web-components/SettingsWebComponents/src/styles/writing-examples-settings.css": [
-    "36:color: #ffffff;"
+    "36:color: #ffffff;",
+    "211:color: #ffffff;"
   ],
   "web-components/SetupAssistantWebComponents/src/styles/setup-assistant.agenda.css": [
     "42:0 0 0 0.5px rgba(0, 0, 0, 0.04),",

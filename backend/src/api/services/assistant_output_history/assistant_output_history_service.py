@@ -48,6 +48,8 @@ class AssistantOutputHistoryService:
         window_title: Optional[str] = None,
         user_request: Optional[str] = None,
         processing_time_ms: Optional[int] = None,
+        context_type: Optional[str] = None,
+        recipient: Optional[str] = None,
     ) -> int:
         """Insert a completed AssistantSession output into the database.
 
@@ -74,8 +76,9 @@ class AssistantOutputHistoryService:
                     model_name, generated_at, user_request,
                     output_type, input_modality, screen_capture_path,
                     text_selection, app_name, window_title,
-                    status, refinement_count, processing_time_ms
-                ) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?, 'completed', 0, ?)
+                    status, refinement_count, processing_time_ms,
+                    context_type, recipient
+                ) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?, 'completed', 0, ?, ?, ?)
                 """,
                 (
                     output_text,
@@ -90,6 +93,8 @@ class AssistantOutputHistoryService:
                     app_name,
                     window_title,
                     processing_time_ms,
+                    context_type,
+                    recipient,
                 ),
             )
             assistant_output_id = cursor.lastrowid
@@ -254,7 +259,8 @@ class AssistantOutputHistoryService:
                        explanation_text, model_name, generated_at, status,
                        refinement_count, refinements, app_name, window_title,
                        screen_capture_path, text_selection, user_request,
-                       processing_time_ms, was_inserted, user_rating, user_feedback
+                       processing_time_ms, was_inserted, user_rating, user_feedback,
+                       context_type, recipient
                 FROM assistant_outputs
                 WHERE id = ?
                 """,
@@ -286,6 +292,8 @@ class AssistantOutputHistoryService:
             "was_inserted": bool(row["was_inserted"]),
             "user_rating": row["user_rating"],
             "user_feedback": row["user_feedback"],
+            "context_type": row["context_type"],
+            "recipient": row["recipient"],
         }
 
     # ------------------------------------------------------------------

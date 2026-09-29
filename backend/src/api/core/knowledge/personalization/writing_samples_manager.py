@@ -4,6 +4,7 @@ import uuid
 import hashlib
 import aiosqlite
 import logging
+import Levenshtein
 from datetime import datetime
 from typing import Optional, List
 from contextlib import asynccontextmanager
@@ -62,7 +63,8 @@ class WritingSamplesManager:
         relationship_type: Optional[RelationshipType] = None,
         was_edited: bool = False,
         edit_distance: Optional[int] = None,
-        user_id: str = "default"
+        user_id: str = "default",
+        assistant_output_id: Optional[int] = None
     ) -> WritingSample:
         """Add a writing sample.
         
@@ -95,6 +97,12 @@ class WritingSamplesManager:
             existing = await cursor.fetchone()
             if existing:
                 logger.info(f"Writing sample with hash {content_hash[:8]}... already exists, skipping")
+                if assistant_output_id is not None:
+                    await conn.execute(
+                        "UPDATE writing_samples SET assistant_output_id = ? WHERE id = ? AND assistant_output_id IS NULL",
+                        (assistant_output_id, existing["id"])
+                    )
+                    await conn.commit()
                 return await self._get_writing_sample_by_id(existing["id"])
             
             # Create new sample
@@ -126,6 +134,11 @@ class WritingSamplesManager:
                 )
             )
             
+            if assistant_output_id is not None:
+                await conn.execute(
+                    "UPDATE writing_samples SET assistant_output_id = ? WHERE id = ?",
+                    (assistant_output_id, sample_id)
+                )
             await conn.commit()
             logger.info(f"Created writing sample {sample_id} from {source_type.value}")
             
@@ -158,6 +171,86 @@ class WritingSamplesManager:
                 created_at=datetime.fromisoformat(row["created_at"])
             )
     
+    async def update_writing_sample(
+        self,
+        sample_id: str,
+        content: str,
+        user_id: str = "default",
+        context_type: Optional[ContextType] = None,
+        recipient: Optional[str] = None,
+        update_recipient: bool = False
+    ) -> Optional[WritingSample]:
+        """Update a writing sample's content, context type, and recipient."""
+        async with self._get_connection() as conn:
+            cursor = await conn.execute(
+                "SELECT content FROM writing_samples WHERE id = ? AND user_id = ?",
+                (sample_id, user_id)
+            )
+            row = await cursor.fetchone()
+            if not row:
+                return None
+
+            assignments: List[str] = []
+            params: List[object] = []
+            old_content = row["content"]
+            if content != old_content:
+                edit_distance = Levenshtein.distance(old_content, content)
+                assignments += ["content = ?", "content_hash = ?", "was_edited = 1", "edit_distance = ?"]
+                params += [content, hashlib.sha256(content.encode("utf-8")).hexdigest(), edit_distance]
+            if context_type is not None:
+                assignments.append("context_type = ?")
+                params.append(context_type.value)
+            if update_recipient:
+                assignments.append("recipient = ?")
+                params.append(recipient)
+
+            if assignments:
+                await conn.execute(
+                    f"UPDATE writing_samples SET {', '.join(assignments)} WHERE id = ? AND user_id = ?",
+                    (*params, sample_id, user_id)
+                )
+                await conn.commit()
+                changed_columns = ", ".join(assignment.split(" = ")[0] for assignment in assignments)
+                logger.info(f"Updated writing sample {sample_id} ({changed_columns})")
+
+        return await self._get_writing_sample_by_id(sample_id)
+
+    async def find_sample_for_assistant_output(
+        self,
+        assistant_output_id: int,
+        candidate_contents: List[str],
+        user_id: str = "default"
+    ) -> Optional[WritingSample]:
+        """Return the sample linked to an Assistant History row, or matching its content hash."""
+        async with self._get_connection() as conn:
+            cursor = await conn.execute(
+                """
+                SELECT id FROM writing_samples
+                WHERE user_id = ? AND assistant_output_id = ?
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                (user_id, assistant_output_id)
+            )
+            row = await cursor.fetchone()
+            if not row:
+                hashes = [hashlib.sha256(text.encode("utf-8")).hexdigest() for text in candidate_contents if text]
+                if hashes:
+                    placeholders = ", ".join("?" for _ in hashes)
+                    cursor = await conn.execute(
+                        f"""
+                        SELECT id FROM writing_samples
+                        WHERE user_id = ? AND content_hash IN ({placeholders})
+                        ORDER BY created_at DESC
+                        LIMIT 1
+                        """,
+                        (user_id, *hashes)
+                    )
+                    row = await cursor.fetchone()
+        if not row:
+            return None
+        return await self._get_writing_sample_by_id(row["id"])
+
     async def get_relevant_writing_samples(
         self,
         context_type: ContextType,

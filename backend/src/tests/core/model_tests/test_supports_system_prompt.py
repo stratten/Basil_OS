@@ -34,9 +34,9 @@ def profile(monkeypatch):
     return install
 
 
-@pytest.mark.parametrize("handler", ["openai_api", "anthropic_api"])
+@pytest.mark.parametrize("handler", ["openai_api", "anthropic_api", "gemini_api"])
 @pytest.mark.asyncio
-async def test_cloud_openai_and_anthropic_handlers_support_system_prompt(profile, handler):
+async def test_cloud_handlers_support_system_prompt(profile, handler):
     profile(handler)
     model = _RecordingModel()
     assert supports_system_prompt(model) is True
@@ -46,8 +46,8 @@ async def test_cloud_openai_and_anthropic_handlers_support_system_prompt(profile
 
 
 @pytest.mark.asyncio
-async def test_gemini_handler_falls_back_to_prepended_text(profile):
-    profile("gemini_api")
+async def test_unproven_handler_falls_back_to_prepended_text(profile):
+    profile("huggingface")
     model = _RecordingModel()
     assert supports_system_prompt(model) is False
     await call_model_with_prompt(model, prompt="hi", system_prompt="be terse")

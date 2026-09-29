@@ -1,4 +1,5 @@
 import XCTest
+import WebKit
 @testable import BasilClient
 
 final class ReactWritingExamplesSettingsPayloadTests: XCTestCase {
@@ -43,5 +44,76 @@ final class ReactWritingExamplesSettingsPayloadTests: XCTestCase {
         XCTAssertEqual(documentAlert.informativeText, "Are you sure you want to delete all Document samples? This action cannot be undone.")
         XCTAssertEqual(documentAlert.buttons[1].title, "Delete All")
         XCTAssertTrue(documentAlert.buttons[1].hasDestructiveAction)
+    }
+
+    @MainActor
+    func testUpdateSampleIntentInvokesHandlerWithContent() {
+        let bridge = ReactWritingExamplesSettingsWebView(
+            webView: WKWebView(frame: .zero, configuration: WKWebViewConfiguration())
+        )
+        var received: (requestId: String, id: String, content: String, contextType: String, recipient: String)?
+        bridge.onRequestUpdateSample = { requestId, id, content, contextType, recipient in
+            received = (requestId, id, content, contextType, recipient)
+        }
+
+        bridge.handleIntent([
+            "type": "requestUpdateSample",
+            "requestId": "request-1",
+            "id": "sample-1",
+            "content": "Updated sample",
+            "contextType": "document",
+            "recipient": "",
+        ])
+
+        XCTAssertEqual(received?.requestId, "request-1")
+        XCTAssertEqual(received?.id, "sample-1")
+        XCTAssertEqual(received?.content, "Updated sample")
+        XCTAssertEqual(received?.contextType, "document")
+        XCTAssertEqual(received?.recipient, "")
+    }
+
+    @MainActor
+    func testAddSampleIntentInvokesHandlerWithOptionalRecipient() {
+        let bridge = ReactWritingExamplesSettingsWebView(
+            webView: WKWebView(frame: .zero, configuration: WKWebViewConfiguration())
+        )
+        var received: (requestId: String, content: String, contextType: String, recipient: String?)?
+        bridge.onRequestAddSample = { requestId, content, contextType, recipient in
+            received = (requestId, content, contextType, recipient)
+        }
+
+        bridge.handleIntent([
+            "type": "requestAddSample",
+            "requestId": "request-2",
+            "content": "New sample",
+            "contextType": "document",
+            "recipient": "jordan@example.com",
+        ])
+
+        XCTAssertEqual(received?.requestId, "request-2")
+        XCTAssertEqual(received?.content, "New sample")
+        XCTAssertEqual(received?.contextType, "document")
+        XCTAssertEqual(received?.recipient, "jordan@example.com")
+    }
+
+    @MainActor
+    func testMalformedUpdateAndAddSampleIntentsAreReported() {
+        let bridge = ReactWritingExamplesSettingsWebView(
+            webView: WKWebView(frame: .zero, configuration: WKWebViewConfiguration())
+        )
+        var malformedIntents: [String] = []
+        bridge.onMalformedIntent = { malformedIntents.append($0) }
+
+        bridge.handleIntent(["type": "requestUpdateSample", "requestId": "request-1", "id": "sample-1"])
+        bridge.handleIntent(["type": "requestAddSample", "requestId": "request-2", "content": "New sample"])
+        bridge.handleIntent([
+            "type": "requestUpdateSample",
+            "requestId": "request-3",
+            "id": "sample-1",
+            "content": "Updated sample",
+            "recipient": "",
+        ])
+
+        XCTAssertEqual(malformedIntents, ["requestUpdateSample", "requestAddSample", "requestUpdateSample"])
     }
 }

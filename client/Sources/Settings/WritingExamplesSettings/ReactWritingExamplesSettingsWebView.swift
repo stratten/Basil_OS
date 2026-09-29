@@ -22,6 +22,8 @@ final class ReactWritingExamplesSettingsWebView: NSObject {
     var onReady: (() -> Void)?
     var onSetContextFilter: ((ReactWritingExamplesFilter) -> Void)?
     var onRequestDeleteSample: ((String, String) -> Void)?
+    var onRequestUpdateSample: ((String, String, String, String, String) -> Void)?
+    var onRequestAddSample: ((String, String, String, String?) -> Void)?
     var onRequestDeleteAllSamples: ((String, ReactWritingExamplesFilter) -> Void)?
     var onAnalyzeStyle: ((String, ReactWritingExamplesFilter) -> Void)?
     var onCopySampleToClipboard: ((String) -> Void)?
@@ -58,11 +60,16 @@ final class ReactWritingExamplesSettingsWebView: NSObject {
 
     fileprivate func handleScriptMessage(_ message: WKScriptMessage) {
         guard message.name == "basilWritingExamplesSettingsBridge",
-              let body = message.body as? [String: Any],
-              let type = body["type"] as? String else {
+              let body = message.body as? [String: Any] else {
             return
         }
+        handleIntent(body)
+    }
 
+    func handleIntent(_ body: [String: Any]) {
+        guard let type = body["type"] as? String else {
+            return
+        }
         switch type {
         case "reactReady":
             guard (body["protocolVersion"] as? NSNumber)?.intValue == 1 else {
@@ -88,6 +95,28 @@ final class ReactWritingExamplesSettingsWebView: NSObject {
                 return
             }
             onRequestDeleteSample?(requestId, id)
+        case "requestUpdateSample":
+            guard
+                let requestId = body["requestId"] as? String,
+                let id = body["id"] as? String,
+                let content = body["content"] as? String,
+                let contextType = body["contextType"] as? String,
+                let recipient = body["recipient"] as? String
+            else {
+                onMalformedIntent?("requestUpdateSample")
+                return
+            }
+            onRequestUpdateSample?(requestId, id, content, contextType, recipient)
+        case "requestAddSample":
+            guard
+                let requestId = body["requestId"] as? String,
+                let content = body["content"] as? String,
+                let contextType = body["contextType"] as? String
+            else {
+                onMalformedIntent?("requestAddSample")
+                return
+            }
+            onRequestAddSample?(requestId, content, contextType, body["recipient"] as? String)
         case "requestDeleteAllSamples":
             guard
                 let requestId = body["requestId"] as? String,

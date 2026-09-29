@@ -35,7 +35,10 @@ from ..schema_management.agent_work.migrations import migrate_agent_work_session
 from ..schema_management.basil_board_migrations import migrate_basil_board_tables
 from ..schema_management.todos.migrations import migrate_todo_tables
 from ..schema_management.conversation_migrations import migrate_conversation_indexes
-from ..schema_management.personalization_migrations import migrate_personalization_profile_table
+from ..schema_management.personalization_migrations import (
+    migrate_personalization_profile_table,
+    migrate_writing_samples_table,
+)
 from ..schema_management.core_migrations import (
     migrate_activities_table,
     migrate_assistant_outputs_table,
@@ -125,6 +128,7 @@ class SchemaManager:
                 self._migrate_basil_board_tables(conn)
                 self._migrate_execution_approval_tables(conn)
                 self._migrate_managed_file_history_tables(conn)
+                self._migrate_writing_samples_table(conn)
 
                 self._ensure_fts_tables(conn)
                 conn.commit()
@@ -294,6 +298,10 @@ class SchemaManager:
     def _migrate_personalization_profile_table(self, conn: sqlite3.Connection) -> None:
         """Ensure user_profile exists and carries the custom_instructions column."""
         migrate_personalization_profile_table(conn)
+
+    def _migrate_writing_samples_table(self, conn: sqlite3.Connection) -> None:
+        """Add the Assistant History link column to writing_samples when present."""
+        migrate_writing_samples_table(conn)
 
     def _migrate_conversation_indexes(self, conn: sqlite3.Connection) -> None:
         """Install additive indexes required by conversation history pages."""

@@ -4,6 +4,8 @@ type OutgoingWritingExamplesMessage =
   | { type: 'reactReady'; protocolVersion: 1 }
   | { type: 'setContextFilter'; filter: WritingExamplesContextFilter }
   | { type: 'requestDeleteSample'; requestId: string; id: string }
+  | { type: 'requestUpdateSample'; requestId: string; id: string; content: string; contextType: string; recipient: string }
+  | { type: 'requestAddSample'; requestId: string; content: string; contextType: WritingExamplesContextFilter; recipient?: string }
   | { type: 'requestDeleteAllSamples'; requestId: string; filter: WritingExamplesContextFilter }
   | { type: 'analyzeStyle'; requestId: string; filter: WritingExamplesContextFilter }
   | { type: 'copySampleToClipboard'; content: string }
@@ -60,6 +62,24 @@ export function setWritingExamplesContextFilter(filter: WritingExamplesContextFi
 export function requestDeleteWritingSample(id: string): string {
   const requestIdValue = requestId('requestDeleteSample')
   postMessage({ type: 'requestDeleteSample', requestId: requestIdValue, id })
+  return requestIdValue
+}
+
+export function requestUpdateWritingSample(id: string, content: string, contextType: string, recipient: string): string {
+  const requestIdValue = requestId('requestUpdateSample')
+  postMessage({ type: 'requestUpdateSample', requestId: requestIdValue, id, content, contextType, recipient })
+  return requestIdValue
+}
+
+export function requestAddWritingSample(content: string, contextType: WritingExamplesContextFilter, recipient?: string): string {
+  const requestIdValue = requestId('requestAddSample')
+  postMessage({
+    type: 'requestAddSample',
+    requestId: requestIdValue,
+    content,
+    contextType,
+    ...(recipient ? { recipient } : {}),
+  })
   return requestIdValue
 }
 

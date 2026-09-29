@@ -11,15 +11,7 @@ import type { SetupAgentStreamApi } from './useSetupAgentStream'
 
 type SetupAssistantStore = ReturnType<typeof useSetupAssistantStore>
 
-// Owns the three terminal-stage handlers: Done, Skip, and the background
-// finalize call that produces the wrap-up recap. Done and Skip both
-// abort any in-flight stream first (we don't want stale events landing
-// after the user has decided to wrap up), then post the completion
-// payload to the backend so other parts of the app can react. The
-// background finalize runs only on the Done path and only if a recap
-// hasn't already been proposed during the conversation — it gates on
-// `store.state.wrapUpProposal` to avoid re-finalizing if the agent
-// already produced one mid-conversation.
+// Owns the three terminal-stage handlers: Done, Skip, and the background finalize call that produces the wrap-up recap. Done and Skip both abort any in-flight stream first (we don't want stale events landing after the user has decided to wrap up), then post the completion payload to the backend so other parts of the app can react. Done is only offered during the conversation stage and ignores calls from any other stage. The background finalize runs only on the Done path, only if the agent has not already proposed a recap mid-conversation (`store.state.wrapUpProposal`), and only once a setup step actually landed; otherwise the wrap-up panel shows its no-steps variant without a model call.
 
 export interface SetupCompletionApi {
   handleFinish: () => void
@@ -82,13 +74,21 @@ export function useSetupCompletion({
     })()
   }
 
+  const hasConcreteSetupProgress = (): boolean => (
+    store.state.sessionAgenda.some(item => item.status === 'completed')
+    || Object.values(store.state.pendingProposals)
+      .some(proposal => proposal.approvalState === 'executed' || proposal.approvalState === 'approved')
+  )
+
   const handleFinish = () => {
+    if (store.state.setupStage !== 'conversation') return
     abort()
-    store.setStage('wrap_up')
+    const shouldFinalizeRecap = !store.state.wrapUpProposal && hasConcreteSetupProgress()
     const payload = collectCompletionPayload()
+    store.setStage('wrap_up')
     completeSetupAssistant(payload)
       .catch(error => store.setError(error instanceof Error ? error.message : String(error)))
-    if (!store.state.wrapUpProposal) {
+    if (shouldFinalizeRecap) {
       runFinalizeWrapUpInBackground()
     }
   }

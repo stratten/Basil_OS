@@ -56,6 +56,7 @@ from ....services.transcription.backends.parakeet_components import (
     ParakeetTranscriptionProgress,
 )
 from api.core.preferences.preferences_io import load_preferences
+from api.core.knowledge.personalization.session_sample_context import resolve_session_recipient
 
 logger = logging.getLogger(__name__)
 
@@ -314,6 +315,8 @@ async def stream_process_audio(
                 context_text=ocr_text[:2000] if ocr_text else None,
                 model_name=model_name,
                 app_name=app_name,
+                context_type=session.get("context_type"),
+                recipient=resolve_session_recipient(session.get("context_type"), session.get("metadata"))[0],
             )
             session["persisted_assistant_output_id"] = persist_id
             logger.info(
@@ -487,6 +490,8 @@ async def _persist_non_streaming_assistant_output(
             user_request=transcription_for_response,
             context_text=ocr_text[:2000] if ocr_text else None,
             app_name=app_name,
+            context_type=session.get("context_type"),
+            recipient=resolve_session_recipient(session.get("context_type"), session.get("metadata"))[0],
         )
         service.sessions[session_id]["persisted_assistant_output_id"] = persist_id
         logger.info(

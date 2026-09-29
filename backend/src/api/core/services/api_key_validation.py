@@ -49,10 +49,20 @@ def call_provider_with_key(provider: str, key: str, validation_model: str) -> No
             messages=[{"role": "user", "content": "Hello"}],
         )
     elif provider in ("google", "gemini"):
-        import google.generativeai as genai
-        genai.configure(api_key=key)
-        model = genai.GenerativeModel(validation_model)
-        model.generate_content("Hi", generation_config={"max_output_tokens": 1})
+        from google import genai
+
+        client = genai.Client(api_key=key)
+        try:
+            client.models.generate_content(
+                model=validation_model,
+                contents="Hi",
+                config={
+                    "max_output_tokens": 1,
+                    "automatic_function_calling": {"disable": True},
+                },
+            )
+        finally:
+            client.close()
     else:
         raise ValueError(f"No API validation logic for provider: {provider}")
 

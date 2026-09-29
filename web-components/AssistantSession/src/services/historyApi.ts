@@ -10,6 +10,20 @@ export interface AssistantOutputHistoryEntry {
   appName: string | null;
 }
 
+export type SampleContextType = 'email_reply' | 'email_compose' | 'social_media' | 'document';
+
+export const SAMPLE_CONTEXT_OPTIONS: ReadonlyArray<{ value: SampleContextType; label: string }> = [
+  { value: 'email_reply', label: 'Email Reply' },
+  { value: 'email_compose', label: 'Email Compose' },
+  { value: 'social_media', label: 'Social Media' },
+  { value: 'document', label: 'Document' },
+];
+
+export interface SavedHistorySample {
+  id: string;
+  content: string;
+}
+
 export interface AssistantOutputHistoryDetail {
   id: number;
   outputType: string;
@@ -25,6 +39,9 @@ export interface AssistantOutputHistoryDetail {
   appName: string | null;
   userRequest: string | null;
   processingTimeMs: number | null;
+  sampleContextType: SampleContextType | null;
+  recipient: string | null;
+  savedSample: SavedHistorySample | null;
 }
 
 export class AssistantOutputHistoryApiError extends Error {
@@ -73,6 +90,9 @@ interface RawDetail {
   app_name: string | null;
   user_request: string | null;
   processing_time_ms: number | null;
+  sample_context_type?: string | null;
+  recipient?: string | null;
+  saved_sample?: { id: string; content: string; context_type: string } | null;
 }
 
 export function materialRefinements(
@@ -97,6 +117,10 @@ function toEntry(raw: RawListItem): AssistantOutputHistoryEntry {
   };
 }
 
+function toSampleContextType(value: string | null | undefined): SampleContextType | null {
+  return SAMPLE_CONTEXT_OPTIONS.some((option) => option.value === value) ? (value as SampleContextType) : null;
+}
+
 function toDetail(raw: RawDetail): AssistantOutputHistoryDetail {
   return {
     id: raw.id,
@@ -113,6 +137,9 @@ function toDetail(raw: RawDetail): AssistantOutputHistoryDetail {
     appName: raw.app_name,
     userRequest: raw.user_request,
     processingTimeMs: raw.processing_time_ms ?? null,
+    sampleContextType: toSampleContextType(raw.sample_context_type),
+    recipient: raw.recipient ?? null,
+    savedSample: raw.saved_sample ? { id: raw.saved_sample.id, content: raw.saved_sample.content } : null,
   };
 }
 
@@ -132,17 +159,32 @@ export async function fetchHistory(
   return raw.outputs.map(toEntry);
 }
 
-export async function saveWritingSample(
+export async function saveHistoryOutputAsSample(
   baseUrl: string,
+  id: number,
   content: string,
-  appName: string | null,
-): Promise<void> {
-  const payload: { content: string; metadata?: { app_name: string } } = { content };
-  if (appName) payload.metadata = { app_name: appName };
-  await requestJSON<{ status: string }>(baseUrl, '/user/writing-samples', {
+  contextType: SampleContextType | null,
+): Promise<SavedHistorySample> {
+  const payload: { content: string; context_type?: SampleContextType } = { content };
+  if (contextType) payload.context_type = contextType;
+  const raw = await requestJSON<{ sample_id: string; content: string }>(baseUrl, `/assistant-outputs/${id}/save-sample`, {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+  return { id: raw.sample_id, content: raw.content };
+}
+
+export async function updateSavedSampleContent(
+  baseUrl: string,
+  sampleId: string,
+  content: string,
+): Promise<SavedHistorySample> {
+  const raw = await requestJSON<{ sample_id: string; content: string }>(
+    baseUrl,
+    `/user/writing-samples/${encodeURIComponent(sampleId)}`,
+    { method: 'PATCH', body: JSON.stringify({ content }) },
+  );
+  return { id: raw.sample_id, content: raw.content };
 }
 
 export async function fetchHistoryDetail(baseUrl: string, id: number): Promise<AssistantOutputHistoryDetail> {

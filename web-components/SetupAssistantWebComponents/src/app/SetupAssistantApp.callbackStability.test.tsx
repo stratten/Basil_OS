@@ -174,4 +174,9 @@ describe('SetupAssistantApp callback stability', () => {
     expect(testState.agendaRenders).toBe(1)
     expect(testState.artifactRenders).toBe(1)
   })
+
+  it('offers Done with setup as the conversation step action', () => {
+    const labels = Array.from(container.querySelectorAll('button')).map(button => button.textContent?.trim())
+    expect(labels).toContain('Done with setup')
+  })
 })

@@ -6,7 +6,6 @@ struct SetupAssistantWebView: NSViewRepresentable {
     var onRestartRequested: (() -> Void)?
     var onCloseRequested: (() -> Void)?
     var onMinimizeRequested: (() -> Void)?
-    var onResizeRequested: ((_ height: CGFloat) -> Void)?
     var onCollapseRequested: (() -> Void)?
     var onExpandRequested: (() -> Void)?
     var onCoordinatorReady: ((Coordinator) -> Void)?
@@ -16,7 +15,6 @@ struct SetupAssistantWebView: NSViewRepresentable {
             onRestartRequested: onRestartRequested,
             onCloseRequested: onCloseRequested,
             onMinimizeRequested: onMinimizeRequested,
-            onResizeRequested: onResizeRequested,
             onCollapseRequested: onCollapseRequested,
             onExpandRequested: onExpandRequested
         )
@@ -89,7 +87,6 @@ struct SetupAssistantWebView: NSViewRepresentable {
         private var onRestartRequested: (() -> Void)?
         private var onCloseRequested: (() -> Void)?
         private var onMinimizeRequested: (() -> Void)?
-        private var onResizeRequested: ((_ height: CGFloat) -> Void)?
         private var onCollapseRequested: (() -> Void)?
         private var onExpandRequested: (() -> Void)?
         private weak var webView: WKWebView?
@@ -98,14 +95,12 @@ struct SetupAssistantWebView: NSViewRepresentable {
             onRestartRequested: (() -> Void)?,
             onCloseRequested: (() -> Void)?,
             onMinimizeRequested: (() -> Void)?,
-            onResizeRequested: ((_ height: CGFloat) -> Void)?,
             onCollapseRequested: (() -> Void)?,
             onExpandRequested: (() -> Void)?
         ) {
             self.onRestartRequested = onRestartRequested
             self.onCloseRequested = onCloseRequested
             self.onMinimizeRequested = onMinimizeRequested
-            self.onResizeRequested = onResizeRequested
             self.onCollapseRequested = onCollapseRequested
             self.onExpandRequested = onExpandRequested
         }
@@ -179,10 +174,6 @@ struct SetupAssistantWebView: NSViewRepresentable {
                 openSystemSettings(payload: payload)
             case "restartApplication":
                 onRestartRequested?()
-            case "requestResize":
-                if let height = payload?["height"] as? Double {
-                    onResizeRequested?(CGFloat(height))
-                }
             case "closeSetupAssistant":
                 onCloseRequested?()
             case "minimizeSetupAssistant":

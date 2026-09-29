@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { SetupWorkingIndicator } from '@/components/motion/SetupWorkingIndicator'
 import type { SetupWrapUpProposal } from '@/types'
 
 import {
@@ -10,7 +11,7 @@ import {
 // Terminal-screen wrap-up panel. Renders one of four UI variants depending
 // on how the user reached the wrap-up stage and how the finalize call
 // resolved:
-//   - wasSkipped: user clicked Skip from the shell footer
+//   - wasSkipped: user clicked Skip in the shell header
 //   - wrapUpProposal present + recap non-empty: model produced a recap
 //   - isFinalizingWrapUp: the finalize stream is still in flight
 //   - finalizeError: finalize stream failed
@@ -59,7 +60,7 @@ export function SetupWrapUpPanel({
 
   if (wasSkipped) {
     return (
-      <section className="setup-complete-panel">
+      <section key="skipped" className="setup-complete-panel setup-motion-enter">
         <p className="setup-complete-eyebrow">Saved for later</p>
         <h1>I saved your spot.</h1>
         <p>
@@ -73,7 +74,7 @@ export function SetupWrapUpPanel({
 
   if (wrapUpProposal && wrapUpProposal.recap.trim().length > 0) {
     return (
-      <section className="setup-complete-panel setup-complete-panel--agent setup-wrapup--ready">
+      <section key="ready" className="setup-complete-panel setup-complete-panel--agent setup-motion-enter">
         <p className="setup-complete-eyebrow">Here's where we landed</p>
         <h1>I'm ready to help.</h1>
         <p className="setup-wrapup-recap">{wrapUpProposal.recap}</p>
@@ -126,7 +127,7 @@ export function SetupWrapUpPanel({
 
   if (isFinalizingWrapUp) {
     return (
-      <section className="setup-complete-panel setup-wrapup--preparing">
+      <section key="preparing" className="setup-complete-panel setup-wrapup--preparing setup-motion-enter">
         <p className="setup-complete-eyebrow">Wrapping up</p>
         <h1>Putting your recap together&hellip;</h1>
         <p>
@@ -135,14 +136,14 @@ export function SetupWrapUpPanel({
           {' '}<strong>Settings &rsaquo; General &rsaquo; Application Setup</strong>
           {' '}later.)
         </p>
-        <div className="setup-wrapup-spinner" aria-hidden="true" />
+        <SetupWorkingIndicator className="setup-wrapup-working" label="Reading back through what we covered." />
       </section>
     )
   }
 
   if (finalizeError) {
     return (
-      <section className="setup-complete-panel">
+      <section key="error" className="setup-complete-panel setup-motion-enter">
         <p className="setup-complete-eyebrow">Wrapped up</p>
         <h1>I couldn't pull a recap together — but I'm ready when you are.</h1>
         <p>
@@ -155,7 +156,7 @@ export function SetupWrapUpPanel({
   }
 
   return (
-    <section className="setup-complete-panel">
+    <section key="fallback" className="setup-complete-panel setup-motion-enter">
       <p className="setup-complete-eyebrow">All set for now</p>
       <h1>I'm ready when you are.</h1>
       <p>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { SetupAgendaSidebar } from '@/components/agenda/SetupAgendaSidebar'
 import { BasilArtifactPanel } from '@/components/conversation/BasilArtifactPanel'
@@ -7,6 +7,7 @@ import { OrientationInterstitial } from '@/components/discovery/OrientationInter
 import { IntroAndPrivacy } from '@/components/intro/IntroAndPrivacy'
 import { WelcomeIntro } from '@/components/intro/WelcomeIntro'
 import { SetupShell } from '@/components/layout/SetupShell'
+import { SetupStepActions } from '@/components/layout/SetupStepActions'
 import { StageTransition } from '@/components/transitions/StageTransition'
 import { SetupWrapUpPanel } from '@/components/wrapup/SetupWrapUpPanel'
 import { closeSetupAssistant, notifySetupAssistantReady } from '@/services/bridge'
@@ -52,6 +53,8 @@ export function SetupAssistantApp() {
   } = useSetupDiscovery({ store })
   const { handleReceiptAction } = useSetupProposalActions({ store })
   const { handleFinish, handleSkip } = useSetupCompletion({ store, buildRequest, abort })
+  // True while newly proposed agenda items are animating in; the first Basil message waits for it so the agenda lands before the reply types in.
+  const [isAgendaEntering, setIsAgendaEntering] = useState(false)
   const receiptActionRef = useRef(handleReceiptAction)
   const agendaConfirmationResolutionRef = useRef(handleAgendaConfirmationResolved)
   const setAgendaSidebarCollapsedRef = useRef(store.setAgendaSidebarCollapsed)
@@ -183,49 +186,65 @@ export function SetupAssistantApp() {
 
     if (store.state.setupStage === 'conversation') {
       return (
-        <div
-          className={
-            'setup-workspace'
-            + (hasActiveArtifact ? ' with-artifact' : '')
-            + (store.state.isAgendaSidebarCollapsed ? ' with-collapsed-agenda' : '')
-          }
-        >
-          <SetupAgendaSidebar
-            items={store.state.sessionAgenda}
-            isCollapsed={store.state.isAgendaSidebarCollapsed}
-            onToggleCollapsed={toggleAgendaSidebar}
-          />
-          <BasilConversation
-            messages={store.state.messages}
-            chips={store.state.currentChips}
-            observations={store.state.observations}
-            pendingProposals={store.state.pendingProposals}
-            isStreaming={store.state.isStreaming}
-            workingPrimaryLabel={store.state.latestProgressNarration?.message ?? null}
-            workingActivityLabel={store.state.lastStreamActivity?.label ?? null}
-            trackedAgentTasks={store.state.trackedAgentTasks}
-            trackedAssistantSessions={store.state.trackedAssistantSessions}
-            onUserMessage={handleUserMessage}
-            onReceiptAction={invokeReceiptAction}
-            onAgendaConfirmationResolved={invokeAgendaConfirmationResolution}
-          />
-          <BasilArtifactPanel
-            artifact={store.state.activeArtifact}
-            pendingProposals={store.state.pendingProposals}
-            onClose={closeArtifact}
-            onReceiptAction={invokeReceiptAction}
-          />
-        </div>
+        <>
+          <div
+            className={
+              'setup-workspace'
+              + (hasActiveArtifact ? ' with-artifact' : '')
+              + (store.state.isAgendaSidebarCollapsed ? ' with-collapsed-agenda' : '')
+            }
+          >
+            <SetupAgendaSidebar
+              items={store.state.sessionAgenda}
+              isCollapsed={store.state.isAgendaSidebarCollapsed}
+              onToggleCollapsed={toggleAgendaSidebar}
+              onEntranceChange={setIsAgendaEntering}
+            />
+            <BasilConversation
+              messages={store.state.messages}
+              chips={store.state.currentChips}
+              observations={store.state.observations}
+              pendingProposals={store.state.pendingProposals}
+              isStreaming={store.state.isStreaming}
+              workingPrimaryLabel={store.state.latestProgressNarration?.message ?? null}
+              workingActivityLabel={store.state.lastStreamActivity?.label ?? null}
+              trackedAgentTasks={store.state.trackedAgentTasks}
+              trackedAssistantSessions={store.state.trackedAssistantSessions}
+              holdMessageReveal={isAgendaEntering}
+              onUserMessage={handleUserMessage}
+              onReceiptAction={invokeReceiptAction}
+              onAgendaConfirmationResolved={invokeAgendaConfirmationResolution}
+            />
+            <BasilArtifactPanel
+              artifact={store.state.activeArtifact}
+              pendingProposals={store.state.pendingProposals}
+              onClose={closeArtifact}
+              onReceiptAction={invokeReceiptAction}
+            />
+          </div>
+          <SetupStepActions>
+            <button type="button" className="secondary-button setup-done-button" onClick={handleFinish}>
+              Done with setup
+            </button>
+          </SetupStepActions>
+        </>
       )
     }
 
     return (
-      <SetupWrapUpPanel
-        wasSkipped={store.state.wasSkipped}
-        wrapUpProposal={store.state.wrapUpProposal}
-        isFinalizingWrapUp={store.state.isFinalizingWrapUp}
-        finalizeError={store.state.finalizeError}
-      />
+      <>
+        <SetupWrapUpPanel
+          wasSkipped={store.state.wasSkipped}
+          wrapUpProposal={store.state.wrapUpProposal}
+          isFinalizingWrapUp={store.state.isFinalizingWrapUp}
+          finalizeError={store.state.finalizeError}
+        />
+        <SetupStepActions>
+          <button type="button" className="primary-button setup-close-button" onClick={closeSetupAssistant}>
+            Close
+          </button>
+        </SetupStepActions>
+      </>
     )
   }
 
@@ -233,7 +252,6 @@ export function SetupAssistantApp() {
     <SetupShell
       setupStage={store.state.setupStage}
       hasActiveArtifact={hasActiveArtifact}
-      onFinish={store.state.setupStage === 'wrap_up' ? closeSetupAssistant : handleFinish}
       onSkip={handleSkip}
     >
       {store.state.errorMessage && <div className="error-banner">{store.state.errorMessage}</div>}

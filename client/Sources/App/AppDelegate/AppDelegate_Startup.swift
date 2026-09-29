@@ -106,10 +106,23 @@ extension AppDelegate {
                 if api.isBackendAvailable {
                     // Backend available - check its onboarding status
                     if let settings = await api.getGeneralSettings() {
-                        // Only skip onboarding if backend EXPLICITLY says completed
-                        if settings.hasCompletedOnboarding == true {
-                        } else {
-                            // Backend says not completed (or nil) - show primary Setup Assistant flow.
+                        let pendingState = SetupAssistantPendingStateModel()
+                        if settings.hasCompletedOnboarding != true {
+                            await pendingState.loadFromBackend()
+                        }
+                        // A skipped setup comes back through the resume toast and Settings; reopening it in full on every launch would ignore the user's Skip.
+                        switch SetupAssistantLaunchRouting.route(
+                            backendHasCompletedOnboarding: settings.hasCompletedOnboarding,
+                            pendingSetupAssistant: pendingState.pendingSetupAssistant
+                        ) {
+                        case .nothing:
+                            break
+                        case .permissionsCheckOnly:
+                            self.presentSetupPermissionsWindowIfRequiredFromDelegate()
+                            if !BasilRuntimeProfile.isValidation {
+                                self.presentSetupAssistantResumeToastFromDelegate(ifPendingIn: pendingState)
+                            }
+                        case .primarySetupFlow:
                             self.presentPrimarySetupAssistantFlowFromDelegate()
                         }
                     } else {

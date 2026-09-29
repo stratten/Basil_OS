@@ -1,12 +1,11 @@
-import os
 import asyncio
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, AsyncGenerator
 import base64
+import binascii
+from pathlib import Path
+from typing import Any, AsyncGenerator, Dict, List, Optional, Set, Tuple
 
 try:
-    import google.generativeai as genai
-    from google.generativeai.types import GenerateContentResponse
+    from google import genai
     GENAI_AVAILABLE = True
 except ImportError:
     GENAI_AVAILABLE = False
@@ -28,6 +27,11 @@ from ..models_registry import (
 )
 
 
+_STREAM_END = object()
+
+_SAFETY_FINISH_REASONS = {"SAFETY", "PROHIBITED_CONTENT", "BLOCKLIST", "SPII", "IMAGE_SAFETY"}
+
+
 class GeminiModel(BaseReasoningModel):
     """Google Gemini model implementation."""
     SHOULD_CHECK_API_KEY = True
@@ -36,9 +40,9 @@ class GeminiModel(BaseReasoningModel):
         super().__init__(model_path, required_capabilities)
         
         if not GENAI_AVAILABLE:
-            raise ImportError("google-generativeai package is not installed. Install it with: pip install google-generativeai")
+            raise ImportError("google-genai package is not installed. Install it with: pip install google-genai")
         
-        self._model = None
+        self._client = None
         
         # Default to Gemini 3.1 Pro Preview
         self.model_name = "gemini-3.1-pro-preview"
@@ -87,18 +91,37 @@ class GeminiModel(BaseReasoningModel):
         """Check if the current model supports extended thinking (Deep Think Mode)."""
         return has_feature(self.model_name, ModelFeature.EXTENDED_THINKING)
 
-    def _build_generation_config(self, max_output_tokens: int) -> Dict[str, Any]:
-        """Build Gemini generation config while honoring registry omissions."""
-        generation_config = {
+    def _get_thinking_level(self) -> Optional[str]:
+        """Return the registry default thinking level when the model exposes discrete levels."""
+        cfg = get_model(self.model_name) or {}
+        thinking = cfg.get("feature_config", {}).get("thinking")
+        if not isinstance(thinking, dict):
+            return None
+        levels = thinking.get("levels")
+        default = thinking.get("default")
+        if isinstance(levels, list) and isinstance(default, str) and default in levels:
+            return default
+        return None
+
+    def _build_generation_config(self, max_output_tokens: int, **overrides: Any) -> Dict[str, Any]:
+        """Build a google-genai GenerateContentConfig dict while honoring registry omissions."""
+        generation_config: Dict[str, Any] = {
             'temperature': self.temperature,
             'top_p': self.top_p,
             'top_k': self.top_k,
             'max_output_tokens': min(max_output_tokens, self.max_output_tokens),
         }
-        return apply_request_parameter_omissions(
+        generation_config = apply_request_parameter_omissions(
             generation_config,
             get_omitted_request_parameters(self.model_name),
         )
+        thinking_level = self._get_thinking_level()
+        if thinking_level:
+            generation_config['thinking_config'] = {'thinking_level': thinking_level}
+        # Basil never passes Python callables as tools, so automatic function calling only adds SDK log noise.
+        generation_config['automatic_function_calling'] = {'disable': True}
+        generation_config.update(overrides)
+        return generation_config
 
     async def load(self) -> None:
         """Load the Gemini model by initializing the API client."""
@@ -119,11 +142,7 @@ class GeminiModel(BaseReasoningModel):
                         api_logger.error("No Google/Gemini API key available")
                         raise ValueError("No Google/Gemini API key available. Please set an API key in the application settings.")
                 
-                # Configure the API with the key
-                genai.configure(api_key=self.api_key)
-                
-                # Initialize the model
-                self._model = genai.GenerativeModel(self.model_name)
+                self._client = genai.Client(api_key=self.api_key)
             else:
                 api_logger.info("API key check is disabled for GeminiModel. Skipping API key loading.")
 
@@ -153,8 +172,13 @@ class GeminiModel(BaseReasoningModel):
 
     async def unload(self) -> None:
         """Unload the Gemini model."""
-        # No specific cleanup needed for API clients
-        self._model = None
+        client = self._client
+        self._client = None
+        if client is not None:
+            try:
+                client.close()
+            except Exception as e:
+                api_logger.warning(f"Error closing Gemini client: {e}")
         self.state = ModelState.UNLOADED
         api_logger.info("Gemini model unloaded successfully")
 
@@ -189,7 +213,7 @@ class GeminiModel(BaseReasoningModel):
             description=description,
             parameters=parameters,
             requirements={
-                "google-generativeai": ">=0.7.0"
+                "google-genai": ">=2.25.0"
             },
             memory_requirements="API-based (minimal local memory)",
             supports_gpu=False,  # API-based, no GPU required locally
@@ -197,86 +221,144 @@ class GeminiModel(BaseReasoningModel):
             max_output_tokens=self.max_output_tokens
         )
 
-    def _convert_messages_to_gemini(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Convert OpenAI-style messages to Gemini format.
-        
-        Args:
-            messages: List of messages in OpenAI format
-            
-        Returns:
-            List of messages in Gemini format
-        """
-        gemini_messages = []
-        system_message = None
+    @staticmethod
+    def _data_url_to_part(url: str) -> Optional[Dict[str, Any]]:
+        """Convert a base64 data URL into a Gemini inline_data part."""
+        if not url.startswith('data:') or ',' not in url:
+            api_logger.warning("Skipping non-inline attachment for Gemini; only base64 data URLs are supported")
+            return None
+        header, data = url.split(',', 1)
+        if ';base64' not in header:
+            api_logger.warning("Skipping non-base64 data URL for Gemini")
+            return None
+        mime_type = header[len('data:'):].split(';', 1)[0] or 'application/octet-stream'
+        try:
+            raw = base64.b64decode(data, validate=True)
+        except (binascii.Error, ValueError) as e:
+            api_logger.warning(f"Failed to decode inline data for Gemini: {e}")
+            return None
+        return {'inline_data': {'mime_type': mime_type, 'data': raw}}
+
+    def _convert_content_to_parts(self, content: Any) -> List[Dict[str, Any]]:
+        """Convert one OpenAI-style message content value into Gemini parts."""
+        if isinstance(content, str):
+            return [{'text': content}]
+        if not isinstance(content, list):
+            return [] if content is None else [{'text': str(content)}]
+        parts: List[Dict[str, Any]] = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append({'text': item})
+            elif isinstance(item, dict):
+                if item.get('type') == 'text':
+                    parts.append({'text': item.get('text', '')})
+                elif item.get('type') == 'image_url':
+                    part = self._data_url_to_part(item.get('image_url', {}).get('url', ''))
+                    if part is not None:
+                        parts.append(part)
+        return parts
+
+    def _convert_messages_to_gemini(
+        self, messages: List[Dict[str, Any]]
+    ) -> Tuple[Optional[str], List[Dict[str, Any]]]:
+        """Convert OpenAI-style messages to a Gemini system instruction and contents list."""
+        contents: List[Dict[str, Any]] = []
+        system_texts: List[str] = []
         
         for message in messages:
             role = message.get('role', 'user')
             content = message.get('content', '')
             
-            # Handle system messages by storing them separately
             if role == 'system':
-                system_message = content
+                for part in self._convert_content_to_parts(content):
+                    text = part.get('text')
+                    if text:
+                        system_texts.append(text)
                 continue
             
-            # Convert role names
-            if role == 'assistant':
-                role = 'model'
-            elif role != 'user':
-                role = 'user'  # Default to user for unknown roles
-            
-            # Handle multimodal content (text + images)
-            if isinstance(content, list):
-                parts = []
-                for item in content:
-                    if isinstance(item, dict):
-                        if item.get('type') == 'text':
-                            parts.append({'text': item.get('text', '')})
-                        elif item.get('type') == 'image_url':
-                            # Handle base64 encoded images
-                            image_url = item.get('image_url', {}).get('url', '')
-                            if image_url.startswith('data:image'):
-                                # Extract base64 data
-                                try:
-                                    import base64
-                                    import io
-                                    from PIL import Image
-                                    
-                                    # Split the data URL
-                                    header, data = image_url.split(',', 1)
-                                    image_data = base64.b64decode(data)
-                                    image = Image.open(io.BytesIO(image_data))
-                                    
-                                    parts.append({'inline_data': {
-                                        'mime_type': 'image/jpeg',
-                                        'data': data
-                                    }})
-                                except Exception as e:
-                                    api_logger.warning(f"Failed to process image: {e}")
-                    elif isinstance(item, str):
-                        parts.append({'text': item})
-                
-                gemini_messages.append({
-                    'role': role,
-                    'parts': parts
-                })
-            else:
-                # Simple text content
-                gemini_messages.append({
-                    'role': role,
-                    'parts': [{'text': content}]
-                })
+            parts = self._convert_content_to_parts(content)
+            if not parts:
+                continue
+            contents.append({
+                'role': 'model' if role == 'assistant' else 'user',
+                'parts': parts,
+            })
         
-        # Prepend system message to first user message if present
-        if system_message and gemini_messages:
-            for msg in gemini_messages:
-                if msg['role'] == 'user':
-                    # Prepend system message to first user message
-                    first_part = msg['parts'][0]
-                    if 'text' in first_part:
-                        first_part['text'] = f"{system_message}\n\n{first_part['text']}"
-                    break
+        system_instruction = "\n\n".join(system_texts) if system_texts else None
+        return system_instruction, contents
+
+    def _prepare_request(self, input_data: Any, max_output_tokens: int) -> Tuple[Any, Dict[str, Any]]:
+        """Return (contents, config) for a string prompt or an OpenAI-style message list."""
+        if isinstance(input_data, str):
+            return input_data, self._build_generation_config(max_output_tokens)
+        if isinstance(input_data, list):
+            system_instruction, contents = self._convert_messages_to_gemini(input_data)
+            if not contents:
+                raise ValueError("No user or assistant content to send to Gemini")
+            overrides = {'system_instruction': system_instruction} if system_instruction else {}
+            return contents, self._build_generation_config(max_output_tokens, **overrides)
+        raise ValueError(f"Unsupported input_data type: {type(input_data)}")
+
+    @staticmethod
+    def _finish_reason_name(candidate: Any) -> str:
+        raw = getattr(candidate, 'finish_reason', None)
+        if raw is None:
+            return "UNSPECIFIED"
+        return str(getattr(raw, 'name', None) or raw)
+
+    @staticmethod
+    def _text_from_candidate(candidate: Any) -> str:
+        """Join the non-thought text parts of a candidate."""
+        content = getattr(candidate, 'content', None)
+        parts = getattr(content, 'parts', None) or []
+        return "".join(
+            part.text
+            for part in parts
+            if getattr(part, 'text', None) and not getattr(part, 'thought', False)
+        )
+
+    def _extract_response_text(self, response: Any, max_tokens: int) -> str:
+        """Return the response text or raise a descriptive RuntimeError for blocked/empty output."""
+        candidates = getattr(response, 'candidates', None) or []
+        if not candidates:
+            feedback = getattr(response, 'prompt_feedback', None)
+            block_reason = getattr(feedback, 'block_reason', None)
+            if block_reason:
+                reason = getattr(block_reason, 'name', None) or str(block_reason)
+                api_logger.warning(f"Prompt blocked by Gemini: {reason}")
+                raise RuntimeError(f"Prompt was blocked by Gemini: {reason}")
+            api_logger.error("Gemini API returned no candidates")
+            raise RuntimeError("No response candidates returned by Gemini API")
         
-        return gemini_messages
+        candidate = candidates[0]
+        finish_reason = self._finish_reason_name(candidate)
+        text = self._text_from_candidate(candidate)
+        
+        if finish_reason in _SAFETY_FINISH_REASONS:
+            safety_ratings = []
+            for rating in getattr(candidate, 'safety_ratings', None) or []:
+                category = getattr(rating.category, 'name', rating.category)
+                probability = getattr(rating.probability, 'name', rating.probability)
+                safety_ratings.append(f"{category}: {probability}")
+            api_logger.warning(f"Content blocked by Gemini safety filters: {', '.join(safety_ratings)}")
+            raise RuntimeError(f"Content was blocked by Gemini safety filters. Ratings: {', '.join(safety_ratings)}")
+        
+        if finish_reason == "RECITATION":
+            api_logger.warning("Content blocked by Gemini recitation filters")
+            raise RuntimeError("Content was blocked by Gemini for potential copyright/recitation issues")
+        
+        if finish_reason == "MAX_TOKENS":
+            api_logger.warning(f"Response truncated due to max tokens ({max_tokens})")
+            if text:
+                api_logger.info(f"Returning partial response ({len(text)} chars) due to max tokens")
+                return text
+            raise RuntimeError(f"Response was truncated at max tokens ({max_tokens}) with no content generated. Try increasing max_tokens or shortening your prompt.")
+        
+        if not text:
+            api_logger.error(f"No content parts in response. Finish reason: {finish_reason}")
+            raise RuntimeError(f"No valid content returned. Finish reason: {finish_reason}")
+        
+        return text
 
     async def predict(self, input_data: Any) -> Any:
         """Run inference on the Gemini model.
@@ -291,45 +373,14 @@ class GeminiModel(BaseReasoningModel):
             raise RuntimeError("Model must be loaded before prediction")
         
         try:
-            # Handle different input formats
-            if isinstance(input_data, str):
-                # Simple string prompt
-                response = await asyncio.to_thread(
-                    self._model.generate_content,
-                    input_data,
-                    generation_config=self._build_generation_config(self.max_output_tokens)
-                )
-                return response.text
-            
-            elif isinstance(input_data, list):
-                # List of messages (OpenAI format)
-                gemini_messages = self._convert_messages_to_gemini(input_data)
-                
-                # For multi-turn conversations, we need to use the chat feature
-                if len(gemini_messages) > 1:
-                    # Create a chat session
-                    chat = self._model.start_chat(history=gemini_messages[:-1])
-                    last_message = gemini_messages[-1]['parts'][0]['text']
-                    
-                    response = await asyncio.to_thread(
-                        chat.send_message,
-                        last_message,
-                        generation_config=self._build_generation_config(self.max_output_tokens)
-                    )
-                else:
-                    # Single message
-                    content = gemini_messages[0]['parts'][0]['text'] if gemini_messages else ""
-                    response = await asyncio.to_thread(
-                        self._model.generate_content,
-                        content,
-                        generation_config=self._build_generation_config(self.max_output_tokens)
-                    )
-                
-                return response.text
-            
-            else:
-                raise ValueError(f"Unsupported input_data type: {type(input_data)}")
-                
+            contents, config = self._prepare_request(input_data, self.max_output_tokens)
+            response = await asyncio.to_thread(
+                self._client.models.generate_content,
+                model=self.model_name,
+                contents=contents,
+                config=config,
+            )
+            return self._extract_response_text(response, self.max_output_tokens)
         except Exception as e:
             api_logger.error(f"Error during Gemini prediction: {str(e)}")
             raise
@@ -347,49 +398,23 @@ class GeminiModel(BaseReasoningModel):
             raise RuntimeError("Model must be loaded before prediction")
         
         try:
-            # Handle different input formats
-            if isinstance(input_data, str):
-                # Simple string prompt
-                response = self._model.generate_content(
-                    input_data,
-                    generation_config=self._build_generation_config(self.max_output_tokens),
-                    stream=True
-                )
-                
-                for chunk in response:
-                    if chunk.text:
-                        yield chunk.text
-            
-            elif isinstance(input_data, list):
-                # List of messages (OpenAI format)
-                gemini_messages = self._convert_messages_to_gemini(input_data)
-                
-                # For multi-turn conversations
-                if len(gemini_messages) > 1:
-                    chat = self._model.start_chat(history=gemini_messages[:-1])
-                    last_message = gemini_messages[-1]['parts'][0]['text']
-                    
-                    response = chat.send_message(
-                        last_message,
-                        generation_config=self._build_generation_config(self.max_output_tokens),
-                        stream=True
-                    )
-                else:
-                    # Single message
-                    content = gemini_messages[0]['parts'][0]['text'] if gemini_messages else ""
-                    response = self._model.generate_content(
-                        content,
-                        generation_config=self._build_generation_config(self.max_output_tokens),
-                        stream=True
-                    )
-                
-                for chunk in response:
-                    if chunk.text:
-                        yield chunk.text
-            
-            else:
-                raise ValueError(f"Unsupported input_data type: {type(input_data)}")
-                
+            contents, config = self._prepare_request(input_data, self.max_output_tokens)
+            stream = await asyncio.to_thread(
+                self._client.models.generate_content_stream,
+                model=self.model_name,
+                contents=contents,
+                config=config,
+            )
+            while True:
+                chunk = await asyncio.to_thread(next, stream, _STREAM_END)
+                if chunk is _STREAM_END:
+                    break
+                candidates = getattr(chunk, 'candidates', None) or []
+                if not candidates:
+                    continue
+                text = self._text_from_candidate(candidates[0])
+                if text:
+                    yield text
         except Exception as e:
             api_logger.error(f"Error during Gemini streaming: {str(e)}")
             raise
@@ -438,72 +463,16 @@ class GeminiModel(BaseReasoningModel):
         if max_tokens is None:
             max_tokens = self.max_output_tokens
         
+        system_prompt = (context or {}).get("system_prompt")
+        overrides = {'system_instruction': system_prompt} if system_prompt else {}
         try:
-            # Configure generation with max_tokens
-            generation_config = self._build_generation_config(max_tokens)
-            
-            # Generate response using asyncio.to_thread for synchronous API
             response = await asyncio.to_thread(
-                self._model.generate_content,
-                prompt,
-                generation_config=generation_config
+                self._client.models.generate_content,
+                model=self.model_name,
+                contents=prompt,
+                config=self._build_generation_config(max_tokens, **overrides),
             )
-            
-            # Check if response has valid content
-            if not response.candidates:
-                api_logger.error("Gemini API returned no candidates")
-                raise RuntimeError("No response candidates returned by Gemini API")
-            
-            candidate = response.candidates[0]
-            
-            # Check finish reason
-            finish_reason_names = {
-                0: "UNSPECIFIED",
-                1: "STOP",
-                2: "MAX_TOKENS",
-                3: "SAFETY",
-                4: "RECITATION",
-                5: "OTHER"
-            }
-            
-            finish_reason = candidate.finish_reason
-            finish_reason_name = finish_reason_names.get(finish_reason, f"UNKNOWN({finish_reason})")
-            
-            # If blocked by safety filters
-            if finish_reason == 3:  # SAFETY
-                safety_ratings = []
-                if hasattr(candidate, 'safety_ratings'):
-                    for rating in candidate.safety_ratings:
-                        safety_ratings.append(f"{rating.category.name}: {rating.probability.name}")
-                
-                api_logger.warning(f"Content blocked by Gemini safety filters: {', '.join(safety_ratings)}")
-                raise RuntimeError(f"Content was blocked by Gemini safety filters. Ratings: {', '.join(safety_ratings)}")
-            
-            # If blocked by recitation/copyright
-            if finish_reason == 4:  # RECITATION
-                api_logger.warning("Content blocked by Gemini recitation filters")
-                raise RuntimeError("Content was blocked by Gemini for potential copyright/recitation issues")
-            
-            # If stopped due to max tokens
-            if finish_reason == 2:  # MAX_TOKENS
-                api_logger.warning(f"Response truncated due to max tokens ({max_tokens})")
-                # Check if there's any partial content
-                if candidate.content and candidate.content.parts:
-                    try:
-                        partial_text = response.text
-                        api_logger.info(f"Returning partial response ({len(partial_text)} chars) due to max tokens")
-                        return partial_text
-                    except:
-                        pass
-                # No partial content available
-                raise RuntimeError(f"Response was truncated at max tokens ({max_tokens}) with no content generated. Try increasing max_tokens or shortening your prompt.")
-            
-            # Normal completion or other reasons
-            if not candidate.content or not candidate.content.parts:
-                api_logger.error(f"No content parts in response. Finish reason: {finish_reason_name}")
-                raise RuntimeError(f"No valid content returned. Finish reason: {finish_reason_name}")
-            
-            return response.text
+            return self._extract_response_text(response, max_tokens)
             
         except RuntimeError:
             # Re-raise RuntimeError (our custom errors)
@@ -511,4 +480,3 @@ class GeminiModel(BaseReasoningModel):
         except Exception as e:
             api_logger.error(f"Error generating Gemini response: {str(e)}")
             raise RuntimeError(f"Failed to generate response: {e}")
-

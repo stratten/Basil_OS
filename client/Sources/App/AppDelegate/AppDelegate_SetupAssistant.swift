@@ -39,20 +39,6 @@ extension AppDelegate {
             onMinimizeRequested: { [weak self] in
                 self?.setupAssistantWindow?.miniaturize(nil)
             },
-            onResizeRequested: { [weak self] height in
-                guard let self, let window = self.setupAssistantWindow else { return }
-                let constrainedHeight = min(
-                    max(height, 620 + self.setupWindowVerticalChrome),
-                    1200 + self.setupWindowVerticalChrome
-                )
-                WindowChromeCollapse.applyLayoutResize(
-                    window: window,
-                    requestedSize: NSSize(
-                        width: window.frame.width,
-                        height: constrainedHeight
-                    )
-                )
-            },
             onCollapseRequested: { [weak self] in
                 self?.setupAssistantCollapseController?.setCollapsed(true)
             },
@@ -291,44 +277,51 @@ extension AppDelegate {
     @MainActor
     func presentSetupAssistantResumeToastIfPendingFromDelegate() {
         guard !hasShownSetupAssistantResumeToastThisLaunch else { return }
-        hasShownSetupAssistantResumeToastThisLaunch = true
 
         Task { @MainActor in
             let pendingState = SetupAssistantPendingStateModel()
             await pendingState.loadFromBackend()
-            guard pendingState.shouldShowLaunchResumeToast else {
-                #if DEBUG
-                DevLogger.shared.info(
-                    "[SetupAssistant] Resume toast skipped (pending=\(pendingState.pendingSetupAssistant), dismissed=\(pendingState.reminderDismissed))",
-                    context: "SetupAssistant"
-                )
-                #endif
-                return
-            }
-
-            let controller = setupAssistantResumeToastController ?? SetupAssistantResumeToastWindowController()
-            setupAssistantResumeToastController = controller
-
-            // Anchor below the menu-bar icon when we can — otherwise the
-            // controller falls back to the top-right of the visible screen.
-            let anchorFrame = statusBarManager?.statusBarItem.statusItem?.button?.window?.frame
-
-            controller.present(
-                anchorFrame: anchorFrame,
-                onResume: { [weak self] in
-                    self?.presentSetupAssistantWindowFromDelegate()
-                },
-                onRemindLater: {
-                    // No backend write: the pending flag is still true, so the
-                    // toast will surface again on the next launch.
-                },
-                onDontRemind: {
-                    Task { @MainActor in
-                        await pendingState.dismissReminder()
-                    }
-                }
-            )
+            self.presentSetupAssistantResumeToastFromDelegate(ifPendingIn: pendingState)
         }
+    }
+
+    /// The once-per-launch flag is consumed only when the toast is actually presented, so an early caller that loaded before the backend was reachable does not suppress a later caller holding confirmed pending state.
+    @MainActor
+    func presentSetupAssistantResumeToastFromDelegate(ifPendingIn pendingState: SetupAssistantPendingStateModel) {
+        guard !hasShownSetupAssistantResumeToastThisLaunch else { return }
+        guard pendingState.shouldShowLaunchResumeToast else {
+            #if DEBUG
+            DevLogger.shared.info(
+                "[SetupAssistant] Resume toast skipped (pending=\(pendingState.pendingSetupAssistant), dismissed=\(pendingState.reminderDismissed))",
+                context: "SetupAssistant"
+            )
+            #endif
+            return
+        }
+        hasShownSetupAssistantResumeToastThisLaunch = true
+
+        let controller = setupAssistantResumeToastController ?? SetupAssistantResumeToastWindowController()
+        setupAssistantResumeToastController = controller
+
+        // Anchor below the menu-bar icon when we can — otherwise the
+        // controller falls back to the top-right of the visible screen.
+        let anchorFrame = statusBarManager?.statusBarItem.statusItem?.button?.window?.frame
+
+        controller.present(
+            anchorFrame: anchorFrame,
+            onResume: { [weak self] in
+                self?.presentSetupAssistantWindowFromDelegate()
+            },
+            onRemindLater: {
+                // No backend write: the pending flag is still true, so the
+                // toast will surface again on the next launch.
+            },
+            onDontRemind: {
+                Task { @MainActor in
+                    await pendingState.dismissReminder()
+                }
+            }
+        )
     }
 
     /// Developer-menu-only entry point for visually testing the resume

@@ -193,6 +193,28 @@ extension APIClient {
         }
     }
 
+    func patch(_ endpoint: String, body requestData: Data) async throws -> Data {
+        if !isBackendAvailable { await waitBrieflyForHealth() }
+        guard isBackendAvailable else {
+            throw APIError.backendNotAvailable
+        }
+        guard let url = URL(string: self.baseURL + endpoint) else {
+            throw APIError.invalidURL
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = requestData
+        let (responseData, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.serverError(statusCode: httpResponse.statusCode)
+        }
+        return responseData
+    }
+
     func delete(_ endpoint: String) async throws -> OperationResponse {
         if !isBackendAvailable { await waitBrieflyForHealth() }
         guard isBackendAvailable else {

@@ -64,13 +64,18 @@ button:disabled {
 .setup-shell {
   display: grid;
   grid-template-columns: minmax(0, 820px);
+  grid-template-rows: minmax(0, 1fr);
+  height: 100%;
   justify-content: center;
-  min-height: 100%;
   padding: var(--padding-xl);
+  transition: grid-template-columns var(--setup-motion-reveal-ms) var(--setup-motion-ease-out);
 }
 
 .setup-main {
-  animation: setupShellEnter 260ms ease-out both;
+  animation: setupEnterRise 260ms var(--setup-motion-ease-out) both;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   min-width: 0;
 }
 
@@ -79,38 +84,22 @@ button:disabled {
 }
 
 .setup-stage-frame {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  margin: -4px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px;
   will-change: opacity, transform;
 }
 
 .setup-stage-frame.entering {
-  animation: setupStageEnter 200ms ease-out both;
+  animation: setupEnterRise 220ms var(--setup-motion-ease-out) both;
 }
 
 .setup-stage-frame.leaving {
-  animation: setupStageLeave 140ms ease-in both;
-}
-
-@keyframes setupShellEnter {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes setupStageEnter {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes setupStageLeave {
-  from { opacity: 1; transform: translateY(0); }
-  to { opacity: 0; transform: translateY(-4px); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .setup-main,
-  .setup-stage-frame.entering,
-  .setup-stage-frame.leaving {
-    animation: none;
-  }
+  animation: setupLeaveRise 140ms var(--setup-motion-ease-in) both;
 }
 
 .setup-card,
@@ -171,17 +160,33 @@ button:disabled {
   font-style: normal;
 }
 
-.phase-progress {
+/* Must keep its natural height: an overflow-clipped flex child of .setup-main would otherwise shrink whenever the stage content grows. */
+.setup-header {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--padding-m);
+  margin: 0 0 var(--padding-m);
+  padding: var(--padding-m) 0 var(--padding-s);
+}
+
+.setup-header--with-progress {
   background: var(--background-secondary);
   border-bottom: 0.5px solid color-mix(in srgb, var(--primary) 18%, var(--separator-color));
+}
+
+.phase-progress {
   display: flex;
+  flex: 1 1 auto;
   gap: 8px;
-  margin: 0 0 var(--padding-m);
+  min-width: 0;
   overflow-x: hidden;
-  padding: var(--padding-m) 0 var(--padding-s);
-  position: sticky;
-  top: 0;
-  z-index: 5;
+}
+
+.setup-header > .setup-skip-button {
+  flex: 0 0 auto;
+  margin-left: auto;
+  white-space: nowrap;
 }
 
 .phase-pill {
@@ -254,6 +259,34 @@ button:disabled {
   padding: var(--padding-l);
 }
 
+.setup-card {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.setup-card > .error-banner {
+  flex: 0 0 auto;
+}
+
+/* useScrollEdgeFades sets these attributes on scroll regions whose content continues past an edge. */
+[data-overflow-top],
+[data-overflow-bottom] {
+  --setup-scroll-fade-bottom: 0px;
+  --setup-scroll-fade-top: 0px;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--setup-scroll-fade-top), #000 calc(100% - var(--setup-scroll-fade-bottom)), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 var(--setup-scroll-fade-top), #000 calc(100% - var(--setup-scroll-fade-bottom)), transparent 100%);
+}
+
+[data-overflow-top] {
+  --setup-scroll-fade-top: 32px;
+}
+
+[data-overflow-bottom] {
+  --setup-scroll-fade-bottom: 32px;
+}
+
 .setup-navigation,
 .button-row,
 .basil-input-row {
@@ -268,13 +301,23 @@ button:disabled {
 
 .setup-navigation {
   align-items: center;
-  justify-content: space-between;
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: center;
+  margin-top: auto;
+  padding-top: var(--padding-m);
+}
+
+.setup-step-actions {
+  align-items: center;
+  display: flex;
+  gap: var(--padding-m);
 }
 
 .setup-skip-button {
   background: transparent;
   border: 0.5px solid transparent;
-  color: var(--text-secondary);
+  color: var(--primary);
   font-family: var(--font-family-medium);
   padding: 8px 10px;
   text-decoration: underline;

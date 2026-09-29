@@ -1,5 +1,7 @@
-import { memo } from 'react'
+import { type CSSProperties, memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
+import { SmoothReveal } from '@/components/intro/SmoothReveal'
+import { prefersReducedMotion } from '@/components/motion/prefersReducedMotion'
 import type {
   SetupSessionAgendaItem,
   SetupSessionAgendaItemStatus,
@@ -28,6 +30,7 @@ export interface SetupAgendaSidebarProps {
   items: SetupSessionAgendaItem[]
   isCollapsed: boolean
   onToggleCollapsed: (collapsed: boolean) => void
+  onEntranceChange?: (isEntering: boolean) => void
 }
 
 const STATUS_LABELS: Record<SetupSessionAgendaItemStatus, string> = {
@@ -46,14 +49,106 @@ const STATUS_ORDER: Record<SetupSessionAgendaItemStatus, number> = {
   skipped: 4,
 }
 
+const ENTRANCE_ANIMATION = 'setupEnterRise'
+const REORDER_DURATION_MS = 320
+const REORDER_EASING = 'cubic-bezier(0.2, 0.8, 0.2, 1)'
+
 function SetupAgendaSidebarComponent({
   items,
   isCollapsed,
   onToggleCollapsed,
+  onEntranceChange,
 }: SetupAgendaSidebarProps) {
   const hasItems = items.length > 0
   const summary = computeAgendaSummary(items)
   const sortedItems = hasItems ? sortItemsForDisplay(items) : []
+
+  // Items present at mount (a remount or a restored session) count as already seen so they never replay the entrance.
+  const seenItemIdsRef = useRef<Set<string> | null>(null)
+  if (seenItemIdsRef.current === null) seenItemIdsRef.current = new Set(items.map(item => item.id))
+  const itemTopsRef = useRef<Map<string, number>>(new Map())
+  const [listElement, setListElement] = useState<HTMLOListElement | null>(null)
+  const [enteringItemIds, setEnteringItemIds] = useState<ReadonlySet<string>>(() => new Set())
+  const onEntranceChangeRef = useRef(onEntranceChange)
+  onEntranceChangeRef.current = onEntranceChange
+  const isEntering = enteringItemIds.size > 0
+
+  useLayoutEffect(() => {
+    const seenItemIds = seenItemIdsRef.current as Set<string>
+    const newItemIds = items.map(item => item.id).filter(id => !seenItemIds.has(id))
+    if (newItemIds.length === 0) return
+    newItemIds.forEach(id => seenItemIds.add(id))
+    if (isCollapsed || prefersReducedMotion()) return
+    setEnteringItemIds(current => new Set([...current, ...newItemIds]))
+  }, [items, isCollapsed])
+
+  useLayoutEffect(() => {
+    if (isCollapsed && isEntering) setEnteringItemIds(new Set())
+  }, [isCollapsed, isEntering])
+
+  // Finish at once when nothing is actually animating (reduced motion via CSS, or no Web Animations support) so a held first message can never stall.
+  useLayoutEffect(() => {
+    if (!isEntering || !listElement) return
+    const hasRunningEntrance = typeof listElement.getAnimations === 'function'
+      && listElement.getAnimations({ subtree: true }).some(animation => (
+        (animation as CSSAnimation).animationName === ENTRANCE_ANIMATION
+        && animation.playState !== 'finished'
+      ))
+    if (!hasRunningEntrance) setEnteringItemIds(new Set())
+  }, [isEntering, listElement, enteringItemIds])
+
+  useEffect(() => {
+    if (!listElement) return undefined
+    const handleAnimationEnd = (event: AnimationEvent) => {
+      if (event.animationName !== ENTRANCE_ANIMATION || !(event.target instanceof HTMLElement)) return
+      const itemId = event.target.dataset.agendaItemId
+      if (!itemId) return
+      setEnteringItemIds(current => {
+        if (!current.has(itemId)) return current
+        const next = new Set(current)
+        next.delete(itemId)
+        return next
+      })
+    }
+    listElement.addEventListener('animationend', handleAnimationEnd)
+    return () => listElement.removeEventListener('animationend', handleAnimationEnd)
+  }, [listElement])
+
+  useEffect(() => {
+    onEntranceChangeRef.current?.(isEntering)
+  }, [isEntering])
+
+  useEffect(() => () => onEntranceChangeRef.current?.(false), [])
+
+  // A reorder (for example an item moving up to "Working on") slides each card from its previous slot instead of jumping.
+  useLayoutEffect(() => {
+    if (!listElement) {
+      itemTopsRef.current = new Map()
+      return
+    }
+    const nextTops = new Map<string, number>()
+    const canAnimate = !prefersReducedMotion()
+    for (const child of Array.from(listElement.children)) {
+      if (!(child instanceof HTMLElement)) continue
+      const itemId = child.dataset.agendaItemId
+      if (!itemId) continue
+      const top = child.offsetTop
+      nextTops.set(itemId, top)
+      const previousTop = itemTopsRef.current.get(itemId)
+      if (canAnimate && previousTop !== undefined && previousTop !== top && typeof child.animate === 'function') {
+        child.animate(
+          [{ transform: `translateY(${previousTop - top}px)` }, { transform: 'translateY(0)' }],
+          { duration: REORDER_DURATION_MS, easing: REORDER_EASING },
+        )
+      }
+    }
+    itemTopsRef.current = nextTops
+  })
+
+  const enteringOrder = new Map<string, number>()
+  sortedItems.forEach(item => {
+    if (enteringItemIds.has(item.id)) enteringOrder.set(item.id, enteringOrder.size)
+  })
 
   if (isCollapsed) {
     return (
@@ -115,35 +210,42 @@ function SetupAgendaSidebarComponent({
         </button>
       </header>
       <div className="setup-agenda-sidebar-body" id="setup-agenda-sidebar-body">
-        {!hasItems && (
+        <SmoothReveal open={!hasItems}>
           <p className="setup-agenda-sidebar-empty">
             I'll lay out what we should cover here once we get into the setup conversation.
           </p>
-        )}
-        {hasItems && (
-          <ol className="setup-agenda-sidebar-list">
-            {sortedItems.map(item => (
-              <li
-                key={item.id}
-                className={`setup-agenda-sidebar-item state-${item.status} kind-${item.kind}`}
-                data-kind={item.kind}
-              >
-                <div className="setup-agenda-sidebar-item-row">
-                  <span
-                    className={`setup-agenda-sidebar-status-pill pill-${item.status}`}
-                    title={STATUS_LABELS[item.status]}
-                  >
-                    {STATUS_LABELS[item.status]}
-                  </span>
-                  <span className="setup-agenda-sidebar-item-title">{item.title}</span>
-                </div>
-                {item.intent && (
-                  <p className="setup-agenda-sidebar-item-intent">{item.intent}</p>
-                )}
-              </li>
-            ))}
+        </SmoothReveal>
+        <SmoothReveal open={hasItems}>
+          <ol ref={setListElement} className="setup-agenda-sidebar-list">
+            {sortedItems.map(item => {
+              const enteringIndex = enteringOrder.get(item.id)
+              return (
+                <li
+                  key={item.id}
+                  className={`setup-agenda-sidebar-item state-${item.status} kind-${item.kind}${enteringIndex !== undefined ? ' is-entering' : ''}`}
+                  data-kind={item.kind}
+                  data-agenda-item-id={item.id}
+                  style={enteringIndex !== undefined
+                    ? ({ '--agenda-enter-index': enteringIndex } as CSSProperties)
+                    : undefined}
+                >
+                  <div className="setup-agenda-sidebar-item-row">
+                    <span
+                      className={`setup-agenda-sidebar-status-pill pill-${item.status}`}
+                      title={STATUS_LABELS[item.status]}
+                    >
+                      {STATUS_LABELS[item.status]}
+                    </span>
+                    <span className="setup-agenda-sidebar-item-title">{item.title}</span>
+                  </div>
+                  {item.intent && (
+                    <p className="setup-agenda-sidebar-item-intent">{item.intent}</p>
+                  )}
+                </li>
+              )
+            })}
           </ol>
-        )}
+        </SmoothReveal>
       </div>
     </aside>
   )

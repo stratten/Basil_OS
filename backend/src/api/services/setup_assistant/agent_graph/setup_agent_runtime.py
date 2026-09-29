@@ -37,6 +37,9 @@ from api.services.setup_assistant.agent_graph.setup_agent_progress import SetupA
 from api.services.setup_assistant.agent_graph.setup_agent_system_prompt import (
     build_setup_agent_system_prompt,
 )
+from api.services.setup_assistant.agent_graph.setup_agent_tooling.presentation_tools import (
+    stream_setup_message,
+)
 from api.services.setup_assistant.agent_graph.setup_agent_tools import (
     SetupAgentToolFactory,
     SetupPendingProposalStore,
@@ -97,28 +100,8 @@ class SetupAgentRuntime:
                     and isinstance(output, str)
                     and output.strip()
                 ):
-                    message_id = f"message-{id(result)}"
-                    await emit_event(
-                        SetupAgentEvent(
-                            kind=SetupAgentEventKind.message_started,
-                            payload={"id": message_id, "role": "basil"},
-                        )
-                    )
-                    await emit_event(
-                        SetupAgentEvent(
-                            kind=SetupAgentEventKind.message_delta,
-                            payload={"id": message_id, "delta": output},
-                        )
-                    )
-                    await emit_event(
-                        SetupAgentEvent(
-                            kind=SetupAgentEventKind.message_completed,
-                            payload={
-                                "id": message_id,
-                                "role": "basil",
-                                "content": output,
-                            },
-                        )
+                    await stream_setup_message(
+                        emit_event, output, message_id=f"message-{id(result)}"
                     )
                 await emit_event(SetupAgentEvent(kind=SetupAgentEventKind.turn_complete))
             except Exception as exc:

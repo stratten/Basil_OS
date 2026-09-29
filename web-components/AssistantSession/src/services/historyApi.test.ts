@@ -16,7 +16,7 @@ describe('materialRefinements', () => {
   });
 });
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchHistory, saveWritingSample } from './historyApi';
+import { fetchHistory, fetchHistoryDetail, saveHistoryOutputAsSample, updateSavedSampleContent } from './historyApi';
 
 describe('historyApi', () => {
   afterEach(() => {
@@ -50,20 +50,106 @@ describe('historyApi', () => {
     );
   });
 
-  it('sends edited history content to the canonical writing-sample endpoint', async () => {
+  it('saves history output through the linked save-sample endpoint', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ status: 'saved' }), { status: 200 }),
+      new Response(JSON.stringify({ status: 'saved', sample_id: 'sample-9', content: 'Edited output' }), { status: 200 }),
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    await saveWritingSample('http://localhost:8000', 'Edited output', 'Mail');
+    const sample = await saveHistoryOutputAsSample('http://localhost:8000', 7, 'Edited output', 'document');
 
+    expect(sample).toEqual({ id: 'sample-9', content: 'Edited output' });
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:8000/user/writing-samples',
+      'http://localhost:8000/assistant-outputs/7/save-sample',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ content: 'Edited output', metadata: { app_name: 'Mail' } }),
+        body: JSON.stringify({ content: 'Edited output', context_type: 'document' }),
       }),
     );
+  });
+
+  it('updates a linked writing sample with a content-only PATCH', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ status: 'updated', sample_id: 'sample 3', content: 'New text' }), { status: 200 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await updateSavedSampleContent('http://localhost:8000', 'sample 3', 'New text');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:8000/user/writing-samples/sample%203',
+      expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ content: 'New text' }) }),
+    );
+  });
+
+  it('maps saved-sample state from a history detail payload', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      id: 7,
+      output_type: 'assistant_session',
+      input_modality: null,
+      output_text: 'Original reply',
+      context_text: null,
+      explanation_text: null,
+      model_name: null,
+      timestamp: '2026-09-28T13:54:00Z',
+      status: 'completed',
+      refinement_count: 0,
+      refinements: [],
+      app_name: 'Mail',
+      user_request: null,
+      processing_time_ms: null,
+      sample_context_type: 'email_reply',
+      recipient: 'miriam@example.com',
+      saved_sample: { id: 'sample-3', content: 'Original reply', context_type: 'email_reply' },
+    }), { status: 200 })));
+
+    const detail = await fetchHistoryDetail('http://localhost:8000', 7);
+
+    expect(detail.sampleContextType).toBe('email_reply');
+    expect(detail.recipient).toBe('miriam@example.com');
+    expect(detail.savedSample).toEqual({ id: 'sample-3', content: 'Original reply' });
+  });
+
+  it('omits context_type when the row already has a stored context', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ status: 'saved', sample_id: 'sample-9', content: 'Output' }), { status: 200 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await saveHistoryOutputAsSample('http://localhost:8000', 7, 'Output', null);
+
+    expect(fetchMock.mock.calls[0]?.[1]).toEqual(expect.objectContaining({ body: JSON.stringify({ content: 'Output' }) }));
+  });
+
+  it('rejects with the HTTP status when the save is refused', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('Choose a writing context.', { status: 400 })));
+
+    await expect(saveHistoryOutputAsSample('http://localhost:8000', 7, 'Output', null)).rejects.toMatchObject({ status: 400 });
+  });
+
+  it('maps legacy and missing sample fields to null', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      id: 8,
+      output_type: 'suggestion',
+      input_modality: null,
+      output_text: 'Old output',
+      context_text: null,
+      explanation_text: null,
+      model_name: null,
+      timestamp: '2026-01-01T00:00:00Z',
+      status: 'completed',
+      refinement_count: 0,
+      refinements: [],
+      app_name: null,
+      user_request: null,
+      processing_time_ms: null,
+      sample_context_type: 'slack',
+    }), { status: 200 })));
+
+    const detail = await fetchHistoryDetail('http://localhost:8000', 8);
+
+    expect(detail.sampleContextType).toBeNull();
+    expect(detail.recipient).toBeNull();
+    expect(detail.savedSample).toBeNull();
   });
 });

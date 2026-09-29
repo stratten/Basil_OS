@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 
 import TokenizedSelect from '@shared/TokenizedSelect'
 
+import { SetupStepActions } from '@/components/layout/SetupStepActions'
+import { prefersReducedMotion } from '@/components/motion/prefersReducedMotion'
 import { SmoothReveal } from './SmoothReveal'
 
 import {
@@ -55,10 +57,6 @@ const providerKeyHelpUrls: Record<string, string> = {
   google: 'https://aistudio.google.com/apikey',
 }
 
-function getReduceMotion(): boolean {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
-
 export function IntroAndPrivacy({
   selectedModelAccess,
   onSelectModelAccess,
@@ -107,7 +105,7 @@ export function IntroAndPrivacy({
   const advanceTo = (nextStep: IntroStepName) => {
     if (isTransitioning || nextStep === currentStep) return
     setErrorMessage(null)
-    if (getReduceMotion()) {
+    if (prefersReducedMotion()) {
       setCurrentStep(nextStep)
       return
     }
@@ -200,7 +198,19 @@ export function IntroAndPrivacy({
         </p>
       )}
 
-      <div className="intro-step-footer">
+      <SetupStepActions>
+        {/* Stays in the row on the first step so Continue does not shift when Back appears. */}
+        <button
+          type="button"
+          className={`intro-step-back ${stepIndex === 0 ? 'intro-step-back--placeholder' : ''}`.trim()}
+          onClick={goBack}
+          disabled={stepIndex === 0 || isTransitioning || isContinuing}
+          aria-hidden={stepIndex === 0 || undefined}
+          tabIndex={stepIndex === 0 ? -1 : undefined}
+        >
+          ← Back
+        </button>
+
         <div className="intro-step-dots" aria-hidden="true">
           {STEP_ORDER.map((step, index) => (
             <span
@@ -233,18 +243,7 @@ export function IntroAndPrivacy({
             ? (isContinuing ? 'Saving…' : 'Continue to guided setup')
             : 'Continue'}
         </button>
-
-        {stepIndex > 0 && (
-          <button
-            type="button"
-            className="intro-step-back"
-            onClick={goBack}
-            disabled={isTransitioning || isContinuing}
-          >
-            ← Back
-          </button>
-        )}
-      </div>
+      </SetupStepActions>
     </section>
   )
 }
@@ -444,16 +443,20 @@ function IntroModelStep({
       <h3>Reasoning during setup</h3>
       <p className="intro-step-lede">There are a few ways I can do the thinking for this setup. They differ in speed, how sharp the reasoning is, and whether anything leaves this machine. Pick whichever fits how you want to work right now. I’ll confirm it before we continue.</p>
 
-      <SmoothReveal open={loadState === 'loading'}>
-        <p role="status">Checking available reasoning routes…</p>
+      <SmoothReveal open={loadState === 'loading'} className="intro-step-reveal">
+        <div className="intro-step-reveal-body">
+          <p role="status">Checking available reasoning routes…</p>
+        </div>
       </SmoothReveal>
-      <SmoothReveal open={loadState === 'unavailable'}>
-        <p role="alert" style={{ color: 'var(--error-base)' }}>
-          I couldn’t reach the setup service to check available reasoning routes.
-        </p>
+      <SmoothReveal open={loadState === 'unavailable'} className="intro-step-reveal">
+        <div className="intro-step-reveal-body">
+          <p role="alert" style={{ color: 'var(--error-base)' }}>
+            I couldn’t reach the setup service to check available reasoning routes.
+          </p>
+        </div>
       </SmoothReveal>
-      <SmoothReveal open={loadState === 'ready'}>
-        <div className="choice-list" role="group" aria-label="Setup reasoning preference">
+      <SmoothReveal open={loadState === 'ready'} className="intro-step-reveal">
+        <div className="intro-step-reveal-body choice-list" role="group" aria-label="Setup reasoning preference">
           {options.map(option => {
             const choice = modelChoices[option.mode]
             const selected = selectedModelAccess?.mode === option.mode
@@ -532,13 +535,6 @@ function IntroModelStep({
                         disabled={pendingMode !== null}
                       />
                     </label>
-                    <p className="choice-option-key-help">
-                      Don't have one yet?{' '}
-                      <a href={providerKeyHelpUrls[provider]} target="_blank" rel="noreferrer">
-                        Get a {providerLabels[provider]} API key
-                      </a>
-                      .
-                    </p>
                     <div className="choice-option-key-validate-row">
                       <button
                         type="button"
@@ -560,6 +556,13 @@ function IntroModelStep({
                         )}
                       </SmoothReveal>
                     </div>
+                    <p className="choice-option-key-help">
+                      Don't have one yet?{' '}
+                      <a href={providerKeyHelpUrls[provider]} target="_blank" rel="noreferrer">
+                        Get an API key from {providerLabels[provider]}
+                      </a>
+                      .
+                    </p>
                     {isEnteringNewKey && (
                       <button
                         type="button"
@@ -602,8 +605,10 @@ function IntroModelStep({
         </div>
       </SmoothReveal>
 
-      <SmoothReveal open={Boolean(errorMessage)}>
-        <p role="alert" style={{ color: 'var(--error-base)', margin: 0 }}>{errorMessage}</p>
+      <SmoothReveal open={Boolean(errorMessage)} className="intro-step-reveal">
+        <div className="intro-step-reveal-body">
+          <p role="alert" style={{ color: 'var(--error-base)', margin: 0 }}>{errorMessage}</p>
+        </div>
       </SmoothReveal>
 
       <div className={`intro-help${isHelpOpen ? ' intro-help--open' : ''}`}>

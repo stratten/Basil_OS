@@ -171,6 +171,12 @@
   gap: 8px;
 }
 
+.writing-examples-samples-actions,
+.writing-examples-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .writing-examples-list-actions > .secondary-button {
   background: transparent;
   border: 1px solid var(--field-border);
@@ -180,6 +186,36 @@
   font-family: var(--font-family-medium);
   font-size: 12px;
   padding: 5px 10px;
+}
+
+.writing-examples-samples-actions > .secondary-button,
+.writing-examples-actions > .primary-button,
+.writing-examples-list-actions > .primary-button {
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: 12px;
+  padding: 5px 10px;
+}
+
+.writing-examples-samples-actions > .secondary-button {
+  background: transparent;
+  border: 1px solid var(--field-border);
+  color: var(--primary);
+}
+
+.writing-examples-actions > .primary-button,
+.writing-examples-list-actions > .primary-button {
+  background: var(--primary);
+  border: 1px solid color-mix(in srgb, var(--primary) 70%, black);
+  color: #ffffff;
+}
+
+.writing-examples-samples-actions > .secondary-button:disabled,
+.writing-examples-actions > .primary-button:disabled,
+.writing-examples-list-actions > .primary-button:disabled {
+  cursor: default;
+  opacity: 0.6;
 }
 
 .writing-examples-delete-button,
@@ -198,6 +234,49 @@
 .writing-examples-delete-all-button:disabled {
   cursor: default;
   opacity: 0.6;
+}
+
+.writing-examples-add-form {
+  background: color-mix(in srgb, var(--background-primary) 96%, var(--primary));
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.writing-examples-field {
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-family-light);
+  font-size: 12px;
+  gap: 4px;
+}
+
+.writing-examples-field select,
+.writing-examples-field input[type='text'],
+.writing-examples-textarea {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  padding: 6px 8px;
+}
+
+.writing-examples-textarea {
+  resize: vertical;
+  width: 100%;
+}
+
+.writing-examples-field select:focus-visible,
+.writing-examples-field input[type='text']:focus-visible,
+.writing-examples-textarea:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--primary);
 }
 
 .writing-examples-status,
@@ -257,4 +336,227 @@
 .writing-examples-error button:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 1px;
+}
+
+.writing-examples-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.writing-examples-edit-fields {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(140px, 200px) minmax(0, 1fr);
+}
+
+.writing-examples-filter-tab-marker {
+  background: var(--warning-base, #b54708);
+  border-radius: 50%;
+  display: inline-block;
+  height: 6px;
+  margin-left: 6px;
+  vertical-align: middle;
+  width: 6px;
+}
+
+.writing-examples-stale-notice {
+  align-items: center;
+  background: color-mix(in srgb, var(--warning-base, #b54708) 10%, var(--background-primary));
+  border: 1px solid color-mix(in srgb, var(--warning-base, #b54708) 45%, var(--field-border));
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 8px 12px;
+}
+
+.writing-examples-stale-notice p {
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  margin: 0;
+}
+
+.writing-examples-field .tokenized-select {
+  width: 100%;
+}
+
+.writing-examples-context-select {
+  border-color: var(--field-border);
+  font-size: 13px;
+  min-height: 30px;
+}
+
+.writing-examples-markdown {
+  line-height: 1.45;
+  white-space: normal;
+}
+
+.writing-examples-markdown > :first-child {
+  margin-top: 0;
+}
+
+.writing-examples-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.writing-examples-markdown p,
+.writing-examples-markdown ul,
+.writing-examples-markdown ol,
+.writing-examples-markdown blockquote,
+.writing-examples-markdown pre {
+  margin: 0 0 6px;
+}
+
+.writing-examples-markdown ul,
+.writing-examples-markdown ol {
+  padding-left: 20px;
+}
+
+.writing-examples-markdown h1,
+.writing-examples-markdown h2,
+.writing-examples-markdown h3,
+.writing-examples-markdown h4 {
+  font-family: var(--font-family-medium);
+  font-size: 14px;
+  margin: 8px 0 4px;
+}
+
+.writing-examples-markdown blockquote {
+  border-left: 3px solid color-mix(in srgb, var(--primary) 45%, transparent);
+  padding-left: 8px;
+}
+
+.writing-examples-markdown code {
+  background: color-mix(in srgb, var(--primary) 10%, var(--background-primary));
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  padding: 1px 4px;
+}
+
+.writing-examples-markdown pre {
+  background: color-mix(in srgb, var(--primary) 8%, var(--background-primary));
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  overflow-x: auto;
+  padding: 6px 8px;
+}
+
+.writing-examples-markdown pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.writing-examples-markdown a {
+  color: var(--primary);
+}
+
+.writing-examples-markdown-collapsed {
+  max-height: 4.4em;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent);
+  mask-image: linear-gradient(to bottom, black 55%, transparent);
+}
+
+.writing-examples-list-recipient {
+  align-items: flex-start;
+  display: flex;
+  gap: 6px;
+}
+
+.writing-examples-recipient-label {
+  line-height: 20px;
+  padding-top: 1px;
+}
+
+.writing-examples-recipient-chips {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  min-width: 0;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.writing-examples-recipient-chip {
+  align-items: center;
+  background: color-mix(in srgb, var(--secondary, var(--primary)) 12%, transparent);
+  border: 1px solid var(--field-border);
+  border-radius: 999px;
+  color: var(--text-primary);
+  display: inline-flex;
+  font-family: var(--font-family-light);
+  font-size: 12px;
+  gap: 4px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.writing-examples-recipient-field .writing-examples-recipient-chip {
+  padding: 2px 4px 2px 8px;
+}
+
+.writing-examples-recipient-chip,
+.writing-examples-recipient-chip > span {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.writing-examples-edit-fields {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.writing-examples-edit-fields > .writing-examples-field {
+  min-width: 0;
+}
+
+.writing-examples-recipient-chip button {
+  flex-shrink: 0;
+  background: transparent;
+  border: 0;
+  color: var(--secondary, var(--primary));
+  cursor: pointer;
+  display: inline-flex;
+  height: 15px;
+  padding: 0;
+  width: 15px;
+}
+
+.writing-examples-recipient-chip svg {
+  fill: currentColor;
+  height: 13px;
+  width: 13px;
+}
+
+.writing-examples-recipient-field {
+  align-items: center;
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: 30px;
+  padding: 3px 6px;
+}
+
+.writing-examples-recipient-field:focus-within {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.writing-examples-field input.writing-examples-recipient-draft,
+.writing-examples-field input.writing-examples-recipient-draft:focus-visible {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  flex: 1;
+  min-width: 120px;
+  outline: none;
+  padding: 3px 2px;
 }

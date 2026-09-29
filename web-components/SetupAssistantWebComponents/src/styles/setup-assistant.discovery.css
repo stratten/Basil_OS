@@ -10,47 +10,49 @@
   max-width: 680px;
 }
 
-.discovery-orientation-status {
+.orientation-section {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.orientation-scroll-region {
+  flex: 0 1 auto;
+  margin: 0 -4px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 4px 12px;
+}
+
+.orientation-footer {
   align-items: center;
-  color: var(--secondary);
-  display: inline-flex;
-  font-family: var(--font-family-medium);
-  font-size: var(--font-size-callout);
-  gap: 8px;
-  margin: 12px 0 10px;
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: var(--padding-s);
+  padding-top: var(--padding-m);
 }
 
-.discovery-orientation-status::before {
-  animation: discoveryPulse 1.6s ease-in-out infinite;
-  background: color-mix(in srgb, var(--primary) 70%, var(--background-primary));
-  border-radius: 999px;
-  content: '';
-  height: 8px;
-  width: 8px;
-}
-
-.discovery-orientation-status--ready::before {
-  animation: none;
-  background: var(--success-base);
-}
-
-.discovery-orientation-status-text {
-  animation: discoveryHintFade 360ms ease;
+.orientation-footer .setup-working-indicator {
+  align-self: center;
 }
 
 .discovery-ready-note {
-  margin: 12px 0 0;
-}
-
-@keyframes discoveryHintFade {
-  from { opacity: 0.35; }
-  to { opacity: 1; }
+  margin: 0;
+  max-width: 560px;
+  text-align: center;
 }
 
 .discovery-observation-list {
   display: grid;
   gap: 10px;
   position: relative;
+}
+
+.discovery-observation-list:empty::before {
+  display: none;
 }
 
 .discovery-observation-list::before {
@@ -71,7 +73,6 @@
 .discovery-observation-card {
   --discovery-accent: var(--primary);
   --discovery-accent-soft: color-mix(in srgb, var(--discovery-accent) 10%, var(--background-primary));
-  animation: discoveryObservationIn 520ms ease both;
   background:
     linear-gradient(135deg, var(--discovery-accent-soft), var(--background-primary) 42%),
     var(--background-primary);
@@ -144,32 +145,3 @@
   margin: 0;
 }
 
-@keyframes discoveryObservationIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.985);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes discoveryPulse {
-  0%,
-  100% {
-    opacity: 0.45;
-    transform: scale(0.86);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .discovery-observation-card,
-  .discovery-orientation-status::before {
-    animation: none;
-  }
-}

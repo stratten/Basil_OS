@@ -54,6 +54,7 @@ class SaveWritingSampleRequest(BaseModel):
     context_type: str  # email_reply, email_compose, document, social_media, code, etc.
     recipient: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
+    source_type: Optional[str] = None
 
 
 class SaveWritingSampleResponse(BaseModel):
@@ -63,3 +64,19 @@ class SaveWritingSampleResponse(BaseModel):
     context_type: str
     signature_detected: bool = False
     contact_tracked: bool = False
+
+
+class UpdateWritingSampleRequest(BaseModel):
+    """Request to update an existing writing sample."""
+    content: str
+    context_type: Optional[str] = None
+    recipient: Optional[str] = None
+
+
+class UpdateWritingSampleResponse(BaseModel):
+    """Response from updating a writing sample."""
+    status: str
+    sample_id: str
+    content: str
+    context_type: str
+    recipient: Optional[str] = None

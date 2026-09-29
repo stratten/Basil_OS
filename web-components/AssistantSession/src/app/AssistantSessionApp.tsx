@@ -52,7 +52,7 @@ export function AssistantSessionApp() {
     }
 
     const frame = document.querySelector<HTMLElement>('.basil-webkit-window-frame');
-    const output = document.querySelector<HTMLElement>('.assistant-session-result__output');
+    const output = document.querySelector<HTMLElement>('.assistant-session-result__output, .assistant-session-result__edit-textarea');
     if (!frame || !output) {
       requestResize(widgetSize.width, widgetSize.height);
       return;
@@ -74,6 +74,7 @@ export function AssistantSessionApp() {
     state.assistantOutput,
     state.errorMessage,
     state.hasSnapshot,
+    state.isEditMode,
     state.isResultChromeCollapsed,
     state.ocrText,
     state.shouldPersistUI,

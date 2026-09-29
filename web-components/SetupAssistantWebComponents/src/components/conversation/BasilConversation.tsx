@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
+import { SetupWorkingIndicator } from '@/components/motion/SetupWorkingIndicator'
+import { useStickToBottom } from '@/components/motion/useStickToBottom'
 import type {
   SetupAgendaConfirmationResolution,
   SetupConversationMessage,
@@ -26,6 +28,7 @@ interface Props {
   workingActivityLabel?: string | null
   trackedAgentTasks?: Record<string, SetupTrackedAgentTask>
   trackedAssistantSessions?: Record<string, SetupTrackedAssistantSession>
+  holdMessageReveal?: boolean
   onUserMessage: (content: string, preliminaryStatusMessage?: string | null) => void
   onReceiptAction: (proposalId: string, approvalState: SetupToolApprovalState) => void
   onAgendaConfirmationResolved: (
@@ -44,12 +47,34 @@ export function BasilConversation({
   workingActivityLabel,
   trackedAgentTasks,
   trackedAssistantSessions,
+  holdMessageReveal = false,
   onUserMessage,
   onReceiptAction,
   onAgendaConfirmationResolved,
 }: Props) {
   const [draft, setDraft] = useState('')
   const [showObservations, setShowObservations] = useState(false)
+  const observationsRef = useRef<HTMLDivElement>(null)
+  const messagesScrollRef = useRef<HTMLDivElement>(null)
+  const messagesStackRef = useRef<HTMLDivElement>(null)
+  useStickToBottom(messagesScrollRef, messagesStackRef)
+
+  useEffect(() => {
+    if (!showObservations) return
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (!observationsRef.current?.contains(event.target as Node)) setShowObservations(false)
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowObservations(false)
+    }
+    document.addEventListener('pointerdown', closeOnOutsidePointer)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointer)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [showObservations])
+
   const visibleMessages = messages.filter(message => (
     message.content.trim().length > 0
     || message.inlineReceipts.length > 0
@@ -117,124 +142,82 @@ export function BasilConversation({
           <p className="eyebrow">Setup · Conversation</p>
           <h2>What are you working on?</h2>
         </div>
+        {observations.length > 0 && (
+          <div ref={observationsRef} className="conversation-observations">
+            <button
+              type="button"
+              className="secondary-button conversation-observations-toggle"
+              aria-expanded={showObservations}
+              aria-controls="conversation-observations-popover"
+              onClick={() => setShowObservations(value => !value)}
+            >
+              {showObservations
+                ? 'Hide setup notes'
+                : `Setup notes (${observations.length})`}
+            </button>
+            {showObservations && (
+              <section
+                id="conversation-observations-popover"
+                className="conversation-observations-popover"
+                aria-label="Setup notes"
+              >
+                <div className="fact-list conversation-observation-list">
+                  {observations.map(observation => (
+                    <article key={observation.id} className="info-card conversation-observation-card">
+                      <span className="eyebrow">{observation.label}</span>
+                      <h3>{observation.title}</h3>
+                      <SetupConversationMarkdown content={observation.detail} />
+                    </article>
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+        )}
       </div>
 
-      {observations.length > 0 && (
-        <section
-          className="conversation-observations"
-          style={{
-            border: '0.5px solid var(--separator-color)',
-            borderRadius: 'var(--corner-radius-medium)',
-            marginBottom: 16,
-            padding: 12,
-          }}
-        >
-          <button
-            type="button"
-            className="secondary-button"
-            aria-expanded={showObservations}
-            onClick={() => setShowObservations(value => !value)}
-          >
-            {showObservations
-              ? 'Hide setup notes'
-              : `Show setup notes (${observations.length})`}
-          </button>
-          {showObservations && (
-            <div
-              className="fact-list"
-              style={{
-                gap: 8,
-                marginTop: 12,
-              }}
-            >
-              {observations.map(observation => (
-                <article
-                  key={observation.id}
-                  className="info-card"
-                  style={{
-                    background: 'color-mix(in srgb, var(--primary) 4%, var(--background-tertiary))',
-                    borderColor: 'color-mix(in srgb, var(--primary) 18%, var(--separator-color))',
-                    padding: 14,
-                  }}
-                >
-                  <span className="eyebrow" style={{ marginBottom: 6 }}>{observation.label}</span>
-                  <h3>{observation.title}</h3>
-                  <SetupConversationMarkdown content={observation.detail} />
-                </article>
-              ))}
-            </div>
+      <div ref={messagesScrollRef} className="basil-messages">
+        <div ref={messagesStackRef} className="basil-messages-stack">
+          {visibleMessages.map(message => (
+            <SetupConversationMessageRow
+              key={message.id}
+              message={message}
+              pendingProposals={pendingProposals}
+              holdReveal={holdMessageReveal}
+              onReceiptAction={onReceiptAction}
+              onAgendaConfirmationResolved={onAgendaConfirmationResolved}
+            />
+          ))}
+
+          {isStreaming && (
+            <SetupWorkingIndicator
+              label={workingPrimaryLabel ?? "I'm working on the next setup step."}
+              detail={workingActivityLabel}
+            />
           )}
-        </section>
-      )}
 
-      <div className="basil-messages">
-        {visibleMessages.map(message => (
-          <SetupConversationMessageRow
-            key={message.id}
-            message={message}
-            pendingProposals={pendingProposals}
-            onReceiptAction={onReceiptAction}
-            onAgendaConfirmationResolved={onAgendaConfirmationResolved}
-          />
-        ))}
+          {showAgentTaskInflightLine && (
+            <SetupWorkingIndicator
+              className="conversation-agent-task-inflight"
+              label={agentTaskInflightLabel}
+              quiet
+            />
+          )}
 
-        {isStreaming && (
-          <div className="conversation-working-indicator" role="status" aria-live="polite">
-            <span className="conversation-working-dot" aria-hidden="true" />
-            <div>
-              <p>{workingPrimaryLabel ?? "I'm working on the next setup step."}</p>
-              {workingActivityLabel && (
-                <p className="conversation-working-substatus">{workingActivityLabel}</p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {showAgentTaskInflightLine && (
-          <div
-            className="conversation-working-indicator conversation-agent-task-inflight"
-            role="status"
-            aria-live="polite"
-          >
-            <span className="conversation-working-dot" aria-hidden="true" />
-            <div>
-              <p className="conversation-working-substatus">{agentTaskInflightLabel}</p>
-            </div>
-          </div>
-        )}
-
-        {showAssistantSessionInflightLine && (
-          <div
-            className="conversation-working-indicator conversation-assistant-session-inflight"
-            role="status"
-            aria-live="polite"
-          >
-            <span className="conversation-working-dot" aria-hidden="true" />
-            <div>
-              <p className="conversation-working-substatus">{assistantSessionInflightLabel}</p>
-            </div>
-          </div>
-        )}
+          {showAssistantSessionInflightLine && (
+            <SetupWorkingIndicator
+              className="conversation-assistant-session-inflight"
+              label={assistantSessionInflightLabel}
+              quiet
+            />
+          )}
+        </div>
       </div>
 
       {chips.length > 0 && !hasPendingReceiptAwaitingApproval && (
         <div className="chip-row" aria-label="Suggested next steps">
-          <p
-            className="eyebrow"
-            style={{
-              margin: '0 0 8px',
-              width: '100%',
-            }}
-          >
-            Suggested next steps
-          </p>
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 8,
-            }}
-          >
+          <p className="eyebrow chip-row-label">Suggested next steps</p>
+          <div className="chip-row-buttons">
             {chips.map(chip => (
               <button
                 key={chip.id}

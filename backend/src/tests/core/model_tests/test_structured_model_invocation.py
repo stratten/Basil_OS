@@ -363,14 +363,15 @@ async def test_anthropic_refusal_preserves_provider_diagnostics(profile):
 
 
 @pytest.mark.asyncio
-async def test_gemini_response_schema_returns_typed_value(profile):
+async def test_gemini_response_json_schema_returns_typed_value(profile):
     profile("gemini_api")
     captured = {}
 
-    class Gemini:
-        def generate_content(self, prompt, *, generation_config):
-            captured["prompt"] = prompt
-            captured["generation_config"] = generation_config
+    class Models:
+        def generate_content(self, *, model, contents, config):
+            captured["model"] = model
+            captured["contents"] = contents
+            captured["config"] = config
             return SimpleNamespace(
                 text='{"value":"gemini"}',
                 candidates=[
@@ -380,9 +381,13 @@ async def test_gemini_response_schema_returns_typed_value(profile):
                 ],
             )
 
+    def build_config(_tokens, **overrides):
+        return {"max_output_tokens": 100, **overrides}
+
     model = SimpleNamespace(
-        _model=Gemini(),
-        _build_generation_config=lambda _tokens: {"max_output_tokens": 100},
+        model_name="gemini-test",
+        _client=SimpleNamespace(models=Models()),
+        _build_generation_config=build_config,
     )
     result = await call_model_with_schema(
         model,
@@ -392,11 +397,67 @@ async def test_gemini_response_schema_returns_typed_value(profile):
     )
     assert result.value.value == "gemini"
     assert result.enforcement == "gemini_response_schema"
-    assert (
-        captured["generation_config"]["response_mime_type"]
-        == "application/json"
+    assert captured["model"] == "gemini-test"
+    assert captured["contents"] == "prompt"
+    assert captured["config"]["response_mime_type"] == "application/json"
+    assert captured["config"]["response_json_schema"] == _Payload.model_json_schema()
+    assert "response_schema" not in captured["config"]
+
+
+@pytest.mark.asyncio
+async def test_gemini_structured_call_reports_unavailable_client(profile):
+    profile("gemini_api")
+
+    class Unloadable:
+        model_name = "gemini-test"
+        _client = None
+        _error = "Failed to load Gemini model: no key"
+
+        async def load(self):
+            return None
+
+    with pytest.raises(
+        StructuredModelOutputError,
+        match="Gemini client is unavailable: Failed to load Gemini model: no key",
+    ):
+        await call_model_with_schema(
+            Unloadable(),
+            prompt="prompt",
+            response_model=_Payload,
+            max_tokens=10,
+        )
+
+
+@pytest.mark.asyncio
+async def test_gemini_structured_call_rejects_empty_candidates(profile):
+    profile("gemini_api")
+
+    class Models:
+        def generate_content(self, *, model, contents, config):
+            return SimpleNamespace(text=None, candidates=[])
+
+    model = SimpleNamespace(
+        model_name="gemini-test",
+        _client=SimpleNamespace(models=Models()),
+        _build_generation_config=lambda _tokens, **overrides: dict(overrides),
     )
-    assert (
-        captured["generation_config"]["response_schema"]
-        == _Payload.model_json_schema()
-    )
+    with pytest.raises(StructuredModelOutputError, match="Gemini returned no candidates"):
+        await call_model_with_schema(
+            model,
+            prompt="prompt",
+            response_model=_Payload,
+            max_tokens=10,
+        )
+
+
+def test_classify_provider_exception_reads_google_genai_code():
+    class GenaiError(Exception):
+        def __init__(self, code):
+            super().__init__(f"{code} error")
+            self.code = code
+
+    assert _classify_provider_exception(GenaiError(429)) == ("transient", True)
+    assert _classify_provider_exception(GenaiError(503)) == ("transient", True)
+    assert _classify_provider_exception(GenaiError(403)) == ("authentication", False)
+    assert _classify_provider_exception(GenaiError(400)) == ("provider", False)
+    assert _classify_provider_exception(GenaiError("429")) == ("provider", False)

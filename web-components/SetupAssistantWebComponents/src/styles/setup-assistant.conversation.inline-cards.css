@@ -16,17 +16,15 @@
  * literally live in this file.
  *
  * Sibling files in the same conversation surface:
- *   - setup-assistant.conversation.css          (core chrome + motion)
+ *   - setup-assistant.conversation.css          (core chrome)
  *   - setup-assistant.conversation.messages.css (bubble system + acknowledgment chip)
  *   - setup-assistant.conversation.proposals.css (consent receipts, recommendation review, status chip)
  *
- * Rules in this file rely on the `conversationCardEnter` keyframe
- * and the `prefers-reduced-motion` suppression that live in the
- * core conversation file.
+ * Rules in this file rely on the `setupEnterRise` keyframe and the reduced-motion suppression in setup-assistant.motion.css.
  */
 
 .inline-email-context-card {
-  animation: conversationCardEnter 220ms ease both;
+  animation: setupEnterRise 220ms var(--setup-motion-ease-out) both;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--primary) 5%, var(--background-primary)), var(--background-primary) 70%),
     var(--background-primary);
@@ -136,7 +134,7 @@
  * outcome is parseable at a glance without reading text.
  */
 .inline-dill-draft-card {
-  animation: conversationCardEnter 220ms ease both;
+  animation: setupEnterRise 220ms var(--setup-motion-ease-out) both;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--primary) 5%, var(--background-primary)), var(--background-primary) 70%),
     var(--background-primary);
@@ -277,7 +275,7 @@
  *   - kind-icon:       small image laid out next to the caption
  */
 .inline-setup-visual-card {
-  animation: conversationCardEnter 220ms ease both;
+  animation: setupEnterRise 220ms var(--setup-motion-ease-out) both;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--primary) 5%, var(--background-primary)), var(--background-primary) 70%),
     var(--background-primary);

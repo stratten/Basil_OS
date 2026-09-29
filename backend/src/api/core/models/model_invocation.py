@@ -55,13 +55,13 @@ def supports_web_search(model: Any) -> bool:
 def supports_system_prompt(model: Any) -> bool:
     """Return True when the model can accept a real system-role message.
 
-    Cloud OpenAI/Anthropic handlers (and any auth-proxy wrapping of them,
-    since the registry's declared handler is unchanged either way) already
-    read ``context["system_prompt"]`` in their ``generate_response``. Custom
-    OpenAI-compatible models gate on their own registry-declared
-    ``system_prompts`` feature. Everything else (Gemini, local llama.cpp/
-    huggingface) is not proven to support it, so callers fall back to
-    folding the text into the flat prompt.
+    Cloud OpenAI/Anthropic/Gemini handlers (and any auth-proxy wrapping of
+    them, since the registry's declared handler is unchanged either way)
+    already read ``context["system_prompt"]`` in their ``generate_response``.
+    Custom OpenAI-compatible models gate on their own registry-declared
+    ``system_prompts`` feature. Everything else (local llama.cpp/huggingface)
+    is not proven to support it, so callers fall back to folding the text
+    into the flat prompt.
     """
     probe = getattr(model, "_supports_system_prompt", None)
     if callable(probe):
@@ -70,7 +70,7 @@ def supports_system_prompt(model: Any) -> bool:
         except Exception:
             return False
     profile = resolve_runtime_model_profile(model)
-    if profile.handler in {"openai_api", "anthropic_api"}:
+    if profile.handler in {"openai_api", "anthropic_api", "gemini_api"}:
         return True
     model_name = getattr(model, "model_name", getattr(model, "name", None))
     if not model_name:
@@ -213,7 +213,9 @@ async def call_model_with_schema(
 def _classify_provider_exception(exc: Exception) -> tuple[str, bool]:
     """Classify provider transport failures without provider-specific imports."""
     status_code = getattr(exc, "status_code", None)
-    if isinstance(status_code, int):
+    if not isinstance(status_code, int):
+        status_code = getattr(exc, "code", None)
+    if isinstance(status_code, int) and not isinstance(status_code, bool):
         if status_code in {401, 403}:
             return ("authentication", False)
         if status_code in {408, 409, 425, 429} or status_code >= 500:
@@ -391,21 +393,29 @@ async def _call_gemini_with_schema(
     response_model: type[ResponseModelT],
     max_tokens: int,
 ) -> StructuredModelResponse[ResponseModelT]:
-    if getattr(model, "_model", None) is None:
+    if getattr(model, "_client", None) is None:
         await model.load()
-    generation_config = dict(model._build_generation_config(max_tokens))
-    generation_config.update(
-        {
-            "response_mime_type": "application/json",
-            "response_schema": response_model.model_json_schema(),
-        }
+    if getattr(model, "_client", None) is None:
+        raise StructuredModelOutputError(
+            "Gemini client is unavailable: "
+            f"{getattr(model, '_error', None) or 'model failed to load'}",
+            category="provider",
+        )
+    config = model._build_generation_config(
+        max_tokens,
+        response_mime_type="application/json",
+        response_json_schema=response_model.model_json_schema(),
     )
     response = await asyncio.to_thread(
-        model._model.generate_content,
-        prompt,
-        generation_config=generation_config,
+        model._client.models.generate_content,
+        model=model.model_name,
+        contents=prompt,
+        config=config,
     )
-    candidate = response.candidates[0]
+    candidates = getattr(response, "candidates", None) or []
+    if not candidates:
+        raise StructuredModelOutputError("Gemini returned no candidates")
+    candidate = candidates[0]
     raw_finish_reason = getattr(candidate, "finish_reason", None)
     finish_reason = str(
         getattr(raw_finish_reason, "name", None)

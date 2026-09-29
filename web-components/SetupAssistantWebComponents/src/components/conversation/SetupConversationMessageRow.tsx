@@ -16,10 +16,12 @@ import { InlineDillDraftCard } from './InlineDillDraftCard'
 import { InlineEmailContextCard } from './InlineEmailContextCard'
 import { InlineSetupVisualCard } from './InlineSetupVisualCard'
 import { SetupConversationMarkdown } from './SetupConversationMarkdown'
+import { usePacedText } from './usePacedText'
 
 interface SetupConversationMessageRowProps {
   message: SetupConversationMessage
   pendingProposals: Record<string, SetupPendingProposal>
+  holdReveal: boolean
   onReceiptAction: (proposalId: string, approvalState: SetupToolApprovalState) => void
   onAgendaConfirmationResolved: (
     confirmationId: string,
@@ -30,9 +32,22 @@ interface SetupConversationMessageRowProps {
 function SetupConversationMessageRowComponent({
   message,
   pendingProposals,
+  holdReveal,
   onReceiptAction,
   onAgendaConfirmationResolved,
 }: SetupConversationMessageRowProps) {
+  const pacedContent = usePacedText({
+    messageId: message.id,
+    content: message.content,
+    progressive: message.role === 'basil' && Boolean(message.revealProgressively),
+    streaming: Boolean(message.streaming),
+    hold: holdReveal,
+  })
+  const hasInlineChildren = message.inlineReceipts.length > 0
+    || (message.inlineEmailContexts?.length ?? 0) > 0
+    || (message.inlineDillDrafts?.length ?? 0) > 0
+    || (message.inlineVisuals?.length ?? 0) > 0
+    || (message.inlineAgendaConfirmations?.length ?? 0) > 0
   // User-action acknowledgment chip: short-circuits the normal
   // message render path because it carries no content, no
   // "You" label, and no inline child cards — it's purely a
@@ -60,11 +75,14 @@ function SetupConversationMessageRowComponent({
     )
   }
 
+  // A held or not-yet-started reveal renders no bubble at all rather than an empty one.
+  if (pacedContent.length === 0 && message.content.length > 0 && !hasInlineChildren) return null
+
   return (
     <article className={`basil-message ${message.role}`}>
       {message.role === 'user' && <span>You</span>}
       <div className="basil-message-content">
-        <SetupConversationMarkdown content={message.content} />
+        <SetupConversationMarkdown content={pacedContent} />
       </div>
       {(message.inlineEmailContexts ?? []).map(context => (
         <InlineEmailContextCard
@@ -109,6 +127,7 @@ function messageRowPropsAreEqual(
 ): boolean {
   if (
     previous.message !== next.message
+    || previous.holdReveal !== next.holdReveal
     || previous.onReceiptAction !== next.onReceiptAction
     || previous.onAgendaConfirmationResolved !== next.onAgendaConfirmationResolved
   ) return false

@@ -8,17 +8,15 @@
  * the bubble cascade.
  *
  * Sibling files in the same conversation surface:
- *   - setup-assistant.conversation.css          (core chrome + motion)
+ *   - setup-assistant.conversation.css          (core chrome)
  *   - setup-assistant.conversation.proposals.css (consent receipts, recommendation review, status chip)
  *   - setup-assistant.conversation.inline-cards.css (email context, Dill draft, setup visual cards)
  *
- * Rules in this file rely on the `conversationCardEnter` keyframe
- * and the `prefers-reduced-motion` suppression that live in the
- * core conversation file.
+ * Rules in this file rely on the `setupEnterRise` keyframe and the reduced-motion suppression in setup-assistant.motion.css.
  */
 
 .basil-message {
-  animation: conversationCardEnter 180ms ease-out;
+  animation: setupEnterRise 180ms var(--setup-motion-ease-out);
   border-radius: var(--corner-radius-medium);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.045);
   max-width: 88%;
@@ -70,7 +68,7 @@
  * or agenda confirmation card.
  */
 .basil-message.user.is-acknowledgment {
-  animation: conversationCardEnter 140ms ease-out;
+  animation: setupEnterRise 140ms var(--setup-motion-ease-out);
   background: color-mix(in srgb, var(--primary) 88%, var(--background-primary));
   border: 0.5px solid color-mix(in srgb, var(--primary) 72%, var(--text-primary));
   box-shadow: 0 5px 12px color-mix(in srgb, var(--primary) 16%, transparent);

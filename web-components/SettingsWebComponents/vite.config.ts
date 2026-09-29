@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
@@ -22,6 +23,8 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    // Loaded from the app bundle, not the network; warn only if the single Settings chunk grows well past its current ~540 kB.
+    chunkSizeWarningLimit: 1024,
     rollupOptions: {
       input: {
         'appearance-settings': 'src/entries/appearance-settings.html',

@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import time
 import uuid
-from typing import List, Optional
+from typing import Awaitable, Callable, List, Optional
 
 from api.routes.setup_assistant.models import (
     SetupAgentEvent,
@@ -78,28 +78,38 @@ async def set_setup_suggestion_chips(
 
 
 async def say_setup_message(factory, content: str) -> str:
-    message_id = f"message-{uuid.uuid4().hex[:12]}"
-    await factory.event_emitter(
+    await stream_setup_message(factory.event_emitter, content)
+    return "Message sent."
+
+
+async def stream_setup_message(
+    event_emitter: Callable[[SetupAgentEvent], Awaitable[None]],
+    content: str,
+    message_id: Optional[str] = None,
+) -> str:
+    """Emit one Basil message as started, paced word-boundary deltas, then completed; returns the message id."""
+    resolved_message_id = message_id or f"message-{uuid.uuid4().hex[:12]}"
+    await event_emitter(
         SetupAgentEvent(
             kind=SetupAgentEventKind.message_started,
-            payload={"id": message_id, "role": "basil"},
+            payload={"id": resolved_message_id, "role": "basil"},
         )
     )
     for delta in chunk_setup_message_content(content):
-        await factory.event_emitter(
+        await event_emitter(
             SetupAgentEvent(
                 kind=SetupAgentEventKind.message_delta,
-                payload={"id": message_id, "delta": delta},
+                payload={"id": resolved_message_id, "delta": delta},
             )
         )
         await asyncio.sleep(SETUP_MESSAGE_DELTA_DELAY_SECONDS)
-    await factory.event_emitter(
+    await event_emitter(
         SetupAgentEvent(
             kind=SetupAgentEventKind.message_completed,
-            payload={"id": message_id, "role": "basil", "content": content},
+            payload={"id": resolved_message_id, "role": "basil", "content": content},
         )
     )
-    return "Message sent."
+    return resolved_message_id
 
 
 def chunk_setup_message_content(content: str) -> List[str]:
