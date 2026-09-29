@@ -51,7 +51,6 @@ The embedded applications are source code under `web-components/`; the files sta
 The canonical builders are:
 
 - `scripts/build-agent-task-assets.sh` builds and stages Agent Task, scheduled-run, model-download, power-user-guide, setup-resume, Meeting Detection, ambient-suggestions, Basil Board/conversation, Meeting Assistant/analysis, Assistant Session/history, Transcription/audio-file, and Agent Task capture-input bundles.
-- `scripts/build-onboarding-assets.sh` builds and stages onboarding.
 - `scripts/build-setup-assistant-assets.sh` builds and stages Setup Assistant.
 - `scripts/build-profile-editor-assets.sh` builds and stages profile, memory, and skills editing.
 - `scripts/build-settings-appearance-assets.sh` builds and stages the Settings renderer.
@@ -75,9 +74,12 @@ For an embedded web package, run its package-local checks. For example:
 
 ```bash
 cd web-components/SettingsWebComponents
+npm run typecheck
 npm test
 npm run build
 ```
+
+`npm run typecheck` runs `tsc --noEmit` against the package's `tsconfig.json`, including every `web-components/shared` file the package imports. Vitest and Vite do not type-check, so run it alongside the tests; CI runs it for every package.
 
 Use the appropriate canonical builder after changes that must reach a packaged WebKit resource. Do not assume a package-local Vite build alone updates the client resource bundle. Builders and package builds can modify generated output, so review `git status` afterward and do not add generated assets to source control.
 

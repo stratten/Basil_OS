@@ -132,4 +132,11 @@ describe('ReasoningDefaultsSettingsApp', () => {
     act(() => { textRadio.click() })
     expect(lastMessageOfType('requestUpdateAgentTaskDefaultModality')).toEqual(expect.objectContaining({ modality: 'text' }))
   })
+
+  it('keeps the loading state when init arrives without settings', () => {
+    act(() => {
+      window.basilReasoningDefaultsSettings!.onEvent({ type: 'init', protocolVersion: 1, isLoading: true, settings: null })
+    })
+    expect(container.querySelector('.reasoning-defaults-status')?.textContent).toBe('Loading Automation & Agents settings...')
+  })
 })

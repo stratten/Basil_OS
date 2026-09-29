@@ -18,7 +18,6 @@ The script checks that expected HTML entries and JavaScript assets exist before 
 
 Several focused WebKit surfaces have their own canonical builders:
 
-- `scripts/build-onboarding-assets.sh` for onboarding.
 - `scripts/build-setup-assistant-assets.sh` for Setup Assistant.
 - `scripts/build-profile-editor-assets.sh` for profile, memory, and skills editing.
 - `scripts/build-settings-appearance-assets.sh` for Settings.

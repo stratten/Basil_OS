@@ -12,11 +12,9 @@ Specifically the two declarations:
 Generated outputs (overwritten on every run; loud warning if content changed):
     backend/src/api/core/models/generated_processing_colors.py
     web-components/AgentTaskResult/src/theme/generated-defaults.ts
-    web-components/OnboardingWebComponents/src/theme/generated-defaults.ts
     web-components/AgentTaskCaptureInput/src/theme/generated-defaults.ts
 
-This script is invoked from scripts/build-agent-task-assets.sh and
-scripts/build-onboarding-assets.sh as STEP 0, so dev (dev.sh)
+This script is invoked from scripts/build-agent-task-assets.sh as STEP 0, so dev (dev.sh)
 and release (build/scripts/build_frontend.sh) builds keep all three
 runtimes synchronised without any manual step. Direct invocation also works:
 
@@ -58,15 +56,6 @@ MINION_TS_OUTPUT = (
     / "generated-defaults.ts"
 )
 
-ONBOARDING_TS_OUTPUT = (
-    REPO_ROOT
-    / "web-components"
-    / "OnboardingWebComponents"
-    / "src"
-    / "theme"
-    / "generated-defaults.ts"
-)
-
 AGENT_TASK_CAPTURE_TS_OUTPUT = (
     REPO_ROOT
     / "web-components"
@@ -86,7 +75,7 @@ def _parse_swift_color_literal(swift_text: str, identifier: str) -> RGB:
     """Find `... let <identifier> = Color(red: R, green: G, blue: B)` and
     return (R, G, B) as floats. The match deliberately accepts any access
     modifier / `static` ordering, but requires the `Color(red:green:blue:)`
-    initializer shape so we do not silently accept a different colour
+    initializer shape so we do not silently accept a different color
     constructor."""
 
     pattern = re.compile(
@@ -116,7 +105,7 @@ def _parse_swift_color_literal(swift_text: str, identifier: str) -> RGB:
 def _hex_from_rgb(rgb: RGB) -> str:
     """Convert a normalised (R, G, B) triple to an upper-case `#RRGGBB`
     string. Mirrors the conversion the Swift `WKWebView` bridge uses when
-    forwarding theme colours to the React runtime, so build-time and
+    forwarding theme colors to the React runtime, so build-time and
     runtime hex values agree."""
 
     def _component(value: float) -> int:
@@ -219,9 +208,6 @@ def main() -> int:
     agent_task_changed = _write_if_changed(
         MINION_TS_OUTPUT, _format_typescript(base, accent)
     )
-    onboarding_changed = _write_if_changed(
-        ONBOARDING_TS_OUTPUT, _format_typescript(base, accent)
-    )
     agent_task_capture_changed = _write_if_changed(
         AGENT_TASK_CAPTURE_TS_OUTPUT, _format_typescript(base, accent)
     )
@@ -233,7 +219,7 @@ def main() -> int:
         f"base={base} ({base_hex}), accent={accent} ({accent_hex}).",
         file=sys.stderr,
     )
-    if not (python_changed or agent_task_changed or onboarding_changed or agent_task_capture_changed):
+    if not (python_changed or agent_task_changed or agent_task_capture_changed):
         print("Generated files already up to date.", file=sys.stderr)
 
     return 0

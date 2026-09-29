@@ -110,9 +110,7 @@
   background: var(--background-primary);
   border: 0.5px solid color-mix(in srgb, var(--primary) 32%, var(--separator-color));
   border-radius: var(--corner-radius-medium);
-  box-shadow:
-    0 0 0 0.5px rgba(0, 0, 0, 0.08),
-    0 12px 32px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.08), 0 12px 32px rgba(0, 0, 0, 0.28);
   padding: 10px;
   position: absolute;
   right: 0;

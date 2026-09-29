@@ -163,6 +163,7 @@ export default function TodoDetailPane({
   }
 
   function cancelEdit(): void {
+    if (!item) return;
     setDraftTitle(item.title);
     const description = sanitizeRichText(item.description);
     setDraftDescriptionHtml(description);

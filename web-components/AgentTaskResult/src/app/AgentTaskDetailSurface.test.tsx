@@ -120,7 +120,6 @@ function surface(
       hasNewerDetail={false}
       textFollowUpMode={false}
       isProcessing={false}
-      embedded={false}
       captureState={null}
       onRetry={() => {}}
       onContinue={() => {}}

@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach, vi, type Mock } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import App from './App';
+import type { CaptureInputMessage } from './types';
 import {
   baseTextSnapshot,
   baseVoiceSnapshot,
@@ -57,10 +58,10 @@ vi.mock('./components/CaptureModelPickerMenu', () => ({
 
 let container: HTMLElement;
 let root: Root;
-let postMessage: ReturnType<typeof vi.fn>;
+let postMessage: Mock<(message: CaptureInputMessage) => void>;
 
 beforeEach(() => {
-  postMessage = vi.fn();
+  postMessage = vi.fn<(message: CaptureInputMessage) => void>();
   window.webkit = { messageHandlers: { agentTaskCaptureBridge: { postMessage } } };
   container = document.createElement('div');
   document.body.appendChild(container);

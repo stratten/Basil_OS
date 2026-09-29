@@ -275,8 +275,8 @@ button:disabled {
 [data-overflow-bottom] {
   --setup-scroll-fade-bottom: 0px;
   --setup-scroll-fade-top: 0px;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--setup-scroll-fade-top), #000 calc(100% - var(--setup-scroll-fade-bottom)), transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 var(--setup-scroll-fade-top), #000 calc(100% - var(--setup-scroll-fade-bottom)), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, black var(--setup-scroll-fade-top), black calc(100% - var(--setup-scroll-fade-bottom)), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, black var(--setup-scroll-fade-top), black calc(100% - var(--setup-scroll-fade-bottom)), transparent 100%);
 }
 
 [data-overflow-top] {

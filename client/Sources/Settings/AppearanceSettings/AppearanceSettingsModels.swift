@@ -20,7 +20,7 @@ struct AppearanceSettings: Codable {
     // persisted values. Defaults are sourced from `AestheticSystem.Colors`
     // (currently Royal Purple #7C3AED / #DDD6FE) via the static helpers
     // below so there is exactly one Swift literal site for the processing
-    // colour across the whole app. Edit `AestheticSystem.swift` to change.
+    // color across the whole app. Edit `AestheticSystem.swift` to change.
     var processingColorRed: Double
     var processingColorGreen: Double
     var processingColorBlue: Double
@@ -29,7 +29,7 @@ struct AppearanceSettings: Codable {
     var processingAccentColorBlue: Double
     var preferredFont: String
 
-    // Materialise the canonical processing-colour components once and reuse
+    // Materialize the canonical processing-color components once and reuse
     // them everywhere in this file (init defaults, decoder fallbacks, the
     // `@Published` initial values on the view-model, and resetToDefaults).
     // Static let so the `Color.components` round-trip through NSColor only
@@ -112,7 +112,7 @@ struct AppearanceSettings: Codable {
     // processing color fields still decode and fall back to the
     // AestheticSystem defaults (Royal Purple) instead of throwing a "key not
     // found" error. Without this, any cached AppearanceSettings written
-    // before the processing-colour fields existed would fail to decode and
+    // before the processing-color fields existed would fail to decode and
     // the app would lose the user's full appearance config.
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)

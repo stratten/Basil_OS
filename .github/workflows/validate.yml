@@ -26,13 +26,14 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: "web-components/**/package-lock.json"
-      - name: Install, test, and build each web component
+      - name: Install, typecheck, test, and build each web component
         run: |
           for package_dir in web-components/*; do
             [ -f "$package_dir/package.json" ] || continue
             (
               cd "$package_dir"
               npm ci
+              npm run typecheck --if-present
               npm run test --if-present
               npm run build
             )

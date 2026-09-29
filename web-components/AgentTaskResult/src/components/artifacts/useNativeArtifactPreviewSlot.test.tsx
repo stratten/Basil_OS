@@ -2,24 +2,24 @@
 
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import type { ArtifactPreviewTransport } from './transport/artifactPreviewTransport';
 import { useNativeArtifactPreviewSlot } from './useNativeArtifactPreviewSlot';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
 function createTransportMocks(): ArtifactPreviewTransport & {
-  setInlineNativePreviewFrame: ReturnType<typeof vi.fn>;
-  hideInlineNativePreview: ReturnType<typeof vi.fn>;
-  clearInlineNativePreview: ReturnType<typeof vi.fn>;
+  setInlineNativePreviewFrame: Mock<ArtifactPreviewTransport['setInlineNativePreviewFrame']>;
+  hideInlineNativePreview: Mock<ArtifactPreviewTransport['hideInlineNativePreview']>;
+  clearInlineNativePreview: Mock<ArtifactPreviewTransport['clearInlineNativePreview']>;
 } {
   return {
     previewFile: vi.fn(),
     clearFilePreview: vi.fn(),
     registerFilePreviewUpdateHandler: vi.fn().mockReturnValue(() => {}),
-    setInlineNativePreviewFrame: vi.fn(),
-    hideInlineNativePreview: vi.fn(),
-    clearInlineNativePreview: vi.fn(),
+    setInlineNativePreviewFrame: vi.fn<ArtifactPreviewTransport['setInlineNativePreviewFrame']>(),
+    hideInlineNativePreview: vi.fn<ArtifactPreviewTransport['hideInlineNativePreview']>(),
+    clearInlineNativePreview: vi.fn<ArtifactPreviewTransport['clearInlineNativePreview']>(),
   };
 }
 

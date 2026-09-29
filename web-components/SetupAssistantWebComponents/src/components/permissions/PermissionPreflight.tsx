@@ -17,14 +17,6 @@ interface PermissionStatusEventDetail {
   permissions?: Partial<PermissionStatusMap>
 }
 
-declare global {
-  interface Window {
-    basilSetupAssistantConfig?: {
-      isReturningUserCheck?: boolean
-    }
-  }
-}
-
 function isReturningUserCheck() {
   return window.basilSetupAssistantConfig?.isReturningUserCheck === true
 }

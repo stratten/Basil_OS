@@ -353,7 +353,6 @@ export function AgentTaskResultBody({
                 hasNewerDetail={hasNewerDetail}
                 textFollowUpMode={textFollowUpMode}
                 isProcessing={isProcessing}
-                embedded={embedded}
                 captureState={captureState}
                 onRetry={onRetry}
                 onContinue={onContinue}

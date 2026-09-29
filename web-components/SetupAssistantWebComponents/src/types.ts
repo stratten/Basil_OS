@@ -268,7 +268,7 @@ export interface SetupInlineEmailContext {
 //
 // `web_path` and `secondary_web_path` (when present) point at PNGs
 // staged into public/images/setup/ by build-setup-assistant-assets.sh
-// from the BasilClient OnboardingWebAssets bundle. `kind` controls
+// from setup-visual-sources/ and client/Sources/Resources. `kind` controls
 // frontend sizing/framing: 'screenshot' = full-bleed; 'icon' = small,
 // inline-ish; 'icon_pair' = paired small icons; 'bubble_sequence' =
 // web-rendered status bubbles; 'composite' = side-by-side screenshots

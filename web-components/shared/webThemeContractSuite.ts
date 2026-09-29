@@ -1,6 +1,8 @@
 import { expect } from 'vitest';
 import type { FontConfig, ThemeConfig } from './webTheme';
 
+type ContractThemeTokenKey = Exclude<keyof ThemeConfig, 'surfaceFinish'>;
+
 /**
  * Canonical fixture values every bridge-consumer contract test applies through
  * that consumer's own real theme-apply function. Values are deliberately
@@ -8,7 +10,7 @@ import type { FontConfig, ThemeConfig } from './webTheme';
  * consumer's function actually read and forwarded these exact values, not a
  * coincidental match against a hardcoded fallback.
  */
-export const CONTRACT_THEME_FIXTURE: Required<Omit<ThemeConfig, never>> = {
+export const CONTRACT_THEME_FIXTURE: Required<Pick<ThemeConfig, ContractThemeTokenKey>> = {
   backgroundPrimary: '#141414',
   backgroundSecondary: '#1e1e1e',
   backgroundTertiary: '#282828',
@@ -36,7 +38,7 @@ export const CONTRACT_FONT_FIXTURE: Required<FontConfig> = {
   fontFamilyBold: 'Basil-Contract-Bold',
 };
 
-const THEME_TOKEN_CSS_VAR: Readonly<Record<keyof ThemeConfig, string>> = {
+const THEME_TOKEN_CSS_VAR: Readonly<Record<ContractThemeTokenKey, string>> = {
   backgroundPrimary: '--background-primary',
   backgroundSecondary: '--background-secondary',
   backgroundTertiary: '--background-tertiary',
@@ -59,7 +61,7 @@ const THEME_TOKEN_CSS_VAR: Readonly<Record<keyof ThemeConfig, string>> = {
 };
 
 /** Every token name the full `ThemeConfig` contract defines, in the shared token map's own order. */
-export const FULL_THEME_TOKENS = Object.keys(THEME_TOKEN_CSS_VAR) as (keyof ThemeConfig)[];
+export const FULL_THEME_TOKENS = Object.keys(THEME_TOKEN_CSS_VAR) as ContractThemeTokenKey[];
 
 /**
  * The subset of `FULL_THEME_TOKENS` that Settings' own bespoke `ThemePayload`
@@ -83,7 +85,7 @@ export const FULL_THEME_TOKENS = Object.keys(THEME_TOKEN_CSS_VAR) as (keyof Them
  * narrower list, not `FULL_THEME_TOKENS`, so the test encodes today's real,
  * accepted contract instead of failing on a known and intentional gap.
  */
-export const SETTINGS_THEME_TOKENS: readonly (keyof ThemeConfig)[] = FULL_THEME_TOKENS.filter(
+export const SETTINGS_THEME_TOKENS: readonly ContractThemeTokenKey[] = FULL_THEME_TOKENS.filter(
   (token) =>
     !(['successBase', 'errorBase', 'readyBase', 'readyAccent'] as const).includes(token as never) &&
     !(['textPrimary', 'separatorColor', 'fieldBorder'] as const).includes(token as never),
@@ -102,7 +104,7 @@ export const SETTINGS_THEME_TOKENS: readonly (keyof ThemeConfig)[] = FULL_THEME_
  */
 export function assertAppliesThemeTokens(
   apply: (theme: ThemeConfig) => void,
-  expectedTokens: readonly (keyof ThemeConfig)[],
+  expectedTokens: readonly ContractThemeTokenKey[],
   fixtureOverrides: Partial<ThemeConfig> = {},
 ): void {
   const fixture: ThemeConfig = { ...CONTRACT_THEME_FIXTURE, ...fixtureOverrides };

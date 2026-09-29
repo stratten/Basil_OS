@@ -1,19 +1,20 @@
 // @vitest-environment jsdom
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import CaptureHeader from './CaptureHeader';
+import type { CaptureInputMessage } from '../types';
 import { baseTextSnapshot, baseVoiceSnapshot } from '../fixtures/captureFixtures';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 let container: HTMLElement;
 let root: Root;
-let postMessage: ReturnType<typeof vi.fn>;
+let postMessage: Mock<(message: CaptureInputMessage) => void>;
 
 beforeEach(() => {
-  postMessage = vi.fn();
+  postMessage = vi.fn<(message: CaptureInputMessage) => void>();
   window.webkit = { messageHandlers: { agentTaskCaptureBridge: { postMessage } } };
   container = document.createElement('div');
   document.body.appendChild(container);

@@ -20,7 +20,7 @@ struct AestheticSystem {
     // success/active green so "Basil is working" reads as a unique state
     // across the entire app. The two literals on `Colors.defaultProcessingBase`
     // / `defaultProcessingAccent` below are the ONLY hand-edited processing-
-    // colour values in the entire repo. The build-time generator
+    // color values in the entire repo. The build-time generator
     // `scripts/generate_processing_color_defaults.py` parses those literals
     // and regenerates Python and TypeScript defaults so backend prefs and
     // both React bundles stay in sync without manual updates.
@@ -150,17 +150,15 @@ struct AestheticSystem {
         // Royal Purple processing-bubble defaults.
         //
         // THESE TWO LITERALS ARE THE SINGLE SOURCE OF TRUTH for the
-        // processing colour across the entire repo. They are parsed at build
+        // processing color across the entire repo. They are parsed at build
         // time by `scripts/generate_processing_color_defaults.py`, which
         // regenerates matching Python and TypeScript constants used by the
         // backend preferences defaults and both React bundles. Edit only
-        // these two lines, then run `scripts/build-agentTask-assets.sh` and
-        // `scripts/build-onboarding-assets.sh` (or any pipeline that calls
-        // them) to propagate the change.
+        // these two lines, then run `scripts/build-agent-task-assets.sh` (or any pipeline that calls it) to propagate the change.
         //
         // Format constraint: the generator regex requires the exact shape
         // `defaultProcessing... = Color(red: R, green: G, blue: B)`. Do not
-        // reformat across lines or swap to a different colour initialiser
+        // reformat across lines or swap to a different color initializer
         // without updating the generator.
         public static let defaultProcessingBase = Color(red: 0.486, green: 0.227, blue: 0.929)
         public static let defaultProcessingAccent = Color(red: 0.867, green: 0.839, blue: 0.996)

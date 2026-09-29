@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { materialRefinements } from './historyApi';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { fetchHistory, fetchHistoryDetail, materialRefinements, saveHistoryOutputAsSample, updateSavedSampleContent } from './historyApi';
 
 describe('materialRefinements', () => {
   it('drops placeholder entries without a persisted instruction and output', () => {
@@ -15,8 +15,6 @@ describe('materialRefinements', () => {
     expect(materialRefinements([])).toEqual([]);
   });
 });
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchHistory, fetchHistoryDetail, saveHistoryOutputAsSample, updateSavedSampleContent } from './historyApi';
 
 describe('historyApi', () => {
   afterEach(() => {

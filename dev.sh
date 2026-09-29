@@ -438,36 +438,6 @@ ls -la "$STAGED_AMBIENT_PANEL_DIR"
 ls -la "$STAGED_BASIL_BOARD_DIR"
 ls -la "$STAGED_MEETING_ASSISTANT_DIR"
 
-# Build onboarding web components.
-#
-# Same rationale as the agent-task bundle above: the staged bundle at
-# client/Sources/Resources/OnboardingWebAssets/ is what gets packaged
-# into the .app, and the Swift onboarding views load it via WKWebView.
-# If we skip this step, edits to web-components/OnboardingWebComponents
-# never reach the running dev build, and we silently ship the previous bundle.
-#
-# Therefore: a missing OR failing canonical build script is FATAL here.
-echo "🌐 Building onboarding web components..."
-ONBOARDING_BUILD_SCRIPT="$REPO_ROOT/scripts/build-onboarding-assets.sh"
-if [ ! -f "$ONBOARDING_BUILD_SCRIPT" ]; then
-    echo "❌ ERROR: Canonical onboarding asset builder not found at $ONBOARDING_BUILD_SCRIPT"
-    echo "   Refusing to launch with a potentially stale OnboardingWebAssets bundle."
-    exit 1
-fi
-if ! bash "$ONBOARDING_BUILD_SCRIPT"; then
-    echo "❌ ERROR: Onboarding web components build failed."
-    echo "   The staged bundle at client/Sources/Resources/OnboardingWebAssets"
-    echo "   may be stale or inconsistent. Aborting before Swift packages a bad bundle."
-    exit 1
-fi
-STAGED_ONBOARDING_DIR="Sources/Resources/OnboardingWebAssets"
-if [ ! -d "$STAGED_ONBOARDING_DIR" ] || [ -z "$(ls -A "$STAGED_ONBOARDING_DIR" 2>/dev/null)" ]; then
-    echo "❌ ERROR: Onboarding asset build reported success but $STAGED_ONBOARDING_DIR is empty/missing."
-    exit 1
-fi
-echo "📦 Staged onboarding WKWebView bundle ready:"
-ls -la "$STAGED_ONBOARDING_DIR"
-
 # Build setup assistant web components.
 #
 # Same canonical-build requirement as the other WKWebView bundles: the staged

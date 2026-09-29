@@ -89,7 +89,7 @@ const reportFile: StructuredFile = {
 describe('ResultContent completed activity history', () => {
   it('moves completed activity below reasoning instead of retaining the live dock', () => {
     const markup = renderToStaticMarkup(
-      <ResultContent agentTask={completedTask} embedded={false} onRetry={() => {}} onContinue={() => {}} />,
+      <ResultContent agentTask={completedTask} onRetry={() => {}} onContinue={() => {}} />,
     );
 
     const thinkingIndex = markup.indexOf('thinking-segments');
@@ -102,21 +102,10 @@ describe('ResultContent completed activity history', () => {
     expect(markup).not.toContain('execution-activity-dock');
   });
 
-  it('uses the completed inline activity summary when embedded', () => {
-    const markup = renderToStaticMarkup(
-      <ResultContent agentTask={completedTask} embedded onRetry={() => {}} onContinue={() => {}} />,
-    );
-
-    expect(markup).toContain('thinking-segments');
-    expect(markup).toContain('activity-summary');
-    expect(markup).not.toContain('execution-activity-dock');
-  });
-
-  it('keeps embedded activity in the dock while processing', () => {
+  it('keeps activity in the dock while processing', () => {
     const markup = renderToStaticMarkup(
       <ResultContent
         agentTask={{ ...completedTask, status: 'processing', result: '' }}
-        embedded
         onRetry={() => {}}
         onContinue={() => {}}
       />,
@@ -130,49 +119,12 @@ describe('ResultContent completed activity history', () => {
     const markup = renderToStaticMarkup(
       <ResultContent
         agentTask={{ ...completedTask, executionTimeline: [] }}
-        embedded={false}
         onRetry={() => {}}
         onContinue={() => {}}
       />,
     );
 
     expect(markup).not.toContain('margin-bottom:var(--padding-m)');
-  });
-
-  it('collapses the embedded activity summary when focus moves to another task', () => {
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-    const root = createRoot(container);
-
-    try {
-      act(() => {
-        root.render(<ResultContent agentTask={completedTask} embedded onRetry={() => {}} onContinue={() => {}} />);
-      });
-      const firstHeader = container.querySelector<HTMLButtonElement>('.activity-summary-header');
-      expect(firstHeader?.getAttribute('aria-expanded')).toBe('false');
-
-      act(() => {
-        firstHeader?.click();
-      });
-      expect(firstHeader?.getAttribute('aria-expanded')).toBe('true');
-
-      act(() => {
-        root.render(
-          <ResultContent
-            agentTask={{ ...completedTask, agentTaskId: 'task-2' }}
-            embedded
-            onRetry={() => {}}
-            onContinue={() => {}}
-          />,
-        );
-      });
-      expect(container.querySelector('.activity-summary-header')?.getAttribute('aria-expanded')).toBe('false');
-    } finally {
-      act(() => {
-        root.unmount();
-      });
-      container.remove();
-    }
   });
 
   it('collapses inline completed activity when focus moves to another task', () => {
@@ -182,7 +134,7 @@ describe('ResultContent completed activity history', () => {
 
     try {
       act(() => {
-        root.render(<ResultContent agentTask={completedTask} embedded={false} onRetry={() => {}} onContinue={() => {}} />);
+        root.render(<ResultContent agentTask={completedTask} onRetry={() => {}} onContinue={() => {}} />);
       });
       const firstHeader = container.querySelector<HTMLButtonElement>('.activity-summary-header');
       expect(firstHeader?.getAttribute('aria-expanded')).toBe('false');
@@ -196,7 +148,6 @@ describe('ResultContent completed activity history', () => {
         root.render(
           <ResultContent
             agentTask={{ ...completedTask, agentTaskId: 'task-2' }}
-            embedded={false}
             onRetry={() => {}}
             onContinue={() => {}}
           />,
@@ -211,14 +162,14 @@ describe('ResultContent completed activity history', () => {
     }
   });
 
-  it('keeps completed embedded reasoning present and expandable', () => {
+  it('keeps completed reasoning present and expandable', () => {
     const container = document.createElement('div');
     document.body.appendChild(container);
     const root = createRoot(container);
 
     try {
       act(() => {
-        root.render(<ResultContent agentTask={completedTask} embedded onRetry={() => {}} onContinue={() => {}} />);
+        root.render(<ResultContent agentTask={completedTask} onRetry={() => {}} onContinue={() => {}} />);
       });
       const reasoningHeader = container.querySelector<HTMLElement>('.thinking-pill .execution-steps-header');
       const reasoningBody = container.querySelector<HTMLElement>('.thinking-pill .thinking-collapse');
@@ -248,7 +199,6 @@ describe('ResultContent artifact integration', () => {
           presentationSummary: { ...presentationSummary, artifactCount: 1 },
           structuredFiles: [reportFile],
         }}
-        embedded={false}
         onRetry={() => {}}
         onContinue={() => {}}
       />,
@@ -268,7 +218,6 @@ describe('ResultContent artifact integration', () => {
     const markup = renderToStaticMarkup(
       <ResultContent
         agentTask={{ ...completedTask, status: 'processing', result: '', presentationSummary: undefined, executionTimeline: [] }}
-        embedded={false}
         onRetry={() => {}}
         onContinue={() => {}}
       />,
@@ -282,7 +231,6 @@ describe('ResultContent artifact integration', () => {
     const markup = renderToStaticMarkup(
       <ResultContent
         agentTask={{ ...completedTask, presentationSummary }}
-        embedded={false}
         onRetry={() => {}}
         onContinue={() => {}}
       />,
@@ -301,7 +249,6 @@ describe('ResultContent artifact integration', () => {
           errorMessage: 'SECRET failure detail',
           presentationSummary: { ...presentationSummary, lifecycle: 'failed' },
         }}
-        embedded={false}
         onRetry={() => {}}
         onContinue={() => {}}
       />,
@@ -321,7 +268,6 @@ describe('ResultContent artifact integration', () => {
           result: 'Completed with warnings: Created report.',
           errorMessage: 'Recovered retry detail',
         }}
-        embedded={false}
         onRetry={() => {}}
         onContinue={() => {}}
       />,
@@ -337,7 +283,6 @@ describe('ResultContent artifact integration', () => {
     const markup = renderToStaticMarkup(
       <ResultContent
         agentTask={{ ...completedTask, structuredFiles: [reportFile] }}
-        embedded={false}
         onRetry={() => {}}
         onContinue={() => {}}
       />,
@@ -362,7 +307,6 @@ describe('ResultContent artifact integration', () => {
             verificationState: 'not_applicable',
           }],
         }}
-        embedded={false}
         onRetry={() => {}}
         onContinue={() => {}}
       />,
@@ -394,7 +338,6 @@ describe('ResultContent retry model selector', () => {
       root.render(
         <ResultContent
           agentTask={{ ...failedTask, originalModelId: 'gpt-5-mini' }}
-          embedded={false}
           onRetry={() => {}}
           onContinue={() => {}}
         />,
@@ -418,7 +361,6 @@ describe('ResultContent retry model selector', () => {
       root.render(
         <ResultContent
           agentTask={{ ...failedTask, originalModelId: 'gpt-5-mini' }}
-          embedded={false}
           onRetry={onRetry}
           onContinue={() => {}}
         />,

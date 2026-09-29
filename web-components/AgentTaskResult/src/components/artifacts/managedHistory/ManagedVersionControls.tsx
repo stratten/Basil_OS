@@ -60,7 +60,7 @@ export function ManagedVersionControls({ state, canRestore, runs, onSelect, onRe
           disabled={state.restoreStatus === 'restoring'}
           ariaLabel="Version"
           onValueChange={onSelect}
-          options={state.versions.map((version, index) => ({
+          options={state.versions.map((_version, index) => ({
             value: index,
             label: managedVersionLabel(state.versions, index, runs),
           }))}

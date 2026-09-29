@@ -73,7 +73,7 @@ echo "🎨 Staged logo: $LOGO_DEST (from $LOGO_SOURCE)"
 # so renaming either side requires renaming the other.
 #
 # Sources fall into three buckets:
-#   - OnboardingWebComponents/public/images/home/* -- capability screenshots
+#   - SetupAssistantWebComponents/setup-visual-sources/* -- capability screenshots
 #   - Resources/{Dill,Paprika,StatusBar}*  -- agent + status-bar icons
 #
 # The named-status status-bar shots (idle, recording) are staged; the
@@ -81,7 +81,7 @@ echo "🎨 Staged logo: $LOGO_DEST (from $LOGO_SOURCE)"
 # don't have semantic mapping for the T/M/B axes. Add explicit entries
 # here when those mappings are known.
 SETUP_VISUALS_DEST="${WEB_DIR}/public/images/setup"
-SETUP_VISUAL_SOURCE_IMAGES="${PROJECT_ROOT}/web-components/OnboardingWebComponents/public/images/home"
+SETUP_VISUAL_SOURCE_IMAGES="${PROJECT_ROOT}/web-components/SetupAssistantWebComponents/setup-visual-sources"
 RESOURCES_ROOT="${PROJECT_ROOT}/client/Sources/Resources"
 
 mkdir -p "$SETUP_VISUALS_DEST"

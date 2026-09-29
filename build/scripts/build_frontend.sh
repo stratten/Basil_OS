@@ -105,8 +105,6 @@ ASSISTANT_SESSION_ASSETS_DEST="$CLIENT_SRC_DIR/Sources/Resources/AssistantSessio
 TRANSCRIPTION_WIDGET_ASSETS_DEST="$CLIENT_SRC_DIR/Sources/Resources/TranscriptionWidgetWebAssets"
 AGENT_TASK_CAPTURE_ASSETS_DEST="$CLIENT_SRC_DIR/Sources/Resources/AgentTaskCaptureInputWebAssets"
 CANONICAL_WEB_BUILD="$ROOT_DIR/scripts/build-agent-task-assets.sh"
-ONBOARDING_ASSETS_DEST="$CLIENT_SRC_DIR/Sources/Resources/OnboardingWebAssets"
-CANONICAL_ONBOARDING_BUILD="$ROOT_DIR/scripts/build-onboarding-assets.sh"
 SETUP_ASSISTANT_ASSETS_DEST="$CLIENT_SRC_DIR/Sources/Resources/SetupAssistantWebAssets"
 CANONICAL_SETUP_ASSISTANT_BUILD="$ROOT_DIR/scripts/build-setup-assistant-assets.sh"
 PROFILE_EDITOR_ASSETS_DEST="$CLIENT_SRC_DIR/Sources/Resources/ProfileMemorySkillsEditorWebAssets"
@@ -227,25 +225,6 @@ ls -la "$AMBIENT_SUGGESTIONS_ASSETS_DEST/assets" | sed 's/^/   AmbientPanel: /'
 ls -la "$MEETING_ASSISTANT_ASSETS_DEST/assets" | sed 's/^/   MeetingAssistant: /'
 ls -la "$ASSISTANT_SESSION_ASSETS_DEST/assets" | sed 's/^/   AssistantSession: /'
 ls -la "$AGENT_TASK_CAPTURE_ASSETS_DEST/assets" | sed 's/^/   AgentTaskCapture: /'
-
-log "🌐 Building Onboarding WKWebView bundle (via canonical builder)..."
-if [ ! -f "$CANONICAL_ONBOARDING_BUILD" ]; then
-    log "❌ ERROR: Canonical onboarding asset builder not found at $CANONICAL_ONBOARDING_BUILD"
-    log "   Refusing to build the .app with a potentially stale OnboardingWebAssets bundle."
-    exit 1
-fi
-if ! bash "$CANONICAL_ONBOARDING_BUILD"; then
-    log "❌ ERROR: Onboarding WKWebView bundle build failed."
-    log "   Staged bundle at $ONBOARDING_ASSETS_DEST may be stale or inconsistent."
-    log "   Aborting before this script packages a bad bundle into the .app."
-    exit 1
-fi
-if [ ! -d "$ONBOARDING_ASSETS_DEST" ] || [ -z "$(ls -A "$ONBOARDING_ASSETS_DEST" 2>/dev/null)" ]; then
-    log "❌ ERROR: Onboarding asset build reported success but $ONBOARDING_ASSETS_DEST is empty/missing."
-    exit 1
-fi
-log "✅ Onboarding WKWebView bundle built and staged. Contents:"
-ls -la "$ONBOARDING_ASSETS_DEST" | sed 's/^/   Onboarding:    /'
 
 log "🌐 Building Setup Assistant WKWebView bundle (via canonical builder)..."
 if [ ! -f "$CANONICAL_SETUP_ASSISTANT_BUILD" ]; then

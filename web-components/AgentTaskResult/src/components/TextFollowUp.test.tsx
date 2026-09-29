@@ -25,7 +25,7 @@ const mocks = vi.hoisted(() => ({
   setSelectedModelId: vi.fn(),
   setReferencePaths: vi.fn(),
   filesPickedHandler: null as ((paths: string[]) => void) | null,
-  registerFilesPickedHandler: vi.fn(() => () => {}),
+  registerFilesPickedHandler: vi.fn<(handler: (paths: string[]) => void) => () => void>(() => () => {}),
   pickFiles: vi.fn(),
 }));
 

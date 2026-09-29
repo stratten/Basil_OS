@@ -39,6 +39,83 @@
   align-self: center;
 }
 
+.orientation-steps {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  justify-content: center;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.orientation-step {
+  align-items: center;
+  color: var(--text-secondary);
+  display: inline-flex;
+  font-size: var(--font-size-status-small);
+  gap: 7px;
+}
+
+.orientation-step + .orientation-step::before {
+  background: color-mix(in srgb, var(--primary) 28%, var(--separator-color));
+  border-radius: 999px;
+  content: '';
+  height: 1px;
+  margin-right: 3px;
+  width: 18px;
+}
+
+.orientation-step.is-done,
+.orientation-step.is-active {
+  color: var(--text-primary);
+}
+
+.orientation-step.is-active .orientation-step-label {
+  font-family: var(--font-family-medium);
+}
+
+.orientation-step-marker {
+  border: 1.5px solid color-mix(in srgb, var(--text-secondary) 70%, transparent);
+  border-radius: 999px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  height: 14px;
+  position: relative;
+  width: 14px;
+}
+
+.orientation-step.is-active .orientation-step-marker {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.orientation-step.is-active .orientation-step-marker::after {
+  background: var(--primary);
+  border-radius: 999px;
+  content: '';
+  inset: 2.5px;
+  position: absolute;
+}
+
+.orientation-step.is-done .orientation-step-marker {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.orientation-step.is-done .orientation-step-marker::after {
+  border-bottom: 1.5px solid white;
+  border-right: 1.5px solid white;
+  content: '';
+  height: 6px;
+  left: 3.5px;
+  position: absolute;
+  top: 1px;
+  transform: rotate(45deg);
+  width: 3px;
+}
+
 .discovery-ready-note {
   margin: 0;
   max-width: 560px;

@@ -3,6 +3,13 @@ import { describe, expect, it, vi } from 'vitest';
 import { initialAssistantSessionState } from '../state/assistantSessionReducer';
 import { AssistantSessionApp } from './AssistantSessionApp';
 
+const {
+  revision: _revision,
+  hasSnapshot: _hasSnapshot,
+  theme: _theme,
+  ...basePayload
+} = initialAssistantSessionState;
+
 const renderCounts = vi.hoisted(() => new Map<string, number>());
 
 vi.mock('../components/RecordingState', () => ({
@@ -42,8 +49,7 @@ describe('AssistantSessionApp meter isolation', () => {
         type: 'snapshot',
         protocolVersion: 1,
         revision: 1,
-        ...initialAssistantSessionState,
-        hasSnapshot: true,
+        ...basePayload,
         inputMode: 'type',
         ocrText: 'Captured context',
         canSubmitTypedInstruction: true,
@@ -57,8 +63,7 @@ describe('AssistantSessionApp meter isolation', () => {
         type: 'snapshot',
         protocolVersion: 1,
         revision: 2,
-        ...initialAssistantSessionState,
-        hasSnapshot: true,
+        ...basePayload,
         inputMode: 'type',
         assistantSessionStatus: 'running',
         inputCommitted: false,

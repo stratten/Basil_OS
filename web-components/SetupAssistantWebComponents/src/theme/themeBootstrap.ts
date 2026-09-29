@@ -6,6 +6,19 @@ import type { FontConfig, ThemeConfig } from '@shared/webTheme'
 export type { FontConfig, ThemeConfig }
 export { applyHostFonts, applyHostTheme }
 
+export interface SetupAssistantHostConfig {
+  apiBaseUrl?: string
+  theme?: ThemeConfig
+  fonts?: FontConfig
+  isReturningUserCheck?: boolean
+}
+
+declare global {
+  interface Window {
+    basilSetupAssistantConfig?: SetupAssistantHostConfig
+  }
+}
+
 interface SetupAssistantThemeChangedDetail {
   theme?: ThemeConfig
   fonts?: FontConfig

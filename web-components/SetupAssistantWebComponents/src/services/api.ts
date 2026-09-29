@@ -17,19 +17,8 @@ import type {
   SetupAgentOutput,
   SetupWrapUpProposal,
 } from '@/types'
-import type { FontConfig, ThemeConfig } from '@/theme/themeBootstrap'
 
 export type SetupAssistantSkipRequest = SetupAssistantCompletionRequest
-
-declare global {
-  interface Window {
-    basilSetupAssistantConfig?: {
-      apiBaseUrl?: string
-      theme?: ThemeConfig
-      fonts?: FontConfig
-    }
-  }
-}
 
 const API_BASE = window.basilSetupAssistantConfig?.apiBaseUrl ?? ''
 const SETUP_SERVICE_UNAVAILABLE_MESSAGE = 'Basil could not reach the setup service. Please try again once setup services are running.'

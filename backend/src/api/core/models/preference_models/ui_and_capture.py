@@ -4,10 +4,10 @@ from typing import List, Literal, Optional, Tuple
 
 from pydantic import BaseModel, Field, model_validator
 
-# Processing-bubble colour defaults are sourced from a single Swift literal
+# Processing-bubble color defaults are sourced from a single Swift literal
 # in client/Sources/Support/AestheticSystem.swift. The canonical asset
-# builders (scripts/build-agent-task-assets.sh and scripts/build-onboarding-assets.sh)
-# regenerate `generated_processing_colors.py` from that Swift source as their
+# builder (scripts/build-agent-task-assets.sh)
+# regenerates `generated_processing_colors.py` from that Swift source as its
 # STEP 0 so this import always reflects the current Royal Purple values
 # without any manual edit on the Python side.
 from ..generated_processing_colors import (
@@ -332,7 +332,7 @@ class UIPreferences(BaseModel):
     # "thinking" bubbles and any web-bridged processing bubble. Defaults are
     # sourced from the generated Royal Purple constants above (currently
     # #7C3AED base / #DDD6FE accent), chosen to remain distinct from Basil's
-    # idle blue and from success/active green. To change the colour, edit
+    # idle blue and from success/active green. To change the color, edit
     # the Swift literals in AestheticSystem.swift and re-run the canonical
     # asset builders -- never edit these defaults directly.
     processing_color_red: float = Field(default=DEFAULT_PROCESSING_BASE[0], description="Processing bubble base red component (0.0-1.0)")

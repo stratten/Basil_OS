@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:agent-store": "vitest run src/store/agentStore/*.test.ts src/app/*.test.ts"
+    "test:agent-store": "vitest run src/store/agentStore/*.test.ts src/app/*.test.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "highlight.js": "^11.11.0",

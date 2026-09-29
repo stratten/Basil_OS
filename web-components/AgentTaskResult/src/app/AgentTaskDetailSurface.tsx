@@ -46,7 +46,6 @@ interface Props {
   hasNewerDetail: boolean;
   textFollowUpMode: boolean;
   isProcessing: boolean;
-  embedded: boolean;
   captureState: CaptureStateMessage | null;
   onRetry: (modelId?: string) => void;
   onContinue: () => void;
@@ -75,7 +74,6 @@ export function AgentTaskDetailSurface({
   hasNewerDetail,
   textFollowUpMode,
   isProcessing,
-  embedded,
   captureState,
   onRetry,
   onContinue,
@@ -375,7 +373,6 @@ export function AgentTaskDetailSurface({
       <div className="content-area">
         <ResultContent
           agentTask={displaySource}
-          embedded={embedded}
           onRetry={onRetry}
           onContinue={onContinue}
           selectedDetailId={selectedDetailId}

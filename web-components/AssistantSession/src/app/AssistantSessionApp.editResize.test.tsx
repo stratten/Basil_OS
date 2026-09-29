@@ -3,6 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { initialAssistantSessionState } from '../state/assistantSessionReducer';
 import { AssistantSessionApp } from './AssistantSessionApp';
 
+const {
+  revision: _revision,
+  hasSnapshot: _hasSnapshot,
+  theme: _theme,
+  ...basePayload
+} = initialAssistantSessionState;
+
 describe('AssistantSessionApp edit-mode sizing', () => {
   const postMessage = vi.fn();
 
@@ -36,8 +43,7 @@ describe('AssistantSessionApp edit-mode sizing', () => {
         type: 'snapshot',
         protocolVersion: 1,
         revision: 1,
-        ...initialAssistantSessionState,
-        hasSnapshot: true,
+        ...basePayload,
         assistantSessionStatus: 'completed',
         assistantOutput: 'Long output',
         editableContentSeed: 'Long output',
@@ -49,8 +55,7 @@ describe('AssistantSessionApp edit-mode sizing', () => {
         type: 'snapshot',
         protocolVersion: 1,
         revision: 2,
-        ...initialAssistantSessionState,
-        hasSnapshot: true,
+        ...basePayload,
         assistantSessionStatus: 'completed',
         assistantOutput: 'Long output',
         editableContentSeed: 'Long output',

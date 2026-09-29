@@ -8,6 +8,8 @@ import { useStickToBottom } from '@/components/motion/useStickToBottom'
 import type { SetupProgressNarration } from '@/state/setupAssistantStore'
 import type { SetupOrientationObservation } from '@/types'
 
+import { deriveOrientationProgress } from './orientationProgressSteps'
+
 interface Props {
   observations: SetupOrientationObservation[]
   orientationReady: boolean
@@ -15,40 +17,6 @@ interface Props {
   isAgentStreaming: boolean
   latestProgressNarration: SetupProgressNarration | null
   onReadyForConversation: () => void
-}
-
-const DISCOVERY_HINT_LINES = [
-  'Taking a look at the apps you have open and installed.',
-  'Reading what I already know about how you work.',
-  'Checking what tools are wired up and what is still untouched.',
-  'Looking at how you already use your machine day to day.',
-  'Comparing what is open right now with what you usually run.',
-  'Skimming recent activity to see how your day shapes up.',
-]
-
-const REASONING_HINT_LINES = [
-  'Forming a first picture of what could be most useful to you.',
-  'Looking for one or two things that would help right away.',
-  'Thinking through what is worth bringing up first.',
-  'Weighing which capabilities matter most given what I see.',
-  'Sketching where I would start if you wanted to dive in.',
-]
-
-const NARRATION_FRESHNESS_MS = 6000
-
-function useRotatingHint(lines: string[], intervalMs = 2200, active = true) {
-  const [index, setIndex] = useState(0)
-
-  useEffect(() => {
-    if (!active || lines.length <= 1) return undefined
-    if (prefersReducedMotion()) return undefined
-    const timer = window.setInterval(() => {
-      setIndex(current => (current + 1) % lines.length)
-    }, intervalMs)
-    return () => window.clearInterval(timer)
-  }, [active, intervalMs, lines.length])
-
-  return lines[index] ?? lines[0] ?? ''
 }
 
 export function OrientationInterstitial({
@@ -63,9 +31,11 @@ export function OrientationInterstitial({
   const visibleObservations = observations.slice(0, visibleObservationCount)
   const scrollRegionRef = useRef<HTMLDivElement>(null)
   const observationListRef = useRef<HTMLDivElement>(null)
-  // Bumps once when the latest narration crosses the freshness boundary so
-  // statusSubline re-evaluates and falls back to the canned hint.
-  const [, setNarrationStaleTick] = useState(0)
+  const [firstObservationAt, setFirstObservationAt] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (observations.length > 0 && firstObservationAt === null) setFirstObservationAt(Date.now())
+  }, [observations.length, firstObservationAt])
 
   useStickToBottom(scrollRegionRef, observationListRef)
 
@@ -77,8 +47,14 @@ export function OrientationInterstitial({
   }, [isDiscoveryFetching, orientationReady, visibleObservationCount, observations.length])
 
   const canContinue = phase === 'ready'
-  const discoveryHint = useRotatingHint(DISCOVERY_HINT_LINES, 3000, phase === 'discovery')
-  const reasoningHint = useRotatingHint(REASONING_HINT_LINES, 3200, phase === 'reasoning')
+  const progress = deriveOrientationProgress({
+    isDiscoveryFetching,
+    isAgentStreaming,
+    isReady: canContinue,
+    observationCount: observations.length,
+    latestProgressNarration,
+    firstObservationAt,
+  })
 
   useEffect(() => {
     if (observations.length === 0) {
@@ -107,35 +83,6 @@ export function OrientationInterstitial({
     : phase === 'reasoning'
       ? 'Putting it together now.'
       : 'I\'ve got a first read on your setup.'
-
-  // When a narration arrives, schedule a single re-render at the moment it
-  // expires so the subline falls back to the canned hint without leaving a
-  // stale model line on screen.
-  useEffect(() => {
-    if (!latestProgressNarration) return undefined
-    const elapsed = Date.now() - latestProgressNarration.at
-    const remaining = NARRATION_FRESHNESS_MS - elapsed
-    if (remaining <= 0) return undefined
-    const timer = window.setTimeout(() => {
-      setNarrationStaleTick(tick => tick + 1)
-    }, remaining + 16)
-    return () => window.clearTimeout(timer)
-  }, [latestProgressNarration])
-
-  const freshNarration = useMemo(() => {
-    if (!latestProgressNarration) return null
-    if (Date.now() - latestProgressNarration.at > NARRATION_FRESHNESS_MS) return null
-    return latestProgressNarration.message
-  }, [latestProgressNarration])
-
-  let statusSubline: string
-  if (freshNarration) {
-    statusSubline = freshNarration
-  } else if (phase === 'discovery') {
-    statusSubline = discoveryHint
-  } else {
-    statusSubline = isAgentStreaming ? reasoningHint : 'Reading what landed and pulling the picture together.'
-  }
 
   return (
     <section className="phase-section orientation-section">
@@ -166,8 +113,21 @@ export function OrientationInterstitial({
       </div>
 
       <div className="orientation-footer">
-        {phase !== 'ready' ? (
-          <SetupWorkingIndicator label={statusSubline} />
+        <ol className="orientation-steps" aria-label="Orientation progress">
+          {progress.steps.map(step => (
+            <li
+              key={step.id}
+              className={`orientation-step is-${step.state}`}
+              aria-current={step.state === 'active' ? 'step' : undefined}
+              aria-label={`${step.label}: ${step.state === 'done' ? 'done' : step.state === 'active' ? 'in progress' : 'not started'}`}
+            >
+              <span className="orientation-step-marker" aria-hidden="true" />
+              <span className="orientation-step-label">{step.label}</span>
+            </li>
+          ))}
+        </ol>
+        {progress.statusLine ? (
+          <SetupWorkingIndicator label={progress.statusLine} quiet />
         ) : (
           <p className="quiet-note discovery-ready-note setup-motion-enter">
             That's the picture I'm starting with. When you're ready, let's keep going. I'll talk

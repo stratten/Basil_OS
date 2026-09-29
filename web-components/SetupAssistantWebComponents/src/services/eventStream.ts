@@ -1,15 +1,4 @@
 import type { SetupAgentEvent, SetupAgentRequest } from '@/types'
-import type { FontConfig, ThemeConfig } from '@/theme/themeBootstrap'
-
-declare global {
-  interface Window {
-    basilSetupAssistantConfig?: {
-      apiBaseUrl?: string
-      theme?: ThemeConfig
-      fonts?: FontConfig
-    }
-  }
-}
 
 const API_BASE = window.basilSetupAssistantConfig?.apiBaseUrl ?? ''
 

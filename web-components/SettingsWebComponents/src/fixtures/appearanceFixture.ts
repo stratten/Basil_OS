@@ -13,6 +13,7 @@ export const APPEARANCE_FIXTURE_SETTINGS: Readonly<AppearanceSettings> = Object.
   textColorRed: 0.0,
   textColorGreen: 0.0,
   textColorBlue: 0.0,
+  surfaceFinish: 'flat',
   processingColorRed: 0.486,
   processingColorGreen: 0.227,
   processingColorBlue: 0.929,

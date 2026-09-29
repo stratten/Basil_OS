@@ -9,11 +9,11 @@ import {
 
 describe('Meeting Assistant host appearance contract', () => {
   it('forwards the full theme contract to the shared applier', () => {
-    assertAppliesThemeTokens(applyMeetingHostTheme, FULL_THEME_TOKENS);
+    assertAppliesThemeTokens((theme) => applyMeetingHostTheme({ ...theme }), FULL_THEME_TOKENS);
   });
 
   it('forwards the full font contract to the shared applier', () => {
-    assertAppliesFontTokens(applyMeetingHostFonts);
+    assertAppliesFontTokens((fonts) => applyMeetingHostFonts({ ...fonts }));
   });
 
   it('tolerates a null theme/fonts payload without throwing', () => {

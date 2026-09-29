@@ -23,7 +23,6 @@ import PresenceRegion from './PresenceRegion';
 
 interface Props {
   agentTask: DisplayableAgentTask;
-  embedded: boolean;
   onRetry: (modelId?: string) => void;
   onContinue: () => void;
   selectedDetailId?: string | null;
@@ -38,7 +37,6 @@ type ResultActionMessage = {
 
 export default function ResultContent({
   agentTask,
-  embedded,
   onRetry,
   onContinue,
   selectedDetailId,

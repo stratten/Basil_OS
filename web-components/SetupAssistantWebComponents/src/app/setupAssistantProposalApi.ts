@@ -3,7 +3,6 @@ import type {
   SetupAppearanceChangeSummary,
   SetupToolApprovalState,
 } from '@/types'
-import type { FontConfig, ThemeConfig } from '@/theme/themeBootstrap'
 
 import { buildAppearanceChangeSummary } from './appearanceChangeSummary'
 
@@ -11,16 +10,6 @@ import { buildAppearanceChangeSummary } from './appearanceChangeSummary'
 // Lives outside the component so the proposal-action hook can stay focused
 // on dispatching state transitions; the network layer and the
 // failure-message extraction are mechanical and worth isolating.
-
-declare global {
-  interface Window {
-    basilSetupAssistantConfig?: {
-      apiBaseUrl?: string
-      theme?: ThemeConfig
-      fonts?: FontConfig
-    }
-  }
-}
 
 export const API_BASE = window.basilSetupAssistantConfig?.apiBaseUrl ?? ''
 

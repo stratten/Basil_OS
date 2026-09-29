@@ -122,7 +122,7 @@ export function ReasoningDefaultsSettingsApp() {
     const unsubscribe = onReasoningDefaultsEvent((event) => {
       debugLog(`event received: ${event.type}`, event)
       if (event.type === 'init' || event.type === 'snapshot') {
-        debugLog(`applying ${event.type} -> agentTaskDefaultModality=${event.settings.agentTaskDefaultModality}, assistantSessionDefaultModality=${event.settings.assistantSessionDefaultModality}`)
+        debugLog(`applying ${event.type} -> agentTaskDefaultModality=${event.settings?.agentTaskDefaultModality}, assistantSessionDefaultModality=${event.settings?.assistantSessionDefaultModality}`)
         setSettings(event.settings)
         setLoadError(null)
         return
