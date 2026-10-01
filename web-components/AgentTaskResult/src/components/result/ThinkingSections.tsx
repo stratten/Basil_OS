@@ -7,10 +7,12 @@ import { shouldAutoCollapseThinking } from './thinkingPresentation';
 export function ThinkingSegments({
   segments,
   isLive,
+  isRunActive,
   collapseForResponse,
 }: {
   segments: ThinkingSegment[];
   isLive: boolean;
+  isRunActive?: boolean;
   collapseForResponse: boolean;
 }) {
   // A local model can loop through many reasoning iterations, each arriving
@@ -18,12 +20,13 @@ export function ThinkingSegments({
   // pill dominates the main content area once there are more than a
   // handful. Only the latest segment (the one that can still be live) gets
   // its own standalone pill; every earlier segment collapses into a single
-  // "N earlier reasoning steps" group, reusing the same ThinkingPill for
+  // "N earlier reasoning passes" group, reusing the same ThinkingPill for
   // each item once expanded so nothing about an individual pill's own
   // rendering or per-item expand/collapse memory (keyed on seg.iteration)
   // changes. With one segment total -- the common case for tasks that
   // don't loop much -- there is no "earlier" group and this is identical
-  // to before.
+  // to before. Once the run is no longer active, the latest step has no
+  // special standing, so every step folds into one "N reasoning passes" group.
   if (segments.length <= 1) {
     return (
       <div className="thinking-segments">
@@ -44,13 +47,27 @@ export function ThinkingSegments({
     );
   }
 
+  if (!(isRunActive ?? isLive)) {
+    return (
+      <div className="thinking-segments">
+        <ThinkingHistoryGroup
+          segments={segments}
+          title={`${segments.length} reasoning passes`}
+        />
+      </div>
+    );
+  }
+
   const earlierSegments = segments.slice(0, -1);
   const latestSegment = segments[segments.length - 1];
   const latestIsLive = isLive && !latestSegment.isComplete;
 
   return (
     <div className="thinking-segments">
-      <ThinkingHistoryGroup segments={earlierSegments} />
+      <ThinkingHistoryGroup
+        segments={earlierSegments}
+        title={`${earlierSegments.length} earlier reasoning ${earlierSegments.length === 1 ? 'pass' : 'passes'}`}
+      />
       <ThinkingPill
         key={latestSegment.iteration}
         segment={latestSegment}
@@ -63,7 +80,7 @@ export function ThinkingSegments({
   );
 }
 
-function ThinkingHistoryGroup({ segments }: { segments: ThinkingSegment[] }) {
+function ThinkingHistoryGroup({ segments, title }: { segments: ThinkingSegment[]; title: string }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -77,7 +94,7 @@ function ThinkingHistoryGroup({ segments }: { segments: ThinkingSegment[] }) {
             fontFamily: 'var(--font-family-medium)', fontSize: 'var(--font-size-status-small)',
             color: 'var(--text-tertiary)',
           }}>
-            {segments.length} earlier reasoning step{segments.length === 1 ? '' : 's'}
+            {title}
           </span>
         </div>
         <ExecutionDisclosureChevron expanded={expanded} />

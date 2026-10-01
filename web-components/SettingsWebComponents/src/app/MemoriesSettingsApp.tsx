@@ -43,7 +43,7 @@ function progressLine(progress: MemoriesNarrativeProgress): string {
   }
   if (progress.failed > 0) parts.push(`${progress.failed} failed`)
   parts.push(`${progress.remaining} remaining`)
-  if (progress.cancelling) {
+  if (progress.canceling) {
     parts.push(progress.processingStrategy === 'api_parallel' ? 'stopping after items in progress' : 'stopping after this item')
   } else if (progress.etaSeconds && progress.etaSeconds > 0) {
     const minutes = Math.ceil(progress.etaSeconds / 60)
@@ -71,7 +71,7 @@ export function MemoriesSettingsApp() {
   const [isRunningCarding, setIsRunningCarding] = useState(false)
   const [isRunningNarrative, setIsRunningNarrative] = useState(false)
   const [isRetryingFailed, setIsRetryingFailed] = useState(false)
-  const [isCancelling, setIsCancelling] = useState(false)
+  const [isCanceling, setIsCanceling] = useState(false)
   const [isLoadingStats, setIsLoadingStats] = useState(false)
   const [completedNarrativeProgress, setCompletedNarrativeProgress] = useState<MemoriesNarrativeProgress | null>(null)
   const [collectionCompletionMessage, setCollectionCompletionMessage] = useState<string | null>(null)
@@ -153,7 +153,7 @@ export function MemoriesSettingsApp() {
           setIsRetryingFailed(false)
           if (event.message) showStatus(event.message)
         } else if (event.requestId === ids.cancel) {
-          setIsCancelling(false)
+          setIsCanceling(false)
           if (event.message) showStatus(event.message)
         } else if (event.requestId === ids.refresh) {
           setIsLoadingStats(false)
@@ -214,8 +214,8 @@ export function MemoriesSettingsApp() {
   }
 
   function handleCancel() {
-    if (isCancelling) return
-    setIsCancelling(true)
+    if (isCanceling) return
+    setIsCanceling(true)
     requestIdsRef.current.cancel = requestCancelSummarize()
   }
 
@@ -411,7 +411,7 @@ export function MemoriesSettingsApp() {
 
             {completedNarrativeProgress && (
               <p className="memories-summary-completion" role="status">
-                {completedNarrativeProgress.cancelling
+                {completedNarrativeProgress.canceling
                   ? `Summarization stopped after ${completedNarrativeProgress.finalized} finalized.`
                   : completedNarrativeProgress.failed > 0
                     ? `Summary pass finished: ${completedNarrativeProgress.finalized} finalized and ${completedNarrativeProgress.failed} need attention.`
@@ -424,8 +424,8 @@ export function MemoriesSettingsApp() {
                 <progress value={narrativeProgress.total > 0 ? Math.min(narrativeProgress.processed, narrativeProgress.total) : undefined} max={narrativeProgress.total > 0 ? narrativeProgress.total : undefined} />
                 <p className="memories-hint">{progressLine(narrativeProgress)}</p>
                 {narrativeProgress.active && (
-                  <button type="button" className="secondary-button memories-cancel-button" disabled={isCancelling || Boolean(narrativeProgress.cancelling)} onClick={handleCancel}>
-                    {isCancelling ? 'Stopping…' : 'Cancel'}
+                  <button type="button" className="secondary-button memories-cancel-button" disabled={isCanceling || Boolean(narrativeProgress.canceling)} onClick={handleCancel}>
+                    {isCanceling ? 'Stopping…' : 'Cancel'}
                   </button>
                 )}
               </div>

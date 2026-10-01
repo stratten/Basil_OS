@@ -74,12 +74,14 @@ final class AssistantSessionViewModel: ObservableObject {
     @Published var iterationCount: Int = 0
     @Published var showRefinementIndicator: Bool = false
     @Published var refinementPrompt: String = "Refine your request..."
+    /// Incremented when native code asks the web surface to open the typed refinement editor (e.g. the history item's typed Refine). The web surface opens the editor once per new value.
+    @Published var typedRefinementRequestSerial: Int = 0
     var initialRequest: String = ""
     var currentRequest: String = ""
 
     // MARK: - Input Modality Properties
     /// Which entry modality the widget is currently presenting. Defaults to
-    /// `.speak` (legacy behaviour); the hotkey handler overrides this from
+    /// `.speak` (legacy behavior); the hotkey handler overrides this from
     /// `assistantSession.default_input_modality` before invoking the flow,
     /// and the widget header toggle flips it at runtime. The `MainFlow`
     /// orchestrator branches on this after OCR/session start: `.speak`
@@ -172,7 +174,7 @@ final class AssistantSessionViewModel: ObservableObject {
     var ocrStreamingTask: Task<Void, Never>? = nil
     var audioUploadTask: Task<Void, Never>? = nil
     var recordingMonitorTask: Task<Void, Never>? = nil
-    var isCancelled: Bool = false
+    var isCanceled: Bool = false
 
     // MARK: - Status Enum
     enum Status: String {

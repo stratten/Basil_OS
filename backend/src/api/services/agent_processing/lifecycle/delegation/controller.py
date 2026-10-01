@@ -46,8 +46,8 @@ class DelegatedAgentController:
     ) -> dict[str, Any]:
         """Record that an ACP turn is waiting on the provider; do not change generic status."""
 
-        if delegated_agent_run["status"] in {"settled", "failed", "cancelled", "cancelling"}:
-            raise RuntimeError("terminal or cancelling delegated child cannot open an interaction")
+        if delegated_agent_run["status"] in {"settled", "failed", "canceled", "canceling"}:
+            raise RuntimeError("terminal or canceling delegated child cannot open an interaction")
         if self._acp_sessions is not None:
             self._acp_sessions.interaction_opened(
                 delegated_agent_run_id=str(delegated_agent_run["id"]), interaction_id=interaction_id
@@ -199,20 +199,20 @@ class DelegatedAgentController:
         """Cancel only the named owned ACP run while it is due for supervision."""
 
         if delegated_agent_run["executor_kind"] != "acp_provider":
-            raise RuntimeError("only an ACP delegated child can be cancelled through this path")
+            raise RuntimeError("only an ACP delegated child can be canceled through this path")
         if delegated_agent_run["status"] != "supervision_due":
             raise RuntimeError("delegated_agent_run must be supervision_due to cancel through supervision")
         if self._acp_sessions is None:
             raise RuntimeError("ACP cancellation is unavailable")
-        cancelling = await self._runs.transition_run(
+        canceling = await self._runs.transition_run(
             delegated_agent_run_id=str(delegated_agent_run["id"]),
             expected_revision=int(delegated_agent_run["revision"]),
-            next_status="cancelling",
+            next_status="canceling",
         )
-        await self._acp_sessions.cancel(delegated_agent_run_id=str(cancelling["id"]))
+        await self._acp_sessions.cancel(delegated_agent_run_id=str(canceling["id"]))
         return await self.settle_run(
-            delegated_agent_run=cancelling,
-            child_status="cancelled",
+            delegated_agent_run=canceling,
+            child_status="canceled",
             summary=summary,
             evidence_state="unavailable",
             receipt_references=(),
@@ -302,10 +302,10 @@ class DelegatedAgentController:
         terminal_status = {
             "completed": "settled",
             "failed": "failed",
-            "cancelled": "cancelled",
+            "canceled": "canceled",
         }.get(child_status)
         if terminal_status is None:
-            raise ValueError("child_status must be completed, failed, or cancelled")
+            raise ValueError("child_status must be completed, failed, or canceled")
         settled = await self._runs.record_outcome(
             delegated_agent_run_id=str(delegated_agent_run["id"]),
             expected_revision=int(delegated_agent_run["revision"]),
@@ -362,17 +362,17 @@ class DelegatedAgentController:
         """Fence generic runs before executor cancellation and retain prior evidence."""
 
         runs = await self._runs.list_active_for_parent(parent_agent_task_id)
-        cancelled: list[dict[str, Any]] = []
+        canceled: list[dict[str, Any]] = []
         for run in runs:
             fenced = await self._runs.transition_run(
                 delegated_agent_run_id=str(run["id"]),
                 expected_revision=int(run["revision"]),
-                next_status="cancelling",
+                next_status="canceling",
             )
             executor = self._executors.get(str(fenced["executor_kind"]))
             if executor is not None:
                 await executor.cancel(delegated_agent_run_id=str(fenced["id"]))
             elif fenced["executor_kind"] == "acp_provider" and self._acp_sessions is not None:
                 await self._acp_sessions.cancel(delegated_agent_run_id=str(fenced["id"]))
-            cancelled.append(fenced)
-        return cancelled
+            canceled.append(fenced)
+        return canceled

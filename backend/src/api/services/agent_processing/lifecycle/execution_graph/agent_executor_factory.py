@@ -35,6 +35,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 
 from .execution_limits import AGENT_EXECUTOR_MAX_EXECUTION_TIME_SECONDS
+from .model_errors import LLM_RETRY_EXCEPTION_TYPES
 from .service_tooling.tool_input_normalization import normalize_structured_tool_args_schemas
 from .service_tooling.tool_call_repetition_guard import wrap_tools_with_repetition_guard
 from .system_prompts import get_agent_system_prompt
@@ -106,6 +107,7 @@ def _build_local_model_heartbeat(
         tokens_generated: int,
         thinking_text: Optional[str] = None,
         thinking_complete: bool = False,
+        phase: Optional[str] = None,
     ) -> None:
         try:
             from api.dependencies import get_model_service
@@ -161,6 +163,10 @@ def _build_local_model_heartbeat(
                 event["message"] = f"Generating response… (~{tokens_generated} tokens)"
                 event["thinking_complete"] = True
                 event["thinking_iteration"] = _iteration[0]
+            elif phase == "waiting_for_model":
+                event["message"] = "Waiting for the local model to finish another request…"
+            elif phase == "processing_prompt":
+                event["message"] = "Local model is reading the prompt…"
             else:
                 event["message"] = f"Local model generating… (~{tokens_generated} tokens)"
 
@@ -169,6 +175,7 @@ def _build_local_model_heartbeat(
             pass
 
     _heartbeat.thinking_segments = _thinking_segments
+    _heartbeat.accepts_phase = True
 
     return _heartbeat
 
@@ -782,6 +789,7 @@ def create_agent_executor(
     preloaded_skill_section: str = "",
     staged_tool_metadata: Optional[Dict[str, Any]] = None,
     max_execution_time_seconds: Optional[float] = None,
+    enforce_native_time_limit: bool = True,
 ) -> AgentExecutor:
     """
     Create an AgentExecutor with the provided LLM and tools.
@@ -840,9 +848,12 @@ def create_agent_executor(
         staged_tool_metadata=staged_tool_metadata,
     )
 
-    # Now wrap with retry for transient failures (network, rate limits, etc.)
-    # This uses exponential backoff automatically
+    # Retry a single failed model call only for typed transient failures (timeouts,
+    # connection errors, 408/429/5xx, local mid-stream stalls). Context overflow,
+    # authentication, and other errors go straight to execute_with_token_retry,
+    # which recovers from each kind differently instead of repeating it unchanged.
     llm_with_retry = llm_with_tools.with_retry(
+        retry_if_exception_type=LLM_RETRY_EXCEPTION_TYPES,
         stop_after_attempt=3,
         wait_exponential_jitter=True
     )
@@ -904,7 +915,12 @@ def create_agent_executor(
         # between-iterations check. Because ``max_iterations=None``, this cap is
         # the only trigger for LangChain's force-stop message, which
         # agent_execution_core relabels as an explicit execution timeout.
-        max_execution_time=max_execution_time_seconds or AGENT_EXECUTOR_MAX_EXECUTION_TIME_SECONDS,
+        # Staged passes disable this native cap and enforce a pause-aware pass budget in execute_with_token_retry instead, so time spent waiting on approvals or command input is not charged to the pass.
+        max_execution_time=(
+            (max_execution_time_seconds or AGENT_EXECUTOR_MAX_EXECUTION_TIME_SECONDS)
+            if enforce_native_time_limit
+            else None
+        ),
         # ``early_stopping_method`` is intentionally left at its default
         # of ``"force"``. We attempted to set it to ``"generate"`` so
         # LangChain would call the LLM one more time on timeout to

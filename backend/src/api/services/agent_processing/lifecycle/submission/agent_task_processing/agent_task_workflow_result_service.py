@@ -22,14 +22,14 @@ class AgentTaskWorkflowResultService:
         websocket_manager: Any = None,
         agent_task_submission_service: Any = None,
         basil_services: Optional[Dict[str, Any]] = None,
-        is_cancelled: Optional[Callable[[str], bool]] = None,
+        is_canceled: Optional[Callable[[str], bool]] = None,
         logger: Optional[logging.Logger] = None,
     ) -> None:
         self.db_service = db_service
         self.websocket_manager = websocket_manager
         self.agent_task_submission_service = agent_task_submission_service
         self.basil_services = basil_services or {}
-        self._is_cancelled = is_cancelled or (lambda _agent_task_id: False)
+        self._is_canceled = is_canceled or (lambda _agent_task_id: False)
         self.logger = logger or logging.getLogger(__name__)
 
     def sanitize_for_json(self, obj: Any) -> Any:
@@ -129,7 +129,7 @@ class AgentTaskWorkflowResultService:
             return await self.finalize_workflow_output(workflow_result, request)
         except asyncio.CancelledError:
             self.logger.info(
-                "🛑 Enhanced multi-step workflow cancelled for %s",
+                "🛑 Enhanced multi-step workflow canceled for %s",
                 getattr(request, "agent_task_id", None),
             )
             raise
@@ -344,10 +344,10 @@ class AgentTaskWorkflowResultService:
             self.logger.error("🚨 Failed to send result message: %s", exc, exc_info=True)
 
     async def broadcast_agent_task_message(self, agent_task_id: Optional[str], message: Dict[str, Any]) -> bool:
-        """Broadcast unless this task has already been cancelled."""
-        if agent_task_id and self._is_cancelled(agent_task_id):
+        """Broadcast unless this task has already been canceled."""
+        if agent_task_id and self._is_canceled(agent_task_id):
             self.logger.info(
-                "🛑 Suppressing %s for cancelled agent_task %s",
+                "🛑 Suppressing %s for canceled agent_task %s",
                 message.get("event_type"),
                 agent_task_id,
             )

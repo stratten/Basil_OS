@@ -17,6 +17,7 @@ type OutgoingReasoningDefaultsMessage =
   | { type: 'requestUpdateAssistantSessionDefaultModality'; requestId: string; modality: AssistantSessionInputMode }
   | { type: 'requestUpdateAssistantSessionPushToTalk'; requestId: string; enabled: boolean }
   | { type: 'requestUpdateAssistantSessionPushToTalkThreshold'; requestId: string; thresholdMs: number }
+  | { type: 'requestUpdateConversationDefaultConversationOnly'; requestId: string; enabled: boolean }
 
 declare global {
   interface Window {
@@ -126,5 +127,11 @@ export function requestUpdateAssistantSessionPushToTalk(enabled: boolean): strin
 export function requestUpdateAssistantSessionPushToTalkThreshold(thresholdMs: number): string {
   const id = requestId('updateAssistantSessionPushToTalkThreshold')
   postMessage({ type: 'requestUpdateAssistantSessionPushToTalkThreshold', requestId: id, thresholdMs })
+  return id
+}
+
+export function requestUpdateConversationDefaultConversationOnly(enabled: boolean): string {
+  const id = requestId('updateConversationDefaultConversationOnly')
+  postMessage({ type: 'requestUpdateConversationDefaultConversationOnly', requestId: id, enabled })
   return id
 }

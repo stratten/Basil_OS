@@ -57,7 +57,7 @@ extension SettingsShellWindowController {
         let alert = Self.makeClearProfileConfirmationAlert()
 
         guard alert.runModal() == .alertSecondButtonReturn else {
-            profileWebView.sendIntentResult(requestId: requestId, status: "cancelled", message: nil)
+            profileWebView.sendIntentResult(requestId: requestId, status: "canceled", message: nil)
             return
         }
 

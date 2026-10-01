@@ -8,7 +8,7 @@ offline retranscription (which has its own guards). The streaming decoder's
 only non-speech defense fires at segment start on Whisper's ``no_speech``
 token, which music does not trigger, so these loops slip through.
 
-This module is the live analogue of the hosted-API
+This module is the live analog of the hosted-API
 ``degeneration_guard`` (which keys on punctuation-only runs): it operates on
 the *decoder output* (committed word tokens), keyed purely on degenerate
 *structure* - a unit repeated far more than humans repeat words, or runs of

@@ -1,52 +1,22 @@
 #!/usr/bin/env python3
-"""Static check preventing undeclared literal structural colors in Basil's web
-components, outside their approved token-definition files.
+"""Static check preventing undeclared literal structural colors in Basil's web components, outside their approved token-definition files.
 
-An "approved token-definition file" is any CSS file literally named
-`theme.css` (matched by the `**/theme.css` glob) -- these are the files whose
-whole job is to declare the real hex/rgba value each `--token-name` custom
-property resolves to, so a literal color there is the definition, not a leak.
+An approved token-definition file is any CSS file named `theme.css`. Those files declare the real value each `--token-name` custom property resolves to, so a literal color there is the definition, not a leak.
 
-For every other `*.css` file under `web-components/*/src/`, this
-script flags any of the following "structural" literal-color patterns:
+For every other `*.css` file under `web-components/*/src/` and `web-components/shared/`, this script flags each declaration whose value contains one of these structural literal colors:
   - `#ffffff` / `#fff` / `#000000` / `#000` (case-insensitive)
   - `rgb(255, 255, 255` / `rgba(255, 255, 255` (any alpha)
   - `rgb(0, 0, 0` / `rgba(0, 0, 0` (any alpha)
 
-Before scanning, this script strips:
-  - every `/* ... */` comment (so a match inside a comment never counts);
-  - the body of every `:root { ... }` block (fallback `var(--x, #fff)`
-    declarations legitimately live there across many files, matching the
-    precedent already established in Packages 4B/5/6's own literal-color
-    audits, which always excluded each file's own `:root` fallback block);
-  - any line whose declaration property is `box-shadow`, `-webkit-box-shadow`,
-    `filter`, or `text-shadow` (pure shadow/blur effects using black/white
-    with alpha are an already-audited, intentionally-preserved Bucket-2
-    "leave alone" category from Packages 5/6, not a structural-surface leak).
+Before scanning, it blanks every `/* ... */` comment and every `:root { ... }` block while keeping their line breaks, so reported line numbers match the file. It skips `box-shadow`, `-webkit-box-shadow`, `filter`, and `text-shadow` declarations, including ones that span several lines.
 
-Every surviving match is compared against a checked-in baseline allowlist at
-`scripts/literal_structural_colors_allowlist.json`, keyed by
-`"<relative/path.css>": ["<line_number>:<stripped_line_text>", ...]`. A match
-already present in the baseline for that exact file+line+text is accepted
-silently (it is already-audited, already-accepted debt from Packages 4B/5/6,
-e.g. the universal `rgba(51, 85, 155, 0.15)` SVG-icon-fill convention, the
-deferred interactive-pseudo-class literal-hue duplicates, and each file's own
-`:root` fallback block that this script's stripping step does not already
-remove). Any match NOT already in the baseline is a new, unreviewed literal
-structural color and fails the check -- this is what makes the check
-regression-preventing rather than merely descriptive: it does not re-flag
-already-accepted debt, but it does catch every newly introduced instance.
+Each accepted exception in `scripts/literal_structural_colors_allowlist.json` is named by its file, selector, property, and value, and carries a reason. Line numbers are reported for convenience but are not part of the name. A declaration whose name is not in the allowlist fails the check; allowlist entries that no longer match anything are reported as stale.
 
 Usage:
-    python3 scripts/check_literal_structural_colors.py            # check mode (default), exit 1 on any new finding
-    python3 scripts/check_literal_structural_colors.py --update-baseline
-        # regenerates the baseline from the CURRENT tree's matches and writes
-        # scripts/literal_structural_colors_allowlist.json. Run this exactly
-        # once, at Package 8 implementation time, immediately after this
-        # script itself is added and before any other Package 8 sub-package
-        # changes a single CSS file, so the generated baseline captures
-        # today's already-audited state -- not a moving target that could
-        # silently swallow a real new leak introduced later in the same pass.
+    python3 scripts/check_literal_structural_colors.py
+        # check mode (default); exit 1 on any declaration missing from the allowlist
+    python3 scripts/check_literal_structural_colors.py --update-baseline --reason "Why these colors are intentional."
+        # rewrites the allowlist from the current tree: keeps matching entries and their reasons, drops stale entries, and adds new declarations with the given reason (required whenever something new would be added)
 """
 from __future__ import annotations
 
@@ -54,11 +24,13 @@ import argparse
 import json
 import re
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WEB_COMPONENTS_ROOT = REPO_ROOT / "web-components"
 BASELINE_PATH = Path(__file__).resolve().parent / "literal_structural_colors_allowlist.json"
+BASELINE_VERSION = 2
 
 LITERAL_COLOR_PATTERN = re.compile(
     r"(#fff(?:fff)?\b|#000(?:000)?\b|rgba?\(\s*255\s*,\s*255\s*,\s*255|rgba?\(\s*0\s*,\s*0\s*,\s*0)",
@@ -66,9 +38,87 @@ LITERAL_COLOR_PATTERN = re.compile(
 )
 ROOT_BLOCK_PATTERN = re.compile(r":root\s*\{[^}]*\}", re.DOTALL)
 BLOCK_COMMENT_PATTERN = re.compile(r"/\*.*?\*/", re.DOTALL)
-SHADOW_PROPERTY_PATTERN = re.compile(
-    r"^\s*(-webkit-)?(box-shadow|filter|text-shadow)\s*:", re.IGNORECASE
-)
+SHADOW_PROPERTIES = frozenset({"box-shadow", "-webkit-box-shadow", "filter", "text-shadow"})
+
+
+@dataclass(frozen=True, order=True)
+class DeclarationName:
+    file: str
+    selector: str
+    property: str
+    value: str
+
+    def label(self) -> str:
+        return f"{self.selector} {{ {self.property}: {self.value} }}"
+
+
+@dataclass(frozen=True)
+class LiteralDeclaration:
+    selector: str
+    property: str
+    value: str
+    line: int
+
+
+def _blank_preserving_lines(match: re.Match[str]) -> str:
+    return "\n" * match.group(0).count("\n")
+
+
+def strip_ignored_regions(content: str) -> str:
+    content = BLOCK_COMMENT_PATTERN.sub(_blank_preserving_lines, content)
+    return ROOT_BLOCK_PATTERN.sub(_blank_preserving_lines, content)
+
+
+def _collapse_whitespace(text: str) -> str:
+    return " ".join(text.split())
+
+
+def iter_literal_declarations(content: str) -> list[LiteralDeclaration]:
+    text = strip_ignored_regions(content)
+    findings: list[LiteralDeclaration] = []
+    selector_stack: list[str] = []
+    buffer: list[str] = []
+    buffer_line = 1
+    line = 1
+    quote: str | None = None
+    paren_depth = 0
+
+    def record(chunk: str) -> None:
+        if not selector_stack or ":" not in chunk:
+            return
+        prop, value = chunk.split(":", 1)
+        prop = prop.strip().lower()
+        value = value.strip()
+        if prop in SHADOW_PROPERTIES or not LITERAL_COLOR_PATTERN.search(value):
+            return
+        findings.append(LiteralDeclaration(" / ".join(selector_stack), prop, value, buffer_line))
+
+    for char in text:
+        if quote is None and paren_depth == 0 and char in "{};":
+            chunk = _collapse_whitespace("".join(buffer))
+            if char == "{":
+                selector_stack.append(chunk)
+            else:
+                record(chunk)
+                if char == "}" and selector_stack:
+                    selector_stack.pop()
+            buffer = []
+        elif buffer or not char.isspace():
+            if not buffer:
+                buffer_line = line
+            buffer.append(char)
+            if quote is not None:
+                if char == quote:
+                    quote = None
+            elif char in "\"'":
+                quote = char
+            elif char == "(":
+                paren_depth += 1
+            elif char == ")":
+                paren_depth = max(0, paren_depth - 1)
+        if char == "\n":
+            line += 1
+    return findings
 
 
 def is_approved_token_definition_file(path: Path) -> bool:
@@ -76,13 +126,7 @@ def is_approved_token_definition_file(path: Path) -> bool:
 
 
 def iter_css_files() -> list[Path]:
-    # `web-components/*/src/**/*.css` covers every per-panel package's
-    # own source tree. `web-components/shared/**/*.css` is a second,
-    # separate glob because the shared module lives directly under `shared/`
-    # with no intervening `src/` segment (confirmed by inspecting its layout:
-    # `basil-window-chrome.css`, `rich-text-followup.css`, etc. sit at
-    # `web-components/shared/*.css`) -- without this second glob the
-    # shared CSS every consumer package imports would be silently unscanned.
+    # Shared CSS lives directly under `web-components/shared/` with no `src/` segment, so it needs its own glob.
     candidates = set(WEB_COMPONENTS_ROOT.glob("*/src/**/*.css"))
     candidates.update(WEB_COMPONENTS_ROOT.glob("shared/**/*.css"))
     return sorted(
@@ -90,101 +134,126 @@ def iter_css_files() -> list[Path]:
     )
 
 
-def strip_ignored_regions(content: str) -> str:
-    content = BLOCK_COMMENT_PATTERN.sub("", content)
-    content = ROOT_BLOCK_PATTERN.sub("", content)
-    return content
-
-
-def find_matches(path: Path) -> list[tuple[int, str]]:
-    original_text = path.read_text(encoding="utf-8")
-    stripped_text = strip_ignored_regions(original_text)
-    stripped_lines = stripped_text.splitlines()
-    findings: list[tuple[int, str]] = []
-    for line_number, line in enumerate(stripped_lines, start=1):
-        if SHADOW_PROPERTY_PATTERN.match(line):
-            continue
-        if LITERAL_COLOR_PATTERN.search(line):
-            findings.append((line_number, line.strip()))
-    return findings
-
-
 def relative_key(path: Path) -> str:
-    return str(path.relative_to(REPO_ROOT))
+    return path.relative_to(REPO_ROOT).as_posix()
 
 
-def load_baseline() -> dict[str, list[str]]:
-    if not BASELINE_PATH.exists():
-        return {}
-    return json.loads(BASELINE_PATH.read_text(encoding="utf-8"))
-
-
-def write_baseline(baseline: dict[str, list[str]]) -> None:
-    BASELINE_PATH.write_text(
-        json.dumps(baseline, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
-
-
-def collect_current_findings() -> dict[str, list[str]]:
-    current: dict[str, list[str]] = {}
+def collect_current_findings() -> dict[DeclarationName, list[int]]:
+    current: dict[DeclarationName, list[int]] = {}
     for css_path in iter_css_files():
         if is_approved_token_definition_file(css_path):
             continue
-        matches = find_matches(css_path)
-        if not matches:
-            continue
-        key = relative_key(css_path)
-        current[key] = [f"{line_number}:{text}" for line_number, text in matches]
+        file_key = relative_key(css_path)
+        for declaration in iter_literal_declarations(css_path.read_text(encoding="utf-8")):
+            name = DeclarationName(file_key, declaration.selector, declaration.property, declaration.value)
+            current.setdefault(name, []).append(declaration.line)
     return current
+
+
+def load_baseline() -> dict[DeclarationName, str] | None:
+    """Return the allowlist, an empty allowlist when the file is missing, or None when it is not version 2."""
+    if not BASELINE_PATH.exists():
+        return {}
+    data = json.loads(BASELINE_PATH.read_text(encoding="utf-8"))
+    if not isinstance(data, dict) or data.get("version") != BASELINE_VERSION:
+        return None
+    baseline: dict[DeclarationName, str] = {}
+    for file_key, entries in data.get("files", {}).items():
+        for entry in entries:
+            name = DeclarationName(file_key, entry["selector"], entry["property"], entry["value"])
+            baseline[name] = entry["reason"]
+    return baseline
+
+
+def write_baseline(baseline: dict[DeclarationName, str]) -> None:
+    files: dict[str, list[dict[str, str]]] = {}
+    for name in sorted(baseline):
+        files.setdefault(name.file, []).append(
+            {
+                "selector": name.selector,
+                "property": name.property,
+                "value": name.value,
+                "reason": baseline[name],
+            }
+        )
+    BASELINE_PATH.write_text(
+        json.dumps({"version": BASELINE_VERSION, "files": files}, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def compare(
+    current: dict[DeclarationName, list[int]], baseline: dict[DeclarationName, str]
+) -> tuple[dict[DeclarationName, list[int]], list[DeclarationName]]:
+    unlisted = {name: lines for name, lines in current.items() if name not in baseline}
+    stale = sorted(name for name in baseline if name not in current)
+    return unlisted, stale
+
+
+def _format_finding(name: DeclarationName, lines: list[int]) -> str:
+    return f"  {name.file}:{', '.join(str(n) for n in lines)}  {name.label()}"
 
 
 def run_check() -> int:
     baseline = load_baseline()
-    current = collect_current_findings()
-    new_findings: dict[str, list[str]] = {}
-    for path_key, entries in current.items():
-        baseline_entries = set(baseline.get(path_key, []))
-        unseen = [entry for entry in entries if entry not in baseline_entries]
-        if unseen:
-            new_findings[path_key] = unseen
-
-    if not new_findings:
+    if baseline is None:
+        print(
+            f"check_literal_structural_colors: {BASELINE_PATH.name} is not a version {BASELINE_VERSION} allowlist. "
+            'Regenerate it with --update-baseline --reason "...".'
+        )
+        return 2
+    unlisted, stale = compare(collect_current_findings(), baseline)
+    for name in stale:
+        print(f"check_literal_structural_colors: stale allowlist entry (no longer in the CSS): {name.file}  {name.label()}")
+    if not unlisted:
         print("check_literal_structural_colors: no new undeclared literal structural colors found.")
         return 0
-
     print("check_literal_structural_colors: found new undeclared literal structural colors:")
-    for path_key, entries in sorted(new_findings.items()):
-        for entry in entries:
-            print(f"  {path_key}:{entry}")
+    for name in sorted(unlisted):
+        print(_format_finding(name, unlisted[name]))
     print(
-        "\nEach line above is either a real regression (replace the literal with the matching "
-        "--token-name custom property) or a genuinely new, intentional fixed-hue exception that "
-        "needs a one-line addition to scripts/literal_structural_colors_allowlist.json explaining why."
+        "\nReplace each literal with the matching --token-name custom property, or, if it is an intentional fixed "
+        f"color, add it to scripts/{BASELINE_PATH.name} with a reason (for example with "
+        '--update-baseline --reason "...").'
     )
     return 1
 
 
-def run_update_baseline() -> int:
+def run_update_baseline(reason: str | None) -> int:
+    baseline = load_baseline() or {}
     current = collect_current_findings()
-    write_baseline(current)
-    total_entries = sum(len(v) for v in current.values())
+    unlisted, stale = compare(current, baseline)
+    new_reason = (reason or "").strip()
+    if unlisted and not new_reason:
+        print("check_literal_structural_colors: --reason is required because these declarations are not yet in the allowlist:")
+        for name in sorted(unlisted):
+            print(_format_finding(name, unlisted[name]))
+        return 2
+    updated = {name: baseline.get(name, new_reason) for name in current}
+    write_baseline(updated)
     print(
-        f"check_literal_structural_colors: wrote baseline with {total_entries} accepted "
-        f"entries across {len(current)} files to {relative_key(BASELINE_PATH)}."
+        f"check_literal_structural_colors: wrote {len(updated)} entries across {len({n.file for n in updated})} files "
+        f"to {BASELINE_PATH.name} ({len(unlisted)} added, {len(stale)} stale removed)."
     )
     return 0
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
         "--update-baseline",
         action="store_true",
-        help="Regenerate the baseline allowlist from the current tree instead of checking against it.",
+        help="Rewrite the allowlist from the current tree instead of checking against it.",
+    )
+    parser.add_argument(
+        "--reason",
+        help="Reason recorded on every declaration --update-baseline adds. Required when anything new would be added.",
     )
     args = parser.parse_args()
+    if args.reason is not None and not args.update_baseline:
+        parser.error("--reason is only valid with --update-baseline")
     if args.update_baseline:
-        return run_update_baseline()
+        return run_update_baseline(args.reason)
     return run_check()
 
 

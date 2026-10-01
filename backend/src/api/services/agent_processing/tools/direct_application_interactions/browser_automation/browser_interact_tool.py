@@ -14,6 +14,11 @@ from pydantic import BaseModel, Field
 from langchain_core.tools import StructuredTool
 
 from api.core.models.reasoning.model_runtime_profile import select_description_for_profile
+from api.core.security.protected_runtime_paths import (
+    PROTECTED_RUNTIME_REFUSAL,
+    log_protected_runtime_refusal,
+    references_protected_runtime_path,
+)
 from api.services.agent_processing.tools.internal_basil_tools.checkpoint_tool import CheckpointRequest
 
 from .browser_interact_descriptions import FULL_DESCRIPTION, SLIM_DESCRIPTION
@@ -468,6 +473,13 @@ async def _browser_interact_impl(
     try:
         action = (action or "").strip()
         selector = selector or ""
+        if action == "navigate" and references_protected_runtime_path(selector):
+            log_protected_runtime_refusal("browser navigation")
+            return json.dumps({
+                "success": False,
+                "action": action,
+                "error": PROTECTED_RUNTIME_REFUSAL,
+            }, ensure_ascii=False)
         if is_background_browser_session(session_mode):
             return json.dumps(
                 background_browser_not_available_result(action=f"interact.{action}", browser=browser),

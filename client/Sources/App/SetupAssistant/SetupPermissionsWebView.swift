@@ -117,7 +117,7 @@ struct SetupPermissionsWebView: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> WKWebView {
-        let configuration = WKWebViewConfiguration()
+        let configuration = BasilWebViewConfigurationFactory.makeConfiguration()
         configuration.preferences.setValue(true, forKey: "developerExtrasEnabled")
         configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
         configuration.setValue(true, forKey: "allowUniversalAccessFromFileURLs")

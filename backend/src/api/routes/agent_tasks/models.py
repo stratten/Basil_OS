@@ -304,7 +304,7 @@ class DelegatedProviderReportCardResponse(BaseModel):
     """Compact, presentation-safe derived status for one delegated provider run."""
 
     delegated_agent_run_id: str
-    run_status: Literal["admitted", "running", "idle", "waiting_user_input", "waiting_permission", "supervision_due", "cancelling", "interrupted", "settled", "failed", "cancelled"]
+    run_status: Literal["admitted", "running", "idle", "waiting_user_input", "waiting_permission", "supervision_due", "canceling", "interrupted", "settled", "failed", "canceled"]
     run_revision: int = Field(ge=0)
     capture_state: Literal["available", "unavailable"]
     evidence_count: int = Field(ge=0)

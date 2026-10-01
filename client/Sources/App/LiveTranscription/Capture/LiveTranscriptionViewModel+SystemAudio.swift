@@ -20,6 +20,10 @@ extension LiveTranscriptionViewModel {
         let meterState = SystemAudioMeterState()
         var systemAudioLevelObserver: AnyCancellable?
         var sentSystemAudioChunkCount: UInt64 = 0
+        /// Set while capture is paused with the system tap stopped; resume writes new segments into this folder.
+        var pausedBackupDirectory: URL?
+        /// The tapped process to restore on resume; nil while paused means global output capture.
+        var pausedProcess: AudioProcess?
         private var lastSelectedProcessId: pid_t?
         private var allowOneMoreUpdate: Bool = false
         
@@ -187,11 +191,21 @@ extension LiveTranscriptionViewModel {
             #endif
             throw error
         }
-        
-        // Create a filename based on the process name and timestamp
+
+        try startProcessTapRecorder(for: processTap, in: recordingsDirectory)
+    }
+
+    /// Returns a backup WAV path in `directory` that does not overwrite an earlier segment of the same recording.
+    nonisolated static func systemAudioBackupFileURL(in directory: URL, baseName: String) -> URL {
         let timestamp = Int(Date.now.timeIntervalSince1970)
-        let filename = "\(processTap.process.name)-\(timestamp).wav"
-        let audioFileURL = recordingsDirectory.appendingPathComponent(filename)
+        let candidate = directory.appendingPathComponent("\(baseName)-\(timestamp).wav")
+        guard FileManager.default.fileExists(atPath: candidate.path) else { return candidate }
+        return directory.appendingPathComponent("\(baseName)-\(timestamp)-\(UUID().uuidString.prefix(8)).wav")
+    }
+
+    /// Starts writing and streaming the selected-process tap into `recordingsDirectory`; the system-audio socket must already be open.
+    func startProcessTapRecorder(for processTap: ProcessTap, in recordingsDirectory: URL) throws {
+        let audioFileURL = Self.systemAudioBackupFileURL(in: recordingsDirectory, baseName: processTap.process.name)
         
         #if DEBUG
         DevLogger.shared.info("Creating system audio recorder with output file: \(audioFileURL.path)", context: "LiveTranscriptionViewModel")
@@ -258,6 +272,7 @@ extension LiveTranscriptionViewModel {
     }
 
     func sendSystemAudioFloatData(_ audioData: Data) {
+        let captureEndElapsed = recordingClock.elapsedSeconds()
         let floatData = audioData.withUnsafeBytes { $0.bindMemory(to: Float32.self) }
         guard floatData.count > 0 else { return }
 
@@ -276,12 +291,15 @@ extension LiveTranscriptionViewModel {
         while offset < int16Data.count {
             let length = min(chunkSize, int16Data.count - offset)
             let chunk = int16Data.subdata(in: offset..<(offset + length))
+            // 16 kHz mono Int16 is 32,000 bytes per second of audio.
+            let chunkStartElapsed = max(0, captureEndElapsed - Double(int16Data.count - offset) / 32000.0)
 
             DispatchQueue.main.async { [weak self] in
                 guard let self = self, self.isRecording else { return }
                 // While a reconnect is in flight the task is nil; skip sending
                 // (the loop effectively pauses) rather than spawning more reconnects.
                 guard !self.systemAudioReconnectInFlight else { return }
+                guard !self.isCapturePaused else { return }
                 guard self.systemAudioStreamTimingReady else { return }
                 guard let systemAudioWebSocketTask = self.systemAudioWebSocketTask else {
                     #if DEBUG
@@ -293,6 +311,9 @@ extension LiveTranscriptionViewModel {
                     return
                 }
 
+                if self.recordingClock.claimMarker(for: .systemAudio, at: chunkStartElapsed) {
+                    systemAudioWebSocketTask.send(.string(LiveTranscriptionViewModel.streamClockMarkerMessage(elapsedSeconds: chunkStartElapsed))) { _ in }
+                }
                 systemAudioWebSocketTask.send(.data(chunk)) { error in
                     if let error {
                         #if DEBUG
@@ -347,8 +368,12 @@ extension LiveTranscriptionViewModel {
             throw error
         }
 
-        let timestamp = Int(Date.now.timeIntervalSince1970)
-        let audioFileURL = recordingsDirectory.appendingPathComponent("SystemAudio-\(timestamp).wav")
+        try startGlobalOutputRecorder(in: recordingsDirectory)
+    }
+
+    /// Creates the global output tap and starts writing and streaming it into `recordingsDirectory`; the system-audio socket must already be open.
+    func startGlobalOutputRecorder(in recordingsDirectory: URL) throws {
+        let audioFileURL = Self.systemAudioBackupFileURL(in: recordingsDirectory, baseName: "SystemAudio")
 
         let tap = SystemOutputTap()
         systemAudioState?.globalOutputTap = tap
@@ -382,6 +407,48 @@ extension LiveTranscriptionViewModel {
         #if DEBUG
         DevLogger.shared.info("Global system audio recorder started successfully at \(audioFileURL.path)", context: "LiveTranscriptionViewModel")
         #endif
+    }
+
+    /// Stops the system-audio tap for a pause. The socket stays open so resuming does not reconnect, and the backup folder is kept so resumed segments land beside the first one.
+    func suspendSystemAudioCapture() {
+        guard let state = systemAudioState else { return }
+        let activeFile = state.processTapRecorder?.fileURL ?? state.globalOutputRecorder?.fileURL
+        guard let activeFile else { return }
+        state.pausedBackupDirectory = activeFile.deletingLastPathComponent()
+        state.pausedProcess = state.processTapRecorder != nil ? state.processTap?.process : nil
+
+        state.processTapRecorder?.stop()
+        state.processTapRecorder = nil
+        // The invalidated process tap stays in state so a socket reconnect during the pause still knows the process name.
+        state.processTap?.invalidate()
+        state.globalOutputRecorder?.stop()
+        state.globalOutputRecorder = nil
+        state.globalOutputTap?.invalidate()
+        state.globalOutputTap = nil
+
+        state.systemAudioLevelObserver?.cancel()
+        state.systemAudioLevelObserver = nil
+        state.systemAudioLevel = 0.0
+        state.meterState.reset()
+        updateSystemAudioLevel(0.0)
+    }
+
+    /// Restarts the system-audio tap stopped by `suspendSystemAudioCapture`, writing a new backup segment into the same folder.
+    func resumeSystemAudioCapture() throws {
+        guard let state = systemAudioState, let directory = state.pausedBackupDirectory else { return }
+        let process = state.pausedProcess
+        state.pausedBackupDirectory = nil
+        state.pausedProcess = nil
+
+        if let process {
+            setupSystemAudioTap(for: process)
+            guard let processTap = state.processTap, processTap.activated else {
+                throw AudioError.engineSetupFailed
+            }
+            try startProcessTapRecorder(for: processTap, in: directory)
+        } else {
+            try startGlobalOutputRecorder(in: directory)
+        }
     }
 
     @MainActor
@@ -450,6 +517,8 @@ extension LiveTranscriptionViewModel {
         }
         systemAudioState?.globalOutputTap?.invalidate()
         systemAudioState?.globalOutputTap = nil
+        systemAudioState?.pausedBackupDirectory = nil
+        systemAudioState?.pausedProcess = nil
         
         // Reset the audio level
         if let state = systemAudioState {

@@ -18,7 +18,7 @@ from .execution_models import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-TERMINAL_AGENT_TASK_STATUSES = {"cancelled", "completed", "failed"}
+TERMINAL_AGENT_TASK_STATUSES = {"canceled", "completed", "failed"}
 
 
 class CancelSessionRequest(BaseModel):
@@ -208,7 +208,7 @@ async def cancel_session(
     Cancel an in-progress agent-task session.
 
     Cancellation is terminal: it preempts active runtime work where possible and
-    persists each active task in the requested chain as `cancelled`. Retained
+    persists each active task in the requested chain as `canceled`. Retained
     checkpoints are never resumed from this route.
 
     Args:
@@ -235,7 +235,7 @@ async def cancel_session(
     try:
         cancellation = await agent_task_submission_service.cancel_agent_task_durably(
             agent_task_id=agent_task_id,
-            reason=reason or "user_cancelled",
+            reason=reason or "user_canceled",
         )
         durable_at = time.perf_counter()
         response_at = time.perf_counter()
@@ -246,7 +246,7 @@ async def cancel_session(
             "🛑 Durable cancellation completed root=%s tasks=%s preemption_ms=%.1f "
             "durable_ms=%.1f cleanup_ms=%.1f total_ms=%.1f",
             cancellation["root_task_id"],
-            cancellation["cancelled_task_ids"],
+            cancellation["canceled_task_ids"],
             (preemption_at - route_started_at) * 1000,
             (durable_at - preemption_at) * 1000,
             (cleanup_at - durable_at) * 1000,
@@ -254,7 +254,7 @@ async def cancel_session(
         )
         return CancelSessionResponse(
             success=True,
-            message="Session cancelled.",
+            message="Session canceled.",
             finalized_via_agent=False,
             agent_task_id=cancellation["root_task_id"],
         )

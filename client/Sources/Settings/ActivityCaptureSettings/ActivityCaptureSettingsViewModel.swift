@@ -31,7 +31,7 @@ final class ActivityCaptureSettingsViewModel: ObservableObject {
     @Published var lastPolicyDecisionTime: String?
     @Published var processingMaxRecords: Int = 0
     @Published var processingProgress: ActivityProcessingProgressResponse?
-    @Published var isCancellingProcessing: Bool = false
+    @Published var isCancelingProcessing: Bool = false
     
     // Model selection
     @Published var availableModels: [ActivityCaptureModelInfo] = []

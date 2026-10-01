@@ -56,7 +56,7 @@ def get_provider_run_schema_statements() -> list[str]:
             status TEXT NOT NULL DEFAULT 'created'
                 CHECK (status IN (
                     'created', 'running', 'waiting_user_input', 'waiting_permission',
-                    'cancelling', 'interrupted', 'recoverable', 'completed', 'failed', 'cancelled'
+                    'canceling', 'interrupted', 'recoverable', 'completed', 'failed', 'canceled'
                 )),
             runtime_version TEXT,
             launch_fingerprint TEXT,

@@ -52,7 +52,7 @@ def load_preferences_model(
             # Team identity rename on-read migration. Old preference files
             # written before the rename use the legacy key names; map them
             # to the new durable capability names in-place so model_validate
-            # sees the new shape and existing user customisations survive.
+            # sees the new shape and existing user customizations survive.
             # Idempotent: if the new name is already present, the legacy
             # entry is dropped without overwriting.
             _migrate_legacy_keys_for_team_identity_rename(data)

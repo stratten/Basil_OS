@@ -79,6 +79,8 @@ export interface AssistantSessionSnapshotPayload {
   isRefinementMode: boolean;
   iterationCount: number;
   showRefinementIndicator: boolean;
+  /** Increments when native code asks the widget to open the typed refinement editor. */
+  typedRefinementRequestSerial: number;
   inputMode: AssistantSessionInputMode;
   inputCommitted: boolean;
   typedInstruction: string;

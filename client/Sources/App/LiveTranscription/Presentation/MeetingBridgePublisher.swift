@@ -322,7 +322,9 @@ final class MeetingBridgePublisher {
             microphoneAudioLevel: viewModel.microphoneAudioLevel,
             systemAudioLevel: viewModel.systemAudioLevel,
             microphoneInputRecoveryState: microphoneRecoveryStateString(viewModel.microphoneInputRecoveryState),
-            microphoneInputRecoveryMessage: microphoneRecoveryMessage(viewModel.microphoneInputRecoveryState)
+            microphoneInputRecoveryMessage: microphoneRecoveryMessage(viewModel.microphoneInputRecoveryState),
+            isCapturePaused: viewModel.isCapturePaused,
+            isLiveTranscriptionEnabled: viewModel.sessionLiveTranscriptionEnabled
         )
     }
 

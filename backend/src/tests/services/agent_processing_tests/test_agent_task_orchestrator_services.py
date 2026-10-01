@@ -79,7 +79,7 @@ class _TimelineMutations:
         if (
             record is None
             or record.id != agent_task_id
-            or record.status in {"completed", "failed", "cancelled"}
+            or record.status in {"completed", "failed", "canceled"}
         ):
             return False
         await self.update_execution_timeline(agent_task_id, timeline)
@@ -516,7 +516,7 @@ async def test_routing_service_preserves_chain_identity_in_progress_broadcasts()
     service = AgentTaskRoutingService(
         db_service=db_service,
         websocket_manager=websocket,
-        is_cancelled=lambda _agent_task_id: False,
+        is_canceled=lambda _agent_task_id: False,
     )
 
     await service.send_progress_update(
@@ -548,7 +548,7 @@ async def test_publish_activity_entry_persists_before_broadcasting_with_chain_id
     service = AgentTaskRoutingService(
         db_service=db_service,
         websocket_manager=websocket,
-        is_cancelled=lambda _agent_task_id: False,
+        is_canceled=lambda _agent_task_id: False,
     )
 
     published = await service.publish_activity_entry(
@@ -588,7 +588,7 @@ async def test_publish_activity_entry_replaces_same_id_entry_and_rejects_termina
     service = AgentTaskRoutingService(
         db_service=db_service,
         websocket_manager=websocket,
-        is_cancelled=lambda _agent_task_id: False,
+        is_canceled=lambda _agent_task_id: False,
     )
 
     await service.publish_activity_entry(
@@ -692,7 +692,7 @@ async def test_workflow_result_service_broadcasts_final_envelope_with_chain_iden
     service = AgentTaskWorkflowResultService(
         db_service=_DbService(),
         websocket_manager=websocket,
-        is_cancelled=lambda _agent_task_id: False,
+        is_canceled=lambda _agent_task_id: False,
     )
     result_data = {
         "success": True,
@@ -743,7 +743,7 @@ async def test_cancellation_during_processing_skips_final_persistence():
     routing_service = AgentTaskRoutingService(db_service=db_service)
 
     def cancel_during_workflow():
-        cancellation.mark_cancelled(["task-1"])
+        cancellation.mark_canceled(["task-1"])
 
     workflow_service = _FakeWorkflowResultService(
         SimpleNamespace(success=True, data={"final_envelope": {"success": True}}, widget_content_delivered=True),
@@ -765,7 +765,7 @@ async def test_cancellation_during_processing_skips_final_persistence():
 @pytest.mark.asyncio
 async def test_cancellation_tombstone_cancels_task_registered_later():
     cancellation = AgentTaskCancellationRegistry()
-    cancellation.mark_cancelled(["task-late"])
+    cancellation.mark_canceled(["task-late"])
     started = asyncio.Event()
 
     async def wait_forever():
@@ -794,7 +794,7 @@ async def test_root_alias_cancels_only_matching_active_turn():
     await asyncio.gather(turn_started.wait(), unrelated_started.wait())
     cancellation.register_active_task("turn-2", turn_task, aliases=("root-1",))
     cancellation.register_active_task("other-turn", unrelated_task, aliases=("other-root",))
-    cancellation.mark_cancelled(["root-1"])
+    cancellation.mark_canceled(["root-1"])
 
     assert cancellation.cancel_active_task("root-1") is True
     with pytest.raises(asyncio.CancelledError):
@@ -829,7 +829,7 @@ def test_cross_thread_cancellation_schedules_on_owner_loop():
     thread = threading.Thread(target=run_loop)
     thread.start()
     assert registered.wait(timeout=2)
-    cancellation.mark_cancelled(["thread-task"])
+    cancellation.mark_canceled(["thread-task"])
     assert cancellation.cancel_active_task("thread-task") is True
     assert finished.wait(timeout=2)
     thread.join(timeout=2)
@@ -837,7 +837,7 @@ def test_cross_thread_cancellation_schedules_on_owner_loop():
 
 
 @pytest.mark.asyncio
-async def test_terminal_committer_does_not_broadcast_when_cancelled_status_wins():
+async def test_terminal_committer_does_not_broadcast_when_canceled_status_wins():
     class _RejectingTerminalDb(_DbService):
         async def update_agent_task_status_if_active(self, **kwargs):
             self.updates.append(kwargs)
@@ -858,7 +858,7 @@ async def test_terminal_committer_does_not_broadcast_when_cancelled_status_wins(
     )
 
     await service.commit_terminal_outcome(
-        agent_task_id="task-cancelled",
+        agent_task_id="task-canceled",
         agent_task_record=SimpleNamespace(root_task_id=None, previous_task_id=None),
         operation="direct",
         operation_result=operation_result,
@@ -900,12 +900,12 @@ async def test_atomic_chain_cancellation_updates_only_active_members(tmp_path):
 
     changed_ids = await service.cancel_agent_tasks_if_active(
         ["root-active", "child-active", "child-completed"],
-        {"cancelled": True, "cancellation_reason": "test"},
+        {"canceled": True, "cancellation_reason": "test"},
     )
 
     assert set(changed_ids) == {"root-active", "child-active"}
-    assert (await service.get_agent_task("root-active")).status == "cancelled"
-    assert (await service.get_agent_task("child-active")).status == "cancelled"
+    assert (await service.get_agent_task("root-active")).status == "canceled"
+    assert (await service.get_agent_task("child-active")).status == "canceled"
     assert (await service.get_agent_task("child-completed")).status == "completed"
 
 
@@ -946,14 +946,14 @@ async def test_durable_cancellation_preempts_before_first_database_read():
     ]
 
 
-def test_clear_cancelled_is_scoped_to_exact_inactive_turn():
+def test_clear_canceled_is_scoped_to_exact_inactive_turn():
     cancellation = AgentTaskCancellationRegistry()
-    cancellation.mark_cancelled(["turn-1", "turn-2"])
+    cancellation.mark_canceled(["turn-1", "turn-2"])
 
-    cancellation.clear_cancelled("turn-1")
+    cancellation.clear_canceled("turn-1")
 
-    assert cancellation.is_cancelled("turn-1") is False
-    assert cancellation.is_cancelled("turn-2") is True
+    assert cancellation.is_canceled("turn-1") is False
+    assert cancellation.is_canceled("turn-2") is True
     assert cancellation.get_cancellation_event("turn-1").is_set() is False
 
 

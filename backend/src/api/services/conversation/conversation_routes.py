@@ -15,6 +15,7 @@ from . import (
     ConversationResponse
 )
 from ...core.models.responses import StatusResponse
+from .conversation_timestamps import utc_iso_timestamp
 
 
 router = APIRouter(prefix="/conversation", tags=["conversation"])
@@ -150,7 +151,7 @@ async def send_message(
             id=response.message.id,
             content=response.message.content,
             role=response.message.role.value,
-            timestamp=response.message.timestamp.isoformat(),
+            timestamp=utc_iso_timestamp(response.message.timestamp),
             model_id=response.message.model_id,
             metadata=response.metadata
         )
@@ -186,8 +187,8 @@ async def list_conversation_page(
                 ConversationListItem(
                     id=conversation["id"],
                     title=conversation.get("title") or "New Conversation",
-                    created_at=conversation["created_at"],
-                    updated_at=conversation["updated_at"],
+                    created_at=utc_iso_timestamp(conversation["created_at"]),
+                    updated_at=utc_iso_timestamp(conversation["updated_at"]),
                     message_count=conversation["message_count"],
                     last_message_preview=conversation.get("last_message_preview"),
                     metadata=conversation.get("metadata", {}),
@@ -245,8 +246,8 @@ async def list_conversations(
             ConversationListItem(
                 id=conv["id"],
                 title=conv["title"],
-                created_at=conv["created_at"],
-                updated_at=conv["updated_at"],
+                created_at=utc_iso_timestamp(conv["created_at"]),
+                updated_at=utc_iso_timestamp(conv["updated_at"]),
                 message_count=conv["message_count"],
                 last_message_preview=conv.get("last_message_preview"),
                 metadata=conv.get("metadata", {})
@@ -297,8 +298,8 @@ async def search_conversations(
             ConversationListItem(
                 id=conv["id"],
                 title=conv.get("title") or "New Conversation",
-                created_at=conv["created_at"],
-                updated_at=conv["updated_at"],
+                created_at=utc_iso_timestamp(conv["created_at"]),
+                updated_at=utc_iso_timestamp(conv["updated_at"]),
                 message_count=conv.get("message_count", 0),
                 last_message_preview=conv.get("last_message_preview"),
                 metadata=conv.get("metadata", {})
@@ -326,7 +327,7 @@ async def get_conversation(
             id=msg.id,
             content=msg.content,
             role=msg.role.value,
-            timestamp=msg.timestamp.isoformat(),
+            timestamp=utc_iso_timestamp(msg.timestamp),
             model_id=msg.model_id,
             metadata=msg.metadata
         ))
@@ -334,8 +335,8 @@ async def get_conversation(
     return ConversationHistoryResponse(
         conversation_id=conversation.id,
         messages=messages,
-        created_at=conversation.created_at.isoformat(),
-        updated_at=conversation.updated_at.isoformat(),
+        created_at=utc_iso_timestamp(conversation.created_at),
+        updated_at=utc_iso_timestamp(conversation.updated_at),
         metadata=conversation.metadata
     )
 

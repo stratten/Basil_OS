@@ -198,7 +198,7 @@ extension HotkeyService {
         // mic recording loop or to await a typed-input submission, so the
         // value must be in place before that branch executes. We do this
         // best-effort: a fetch failure leaves `inputMode` at its `.speak`
-        // default, preserving the legacy behaviour for that single
+        // default, preserving the legacy behavior for that single
         // invocation. The widget header toggle remains usable either way.
         await applyDefaultInputModalityPreference()
 

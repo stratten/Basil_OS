@@ -178,10 +178,21 @@ FAMILY_DEFINITIONS: tuple[ToolFamilyDefinition, ...] = (
     ),
     ToolFamilyDefinition(
         name="schedule",
-        purpose="Create scheduled Basil agent tasks.",
-        when_to_load="Load when Basil itself needs to run an agent task later or on a recurrence.",
-        tool_names=("create_scheduled_agent_task_from_prompt",),
-        examples=("run this every morning", "schedule recurring agent work"),
+        purpose="Create scheduled Basil agent tasks, wait briefly before checking something again, or come back to this task later with a durable follow-up check.",
+        when_to_load="Load when Basil itself needs to run an agent task later or on a recurrence, when this task must wait for something to finish or change before checking again, or when this task should resume later (minutes to days) to re-check a result.",
+        tool_names=(
+            "create_scheduled_agent_task_from_prompt",
+            "wait_before_checking_again",
+            "schedule_agent_follow_up",
+            "cancel_agent_follow_ups",
+        ),
+        examples=(
+            "run this every morning",
+            "schedule recurring agent work",
+            "wait for a build to finish and check again",
+            "check back on this in an hour",
+        ),
+        routing_hints=("future agent work", "waiting and re-checking", "follow-up checks", "recurring schedules"),
         risk_class="future tool execution",
     ),
     ToolFamilyDefinition(

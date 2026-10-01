@@ -9,6 +9,7 @@ redundant-reload recovery live in one focused, testable module.
 from __future__ import annotations
 
 import asyncio
+import json
 from dataclasses import dataclass
 from typing import Any
 
@@ -39,6 +40,10 @@ from .service_tooling.tool_family_catalog import (
 logger = api_logger.getChild("staged_execution_loop")
 
 MAX_STAGED_EXECUTION_PASSES = 4
+PRIOR_PASS_STEP_LIMIT = 20
+PRIOR_PASS_INPUT_CHARS = 300
+PRIOR_PASS_OBSERVATION_CHARS = 600
+_PRIOR_PASS_SKIPPED_TOOLS = frozenset({"load_tool_family", "_Exception"})
 
 
 @dataclass(frozen=True)
@@ -82,6 +87,46 @@ def _redundant_reload_correction_block(all_tools: list[Any], families: list[str]
         "Do NOT call load_tool_family for them again.\n"
         f"- Their exact tools are bound and ready to call now: {', '.join(tool_names)}.\n"
         "- Call the appropriate tool directly to perform the task instead of reloading."
+    )
+
+
+def _clip(text: str, limit: int) -> str:
+    text = " ".join(text.split())
+    return text if len(text) <= limit else f"{text[:limit]} [truncated]"
+
+
+def _completed_prior_steps_block(intermediate_steps: list[Any]) -> str:
+    """Describe tool calls from earlier passes so a fresh pass does not repeat their side effects."""
+    lines: list[str] = []
+    for step in intermediate_steps:
+        if not isinstance(step, tuple) or len(step) < 2:
+            continue
+        action, observation = step[0], step[1]
+        tool_name = str(getattr(action, "tool", "") or "")
+        if not tool_name or tool_name in _PRIOR_PASS_SKIPPED_TOOLS:
+            continue
+        observation_text = observation if isinstance(observation, str) else str(observation)
+        if observation_text.startswith(f"{tool_name} is not a valid tool"):
+            continue
+        tool_input = getattr(action, "tool_input", None)
+        try:
+            input_text = json.dumps(tool_input, ensure_ascii=False, default=str)
+        except (TypeError, ValueError):
+            input_text = str(tool_input)
+        lines.append(
+            f"- {tool_name}({_clip(input_text, PRIOR_PASS_INPUT_CHARS)}) -> "
+            f"{_clip(observation_text, PRIOR_PASS_OBSERVATION_CHARS)}"
+        )
+    if not lines:
+        return ""
+    omitted = len(lines) - PRIOR_PASS_STEP_LIMIT
+    if omitted > 0:
+        lines = [f"- ({omitted} earlier calls omitted)"] + lines[-PRIOR_PASS_STEP_LIMIT:]
+    return (
+        "\n\nTOOL CALLS ALREADY COMPLETED EARLIER IN THIS RUN:\n"
+        + "\n".join(lines)
+        + "\n- These calls already ran and their effects already happened. Do NOT repeat them; "
+        "use their results and continue with the next unfinished step."
     )
 
 
@@ -159,6 +204,7 @@ async def run_staged_tool_loading(request: StagedExecutionRequest) -> StagedExec
             pass_input = f"{pass_input}{_redundant_reload_correction_block(all_tools, reload_correction)}"
         if discovery_handoff_text:
             pass_input = f"{pass_input}{discovery_handoff_text}"
+        pass_input = f"{pass_input}{_completed_prior_steps_block(intermediate_steps)}"
 
         active_tools_for_recovery = active_tools
         logger.info(
@@ -199,6 +245,7 @@ async def run_staged_tool_loading(request: StagedExecutionRequest) -> StagedExec
                 "expansion_count": expansion_count,
             },
             max_execution_time_seconds=max_execution_time,
+            enforce_native_time_limit=False,
         )
 
         runtime_context_token = set_current_agent_context(state.context)
@@ -208,6 +255,8 @@ async def run_staged_tool_loading(request: StagedExecutionRequest) -> StagedExec
                 user_input=pass_input,
                 callbacks=request.live_callbacks,
                 cancel_event=request.cancel_event,
+                pass_budget_seconds=max_execution_time,
+                workflow_deadline=deadline,
             )
         finally:
             reset_current_agent_context(runtime_context_token)
@@ -330,6 +379,7 @@ async def run_staged_tool_loading(request: StagedExecutionRequest) -> StagedExec
                 "reported as not possible. Inspect the needed app/file/system/email state and perform the work via scripting.\n"
                 "- Only after a real scripting attempt has genuinely failed may you conclude it cannot be done; then report "
                 "exactly what you tried and what happened."
+                f"{_completed_prior_steps_block(intermediate_steps)}"
             )
             floor_executor = create_agent_executor(
                 request.langchain_llm,
@@ -347,6 +397,7 @@ async def run_staged_tool_loading(request: StagedExecutionRequest) -> StagedExec
                     "expansion_count": MAX_STAGED_EXECUTION_PASSES,
                 },
                 max_execution_time_seconds=floor_max_execution_time,
+                enforce_native_time_limit=False,
             )
             runtime_context_token = set_current_agent_context(state.context)
             try:
@@ -355,6 +406,8 @@ async def run_staged_tool_loading(request: StagedExecutionRequest) -> StagedExec
                     user_input=floor_input,
                     callbacks=request.live_callbacks,
                     cancel_event=request.cancel_event,
+                    pass_budget_seconds=floor_max_execution_time,
+                    workflow_deadline=deadline,
                 )
             finally:
                 reset_current_agent_context(runtime_context_token)

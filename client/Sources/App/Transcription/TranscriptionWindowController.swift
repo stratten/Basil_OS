@@ -28,7 +28,7 @@ final class TranscriptionWindowController: NSObject, NSWindowDelegate, Appearanc
             do {
                 if WebSocketService.shared.isConnected {
                     try await WebSocketService.shared.cancelModelUnload()
-                    print("🚫 Cancelled any scheduled model unloads")
+                    print("🚫 Canceled any scheduled model unloads")
                 }
             } catch {
                 print("⚠️ Failed to cancel model unload: \(error)")

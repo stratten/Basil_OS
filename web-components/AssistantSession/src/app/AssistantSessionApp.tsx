@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useReducer, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react';
 import { onAssistantSessionEvent, reportReady, requestResize } from '../bridge/assistantSessionBridge';
 import { applyAssistantSessionEvent, initialAssistantSessionState, resolveTheme } from '../state/assistantSessionReducer';
 import type { AssistantSessionState } from '../state/assistantSessionReducer';
@@ -22,6 +22,9 @@ const ASSISTANT_SESSION_AUTOMATIC_MAX_HEIGHT = 900;
 export function AssistantSessionApp() {
   const [state, dispatch] = useReducer(reducer, initialAssistantSessionState);
   const [isTypedRefinementMode, setIsTypedRefinementMode] = useState(false);
+  const [typedRefinementRequested, setTypedRefinementRequested] = useState(false);
+  const requestTypedRefinement = useCallback(() => setTypedRefinementRequested(true), []);
+  const clearTypedRefinementRequest = useCallback(() => setTypedRefinementRequested(false), []);
 
   useEffect(() => {
     const offEvent = onAssistantSessionEvent(dispatch);
@@ -42,6 +45,14 @@ export function AssistantSessionApp() {
   useEffect(() => {
     if (state.assistantSessionStatus === 'running') setIsTypedRefinementMode(false);
   }, [state.assistantSessionStatus]);
+
+  const handledTypedRefinementSerial = useRef(0);
+  useEffect(() => {
+    const serial = state.typedRefinementRequestSerial ?? 0;
+    if (serial <= handledTypedRefinementSerial.current) return;
+    handledTypedRefinementSerial.current = serial;
+    requestTypedRefinement();
+  }, [state.typedRefinementRequestSerial, requestTypedRefinement]);
 
   useLayoutEffect(() => {
     if (!state.hasSnapshot) return;
@@ -95,7 +106,13 @@ export function AssistantSessionApp() {
   return (
     <div className="basil-webkit-window-frame">
       <div className={`assistant-session-shell assistant-session-shell--${phase} basil-webkit-window-surface`}>
-        <Header state={state} theme={theme} phase={phase} showProgressElements={showProgressElements} />
+        <Header
+          state={state}
+          theme={theme}
+          phase={phase}
+          showProgressElements={showProgressElements}
+          onSwitchToTypedRefinement={requestTypedRefinement}
+        />
         {phase === 'recording' && (
           <RecordingState state={state} showProgressElements={showProgressElements} progressMessage={progressMessage} />
         )}
@@ -110,7 +127,12 @@ export function AssistantSessionApp() {
           <ProcessingState state={state} showProgressElements={showProgressElements} progressMessage={progressMessage} />
         )}
         {phase === 'result' && !state.isResultChromeCollapsed && (
-          <ResultState state={state} onTypedRefinementModeChange={setIsTypedRefinementMode} />
+          <ResultState
+            state={state}
+            onTypedRefinementModeChange={setIsTypedRefinementMode}
+            typedRefinementRequested={typedRefinementRequested}
+            onTypedRefinementRequestHandled={clearTypedRefinementRequest}
+          />
         )}
         {state.inputMode === 'speak' && (
           <div className="assistant-session-shell__model-picker">

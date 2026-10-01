@@ -54,7 +54,7 @@ _STATUS_TEXT_BY_AGENT_TASK_STATUS = {
     "clarification_added": "Agent task received your clarification.",
     "completed": "Agent task completed. Preparing a conversation response.",
     "failed": "Agent task failed. Preparing a conversation response.",
-    "cancelled": "Agent task was cancelled. Preparing a conversation response.",
+    "canceled": "Agent task was canceled. Preparing a conversation response.",
 }
 
 
@@ -170,7 +170,7 @@ class ConversationAgentTurnLifecycle:
         if lifecycle is ConversationTurnLifecycle.COMPLETED:
             terminal_outcome = "Agent task completed."
             narration_lifecycle = ConversationTurnNarrationLifecycle.READY
-        elif lifecycle in {ConversationTurnLifecycle.FAILED, ConversationTurnLifecycle.CANCELLED}:
+        elif lifecycle in {ConversationTurnLifecycle.FAILED, ConversationTurnLifecycle.CANCELED}:
             terminal_outcome = _status_text_for_agent_task_status(raw_status)
             narration_lifecycle = ConversationTurnNarrationLifecycle.READY
         requires_user_attention = (
@@ -506,8 +506,8 @@ class ConversationAgentTurnLifecycle:
             return ConversationTurnLifecycle.COMPLETED
         if normalized == "failed":
             return ConversationTurnLifecycle.FAILED
-        if normalized == "cancelled":
-            return ConversationTurnLifecycle.CANCELLED
+        if normalized == "canceled":
+            return ConversationTurnLifecycle.CANCELED
         return ConversationTurnLifecycle.RUNNING
 
     async def _project(

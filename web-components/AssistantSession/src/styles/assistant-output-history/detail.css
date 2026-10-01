@@ -193,6 +193,11 @@
   background: color-mix(in srgb, var(--text-tertiary, #9aa1ac) 85%, transparent);
 }
 
+.assistant-output-history-detail__action--icon {
+  width: 28px;
+  padding: 0;
+}
+
 .assistant-output-history-detail__action:disabled {
   opacity: 0.55;
   cursor: default;

@@ -556,7 +556,7 @@ extension SettingsShellWindowController {
         hotkeyWebView.onStartCapture = { [weak self] id in
             guard let self, let webView = self.appearanceWebView?.webView else { return }
             guard HotkeyRowCatalog.rows.contains(where: { $0.id == id }), !self.hotkeyBindings.isEmpty else {
-                hotkeyWebView.sendCaptureCancelled(id: id)
+                hotkeyWebView.sendCaptureCanceled(id: id)
                 return
             }
             HotkeyRecordingCapture.shared.startCapture(
@@ -566,8 +566,8 @@ extension SettingsShellWindowController {
                     let binding = HotkeyBindingParser.parse(displayString: displayString, enabled: true)
                     hotkeyWebView.sendCaptured(id: id, binding: binding)
                 },
-                onCancelled: { [weak self] in
-                    self?.hotkeyWebView?.sendCaptureCancelled(id: id)
+                onCanceled: { [weak self] in
+                    self?.hotkeyWebView?.sendCaptureCanceled(id: id)
                 }
             )
         }

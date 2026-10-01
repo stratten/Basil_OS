@@ -248,3 +248,27 @@ describe('HistoryDetail edit box sizing', () => {
     expect((screen.getByRole('textbox', { name: /edit output/i }) as HTMLTextAreaElement).style.height).toBe('400px');
   });
 });
+
+describe('HistoryDetail refine buttons', () => {
+  afterEach(() => {
+    Reflect.deleteProperty(window, 'webkit');
+  });
+
+  it.each([
+    ['Refine by voice', 'voice'],
+    ['Refine by typing', 'typed'],
+  ])('%s posts refineFromHistory with input=%s', (label, input) => {
+    const postMessage = vi.fn();
+    window.webkit = { messageHandlers: { assistantOutputHistoryBridge: { postMessage } } };
+    renderDetail(BASE_ENTRY);
+
+    fireEvent.click(screen.getByRole('button', { name: label }));
+
+    expect(postMessage).toHaveBeenCalledWith({ type: 'refineFromHistory', assistantOutputId: 7, input });
+  });
+
+  it('no longer renders the single text Refine button', () => {
+    renderDetail(BASE_ENTRY);
+    expect(screen.queryByRole('button', { name: /^refine$/i })).not.toBeInTheDocument();
+  });
+});

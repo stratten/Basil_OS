@@ -185,6 +185,47 @@ def test_progress_callback_uses_static_safe_tool_descriptors():
     assert title == "Running project command: report with-private-details.txt"
 
 
+class _RecordingNotifier:
+    def __init__(self):
+        self.entries = []
+
+    async def send_step_detail_update(self, entry):
+        self.entries.append(entry)
+
+
+def _tool_error_phase(error):
+    import asyncio
+
+    callback = ActivityProgressCallbackHandler.__new__(ActivityProgressCallbackHandler)
+    callback.notifier = _RecordingNotifier()
+    callback._activity_correlation_id = "agent_run_test"
+    callback._step_ids_by_run = {}
+    callback._tool_run_registry = None
+    callback.logger = None
+    asyncio.run(callback.on_tool_error(error))
+    (entry,) = callback.notifier.entries
+    return entry
+
+
+def test_input_request_is_recorded_as_completed_tool_phase_not_failure():
+    from api.services.agent_processing.tools.internal_basil_tools.checkpoint_tool import CheckpointRequest
+
+    entry = _tool_error_phase(CheckpointRequest({"prompt": "Pick one"}))
+
+    assert entry["metadata"]["progress_phase"] == "tool_execution"
+    assert entry["metadata"]["progress_status"] == "completed"
+    assert entry["metadata"]["progress_step"] == "Requested your input"
+    assert entry["metadata"]["error"] is None
+
+
+def test_real_tool_error_is_still_recorded_as_failed_tool_phase():
+    entry = _tool_error_phase(RuntimeError("disk unavailable"))
+
+    assert entry["metadata"]["progress_status"] == "failed"
+    assert entry["metadata"]["progress_step"] == "Approved tool failed"
+    assert entry["metadata"]["error"] == "disk unavailable"
+
+
 def test_normalize_json_safely_copies_mapping_artifact_metadata():
     receipt_marker = object()
     unknown_marker = object()

@@ -9,7 +9,7 @@ extension BasilBoardWebView {
                   let posixPath = FilePathUtility.resolveBridgeArtifactPath(path) else {
                 return true
             }
-            NSWorkspace.shared.open(URL(fileURLWithPath: posixPath))
+            BridgeOpenPolicy.openLocalFile(URL(fileURLWithPath: posixPath))
             return true
         case "openContainingFolder":
             guard let path = dict["path"] as? String,

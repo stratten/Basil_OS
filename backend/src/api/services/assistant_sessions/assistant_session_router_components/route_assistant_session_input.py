@@ -51,7 +51,7 @@ async def process_assistant_session_audio(
 
     Modality is selected by which body fields are populated:
 
-    * ``audio_file`` only -> spoken modality (existing behaviour).
+    * ``audio_file`` only -> spoken modality (existing behavior).
     * ``instruction_text`` only -> typed modality, transcription is skipped.
     * Neither -> no-instruction modality, server substitutes a default
       screen-only instruction so the model still produces something

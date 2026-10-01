@@ -29,10 +29,10 @@ logger = logging.getLogger(__name__)
 
 
 assistant_session_service_instance: Optional[AssistantSessionService] = None
-"""Lazily-initialised singleton AssistantSessionService for the process."""
+"""Lazily-initialized singleton AssistantSessionService for the process."""
 
 _assistant_output_history_service_instance: Optional[AssistantOutputHistoryService] = None
-"""Lazily-initialised singleton AssistantOutputHistoryService for the process."""
+"""Lazily-initialized singleton AssistantOutputHistoryService for the process."""
 
 model_unload_task: Optional[asyncio.Task] = None
 """Handle for the most recently scheduled transcription-model unload task.

@@ -14,12 +14,18 @@ import {
   isUserFacingResponseStreaming,
   normalizeResultForPresentation,
   parseResult,
+  splitRunDetails,
 } from './result/resultContentUtils';
+import { RunDetailsDisclosure } from './result/RunDetailsDisclosure';
 import RequestDisplay from './request/RequestDisplay';
 import { getReasoningModels, saveAgentTaskAsSkill, submitAgentTaskFeedback, type ReasoningModel } from '../services/api';
 import ReasoningModelPicker from '../../../shared/ReasoningModelPicker';
+import NativeSymbolIcon from '../../../shared/NativeSymbolIcon';
 import { DelegatedProviderReportCards } from './artifacts/DelegatedProviderReportCards';
 import PresenceRegion from './PresenceRegion';
+import { TurnLabel } from './result/TurnLabel';
+import { resolveTurnStatus } from './result/turnPresentation';
+import { agentTaskRunLabel } from './run/agentTaskRunFocus';
 
 interface Props {
   agentTask: DisplayableAgentTask;
@@ -28,6 +34,8 @@ interface Props {
   selectedDetailId?: string | null;
   selectedDetailOwnerId?: string | null;
   onSelectDetail?: (ownerTaskId: string, detail: StepDetailEntry, isLatest: boolean) => void;
+  focusedRunId?: string | null;
+  onFocusRun?: (runId: string) => void;
 }
 
 type ResultActionMessage = {
@@ -42,12 +50,17 @@ export default function ResultContent({
   selectedDetailId,
   selectedDetailOwnerId,
   onSelectDetail,
+  focusedRunId,
+  onFocusRun,
 }: Props) {
+  const hasTurnChain = agentTask.agentTaskHistory.length > 0;
+  const currentRunId = agentTask.currentTurnTaskId || agentTask.agentTaskId;
   const presentationResult = useMemo(
     () => normalizeResultForPresentation(agentTask.result, agentTask.outcome),
     [agentTask.outcome, agentTask.result],
   );
   const parsed = useMemo(() => parseResult(presentationResult), [presentationResult]);
+  const runDetails = useMemo(() => splitRunDetails(parsed.userSummary), [parsed.userSummary]);
   const hasTechnicalSteps = parsed.technicalSteps.length > 0;
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const [isErrorMessageCollapsed, setIsErrorMessageCollapsed] = useState(true);
@@ -197,16 +210,35 @@ export default function ResultContent({
   return (
     <div className="result-content-shell">
       <div className="main-content" ref={scrollRef} onScroll={handleMainContentScroll}>
-      {agentTask.agentTaskHistory.map((item) => (
-        <HistoryCard
-          key={item.id}
-          item={item}
-          isExpanded={expandedCardId === item.id}
-          onToggle={() => setExpandedCardId(expandedCardId === item.id ? null : item.id)}
-          selectedDetailId={selectedDetailOwnerId === item.id ? selectedDetailId : null}
-          onSelectDetail={(detail, isLatest) => onSelectDetail?.(item.id, detail, isLatest)}
-        />
+      {agentTask.agentTaskHistory.map((item, index) => (
+        <div className="turn-block" key={item.id}>
+          <TurnLabel
+            runId={item.id}
+            label={agentTaskRunLabel(index)}
+            status={resolveTurnStatus(item)}
+            isFocused={focusedRunId === item.id}
+            onFocusRun={onFocusRun}
+          />
+          <HistoryCard
+            item={item}
+            isExpanded={expandedCardId === item.id}
+            onToggle={() => setExpandedCardId(expandedCardId === item.id ? null : item.id)}
+            selectedDetailId={selectedDetailOwnerId === item.id ? selectedDetailId : null}
+            onSelectDetail={(detail, isLatest) => onSelectDetail?.(item.id, detail, isLatest)}
+          />
+        </div>
       ))}
+
+      {hasTurnChain && (
+        <TurnLabel
+          runId={currentRunId}
+          label={agentTaskRunLabel(agentTask.agentTaskHistory.length)}
+          status={resolveTurnStatus(agentTask)}
+          timestamp={agentTask.timestamp}
+          isFocused={focusedRunId === currentRunId}
+          onFocusRun={onFocusRun}
+        />
+      )}
 
       {agentTask.originalPrompt && (
         <>
@@ -231,6 +263,7 @@ export default function ResultContent({
           <ThinkingSegments
             segments={agentTask.thinkingSegments}
             isLive={isProcessing && !agentTask.thinkingComplete}
+            isRunActive={isProcessing}
             collapseForResponse={responseIsStreaming}
           />
         ) : agentTask.thinking ? (
@@ -293,14 +326,18 @@ export default function ResultContent({
           <div className="result-container" style={{ position: 'relative' }}>
             <CopyButtonGroup text={presentationResult} />
             <MarkdownRenderer
-              content={formatBulletPoints(parsed.userSummary)}
+              content={formatBulletPoints(runDetails.narrative)}
               isStreaming={agentTask.isStreaming}
             />
           </div>
+          <RunDetailsDisclosure
+            key={`run-details-${agentTask.currentTurnTaskId || agentTask.agentTaskId}`}
+            details={runDetails.details}
+          />
           <FilesDisplay files={agentTask.structuredFiles} resultText={presentationResult} />
           <DelegatedProviderReportCards cards={agentTask.delegatedProviderReportCards} />
           {canSaveAsSkill && (
-            <div className="result-actions">
+            <div className="result-actions result-actions--feedback">
               <button
                 className="action-icon-btn action-icon-btn--save"
                 onClick={handlePreviewSkill}
@@ -399,10 +436,7 @@ export default function ResultContent({
             placeholder="Model"
           />
           <button className="action-btn primary" onClick={() => onRetry(retryModelId)}>
-            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2.5 8a5.5 5.5 0 1 1 1.3 3.5"/>
-              <path d="M2.5 12.5V8h4"/>
-            </svg>
+            <NativeSymbolIcon name="retry" style={{ verticalAlign: '-2px' }} />
             {' '}Retry
           </button>
         </div>

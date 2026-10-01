@@ -168,6 +168,10 @@ class TranscriptionSettings(BaseModel):
         default="after",
         description="Whether automatic analysis runs before or after automatic re-transcription"
     )
+    live_transcription_by_default: bool = Field(
+        default=True,
+        description="Whether new meetings transcribe live; when off, meetings record only and are transcribed after they end"
+    )
     text_replacements: List[TranscriptionTextReplacement] = Field(
         default_factory=list,
         description="Literal substitutions applied to transcription output before copy or auto-paste",

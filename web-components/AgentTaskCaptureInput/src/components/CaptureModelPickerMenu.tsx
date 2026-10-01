@@ -24,10 +24,10 @@ export default function CaptureModelPickerMenu({
 
   useEffect(() => {
     if (!isApiReady()) return;
-    let cancelled = false;
+    let canceled = false;
     getReasoningModels()
       .then((data) => {
-        if (cancelled) return;
+        if (canceled) return;
         setModels(data.models);
         if (selectedModelId === null) onModelChange(data.current_model);
       })
@@ -36,10 +36,10 @@ export default function CaptureModelPickerMenu({
         setLoadError('Models unavailable');
       })
       .finally(() => {
-        if (!cancelled) setIsLoading(false);
+        if (!canceled) setIsLoading(false);
       });
     return () => {
-      cancelled = true;
+      canceled = true;
     };
     // Runs once per mount, mirroring `TextFollowUp.tsx`'s own one-shot model
     // fetch — the capture widget's model choice does not need to react to

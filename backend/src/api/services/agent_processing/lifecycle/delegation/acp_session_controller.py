@@ -18,7 +18,7 @@ class ActiveAcpDelegatedSession:
     supervisor: Any
     session_id: str
     in_flight: bool = False
-    cancelling: bool = False
+    canceling: bool = False
     interaction_ids: set[str] | None = None
     safe_final_message: str | None = None
     safe_receipts: tuple[dict[str, Any], ...] = ()
@@ -64,8 +64,8 @@ class AcpDelegatedSessionController:
         active = self._sessions.get(delegated_agent_run_id)
         if active is None:
             raise RuntimeError("delegated ACP session is unavailable for a follow-up turn")
-        if active.cancelling:
-            raise RuntimeError("delegated ACP session is cancelling")
+        if active.canceling:
+            raise RuntimeError("delegated ACP session is canceling")
         if active.in_flight:
             raise RuntimeError("delegated ACP session already has an in-flight turn")
         if active.interaction_ids:
@@ -92,7 +92,7 @@ class AcpDelegatedSessionController:
         """Release a session only after the matching generic run is durable-terminal."""
         if str(terminal_run.get("id")) != delegated_agent_run_id:
             raise RuntimeError("terminal delegated run does not match the ACP session")
-        if terminal_run.get("status") not in {"settled", "failed", "cancelled"}:
+        if terminal_run.get("status") not in {"settled", "failed", "canceled"}:
             raise RuntimeError("ACP session may close only after generic terminal settlement")
         active = self._sessions.get(delegated_agent_run_id)
         if active is None:
@@ -106,7 +106,7 @@ class AcpDelegatedSessionController:
         active = self._sessions.get(delegated_agent_run_id)
         if active is None:
             return
-        active.cancelling = True
+        active.canceling = True
         try:
             outcome = getattr(active.supervisor, "last_outcome", None)
             if outcome is not None and getattr(outcome, "status", None) is not ProviderLaunchOutcomeStatus.RUNNING:
@@ -176,7 +176,7 @@ class AcpDelegatedSessionController:
             "provider_run_id": active.provider_run_id,
             "session_id": active.session_id,
             "in_flight": active.in_flight,
-            "cancelling": active.cancelling,
+            "canceling": active.canceling,
             "interaction_pending": bool(active.interaction_ids),
             "safe_final_message": active.safe_final_message,
             "safe_receipts": list(active.safe_receipts),

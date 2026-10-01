@@ -31,7 +31,7 @@ function timelineStatus(entry: TimelineEntry): string | undefined {
 
 function stageState(status: string | undefined, fallback: AgentRunStageState): AgentRunStageState {
   if (status === 'completed') return 'completed';
-  if (status === 'failed' || status === 'error' || status === 'cancelled') return 'failed';
+  if (status === 'failed' || status === 'error' || status === 'canceled') return 'failed';
   if (status === 'waiting_user_input' || status === 'blocked') return 'waiting';
   if (status === 'started' || status === 'running' || status === 'in_progress') return 'active';
   return fallback;

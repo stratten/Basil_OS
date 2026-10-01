@@ -11,24 +11,19 @@ export interface TodoWorkerLiveState {
 
 const DETAIL_REFRESH_EVENTS = new Set([
   'agent_task_progress',
-  'agentTask_progress',
   'agent_progress_update',
   'dynamic_step_added',
   'dynamic_step_updated',
   'agent_task_step_detail',
   'agent_task_artifact',
   'agent_task_result',
-  'agentTask_result',
   'agent_task_outcome_update',
-  'agent_task_cancelled',
-  'agentTask_cancelled',
+  'agent_task_canceled',
 ]);
 
 const TERMINAL_EVENTS = new Set([
   'agent_task_result',
-  'agentTask_result',
-  'agent_task_cancelled',
-  'agentTask_cancelled',
+  'agent_task_canceled',
   'agent_task_outcome_update',
 ]);
 
@@ -81,7 +76,7 @@ export default function useTodoWorkerProgress(
   useEffect(() => {
     const agentTaskIds = attempts.map((attempt) => attempt.agent_task_id);
     const agentTaskIdSet = new Set(agentTaskIds);
-    let cancelled = false;
+    let canceled = false;
 
     setStates((current) => Object.fromEntries(
       Object.entries(current).filter(([agentTaskId]) => agentTaskIdSet.has(agentTaskId)),
@@ -97,7 +92,7 @@ export default function useTodoWorkerProgress(
     const hydrateAgentTask = (agentTaskId: string, event?: WSEvent) => {
       void getAgentTaskDetail(agentTaskId)
         .then((detail) => {
-          if (cancelled) return;
+          if (canceled) return;
           setStates((current) => ({
             ...current,
             [agentTaskId]: {
@@ -150,7 +145,7 @@ export default function useTodoWorkerProgress(
     });
 
     return () => {
-      cancelled = true;
+      canceled = true;
       unsubscribe();
       unsubscribeOnConnect();
     };

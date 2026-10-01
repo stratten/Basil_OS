@@ -102,10 +102,10 @@ extension ModelDownloadViewModel {
     
     @MainActor
     func handleProgressUpdateUI(modelId: String, progress: Double, model: ModelDownloadInfo) async {
-        // If the task was cancelled, stop processing further progress updates.
+        // If the task was canceled, stop processing further progress updates.
         // This check is important here as this func is async and might run after cancellation.
         if Task.isCancelled {
-            Self.logger.info("handleProgressUpdateUI: Task for \(modelId) cancelled. Stopping UI updates.")
+            Self.logger.info("handleProgressUpdateUI: Task for \(modelId) canceled. Stopping UI updates.")
             return
         }
 
@@ -134,13 +134,13 @@ extension ModelDownloadViewModel {
 
     @MainActor
     func handlePostLoopCleanupUI(modelId: String) async {
-        Self.logger.info("Streaming for \(modelId) finished (loop ended, not 100%, not cancelled). Progress: \(self.downloadProgress[modelId] ?? -1). Refreshing models and cleaning up.")
+        Self.logger.info("Streaming for \(modelId) finished (loop ended, not 100%, not canceled). Progress: \(self.downloadProgress[modelId] ?? -1). Refreshing models and cleaning up.")
         await self.loadModels() // Refresh to get final status
         self.downloadProgress.removeValue(forKey: modelId)
         self.downloadProgressMetadata.removeValue(forKey: modelId)
         self.activeDownloads.remove(modelId)
         self.objectWillChange.send()
-        Self.logger.info("Cleaned up \(modelId) after stream ended (not 100%, not cancelled case).")
+        Self.logger.info("Cleaned up \(modelId) after stream ended (not 100%, not canceled case).")
     }
 
     /// Rehydrate any in-flight backend downloads after the Models tab is
@@ -250,7 +250,7 @@ extension ModelDownloadViewModel {
                     }
 
                     // Terminal states — stop polling
-                    if status == "not_found" || status == "error" || status == "user_cancelled" {
+                    if status == "not_found" || status == "error" || status == "user_canceled" {
                         Self.logger.info("📊 POLL terminal status '\(status)' for \(modelId). Stopping.")
                         await self.handlePostLoopCleanupUI(modelId: modelId)
                         break

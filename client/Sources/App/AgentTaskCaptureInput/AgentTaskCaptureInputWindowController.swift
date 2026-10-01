@@ -405,7 +405,7 @@ final class AgentTaskCaptureInputWindowController: NSObject, NSWindowDelegate, A
         modelPickerPopover?.performClose(nil)
         let popover = NSPopover()
         popover.behavior = .transient
-        popover.appearance = NSAppearance(named: .aqua)
+        popover.appearance = NativeModelPickerPopoverSupport.themedAppearance()
         popover.contentSize = Self.nativeModelPickerPopoverContentSize(forModelCount: models.count)
         popover.contentViewController = NSHostingController(
             rootView: AgentTaskCaptureModelPickerPopover(
@@ -419,11 +419,13 @@ final class AgentTaskCaptureInputWindowController: NSObject, NSWindowDelegate, A
             )
         )
         modelPickerPopover = popover
-        let fallbackAnchor = NSRect(
-            x: anchorRect.x,
-            y: webView.bounds.height - anchorRect.y - anchorRect.height,
+        let fallbackAnchor = NativeModelPickerPopoverSupport.anchorRect(
+            webX: anchorRect.x,
+            webY: anchorRect.y,
             width: anchorRect.width,
-            height: anchorRect.height
+            height: anchorRect.height,
+            hostBounds: webView.bounds,
+            hostIsFlipped: webView.isFlipped
         )
         let anchor: NSRect
         if let window = webView.window {
@@ -434,6 +436,7 @@ final class AgentTaskCaptureInputWindowController: NSObject, NSWindowDelegate, A
             anchor = fallbackAnchor
         }
         popover.show(relativeTo: anchor, of: webView, preferredEdge: .minY)
+        NativeModelPickerPopoverSupport.paintThemedFrameBackground(of: popover)
     }
 
     // MARK: - Handoff to result widget
@@ -607,7 +610,7 @@ final class AgentTaskCaptureInputWindowController: NSObject, NSWindowDelegate, A
         didNotifyBackendWidgetClosed = true
         Task {
             var message: [String: Any] = [
-                "type": "agentTask_widget_closed",
+                "type": "agent_task_widget_closed",
                 "is_awaiting_user_input": false,
                 "timestamp": Date().timeIntervalSince1970,
             ]

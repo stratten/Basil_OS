@@ -1,6 +1,6 @@
 """Transcription lifecycle helper.
 
-Centralises the "save audio first, then create a row, then mark the row
+Centralizes the "save audio first, then create a row, then mark the row
 complete or failed" state machine that both the local (HuggingFace) and
 cloud (OpenAI Whisper API) transcription services share. Without this
 helper the two services diverge: the local path historically persisted

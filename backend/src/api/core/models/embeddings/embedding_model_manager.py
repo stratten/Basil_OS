@@ -96,7 +96,7 @@ class EmbeddingModelManager:
         """Schedule unload after idle_seconds if not used again.
 
         If another begin_use happens before the delay, the pending unload will be
-        cancelled by begin_use().
+        canceled by begin_use().
         """
         entry = self._ensure_entry(model_name)
         delay = int(idle_seconds or self._default_idle_seconds)
@@ -166,8 +166,8 @@ class EmbeddingModelManager:
                     )
                     entry.model = None
         except asyncio.CancelledError:
-            # Task cancelled due to a new begin_use
-            logger.debug(f"Unload task cancelled for '{model_name}' (reuse detected)")
+            # Task canceled due to a new begin_use
+            logger.debug(f"Unload task canceled for '{model_name}' (reuse detected)")
         except Exception as e:
             logger.error(f"Error unloading model '{model_name}': {e}")
 

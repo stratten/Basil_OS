@@ -5,7 +5,7 @@ shape against the documented negotiated ACP v1/v2 contract, then answers with th
 protocol-correct JSON-RPC error for a malformed request or a request this
 package cannot safely decline, or with a `selected` outcome pointing at a
 reject-kind option when one is present. Never grants an `allow_once` or
-`allow_always` option, never emits the `cancelled` outcome (reserved for the
+`allow_always` option, never emits the `canceled` outcome (reserved for the
 client's own `session/cancel` handling), never persists a provider-permission
 interaction, never publishes a WebSocket event, and never advertises a
 negotiated permission capability. Persistence, delivery, and activation

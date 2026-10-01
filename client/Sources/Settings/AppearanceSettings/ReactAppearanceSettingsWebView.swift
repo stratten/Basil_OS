@@ -152,7 +152,7 @@ final class ReactAppearanceSettingsWebView: NSObject {
     var onMalformedIntent: ((String) -> Void)?
 
     override init() {
-        let configuration = WKWebViewConfiguration()
+        let configuration = BasilWebViewConfigurationFactory.makeConfiguration()
         configuration.preferences.setValue(true, forKey: "developerExtrasEnabled")
         configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
         configuration.setValue(true, forKey: "allowUniversalAccessFromFileURLs")

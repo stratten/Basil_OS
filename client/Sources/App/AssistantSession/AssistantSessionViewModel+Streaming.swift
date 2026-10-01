@@ -103,10 +103,10 @@ extension AssistantSessionViewModel {
         updateUIFromStreamingState(isFinal: isFinal)
     }
     
-    // MARK: - UI State Synchronisation
+    // MARK: - UI State Synchronization
     
     /// Updates the published UI properties from the current streaming state.
-    /// Handles normalisation (trimming) on final updates.
+    /// Handles normalization (trimming) on final updates.
     /// - Parameter isFinal: Whether this is the final update (triggers trimming).
     func updateUIFromStreamingState(isFinal: Bool) {
         guard let state = streamingState else { return }

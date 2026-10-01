@@ -224,7 +224,7 @@ final class AssistantSessionWindowController: NSWindowController, NSWindowDelega
 
     /// Open the AssistantSession widget pre-loaded with a rehydrated AssistantSession
     /// output from history, then immediately enter refinement mode and
-    /// start recording.
+    /// either start recording (`.voice`) or open the typed refinement editor (`.typed`).
     ///
     /// The backend has already created a fresh in-memory assistantSession
     /// session keyed by `resume.sessionId`; we wire that session id into
@@ -238,7 +238,7 @@ final class AssistantSessionWindowController: NSWindowController, NSWindowDelega
     /// different session), it is closed first so we never mix two
     /// sessions in one view model.
     @MainActor
-    static func show(rehydratedFrom resume: AssistantSessionRehydrateResponse) {
+    static func show(rehydratedFrom resume: AssistantSessionRehydrateResponse, input: AssistantSessionRefinementInput) {
         #if DEBUG
         DevLogger.shared.info(
             "🪟 AssistantSessionWindowController.show(rehydratedFrom:) called for session=\(resume.sessionId), assistant_output_id=\(resume.assistantOutputId)",
@@ -263,6 +263,13 @@ final class AssistantSessionWindowController: NSWindowController, NSWindowDelega
             height: viewModel.currentIdealWidgetHeight
         )
         presentWindow(with: viewModel, initialContentSize: initialContentSize)
+
+        if input == .typed {
+            // No audio involved: the request serial rides the snapshot, so the web surface opens the editor whenever it mounts.
+            viewModel.enterRefinementMode()
+            viewModel.typedRefinementRequestSerial += 1
+            return
+        }
 
         // Auto-start refinement recording. The view model's onAppear-driven
         // initialization runs on the main actor; yield one runloop turn so the
@@ -381,7 +388,8 @@ final class AssistantSessionWindowController: NSWindowController, NSWindowDelega
     }
 
     private func installDragArea(in assistantSessionWebView: AssistantSessionWebView, headerHeight: CGFloat = 44) {
-        let dragView = WindowDragAreaView(leadingInteractiveWidth: 88, trailingInteractiveWidth: 56)
+        // The leading pass-through must span every header button in the widest (result) layout: 12pt padding, cancel/minimize/collapse (22pt each), history and modality toggles (10pt each), 4pt gaps.
+        let dragView = WindowDragAreaView(leadingInteractiveWidth: 136, trailingInteractiveWidth: 56)
         dragView.translatesAutoresizingMaskIntoConstraints = false
         assistantSessionWebView.webView.addSubview(dragView)
         NSLayoutConstraint.activate([

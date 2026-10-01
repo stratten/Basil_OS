@@ -18,7 +18,7 @@ function stateLabel(state: BoardInquirySummary['state']): string {
     case 'failed':
       return 'Failed';
     default:
-      return 'Cancelled';
+      return 'Canceled';
   }
 }
 

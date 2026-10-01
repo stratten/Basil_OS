@@ -36,7 +36,7 @@ class RecallAgentTasksInput(BaseModel):
             "task's full agent log centered on a `contains` match. Use this when a "
             "prior turn's result/summary does not contain the actual content you "
             "produced (an email body, file text, a composed message) - especially "
-            "after a failed/cancelled turn - instead of re-doing the work. "
+            "after a failed/canceled turn - instead of re-doing the work. "
             "'reasoning': fetch bounded, redacted emitted reasoning segments for "
             "one prior task. Use only when the user asks why that task made a "
             "decision or performed a particular step. "
@@ -106,7 +106,7 @@ WHEN TO USE:
   file, the message you composed - because that content lived in a tool
   argument, not the final answer. This is the correct move for "give me the
   full text of what you wrote", ESPECIALLY when the prior turn failed or was
-  cancelled, so you can quote your own prior work instead of redoing it. Pass
+  canceled, so you can quote your own prior work instead of redoing it. Pass
   `contains` with a distinctive phrase or the tool name; page with `offset`
   (a character offset) if `has_more` is true.
 - scope='reasoning' (explicit, bounded): fetch redacted emitted reasoning
@@ -141,7 +141,7 @@ SLIM_DESCRIPTION = (
     "lossless follow-up: a window of the full agent log centered on a `contains` "
     "match - use it for 'give me the text you wrote' (the email body/text/message "
     "you composed lives here, not in the final result), especially after a "
-    "failed/cancelled turn, instead of redoing the work. "
+    "failed/canceled turn, instead of redoing the work. "
     "scope='reasoning' returns bounded, redacted emitted reasoning for one task "
     "only when the user asks why that task made a decision or performed a step; "
     "start bounded and target a named tool/decision/phrase with `contains`, "

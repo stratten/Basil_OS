@@ -53,6 +53,8 @@ from ..schema_management.zettel_migrations import (
     migrate_zettel_backreference,
     migrate_zettel_tables,
 )
+from ..schema_management.american_spelling_migration import migrate_american_spelling
+from ..schema_management.agent_follow_up_migrations import migrate_agent_follow_up_tables
 from ..schema_management.fts.tables import (
     ensure_agent_task_search_fts,
     ensure_fts_tables,
@@ -82,6 +84,7 @@ class SchemaManager:
         logger.info(f"Initializing database at {self.db_path}")
         try:
             with get_sync_connection(self.db_path) as conn:
+                self._migrate_american_spelling(conn)
                 cursor = conn.execute("""
                     SELECT name FROM sqlite_master 
                     WHERE type='table' AND name='activities'
@@ -128,6 +131,7 @@ class SchemaManager:
                 self._migrate_basil_board_tables(conn)
                 self._migrate_execution_approval_tables(conn)
                 self._migrate_managed_file_history_tables(conn)
+                self._migrate_agent_follow_up_tables(conn)
                 self._migrate_writing_samples_table(conn)
 
                 self._ensure_fts_tables(conn)
@@ -156,7 +160,7 @@ class SchemaManager:
         columns: List[str],
         conditions: Optional[List[Tuple[str, str, Any]]] = None,
     ) -> Tuple[str, List[Any]]:
-        """Build a parameterised SELECT query with schema validation.
+        """Build a parameterized SELECT query with schema validation.
 
         Returns:
             ``(query_string, parameters)``
@@ -321,3 +325,11 @@ class SchemaManager:
 
     def _ensure_fts_tables(self, conn: sqlite3.Connection) -> None:
         ensure_fts_tables(conn)
+
+    def _migrate_american_spelling(self, conn: sqlite3.Connection) -> None:
+        """Rewrite persisted British cancel spellings before any migration copies rows into American-only CHECK constraints."""
+        migrate_american_spelling(conn)
+
+    def _migrate_agent_follow_up_tables(self, conn: sqlite3.Connection) -> None:
+        """Create the durable agent follow-up table on fresh and existing databases."""
+        migrate_agent_follow_up_tables(conn)

@@ -46,7 +46,7 @@ def get_provider_discovery_schema_statements() -> list[str]:
             proposal_id TEXT NOT NULL,
             agent_task_id TEXT NOT NULL,
             root_task_id TEXT NOT NULL,
-            status TEXT NOT NULL CHECK (status IN ('authorized', 'needs_user', 'rejected', 'clarification_received', 'cancelled')),
+            status TEXT NOT NULL CHECK (status IN ('authorized', 'needs_user', 'rejected', 'clarification_received', 'canceled')),
             reason_code TEXT NOT NULL,
             selected_provider_profile_id TEXT,
             selected_workspace_grant_id TEXT,

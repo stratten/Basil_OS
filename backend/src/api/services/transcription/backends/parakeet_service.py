@@ -218,7 +218,7 @@ class ParakeetTranscriptionService(BaseTranscriptionService):
     ) -> str:
         """Run the encoder + TDT decoder on a single WAV file.
 
-        Centralised so the live ASR backend can call the same shared
+        Centralized so the live ASR backend can call the same shared
         pipeline (it bypasses this method and uses the lower-level
         components directly to avoid the file-IO round trip, but the
         feature extraction and decoding parameters stay in lock-step).
@@ -471,7 +471,7 @@ class ParakeetTranscriptionService(BaseTranscriptionService):
 
         Heuristics: the hidden tensor is rank-3 ``[B, T, D]``; the
         length tensor is rank-1 ``[B]``. If the bundle does not emit a
-        length tensor we synthesise one from the input mel length
+        length tensor we synthesize one from the input mel length
         (worst case the decoder over-runs into zero-padded frames,
         which it will still see as silence).
         """

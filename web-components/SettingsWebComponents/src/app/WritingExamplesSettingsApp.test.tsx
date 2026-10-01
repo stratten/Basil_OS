@@ -196,12 +196,12 @@ describe('WritingExamplesSettingsApp', () => {
     expect((deleteButton as HTMLButtonElement).disabled).toBe(true)
   })
 
-  it('shows no error banner when a delete is cancelled by the native confirmation', () => {
+  it('shows no error banner when a delete is canceled by the native confirmation', () => {
     sendInit({ activeFilter: 'email_reply', samples: [SAMPLE] })
     const deleteButton = Array.from(container.querySelectorAll('button')).find((b) => b.textContent === 'Delete')!
     act(() => { deleteButton.click() })
     const requestId = lastMessageOfType('requestDeleteSample').requestId
-    act(() => { window.basilWritingExamplesSettings!.onEvent({ type: 'intentResult', requestId, status: 'cancelled' }) })
+    act(() => { window.basilWritingExamplesSettings!.onEvent({ type: 'intentResult', requestId, status: 'canceled' }) })
     expect(container.querySelector('.writing-examples-status-error')).toBeNull()
     expect((deleteButton as HTMLButtonElement).disabled).toBe(false)
   })
@@ -317,14 +317,14 @@ describe('WritingExamplesSettingsApp', () => {
     expect(tabMarker('Email Reply')).toBeNull()
   })
 
-  it('does not flag a context when a mutation fails or is cancelled', () => {
+  it('does not flag a context when a mutation fails or is canceled', () => {
     sendInit({ activeFilter: 'email_reply', samples: [SAMPLE] })
     act(() => { findButton('Delete')!.click() })
     const failedId = lastMessageOfType('requestDeleteSample').requestId
     act(() => { window.basilWritingExamplesSettings!.onEvent({ type: 'intentResult', requestId: failedId, status: 'error', message: 'Failed to delete sample.' }) })
     act(() => { findButton('Delete')!.click() })
-    const cancelledId = lastMessageOfType('requestDeleteSample').requestId
-    act(() => { window.basilWritingExamplesSettings!.onEvent({ type: 'intentResult', requestId: cancelledId, status: 'cancelled' }) })
+    const canceledId = lastMessageOfType('requestDeleteSample').requestId
+    act(() => { window.basilWritingExamplesSettings!.onEvent({ type: 'intentResult', requestId: canceledId, status: 'canceled' }) })
 
     expect(container.querySelector('.writing-examples-stale-notice')).toBeNull()
     expect(tabMarker('Email Reply')).toBeNull()

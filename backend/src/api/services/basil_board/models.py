@@ -31,7 +31,7 @@ class HomeTurnState(str, Enum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
-    CANCELLED = "cancelled"
+    CANCELED = "canceled"
 
 
 SUPPORTED_TAB_KINDS = {kind.value for kind in BasilBoardTabKind}
@@ -140,7 +140,7 @@ class HomeTimelineAgentTask(BaseModel):
     messageId: str
     inReplyTo: str
     agentTaskId: str
-    state: Literal["queued", "running", "completed", "failed", "cancelled"]
+    state: Literal["queued", "running", "completed", "failed", "canceled"]
     result: Optional[str] = None
     outcome: Optional[str] = None
     createdAt: str

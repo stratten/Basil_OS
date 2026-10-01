@@ -10,7 +10,7 @@ email context -- additionally:
   * Tracks the recipient as a contact and bumps their interaction count
     via ``_track_recipient``.
 
-These two helpers stay private to this module because their behaviour
+These two helpers stay private to this module because their behavior
 (regex patterns, contact-extraction rules) is tightly coupled to the
 save-sample endpoint and not reused elsewhere.
 """
@@ -44,7 +44,7 @@ async def save_assistant_session_as_sample(
     """Save a AssistantSession as a writing sample for personalization.
 
     Called when the user explicitly clicks "Save as Sample". Captures the
-    suggestion for future use in personalising email/document generation.
+    suggestion for future use in personalizing email/document generation.
 
     Optional request body:
         - content: str -- Custom content to save (overrides session

@@ -44,7 +44,7 @@ class ContextTextRequest(BaseModel):
 
 
 class CancelSessionResponse(BaseModel):
-    """Response for cancelling a AssistantSession session."""
+    """Response for canceling a AssistantSession session."""
     status: str
     session_id: str
 

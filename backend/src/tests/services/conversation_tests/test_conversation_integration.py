@@ -1,6 +1,7 @@
 """Integration tests for the conversation service with real models."""
 
 import pytest
+import pytest_asyncio
 import uuid
 import logging
 import traceback
@@ -142,12 +143,15 @@ def custom_model_service(real_model_service):
     return CustomModelService(real_model_service)
 
 
-@pytest.fixture
-def real_conversation_service(custom_model_service):
-    """Create a conversation service with the custom model service for integration testing."""
+@pytest_asyncio.fixture
+async def real_conversation_service(custom_model_service):
+    """Create a conversation service with the custom model service for integration testing.
+
+    Every conversation created through the service is deleted on teardown, including when the test skips or fails, so runs against a real HOME leave no test conversations behind.
+    """
     try:
         logger.info("Creating ConversationService with custom model service")
-        return ConversationService(
+        service = ConversationService(
             model_service=custom_model_service,
             development_mode=True
         )
@@ -155,6 +159,22 @@ def real_conversation_service(custom_model_service):
         logger.error(f"Failed to create ConversationService: {str(e)}")
         logger.error(traceback.format_exc())
         raise
+
+    created_conversation_ids: List[str] = []
+    create_conversation = service.create_conversation
+
+    async def create_tracked_conversation(*args, **kwargs):
+        conversation = await create_conversation(*args, **kwargs)
+        created_conversation_ids.append(conversation.id)
+        return conversation
+
+    service.create_conversation = create_tracked_conversation
+    try:
+        yield service
+    finally:
+        for conversation_id in created_conversation_ids:
+            if not await service.delete_conversation(conversation_id):
+                logger.warning(f"Could not delete test conversation {conversation_id}")
 
 
 @pytest.mark.asyncio

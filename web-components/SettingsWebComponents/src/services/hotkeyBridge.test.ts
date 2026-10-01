@@ -48,12 +48,12 @@ describe('hotkeyBridge', () => {
   })
 
   it('queues events received before a handler subscribes, then flushes them in order', () => {
-    window.basilHotkeySettings!.onEvent({ type: 'captureCancelled', id: 'agent_task' })
-    window.basilHotkeySettings!.onEvent({ type: 'captureCancelled', id: 'conversation_toggle' })
+    window.basilHotkeySettings!.onEvent({ type: 'captureCanceled', id: 'agent_task' })
+    window.basilHotkeySettings!.onEvent({ type: 'captureCanceled', id: 'conversation_toggle' })
 
     const received: string[] = []
     const unsubscribe = onHotkeyEvent((event) => {
-      if (event.type === 'captureCancelled') received.push(event.id)
+      if (event.type === 'captureCanceled') received.push(event.id)
     })
 
     expect(received).toEqual(['agent_task', 'conversation_toggle'])

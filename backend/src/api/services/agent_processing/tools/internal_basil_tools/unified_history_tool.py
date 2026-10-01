@@ -42,7 +42,7 @@ class UnifiedHistoryInput(BaseModel):
             "meeting. Omit for everything."
         ),
     )
-    outcome: Optional[Literal["succeeded", "failed", "cancelled", "skipped"]] = Field(
+    outcome: Optional[Literal["succeeded", "failed", "canceled", "skipped"]] = Field(
         default=None, description="Only events with this outcome."
     )
     group_by: Optional[Literal["source_kind", "day", "outcome"]] = Field(
@@ -183,7 +183,7 @@ holds the answer.
 - `narrative` and `narrative_state`: the model-written narrative and whether it
   is 'final', still 'pending', or 'failed'. `raw_summary` keeps the card text.
 - `is_open` / `open_note`: the model judged the record still unfinished.
-- `outcome`: succeeded, failed, cancelled, skipped, or null.
+- `outcome`: succeeded, failed, canceled, skipped, or null.
 - `payload`: bounded per-kind detail (durations, counts, model names).
 
 Bodies are deliberately not stored. When an event matters, use its

@@ -208,7 +208,7 @@ describe('validation run-focus bridge', () => {
     unregisterFocus();
   });
 
-  it('posts the exact validation acknowledgement payload to the native host', () => {
+  it('posts the exact validation acknowledgment payload to the native host', () => {
     const postMessage = vi.fn();
     window.webkit = {
       messageHandlers: {

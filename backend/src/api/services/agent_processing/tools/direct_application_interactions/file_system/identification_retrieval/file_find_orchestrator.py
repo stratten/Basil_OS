@@ -113,7 +113,26 @@ def _iso_or_none(timestamp: float) -> Optional[str]:
         return None
 
 
-def _not_found_result(filename: str, searched_cloud: bool) -> Dict[str, Any]:
+def _not_found_result(
+    filename: str,
+    searched_cloud: bool,
+    incomplete_reasons: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    reasons = [reason for reason in (incomplete_reasons or []) if reason]
+    if reasons:
+        return {
+            "success": False,
+            "result_kind": "not_found",
+            "search_incomplete": True,
+            "incomplete_reasons": reasons,
+            "error": (
+                f"Search for '{filename}' did not finish: {'; '.join(reasons)}. "
+                "The file may exist; do not report it as missing. Retry with a narrower name or a "
+                "specific folder, or ask the user where the file is."
+            ),
+            "file_name": filename,
+            "searched_cloud": searched_cloud,
+        }
     return {
         "success": False,
         "result_kind": "not_found",
@@ -183,26 +202,43 @@ async def _gather_candidates(
     cloud_service: Any,
     filename: str,
     search_paths: Optional[List[str]],
-) -> tuple[List[Dict[str, Any]], bool]:
-    """Run Spotlight, then cloud find when the local result is empty or weak."""
+) -> tuple[List[Dict[str, Any]], bool, List[str]]:
+    """Run Spotlight, then cloud find when the local result is empty, weak, or incomplete.
+
+    Also returns a reason for every search that did not finish, so callers never present an unfinished search as proof that a file does not exist.
+    """
+    incomplete_reasons: List[str] = []
     search_result = await retrieval_service.search_files_by_name(filename, search_paths)
     spotlight = [_normalize_metadata_candidate(meta) for meta in search_result.files_found]
+    spotlight_errors = [str(error) for error in (getattr(search_result, "errors", None) or []) if error]
+    incomplete_reasons.extend(spotlight_errors)
 
     ranked_spotlight = rank_candidates(spotlight, filename) if spotlight else []
     best_local_score = ranked_spotlight[0]["score"] if ranked_spotlight else float("-inf")
-    need_cloud = (not ranked_spotlight) or (best_local_score < WEAK_SPOTLIGHT_SCORE)
+    need_cloud = (
+        (not ranked_spotlight)
+        or (best_local_score < WEAK_SPOTLIGHT_SCORE)
+        or bool(spotlight_errors)
+    )
 
     searched_cloud = False
     combined = list(spotlight)
     if need_cloud:
         searched_cloud = True
         try:
-            cloud_entries = await cloud_service.search_cloud_files(filename)
+            if hasattr(cloud_service, "search_cloud_files_with_coverage"):
+                coverage = await cloud_service.search_cloud_files_with_coverage(filename)
+                cloud_entries = coverage.get("files") or []
+                for gap in coverage.get("incomplete_paths") or []:
+                    incomplete_reasons.append(f"cloud folder {gap.get('path')}: {gap.get('reason')}")
+            else:
+                cloud_entries = await cloud_service.search_cloud_files(filename)
             combined.extend(_normalize_cloud_candidate(entry) for entry in cloud_entries)
         except Exception as exc:  # cloud find is best-effort, never fatal
             logger.debug(f"Cloud find failed for '{filename}': {exc}")
+            incomplete_reasons.append(f"cloud search failed: {exc}")
 
-    return _dedupe_by_path(combined), searched_cloud
+    return _dedupe_by_path(combined), searched_cloud, incomplete_reasons
 
 
 async def prepare_path(retrieval_service: Any, path: str, context: str = "") -> Dict[str, Any]:
@@ -242,11 +278,11 @@ async def find_or_list_candidates(
     """
     logger.info(f"🎯 Orchestrated find for '{filename}' (confident_only={confident_only})")
 
-    candidates, searched_cloud = await _gather_candidates(
+    candidates, searched_cloud, incomplete_reasons = await _gather_candidates(
         retrieval_service, cloud_service, filename, search_paths
     )
     if not candidates:
-        return _not_found_result(filename, searched_cloud)
+        return _not_found_result(filename, searched_cloud, incomplete_reasons)
 
     ranked = rank_candidates(candidates, filename)
 
@@ -273,8 +309,13 @@ async def find_or_list_candidates(
         "candidate_total_count": total_candidates,
         "candidate_returned_count": returned_candidates,
         "candidate_has_more": total_candidates > returned_candidates or upstream_has_more,
+        "search_incomplete": bool(incomplete_reasons),
+        "incomplete_reasons": list(incomplete_reasons),
         "coverage_note": (
-            "Candidate list is capped; do not treat this as exhaustive without a narrower search."
+            "Some searches did not finish; the right file may be missing from this list: "
+            + "; ".join(incomplete_reasons)
+            if incomplete_reasons
+            else "Candidate list is capped; do not treat this as exhaustive without a narrower search."
             if total_candidates > returned_candidates or upstream_has_more
             else "Candidate list is exhaustive for the searched sources."
         ),

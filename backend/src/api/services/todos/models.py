@@ -8,13 +8,13 @@ from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 TodoStatus = Literal[
-    "candidate", "open", "in_progress", "ready_for_review", "completed", "dismissed", "cancelled"
+    "candidate", "open", "in_progress", "ready_for_review", "completed", "dismissed", "canceled"
 ]
 TodoResponsibility = Literal["user", "agent", "shared", "unspecified"]
 TodoPriority = Literal["low", "normal", "high"]
 TodoActorKind = Literal["user", "agent", "system"]
 
-_TERMINAL_STATUSES: frozenset[str] = frozenset({"completed", "dismissed", "cancelled"})
+_TERMINAL_STATUSES: frozenset[str] = frozenset({"completed", "dismissed", "canceled"})
 
 
 def is_terminal_todo_status(status: str) -> bool:

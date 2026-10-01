@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AgentOriginStatusSummary, ConversationListItem } from '../contracts';
 import { getConversationAgentStatuses, listConversationPage } from '../services/api';
 import { basilBoardWebSocket } from '../services/websocket';
+import { reconcileConversationFirstPage } from './conversationListReconcile';
 
 const CONVERSATION_PAGE_SIZE = 30;
 
@@ -24,12 +25,16 @@ export function useConversationList() {
   const nextCursorRef = useRef<string>();
   const requestVersionRef = useRef(0);
   const loadingMoreRef = useRef(false);
+  const loadingRef = useRef(true);
+  const conversationsRef = useRef<ConversationListItem[]>([]);
+  conversationsRef.current = conversations;
 
   const loadFirstPage = useCallback(async (requestedQuery: string) => {
     const version = ++requestVersionRef.current;
     const normalizedQuery = requestedQuery.trim();
     nextCursorRef.current = undefined;
     loadingMoreRef.current = false;
+    loadingRef.current = true;
     setConversations([]);
     setHasMore(false);
     setLoading(true);
@@ -49,7 +54,10 @@ export function useConversationList() {
       if (version !== requestVersionRef.current) return;
       setLoadError(error instanceof Error ? error.message : 'Failed to load conversations');
     } finally {
-      if (version === requestVersionRef.current) setLoading(false);
+      if (version === requestVersionRef.current) {
+        loadingRef.current = false;
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -68,6 +76,37 @@ export function useConversationList() {
   const reload = useCallback(() => {
     void loadFirstPage(query);
   }, [loadFirstPage, query]);
+
+  const refresh = useCallback(async () => {
+    if (loadingRef.current) return;
+    const version = requestVersionRef.current;
+    const normalizedQuery = query.trim();
+    try {
+      const page = await listConversationPage({
+        query: normalizedQuery || undefined,
+        limit: CONVERSATION_PAGE_SIZE,
+      });
+      if (version !== requestVersionRef.current) return;
+      const listExtendsPastFirstPage = page.has_more
+        && conversationsRef.current.length > page.conversations.length;
+      setConversations((current) => reconcileConversationFirstPage(current, page.conversations, page.has_more));
+      if (!listExtendsPastFirstPage) {
+        setHasMore(page.has_more);
+        nextCursorRef.current = page.next_cursor ?? undefined;
+      }
+      setLoadError(undefined);
+    } catch {
+      // A failed background refresh keeps the visible list; the next event or the Retry button reloads it.
+    }
+  }, [query]);
+
+  const removeConversation = useCallback((conversationId: string) => {
+    setConversations((current) => (
+      current.some((conversation) => conversation.id === conversationId)
+        ? current.filter((conversation) => conversation.id !== conversationId)
+        : current
+    ));
+  }, []);
 
   const loadMore = useCallback(async () => {
     const cursor = nextCursorRef.current;
@@ -110,7 +149,7 @@ export function useConversationList() {
   const agentStatusDebounceRef = useRef<number>();
 
   useEffect(() => {
-    let cancelled = false;
+    let canceled = false;
     const ids = conversationIdsKey ? conversationIdsKey.split(',') : [];
 
     const refreshAgentStatuses = () => {
@@ -120,7 +159,7 @@ export function useConversationList() {
       }
       void getConversationAgentStatuses(ids)
         .then((result) => {
-          if (cancelled) return;
+          if (canceled) return;
           setLiveAgentStatuses(result as Record<string, AgentOriginStatusSummary | null>);
         })
         .catch(() => {
@@ -137,17 +176,23 @@ export function useConversationList() {
     });
 
     return () => {
-      cancelled = true;
+      canceled = true;
       window.clearTimeout(agentStatusDebounceRef.current);
       unsubscribe();
     };
   }, [conversationIdsKey]);
 
-  const conversationsWithLiveStatus = conversations.map((conversation) => (
-    conversation.id in liveAgentStatuses
-      ? { ...conversation, agent_status: liveAgentStatuses[conversation.id] }
-      : conversation
-  ));
+  const liveStatusCacheRef = useRef(new WeakMap<ConversationListItem, { statusKey: string; merged: ConversationListItem }>());
+  const conversationsWithLiveStatus = useMemo(() => conversations.map((conversation) => {
+    if (!(conversation.id in liveAgentStatuses)) return conversation;
+    const status = liveAgentStatuses[conversation.id];
+    const statusKey = JSON.stringify(status ?? null);
+    const cached = liveStatusCacheRef.current.get(conversation);
+    if (cached && cached.statusKey === statusKey) return cached.merged;
+    const merged = { ...conversation, agent_status: status };
+    liveStatusCacheRef.current.set(conversation, { statusKey, merged });
+    return merged;
+  }), [conversations, liveAgentStatuses]);
 
   return {
     conversations: conversationsWithLiveStatus,
@@ -159,6 +204,8 @@ export function useConversationList() {
     hasMore,
     onQueryChange,
     reload,
+    refresh,
+    removeConversation,
     loadMore,
   };
 }

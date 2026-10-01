@@ -218,7 +218,7 @@ async def test_cancellation_finishes_current_stage_items_and_selects_no_more():
     ocr_started = asyncio.Event()
     analysis_started = asyncio.Event()
     release = asyncio.Event()
-    cancelled = False
+    canceled = False
     ocr_attempts: list[str] = []
     analysis_attempts: list[str] = []
 
@@ -239,7 +239,7 @@ async def test_cancellation_finishes_current_stage_items_and_selects_no_more():
         process_pending_ocr=ocr,
         process_ocr_complete=analyze,
         publish_analysis_result=lambda _activity, _error: None,
-        cancellation_requested=lambda: cancelled,
+        cancellation_requested=lambda: canceled,
         max_analysis_records=0,
     )
     task = asyncio.create_task(coordinator.run())
@@ -247,14 +247,14 @@ async def test_cancellation_finishes_current_stage_items_and_selects_no_more():
         asyncio.gather(ocr_started.wait(), analysis_started.wait()),
         timeout=1,
     )
-    cancelled = True
+    canceled = True
     release.set()
     result = await asyncio.wait_for(task, timeout=1)
 
     assert ocr_attempts == ["pending-1"]
     assert analysis_attempts == ["ready-1"]
     assert result.analysis_attempts == 1
-    assert result.cancelled is True
+    assert result.canceled is True
 
 
 @pytest.mark.asyncio
@@ -461,7 +461,7 @@ async def test_parallel_cancellation_finishes_admitted_items_without_starting_mo
     queues = _Queues([], [f"ready-{index}" for index in range(9)])
     all_started = asyncio.Event()
     release = asyncio.Event()
-    cancelled = False
+    canceled = False
     started: list[str] = []
 
     async def analyze(activity):
@@ -476,18 +476,18 @@ async def test_parallel_cancellation_finishes_admitted_items_without_starting_mo
         process_pending_ocr=lambda _activity: asyncio.sleep(0),
         process_ocr_complete=analyze,
         publish_analysis_result=lambda _activity, _error: None,
-        cancellation_requested=lambda: cancelled,
+        cancellation_requested=lambda: canceled,
         max_analysis_records=0,
         analysis_concurrency=8,
     )
     task = asyncio.create_task(coordinator.run())
 
     await asyncio.wait_for(all_started.wait(), timeout=1)
-    cancelled = True
+    canceled = True
     release.set()
     result = await asyncio.wait_for(task, timeout=1)
 
     assert sorted(started) == [f"ready-{index}" for index in range(8)]
     assert result.analysis_attempts == 8
-    assert result.cancelled is True
+    assert result.canceled is True
     assert [activity.id for activity in queues.rows["OCR_COMPLETE"]] == ["ready-8"]

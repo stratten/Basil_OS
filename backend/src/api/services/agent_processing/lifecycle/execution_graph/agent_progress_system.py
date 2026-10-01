@@ -590,6 +590,8 @@ class LiveProgressCallbackHandler(BaseCallbackHandler):
                 assessment = self._tool_run_registry.assess(run_key)
                 heartbeat_message = assessment.message
                 if not assessment.should_continue:
+                    if assessment.stale_reason == "declared_timeout_exceeded":
+                        self._tool_run_registry.force_cancel(run_key, reason=heartbeat_message)
                     step_info = self._step_ids_by_run.pop(run_key, None)
                     if step_info:
                         self._stop_active_step_heartbeat(run_key)

@@ -23,6 +23,7 @@ const CONNECTION: MCPConnection = {
   lastConnectionStatusMessage: 'OK',
   serverName: 'github-mcp',
   serverInstructions: null,
+  authKind: 'github_device',
   tools: [
     { name: 'create_issue', description: 'Create a GitHub issue', isReadOnlyHint: false, policy: 'always_ask' },
     { name: 'list_issues', description: 'List issues', isReadOnlyHint: true, policy: 'always_allow' },
@@ -90,5 +91,76 @@ describe('ConnectionRow', () => {
     })
     act(() => { container.querySelector<HTMLButtonElement>('.connections-row-action-primary')!.click() })
     expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'requestUpdateConnectionMetadata', connectionId: 'conn-1', friendlyName: 'GitHub (work)' }))
+  })
+
+  function buttonLabeled(label: string): HTMLButtonElement | undefined {
+    return Array.from(container.querySelectorAll<HTMLButtonElement>('.connections-row-action-button')).find((button) => button.textContent === label)
+  }
+
+  function setInputValue(input: HTMLInputElement, value: string) {
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!
+    act(() => {
+      setter.call(input, value)
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+  }
+
+  it('shows Check Status and no Reconnect for a healthy connection', () => {
+    render(CONNECTION)
+    expect(buttonLabeled('Check Status')).toBeDefined()
+    expect(buttonLabeled('Reconnect')).toBeUndefined()
+  })
+
+  it('keeps Check Status when the last check failed for a non-credential reason', () => {
+    render({ ...CONNECTION, lastConnectionStatus: 'error' })
+    expect(buttonLabeled('Check Status')).toBeDefined()
+    expect(buttonLabeled('Reconnect')).toBeUndefined()
+  })
+
+  it('replaces Check Status with Reconnect when credentials need reconnecting', () => {
+    render({ ...CONNECTION, lastConnectionStatus: 'needs_reconnect' })
+    expect(buttonLabeled('Check Status')).toBeUndefined()
+    act(() => { buttonLabeled('Reconnect')!.click() })
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'requestReconnectConnection', connectionId: 'conn-1' }))
+    expect(onTrackRequest).toHaveBeenCalled()
+  })
+
+  it('offers Reconnect when the stored token is unavailable', () => {
+    render({ ...CONNECTION, authKind: 'oauth', lastConnectionStatus: 'token_unavailable' })
+    act(() => { buttonLabeled('Reconnect')!.click() })
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'requestReconnectConnection', connectionId: 'conn-1' }))
+  })
+
+  it('disables Reconnect while another request is pending', () => {
+    render({ ...CONNECTION, lastConnectionStatus: 'needs_reconnect' }, 'other-request')
+    expect(buttonLabeled('Reconnect')!.disabled).toBe(true)
+  })
+
+  it('asks for a replacement token instead of starting a browser flow for pasted-token connections', () => {
+    render({ ...CONNECTION, authKind: 'manual_token', lastConnectionStatus: 'needs_reconnect' })
+    act(() => { buttonLabeled('Reconnect')!.click() })
+    expect(postMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'requestReconnectConnection' }))
+    const tokenInput = container.querySelector<HTMLInputElement>('.connections-row-edit-token')!
+    expect(tokenInput.type).toBe('password')
+    expect(buttonLabeled('Save Token')!.disabled).toBe(true)
+
+    setInputValue(tokenInput, '   ')
+    expect(buttonLabeled('Save Token')!.disabled).toBe(true)
+
+    setInputValue(tokenInput, '  new-secret  ')
+    act(() => { buttonLabeled('Save Token')!.click() })
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'requestReplaceConnectionToken', connectionId: 'conn-1', bearerToken: 'new-secret' }))
+    expect(container.querySelector('.connections-row-edit-token')).toBeNull()
+  })
+
+  it('cancels token replacement without sending anything', () => {
+    render({ ...CONNECTION, authKind: 'manual_token', lastConnectionStatus: 'token_unavailable' })
+    act(() => { buttonLabeled('Reconnect')!.click() })
+    setInputValue(container.querySelector<HTMLInputElement>('.connections-row-edit-token')!, 'typed-but-abandoned')
+    act(() => { buttonLabeled('Cancel')!.click() })
+    expect(container.querySelector('.connections-row-edit-token')).toBeNull()
+    expect(postMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'requestReplaceConnectionToken' }))
+    act(() => { buttonLabeled('Reconnect')!.click() })
+    expect(container.querySelector<HTMLInputElement>('.connections-row-edit-token')!.value).toBe('')
   })
 })

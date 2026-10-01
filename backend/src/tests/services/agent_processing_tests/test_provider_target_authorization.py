@@ -841,14 +841,14 @@ async def test_checkpoint_response_paths_are_immutable_and_idempotent(
         root_task_id="root-task",
         proposal_id=str(proposal2["id"]),
     )
-    cancelled = await service.resolve_checkpoint_response(
+    canceled = await service.resolve_checkpoint_response(
         agent_task_id="task-1",
         root_task_id="root-task",
         authorization_id=str(pending["id"]),
         response=str(pending["checkpoint"]["metadata"]["cancel_value"]),
     )
-    assert cancelled["status"] == "cancelled"
-    assert cancelled["reason_code"] == "user_cancelled_delegation"
+    assert canceled["status"] == "canceled"
+    assert canceled["reason_code"] == "user_canceled_delegation"
 
     proposal3 = await _store_proposal(
         knowledge,

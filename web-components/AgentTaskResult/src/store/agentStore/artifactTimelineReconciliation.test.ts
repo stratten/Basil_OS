@@ -98,19 +98,19 @@ describe('Slice 4B artifact timeline acceptance', () => {
     expect(store.getAgent('root-task')).toBeUndefined();
   });
 
-  it('routes accepted evidence without changing terminal or cancelled lifecycle state', () => {
+  it('routes accepted evidence without changing terminal or canceled lifecycle state', () => {
     const store = new AgentStore();
     store.registerAgent('task-artifact');
     store.handleWSEvent(artifactEvent());
     store.handleWSEvent({
-      event_type: 'agentTask_cancelled',
+      event_type: 'agent_task_canceled',
       agent_task_id: 'task-artifact',
-      message: 'Cancelled after write',
+      message: 'Canceled after write',
     });
     store.handleWSEvent(artifactEvent());
 
     const agent = store.getAgent('task-artifact');
-    expect(agent?.isCancelled).toBe(true);
+    expect(agent?.isCanceled).toBe(true);
     expect(agent?.executionTimeline).toEqual([artifactEntry()]);
   });
 

@@ -719,19 +719,19 @@ async def test_cancel_action_sets_terminal_outcome_only_after_session_cancel() -
 
         async def transition_run(self, **kwargs):
             order.append("transition_run")
-            assert kwargs["next_status"] == "cancelling"
+            assert kwargs["next_status"] == "canceling"
             return {
                 "id": "delegated-run",
                 "parent_agent_task_id": "parent",
                 "executor_kind": "acp_provider",
-                "status": "cancelling",
+                "status": "canceling",
                 "revision": 6,
             }
 
         async def record_outcome(self, **kwargs):
             order.append("record_outcome")
-            assert kwargs["terminal_status"] == "cancelled"
-            return {"id": "delegated-run", "status": "cancelled", "executor_kind": "acp_provider"}
+            assert kwargs["terminal_status"] == "canceled"
+            return {"id": "delegated-run", "status": "canceled", "executor_kind": "acp_provider"}
 
     class Sessions:
         async def cancel(self, *, delegated_agent_run_id):
@@ -756,7 +756,7 @@ async def test_cancel_action_sets_terminal_outcome_only_after_session_cancel() -
         parent_agent_task_id="parent",
         knowledge=knowledge,
         instruction="",
-        summary="Cancelling per user request.",
+        summary="Canceling per user request.",
         submission_service=SimpleNamespace(delegated_agent_controller=controller),
         evidence_id=None,
         verification_evidence_id=None,
@@ -765,7 +765,7 @@ async def test_cancel_action_sets_terminal_outcome_only_after_session_cancel() -
         inspection_purpose="",
     )
 
-    assert json.loads(result) == {"ok": True, "status": "cancelled"}
+    assert json.loads(result) == {"ok": True, "status": "canceled"}
     assert order == ["transition_run", "session_cancel", "record_outcome", "session_close"]
 
     class FailingSessions(Sessions):
@@ -787,7 +787,7 @@ async def test_cancel_action_sets_terminal_outcome_only_after_session_cancel() -
     with pytest.raises(RuntimeError, match="transport unavailable"):
         await failing_controller.cancel_acp_run_for_supervision(
             delegated_agent_run=stuck_run,
-            summary="Cancelling per user request.",
+            summary="Canceling per user request.",
         )
     assert order.count("record_outcome") == 1
     assert order.count("session_close") == 1

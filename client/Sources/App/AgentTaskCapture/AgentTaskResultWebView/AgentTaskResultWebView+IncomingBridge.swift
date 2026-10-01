@@ -81,6 +81,7 @@ extension AgentTaskResultWebView {
     
     nonisolated func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         Task { @MainActor in
+            guard message.frameInfo.isMainFrame || message.name == "jsLog" else { return }
             handleMessage(name: message.name, body: message.body)
         }
     }
@@ -183,7 +184,7 @@ extension AgentTaskResultWebView {
         case "openFile":
             if let path = dict["path"] as? String,
                let posixPath = FilePathUtility.resolveBridgeArtifactPath(path) {
-                NSWorkspace.shared.open(URL(fileURLWithPath: posixPath))
+                BridgeOpenPolicy.openLocalFile(URL(fileURLWithPath: posixPath))
             }
         case "openLocalWebPreview":
             guard let mode = dict["mode"] as? String,
@@ -289,7 +290,7 @@ extension AgentTaskResultWebView {
             }
         case "openExternalUrl":
             if let urlString = dict["url"] as? String, let url = URL(string: urlString) {
-                NSWorkspace.shared.open(url)
+                BridgeOpenPolicy.openExternalURL(url)
             }
         case "openDetachedAgentTask":
             if let rootTaskId = dict["rootTaskId"] as? String, !rootTaskId.isEmpty {

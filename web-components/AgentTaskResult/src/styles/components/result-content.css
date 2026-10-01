@@ -105,7 +105,7 @@
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: var(--padding-l) var(--padding-l) var(--padding-m);
+  padding: var(--padding-l) var(--padding-l) var(--padding-s);
 }
 
 /* AgentTask card (history item) — matches Swift's AgentTaskHistoryCard */
@@ -331,6 +331,22 @@
   justify-content: flex-end;
   gap: var(--padding-s);
   padding: var(--padding-s) var(--padding-l) 0;
+}
+
+/* Save/good/bad sit under the response as a compact footer rather than a full action row. */
+.result-actions--feedback {
+  gap: 2px;
+  padding: 2px var(--padding-xs) 0;
+}
+
+.result-actions--feedback .action-icon-btn {
+  width: 26px;
+  height: 20px;
+}
+
+.result-actions--feedback .action-icon-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .result-action-message {

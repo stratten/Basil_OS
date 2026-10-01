@@ -87,7 +87,7 @@ async def _wallclock_watchdog(
     """Compare wall-clock vs monotonic elapsed; WARN on drift, kill on
     excessive wall-clock elapsed.
 
-    Exits cleanly when the subprocess exits, when it gets cancelled, or
+    Exits cleanly when the subprocess exits, when it gets canceled, or
     after it kills the subprocess for crossing the wall-clock bound.
 
     Implementation notes:
@@ -387,7 +387,7 @@ class AppleScriptAutomationService:
                 error=f"Timeout after {self.timeout} seconds"
             )
         except asyncio.CancelledError:
-            logger.info(f"🛑 {description} cancelled; cleaning up osascript subprocess")
+            logger.info(f"🛑 {description} canceled; cleaning up osascript subprocess")
             try:
                 if "process" in locals() and hasattr(process, "pid") and process.returncode is None:
                     process.terminate()

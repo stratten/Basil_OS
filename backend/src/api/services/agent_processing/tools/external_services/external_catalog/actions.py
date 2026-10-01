@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from .approval import request_external_catalog_user_approval
 from .audit import record_external_catalog_audit
@@ -13,12 +13,14 @@ from .auth import (
     get_external_catalog_mcp_client,
     invalidate_cached_access_token_on_auth_error,
     load_external_catalog_preferences,
+    record_connection_auth_rejection,
     resolve_external_catalog_access_token,
     try_generic_oauth_refresh_and_retry,
     try_slack_refresh_and_retry,
 )
 from .envelopes import (
     make_external_catalog_auth_unavailable,
+    make_external_catalog_needs_reconnect,
     make_external_catalog_not_found,
     make_external_catalog_permission_denied,
 )
@@ -28,6 +30,24 @@ from .schema_guard import (
     ensure_tool_schema_surfaced,
     mark_tools_surfaced,
 )
+
+
+async def _reject_if_known_needs_reconnect(
+    record: Any,
+    tool_name: str,
+    arguments: Dict[str, Any],
+) -> Optional[Dict[str, Any]]:
+    """Fail fast for a connection already marked ``needs_reconnect``, so a dead token never triggers a Keychain read or a doomed remote call. Reconnect or Check Status clears the mark."""
+    if getattr(record, "last_connection_status", None) != "needs_reconnect":
+        return None
+    started_at = datetime.utcnow()
+    envelope = make_external_catalog_needs_reconnect(record.friendly_name)
+    await record_external_catalog_audit(
+        record=record, tool_name=tool_name, arguments=arguments,
+        classification="error", envelope=envelope,
+        started_at=started_at, completed_at=datetime.utcnow(),
+    )
+    return envelope
 
 
 async def list_external_catalog_servers() -> Dict[str, Any]:
@@ -53,6 +73,12 @@ async def describe_external_catalog_server(connection_id: str) -> Dict[str, Any]
     record = find_external_catalog_connection(prefs, connection_id)
     if record is None:
         return make_external_catalog_not_found(f"No connection with id '{connection_id}'")
+
+    needs_reconnect_envelope = await _reject_if_known_needs_reconnect(
+        record, "describe_server", {"connection_id": connection_id}
+    )
+    if needs_reconnect_envelope is not None:
+        return needs_reconnect_envelope
 
     started_at = datetime.utcnow()
     token_outcome = await resolve_external_catalog_access_token(connection_id)
@@ -81,6 +107,7 @@ async def describe_external_catalog_server(connection_id: str) -> Dict[str, Any]
         )
     if retry_envelope is not None:
         envelope = retry_envelope
+    record_connection_auth_rejection(connection_id, envelope)
     rate_retry_envelope = await try_rate_limit_wait_and_retry(
         record=record,
         envelope=envelope,
@@ -119,6 +146,10 @@ async def call_external_catalog_tool(
     record = find_external_catalog_connection(prefs, connection_id)
     if record is None:
         return make_external_catalog_not_found(f"No connection with id '{connection_id}'")
+
+    needs_reconnect_envelope = await _reject_if_known_needs_reconnect(record, tool_name, arguments)
+    if needs_reconnect_envelope is not None:
+        return needs_reconnect_envelope
 
     # Schema-surfacing guard (Locus 3): before dispatching a parameterized tool
     # whose schema the model has not seen this run, return a corrective envelope
@@ -188,6 +219,7 @@ async def call_external_catalog_tool(
         )
     if retry_envelope is not None:
         envelope = retry_envelope
+    record_connection_auth_rejection(connection_id, envelope)
     rate_retry_envelope = await try_rate_limit_wait_and_retry(
         record=record,
         envelope=envelope,

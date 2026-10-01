@@ -50,7 +50,7 @@ extension APIClient {
             let jsonData = try encoder.encode(body)
 
             #if DEBUG
-            DevLogger.shared.info("Cancelling AgentTask through REST: \(agentTaskId)", context: "APIClient")
+            DevLogger.shared.info("Canceling AgentTask through REST: \(agentTaskId)", context: "APIClient")
             #endif
 
             let data = try await post(endpoint, body: jsonData)
@@ -60,7 +60,7 @@ extension APIClient {
 
             #if DEBUG
             DevLogger.shared.info(
-                "AgentTask cancelled through REST: finalizedViaAgent=\(response.finalizedViaAgent)",
+                "AgentTask canceled through REST: finalizedViaAgent=\(response.finalizedViaAgent)",
                 context: "APIClient"
             )
             #endif

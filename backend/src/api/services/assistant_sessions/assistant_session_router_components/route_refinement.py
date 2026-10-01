@@ -3,7 +3,7 @@
 * ``POST /{session_id}/refine`` -- transcribe (or accept typed text)
   and refine using the original session's OCR + previous output as
   context.
-* ``POST /rehydrate-from-history/{assistant_output_id}`` -- materialise a
+* ``POST /rehydrate-from-history/{assistant_output_id}`` -- materialize a
   fresh in-memory session from a persisted history row so refinement can
   run against historical state.
 

@@ -11,11 +11,13 @@ struct ConversationWidgetSettings: Codable {
     let widgetSize: WidgetSize?
     let widgetPosition: WidgetPosition?
     let isSidebarCollapsed: Bool
+    var defaultConversationOnly: Bool? = nil
     
     enum CodingKeys: String, CodingKey {
         case widgetSize = "widget_size"
         case widgetPosition = "widget_position"
         case isSidebarCollapsed = "is_sidebar_collapsed"
+        case defaultConversationOnly = "default_conversation_only"
     }
 }
 
@@ -75,6 +77,16 @@ extension APIClient {
         #endif
     }
     
+    // MARK: - Update Conversation Only Default
+
+    func updateConversationDefaultConversationOnly(_ enabled: Bool) async throws {
+        let settings: [String: Any] = [
+            "default_conversation_only": enabled
+        ]
+        let jsonData = try JSONSerialization.data(withJSONObject: settings)
+        _ = try await put("/settings/conversation-widget", data: jsonData)
+    }
+
     // MARK: - Cached Settings
     
     private static var cachedConversationWidgetSettings: ConversationWidgetSettings?

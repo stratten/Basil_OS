@@ -10,10 +10,8 @@ export function isTerminalProgressEvent(event: WSEvent): boolean {
   const eventType = event.event_type as string;
   const status = event.status as string | undefined;
   return (
-    eventType === 'agentTask_result' ||
     eventType === 'agent_task_result' ||
-    eventType === 'agentTask_cancelled' ||
-    eventType === 'agent_task_cancelled' ||
+    eventType === 'agent_task_canceled' ||
     status === 'error' ||
     status === 'failed'
   );
@@ -23,11 +21,8 @@ export function isLiveProgressEvent(event: WSEvent): boolean {
   if (isTerminalProgressEvent(event)) return false;
   const eventType = event.event_type as string;
   return [
-    'agentTask_progress',
     'agent_task_progress',
-    'agentTask_streaming',
     'agent_task_streaming',
-    'agentTask_streaming_complete',
     'agent_task_streaming_complete',
     'step_progress_update',
     'dynamic_step_added',

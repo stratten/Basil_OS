@@ -350,7 +350,7 @@ async def test_elicitation_cancellation_terminalizes_the_pending_interaction_and
 
     refreshed = await db_service.provider_interaction_repository.get_interaction(str(interaction["id"]))
     assert refreshed is not None
-    assert refreshed["status"] in {"cancelled", "superseded"}
+    assert refreshed["status"] in {"canceled", "superseded"}
     assert ProviderInteractionDeliveryRegistry.resolve(
         str(interaction["id"]), "accept", {"strategy": "balanced"}
     ) is False

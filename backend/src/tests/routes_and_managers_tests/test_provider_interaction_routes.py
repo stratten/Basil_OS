@@ -55,10 +55,10 @@ class _FakeInteractionRepository:
         self.resolutions.append("decline")
         return self._interaction
 
-    async def mark_cancelled(self, *, interaction_id: str, expected_revision: int):
+    async def mark_canceled(self, *, interaction_id: str, expected_revision: int):
         assert self._interaction is not None
         assert expected_revision == self._interaction["revision"]
-        self._interaction["status"] = "cancelled"
+        self._interaction["status"] = "canceled"
         self._interaction["outcome"] = "cancel"
         self.resolutions.append("cancel")
         return self._interaction
@@ -100,7 +100,7 @@ class _FakeInteractionRepository:
         assert self._interaction is not None
         assert interaction_id == self._interaction["id"]
         assert expected_revision == self._interaction["revision"]
-        self._interaction["status"] = "cancelled"
+        self._interaction["status"] = "canceled"
         self._interaction["outcome"] = "cancel"
         self.resolutions.append("permission:cancel")
         return self._interaction
@@ -423,8 +423,8 @@ def test_permission_decision_cancels_durably_before_delivering() -> None:
     )
 
     assert response.status_code == 200
-    assert response.json()["message"] == "Provider permission prompt cancelled."
-    assert interaction["status"] == "cancelled"
+    assert response.json()["message"] == "Provider permission prompt canceled."
+    assert interaction["status"] == "canceled"
     assert future.result() == {"outcome": "cancel", "values": None}
 
 

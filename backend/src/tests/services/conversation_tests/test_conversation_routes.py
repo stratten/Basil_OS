@@ -251,8 +251,8 @@ def test_list_conversation_page_returns_cursor_contract(test_client, mock_conver
             {
                 "id": "conversation-1",
                 "title": "Paged conversation",
-                "created_at": "2026-08-02T10:00:00",
-                "updated_at": "2026-08-02T11:00:00",
+                "created_at": "2026-08-02T10:00:00Z",
+                "updated_at": "2026-08-02T11:00:00Z",
                 "message_count": 2,
                 "last_message_preview": "Preview",
                 "metadata": {},
@@ -327,3 +327,56 @@ def test_list_conversation_page_validates_limit(test_client):
     response = test_client.get("/conversation/page?limit=0")
 
     assert response.status_code == 422
+
+
+def test_conversation_history_serializes_naive_utc_with_z_suffix(test_client, mock_conversation_service):
+    from datetime import datetime
+
+    conversation = Conversation(
+        id="utc-conversation",
+        created_at=datetime(2026, 9, 30, 12, 27, 0),
+        updated_at=datetime(2026, 9, 30, 12, 28, 0),
+    )
+    conversation.messages = [
+        Message(
+            id="utc-user-message",
+            content="Hello",
+            role=MessageRole.USER,
+            timestamp=datetime(2026, 9, 30, 12, 27, 5, 250000),
+        )
+    ]
+    mock_conversation_service.get_conversation = AsyncMock(return_value=conversation)
+
+    response = test_client.get("/conversation/utc-conversation")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["created_at"] == "2026-09-30T12:27:00Z"
+    assert data["updated_at"] == "2026-09-30T12:28:00Z"
+    assert data["messages"][0]["timestamp"] == "2026-09-30T12:27:05.250000Z"
+
+
+def test_conversation_page_normalizes_space_separated_sqlite_text(test_client, mock_conversation_service):
+    mock_conversation_service.list_conversation_page = AsyncMock(
+        return_value={
+            "conversations": [
+                {
+                    "id": "conversation-sqlite",
+                    "title": "SQLite text",
+                    "created_at": "2026-09-30 12:27:00",
+                    "updated_at": "2026-09-30 12:28:00",
+                    "message_count": 1,
+                    "last_message_preview": "Hi",
+                }
+            ],
+            "has_more": False,
+            "next_cursor": None,
+        }
+    )
+
+    response = test_client.get("/conversation/page")
+
+    assert response.status_code == 200
+    item = response.json()["conversations"][0]
+    assert item["created_at"] == "2026-09-30T12:27:00Z"
+    assert item["updated_at"] == "2026-09-30T12:28:00Z"

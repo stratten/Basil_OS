@@ -81,6 +81,8 @@ npm run build
 
 `npm run typecheck` runs `tsc --noEmit` against the package's `tsconfig.json`, including every `web-components/shared` file the package imports. Vitest and Vite do not type-check, so run it alongside the tests; CI runs it for every package.
 
+`python3 scripts/check_literal_structural_colors.py` fails when web-component CSS outside a `theme.css` file uses a hardcoded black or white value that is not an accepted exception. Each exception in `scripts/literal_structural_colors_allowlist.json` is named by its file, selector, property, and value and carries a reason, so moving or editing unrelated rules does not affect it. Add a new intentional exception with `python3 scripts/check_literal_structural_colors.py --update-baseline --reason "Why it is intentional."`. CI runs the check.
+
 Use the appropriate canonical builder after changes that must reach a packaged WebKit resource. Do not assume a package-local Vite build alone updates the client resource bundle. Builders and package builds can modify generated output, so review `git status` afterward and do not add generated assets to source control.
 
 The repository's Python configuration is in `pyproject.toml`; the client package is in `client/Package.swift`. Follow existing component-specific tests and project guidance in `DEVELOPMENT_PRINCIPLES.md`. Before changing user-visible workflows, validate the smallest safe functional path in addition to unit/build checks.

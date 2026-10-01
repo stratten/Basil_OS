@@ -36,8 +36,8 @@ class AgentTaskProcessingService:
         operation_result = None
         operation = None
         try:
-            if self._cancellation.is_cancelled(agent_task_id):
-                self.logger.info("🛑 Skipping processing for cancelled agent_task: %s", agent_task_id)
+            if self._cancellation.is_canceled(agent_task_id):
+                self.logger.info("🛑 Skipping processing for canceled agent_task: %s", agent_task_id)
                 return
 
             agent_task_record = await self.db_service.get_agent_task(agent_task_id)
@@ -48,8 +48,8 @@ class AgentTaskProcessingService:
             root_task_id = getattr(agent_task_record, "root_task_id", None)
             if root_task_id and hasattr(self._cancellation, "register_alias"):
                 self._cancellation.register_alias(root_task_id, agent_task_id)
-            if self._cancellation.is_cancelled(agent_task_id):
-                self.logger.info("🛑 Processing cancelled after task lookup: %s", agent_task_id)
+            if self._cancellation.is_canceled(agent_task_id):
+                self.logger.info("🛑 Processing canceled after task lookup: %s", agent_task_id)
                 return
 
             operation_params = agent_task_record.operation_parameters or {}
@@ -93,9 +93,9 @@ class AgentTaskProcessingService:
                 )
             else:
                 raise ValueError(f"Unsupported agent-task operation: {operation}")
-            if self._cancellation.is_cancelled(agent_task_id):
+            if self._cancellation.is_canceled(agent_task_id):
                 self.logger.info(
-                    "🛑 AgentTask %s cancelled during workflow execution; skipping final persistence",
+                    "🛑 AgentTask %s canceled during workflow execution; skipping final persistence",
                     agent_task_id,
                 )
                 return
@@ -124,7 +124,7 @@ class AgentTaskProcessingService:
                 await self._persist_failure(agent_task_id, agent_task_record, operation, operation_result)
 
         except asyncio.CancelledError:
-            self.logger.info("🛑 Processing coroutine cancelled for agent_task %s", agent_task_id)
+            self.logger.info("🛑 Processing coroutine canceled for agent_task %s", agent_task_id)
             return
         except Exception as exc:
             await self._handle_processing_exception(agent_task_id, exc, operation_result, operation)
@@ -136,9 +136,9 @@ class AgentTaskProcessingService:
         active_task = asyncio.current_task()
         self._cancellation.register_active_task(agent_task_id, active_task)
         try:
-            if self._cancellation.is_cancelled(agent_task_id):
+            if self._cancellation.is_canceled(agent_task_id):
                 self.logger.info(
-                    "🛑 Skipping clarification routing for cancelled agent_task: %s",
+                    "🛑 Skipping clarification routing for canceled agent_task: %s",
                     agent_task_id,
                 )
                 return
@@ -151,8 +151,8 @@ class AgentTaskProcessingService:
             root_task_id = getattr(agent_task_record, "root_task_id", None)
             if root_task_id and hasattr(self._cancellation, "register_alias"):
                 self._cancellation.register_alias(root_task_id, agent_task_id)
-            if self._cancellation.is_cancelled(agent_task_id):
-                self.logger.info("🛑 Clarification cancelled after task lookup: %s", agent_task_id)
+            if self._cancellation.is_canceled(agent_task_id):
+                self.logger.info("🛑 Clarification canceled after task lookup: %s", agent_task_id)
                 return
 
             clarifications = agent_task_record.clarifications
@@ -207,9 +207,9 @@ class AgentTaskProcessingService:
                 parameters,
                 request,
             )
-            if self._cancellation.is_cancelled(agent_task_id):
+            if self._cancellation.is_canceled(agent_task_id):
                 self.logger.info(
-                    "🛑 Follow-up agent_task %s cancelled during workflow execution; skipping final persistence",
+                    "🛑 Follow-up agent_task %s canceled during workflow execution; skipping final persistence",
                     agent_task_id,
                 )
                 return
@@ -268,7 +268,7 @@ class AgentTaskProcessingService:
                 self.logger.error("Follow-up agent_task %s execution failed: %s", agent_task_id, error_message)
 
         except asyncio.CancelledError:
-            self.logger.info("🛑 Clarification routing coroutine cancelled for agent_task %s", agent_task_id)
+            self.logger.info("🛑 Clarification routing coroutine canceled for agent_task %s", agent_task_id)
             return
         except Exception as exc:
             self.logger.error("Error in clarification routing for %s: %s", agent_task_id, exc)

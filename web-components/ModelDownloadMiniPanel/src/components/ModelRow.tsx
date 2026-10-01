@@ -21,7 +21,7 @@ export default function ModelRow({ row, isActionPending, onRetry, onCancel }: Pr
   const isDownloading = row.status === 'downloading'
   const isActive = isQueued || isDownloading
   const isDone = row.status === 'completed' || row.status === 'skipped_installed'
-  const isRetryable = row.status === 'failed' || row.status === 'user_cancelled'
+  const isRetryable = row.status === 'failed' || row.status === 'user_canceled'
   const actionIsPending = isActionPending || row.isRetrying
 
   return (

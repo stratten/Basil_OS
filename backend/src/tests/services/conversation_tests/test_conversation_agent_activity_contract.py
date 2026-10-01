@@ -106,7 +106,7 @@ def test_activity_payload_bounds_visible_text_without_changing_identifier_correl
         "clarification_added",
         "completed",
         "failed",
-        "cancelled",
+        "canceled",
     ),
 )
 def test_activity_payload_accepts_supported_task_lifecycles_and_empty_workflow(lifecycle: str) -> None:

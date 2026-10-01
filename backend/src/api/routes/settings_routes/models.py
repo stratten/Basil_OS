@@ -119,7 +119,7 @@ class NarrativeProgressResponse(BaseModel):
     remaining: int
     eta_seconds: Optional[float] = None
     last_error: Optional[str] = None
-    cancelling: bool = False
+    canceling: bool = False
     analysis_concurrency: int = 1
     processing_strategy: str = "sequential"
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 import sys
+import time
 from typing import Any, Mapping
 
 import pytest
@@ -237,13 +238,13 @@ async def test_initialize_accepts_v1_result_without_optional_agent_info() -> Non
 
 @pytest.mark.asyncio
 async def test_v1_fallback_cancellation_uses_the_common_session_cancel_notification() -> None:
-    cancelled = asyncio.Event()
+    canceled = asyncio.Event()
     updates: list[dict[str, Any]] = []
 
     async def handle_update(params: Mapping[str, Any]) -> None:
         updates.append(dict(params))
         if params["update"].get("stopReason") == "cancelled":
-            cancelled.set()
+            canceled.set()
 
     async with AcpSessionClient(fixture_argv("v1_cancel_notification"), cwd=str(SOURCE_ROOT)) as client:
         client.register_notification_handler("session/update", handle_update)
@@ -253,7 +254,7 @@ async def test_v1_fallback_cancellation_uses_the_common_session_cancel_notificat
         )
         session = await client.create_session(cwd="/workspace/example")
         await client.cancel_session(session_id=session.session_id)
-        await asyncio.wait_for(cancelled.wait(), timeout=2.0)
+        await asyncio.wait_for(canceled.wait(), timeout=2.0)
 
     assert updates[0]["update"]["sessionUpdate"] == "state_update"
     assert updates[0]["update"]["stopReason"] == "cancelled"
@@ -358,15 +359,18 @@ async def test_read_loop_poisons_client_on_a_response_with_result_and_error() ->
 
 @pytest.mark.asyncio
 async def test_read_loop_poisons_client_on_an_invalid_error_object_without_waiting_for_timeout() -> None:
+    request_timeout_seconds = 5.0
     async with AcpSessionClient(
         fixture_argv("invalid_error_object"),
         cwd=str(SOURCE_ROOT),
-        request_timeout_seconds=0.05,
+        request_timeout_seconds=request_timeout_seconds,
     ) as client:
         await client.initialize(client_capabilities={}, client_info={"name": "Basil", "version": "0.1.0"})
 
+        started_at = time.monotonic()
         with pytest.raises(AcpClientProtocolError, match="response error must be a JSON-RPC error object"):
             await client.create_session(cwd="/workspace/example")
+        assert time.monotonic() - started_at < request_timeout_seconds / 2
 
 
 @pytest.mark.asyncio

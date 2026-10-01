@@ -135,7 +135,7 @@ export function WritingExamplesSettingsApp() {
           setIsAddFormOpen(false)
           setAddDraft({ contextType: 'email_reply', content: '', recipient: '' })
         }
-        if (event.status === 'cancelled') {
+        if (event.status === 'canceled') {
           setStatusMessage(null)
         } else {
           setStatusMessage(

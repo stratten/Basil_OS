@@ -129,10 +129,10 @@ def _build_decoder_inputs(
 def _seed_zero_decoder_states(
     decoder_session: Any,
 ) -> Dict[str, np.ndarray]:
-    """Build zero-initialised state tensors matching the decoder's expected shapes.
+    """Build zero-initialized state tensors matching the decoder's expected shapes.
 
     Reads each state-shaped input's declared shape from the session and
-    materialises a float32 zero tensor of that shape. Symbolic dim names
+    materializes a float32 zero tensor of that shape. Symbolic dim names
     (e.g. ``"batch"``) are resolved to ``1`` since we always run with a
     single utterance.
     """

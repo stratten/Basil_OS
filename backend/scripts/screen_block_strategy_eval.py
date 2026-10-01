@@ -153,7 +153,7 @@ def _describe(sizes: Sequence[int]) -> str:
 
 
 def _report(rows: Sequence[sqlite3.Row], gaps: Sequence[int]) -> None:
-    print(f"captures analysed          : {len(rows)}")
+    print(f"captures analyzed          : {len(rows)}")
     if rows:
         print(f"range                      : {rows[0]['timestamp']} .. {rows[-1]['timestamp']}")
         print(f"distinct apps              : {len({r['app_name'] for r in rows})}")
@@ -167,7 +167,7 @@ def _report(rows: Sequence[sqlite3.Row], gaps: Sequence[int]) -> None:
     if disagreements:
         print(
             "\nWARNING: production _continues no longer matches the app+gap candidate, "
-            "so the row labelled 'production' below is not what carding does. "
+            "so the row labeled 'production' below is not what carding does. "
             "Update STRATEGIES to track screen_source._continues."
         )
 

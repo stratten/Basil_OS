@@ -177,7 +177,7 @@ final class TranscriptionWebView: NSObject {
     private var modelPickerPopover: NSPopover?
 
     override init() {
-        let configuration = WKWebViewConfiguration()
+        let configuration = BasilWebViewConfigurationFactory.makeConfiguration()
         configuration.preferences.setValue(true, forKey: "developerExtrasEnabled")
         configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
         configuration.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
@@ -206,7 +206,7 @@ final class TranscriptionWebView: NSObject {
         )
         configuration.userContentController.addUserScript(consoleForwardingScript)
 
-        webView = WKWebView(frame: .zero, configuration: configuration)
+        webView = FirstClickWebView(frame: .zero, configuration: configuration)
         webView.setValue(false, forKey: "drawsBackground")
         if #available(macOS 12.0, *) {
             webView.underPageBackgroundColor = .clear
@@ -262,7 +262,7 @@ final class TranscriptionWebView: NSObject {
         modelPickerPopover?.performClose(nil)
         let popover = NSPopover()
         popover.behavior = .transient
-        popover.appearance = NSAppearance(named: .aqua)
+        popover.appearance = NativeModelPickerPopoverSupport.themedAppearance()
         popover.contentSize = NSSize(width: 210, height: min(260, max(70, 34 + (models.count * 28))))
         popover.contentViewController = NSHostingController(
             rootView: TranscriptionModelPickerPopover(
@@ -282,11 +282,13 @@ final class TranscriptionWebView: NSObject {
         let y = anchorRect["y"] ?? 0
         let width = anchorRect["width"] ?? 0
         let height = anchorRect["height"] ?? 0
-        let bridgedAnchor = NSRect(
-            x: x,
-            y: webView.bounds.height - y - height,
+        let bridgedAnchor = NativeModelPickerPopoverSupport.anchorRect(
+            webX: x,
+            webY: y,
             width: width,
-            height: height
+            height: height,
+            hostBounds: webView.bounds,
+            hostIsFlipped: webView.isFlipped
         )
         let anchor: NSRect
         if let window = webView.window {
@@ -297,6 +299,7 @@ final class TranscriptionWebView: NSObject {
             anchor = bridgedAnchor
         }
         popover.show(relativeTo: anchor, of: webView, preferredEdge: .minY)
+        NativeModelPickerPopoverSupport.paintThemedFrameBackground(of: popover)
     }
 
     func callJS(_ function: String, event: Any) {

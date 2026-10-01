@@ -62,11 +62,25 @@ def make_external_catalog_auth_unavailable(token_outcome) -> Dict[str, Any]:
     return {
         "ok": False,
         "error": {
-            "kind": "auth_unavailable" if kind in {"token_missing", "client_unavailable", "token_response_timeout", "token_request_cancelled", "token_resolution_error"} else kind,
+            "kind": "auth_unavailable" if kind in {"token_missing", "client_unavailable", "token_response_timeout", "token_request_canceled", "token_resolution_error"} else kind,
             "message": message,
-            "retryable": kind in {"client_unavailable", "token_response_timeout", "token_request_cancelled", "token_resolution_error"},
+            "retryable": kind in {"client_unavailable", "token_response_timeout", "token_request_canceled", "token_resolution_error"},
             "user_action_required": action,
             "raw": {"token_outcome": kind},
+        },
+    }
+
+
+def make_external_catalog_needs_reconnect(friendly_name: str) -> Dict[str, Any]:
+    """Credentials for this connection were already rejected after a refresh attempt; skip the Keychain read and the remote call."""
+    return {
+        "ok": False,
+        "error": {
+            "kind": "auth_expired",
+            "message": f"{friendly_name} rejected Basil's saved credentials earlier and needs to be reconnected.",
+            "retryable": False,
+            "user_action_required": f"Reconnect {friendly_name} in Settings → Connections.",
+            "raw": {"known_status": "needs_reconnect"},
         },
     }
 

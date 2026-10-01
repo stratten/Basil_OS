@@ -142,3 +142,22 @@ async def test_route_get_put_round_trip_persists_text_replacements(
 
     after = await widget_routes.get_transcription_settings()
     assert after.settings.text_replacements == incoming.text_replacements
+
+
+@pytest.mark.asyncio
+async def test_live_transcription_default_is_on_and_round_trips(monkeypatch) -> None:
+    assert TranscriptionSettings().live_transcription_by_default is True
+    store = {"prefs": Preferences()}
+    monkeypatch.setattr(widget_routes, "load_preferences", lambda: store["prefs"])
+    monkeypatch.setattr(widget_routes, "save_preferences", lambda p: store.update(prefs=p))
+
+    initial = await widget_routes.get_transcription_settings()
+    assert initial.settings.live_transcription_by_default is True
+    incoming = TranscriptionSettings(
+        selected_model=store["prefs"].models.transcription_model,
+        live_transcription_by_default=False,
+    )
+    await widget_routes.update_transcription_settings(incoming)
+    assert store["prefs"].transcription.live_transcription_by_default is False
+    after = await widget_routes.get_transcription_settings()
+    assert after.settings.live_transcription_by_default is False

@@ -8,7 +8,8 @@ marked.setOptions({
 });
 
 const allowedTags = new Set([
-  'P', 'H1', 'H2', 'H3', 'H4', 'UL', 'OL', 'LI', 'STRONG', 'B', 'EM', 'I', 'U', 'CODE', 'PRE', 'BLOCKQUOTE', 'BR', 'A',
+  'P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'UL', 'OL', 'LI', 'STRONG', 'B', 'EM', 'I', 'U', 'DEL', 'S', 'CODE', 'PRE', 'BLOCKQUOTE', 'BR', 'HR', 'A',
+  'TABLE', 'THEAD', 'TBODY', 'TR', 'TH', 'TD',
 ]);
 
 function sanitizeHomeMarkdown(html: string): string {

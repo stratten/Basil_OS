@@ -133,6 +133,20 @@ class LocalPreviewServerLauncher:
         if existing_session_id:
             await self.stop_session(existing_session_id)
 
+        # Runs after the replaced session stops so re-previewing an artifact on its own port still works.
+        if await self._port_accepts_connections(host, port):
+            return self._error_session(
+                session_id=session_id,
+                agent_task_id=agent_task_id,
+                artifact_id=artifact_id,
+                command=command,
+                args=args,
+                cwd=str(safe_cwd),
+                host=host,
+                port=port,
+                error=f"Port {port} on {host} is already in use by another process.",
+            )
+
         session = LocalPreviewSession(
             session_id=session_id, agent_task_id=agent_task_id, artifact_id=artifact_id,
             command=command, args=args or [], cwd=str(safe_cwd), host=host, port=port,
@@ -246,6 +260,18 @@ class LocalPreviewServerLauncher:
             if process.returncode != 0:
                 session.last_error = f"Server process exited with code {process.returncode}."
         self._registry.remove_process(session_id)
+
+    async def _port_accepts_connections(self, host: str, port: int) -> bool:
+        try:
+            _, writer = await asyncio.wait_for(asyncio.open_connection(host, port), timeout=0.5)
+        except (OSError, asyncio.TimeoutError):
+            return False
+        writer.close()
+        try:
+            await writer.wait_closed()
+        except OSError:
+            pass
+        return True
 
     async def _wait_until_listening(self, host: str, port: int) -> bool:
         deadline = time.time() + _READY_POLL_TIMEOUT_S

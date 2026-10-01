@@ -32,7 +32,7 @@ DATE_FROM_ENV = "BASIL_LIVE_WORK_LEDGER_DATE_FROM"
 DATE_TO_ENV = "BASIL_LIVE_WORK_LEDGER_DATE_TO"
 MAILBOX_ENV = "BASIL_LIVE_WORK_LEDGER_MAILBOX"
 PORT_FILE = Path(__file__).resolve().parents[5] / ".server_port"
-TERMINAL_TASK_STATES = frozenset({"completed", "failed", "cancelled"})
+TERMINAL_TASK_STATES = frozenset({"completed", "failed", "canceled"})
 MANIFEST_STATES = frozenset(
     {
         "submitted",
@@ -40,7 +40,7 @@ MANIFEST_STATES = frozenset(
         "restart_observed",
         "completed",
         "failed",
-        "cancelled",
+        "canceled",
     }
 )
 

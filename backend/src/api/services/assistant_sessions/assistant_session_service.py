@@ -314,7 +314,7 @@ class AssistantSessionService:
         }
 
     async def process_refinement_text(self, session_id: str, instruction_text: str, model_id: Optional[str] = None) -> Dict[str, Any]:
-        """Text-instruction analogue of :meth:`process_refinement_audio`.
+        """Text-instruction analog of :meth:`process_refinement_audio`.
 
         Mirrors the audio refinement flow exactly, just without the
         transcribe step: convert the session to refinement mode on first

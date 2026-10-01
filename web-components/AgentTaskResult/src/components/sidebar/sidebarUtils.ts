@@ -18,7 +18,7 @@ export function mapBackendStatus(status: string): AgentStatus {
       return status;
     case 'awaiting_user_input':
       return 'awaitingInput';
-    case 'cancelled':
+    case 'canceled':
       return 'failed';
     default:
       return 'completed';

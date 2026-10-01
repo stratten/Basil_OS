@@ -36,6 +36,7 @@ final class ConnectionsSettingsViewModel: ObservableObject {
     private let apiClient = APIClient.shared
     private var connectionCompletedObserver: NSObjectProtocol?
     private var deviceFlowTask: Task<Void, Never>?
+    private var pendingReconnectConnectionId: String?
 
     init() {
         connectionCompletedObserver = NotificationCenter.default.addObserver(
@@ -46,13 +47,15 @@ final class ConnectionsSettingsViewModel: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self = self else { return }
                 self.pendingFlowFriendlyName = nil
+                let wasReconnect = self.pendingReconnectConnectionId != nil
+                self.pendingReconnectConnectionId = nil
                 if let info = note.userInfo,
                    let status = info["status"] as? String,
                    status != "ok",
                    let message = info["message"] as? String {
-                    self.errorMessage = "Connection failed: \(message)"
+                    self.errorMessage = wasReconnect ? "Reconnect failed: \(message)" : "Connection failed: \(message)"
                 } else {
-                    self.statusMessage = "Connection added. Fetching tools..."
+                    self.statusMessage = wasReconnect ? "Reconnected. Fetching tools..." : "Connection added. Fetching tools..."
                 }
                 await self.loadConnections()
                 if let connectionId = note.userInfo?["connection_id"] as? String,
@@ -71,10 +74,10 @@ final class ConnectionsSettingsViewModel: ObservableObject {
     }
 
     func initialLoad() async {
-        // `async let` child tasks are implicitly cancelled the instant this
+        // `async let` child tasks are implicitly canceled the instant this
         // function's scope exits if they haven't been awaited -- binding to
         // `_` without ever awaiting means all three network calls below were
-        // being cancelled out from under themselves as soon as `initialLoad()`
+        // being canceled out from under themselves as soon as `initialLoad()`
         // returned, which is what actually produced the intermittent
         // `URLError.cancelled` failures (a race against how fast each request
         // happened to complete). Awaiting all three keeps them running
@@ -130,7 +133,8 @@ final class ConnectionsSettingsViewModel: ObservableObject {
     func startConnectionFlow(
         serverUrl: String,
         friendlyName: String,
-        description: String? = nil
+        description: String? = nil,
+        reconnectConnectionId: String? = nil
     ) async {
         isAddingConnection = true
         errorMessage = nil
@@ -141,11 +145,15 @@ final class ConnectionsSettingsViewModel: ObservableObject {
             let authURL = try await apiClient.startMCPOAuth(
                 serverUrl: serverUrl,
                 friendlyName: friendlyName,
-                description: description
+                description: description,
+                connectionId: reconnectConnectionId
             )
             pendingFlowFriendlyName = friendlyName
+            pendingReconnectConnectionId = reconnectConnectionId
             NSWorkspace.shared.open(authURL)
-            statusMessage = "Complete sign-in in your browser to finish adding \(friendlyName)."
+            statusMessage = reconnectConnectionId == nil
+                ? "Complete sign-in in your browser to finish adding \(friendlyName)."
+                : "Complete sign-in in your browser to reconnect \(friendlyName)."
         } catch {
             errorMessage = "Could not start \(friendlyName) sign-in: \(error.localizedDescription)"
         }
@@ -163,7 +171,8 @@ final class ConnectionsSettingsViewModel: ObservableObject {
     func startSlackConnectionFlow(
         serverUrl: String,
         friendlyName: String = "Slack",
-        description: String? = nil
+        description: String? = nil,
+        reconnectConnectionId: String? = nil
     ) async {
         isAddingConnection = true
         errorMessage = nil
@@ -174,15 +183,19 @@ final class ConnectionsSettingsViewModel: ObservableObject {
             let response = try await apiClient.startSlackOAuth(
                 serverUrl: serverUrl,
                 friendlyName: friendlyName,
-                description: description
+                description: description,
+                connectionId: reconnectConnectionId
             )
             guard let url = URL(string: response.authorizationUrl) else {
                 errorMessage = "Slack returned an invalid authorization URL."
                 return
             }
             pendingFlowFriendlyName = friendlyName
+            pendingReconnectConnectionId = reconnectConnectionId
             NSWorkspace.shared.open(url)
-            statusMessage = "Complete Slack sign-in in your browser to finish adding \(friendlyName)."
+            statusMessage = reconnectConnectionId == nil
+                ? "Complete Slack sign-in in your browser to finish adding \(friendlyName)."
+                : "Complete Slack sign-in in your browser to reconnect \(friendlyName)."
         } catch {
             errorMessage = "Could not start \(friendlyName) sign-in: \(error.localizedDescription)"
         }
@@ -194,7 +207,8 @@ final class ConnectionsSettingsViewModel: ObservableObject {
     func startGitHubDeviceFlow(
         serverUrl: String,
         friendlyName: String = "GitHub",
-        description: String? = nil
+        description: String? = nil,
+        reconnectConnectionId: String? = nil
     ) async {
         isAddingConnection = true
         isPollingGitHubDeviceFlow = false
@@ -209,7 +223,8 @@ final class ConnectionsSettingsViewModel: ObservableObject {
             let flow = try await apiClient.startGitHubDeviceFlow(
                 serverUrl: serverUrl,
                 friendlyName: friendlyName,
-                description: description
+                description: description,
+                connectionId: reconnectConnectionId
             )
             githubDeviceFlow = GitHubDeviceFlowState(
                 deviceCode: flow.deviceCode,
@@ -226,7 +241,11 @@ final class ConnectionsSettingsViewModel: ObservableObject {
             isPollingGitHubDeviceFlow = true
             let task = Task { [weak self] in
                 guard let self else { return }
-                await self.pollGitHubDeviceFlowUntilComplete(deviceCode: flow.deviceCode, initialInterval: flow.interval)
+                await self.pollGitHubDeviceFlowUntilComplete(
+                    deviceCode: flow.deviceCode,
+                    initialInterval: flow.interval,
+                    isReconnect: reconnectConnectionId != nil
+                )
             }
             deviceFlowTask = task
             await task.value
@@ -236,7 +255,7 @@ final class ConnectionsSettingsViewModel: ObservableObject {
         }
     }
 
-    private func pollGitHubDeviceFlowUntilComplete(deviceCode: String, initialInterval: Int) async {
+    private func pollGitHubDeviceFlowUntilComplete(deviceCode: String, initialInterval: Int, isReconnect: Bool) async {
         var interval = max(initialInterval, 5)
 
         while !Task.isCancelled {
@@ -251,7 +270,7 @@ final class ConnectionsSettingsViewModel: ObservableObject {
 
                 if response.status == "ok", let connection = response.connection {
                     githubDeviceFlow = nil
-                    statusMessage = "GitHub connected. Fetching tools..."
+                    statusMessage = isReconnect ? "GitHub reconnected. Fetching tools..." : "GitHub connected. Fetching tools..."
                     replaceConnection(connection)
                     await refreshTools(for: connection)
                     return
@@ -312,6 +331,46 @@ final class ConnectionsSettingsViewModel: ObservableObject {
         isPollingGitHubDeviceFlow = false
         isAddingConnection = false
         statusMessage = nil
+    }
+
+    /// Re-run the sign-in that created this connection. The connection keeps its id, so tool policies, description and call history survive.
+    func reconnect(_ connection: APIClient.MCPConnection) async {
+        switch connection.authKind {
+        case "oauth":
+            await startConnectionFlow(
+                serverUrl: connection.serverUrl,
+                friendlyName: connection.friendlyName,
+                reconnectConnectionId: connection.id
+            )
+        case "slack":
+            await startSlackConnectionFlow(
+                serverUrl: connection.serverUrl,
+                friendlyName: connection.friendlyName,
+                reconnectConnectionId: connection.id
+            )
+        case "github_device":
+            await startGitHubDeviceFlow(
+                serverUrl: connection.serverUrl,
+                friendlyName: connection.friendlyName,
+                reconnectConnectionId: connection.id
+            )
+        default:
+            statusMessage = nil
+            errorMessage = "\(connection.friendlyName) uses a pasted token. Replace the token to reconnect."
+        }
+    }
+
+    /// Store a new pasted bearer token for an existing manual-token connection, then verify it by refreshing the tool catalog.
+    func replaceManualToken(for connection: APIClient.MCPConnection, bearerToken: String) async {
+        errorMessage = nil
+        statusMessage = nil
+        do {
+            try AuthService.shared.storeMCPToken(connectionId: connection.id, accessToken: bearerToken)
+        } catch {
+            errorMessage = "Could not save the token for \(connection.friendlyName): \(error.localizedDescription)"
+            return
+        }
+        await refreshTools(for: connection)
     }
 
     func deleteConnection(_ connection: APIClient.MCPConnection) async {

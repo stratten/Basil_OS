@@ -24,20 +24,20 @@ const ATTENTION_STATUSES = new Set([
   'needs_clarification',
 ]);
 
-const TERMINAL_STATUSES = new Set(['completed', 'failed', 'cancelled']);
+const TERMINAL_STATUSES = new Set(['completed', 'failed', 'canceled']);
 const RESULT_PREVIEW_EXPAND_THRESHOLD = 600;
 const ALLOWED_MARKDOWN_TAGS = new Set([
   'P', 'H1', 'H2', 'H3', 'H4', 'UL', 'OL', 'LI', 'STRONG', 'B', 'EM', 'I', 'U', 'CODE', 'PRE', 'BLOCKQUOTE', 'BR', 'A',
 ]);
 
-type CardSeverity = 'success' | 'warning' | 'error' | 'cancelled' | 'neutral';
+type CardSeverity = 'success' | 'warning' | 'error' | 'canceled' | 'neutral';
 
 function severityForStatus(
   status: string,
   liveState: TodoWorkerLiveState | undefined,
   attempt: TodoWorkAttempt,
 ): CardSeverity {
-  if (status === 'cancelled') return 'cancelled';
+  if (status === 'canceled') return 'canceled';
   if (!TERMINAL_STATUSES.has(status)) return 'neutral';
   const resultSeverity = liveState?.detail?.result_severity ?? attempt.result_severity;
   if (resultSeverity === 'warning') return 'warning';
@@ -51,7 +51,7 @@ function labelForSeverity(severity: CardSeverity): string {
     case 'success': return 'Agent task completed';
     case 'warning': return 'Partial result';
     case 'error': return 'Agent task failed';
-    case 'cancelled': return 'Agent task canceled';
+    case 'canceled': return 'Agent task canceled';
     default: return 'Agent task status unavailable';
   }
 }
@@ -76,7 +76,7 @@ function iconForSeverity(severity: CardSeverity): string {
     case 'success': return '✓';
     case 'warning': return '~';
     case 'error': return '!';
-    case 'cancelled': return '⨸';
+    case 'canceled': return '⨸';
     default: return '⋯';
   }
 }

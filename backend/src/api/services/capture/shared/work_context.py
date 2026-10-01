@@ -28,15 +28,15 @@ class WorkContext:
             "work_context_evidence": "|".join(f"{key}={value}" for key, value in sorted(self.evidence.items())),
         }
 
-def _normalise(value: Optional[str]) -> str:
+def _normalize(value: Optional[str]) -> str:
     return " ".join(unicodedata.normalize("NFKC", value or "").split()).strip()
 
 def _slug(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", value.casefold()).strip("-") or "unknown"
 
 def derive_work_context(app_name: str, window_title: Optional[str], *, capture_id: Optional[str] = None) -> WorkContext:
-    app = _normalise(app_name)
-    title = _normalise(window_title)
+    app = _normalize(app_name)
+    title = _normalize(window_title)
     app_key = _slug(app)
     if title.casefold() in _PLACEHOLDERS:
         suffix = _slug(capture_id or title or "unidentified")

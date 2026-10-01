@@ -175,7 +175,7 @@ async def test_watchdog_warns_once_on_post_sleep_drift(
     )
 
     # The watchdog's own ``await asyncio.sleep`` catches CancelledError
-    # and returns cleanly (see the production try/except), so cancelling
+    # and returns cleanly (see the production try/except), so canceling
     # the task should NOT propagate CancelledError up to ``await task``.
     task.cancel()
     await asyncio.wait_for(task, timeout=1.0)

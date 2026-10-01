@@ -215,3 +215,89 @@ async def test_prepare_path_reads_real_file(tmp_path):
     assert result["success"] is True
     assert result["result_kind"] == "prepared"
     assert result["base64_content"] == "QUJD"
+
+
+class IncompleteRetrieval(FakeRetrieval):
+    def __init__(self, files_found=None, errors=None):
+        super().__init__(files_found)
+        self._errors = list(errors or [])
+
+    async def search_files_by_name(self, filename, search_paths=None):
+        return SimpleNamespace(files_found=list(self._files_found), errors=list(self._errors))
+
+
+class CoverageCloud:
+    def __init__(self, entries=None, incomplete_paths=None, error=None):
+        self._entries = entries or []
+        self._incomplete_paths = incomplete_paths or []
+        self._error = error
+        self.called = False
+
+    async def search_cloud_files_with_coverage(self, filename, provider=None):
+        self.called = True
+        if self._error is not None:
+            raise self._error
+        return {"files": list(self._entries), "incomplete_paths": list(self._incomplete_paths)}
+
+
+@pytest.mark.asyncio
+async def test_timed_out_searches_are_not_reported_as_missing():
+    retrieval = IncompleteRetrieval(files_found=[], errors=["Spotlight timed out after 10s"])
+    cloud = CoverageCloud(incomplete_paths=[{"path": "/drive/root", "reason": "timed out after 30s"}])
+
+    result = await find_or_list_candidates(retrieval, cloud, "Board Minutes")
+
+    assert cloud.called is True
+    assert result["success"] is False
+    assert result["result_kind"] == "not_found"
+    assert result["search_incomplete"] is True
+    assert result["incomplete_reasons"] == [
+        "Spotlight timed out after 10s",
+        "cloud folder /drive/root: timed out after 30s",
+    ]
+    assert "do not report it as missing" in result["error"]
+    assert "not found in local or cloud storage" not in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_cloud_exception_marks_search_incomplete():
+    retrieval = IncompleteRetrieval(files_found=[])
+    cloud = CoverageCloud(error=RuntimeError("mount vanished"))
+
+    result = await find_or_list_candidates(retrieval, cloud, "Board Minutes")
+
+    assert result["search_incomplete"] is True
+    assert result["incomplete_reasons"] == ["cloud search failed: mount vanished"]
+
+
+@pytest.mark.asyncio
+async def test_complete_empty_search_keeps_historical_not_found_message():
+    retrieval = IncompleteRetrieval(files_found=[])
+    cloud = CoverageCloud()
+
+    result = await find_or_list_candidates(retrieval, cloud, "Board Minutes")
+
+    assert result["result_kind"] == "not_found"
+    assert "search_incomplete" not in result
+    assert result["error"] == "File 'Board Minutes' not found in local or cloud storage"
+
+
+@pytest.mark.asyncio
+async def test_incomplete_spotlight_forces_cloud_and_flags_candidate_list():
+    retrieval = IncompleteRetrieval(
+        files_found=[
+            _spotlight_meta("/Users/x/Docs/PayLink User Guide.pdf", ext=".pdf", size=90_000),
+        ],
+        errors=["Spotlight timed out after 10s"],
+    )
+    cloud = CoverageCloud(entries=[_cloud_entry("PayLink User Guide - Bankwest.pdf")])
+
+    result = await find_or_list_candidates(retrieval, cloud, "PayLink User Guide")
+
+    assert cloud.called is True
+    if result["result_kind"] == "candidates":
+        assert result["search_incomplete"] is True
+        assert result["incomplete_reasons"] == ["Spotlight timed out after 10s"]
+        assert result["coverage_note"].startswith("Some searches did not finish")
+    else:
+        assert result["result_kind"] == "prepared"

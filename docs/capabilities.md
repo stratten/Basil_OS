@@ -34,7 +34,7 @@ Assistant Session requires a usable reasoning model. Its saved outputs are local
 
 Start an Agent Task from a Board or task-oriented workflow when the request needs an explicit goal, progress visibility, revisions, tool use, or a result that may include a local artifact. A task can accept typed text, captured audio, files, images, and screen context. It can show intermediate activity, status, results, local artifact previews, and approval-controlled actions.
 
-Tasks can be associated with Board or conversation context, scheduled for later work, reviewed after completion, and paused or cancelled when their state supports those operations. The task record and its local artifacts can be retained so you can reopen the result.
+Tasks can be associated with Board or conversation context, scheduled for later work, reviewed after completion, and paused or canceled when their state supports those operations. The task record and its local artifacts can be retained so you can reopen the result.
 
 An Agent Task may use local or provider-backed models and connected tools, but the task request does not itself permit an external action. Basil continues to require the relevant connection, account, permission, and explicit approval before sending a message, modifying a third-party record, running a command, or taking another consequential step.
 

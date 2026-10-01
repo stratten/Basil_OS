@@ -60,7 +60,7 @@ final class AgentTaskResultWebView: NSObject, WKScriptMessageHandler, WKNavigati
     var isEmbedded: Bool = false
     
     override init() {
-        let configuration = WKWebViewConfiguration()
+        let configuration = BasilWebViewConfigurationFactory.makeConfiguration()
         
         configuration.preferences.setValue(true, forKey: "developerExtrasEnabled")
         configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")

@@ -40,6 +40,26 @@ def invalidate_cached_access_token_on_auth_error(connection_id: str, envelope: D
         invalidate_cached_access_token(connection_id)
 
 
+def record_connection_auth_rejection(connection_id: str, envelope: Dict[str, Any]) -> None:
+    """Mark the connection as needing reconnect when the final dispatch result is still a rejected credential."""
+    if envelope.get("ok") is not False:
+        return
+    error = envelope.get("error") or {}
+    if error.get("kind") != "auth_expired":
+        return
+    try:
+        from api.services.mcp_connectors.connection_status_service import (
+            mark_connection_needs_reconnect,
+        )
+
+        mark_connection_needs_reconnect(
+            connection_id,
+            error.get("message") or "The server rejected this connection's credentials.",
+        )
+    except Exception as exc:
+        logger.warning("Could not record reconnect status for %s: %s", connection_id, exc)
+
+
 async def resolve_external_catalog_access_token(connection_id: str):
     """Ask the Swift client (via the WebSocket bridge) for the token.
 

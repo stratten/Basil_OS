@@ -16,23 +16,23 @@ export default function InquiryDetail({ inquiryId }: InquiryDetailProps) {
   const [retryVersion, setRetryVersion] = useState(0);
 
   useEffect(() => {
-    let cancelled = false;
+    let canceled = false;
     setLoading(true);
     setLoadError(undefined);
     getBoardInquiry(inquiryId)
       .then((detail) => {
-        if (!cancelled) setTimeline(detail.timeline);
+        if (!canceled) setTimeline(detail.timeline);
       })
       .catch((error) => {
-        if (!cancelled) {
+        if (!canceled) {
           setLoadError(error instanceof Error ? error.message : 'Failed to load inquiry');
         }
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!canceled) setLoading(false);
       });
     return () => {
-      cancelled = true;
+      canceled = true;
     };
   }, [inquiryId, retryVersion]);
 

@@ -87,7 +87,7 @@ async def stop_agent_task_capture(
 
             # Clear capture flags regardless of session count to support hotkey-mode no-op
             service._is_capturing_agent_task = False
-            service._agent_task_cancelled = False
+            service._agent_task_canceled = False
             try:
                 orchestration = getattr(service, "agent_task_orchestration_service", None)
                 if orchestration is not None and hasattr(orchestration, "consume_active_wake_capture_key"):
@@ -121,7 +121,7 @@ async def stop_agent_task_capture(
             logger.warning(f"Graceful stop without streaming manager: {e}; clearing capture flags only")
             try:
                 service._is_capturing_agent_task = False
-                service._agent_task_cancelled = False
+                service._agent_task_canceled = False
                 orchestration = getattr(service, "agent_task_orchestration_service", None)
                 if orchestration is not None and hasattr(orchestration, "consume_active_wake_capture_key"):
                     wake_capture_key = orchestration.consume_active_wake_capture_key()

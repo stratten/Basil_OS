@@ -93,7 +93,7 @@ describe('SkillEditor', () => {
     expect(bridge.notifySaved).not.toHaveBeenCalled();
   });
 
-  it('sends no request when delete is cancelled from the in-panel confirmation', async () => {
+  it('sends no request when delete is canceled from the in-panel confirmation', async () => {
     api.getSkill.mockResolvedValue(skill);
 
     render(<SkillEditor apiBaseUrl="http://localhost" slug={skill.slug} />);

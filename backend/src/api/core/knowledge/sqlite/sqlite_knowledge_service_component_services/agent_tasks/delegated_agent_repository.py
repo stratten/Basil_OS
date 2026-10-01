@@ -23,10 +23,10 @@ _ACTIVE_STATUSES = {
     "waiting_user_input",
     "waiting_permission",
     "supervision_due",
-    "cancelling",
+    "canceling",
     "interrupted",
 }
-_TERMINAL_STATUSES = {"settled", "failed", "cancelled"}
+_TERMINAL_STATUSES = {"settled", "failed", "canceled"}
 _MAX_ACTIVE_CHILDREN = 3
 _MAX_TEXT_BYTES = 8_000
 

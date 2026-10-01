@@ -21,7 +21,7 @@ from api.services.basil_board.repository import BasilBoardRepository
 
 logger = logging.getLogger(__name__)
 
-_TERMINAL_AGENT_TASK_STATUSES = {"completed", "failed", "cancelled"}
+_TERMINAL_AGENT_TASK_STATUSES = {"completed", "failed", "canceled"}
 
 
 class BasilBoardService:
@@ -51,7 +51,7 @@ class BasilBoardService:
             if inquiry.agentTaskId and inquiry.state not in {
                 HomeTurnState.COMPLETED,
                 HomeTurnState.FAILED,
-                HomeTurnState.CANCELLED,
+                HomeTurnState.CANCELED,
             }:
                 inquiry = await self._reconcile_inquiry_agent_task(inquiry)
             reconciled_inquiries.append(inquiry)
@@ -185,7 +185,7 @@ class BasilBoardService:
             return "completed"
         if state == HomeTurnState.FAILED:
             return "failed"
-        return "cancelled"
+        return "canceled"
 
     async def reconcile_home_turn(self, user_message_id: str) -> Optional[HomeTurn]:
         turn = await self._repo.get_home_turn(user_message_id)
@@ -294,8 +294,8 @@ class BasilBoardService:
     def _map_agent_task_state(self, status: str) -> HomeTurnState:
         if status == "completed":
             return HomeTurnState.COMPLETED
-        if status == "cancelled":
-            return HomeTurnState.CANCELLED
+        if status == "canceled":
+            return HomeTurnState.CANCELED
         if status == "failed":
             return HomeTurnState.FAILED
         return HomeTurnState.RUNNING
@@ -385,13 +385,13 @@ class BasilBoardService:
             return "completed"
         if turn_state == HomeTurnState.FAILED:
             return "failed"
-        if turn_state == HomeTurnState.CANCELLED:
-            return "cancelled"
+        if turn_state == HomeTurnState.CANCELED:
+            return "canceled"
         if linked and linked.status:
             if linked.status == "completed":
                 return "completed"
-            if linked.status == "cancelled":
-                return "cancelled"
+            if linked.status == "canceled":
+                return "canceled"
             if linked.status == "failed":
                 return "failed"
         return "running"

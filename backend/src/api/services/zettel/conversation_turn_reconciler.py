@@ -21,7 +21,7 @@ STALE_CONVERSATION_TURN_OUTCOME = (
     "Conversation turn expired after six hours without a terminal outcome."
 )
 STALE_AGENT_TASK_OUTCOME = STALE_CONVERSATION_TURN_OUTCOME
-_TERMINAL_AGENT_TASK_STATUSES = frozenset({"completed", "failed", "cancelled"})
+_TERMINAL_AGENT_TASK_STATUSES = frozenset({"completed", "failed", "canceled"})
 
 
 @dataclass(frozen=True)
@@ -72,7 +72,7 @@ def reconcile_stale_conversation_turns(
             continue
         updated_metadata = dict(metadata)
         updated_turn = dict(raw_turn)
-        updated_turn["lifecycle"] = ConversationTurnLifecycle.CANCELLED.value
+        updated_turn["lifecycle"] = ConversationTurnLifecycle.CANCELED.value
         updated_turn["terminal_outcome"] = STALE_CONVERSATION_TURN_OUTCOME
         updated_metadata[CONVERSATION_TURN_METADATA_KEY] = updated_turn
         conn.execute(

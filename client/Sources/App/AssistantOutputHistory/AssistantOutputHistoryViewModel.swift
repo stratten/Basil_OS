@@ -258,7 +258,7 @@ class AssistantOutputHistoryViewModel: ObservableObject {
     /// matches current data and accepts both voice- and text-entered
     /// rows.
     @MainActor
-    func resumeRefinement(id: Int, outputType: String) async {
+    func resumeRefinement(id: Int, outputType: String, input: AssistantSessionRefinementInput) async {
         guard outputType == "assistant_session" else {
             errorMessage = "Legacy outputs can no longer be resumed."
 
@@ -273,7 +273,7 @@ class AssistantOutputHistoryViewModel: ObservableObject {
 
         do {
             let resume = try await APIClient.shared.rehydrateAssistantSession(id: id)
-            AssistantSessionWindowController.show(rehydratedFrom: resume)
+            AssistantSessionWindowController.show(rehydratedFrom: resume, input: input)
 
             #if DEBUG
             DevLogger.shared.info(

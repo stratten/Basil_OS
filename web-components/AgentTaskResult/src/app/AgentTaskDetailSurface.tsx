@@ -283,6 +283,12 @@ export function AgentTaskDetailSurface({
     hasReviewBaseline.current = false;
   }, [displaySource.agentTaskId]);
 
+  // A follow-up keeps the root agentTaskId and only swaps currentTurnTaskId, so the reset above never fires for a new turn.
+  const currentTurnRunId = displaySource.currentTurnTaskId || displaySource.agentTaskId;
+  useEffect(() => {
+    setFocusedRunId(undefined);
+  }, [currentTurnRunId]);
+
   useEffect(() => {
     setArtifactPreviewId(undefined);
     setAvailablePreviewPaths(new Set());
@@ -360,6 +366,17 @@ export function AgentTaskDetailSurface({
     setFocusedRunId(runId);
   };
 
+  const isRunOverviewVisible = detailTrayOpen && showRunOverview;
+
+  const handleFocusRunFromContent = (runId: string) => {
+    if (isRunOverviewVisible && focusedRun.id === runId) {
+      closeTray();
+      return;
+    }
+    setFocusedRunId(runId);
+    openTray('overview');
+  };
+
   const handleOpenRunOverview = () => {
     openTray('overview');
   };
@@ -378,6 +395,8 @@ export function AgentTaskDetailSurface({
           selectedDetailId={selectedDetailId}
           selectedDetailOwnerId={selectedDetailOwnerId}
           onSelectDetail={onSelectDetail}
+          focusedRunId={isRunOverviewVisible ? focusedRun.id : null}
+          onFocusRun={handleFocusRunFromContent}
         />
         {inlineCheckpointPresence.shouldRender && retainedInlineCheckpoint.current && retainedInteractiveAgentId.current && (
           <div
@@ -456,7 +475,13 @@ export function AgentTaskDetailSurface({
           aria-hidden={railPresence.phase !== 'present'}
           onTransitionEnd={railPresence.completeTransition}
         >
-          <AgentRunRail overview={runOverview} artifactCount={previewArtifactGroups.produced.length} onExpand={handleOpenRunOverview} />
+          <AgentRunRail
+            overview={runOverview}
+            artifactCount={previewArtifactGroups.produced.length}
+            runId={focusedRun.id}
+            isProcessing={focusedRun.isProcessing}
+            onExpand={handleOpenRunOverview}
+          />
         </div>
       )}
       <ExecutionDetailTray

@@ -15,6 +15,12 @@ from typing import Dict, Any, Optional, List
 from dataclasses import asdict, dataclass, field
 
 from api.core.knowledge.sqlite.sqlite_knowledge_service import SQLiteKnowledgeService
+from api.core.security.protected_runtime_paths import (
+    PROTECTED_RUNTIME_REFUSAL,
+    log_protected_runtime_refusal,
+    references_protected_runtime_path,
+)
+from api.services.agent_processing.shared.agent_runtime_context import get_current_agent_context
 from api.services.agent_processing.tools.safety import ExecutionApprovalService
 from .script_outcome_review import (
     build_outcome_review_error,
@@ -67,7 +73,7 @@ async def _wallclock_watchdog(
     """Companion to ``asyncio.wait_for``: kills the subprocess when
     wall-clock elapsed crosses ``timeout * bound_multiplier``.
 
-    Exits when the subprocess exits, when it gets cancelled, or
+    Exits when the subprocess exits, when it gets canceled, or
     after killing the subprocess. Mirrors the email service's
     watchdog -- see its docstring for the full rationale.
     """
@@ -159,6 +165,17 @@ class GenericAppleScriptService:
         self.execution_timeout_s = 60.0
         # Set per-request by the coordinator so approval broadcasts can route to the right agent
         self._agent_task_id: Optional[str] = None
+
+    def _resolve_agent_task_id(self, context: Optional[Dict[str, Any]]) -> Optional[str]:
+        """Prefer the task-local agent context over the shared per-instance attribute."""
+        for candidate in (
+            get_current_agent_context().get("agent_task_id"),
+            (context or {}).get("agent_task_id"),
+            self._agent_task_id,
+        ):
+            if isinstance(candidate, str) and candidate.strip():
+                return candidate
+        return None
 
     def _semantic_applescript_error(self, output: str) -> Optional[str]:
         """Return an app-level error when osascript succeeds but the script reports failure."""
@@ -266,7 +283,7 @@ class GenericAppleScriptService:
                 "mouse, or menu automation against the visible desktop."
             ),
         }
-        agent_task_id = self._agent_task_id or (context or {}).get("agent_task_id")
+        agent_task_id = self._resolve_agent_task_id(context)
         if isinstance(agent_task_id, str) and agent_task_id.strip():
             approval_context["agent_task_id"] = agent_task_id
 
@@ -314,6 +331,16 @@ class GenericAppleScriptService:
         
         try:
             self.logger.info(f"🍎 Executing AppleScript automation")
+            if references_protected_runtime_path(script_content):
+                log_protected_runtime_refusal("AppleScript")
+                return AppleScriptResult(
+                    success=False,
+                    output="",
+                    error=PROTECTED_RUNTIME_REFUSAL,
+                    script_content=script_content,
+                    execution_duration=time.time() - start_time,
+                    approval_denied=True,
+                )
             if context:
                 self.logger.info(f"📋 Context: {context}")
 
@@ -364,7 +391,7 @@ class GenericAppleScriptService:
                             "script_content": script_content,
                             "execution_type": "applescript",
                         }
-                        agent_task_id = self._agent_task_id or (context or {}).get("agent_task_id")
+                        agent_task_id = self._resolve_agent_task_id(context)
                         if isinstance(agent_task_id, str) and agent_task_id.strip():
                             approval_context["agent_task_id"] = agent_task_id
 
@@ -389,7 +416,8 @@ class GenericAppleScriptService:
                                 await self._approval_service.add_to_whitelist(
                                     approval_summary,
                                     pattern_type=pattern_type,
-                                    description="User-approved AppleScript"
+                                    description="User-approved AppleScript",
+                                    record_initial_use=True,
                                 )
                             except Exception as e:
                                 self.logger.warning(f"Failed to add AppleScript to whitelist: {e}")
@@ -472,7 +500,7 @@ class GenericAppleScriptService:
                         execution_duration=time.time() - start_time
                     )
                 except asyncio.CancelledError:
-                    self.logger.info(f"🛑 AppleScript cancelled; cleaning up osascript PID {process.pid}")
+                    self.logger.info(f"🛑 AppleScript canceled; cleaning up osascript PID {process.pid}")
                     try:
                         process.terminate()
                         await asyncio.wait_for(process.wait(), timeout=2.0)

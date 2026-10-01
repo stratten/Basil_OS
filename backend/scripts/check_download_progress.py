@@ -8,6 +8,10 @@ import json
 import aiohttp
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+from api.core.security.backend_credentials import BACKEND_TOKEN_HEADER, load_host_token  # noqa: E402
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -29,7 +33,7 @@ async def check_progress():
     url = api_url.format(model_type=MODEL_TYPE, variant=VARIANT)
     
     try:
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(headers={BACKEND_TOKEN_HEADER: load_host_token()}) as session:
             while True:
                 try:
                     async with session.get(url) as response:
@@ -62,7 +66,7 @@ async def check_task_status():
     api_url = "http://localhost:8000/models/download/status"
     
     try:
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(headers={BACKEND_TOKEN_HEADER: load_host_token()}) as session:
             while True:
                 try:
                     async with session.get(api_url) as response:

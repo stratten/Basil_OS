@@ -15,6 +15,11 @@ import logging
 from typing import Dict, Any, Optional, Tuple
 
 from api.core.models.preferences import ExecutionApprovalMode, CommandPattern
+from api.core.security.protected_runtime_paths import (
+    PROTECTED_RUNTIME_REFUSAL,
+    log_protected_runtime_refusal,
+    references_protected_runtime_path,
+)
 
 from .models import ExecutionApprovalDecision, ExecutionApprovalOutcome
 from .risk_assessment import RiskAssessor
@@ -53,6 +58,15 @@ class ExecutionApprovalService:
     ) -> ExecutionApprovalDecision:
         """Evaluate whether a command needs approval before execution."""
         try:
+            if references_protected_runtime_path(command):
+                log_protected_runtime_refusal("command evaluation")
+                return ExecutionApprovalDecision(
+                    needs_approval=False,
+                    reason=PROTECTED_RUNTIME_REFUSAL,
+                    risk_level='critical',
+                    is_blocked=True,
+                    block_reason=PROTECTED_RUNTIME_REFUSAL,
+                )
             from .approval_override import resolve_tool_execution_settings
             settings = resolve_tool_execution_settings(context)
 
@@ -173,6 +187,9 @@ class ExecutionApprovalService:
 
         if not decision.needs_approval:
             logger.debug(f"Command auto-approved: {command}")
+            # Counted here rather than in evaluate_command so the read-only /evaluate route never inflates usage.
+            if decision.matched_pattern is not None:
+                await self.update_pattern_usage(decision.matched_pattern.id)
             return ExecutionApprovalOutcome(
                 approved=True,
                 status="approved",
@@ -229,11 +246,12 @@ class ExecutionApprovalService:
         command: str,
         pattern_type: str = 'exact',
         description: str = '',
-        risk_level: str = 'low'
+        risk_level: str = 'low',
+        record_initial_use: bool = False
     ) -> CommandPattern:
         """Add a command to the whitelist."""
         return await self.whitelist_manager.add_to_whitelist(
-            command, pattern_type, description, risk_level
+            command, pattern_type, description, risk_level, record_initial_use=record_initial_use
         )
 
     async def update_whitelist_pattern(

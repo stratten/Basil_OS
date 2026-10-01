@@ -50,6 +50,9 @@ extension SettingsShellWindowController {
             }
             self?.performReasoningDefaultsUpdate(requestId: requestId, apply: { await $0.updateAssistantSessionPushToTalkThreshold(thresholdMs) }, isSuccessful: { $0.assistantSessionPushToTalkThreshold == thresholdMs }, failureMessage: "Failed to update the AssistantSession push-to-talk threshold.")
         }
+        webView.onRequestUpdateConversationDefaultConversationOnly = { [weak self] requestId, enabled in
+            self?.performReasoningDefaultsUpdate(requestId: requestId, apply: { await $0.updateConversationDefaultConversationOnly(enabled) }, isSuccessful: { $0.conversationDefaultConversationOnly == enabled }, failureMessage: "Failed to update the Conversation only default.")
+        }
     }
 
     private func loadReasoningDefaultsSettingsAndSendInit() async {

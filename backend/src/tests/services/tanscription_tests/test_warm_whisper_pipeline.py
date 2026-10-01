@@ -3,7 +3,7 @@ Unit tests for the shared single-slot Whisper warm cache.
 
 These prove the behaviors retranscription relies on: the model loads once per
 key (no per-source reload), a key change evicts + reloads, and the delayed
-unload can be cancelled (including implicitly by a cache hit).
+unload can be canceled (including implicitly by a cache hit).
 """
 import asyncio
 import threading
@@ -88,7 +88,7 @@ def test_schedule_unload_zero_is_immediate():
     assert not WarmWhisperPipeline.is_loaded()
 
 
-def test_scheduled_unload_can_be_cancelled():
+def test_scheduled_unload_can_be_canceled():
     async def scenario():
         WarmWhisperPipeline.get_or_load("k1", "huggingface", "cpu", lambda: object())
         WarmWhisperPipeline.schedule_unload(1)

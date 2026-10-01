@@ -13,6 +13,8 @@ import subprocess
 from typing import Dict, Any
 from pathlib import Path
 
+from api.core.security.backend_credentials import BACKEND_TOKEN_HEADER, load_host_token
+
 logger = logging.getLogger(__name__)
 
 
@@ -168,7 +170,10 @@ class AgentTaskScreenContextService:
             
             async with httpx.AsyncClient(timeout=10.0) as client:
                 # Call the WebSocket capture endpoint that requests capture from frontend
-                response = await client.post(f"{base_url}/capture/swift-window-immediate")
+                response = await client.post(
+                    f"{base_url}/capture/swift-window-immediate",
+                    headers={BACKEND_TOKEN_HEADER: load_host_token()},
+                )
                 
                 if response.status_code == 200:
                     capture_data = response.json()

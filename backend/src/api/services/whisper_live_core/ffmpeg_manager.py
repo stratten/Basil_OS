@@ -189,6 +189,6 @@ class FFmpegManager:
                     break
                 logger.debug(f"FFmpeg stderr: {line.decode(errors='ignore').strip()}")
         except asyncio.CancelledError:
-            logger.info("FFmpeg stderr drain task cancelled.")
+            logger.info("FFmpeg stderr drain task canceled.")
         except Exception as e:
             logger.error(f"Error draining FFmpeg stderr: {e}")

@@ -211,7 +211,7 @@ export async function getPendingExecutionApprovals(
 export async function recoverOrphanedExecutionApprovals(
   agentTaskId: string,
   approvalIds: string[],
-): Promise<{ cancelled_approval_ids: string[] }> {
+): Promise<{ canceled_approval_ids: string[] }> {
   return request(
     'POST',
     `/api/v1/agent-tasks/${agentTaskId}/execution-approvals/recover`,
@@ -254,6 +254,36 @@ export async function submitProviderPermissionDecision(params: {
       outcome: params.outcome ?? 'selected',
       selected_option_id: params.selected_option_id,
     }
+  );
+}
+
+// Command input relayed from a running shell command
+export interface PendingCommandInput {
+  request_id: string;
+  agent_task_id: string;
+  prompt: string;
+  secret: boolean;
+  command: string;
+  created_at: number;
+  expires_at: number;
+}
+
+export async function getPendingCommandInputs(
+  agentTaskId: string
+): Promise<{ requests: PendingCommandInput[] }> {
+  return request('GET', `/api/v1/agent-tasks/${encodeURIComponent(agentTaskId)}/command-input/pending`);
+}
+
+export async function submitCommandInput(params: {
+  request_id: string;
+  agent_task_id?: string;
+  action: 'answer' | 'cancel';
+  value?: string;
+}): Promise<{ success: boolean; message: string }> {
+  return request(
+    'POST',
+    `/api/v1/agent-tasks/command-input/${encodeURIComponent(params.request_id)}/respond`,
+    { action: params.action, value: params.value, agent_task_id: params.agent_task_id }
   );
 }
 
@@ -427,7 +457,7 @@ export async function createScheduledAgentTask(payload: {
   // Optional list of absolute filesystem paths to attach as context
   // for every scheduled run. Omit to create a schedule with no
   // attachments; otherwise the backend serializes the list and
-  // forwards it into process_agentTask_direct(reference_paths=...).
+  // forwards it into process_agent_task_direct(reference_paths=...).
   reference_paths?: string[];
 }): Promise<ScheduledAgentTask> {
   return request('POST', '/api/v1/agent-task-schedules', payload);

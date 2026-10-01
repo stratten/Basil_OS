@@ -19,7 +19,7 @@ class ExecutionApprovalConflictError(ExecutionApprovalPersistenceError):
     """Stale revision, unknown approval, or invalid task preconditions."""
 
 
-TERMINAL_APPROVAL_STATUSES = {"approved", "denied", "cancelled"}
+TERMINAL_APPROVAL_STATUSES = {"approved", "denied", "canceled"}
 
 
 class ExecutionApprovalRepository:
@@ -132,7 +132,7 @@ class ExecutionApprovalRepository:
                 """
                 UPDATE agent_tasks
                 SET status = 'awaiting_user_input', updated_at = CURRENT_TIMESTAMP
-                WHERE id = ? AND status NOT IN ('completed', 'failed', 'cancelled')
+                WHERE id = ? AND status NOT IN ('completed', 'failed', 'canceled')
                 """,
                 (task_id,),
             )
@@ -330,14 +330,14 @@ class ExecutionApprovalRepository:
             updated = conn.execute(
                 """
                 UPDATE execution_approvals
-                SET status = 'cancelled', updated_at = ?, resolved_at = ?, revision = revision + 1
+                SET status = 'canceled', updated_at = ?, resolved_at = ?, revision = revision + 1
                 WHERE id = ? AND status = 'pending' AND revision = ?
                 """,
                 (timestamp, timestamp, clean_id, expected_revision),
             )
             if updated.rowcount != 1:
                 raise ExecutionApprovalConflictError(
-                    f"execution approval {clean_id!r} could not be cancelled"
+                    f"execution approval {clean_id!r} could not be canceled"
                 )
 
         run_write_transaction(self.db_path, "cancel_pending_execution_approval", _body)
@@ -348,7 +348,7 @@ class ExecutionApprovalRepository:
                 (clean_id,),
             ).fetchone()
         if row is None:
-            raise ExecutionApprovalPersistenceError("failed to load cancelled execution approval")
+            raise ExecutionApprovalPersistenceError("failed to load canceled execution approval")
         return self._row_to_approval(row)  # type: ignore[return-value]
 
     async def cancel_pending_approvals_for_tasks(
@@ -364,7 +364,7 @@ class ExecutionApprovalRepository:
             cursor = conn.execute(
                 f"""
                 UPDATE execution_approvals
-                SET status = 'cancelled', updated_at = ?, resolved_at = ?, revision = revision + 1
+                SET status = 'canceled', updated_at = ?, resolved_at = ?, revision = revision + 1
                 WHERE status = 'pending' AND agent_task_id IN ({placeholders})
                 """,
                 (timestamp, timestamp, *agent_task_ids),

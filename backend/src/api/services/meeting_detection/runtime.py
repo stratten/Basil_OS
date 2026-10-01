@@ -359,7 +359,7 @@ class MeetingDetectionRuntime:
                 self.next_probe_time = datetime.now() + timedelta(seconds=interval_seconds)
                 await asyncio.sleep(interval_seconds)
         except asyncio.CancelledError:
-            self.logger.info("Meeting detection loop cancelled")
+            self.logger.info("Meeting detection loop canceled")
             raise
 
 

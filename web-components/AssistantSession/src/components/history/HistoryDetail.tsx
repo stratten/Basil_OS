@@ -259,14 +259,14 @@ export function HistoryDetail({
           setIsEditMode(false);
         }}
         onSaveAsSample={saveSample}
-        onRefine={() => {
+        onRefine={(input) => {
           if (entry.outputType !== 'assistant_session') {
             setActionError('Legacy outputs can no longer be resumed.');
             return;
           }
           setActionError(null);
           onClearNativeActionError();
-          refineFromHistory(entry.id);
+          refineFromHistory(entry.id, input);
         }}
       />
     </div>

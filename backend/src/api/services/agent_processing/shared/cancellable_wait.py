@@ -35,7 +35,7 @@ async def await_future_with_cancellation(
 
     Returns:
         A ``(kind, value)`` tuple:
-          * ``("cancelled", None)`` if ``cancel_event`` fires first (or is
+          * ``("canceled", None)`` if ``cancel_event`` fires first (or is
             already set when called). Cancellation is checked first so a user
             cancel always wins a simultaneous resolution.
           * ``("timeout", None)`` if ``timeout_s`` elapses first.
@@ -52,7 +52,7 @@ async def await_future_with_cancellation(
             return ("timeout", None)
 
     if hasattr(cancel_event, "is_set") and cancel_event.is_set():
-        return ("cancelled", None)
+        return ("canceled", None)
 
     cancel_task = asyncio.ensure_future(cancel_event.wait())
     try:
@@ -62,7 +62,7 @@ async def await_future_with_cancellation(
             return_when=asyncio.FIRST_COMPLETED,
         )
         if cancel_task in done and not cancel_task.cancelled():
-            return ("cancelled", None)
+            return ("canceled", None)
         if future in done:
             return ("resolved", future.result())
         return ("timeout", None)

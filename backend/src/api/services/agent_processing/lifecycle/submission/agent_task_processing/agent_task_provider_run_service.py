@@ -497,7 +497,7 @@ class AgentTaskProviderRunService:
                 await self._shutdown_supervisor(supervisor, str(run["id"]))
             await self._transition_run_if_active(
                 provider_run_id=str(run["id"]),
-                next_status="cancelled",
+                next_status="canceled",
                 terminal_reason=None,
             )
             raise
@@ -603,7 +603,7 @@ class AgentTaskProviderRunService:
         """Transition the current revision when an interrupted run is still active."""
         try:
             current = await self._provider_run_repository.get_run(provider_run_id)
-            if current is None or current["status"] in {"completed", "failed", "cancelled"}:
+            if current is None or current["status"] in {"completed", "failed", "canceled"}:
                 return
             await self._provider_run_repository.transition_run(
                 provider_run_id=provider_run_id,

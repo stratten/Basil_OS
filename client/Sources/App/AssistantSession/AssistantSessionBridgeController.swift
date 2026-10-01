@@ -72,7 +72,11 @@ final class AssistantSessionBridgeController {
             viewModel.enterRefinementMode()
             Task { await viewModel.startRefinementRecording() }
         case "enterTypedRefinement":
-            viewModel.enterRefinementMode()
+            if viewModel.isRefinementMode && (viewModel.isRecording || viewModel.transcriptionStatus == .running) {
+                viewModel.discardRefinementRecordingForTypedInput()
+            } else {
+                viewModel.enterRefinementMode()
+            }
         case "cancelTypedRefinement":
             viewModel.assistantSessionStatus = .completed
             if viewModel.iterationCount == 0 {
@@ -174,6 +178,7 @@ final class AssistantSessionBridgeController {
             "isRefinementMode": viewModel.isRefinementMode,
             "iterationCount": viewModel.iterationCount,
             "showRefinementIndicator": viewModel.showRefinementIndicator,
+            "typedRefinementRequestSerial": viewModel.typedRefinementRequestSerial,
             "inputMode": viewModel.inputMode.rawValue,
             "inputCommitted": viewModel.inputCommitted,
             "typedInstruction": viewModel.typedInstruction,

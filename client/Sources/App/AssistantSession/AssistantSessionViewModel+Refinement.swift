@@ -55,8 +55,20 @@ extension AssistantSessionViewModel {
             DevLogger.shared.info("[ASSISTANT_SESSION] Started refinement recording", context: "AssistantSessionViewModel")
             #endif
         } catch {
+            // A switch to typed refinement during startup cancels the start and resets the status; that isn't a failure.
+            guard transcriptionStatus == .running else { return }
             handleError("Failed to start refinement recording: \(error.localizedDescription)")
         }
+    }
+
+    /// Discards an in-progress (or still-starting) refinement recording without uploading it, so the typed refinement editor can take over.
+    func discardRefinementRecordingForTypedInput() {
+        guard isRefinementMode, isRecording || transcriptionStatus == .running else { return }
+        transcriptionStatus = .idle
+        audioCaptureService.stopRecording(sendAudioData: false, flowContext: "assistantSession")
+        audioCaptureService.clearRecordingData()
+        isRecording = false
+        audioLevel = 0
     }
     
     // MARK: - Refinement Audio Processing
@@ -76,7 +88,7 @@ extension AssistantSessionViewModel {
 
     // MARK: - Refinement Text Processing
 
-    /// Typed-instruction analogue of :func:`processRefinementAudio`. The
+    /// Typed-instruction analog of :func:`processRefinementAudio`. The
     /// unified backend route accepts `instruction_text` in lieu of an
     /// `audio_file` part and skips transcription entirely. Refinement
     /// has no no-input modality (server-side rejects: there is nothing to
@@ -161,9 +173,9 @@ extension AssistantSessionViewModel {
             var completedSuccessfully = false
             for try await line in asyncBytes.lines {
                 // Check for cancellation
-                guard !isCancelled else {
+                guard !isCanceled else {
                     #if DEBUG
-                    DevLogger.shared.info("[ASSISTANT_SESSION] Refinement streaming cancelled", context: "AssistantSessionViewModel")
+                    DevLogger.shared.info("[ASSISTANT_SESSION] Refinement streaming canceled", context: "AssistantSessionViewModel")
                     #endif
                     return
                 }

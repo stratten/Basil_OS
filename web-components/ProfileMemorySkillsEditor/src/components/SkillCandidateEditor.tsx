@@ -23,14 +23,14 @@ export function SkillCandidateEditor({ apiBaseUrl, candidateId }: Props) {
   const [pendingAction, setPendingAction] = useState<null | 'approve' | 'decline'>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    let canceled = false;
     setIsLoading(true);
     setHasLoaded(false);
     setError(null);
     getSkillCandidate(apiBaseUrl, candidateId)
       .then((candidate) => {
         if (!candidate) throw new Error('Skill candidate not found');
-        if (cancelled) return;
+        if (canceled) return;
         setHasLoaded(true);
         setTitle(candidate.title);
         setWhenToUse(candidate.when_to_use);
@@ -41,21 +41,21 @@ export function SkillCandidateEditor({ apiBaseUrl, candidateId }: Props) {
         setObservationCount(candidate.observation_count);
       })
       .catch((err) => {
-        if (!cancelled) setError(errorMessage(err));
+        if (!canceled) setError(errorMessage(err));
       })
       .finally(() => {
-        if (!cancelled) setIsLoading(false);
+        if (!canceled) setIsLoading(false);
       });
     return () => {
-      cancelled = true;
+      canceled = true;
     };
   }, [apiBaseUrl, candidateId]);
 
   useEffect(() => {
     if (sourceTaskIds.length === 0) return;
-    let cancelled = false;
+    let canceled = false;
     Promise.allSettled(sourceTaskIds.map((id) => getAgentTaskSummary(apiBaseUrl, id))).then((results) => {
-      if (cancelled) return;
+      if (canceled) return;
       const next: Record<string, AgentTaskSummary | null> = {};
       results.forEach((result, index) => {
         next[sourceTaskIds[index]] = result.status === 'fulfilled' ? result.value : null;
@@ -63,7 +63,7 @@ export function SkillCandidateEditor({ apiBaseUrl, candidateId }: Props) {
       setSourceTasks(next);
     });
     return () => {
-      cancelled = true;
+      canceled = true;
     };
   }, [apiBaseUrl, sourceTaskIds]);
 

@@ -104,7 +104,7 @@ extension AudioCaptureService {
             if activeRecordingStartID == startID {
                 activeRecordingStartID = nil
             }
-            cleanupCancelledRecordingStartup()
+            cleanupCanceledRecordingStartup()
             throw error
         }
     }
@@ -119,10 +119,10 @@ extension AudioCaptureService {
     func cancelRecordingStartup() {
         guard activeRecordingStartID != nil else { return }
         activeRecordingStartID = nil
-        cleanupCancelledRecordingStartup()
+        cleanupCanceledRecordingStartup()
     }
 
-    func cleanupCancelledRecordingStartup() {
+    func cleanupCanceledRecordingStartup() {
         let continuation = firstBufferContinuation
         firstBufferContinuation = nil
         firstBufferStartID = nil

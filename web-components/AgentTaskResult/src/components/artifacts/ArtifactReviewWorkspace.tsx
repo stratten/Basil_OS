@@ -19,7 +19,7 @@ import { useLiveHtmlPreview } from './livePreview/useLiveHtmlPreview';
 import { LiveHtmlPreviewSurface } from './livePreview/LiveHtmlPreviewSurface';
 import { buildInlineStaticPreviewUrl } from '../../services/bridge';
 import { getBaseUrl } from '../../services/api';
-import { wsManager } from '../../services/websocket';
+import type { AgentTaskEventSubscriber } from '../../services/websocket';
 
 const TEXT_DIFF_KINDS = new Set(['markdown', 'html', 'text', 'code', 'json', 'yaml', 'xml']);
 
@@ -35,6 +35,8 @@ export interface ArtifactReviewWorkspaceProps {
   showDocumentTabs?: boolean;
   previewTransport: ArtifactPreviewTransport;
   runs?: AgentTaskRunFocusSummary[];
+  /** Live artifact events from the host surface's own connected WebSocket. */
+  subscribeToEvents: AgentTaskEventSubscriber;
 }
 
 export interface ArtifactReviewDocumentTabsProps {
@@ -106,6 +108,7 @@ export function ArtifactReviewWorkspace({
   showDocumentTabs = true,
   previewTransport,
   runs,
+  subscribeToEvents,
 }: ArtifactReviewWorkspaceProps) {
   const activeArtifact = artifacts.find(artifact => artifact.artifactId === activeArtifactId);
   const [mode, setMode] = useState<ArtifactReviewMode>('source');
@@ -223,7 +226,7 @@ export function ArtifactReviewWorkspace({
 
   const subscribeToLiveHtmlEvents = useCallback((onEvent: () => void) => {
     if (!activeArtifactId_) return () => undefined;
-    return wsManager.subscribe(event => {
+    return subscribeToEvents(event => {
       if (event.event_type !== 'agent_task_artifact') return;
       const sourceTaskId = typeof event.agent_task_id === 'string' ? event.agent_task_id : '';
       const eventRootTaskId = typeof event.root_task_id === 'string' ? event.root_task_id : '';
@@ -238,7 +241,7 @@ export function ArtifactReviewWorkspace({
       }
       onEvent();
     });
-  }, [agentTaskId, activeArtifactId_]);
+  }, [agentTaskId, activeArtifactId_, subscribeToEvents]);
   const liveHtmlPreview = useLiveHtmlPreview({
     mode: 'static',
     targetUrl: canonicalPath ?? '',
@@ -338,6 +341,7 @@ export function ArtifactReviewWorkspace({
             transport={previewTransport}
             agentTaskId={agentTaskId}
             rootTaskId={rootTaskId}
+            subscribeToEvents={subscribeToEvents}
           />
         ) : status === 'loading' ? (
           <p className="artifact-review-status" role="status">Loading document version history.</p>

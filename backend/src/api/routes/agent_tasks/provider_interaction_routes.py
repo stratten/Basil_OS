@@ -39,9 +39,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-_TERMINAL_AGENT_TASK_STATUSES = {"completed", "failed", "cancelled"}
+_TERMINAL_AGENT_TASK_STATUSES = {"completed", "failed", "canceled"}
 _SUPPORTED_OUTCOMES = {"accept", "decline", "cancel"}
-_DELEGATED_RUN_BLOCKED_STATUSES = frozenset({"settled", "failed", "cancelled", "cancelling"})
+_DELEGATED_RUN_BLOCKED_STATUSES = frozenset({"settled", "failed", "canceled", "canceling"})
 
 
 async def _notify_delegated_agent_interaction_resolved(
@@ -97,7 +97,7 @@ class ProviderPermissionDecisionRequest(BaseModel):
 
     outcome: Literal["selected", "cancel"] = Field(
         default="selected",
-        description="Whether the user selected an offered option or cancelled the prompt",
+        description="Whether the user selected an offered option or canceled the prompt",
     )
     selected_option_id: Optional[str] = Field(
         default=None,
@@ -243,7 +243,7 @@ async def recover_orphaned_execution_approvals(
     if not remaining_approvals:
         result_data = dict(agent_task_record.result_data or {})
         result_data["approval_recovery"] = {
-            "cancelled_approval_ids": request.approval_ids,
+            "canceled_approval_ids": request.approval_ids,
             "reason": "backend_interrupted_approval_wait",
         }
         await knowledge_service.agent_task_service.update_agent_task_status(
@@ -253,7 +253,7 @@ async def recover_orphaned_execution_approvals(
         )
 
     return RecoverExecutionApprovalsResponse(
-        cancelled_approval_ids=request.approval_ids,
+        canceled_approval_ids=request.approval_ids,
     )
 
 
@@ -368,7 +368,7 @@ async def respond_to_provider_interaction(
                 expected_revision=expected_revision,
             )
         else:
-            await knowledge_service.provider_interaction_repository.mark_cancelled(
+            await knowledge_service.provider_interaction_repository.mark_canceled(
                 interaction_id=interaction_id,
                 expected_revision=expected_revision,
             )
@@ -527,7 +527,7 @@ async def decide_provider_permission_interaction(
         )
 
     message = (
-        "Provider permission prompt cancelled."
+        "Provider permission prompt canceled."
         if body.outcome == "cancel"
         else "Provider permission decision delivered."
     )

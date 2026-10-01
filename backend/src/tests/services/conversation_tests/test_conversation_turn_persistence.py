@@ -1,4 +1,5 @@
 import asyncio
+import sqlite3
 
 import pytest
 
@@ -576,7 +577,7 @@ async def test_list_recoverable_conversation_agent_narrations_filters_correctly(
 
     ready_id = await make_turn(agent_task_id="task-ready", lifecycle="completed", narration_lifecycle="ready")
     narrating_id = await make_turn(agent_task_id="task-narrating", lifecycle="failed", narration_lifecycle="narrating")
-    retrying_id = await make_turn(agent_task_id="task-retrying", lifecycle="cancelled", narration_lifecycle="retrying")
+    retrying_id = await make_turn(agent_task_id="task-retrying", lifecycle="canceled", narration_lifecycle="retrying")
     await make_turn(agent_task_id="task-pending", lifecycle="running", narration_lifecycle="pending")
     await make_turn(agent_task_id="task-completed", lifecycle="completed", narration_lifecycle="completed")
     await make_turn(agent_task_id="task-failed", lifecycle="completed", narration_lifecycle="failed")
@@ -667,3 +668,68 @@ async def test_concurrent_admission_allows_only_one_pair(repository):
     assert len(conflicts) == 1
     persisted = await repository.get_conversation_with_messages(conversation_id)
     assert persisted["message_count"] == 2
+
+
+@pytest.mark.asyncio
+async def test_update_message_records_answering_model_without_touching_other_fields(repository):
+    conversation_id = await repository.create_conversation()
+    pair = await repository.create_message_pair(
+        conversation_id=conversation_id,
+        user_content="Hello",
+        user_metadata=None,
+        assistant_metadata={"probe": True},
+        assistant_model_id="Anthropic-claude-sonnet-5",
+    )
+
+    await repository.update_message(message_id=pair.assistant_message_id, content="Hi there")
+    await repository.update_message(message_id=pair.assistant_message_id)
+    await repository.update_message(
+        message_id=pair.assistant_message_id,
+        model_id="Qwen-qwen3-8b-instruct-q4km",
+    )
+
+    persisted = await repository.get_conversation_with_messages(conversation_id)
+    assistant = next(message for message in persisted["messages"] if message["id"] == pair.assistant_message_id)
+    assert assistant["model_id"] == "Qwen-qwen3-8b-instruct-q4km"
+    assert assistant["content"] == "Hi there"
+    assert assistant["metadata"] == {"probe": True}
+
+
+@pytest.mark.asyncio
+async def test_background_metadata_merges_leave_conversation_order_untouched(repository):
+    conversation_id = await repository.create_conversation(metadata={"keep": True})
+    message_id = await repository.add_message(conversation_id, "assistant", "Reply", model_id="model-a")
+    with sqlite3.connect(repository.db_path) as connection:
+        connection.execute(
+            "UPDATE conversations SET updated_at = '2020-01-01 00:00:00' WHERE id = ?",
+            (conversation_id,),
+        )
+
+    await repository.merge_message_metadata(
+        message_id,
+        {"turn_summary": {"status": "completed"}},
+        touch_conversation=False,
+    )
+    await repository.merge_conversation_metadata(conversation_id, {"conversation_brief": {"text": "Brief"}})
+    await repository.merge_conversation_metadata(conversation_id, {"conversation_brief": {"model_id": "model-a"}})
+
+    persisted = await repository.get_conversation_with_messages(conversation_id)
+    assert persisted["updated_at"] == "2020-01-01 00:00:00"
+    assert persisted["metadata"] == {
+        "keep": True,
+        "conversation_brief": {"text": "Brief", "model_id": "model-a"},
+    }
+    assert persisted["messages"][0]["metadata"] == {"turn_summary": {"status": "completed"}}
+
+    await repository.merge_message_metadata(message_id, {"probe": True})
+    touched = await repository.get_conversation_with_messages(conversation_id)
+    assert touched["updated_at"] != "2020-01-01 00:00:00"
+
+
+@pytest.mark.asyncio
+async def test_merge_conversation_metadata_rejects_missing_conversation_and_empty_patch(repository):
+    with pytest.raises(ValueError):
+        await repository.merge_conversation_metadata("missing", {"conversation_brief": {"text": "Brief"}})
+    conversation_id = await repository.create_conversation()
+    with pytest.raises(ValueError):
+        await repository.merge_conversation_metadata(conversation_id, {})

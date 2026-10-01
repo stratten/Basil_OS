@@ -295,7 +295,7 @@ def create_vision_analysis_tool(
     For local Qwen2.5-VL fallback it loads the GGUF + mmproj pair from disk.
 
     Args:
-        coordinator: ``WorkflowCoordinator`` with an initialised ``_llm_model``.
+        coordinator: ``WorkflowCoordinator`` with an initialized ``_llm_model``.
         vision_backend: Which backend to use (native agent model vs local Qwen VL).
         models_dir: Basil models directory (required for local Qwen VL).
         local_vision_model_id: Registry id for the local vision pair.
@@ -355,7 +355,7 @@ def create_vision_analysis_tool(
 
         Args:
             file_paths: Absolute paths to image files on disk.
-            prompt: What to analyse or extract from the image(s).
+            prompt: What to analyze or extract from the image(s).
 
         Returns:
             The model's text response describing what it sees.

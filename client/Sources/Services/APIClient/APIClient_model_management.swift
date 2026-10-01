@@ -123,7 +123,7 @@ extension APIClient {
         }
     }
 
-    // Function to reset progress cache for a model when download completes or is cancelled
+    // Function to reset progress cache for a model when download completes or is canceled
     func resetProgressCache(modelType: String, variant: String) {
         let modelId = "\(modelType)-\(variant)"
         Self.modelProgressCache.removeValue(forKey: modelId)

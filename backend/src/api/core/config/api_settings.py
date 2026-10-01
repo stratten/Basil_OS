@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     # Server settings
     HOST: str = Field(default="127.0.0.1", description="Server host")
     PORT: int = Field(default=8000, description="Server port", env="BASIL_PORT")
-    ALLOW_LAN_BIND: bool = Field(default=False, description="Allow binding the API server to 0.0.0.0 for paired mobile clients")
+    ALLOW_LAN_BIND: bool = Field(default=False, description="Reserved for mobile pairing; non-loopback binds are refused until device credentials ship")
     BONJOUR_BROADCAST: bool = Field(default=False, description="Advertise the API server over Bonjour for paired mobile discovery")
     IOS_PAIR_ENABLED: bool = Field(default=False, description="Enable iOS device pairing routes and token checks")
     

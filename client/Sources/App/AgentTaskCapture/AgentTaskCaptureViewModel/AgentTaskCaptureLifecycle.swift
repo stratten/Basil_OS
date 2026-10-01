@@ -87,14 +87,14 @@ extension AgentTaskCaptureViewModel {
         #if DEBUG
         DevLogger.shared.info("Canceling agentTask capture", context: "AgentTaskCapture")
         #endif
-        // Stop this widget's in-progress capture without cancelling any
+        // Stop this widget's in-progress capture without canceling any
         // already-running agent execution. Voice-initiated captures also have
         // backend streaming state that must be stopped explicitly.
 
         // Stop capture WITHOUT processing/submitting audio
         stopCapture(shouldProcessAudio: false)
         Task {
-            await notifyBackendCaptureCancelled()
+            await notifyBackendCaptureCanceled()
         }
         statusMessage = "Canceled"
         onCaptureCanceled?()
@@ -155,7 +155,7 @@ extension AgentTaskCaptureViewModel {
         // Stop audio capture
         audioCaptureService.stopRecording(sendAudioData: false, flowContext: "agentTask")
 
-        // Only process final audio if not cancelled
+        // Only process final audio if not canceled
         if shouldProcessAudio {
             Task {
                 // Wait briefly for recording to complete, then get final audio data
@@ -172,7 +172,7 @@ extension AgentTaskCaptureViewModel {
             }
         } else {
             #if DEBUG
-            DevLogger.shared.info("Audio capture stopped - skipping audio processing (cancelled)", context: "AgentTaskCapture")
+            DevLogger.shared.info("Audio capture stopped - skipping audio processing (canceled)", context: "AgentTaskCapture")
             #endif
         }
 
@@ -181,7 +181,7 @@ extension AgentTaskCaptureViewModel {
         #endif
     }
 
-    func notifyBackendCaptureCancelled() async {
+    func notifyBackendCaptureCanceled() async {
         let payload: [String: Any] = ["reason": "client_cancel"]
 
         do {

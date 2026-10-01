@@ -148,77 +148,81 @@ export function PermissionsCommandSecurityPanel() {
         />
       </div>
 
-      <div className="permissions-command-security-section">
-        <h3 className="permissions-command-security-section-title">Approval Timeout</h3>
-        <div className="permissions-radio-group">
-          {TIMEOUT_BEHAVIOR_OPTIONS.map((option) => (
-            <label key={option.id} className="permissions-radio-option">
-              <input
-                type="radio"
-                name="timeoutBehavior"
-                checked={timeoutBehavior === option.id}
-                disabled={pendingRequestId !== null}
-                onChange={() => requestApprovalSetting({ timeoutBehavior: option.id })}
-              />
-              {option.label}
-            </label>
-          ))}
-        </div>
-        {timeoutBehavior !== 'wait_forever' && (
-          <div className="permissions-timeout-stepper">
-            <span className="permissions-toggle-row-label">Timeout after:</span>
-            <input
-              type="number"
-              min={30}
-              max={600}
-              step={30}
-              value={approvalTimeoutSeconds}
-              disabled={pendingRequestId !== null}
-              onChange={(event) => {
-                const seconds = Number(event.target.value)
-                if (Number.isInteger(seconds)) requestApprovalSetting({ approvalTimeoutSeconds: seconds })
-              }}
-            />
-            <span className="permissions-toggle-row-label">seconds</span>
+      <div className="permissions-command-security-pair">
+        <div className="permissions-command-security-section">
+          <h3 className="permissions-command-security-section-title">Approval Timeout</h3>
+          <div className="permissions-radio-group">
+            {TIMEOUT_BEHAVIOR_OPTIONS.map((option) => (
+              <label key={option.id} className="permissions-radio-option">
+                <input
+                  type="radio"
+                  name="timeoutBehavior"
+                  checked={timeoutBehavior === option.id}
+                  disabled={pendingRequestId !== null}
+                  onChange={() => requestApprovalSetting({ timeoutBehavior: option.id })}
+                />
+                {option.label}
+              </label>
+            ))}
           </div>
-        )}
-      </div>
-
-      <div className="permissions-command-security-section" style={safeExecutionMode ? { opacity: 0.5 } : undefined}>
-        <h3 className="permissions-command-security-section-title">Approval Mode</h3>
-        {safeExecutionMode && <p className="permissions-command-security-section-description">Superseded by Safe Execution Mode.</p>}
-        <div className="permissions-radio-group">
-          {APPROVAL_MODE_OPTIONS.map((option) => (
-            <label key={option.id} className="permissions-radio-option">
+          {timeoutBehavior !== 'wait_forever' && (
+            <div className="permissions-timeout-stepper">
+              <span className="permissions-toggle-row-label">Timeout after:</span>
               <input
-                type="radio"
-                name="approvalMode"
-                disabled={safeExecutionMode || pendingRequestId !== null}
-                checked={approvalMode === option.id}
-                onChange={() => requestApprovalSetting({ approvalMode: option.id })}
+                type="number"
+                min={30}
+                max={600}
+                step={30}
+                value={approvalTimeoutSeconds}
+                disabled={pendingRequestId !== null}
+                onChange={(event) => {
+                  const seconds = Number(event.target.value)
+                  if (Number.isInteger(seconds)) requestApprovalSetting({ approvalTimeoutSeconds: seconds })
+                }}
               />
-              {option.label}
-            </label>
-          ))}
+              <span className="permissions-toggle-row-label">seconds</span>
+            </div>
+          )}
+        </div>
+
+        <div className="permissions-command-security-section" style={safeExecutionMode ? { opacity: 0.5 } : undefined}>
+          <h3 className="permissions-command-security-section-title">Approval Mode</h3>
+          {safeExecutionMode && <p className="permissions-command-security-section-description">Superseded by Safe Execution Mode.</p>}
+          <div className="permissions-radio-group">
+            {APPROVAL_MODE_OPTIONS.map((option) => (
+              <label key={option.id} className="permissions-radio-option">
+                <input
+                  type="radio"
+                  name="approvalMode"
+                  disabled={safeExecutionMode || pendingRequestId !== null}
+                  checked={approvalMode === option.id}
+                  onChange={() => requestApprovalSetting({ approvalMode: option.id })}
+                />
+                {option.label}
+              </label>
+            ))}
+          </div>
         </div>
       </div>
 
       <div className="permissions-command-security-section" style={safeExecutionMode ? { opacity: 0.5 } : undefined}>
         <h3 className="permissions-command-security-section-title">Security Options</h3>
-        <Switch
-          id="permissions-auto-approve-read-only"
-          label="Auto-approve read-only commands (ls, cat, grep, etc.)"
-          checked={autoApproveReadOnly}
-          disabled={safeExecutionMode || pendingRequestId !== null}
-          onChange={(checked) => requestApprovalSetting({ autoApproveReadOnly: checked })}
-        />
-        <Switch
-          id="permissions-block-dangerous-patterns"
-          label="Block dangerous patterns (rm -rf /, sudo rm, etc.)"
-          checked={blockDangerousPatterns}
-          disabled={pendingRequestId !== null}
-          onChange={(checked) => requestApprovalSetting({ blockDangerousPatterns: checked })}
-        />
+        <div className="permissions-command-security-switch-stack">
+          <Switch
+            id="permissions-auto-approve-read-only"
+            label="Auto-approve read-only commands (ls, cat, grep, etc.)"
+            checked={autoApproveReadOnly}
+            disabled={safeExecutionMode || pendingRequestId !== null}
+            onChange={(checked) => requestApprovalSetting({ autoApproveReadOnly: checked })}
+          />
+          <Switch
+            id="permissions-block-dangerous-patterns"
+            label="Block dangerous patterns (rm -rf /, sudo rm, etc.)"
+            checked={blockDangerousPatterns}
+            disabled={pendingRequestId !== null}
+            onChange={(checked) => requestApprovalSetting({ blockDangerousPatterns: checked })}
+          />
+        </div>
       </div>
 
       <div className="permissions-command-security-section">

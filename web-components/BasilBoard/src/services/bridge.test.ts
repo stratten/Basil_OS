@@ -21,6 +21,40 @@ describe('bridge initialization queue', () => {
     window.basilBoardBridge = undefined;
   });
 
+  it('queues a native composer focus request until the Conversation surface registers', async () => {
+    const bridge = await import('./bridge');
+    const handler = vi.fn();
+
+    bridge.enqueueConversationComposerFocus();
+    bridge.enqueueConversationComposerFocus();
+    const unregister = bridge.registerConversationComposerFocusHandler(handler);
+    expect(handler).toHaveBeenCalledTimes(1);
+
+    window.basilBoardBridge?.onFocusConversationComposer?.();
+    expect(handler).toHaveBeenCalledTimes(2);
+
+    unregister();
+    window.basilBoardBridge?.onFocusConversationComposer?.();
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
+
+  it('exposes the composer focus callback as soon as the app shell registers', async () => {
+    const bridge = await import('./bridge');
+    bridge.registerBridgeHandlers({
+      onInit: vi.fn(),
+      onVoiceCaptureState: vi.fn(),
+      onVoiceCaptureFinished: vi.fn(),
+      onStatusIconChanged: vi.fn(),
+    });
+    expect(typeof window.basilBoardBridge?.onFocusConversationComposer).toBe('function');
+
+    window.basilBoardBridge?.onFocusConversationComposer?.();
+    const handler = vi.fn();
+    bridge.registerConversationComposerFocusHandler(handler);
+
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+
   it('delivers a native init queued before the standalone app registers', async () => {
     const bridge = await import('./bridge');
     const onInit = vi.fn();
@@ -151,14 +185,14 @@ describe('pickWorkspaceDirectory', () => {
     await expect(pending).resolves.toEqual({ status: 'selected', path: '/Users/example/Projects/basil' });
   });
 
-  it('resolves with cancelled and no path when the user cancels the picker', async () => {
+  it('resolves with canceled and no path when the user cancels the picker', async () => {
     const bridge = await import('./bridge');
     const pending = bridge.pickWorkspaceDirectory();
     const requestId = capturedRequestId();
 
-    window.basilBoardBridge!.onWorkspaceDirectoryPicked!({ requestId, status: 'cancelled' });
+    window.basilBoardBridge!.onWorkspaceDirectoryPicked!({ requestId, status: 'canceled' });
 
-    await expect(pending).resolves.toEqual({ status: 'cancelled' });
+    await expect(pending).resolves.toEqual({ status: 'canceled' });
   });
 
   it('resolves with the Swift-supplied error message for an unavailable path', async () => {
@@ -195,12 +229,12 @@ describe('pickWorkspaceDirectory', () => {
     const bridge = await import('./bridge');
     const pending = bridge.pickWorkspaceDirectory();
 
-    window.basilBoardBridge!.onWorkspaceDirectoryPicked!({ requestId: 'not-a-real-request', status: 'cancelled' });
+    window.basilBoardBridge!.onWorkspaceDirectoryPicked!({ requestId: 'not-a-real-request', status: 'canceled' });
 
     const requestId = capturedRequestId();
-    window.basilBoardBridge!.onWorkspaceDirectoryPicked!({ requestId, status: 'cancelled' });
+    window.basilBoardBridge!.onWorkspaceDirectoryPicked!({ requestId, status: 'canceled' });
 
-    await expect(pending).resolves.toEqual({ status: 'cancelled' });
+    await expect(pending).resolves.toEqual({ status: 'canceled' });
   });
 
   it('resolves with an error immediately when the native bridge is unavailable', async () => {

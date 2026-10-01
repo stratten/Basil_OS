@@ -139,7 +139,7 @@ async def test_list_todo_item_summaries_filters_by_status_and_paginates(repo: To
 
 @pytest.mark.asyncio
 async def test_list_todo_item_summaries_empty_result(repo: TodoRepository) -> None:
-    items, cursor = await repo.list_todo_item_summaries(status="cancelled", limit=50, cursor=None)
+    items, cursor = await repo.list_todo_item_summaries(status="canceled", limit=50, cursor=None)
     assert items == []
     assert cursor is None
 
@@ -275,7 +275,7 @@ async def test_concurrent_revision_conflict_when_two_updates_race_on_the_same_ex
 
     import asyncio
 
-    results = await asyncio.gather(attempt("in_progress"), attempt("cancelled"))
+    results = await asyncio.gather(attempt("in_progress"), attempt("canceled"))
     successes = [r for r in results if not isinstance(r, TodoRevisionConflict)]
     conflicts = [r for r in results if isinstance(r, TodoRevisionConflict)]
     assert len(successes) == 1

@@ -15,7 +15,7 @@ async def capture_and_process_agent_task(service, wake_phrase: str) -> None:
     Args:
         wake_phrase: The detected wake phrase
     """
-    was_cancelled = False
+    was_canceled = False
     # Acquire the wake-capture lifecycle key BEFORE notifying the frontend
     # so the gate is busy from the moment the user's wake word commits us
     # to a capture session. Released either by audio_routes (transferred
@@ -27,7 +27,7 @@ async def capture_and_process_agent_task(service, wake_phrase: str) -> None:
     service.acquire_lifecycle(capture_key, source=f"wake_capture:{wake_phrase}")
     capture_key_owned_locally = True
     try:
-        service._agent_task_cancelled = False  # Reset cancellation flag at start
+        service._agent_task_canceled = False  # Reset cancellation flag at start
         logger.info(f"🎤 [VOICE_CAPTURE_DEBUG] Starting agent-task capture after wake word detection for phrase: '{wake_phrase}'...")
 
         # Notify frontend to show the agent_task capture widget
@@ -71,9 +71,9 @@ async def capture_and_process_agent_task(service, wake_phrase: str) -> None:
         logger.info(f"🎤 [VOICE_CAPTURE_DEBUG] AgentTask capture completed, result: '{agent_task}'")
 
         # Check for cancellation after audio capture
-        if service._agent_task_cancelled:
-            logger.info("🎤 [VOICE_CAPTURE_DEBUG] Agent-task processing cancelled after audio capture")
-            was_cancelled = True
+        if service._agent_task_canceled:
+            logger.info("🎤 [VOICE_CAPTURE_DEBUG] Agent-task processing canceled after audio capture")
+            was_canceled = True
             return
 
         if not agent_task:
@@ -112,13 +112,13 @@ async def capture_and_process_agent_task(service, wake_phrase: str) -> None:
         return
 
     except asyncio.CancelledError:
-        logger.info("AgentTask capture was cancelled - resuming wake word detection immediately")
-        was_cancelled = True
+        logger.info("AgentTask capture was canceled - resuming wake word detection immediately")
+        was_canceled = True
     except Exception as e:
         logger.error(f"Error during agent-task capture and processing: {e}", exc_info=True)
         await service._provide_feedback("I encountered an error processing your agent task. Please try again.")
     finally:
-        service._agent_task_cancelled = False  # Clear cancellation flag
+        service._agent_task_canceled = False  # Clear cancellation flag
 
         # If hotkey client-owned capture is active, do NOT resume wake word detection yet.
         # The client will stop capture (second press) and that path will clear state and resume as needed.
@@ -131,14 +131,14 @@ async def capture_and_process_agent_task(service, wake_phrase: str) -> None:
                 capture_key_owned_locally = False
             return
 
-        if was_cancelled:
+        if was_canceled:
             # Cancel path: release the key immediately so the lifecycle gate
             # becomes idle and wake/listener can resume right away through
             # the normal release-triggered idle-resume callback.
             service._release_local_capture_key_if_owned(
                 capture_key,
                 capture_key_owned_locally,
-                reason="wake_capture_cancelled",
+                reason="wake_capture_canceled",
             )
             capture_key_owned_locally = False
             return

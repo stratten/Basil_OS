@@ -123,7 +123,7 @@ extension AgentTaskCaptureViewModel {
                     if backendMessage.lowercased().contains("no speech") {
                         reason = "no_speech"
                     } else if backendMessage.lowercased().contains("cancel") {
-                        reason = "cancelled"
+                        reason = "canceled"
                     } else {
                         reason = "backend_failure"
                     }

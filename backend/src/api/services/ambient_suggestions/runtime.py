@@ -209,7 +209,7 @@ class AmbientSuggestionRuntime:
                 await self.broadcast_status_changed("next_evaluation_scheduled")
                 await asyncio.sleep(interval_seconds)
         except asyncio.CancelledError:
-            self.logger.info("Ambient suggestion loop cancelled")
+            self.logger.info("Ambient suggestion loop canceled")
             raise
 
 

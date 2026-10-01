@@ -231,7 +231,7 @@ final class MeetingActionProposalStore: ObservableObject {
                 throw ProposalActionError.unactionableTodoStatus(promoted.status)
             }
             return TodoWorkerLaunchResponse(item: promoted, agentTaskId: attempt.agentTaskId)
-        case "candidate", "dismissed", "cancelled":
+        case "candidate", "dismissed", "canceled":
             throw ProposalActionError.unactionableTodoStatus(promoted.status)
         default:
             throw ProposalActionError.unactionableTodoStatus(promoted.status)

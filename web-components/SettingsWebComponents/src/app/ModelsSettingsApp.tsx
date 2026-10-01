@@ -129,7 +129,7 @@ export function ModelsSettingsApp({ requestedSubTab }: { requestedSubTab?: Model
         }
         if (event.status === 'error') {
           setStatusMessage({ text: event.message ?? 'Something went wrong.', isError: true })
-        } else if (event.status !== 'cancelled') {
+        } else if (event.status !== 'canceled') {
           setStatusMessage(null)
         }
       }

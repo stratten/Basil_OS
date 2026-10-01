@@ -37,6 +37,8 @@ function fakeTransport(): ArtifactPreviewTransport {
   };
 }
 
+const noAgentTaskEvents = () => () => undefined;
+
 function markdownArtifact(overrides: Partial<DerivedAgentTaskArtifact> = {}): DerivedAgentTaskArtifact {
   return {
     artifactId: 'file-0123456789abcdef01234567',
@@ -114,6 +116,7 @@ describe('ArtifactReviewWorkspace', () => {
           activeArtifactId={artifact.artifactId}
           onSelectArtifact={() => {}}
           previewTransport={fakeTransport()}
+          subscribeToEvents={noAgentTaskEvents}
         />
       );
     });
@@ -156,6 +159,7 @@ describe('ArtifactReviewWorkspace', () => {
           activeArtifactId={artifact.artifactId}
           onSelectArtifact={() => {}}
           previewTransport={fakeTransport()}
+          subscribeToEvents={noAgentTaskEvents}
         />
       );
     });
@@ -199,6 +203,7 @@ describe('ArtifactReviewWorkspace', () => {
           activeArtifactId={artifact.artifactId}
           onSelectArtifact={() => {}}
           previewTransport={fakeTransport()}
+          subscribeToEvents={noAgentTaskEvents}
         />
       );
     });
@@ -243,6 +248,7 @@ describe('ArtifactReviewWorkspace', () => {
           activeArtifactId={artifact.artifactId}
           onSelectArtifact={() => {}}
           previewTransport={fakeTransport()}
+          subscribeToEvents={noAgentTaskEvents}
         />
       );
     });
@@ -273,6 +279,7 @@ describe('ArtifactReviewWorkspace', () => {
           activeArtifactId={artifact.artifactId}
           onSelectArtifact={() => {}}
           previewTransport={fakeTransport()}
+          subscribeToEvents={noAgentTaskEvents}
         />
       );
     });
@@ -323,6 +330,7 @@ describe('ArtifactReviewWorkspace', () => {
           activeArtifactId={artifact.artifactId}
           onSelectArtifact={() => {}}
           previewTransport={fakeTransport()}
+          subscribeToEvents={noAgentTaskEvents}
         />
       );
     });
@@ -372,6 +380,7 @@ describe('ArtifactReviewWorkspace', () => {
           activeArtifactId={artifact.artifactId}
           onSelectArtifact={() => {}}
           previewTransport={fakeTransport()}
+          subscribeToEvents={noAgentTaskEvents}
         />
       );
     });
@@ -427,6 +436,7 @@ describe('ArtifactReviewWorkspace', () => {
           activeArtifactId={artifact.artifactId}
           onSelectArtifact={() => {}}
           previewTransport={fakeTransport()}
+          subscribeToEvents={noAgentTaskEvents}
         />
       );
     });
@@ -474,6 +484,7 @@ describe('ArtifactReviewWorkspace', () => {
           activeArtifactId={artifact.artifactId}
           onSelectArtifact={() => {}}
           previewTransport={fakeTransport()}
+          subscribeToEvents={noAgentTaskEvents}
         />
       );
     });
@@ -501,6 +512,7 @@ describe('ArtifactReviewWorkspace', () => {
           activeArtifactId={artifact.artifactId}
           onSelectArtifact={() => {}}
           previewTransport={fakeTransport()}
+          subscribeToEvents={noAgentTaskEvents}
         />
       );
     });
@@ -540,6 +552,7 @@ describe('ArtifactReviewWorkspace', () => {
           activeArtifactId={artifact.artifactId}
           onSelectArtifact={() => {}}
           previewTransport={fakeTransport()}
+          subscribeToEvents={noAgentTaskEvents}
         />
       );
     });
@@ -552,6 +565,47 @@ describe('ArtifactReviewWorkspace', () => {
     expect(frame?.hasAttribute('srcdoc')).toBe(false);
 
     act(() => root.unmount());
+  });
+
+  it('subscribes live HTML refresh through an injected event source and unsubscribes on unmount', async () => {
+    (listManagedFileVersions as ReturnType<typeof vi.fn>).mockResolvedValue([
+      managedVersion({ id: 'change-1', agentTaskId: 'run-1', canonicalPath: '/tmp/report.html' }),
+    ]);
+    (getManagedFileVersionContent as ReturnType<typeof vi.fn>).mockResolvedValue({
+      changeId: 'change-1',
+      canonicalPath: '/tmp/report.html',
+      content: '<html><body>hi</body></html>',
+      truncated: false,
+      byteSize: 10,
+    });
+    const unsubscribe = vi.fn();
+    const subscribeToEvents = vi.fn(() => unsubscribe);
+
+    const artifact = markdownArtifact({
+      localPath: '/tmp/report.html',
+      review: { revision: 1, revisionCount: 1, kind: 'html', snapshotStatus: 'available' },
+    });
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(
+        <ArtifactReviewWorkspace
+          agentTaskId="run-1"
+          rootTaskId="root-1"
+          focusedRunId="run-1"
+          artifacts={[artifact]}
+          activeArtifactId={artifact.artifactId}
+          onSelectArtifact={() => {}}
+          previewTransport={fakeTransport()}
+          subscribeToEvents={subscribeToEvents}
+        />
+      );
+    });
+    await flush();
+
+    expect(subscribeToEvents).toHaveBeenCalled();
+
+    act(() => root.unmount());
+    expect(unsubscribe).toHaveBeenCalled();
   });
 
 });

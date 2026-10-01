@@ -191,7 +191,7 @@ class TodoService:
         return await self._transition(todo_id, expected_revision, {"status": "dismissed"}, "dismissed", "user", None)
 
     async def reopen(self, todo_id: str, expected_revision: int) -> TodoItemDetail:
-        await self._assert_status_and_revision(todo_id, expected_revision, {"completed", "dismissed", "cancelled"})
+        await self._assert_status_and_revision(todo_id, expected_revision, {"completed", "dismissed", "canceled"})
         return await self._transition(
             todo_id,
             expected_revision,
@@ -203,7 +203,7 @@ class TodoService:
 
     async def cancel(self, todo_id: str, expected_revision: int) -> TodoItemDetail:
         await self._assert_status_and_revision(todo_id, expected_revision, {"open", "in_progress"})
-        return await self._transition(todo_id, expected_revision, {"status": "cancelled"}, "cancelled", "user", None)
+        return await self._transition(todo_id, expected_revision, {"status": "canceled"}, "canceled", "user", None)
 
     async def delete_todo_item(self, todo_id: str, expected_revision: int) -> None:
         detail = await self.get_item_detail(todo_id)

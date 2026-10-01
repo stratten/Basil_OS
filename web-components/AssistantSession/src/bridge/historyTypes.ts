@@ -6,6 +6,8 @@ export interface AssistantOutputHistoryInitPayload {
   theme: import('./types').AssistantSessionThemePayload;
 }
 
+export type HistoryRefinementInput = 'voice' | 'typed';
+
 export type AssistantOutputHistoryBridgeEvent =
   | ({ type: 'init' } & AssistantOutputHistoryInitPayload)
   | ({ type: 'themeChanged' } & import('./types').AssistantSessionThemePayload)
@@ -17,7 +19,7 @@ export type AssistantOutputHistoryBridgeIntent =
   | { type: 'closeWindow' }
   | { type: 'minimizeWindow' }
   | { type: 'toggleChromeCollapse'; collapsed: boolean }
-  | { type: 'refineFromHistory'; assistantOutputId: number }
+  | { type: 'refineFromHistory'; assistantOutputId: number; input: HistoryRefinementInput }
   | { type: 'copyHistoryRichText'; content: string }
   | { type: 'copyHistoryMarkdown'; content: string }
   | { type: 'openHistoryExternalUrl'; url: string };

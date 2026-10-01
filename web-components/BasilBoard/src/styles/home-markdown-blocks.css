@@ -1,0 +1,68 @@
+.home-markdown h1,
+.home-markdown h2,
+.home-markdown h3,
+.home-markdown h4,
+.home-markdown h5,
+.home-markdown h6 {
+  color: inherit;
+  font-family: var(--font-family-medium);
+  line-height: 1.25;
+  margin: 0.75em 0 0.4em;
+}
+
+.home-markdown h1:first-child,
+.home-markdown h2:first-child,
+.home-markdown h3:first-child,
+.home-markdown h4:first-child,
+.home-markdown h5:first-child,
+.home-markdown h6:first-child {
+  margin-top: 0;
+}
+
+.home-markdown h1 { font-size: 1.35em; }
+.home-markdown h2 { font-size: 1.2em; }
+.home-markdown h3 { font-size: 1.1em; }
+.home-markdown h4,
+.home-markdown h5,
+.home-markdown h6 { font-size: 1em; }
+
+.home-markdown blockquote {
+  border-left: 3px solid color-mix(in srgb, currentColor 55%, transparent);
+  padding-left: 10px;
+}
+
+.home-markdown hr {
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+  margin: 0.75em 0;
+}
+
+.home-markdown del,
+.home-markdown s {
+  text-decoration: line-through;
+}
+
+.home-markdown table {
+  border-collapse: collapse;
+  display: block;
+  margin: 0 0 0.75em;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.home-markdown table:last-child {
+  margin-bottom: 0;
+}
+
+.home-markdown th,
+.home-markdown td {
+  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+  padding: 4px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.home-markdown th {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  font-family: var(--font-family-medium);
+}

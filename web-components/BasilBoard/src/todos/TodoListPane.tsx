@@ -48,7 +48,7 @@ interface TodoListPaneProps {
 }
 
 function formatTodoStatus(status: string): string {
-  return status === 'cancelled' ? 'Canceled' : status.replace(/_/g, ' ');
+  return status === 'canceled' ? 'Canceled' : status.replace(/_/g, ' ');
 }
 
 function formatTodoDate(value: string): string {
@@ -268,7 +268,7 @@ function TodoListRow({
             <span>Created {formatTodoDate(item.created_at)}</span>
             {item.due_at && (
               <span
-                className={`todo-list-item-due${isTodoDueDateOverdue(item.due_at) && !['completed', 'dismissed', 'cancelled'].includes(item.status) ? ' todo-list-item-due--overdue' : ''}`}
+                className={`todo-list-item-due${isTodoDueDateOverdue(item.due_at) && !['completed', 'dismissed', 'canceled'].includes(item.status) ? ' todo-list-item-due--overdue' : ''}`}
               >
                 Due {formatTodoDateOnly(item.due_at)}
               </span>

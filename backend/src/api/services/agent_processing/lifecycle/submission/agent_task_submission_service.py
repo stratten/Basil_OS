@@ -61,19 +61,18 @@ class AgentTaskSubmissionService:
         event_type = str(message_data.get("event_type") or "")
         agent_task_id = str(message_data.get("agent_task_id") or "")
         cancellation_safe_events = {
-            "agent_task_cancelled",
-            "agentTask_cancelled",
+            "agent_task_canceled",
             "agent_task_origin",
         }
         if (
             agent_task_id
             and event_type not in cancellation_safe_events
             and self.agent_task_orchestrator is not None
-            and hasattr(self.agent_task_orchestrator, "is_agent_task_cancelled")
-            and self.agent_task_orchestrator.is_agent_task_cancelled(agent_task_id)
+            and hasattr(self.agent_task_orchestrator, "is_agent_task_canceled")
+            and self.agent_task_orchestrator.is_agent_task_canceled(agent_task_id)
         ):
             logger.debug(
-                "Dropping %s for cancelled agent task %s",
+                "Dropping %s for canceled agent task %s",
                 event_type,
                 agent_task_id,
             )
@@ -106,10 +105,10 @@ class AgentTaskSubmissionService:
                 logger.info("Direct processing suppressed due to recent cancellation window")
                 return {
                     "success": False,
-                    "operation": "cancelled",
+                    "operation": "canceled",
                     "confidence": 0.0,
-                    "reasoning": "User cancelled the agent_task; ignoring late-arriving audio.",
-                    "message": "Task was cancelled",
+                    "reasoning": "User canceled the agent_task; ignoring late-arriving audio.",
+                    "message": "Task was canceled",
                 }
 
             chain_context = None
@@ -495,6 +494,31 @@ class AgentTaskSubmissionService:
                 "message": "Failed to process clarification. Please try again.",
             }
 
+    async def _retire_interrupted_task_waits(
+        self,
+        *,
+        root_task_id: str,
+        agent_task_ids: List[str],
+    ) -> None:
+        """Retire approvals and durable follow-ups that a canceled chain can never resume."""
+        approval_repository = getattr(self.db_service, "execution_approval_repository", None)
+        if approval_repository is not None:
+            from api.services.agent_processing.tools.safety.execution_approval_retirement import (
+                retire_pending_execution_approvals,
+            )
+
+            try:
+                await retire_pending_execution_approvals(approval_repository, agent_task_ids)
+            except Exception:
+                logger.exception("Failed to retire pending approvals for canceled chain %s", root_task_id)
+        follow_up_repository = getattr(self.db_service, "agent_task_follow_up_repository", None)
+        cancel_follow_ups = getattr(follow_up_repository, "cancel_pending_for_root", None)
+        if callable(cancel_follow_ups):
+            try:
+                await cancel_follow_ups(root_task_id, reason="Task chain canceled")
+            except Exception:
+                logger.exception("Failed to cancel scheduled follow-ups for canceled chain %s", root_task_id)
+
     async def cancel_agent_task_durably(
         self,
         agent_task_id: str,
@@ -523,20 +547,20 @@ class AgentTaskSubmissionService:
             # the ID, so later routing/processing checks skip work even if the
             # row is persisted immediately after this request.
             durable_completed_at = preemption_completed_at
-            runtime_cancelled = await self.cancel_current_agent_task(
+            runtime_canceled = await self.cancel_current_agent_task(
                 agent_task_id=agent_task_id,
             )
             cleanup_completed_at = time.perf_counter()
             logger.info(
                 "🛑 Registered provisional cancellation before persistence: "
-                "agent_task_id=%s runtime_cancelled=%s",
+                "agent_task_id=%s runtime_canceled=%s",
                 agent_task_id,
-                runtime_cancelled,
+                runtime_canceled,
             )
             return {
                 "root_task_id": agent_task_id,
-                "cancelled_task_ids": [agent_task_id],
-                "runtime_cancelled": runtime_cancelled or runtime_preempted,
+                "canceled_task_ids": [agent_task_id],
+                "runtime_canceled": runtime_canceled or runtime_preempted,
                 "preemption_completed_at": preemption_completed_at,
                 "durable_completed_at": durable_completed_at,
                 "cleanup_completed_at": cleanup_completed_at,
@@ -557,30 +581,35 @@ class AgentTaskSubmissionService:
             "paused",
         }
         cancellation_payload = {
-            "cancelled": True,
+            "canceled": True,
             "cancellation_reason": reason,
-            "cancelled_at": datetime.utcnow().isoformat(),
+            "canceled_at": datetime.utcnow().isoformat(),
         }
         active_task_ids = [
             task.id for task in chain if task.status in active_statuses
         ]
         if hasattr(self.db_service, "cancel_agent_tasks_if_active"):
-            cancelled_task_ids = await self.db_service.cancel_agent_tasks_if_active(
+            canceled_task_ids = await self.db_service.cancel_agent_tasks_if_active(
                 agent_task_ids=active_task_ids,
                 result_data=cancellation_payload,
             )
         else:
-            cancelled_task_ids = []
+            canceled_task_ids = []
             for active_task_id in active_task_ids:
                 await self.db_service.update_agent_task_status(
                     agent_task_id=active_task_id,
-                    status="cancelled",
+                    status="canceled",
                     result_data=cancellation_payload,
                 )
-                cancelled_task_ids.append(active_task_id)
+                canceled_task_ids.append(active_task_id)
         durable_completed_at = time.perf_counter()
 
-        runtime_cancelled = await self.cancel_current_agent_task(
+        await self._retire_interrupted_task_waits(
+            root_task_id=root_task_id,
+            agent_task_ids=[task.id for task in chain],
+        )
+
+        runtime_canceled = await self.cancel_current_agent_task(
             agent_task_id=root_task_id,
         )
         cleanup_completed_at = time.perf_counter()
@@ -589,20 +618,20 @@ class AgentTaskSubmissionService:
             getattr(self.agent_task_orchestrator, "websocket_manager", None)
         )
         if not orchestrator_broadcast_available:
-            for cancelled_task_id in cancelled_task_ids:
+            for canceled_task_id in canceled_task_ids:
                 await self.broadcast(
                     {
-                        "event_type": "agent_task_cancelled",
-                        "agent_task_id": cancelled_task_id,
+                        "event_type": "agent_task_canceled",
+                        "agent_task_id": canceled_task_id,
                         "root_task_id": root_task_id,
-                        "message": "AgentTask cancelled",
+                        "message": "AgentTask canceled",
                     }
                 )
 
         return {
             "root_task_id": root_task_id,
-            "cancelled_task_ids": cancelled_task_ids,
-            "runtime_cancelled": runtime_cancelled or runtime_preempted,
+            "canceled_task_ids": canceled_task_ids,
+            "runtime_canceled": runtime_canceled or runtime_preempted,
             "preemption_completed_at": preemption_completed_at,
             "durable_completed_at": durable_completed_at,
             "cleanup_completed_at": cleanup_completed_at,
@@ -634,7 +663,7 @@ class AgentTaskSubmissionService:
             except asyncio.TimeoutError:
                 logger.warning("Agent-task orchestrator cancellation timed out")
             except Exception as exc:
-                logger.error("Error cancelling agent-task orchestrator: %s", exc)
+                logger.error("Error canceling agent-task orchestrator: %s", exc)
 
         if self.wake_word_service and hasattr(self.wake_word_service, "reset_agent_task_capture_after_cancel"):
             self.wake_word_service.reset_agent_task_capture_after_cancel()

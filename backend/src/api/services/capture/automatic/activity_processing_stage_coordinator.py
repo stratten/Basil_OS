@@ -14,7 +14,7 @@ class ActivityProcessingStageRunResult:
 
     analysis_attempts: int
     reached_analysis_cap: bool
-    cancelled: bool
+    canceled: bool
     analysis_exhausted: bool
 
 
@@ -55,7 +55,7 @@ class ActivityProcessingStageCoordinator:
         self._analysis_exhausted = False
 
     async def run(self) -> ActivityProcessingStageRunResult:
-        """Run both stage workers until exhausted, capped, or cancelled."""
+        """Run both stage workers until exhausted, capped, or canceled."""
         pending, ocr_complete = await asyncio.gather(
             self._search_activities(
                 metadata_filters={"processing_status": "PENDING"},
@@ -80,7 +80,7 @@ class ActivityProcessingStageCoordinator:
         return ActivityProcessingStageRunResult(
             analysis_attempts=self._analysis_attempts,
             reached_analysis_cap=self._reached_analysis_cap,
-            cancelled=self._cancellation_requested(),
+            canceled=self._cancellation_requested(),
             analysis_exhausted=self._analysis_exhausted,
         )
 

@@ -23,7 +23,7 @@ _AGENT_TASK_LIFECYCLES: Final = frozenset({
     "clarification_added",
     "completed",
     "failed",
-    "cancelled",
+    "canceled",
 })
 _ARTIFACT_KINDS: Final = frozenset({"file", "directory", "unknown"})
 _ARTIFACT_LIFECYCLES: Final = frozenset({

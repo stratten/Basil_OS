@@ -116,7 +116,7 @@ export default function ApprovalOverlay({ agentTaskId, approval, rememberChoice,
         outcome: 'cancel',
       });
       agentStore.removeApproval(agentTaskId, approval.approval_id);
-      agentStore.updateProgressStep(agentTaskId, 'Permission cancelled, continuing...', true, false);
+      agentStore.updateProgressStep(agentTaskId, 'Permission canceled, continuing...', true, false);
     } catch (err) {
       console.error('[Approval] Provider permission cancellation failed:', err);
     } finally {

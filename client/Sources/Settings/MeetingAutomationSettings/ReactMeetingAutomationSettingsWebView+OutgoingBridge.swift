@@ -45,6 +45,7 @@ extension ReactMeetingAutomationSettingsWebView: ReactMeetingAutomationSettingsB
                 "autoAnalyzeModes": viewModel.autoAnalyzeModes,
                 "autoAnalyzeCustomInstructions": viewModel.autoAnalyzeCustomInstructions,
                 "autoAnalyzeTiming": viewModel.autoAnalyzeTiming,
+                "liveTranscriptionByDefault": viewModel.liveTranscriptionByDefault,
             ],
         ]
     }

@@ -13,12 +13,12 @@ final class AudioFileUploadWebView: NSObject {
     private var pendingInitJSON: String?
 
     override init() {
-        let configuration = WKWebViewConfiguration()
+        let configuration = BasilWebViewConfigurationFactory.makeConfiguration()
         configuration.preferences.setValue(true, forKey: "developerExtrasEnabled")
         configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
         configuration.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
 
-        webView = WKWebView(frame: .zero, configuration: configuration)
+        webView = FirstClickWebView(frame: .zero, configuration: configuration)
         webView.setValue(false, forKey: "drawsBackground")
         if #available(macOS 12.0, *) {
             webView.underPageBackgroundColor = .clear

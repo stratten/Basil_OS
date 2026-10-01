@@ -17,7 +17,7 @@ interface Props {
   hideWindowControls?: boolean;
   embedded?: boolean;
   taskTitle?: string;
-  isCancelling?: boolean;
+  isCanceling?: boolean;
   onCancelRunning?: () => void;
   canCollapse?: boolean;
   isCollapsed?: boolean;
@@ -56,7 +56,7 @@ export default function Header({
   hideWindowControls = false,
   embedded = false,
   taskTitle,
-  isCancelling = false,
+  isCanceling = false,
   onCancelRunning,
   canCollapse = false,
   isCollapsed = false,
@@ -118,7 +118,7 @@ export default function Header({
         {showCancelStop && onCancelRunning ? (
           <StopAction
             className="agent-task-stop-action"
-            isStopping={isCancelling}
+            isStopping={isCanceling}
             onStop={onCancelRunning}
             title="Stop the running request"
           />
@@ -182,13 +182,13 @@ export default function Header({
         </div>
       </div>
       <div
-        className={`header-right${showCancelStop && onCancelRunning ? ' has-stop-action' : ''}${isCancelling ? ' is-stopping' : ''}`}
+        className={`header-right${showCancelStop && onCancelRunning ? ' has-stop-action' : ''}${isCanceling ? ' is-stopping' : ''}`}
         data-agent-task-header-bubble
       >
         {showCancelStop && onCancelRunning && (
           <StopAction
             className="agent-task-stop-action"
-            isStopping={isCancelling}
+            isStopping={isCanceling}
             onStop={onCancelRunning}
             title="Stop the running request"
           />

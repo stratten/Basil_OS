@@ -488,7 +488,7 @@ def _reject_incomplete_finish_reason(
     if normalized in {"cancelled", "canceled"}:
         raise StructuredModelOutputError(
             f"{enforcement} ended incompletely: finish_reason={finish_reason}",
-            category="cancelled",
+            category="canceled",
             retryable=False,
         )
     if normalized in {"refusal", "safety", "content_filter"}:

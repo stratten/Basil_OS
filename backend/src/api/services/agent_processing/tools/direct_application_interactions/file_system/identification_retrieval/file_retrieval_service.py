@@ -11,14 +11,17 @@ import subprocess
 import os
 import mimetypes
 import base64
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Tuple, Union
 from datetime import datetime
 from pathlib import Path
+
+from api.core.security.protected_runtime_paths import is_protected_runtime_path, log_protected_runtime_refusal
 
 from ..file_models import (
     FileSearchCriteria, FileMetadata, FileContent, FileSearchResult,
     FileType, ContentEncoding, LLMFileRequest
 )
+from .search_subprocess import run_bounded_search_process
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +43,7 @@ class FileRetrievalService:
             '.csv', '.log', '.conf', '.cfg', '.ini', '.yaml', '.yml'
         }
         self.spotlight_timeout = 10  # seconds
+        self.spotlight_max_results = 1000
         
     async def search_files_by_name(self, filename: str, search_paths: Optional[List[str]] = None) -> FileSearchResult:
         """
@@ -58,7 +62,7 @@ class FileRetrievalService:
         
         try:
             # Use Spotlight (mdfind) for fast file searching
-            files_found = await self._spotlight_search(filename, search_paths)
+            files_found, incomplete_reason = await self._spotlight_search(filename, search_paths)
             
             search_duration = asyncio.get_event_loop().time() - start_time
             
@@ -73,7 +77,8 @@ class FileRetrievalService:
                 files_found=files_found,
                 search_duration=search_duration,
                 total_results=len(files_found),
-                search_method="spotlight"
+                search_method="spotlight",
+                errors=[incomplete_reason] if incomplete_reason else [],
             )
             
             logger.info(f"🔍 Found {len(files_found)} files in {search_duration:.2f}s")
@@ -90,8 +95,13 @@ class FileRetrievalService:
                 errors=[str(e)]
             )
     
-    async def _spotlight_search(self, filename: str, search_paths: Optional[List[str]] = None) -> List[FileMetadata]:
-        """Use macOS Spotlight to search for files."""
+    async def _spotlight_search(
+        self, filename: str, search_paths: Optional[List[str]] = None
+    ) -> Tuple[List[FileMetadata], Optional[str]]:
+        """Use macOS Spotlight to search for files.
+
+        Returns the files plus a reason when the search did not finish (timeout, truncation, or an mdfind failure); ``None`` means the result is complete.
+        """
         cmd = ["mdfind"]
         
         # Build search query
@@ -106,23 +116,31 @@ class FileRetrievalService:
         logger.info(f"🔍 Spotlight command: {' '.join(cmd)}")
         
         try:
-            process = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+            outcome = await run_bounded_search_process(
+                cmd,
+                timeout_seconds=self.spotlight_timeout,
+                max_lines=self.spotlight_max_results,
             )
             
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(),
-                timeout=self.spotlight_timeout
-            )
+            incomplete_reason: Optional[str] = None
+            if outcome.timed_out:
+                logger.error(
+                    f"⏰ Spotlight search timed out after {self.spotlight_timeout}s; "
+                    f"keeping {len(outcome.lines)} partial result(s)"
+                )
+                incomplete_reason = f"Spotlight timed out after {self.spotlight_timeout}s"
+            elif outcome.truncated:
+                incomplete_reason = (
+                    f"Spotlight returned more than {self.spotlight_max_results} matches; results were cut short"
+                )
+            elif outcome.returncode not in (0, None):
+                incomplete_reason = f"Spotlight exited with status {outcome.returncode}"
             
-            if process.returncode != 0:
-                logger.warning(f"⚠️ Spotlight search warning: {stderr.decode()}")
+            if outcome.returncode not in (0, None) and not outcome.timed_out:
+                logger.warning(f"⚠️ Spotlight search warning: {outcome.stderr_tail}")
             
             # Parse results
-            file_paths = stdout.decode().strip().split('\n')
-            file_paths = [path for path in file_paths if path]  # Remove empty lines
+            file_paths = [path for path in outcome.lines if path]
             
             # Get metadata for each file
             files_metadata = []
@@ -134,14 +152,11 @@ class FileRetrievalService:
                 except Exception as e:
                     logger.debug(f"⚠️ Could not get metadata for {file_path}: {e}")
             
-            return files_metadata
+            return files_metadata, incomplete_reason
             
-        except asyncio.TimeoutError:
-            logger.error(f"⏰ Spotlight search timed out after {self.spotlight_timeout}s")
-            return []
         except Exception as e:
             logger.error(f"❌ Spotlight search error: {e}")
-            return []
+            return [], f"Spotlight search error: {e}"
     
     async def _get_file_metadata(self, file_path: str) -> Optional[FileMetadata]:
         """Extract metadata from a file."""
@@ -219,6 +234,9 @@ class FileRetrievalService:
         """
         logger.info(f"📖 Reading file: {file_path}")
         logger.info(f"📖 Encoding preference: {encoding.value}")
+        if is_protected_runtime_path(file_path):
+            log_protected_runtime_refusal("file read")
+            return None
         
         try:
             # Get file metadata first

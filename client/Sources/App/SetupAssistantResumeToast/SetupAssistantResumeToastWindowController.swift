@@ -60,7 +60,7 @@ final class SetupAssistantResumeToastWindowController: NSObject, NSWindowDelegat
         let webViewHost = SetupAssistantResumeToastWebView()
         self.webViewHost = webViewHost
         webViewHost.onRendererReady = { [weak self] in
-            SetupAssistantResumeToastDiagnosticLog.info("[SetupAssistantResumeToast] present: rendererReady received, cancelling timeout")
+            SetupAssistantResumeToastDiagnosticLog.info("[SetupAssistantResumeToast] present: rendererReady received, canceling timeout")
             self?.rendererReadyTimeoutTask?.cancel()
             self?.rendererReadyTimeoutTask = nil
         }

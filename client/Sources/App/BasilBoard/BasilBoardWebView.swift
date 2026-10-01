@@ -86,6 +86,7 @@ final class BasilBoardWebView: NSObject, WKScriptMessageHandler, WKNavigationDel
     private var detachedTabIds: [String] = []
     private var detachedConversationIds: [String] = []
     private var pendingAgentTaskOriginNavigation: (originType: String, originId: String)?
+    private var pendingConversationComposerFocus = false
     private let audioCaptureService = AudioCaptureService()
     private var voiceCaptureTask: Task<Void, Never>?
     private var activeVoiceCaptureSurface: BasilBoardVoiceCaptureSurface?
@@ -118,7 +119,7 @@ final class BasilBoardWebView: NSObject, WKScriptMessageHandler, WKNavigationDel
         self.initialConversationId = initialConversationId
         self.conversationPresentation = conversationPresentation
 
-        let configuration = WKWebViewConfiguration()
+        let configuration = BasilWebViewConfigurationFactory.makeConfiguration()
         configuration.preferences.setValue(true, forKey: "developerExtrasEnabled")
         configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
         configuration.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
@@ -250,6 +251,7 @@ final class BasilBoardWebView: NSObject, WKScriptMessageHandler, WKNavigationDel
 
     nonisolated func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         Task { @MainActor in
+            guard message.frameInfo.isMainFrame || message.name == "jsLog" else { return }
             handleMessage(name: message.name, body: message.body)
         }
     }
@@ -392,7 +394,7 @@ final class BasilBoardWebView: NSObject, WKScriptMessageHandler, WKNavigationDel
                 guard response == .OK, let url = panel.urls.first else {
                     self?.emitBridgeCallback(
                         "onWorkspaceDirectoryPicked",
-                        payload: ["requestId": requestId, "status": "cancelled"]
+                        payload: ["requestId": requestId, "status": "canceled"]
                     )
                     return
                 }
@@ -420,15 +422,15 @@ final class BasilBoardWebView: NSObject, WKScriptMessageHandler, WKNavigationDel
         case "startHomeVoiceCapture":
             startVoiceCapture(surface: .home)
         case "stopHomeVoiceCapture":
-            finishVoiceCapture(surface: .home, cancelled: false)
+            finishVoiceCapture(surface: .home, canceled: false)
         case "cancelHomeVoiceCapture":
-            finishVoiceCapture(surface: .home, cancelled: true)
+            finishVoiceCapture(surface: .home, canceled: true)
         case "startConversationVoiceCapture":
             startVoiceCapture(surface: .conversation)
         case "stopConversationVoiceCapture":
-            finishVoiceCapture(surface: .conversation, cancelled: false)
+            finishVoiceCapture(surface: .conversation, canceled: false)
         case "cancelConversationVoiceCapture":
-            finishVoiceCapture(surface: .conversation, cancelled: true)
+            finishVoiceCapture(surface: .conversation, canceled: true)
         case "detachBasilBoardTab":
             if let tabId = dict["tabId"] as? String, DetachedBasilBoardTabWindowManager.boardWindowTabIds.contains(tabId) {
                 onDetachTab?(tabId)
@@ -593,6 +595,10 @@ final class BasilBoardWebView: NSObject, WKScriptMessageHandler, WKNavigationDel
                 payload: ["originType": navigation.originType, "originId": navigation.originId]
             )
         }
+        if pendingConversationComposerFocus {
+            pendingConversationComposerFocus = false
+            emitBridgeCallback("onFocusConversationComposer", payload: [:])
+        }
         emitCurrentStatusIcon()
     }
 
@@ -630,6 +636,16 @@ final class BasilBoardWebView: NSObject, WKScriptMessageHandler, WKNavigationDel
             pendingAgentTaskOriginNavigation = (originType, originId)
         }
         return true
+    }
+
+    /// Makes the web view first responder and asks the page to focus the conversation composer, deferring the page request until the bridge is initialized.
+    func focusConversationComposer() {
+        hostWindow?.makeFirstResponder(webView)
+        if bridgeInitialized {
+            emitBridgeCallback("onFocusConversationComposer", payload: [:])
+        } else {
+            pendingConversationComposerFocus = true
+        }
     }
 
     /// Releases the embedded Agent Tasks surface before this native Board host
@@ -929,7 +945,7 @@ final class BasilBoardWebView: NSObject, WKScriptMessageHandler, WKNavigationDel
 
     private func finishVoiceCapture(
         surface: BasilBoardVoiceCaptureSurface,
-        cancelled: Bool
+        canceled: Bool
     ) {
         guard activeVoiceCaptureSurface == surface else { return }
         voiceCaptureTask?.cancel()
@@ -938,11 +954,11 @@ final class BasilBoardWebView: NSObject, WKScriptMessageHandler, WKNavigationDel
                 sendAudioData: false,
                 flowContext: surface.flowContext
             )
-            if cancelled {
+            if canceled {
                 audioCaptureService.clearRecordingData()
                 activeVoiceCaptureSurface = nil
                 emitVoiceCaptureState("idle", surface: surface)
-                emitVoiceCaptureFinished(surface: surface, error: "cancelled")
+                emitVoiceCaptureFinished(surface: surface, error: "canceled")
                 return
             }
 

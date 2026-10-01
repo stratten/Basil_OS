@@ -1,4 +1,6 @@
 import { NativeSymbol } from '../NativeSymbol';
+import { RefineBadge } from '../RefineBadge';
+import type { HistoryRefinementInput } from '../../bridge/historyTypes';
 import type { SampleContextType } from '../../services/historyApi';
 
 export type HistorySampleStatus = 'unsaved' | 'saved' | 'changed';
@@ -26,7 +28,7 @@ export function HistoryActionButtons({
   onCancelEdit: () => void;
   onApplyEdits: () => void;
   onSaveAsSample: () => void;
-  onRefine: () => void;
+  onRefine: (input: HistoryRefinementInput) => void;
 }) {
   const sampleButtonLabel = savingSample
     ? 'Saving…'
@@ -78,9 +80,26 @@ export function HistoryActionButtons({
         </button>
       )}
       {!isEditMode && (
-        <button type="button" className="assistant-output-history-detail__action assistant-output-history-detail__action--primary" onClick={onRefine}>
-          <NativeSymbol name="refine" size={14} /> Refine
-        </button>
+        <>
+          <button
+            type="button"
+            className="assistant-output-history-detail__action assistant-output-history-detail__action--primary assistant-output-history-detail__action--icon"
+            title="Speak additional instructions to refine this output"
+            aria-label="Refine by voice"
+            onClick={() => onRefine('voice')}
+          >
+            <RefineBadge kind="mic" />
+          </button>
+          <button
+            type="button"
+            className="assistant-output-history-detail__action assistant-output-history-detail__action--primary assistant-output-history-detail__action--icon"
+            title="Type additional instructions to refine this output"
+            aria-label="Refine by typing"
+            onClick={() => onRefine('typed')}
+          >
+            <RefineBadge kind="pencil" />
+          </button>
+        </>
       )}
       {sampleStatus !== 'unsaved' && (
         <span

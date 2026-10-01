@@ -25,7 +25,7 @@ export type AgentTaskPresentationLifecycle =
   | 'needs_clarification'
   | 'completed'
   | 'failed'
-  | 'cancelled';
+  | 'canceled';
 
 export type DelegatedProviderRunStatus =
   | 'admitted'
@@ -34,11 +34,11 @@ export type DelegatedProviderRunStatus =
   | 'waiting_user_input'
   | 'waiting_permission'
   | 'supervision_due'
-  | 'cancelling'
+  | 'canceling'
   | 'interrupted'
   | 'settled'
   | 'failed'
-  | 'cancelled';
+  | 'canceled';
 
 export type DelegatedProviderCaptureState = 'available' | 'unavailable';
 
@@ -266,7 +266,7 @@ const PRESENTATION_LIFECYCLES = new Set<AgentTaskPresentationLifecycle>([
   'needs_clarification',
   'completed',
   'failed',
-  'cancelled',
+  'canceled',
 ]);
 const DELEGATED_PROVIDER_RUN_STATUSES = new Set<DelegatedProviderRunStatus>([
   'admitted',
@@ -275,11 +275,11 @@ const DELEGATED_PROVIDER_RUN_STATUSES = new Set<DelegatedProviderRunStatus>([
   'waiting_user_input',
   'waiting_permission',
   'supervision_due',
-  'cancelling',
+  'canceling',
   'interrupted',
   'settled',
   'failed',
-  'cancelled',
+  'canceled',
 ]);
 const DELEGATED_PROVIDER_CAPTURE_STATES = new Set<DelegatedProviderCaptureState>([
   'available',

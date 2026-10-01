@@ -18,7 +18,7 @@ _todo_callback_registered = False
 _todo_bridge_singleton: Optional["TodoAgentTaskBridge"] = None
 _todo_finalizer_tasks: set[asyncio.Task[None]] = set()
 
-_TERMINAL_STATUSES = frozenset({"completed", "failed", "cancelled"})
+_TERMINAL_STATUSES = frozenset({"completed", "failed", "canceled"})
 
 
 def ensure_todo_agent_task_callback_registered(db_service: Any) -> None:

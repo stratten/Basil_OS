@@ -11,10 +11,12 @@ import {
   requestDeleteConnection,
   requestLoadProviderProfileConfiguration,
   requestOpenExternalUrl,
+  requestReconnectConnection,
   requestRefreshCallLog,
   requestRefreshTools,
   requestRegisterManualToken,
   requestRemoveProviderProfile,
+  requestReplaceConnectionToken,
   requestRevokeWorkspaceGrant,
   requestSetProviderProfileEnabled,
   requestStartGitHubDeviceFlow,
@@ -87,6 +89,18 @@ describe('connectionsBridge', () => {
   it('sends requestCheckConnectionStatus with the connectionId', () => {
     const id = requestCheckConnectionStatus('conn-1')
     expect(postMessage).toHaveBeenCalledWith({ type: 'requestCheckConnectionStatus', requestId: id, connectionId: 'conn-1' })
+  })
+
+  it('sends requestReconnectConnection with the connectionId', () => {
+    const id = requestReconnectConnection('conn-1')
+    expect(id).toMatch(/^reconnectConnection-/)
+    expect(postMessage).toHaveBeenCalledWith({ type: 'requestReconnectConnection', requestId: id, connectionId: 'conn-1' })
+  })
+
+  it('sends requestReplaceConnectionToken with the connectionId and token', () => {
+    const id = requestReplaceConnectionToken('conn-1', 'new-secret')
+    expect(id).toMatch(/^replaceConnectionToken-/)
+    expect(postMessage).toHaveBeenCalledWith({ type: 'requestReplaceConnectionToken', requestId: id, connectionId: 'conn-1', bearerToken: 'new-secret' })
   })
 
   it('sends requestUpdatePolicy with the tool and policy', () => {

@@ -159,8 +159,17 @@ export function conversationAttachments(
     : [];
 }
 
+const OFFSET_LESS_ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/;
+
+/** Conversation timestamps without an offset are stored as UTC by SQLite, so they must not be parsed as local time. */
+export function parseConversationTimestamp(value: string): Date {
+  const trimmed = value.trim();
+  if (OFFSET_LESS_ISO_DATE_TIME.test(trimmed)) return new Date(`${trimmed.replace(' ', 'T')}Z`);
+  return new Date(trimmed);
+}
+
 export function formatConversationTimestamp(value: string): string {
-  const date = new Date(value);
+  const date = parseConversationTimestamp(value);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat(undefined, {
     month: 'short',

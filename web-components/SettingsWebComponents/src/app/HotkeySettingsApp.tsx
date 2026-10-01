@@ -57,7 +57,7 @@ export function HotkeySettingsApp() {
         pendingRowRequestIdRef.current = saveHotkeyBinding(event.id, event.binding)
         return
       }
-      if (event.type === 'captureCancelled') {
+      if (event.type === 'captureCanceled') {
         if (editingRowIdRef.current === event.id) {
           setEditingRowId(null)
         }

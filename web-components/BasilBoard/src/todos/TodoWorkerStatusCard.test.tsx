@@ -122,8 +122,8 @@ describe('TodoWorkerStatusCard', () => {
     expect(screen.getByRole('button', { name: 'Show less' })).toHaveAttribute('aria-expanded', 'true');
   });
 
-  it('uses American-English copy for cancelled Agent Tasks', () => {
-    render(<TodoWorkerStatusCard attempt={attempt({ status: 'cancelled' })} />);
+  it('uses American-English copy for canceled Agent Tasks', () => {
+    render(<TodoWorkerStatusCard attempt={attempt({ status: 'canceled' })} />);
 
     expect(screen.getByText('Agent task canceled')).toBeInTheDocument();
   });

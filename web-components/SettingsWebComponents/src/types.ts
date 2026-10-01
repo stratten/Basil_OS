@@ -138,8 +138,8 @@ export interface HotkeyCapturedEvent {
   binding: HotkeyBinding
 }
 
-export interface HotkeyCaptureCancelledEvent {
-  type: 'captureCancelled'
+export interface HotkeyCaptureCanceledEvent {
+  type: 'captureCanceled'
   id: string
 }
 
@@ -155,7 +155,7 @@ export type HotkeyNativeEvent =
   | HotkeySnapshotEvent
   | HotkeyLoadErrorEvent
   | HotkeyCapturedEvent
-  | HotkeyCaptureCancelledEvent
+  | HotkeyCaptureCanceledEvent
   | HotkeyIntentResultEvent
 
 export type ProfileFormality = 'casual' | 'professional' | 'formal'
@@ -192,7 +192,7 @@ export interface ProfileLoadErrorEvent {
 export interface ProfileIntentResultEvent {
   type: 'intentResult'
   requestId: string
-  status: 'success' | 'error' | 'cancelled'
+  status: 'success' | 'error' | 'canceled'
   message?: string
 }
 
@@ -333,7 +333,7 @@ export interface WritingExamplesLoadErrorEvent {
 export interface WritingExamplesIntentResultEvent {
   type: 'intentResult'
   requestId: string
-  status: 'success' | 'error' | 'cancelled'
+  status: 'success' | 'error' | 'canceled'
   message?: string
 }
 
@@ -404,7 +404,7 @@ export interface ModelsLoadErrorEvent {
 export interface ModelsIntentResultEvent {
   type: 'intentResult'
   requestId: string
-  status: 'success' | 'error' | 'cancelled'
+  status: 'success' | 'error' | 'canceled'
   message?: string
 }
 
@@ -497,6 +497,7 @@ export interface ReasoningDefaultsSettingsSnapshot {
   assistantSessionDefaultModality: AssistantSessionInputMode
   assistantSessionPushToTalk: boolean
   assistantSessionPushToTalkThreshold: number
+  conversationDefaultConversationOnly?: boolean
 }
 
 export interface ReasoningDefaultsInitEvent {
@@ -674,7 +675,7 @@ export interface MemoriesNarrativeProgress {
   remaining: number
   etaSeconds: number | null
   lastError: string | null
-  cancelling: boolean | null
+  canceling: boolean | null
   analysisConcurrency: number | null
   processingStrategy: string | null
 }
@@ -832,7 +833,7 @@ export type ActivityCaptureNativeEvent =
   | { type: 'progress'; requestId?: string; processingProgress: ActivityCaptureProcessingProgress | null }
   | { type: 'availableApps'; availableApps: ActivityCaptureAppOption[] }
   | { type: 'searchAppsResults'; requestId: string; apps: ActivityCaptureAppOption[] }
-  | { type: 'intentResult'; requestId: string; status: 'success' | 'error' | 'cancelled'; message?: string }
+  | { type: 'intentResult'; requestId: string; status: 'success' | 'error' | 'canceled'; message?: string }
   | { type: 'loadError'; message: string }
 
 export interface MeetingDetectionAppOption {
@@ -880,6 +881,7 @@ export interface MeetingAutomationAnalysisModeOption {
 }
 
 export interface MeetingAutomationSettingsFields {
+  liveTranscriptionByDefault: boolean
   autoRetranscribeOnStop: boolean
   autoRetranscribeDuringRecording: boolean
   retranscribeWindowMinutes: number
@@ -1492,7 +1494,7 @@ export interface PermissionsCommandSecuritySnapshotEvent extends PermissionsComm
 export interface PermissionsCommandSecurityIntentResultEvent {
   type: 'intentResult'
   requestId: string
-  status: 'success' | 'error' | 'cancelled'
+  status: 'success' | 'error' | 'canceled'
   message?: string
 }
 
@@ -1530,6 +1532,8 @@ export interface MCPConnectionTool {
   policy: string
 }
 
+export type MCPConnectionAuthKind = 'oauth' | 'slack' | 'github_device' | 'manual_token'
+
 export interface MCPConnection {
   id: string
   friendlyName: string
@@ -1543,6 +1547,7 @@ export interface MCPConnection {
   lastConnectionStatusMessage: string | null
   serverName: string | null
   serverInstructions: string | null
+  authKind: MCPConnectionAuthKind
   tools: MCPConnectionTool[]
 }
 
@@ -1631,7 +1636,7 @@ export interface ConnectionsSnapshotEvent extends ConnectionsSettingsFields {
 export interface ConnectionsIntentResultEvent {
   type: 'intentResult'
   requestId: string
-  status: 'success' | 'error' | 'cancelled'
+  status: 'success' | 'error' | 'canceled'
   message?: string
 }
 

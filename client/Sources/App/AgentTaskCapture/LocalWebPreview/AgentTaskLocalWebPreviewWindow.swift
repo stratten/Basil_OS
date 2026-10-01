@@ -213,7 +213,8 @@ private final class AgentTaskLocalWebPreviewWindowHost: NSObject, WKScriptMessag
         self.activeSessionId = sessionId
         self.displayName = displayName
 
-        let configuration = WKWebViewConfiguration()
+        let configuration = BasilWebViewConfigurationFactory.makeConfiguration()
+        configuration.websiteDataStore = .nonPersistent()
         configuration.preferences.setValue(true, forKey: "developerExtrasEnabled")
         configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
         configuration.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
@@ -723,7 +724,7 @@ private final class AgentTaskLocalWebPreviewWindowHost: NSObject, WKScriptMessag
             window?.miniaturize(nil)
         case "openExternalUrl":
             if let urlString = dict["url"] as? String, let url = URL(string: urlString) {
-                NSWorkspace.shared.open(url)
+                BridgeOpenPolicy.openExternalURL(url)
             }
         case "captureScreenshot":
             hasReceivedInitAck = true
@@ -782,6 +783,11 @@ private final class AgentTaskLocalWebPreviewWindowHost: NSObject, WKScriptMessag
         }
         if url.standardizedFileURL == appShellURL {
             decisionHandler(.allow)
+            return
+        }
+        // Preview content may navigate only inside its iframe; it must never replace the app shell or open windows.
+        guard let targetFrame = navigationAction.targetFrame, !targetFrame.isMainFrame else {
+            decisionHandler(.cancel)
             return
         }
         decisionHandler(allowsLocalPreviewNavigation(url, mode: mode) ? .allow : .cancel)

@@ -797,7 +797,7 @@ async def test_recent_conversation_task_summaries_are_origin_scoped_and_follow_l
     await store("root-middle", origin_id="conversation-1", status="failed")
     await store("root-new", origin_id="conversation-1")
     await store("root-other", origin_id="conversation-2")
-    await store("root-extra", origin_id="conversation-1", status="cancelled")
+    await store("root-extra", origin_id="conversation-1", status="canceled")
     await store(
         "leaf-new",
         origin_id="conversation-1",

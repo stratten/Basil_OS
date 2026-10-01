@@ -8,14 +8,14 @@ const EXTERNAL_SERVICE_RESOLUTION_KINDS = new Set([
   'token_missing',
   'client_unavailable',
   'token_response_timeout',
-  'token_request_cancelled',
+  'token_request_canceled',
 ]);
 
 const EXTERNAL_SERVICE_FAILURE_KINDS = new Set([
   'token_missing',
   'client_unavailable',
   'token_response_timeout',
-  'token_request_cancelled',
+  'token_request_canceled',
 ]);
 
 type ExternalServiceAccessPhase = 'waiting' | 'resolved' | 'failed';

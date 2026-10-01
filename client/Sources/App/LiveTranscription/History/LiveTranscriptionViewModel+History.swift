@@ -535,6 +535,7 @@ extension LiveTranscriptionViewModel {
             // Re-seed automation overrides from global defaults on the next
             // settings fetch for this fresh recording.
             self.sessionAutomationSeeded = false
+            self.liveTranscriptionSelectionTouched = false
             
             // Preserve prior analysis ownership and completion while a new
             // meeting is created. The UI gates these values by the concrete
@@ -565,6 +566,8 @@ extension LiveTranscriptionViewModel {
             #endif
         }
         
+        await loadLiveTranscriptionDefault()
+
         // Refresh meeting list to show the previous meeting (if it was saved)
         await loadMeetingHistory()
     }

@@ -214,7 +214,7 @@ describe('AgentStore outcome verification updates', () => {
 
   it('drops progress and results after cancellation starts', () => {
     const store = makeStoreWithAgent();
-    store.markCancelling('task-1');
+    store.markCanceling('task-1');
 
     dispatch(store, {
       event_type: 'agent_task_progress',
@@ -229,17 +229,17 @@ describe('AgentStore outcome verification updates', () => {
     });
 
     const agent = store.getAgent('task-1');
-    expect(agent?.isCancelling).toBe(true);
-    expect(agent?.currentStep).toBe('Cancelling...');
+    expect(agent?.isCanceling).toBe(true);
+    expect(agent?.currentStep).toBe('Canceling...');
     expect(agent?.result).not.toBe('Late result');
   });
 
-  it('keeps cancelled state terminal when late streaming arrives', () => {
+  it('keeps canceled state terminal when late streaming arrives', () => {
     const store = makeStoreWithAgent();
     dispatch(store, {
-      event_type: 'agent_task_cancelled',
+      event_type: 'agent_task_canceled',
       agent_task_id: 'task-1',
-      message: 'Cancelled',
+      message: 'Canceled',
     });
     dispatch(store, {
       event_type: 'agent_task_streaming',
@@ -248,9 +248,9 @@ describe('AgentStore outcome verification updates', () => {
     });
 
     const agent = store.getAgent('task-1');
-    expect(agent?.isCancelled).toBe(true);
-    expect(agent?.isCancelling).toBe(false);
-    expect(agent?.currentStep).toBe('Cancelled');
+    expect(agent?.isCanceled).toBe(true);
+    expect(agent?.isCanceling).toBe(false);
+    expect(agent?.currentStep).toBe('Canceled');
     expect(agent?.result).not.toBe('Late stream');
   });
 
@@ -264,20 +264,20 @@ describe('AgentStore outcome verification updates', () => {
     });
 
     dispatch(store, {
-      event_type: 'agent_task_cancelled',
+      event_type: 'agent_task_canceled',
       agent_task_id: 'root-1',
       root_task_id: 'root-1',
       message: 'Stale cancellation',
     });
-    expect(store.getAgent('root-1')?.isCancelled).not.toBe(true);
+    expect(store.getAgent('root-1')?.isCanceled).not.toBe(true);
 
     dispatch(store, {
-      event_type: 'agent_task_cancelled',
+      event_type: 'agent_task_canceled',
       agent_task_id: 'follow-up-2',
       root_task_id: 'root-1',
-      message: 'Active follow-up cancelled',
+      message: 'Active follow-up canceled',
     });
-    expect(store.getAgent('root-1')?.isCancelled).toBe(true);
-    expect(store.getAgent('root-1')?.currentStep).toBe('Cancelled');
+    expect(store.getAgent('root-1')?.isCanceled).toBe(true);
+    expect(store.getAgent('root-1')?.currentStep).toBe('Canceled');
   });
 });

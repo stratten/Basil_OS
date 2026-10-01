@@ -40,6 +40,7 @@ _SCRIPTS_DIR = Path(__file__).resolve().parent
 if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
 
+from api.core.security.backend_credentials import BACKEND_TOKEN_HEADER, load_host_token  # noqa: E402
 from api.dependencies import get_sqlite_knowledge_service  # noqa: E402
 from model_scenario_smoke_core.scenarios import (  # noqa: E402
     MIXED_TOOL_SCENARIO_IDS,
@@ -66,7 +67,7 @@ RAN_STATUSES = {"completed", "completed_with_warnings", "partial"}
 
 def _health_check() -> bool:
     try:
-        resp = requests.get(f"{BASE_URL}/docs", timeout=5)
+        resp = requests.get(f"{BASE_URL}/docs", headers={BACKEND_TOKEN_HEADER: load_host_token()}, timeout=5)
         return resp.status_code == 200
     except requests.RequestException:
         return False
@@ -79,6 +80,7 @@ def _submit(prompt: str, model_id: str, approval_override: Optional[Dict[str, An
     resp = requests.post(
         f"{BASE_URL}/api/v1/agent-tasks/process",
         json=body,
+        headers={BACKEND_TOKEN_HEADER: load_host_token()},
         timeout=30,
     )
     resp.raise_for_status()
@@ -90,7 +92,11 @@ def _poll_until_terminal(agent_task_id: str, timeout_s: float, interval_s: float
     last: Dict[str, Any] = {}
     while time.monotonic() < deadline:
         try:
-            resp = requests.get(f"{BASE_URL}/api/v1/agent-tasks/{agent_task_id}", timeout=10)
+            resp = requests.get(
+                f"{BASE_URL}/api/v1/agent-tasks/{agent_task_id}",
+                headers={BACKEND_TOKEN_HEADER: load_host_token()},
+                timeout=10,
+            )
         except requests.RequestException:
             time.sleep(interval_s)
             continue

@@ -43,9 +43,9 @@ class _FakeRepository:
         self.resolutions.append((interaction_id, "decline"))
         return {"id": interaction_id, "status": "declined"}
 
-    async def mark_cancelled(self, *, interaction_id: str, expected_revision: int):
+    async def mark_canceled(self, *, interaction_id: str, expected_revision: int):
         self.resolutions.append((interaction_id, "cancel"))
-        return {"id": interaction_id, "status": "cancelled"}
+        return {"id": interaction_id, "status": "canceled"}
 
     async def supersede_pending_for_run(self, provider_run_id: str) -> int:
         self.superseded_runs.append(provider_run_id)

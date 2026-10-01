@@ -76,6 +76,25 @@ def apply_status_result_to_record(
     apply_server_metadata_to_record(record, result.server)
 
 
+def mark_connection_needs_reconnect(connection_id: str, message: str) -> bool:
+    """Persist that a connection's credentials were rejected and could not be refreshed.
+
+    Settings then offers Reconnect for this connection without the user first running Check Status. Returns ``False`` without writing when no connection has this id.
+    """
+    from api.core.preferences.preferences_io import load_preferences, save_preferences
+
+    prefs = load_preferences()
+    for record in prefs.connections.mcp_connections:
+        if record.id != connection_id:
+            continue
+        record.last_connection_check_at = datetime.utcnow()
+        record.last_connection_status = STATUS_NEEDS_RECONNECT
+        record.last_connection_status_message = message
+        save_preferences(prefs)
+        return True
+    return False
+
+
 async def _check_slack_status(
     record: MCPConnectionRecord,
     *,
@@ -245,4 +264,5 @@ __all__ = [
     "STATUS_TOKEN_UNAVAILABLE",
     "apply_status_result_to_record",
     "check_connection_status",
+    "mark_connection_needs_reconnect",
 ]

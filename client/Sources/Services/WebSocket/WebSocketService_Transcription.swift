@@ -127,7 +127,7 @@ final class WebSocketService_Transcription {
             print("Cannot cancel model unload: WebSocket not connected")
             throw WebSocketService.WebSocketError.notConnected
         }
-        print("\n🚫 Cancelling scheduled model unload")
+        print("\n🚫 Canceling scheduled model unload")
         let modelUnloadAction = ["agent_task_action": "cancel_model_unload"]
         guard let jsonData = try? JSONSerialization.data(withJSONObject: modelUnloadAction),
               let jsonString = String(data: jsonData, encoding: .utf8) else {

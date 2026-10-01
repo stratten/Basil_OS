@@ -1,6 +1,8 @@
+import atexit
 import os
 import shutil
 import asyncio
+import tempfile
 import pytest
 import httpx
 import sys
@@ -9,6 +11,35 @@ from typing import Optional
 
 # Ensure deterministic tokenizer behavior during tests without requiring CLI env
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
+
+def _isolate_session_home() -> None:
+    """Point HOME at a private temporary directory before any Basil module is imported.
+
+    Basil resolves ~/.basil when modules load and services are constructed, and this conftest imports api.main at module scope, so isolation cannot wait for a fixture. Without it, every run writes test conversations, zettels, and debug files into the developer's real knowledge base. Opt out with BASIL_TEST_REAL_HOME=1 or --no-isolate-home.
+    """
+    if os.getenv("BASIL_TEST_REAL_HOME") == "1" or "--no-isolate-home" in sys.argv:
+        return
+    original_home = os.environ.get("HOME")
+    temp_home = Path(tempfile.mkdtemp(prefix="basil-test-home-")).resolve()
+    if original_home:
+        os.environ["BASIL_TEST_ORIGINAL_HOME"] = original_home
+        original_keys = Path(original_home) / ".basil" / "config" / "api_keys.json"
+        if original_keys.is_file():
+            temp_config = temp_home / ".basil" / "config"
+            temp_config.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(original_keys, temp_config / "api_keys.json")
+        original_models_root = Path(original_home) / ".basil" / "models"
+        if original_models_root.is_dir():
+            temp_models_root = temp_home / ".basil" / "models"
+            for dirpath, _dirnames, _filenames in os.walk(original_models_root):
+                relative = Path(dirpath).relative_to(original_models_root)
+                (temp_models_root / relative).mkdir(parents=True, exist_ok=True)
+    os.environ["HOME"] = str(temp_home)
+    atexit.register(shutil.rmtree, str(temp_home), True)
+
+
+_isolate_session_home()
 
 
 # ---------- Test utilities for background task management ----------
@@ -160,16 +191,15 @@ def pytest_configure(config):
 
 @pytest.fixture(scope="session", autouse=True)
 def _session_home_setup(request):
-    """Default to real HOME. Optionally force isolation for entire session via --isolate-home.
+    """HOME is already isolated at import by _isolate_session_home unless opted out; --isolate-home forces a second, session-scoped temporary HOME.
 
     Always expose BASIL_TEST_ORIGINAL_HOME for per-test overrides.
     """
     original_home = os.environ.get("HOME")
     if original_home is not None:
-        os.environ["BASIL_TEST_ORIGINAL_HOME"] = original_home
+        os.environ.setdefault("BASIL_TEST_ORIGINAL_HOME", original_home)
     forced = request.config.getoption("--isolate-home") or os.getenv("BASIL_TEST_ISOLATE_HOME") == "1"
     if not forced:
-        # Real HOME default
         yield
         os.environ.pop("BASIL_TEST_ORIGINAL_HOME", None)
         return
@@ -274,8 +304,12 @@ def ws_base_url(live_base_url: str | None) -> str:
 
 @pytest.fixture(scope="session")
 async def api_client(live_base_url: str | None) -> httpx.AsyncClient:
+    from api.core.security.backend_credentials import BACKEND_TOKEN_HEADER, load_host_token
+
     if live_base_url:
-        client = httpx.AsyncClient(base_url=live_base_url, timeout=60.0)
+        live_token = os.environ.get("BASIL_LIVE_BACKEND_TOKEN")
+        live_headers = {BACKEND_TOKEN_HEADER: live_token} if live_token else None
+        client = httpx.AsyncClient(base_url=live_base_url, headers=live_headers, timeout=60.0)
         try:
             yield client
         finally:
@@ -285,7 +319,12 @@ async def api_client(live_base_url: str | None) -> httpx.AsyncClient:
         from api.main import app
 
         transport = httpx.ASGITransport(app=app, lifespan="on")
-        client = httpx.AsyncClient(transport=transport, base_url="http://testserver", timeout=60.0)
+        client = httpx.AsyncClient(
+            transport=transport,
+            base_url="http://127.0.0.1:8000",
+            headers={BACKEND_TOKEN_HEADER: load_host_token()},
+            timeout=60.0,
+        )
         try:
             yield client
         finally:
@@ -329,4 +368,24 @@ def test_app() -> FastAPI:
 @pytest.fixture
 def test_client(test_app: FastAPI) -> TestClient:
     """Create a test client for the FastAPI application."""
-    return TestClient(test_app) 
+    return TestClient(test_app)
+
+
+def _install_backend_credential_test_defaults() -> None:
+    """Give every in-process TestClient the host credential so route tests exercise the guarded app unchanged."""
+    from api.core.security.backend_credentials import BACKEND_TOKEN_HEADER, load_host_token
+
+    original_init = TestClient.__init__
+    if getattr(original_init, "_basil_backend_credentials", False):
+        return
+
+    def init_with_backend_credentials(self, *args, **kwargs):
+        headers = dict(kwargs.pop("headers", None) or {})
+        headers.setdefault(BACKEND_TOKEN_HEADER, load_host_token())
+        original_init(self, *args, headers=headers, **kwargs)
+
+    setattr(init_with_backend_credentials, "_basil_backend_credentials", True)
+    setattr(TestClient, "__init__", init_with_backend_credentials)
+
+
+_install_backend_credential_test_defaults()

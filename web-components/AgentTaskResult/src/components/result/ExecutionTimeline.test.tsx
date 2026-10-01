@@ -50,7 +50,7 @@ describe('ProgressStepsSection activity trail', () => {
 
     expect(markup).toContain('activity-summary');
     expect(markup).toContain('execution-live-beacon');
-    expect(markup).toContain('Activity · 2 steps');
+    expect(markup).toContain('Activity · 2 updates');
     expect(markup).toContain('Drafting reply');
     expect(markup).not.toContain('Reading inbox');
     expect(markup).toContain('aria-expanded="false"');
@@ -75,7 +75,7 @@ describe('ProgressStepsSection activity trail', () => {
       />,
     );
 
-    expect(markup).toContain('Activity · 1 step');
+    expect(markup).toContain('Activity · 1 update');
     expect(markup).not.toContain('activity-summary-list');
     expect(markup).not.toContain('Full Details');
   });
@@ -97,7 +97,7 @@ describe('ProgressStepsSection activity trail', () => {
       />,
     );
 
-    expect(markup).toContain('Activity · 1 step');
+    expect(markup).toContain('Activity · 1 update');
     expect(markup).toContain('Reading inbox');
     expect(markup).not.toContain('Ran shell');
   });
@@ -118,7 +118,7 @@ describe('ProgressStepsSection dock presentation', () => {
     );
 
     expect(markup).toContain('execution-activity-dock');
-    expect(markup).toContain('Activity · 2 steps');
+    expect(markup).toContain('Activity · 2 updates');
     expect(markup).toContain('Drafting reply');
     expect(markup).toContain('aria-expanded="false"');
     expect(markup).not.toContain('activity-summary');
@@ -158,7 +158,7 @@ describe('ProgressStepsSection dock presentation', () => {
       />,
     );
 
-    expect(markup).toContain('Activity · 1 step');
+    expect(markup).toContain('Activity · 1 update');
     expect(markup).toContain('Reading inbox');
     expect(markup).not.toContain('Ran shell');
   });

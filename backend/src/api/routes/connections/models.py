@@ -70,6 +70,9 @@ class CachedToolDTO(BaseModel):
     policy: MCPToolPolicy = "always_ask"
 
 
+ConnectionAuthKind = Literal["oauth", "slack", "github_device", "manual_token"]
+
+
 class ConnectionDTO(BaseModel):
     """Outbound shape for the SwiftUI Connections tab."""
 
@@ -85,6 +88,7 @@ class ConnectionDTO(BaseModel):
     last_connection_status_message: Optional[str] = None
     server_name: Optional[str] = None
     server_instructions: Optional[str] = None
+    auth_kind: ConnectionAuthKind = "manual_token"
     tools: List[CachedToolDTO] = Field(default_factory=list)
 
 
@@ -97,6 +101,7 @@ class StartOAuthRequest(BaseModel):
     friendly_name: str
     description: Optional[str] = None
     requested_scopes: Optional[List[str]] = None
+    connection_id: Optional[str] = None
 
 
 class StartOAuthResponse(BaseModel):
@@ -115,6 +120,7 @@ class GitHubDeviceFlowStartRequest(BaseModel):
     server_url: str = GITHUB_MCP_SERVER_URL
     description: Optional[str] = None
     requested_scopes: Optional[List[str]] = None
+    connection_id: Optional[str] = None
 
 
 class GitHubDeviceFlowStartResponse(BaseModel):
@@ -144,6 +150,7 @@ class SlackStartOAuthRequest(BaseModel):
     server_url: str = SLACK_MCP_SERVER_URL
     description: Optional[str] = None
     requested_scopes: Optional[List[str]] = None
+    connection_id: Optional[str] = None
 
 
 class SlackStartOAuthResponse(BaseModel):
@@ -223,6 +230,7 @@ __all__ = [
     "CallLogEntry",
     "CallLogResponse",
     "CachedToolDTO",
+    "ConnectionAuthKind",
     "ConnectionDTO",
     "ConnectionMetadataUpdateRequest",
     "ConnectionStatusResponse",

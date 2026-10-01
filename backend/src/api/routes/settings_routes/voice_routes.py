@@ -42,7 +42,7 @@ class AssistantSessionSettingsUpdate(BaseModel):
     enable_push_to_talk: Optional[bool] = None
     push_to_talk_threshold_ms: Optional[int] = None
     # Default entry mode for the unified assistant-session widget. `speak` opens the
-    # mic immediately (legacy behaviour); `type` opens the typed-input field
+    # mic immediately (legacy behavior); `type` opens the typed-input field
     # without starting recording. The widget header toggle can flip the
     # active mode at runtime regardless of this default.
     default_input_modality: Optional[Literal["speak", "type"]] = None
@@ -163,6 +163,8 @@ async def get_conversation_widget_settings() -> SettingsResponse[ConversationWid
 @router.put("/conversation-widget", response_model=UpdateResponse[ConversationWidgetPreferences])
 async def update_conversation_widget_settings(settings: Dict[str, Any]) -> UpdateResponse[ConversationWidgetPreferences]:
     """Update conversation widget settings."""
+    if "default_conversation_only" in settings and not isinstance(settings["default_conversation_only"], bool):
+        raise HTTPException(status_code=400, detail="default_conversation_only must be a boolean")
     try:
         api_logger.debug("⚙️ Received conversation widget settings update request")
         api_logger.debug(f"⚙️ Raw settings data: {settings}")
@@ -181,6 +183,10 @@ async def update_conversation_widget_settings(settings: Dict[str, Any]) -> Updat
         if "is_sidebar_collapsed" in settings:
             preferences.conversation_widget.is_sidebar_collapsed = settings["is_sidebar_collapsed"]
             api_logger.debug(f"📂 Updated sidebar collapsed state: {settings['is_sidebar_collapsed']}")
+
+        if "default_conversation_only" in settings:
+            preferences.conversation_widget.default_conversation_only = settings["default_conversation_only"]
+            api_logger.debug(f"💬 Updated Conversation only default: {settings['default_conversation_only']}")
         
         save_preferences(preferences)
         

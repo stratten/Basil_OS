@@ -7,16 +7,25 @@ Handles the core execution phase: context preparation, callback setup, and agent
 from __future__ import annotations
 
 import logging
-from typing import Any, List, Tuple, TYPE_CHECKING
+from typing import Any, List, Optional, Tuple, TYPE_CHECKING
 
 from ..planning.agent_context_assembler import AgentContextAssembler
 from ...shared.agent_runtime_context import get_current_agent_context
 from ...shared.prompt_context_trimming import (
     build_context_overflow_resume_input,
-    parse_token_limit_error,
     trim_oldest_context,
 )
-from .llama_cpp_langchain_adapter import LocalModelContextWindowExceeded
+from ...shared.workflow_budget_pause import current_pausable_deadline
+from .model_error_policy import (
+    CONTEXT_OVERFLOW,
+    EMPTY_GENERATION,
+    TRANSIENT,
+    TRANSIENT_EXHAUSTED,
+    classify_model_error,
+    overflow_chars_to_remove,
+    overflow_token_summary,
+)
+from .model_errors import PassBudgetExhausted
 from .service_tooling.tool_call_repetition_guard import (
     RepeatedInvalidToolCallStop,
     agent_tool_action_capture_offset,
@@ -107,66 +116,28 @@ def setup_live_callbacks(
     return live_callbacks
 
 
-def _is_transient_error(error: Exception) -> bool:
-    """
-    Check if an error is a transient network error that should be retried.
-    
-    Args:
-        error: The exception to check
-        
-    Returns:
-        True if the error is transient and should be retried
-    """
-    error_str = str(error).lower()
-    error_type = type(error).__name__
-    
-    # Network-related errors
-    transient_indicators = [
-        "timeout",
-        "connection",
-        "network",
-        "connection reset",
-        "connection refused",
-        "connection aborted",
-        "broken pipe",
-        "temporary failure",
-        "service unavailable",
-        "gateway timeout",
-        "bad gateway",
-        "request timeout",
-        "read timeout",
-        "connect timeout",
-        "socket",
-        "dns",
-        "name resolution",
-        "eof",
-        "end of file"
-    ]
-    
-    # Check error message
-    for indicator in transient_indicators:
-        if indicator in error_str:
-            return True
-    
-    # Check error type (common network exception types)
-    transient_types = [
-        "TimeoutError",
-        "ConnectionError",
-        "ConnectionResetError",
-        "ConnectionRefusedError",
-        "ConnectionAbortedError",
-        "OSError",  # Many network errors manifest as OSError
-    ]
-    
-    if error_type in transient_types:
-        return True
-    
-    # Check for httpx/requests specific errors
-    if "httpx" in error_str or "requests" in error_str:
-        if any(indicator in error_str for indicator in ["timeout", "connection", "network"]):
-            return True
-    
-    return False
+_BUDGET_POLL_SECONDS = 1.0
+
+
+def _supports_pause_accounting(deadline: Any) -> bool:
+    return callable(getattr(deadline, "paused_seconds", None))
+
+
+def _paused_seconds(deadline: Any) -> float:
+    if not _supports_pause_accounting(deadline):
+        return 0.0
+    try:
+        return float(deadline.paused_seconds())
+    except Exception:
+        return 0.0
+
+
+def _pass_budget_message(budget_seconds: Optional[float]) -> str:
+    minutes = max(1, int(round(float(budget_seconds or 0.0) / 60.0)))
+    return (
+        f"Basil stopped this pass after {minutes} minute(s) of active work. "
+        "Time spent waiting for approvals or your input was not counted."
+    )
 
 
 def _relabel_execution_timeout(result: Any) -> None:
@@ -202,64 +173,95 @@ async def execute_with_token_retry(
     callbacks: List[Any],
     cancel_event: Any = None,
     max_trim_retries: int = 2,
-    max_transient_retries: int = 2
+    max_transient_retries: int = 2,
+    pass_budget_seconds: Optional[float] = None,
+    workflow_deadline: Any = None,
 ) -> Tuple[Any, str]:
-    """
-    Execute the agent with automatic token-limit retry and transient error retry.
-    
-    This function handles two types of retries:
-    1. Token limit errors: Trims context and retries (existing behavior)
-    2. Transient network errors: Retries with exponential backoff (new behavior)
-    
-    Note: General error retry is also handled by LangChain's native mechanisms:
-    - LLM-level retries via .with_retry() on the model
-    - Tool errors fed back to agent via handle_parsing_errors
-    - Agent sees errors and can reason about recovery
+    """Run one agent pass, recovering from each model failure kind in the way that fits it.
+
+    ``model_error_policy`` defines the failure kinds and their recovery. LangChain's ``.with_retry`` already repeats a single failed model call for typed ``TransientModelError`` failures; this loop never restarts the pass for those, because a restart re-executes tool calls that already ran.
+
+    ``pass_budget_seconds`` replaces the native executor time cap for staged passes. It counts only active time: paused intervals recorded on the workflow deadline (approvals, command input, deliberate waits) are excluded.
     """
     import asyncio
     import time
-    
-    current_input = user_input
-    transient_retry_count = 0
-    pass_capture_offset = agent_tool_action_capture_offset(get_current_agent_context())
 
-    def _is_cancelled() -> bool:
+    current_input = user_input
+    trim_attempts = 0
+    transient_attempts = 0
+    empty_generation_retried = False
+    pass_capture_offset = agent_tool_action_capture_offset(get_current_agent_context())
+    budget_deadline = (
+        workflow_deadline if _supports_pause_accounting(workflow_deadline) else current_pausable_deadline()
+    )
+    pass_started_at = time.monotonic()
+    paused_at_start = _paused_seconds(budget_deadline)
+
+    def _is_canceled() -> bool:
         return bool(cancel_event is not None and hasattr(cancel_event, "is_set") and cancel_event.is_set())
 
+    def _active_pass_seconds() -> float:
+        paused_during_pass = max(0.0, _paused_seconds(budget_deadline) - paused_at_start)
+        return max(0.0, (time.monotonic() - pass_started_at) - paused_during_pass)
+
+    def _budget_remaining() -> Optional[float]:
+        if pass_budget_seconds is None:
+            return None
+        return float(pass_budget_seconds) - _active_pass_seconds()
+
+    def _captured_steps() -> List[Any]:
+        return captured_agent_actions_as_intermediate_steps(
+            get_current_agent_context(),
+            since_offset=pass_capture_offset,
+        )
+
     async def _await_agent_invoke(input_text: str) -> Any:
-        if _is_cancelled():
+        if _is_canceled():
             raise asyncio.CancelledError()
 
         invoke_task = asyncio.create_task(agent_executor.ainvoke(
             {"input": input_text},
             config={"callbacks": callbacks} if callbacks else None,
         ))
+        cancel_task = None
+        waiters = {invoke_task}
+        if cancel_event is not None and hasattr(cancel_event, "wait"):
+            cancel_task = asyncio.create_task(cancel_event.wait())
+            waiters.add(cancel_task)
 
-        if cancel_event is None or not hasattr(cancel_event, "wait"):
-            return await invoke_task
-
-        cancel_task = asyncio.create_task(cancel_event.wait())
         try:
-            done, _pending = await asyncio.wait(
-                {invoke_task, cancel_task},
-                return_when=asyncio.FIRST_COMPLETED,
-            )
-            if cancel_task in done and cancel_task.result():
-                invoke_task.cancel()
-                await asyncio.gather(invoke_task, return_exceptions=True)
-                raise asyncio.CancelledError()
-            return await invoke_task
+            while True:
+                remaining = _budget_remaining()
+                if remaining is not None and remaining <= 0:
+                    invoke_task.cancel()
+                    await asyncio.gather(invoke_task, return_exceptions=True)
+                    raise PassBudgetExhausted()
+                wait_timeout = None if remaining is None else min(remaining, _BUDGET_POLL_SECONDS)
+                done, _pending = await asyncio.wait(
+                    waiters,
+                    timeout=wait_timeout,
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                if cancel_task is not None and cancel_task in done and cancel_task.result():
+                    invoke_task.cancel()
+                    await asyncio.gather(invoke_task, return_exceptions=True)
+                    raise asyncio.CancelledError()
+                if invoke_task in done:
+                    return invoke_task.result()
         except asyncio.CancelledError:
             invoke_task.cancel()
-            cancel_task.cancel()
-            await asyncio.gather(invoke_task, cancel_task, return_exceptions=True)
+            pending_cleanup = [invoke_task]
+            if cancel_task is not None:
+                cancel_task.cancel()
+                pending_cleanup.append(cancel_task)
+            await asyncio.gather(*pending_cleanup, return_exceptions=True)
             raise
         finally:
-            if not cancel_task.done():
+            if cancel_task is not None and not cancel_task.done():
                 cancel_task.cancel()
 
     async def _wait_for_retry_backoff(seconds: float) -> None:
-        if _is_cancelled():
+        if _is_canceled():
             raise asyncio.CancelledError()
         if cancel_event is None or not hasattr(cancel_event, "wait"):
             await asyncio.sleep(seconds)
@@ -280,8 +282,8 @@ async def execute_with_token_retry(
                 if not task.done():
                     task.cancel()
             await asyncio.gather(sleep_task, cancel_task, return_exceptions=True)
-    
-    for trim_attempt in range(max_trim_retries + 1):
+
+    while True:
         try:
             result = await _await_agent_invoke(current_input)
             _relabel_execution_timeout(result)
@@ -291,44 +293,39 @@ async def execute_with_token_retry(
             # The agent looped on the same invalid tool call past the guard's
             # stop threshold. Convert it into a controlled synthetic result so
             # downstream finalization produces a partial/failure outcome instead
-            # of waiting for the executor's wall-clock cap.
+            # of waiting for the pass budget.
             logger.warning(
                 "🛑 Tool repetition guard stopped the pass: tool=%s repeat_count=%s",
                 guard_stop.tool_name,
                 guard_stop.repeat_count,
             )
-            recovered_steps = captured_agent_actions_as_intermediate_steps(
-                get_current_agent_context(),
-                since_offset=pass_capture_offset,
-            )
             synthetic_result = {
                 "output": guard_stop.agent_output,
-                "intermediate_steps": recovered_steps,
+                "intermediate_steps": _captured_steps(),
                 "tool_repetition_guard_stop": guard_stop.diagnostic,
             }
             return synthetic_result, current_input
 
-        except ValueError as _stream_err:
-            if "No generation chunks were returned" in str(_stream_err):
-                logger.warning("⚠️ STREAMING EMPTY: retrying cancellation-aware async invoke once")
-                try:
-                    result = await _await_agent_invoke(current_input)
-                except ValueError as retry_error:
-                    if "No generation chunks were returned" not in str(retry_error):
-                        raise
-                    logger.error("❌ STREAMING EMPTY: async retry also returned no generation")
-                    return {
-                        "output": "The agent returned no response after a retry.",
-                        "intermediate_steps": [],
-                        "empty_generation_failure": True,
-                    }, current_input
-                _relabel_execution_timeout(result)
-                return result, current_input
-            else:
-                raise
-                
+        except PassBudgetExhausted:
+            active_seconds = _active_pass_seconds()
+            logger.warning(
+                "⏱️ Pass budget exhausted: %.1fs active of %.1fs allowed; returning captured steps",
+                active_seconds,
+                float(pass_budget_seconds or 0.0),
+            )
+            return {
+                "output": _pass_budget_message(pass_budget_seconds),
+                "intermediate_steps": _captured_steps(),
+                "execution_timed_out": True,
+                "pass_budget_exhausted": {
+                    "budget_seconds": float(pass_budget_seconds or 0.0),
+                    "active_seconds": round(active_seconds, 1),
+                },
+            }, current_input
+
         except Exception as _err:
             error_str = str(_err)
+            classification = classify_model_error(_err)
 
             from ....model_usage_service import is_model_unreachable_error
             handler = next(
@@ -337,106 +334,110 @@ async def execute_with_token_retry(
             )
             no_progress_yet = handler is None or handler.completed_llm_calls == 0
 
-            # Check if this is a transient network error
-            if _is_transient_error(_err):
-                if transient_retry_count >= max_transient_retries:
+            if classification.kind == EMPTY_GENERATION:
+                if empty_generation_retried:
+                    logger.error("❌ STREAMING EMPTY: async retry also returned no generation")
+                    return {
+                        "output": "The agent returned no response after a retry.",
+                        "intermediate_steps": [],
+                        "empty_generation_failure": True,
+                    }, current_input
+                empty_generation_retried = True
+                logger.warning("⚠️ STREAMING EMPTY: retrying cancellation-aware async invoke once")
+                continue
+
+            if classification.kind == CONTEXT_OVERFLOW:
+                actual_tokens = classification.actual_tokens
+                max_tokens = classification.max_tokens
+                token_summary = overflow_token_summary(actual_tokens, max_tokens)
+                # Measure against every step captured since this pass started, not
+                # just since the last failure -- once a digest resume has run, a
+                # second overflow with no newly-recorded step would otherwise be
+                # misread as the zero-steps case and fall through to a blind char
+                # trim of the (now short) digest text.
+                recovered_steps = _captured_steps()
+
+                if trim_attempts >= max_trim_retries:
+                    logger.error(
+                        "❌ Context window exceeded after %s trim attempt(s)%s",
+                        max_trim_retries,
+                        token_summary,
+                    )
+                    if recovered_steps:
+                        logger.warning(
+                            "⚠️ Finalizing %s captured step(s) instead of raising a resultless failure",
+                            len(recovered_steps),
+                        )
+                        return {
+                            "output": (
+                                f"Stopped: the model's context window was exceeded{token_summary} "
+                                f"after {max_trim_retries} attempt(s) to continue. "
+                                f"{len(recovered_steps)} tool step(s) completed before that."
+                            ),
+                            "intermediate_steps": recovered_steps,
+                            "context_window_exceeded": {
+                                "actual_tokens": actual_tokens,
+                                "max_tokens": max_tokens,
+                            },
+                        }, current_input
+                    raise
+
+                trim_attempts += 1
+                if recovered_steps:
+                    logger.warning(
+                        "⚠️ Prompt too long%s (attempt %s/%s). Resuming with a digest of %s captured tool step(s).",
+                        token_summary,
+                        trim_attempts,
+                        max_trim_retries,
+                        len(recovered_steps),
+                    )
+                    current_input = build_context_overflow_resume_input(user_input, recovered_steps)
+                else:
+                    chars_to_remove = overflow_chars_to_remove(current_input, actual_tokens, max_tokens)
+                    logger.warning(
+                        "⚠️ Prompt too long%s (attempt %s/%s). Trimming ~%s chars from context...",
+                        token_summary,
+                        trim_attempts,
+                        max_trim_retries,
+                        f"{chars_to_remove:,}",
+                    )
+                    trimmed_input = trim_oldest_context(current_input, chars_to_remove, logger)
+                    if trimmed_input is None:
+                        logger.error("❌ Cannot trim context further - no safe trim points found")
+                        raise
+                    current_input = trimmed_input
+
+                logger.info(f"📏 Retrying with updated input ({len(current_input):,} chars)")
+                transient_attempts = 0
+                continue
+
+            if classification.kind == TRANSIENT:
+                if transient_attempts >= max_transient_retries:
                     logger.error(
                         f"❌ Transient error persisted after {max_transient_retries} retries: {error_str[:200]}"
                     )
                     if no_progress_yet and is_model_unreachable_error(_err):
                         raise ModelUnavailableBeforeFirstResponse(_err) from _err
                     raise
-                
-                # Exponential backoff: 1s, 2s, 4s
-                backoff_seconds = 2 ** transient_retry_count
+                backoff_seconds = 2 ** transient_attempts
                 logger.warning(
-                    f"⚠️ Transient network error detected (attempt {transient_retry_count + 1}/{max_transient_retries}): "
+                    f"⚠️ Transient network error detected (attempt {transient_attempts + 1}/{max_transient_retries}): "
                     f"{error_str[:200]}. Retrying after {backoff_seconds}s backoff..."
                 )
-                
                 await _wait_for_retry_backoff(backoff_seconds)
-                transient_retry_count += 1
-                continue  # Retry the same input without trimming
+                transient_attempts += 1
+                continue
+
+            if classification.kind == TRANSIENT_EXHAUSTED:
+                logger.error(
+                    "❌ Model call still failing after LLM-level retries; not restarting the pass: %s",
+                    error_str[:200],
+                )
 
             # Authentication/authorization failures are never worth retrying with
             # backoff (a bad key stays bad), but are still eligible for a one-time
             # local fallback if nothing has succeeded yet this task.
             if no_progress_yet and is_model_unreachable_error(_err):
                 raise ModelUnavailableBeforeFirstResponse(_err) from _err
+            raise
 
-            # Check if this is a context-window overflow: either the local
-            # llama.cpp path's typed exception (computed from the model's own
-            # tokenizer, never parsed from error text), or a cloud provider's
-            # detectable wording via parse_token_limit_error.
-            if isinstance(_err, LocalModelContextWindowExceeded):
-                actual_tokens, max_tokens = _err.actual_tokens, _err.max_tokens
-            else:
-                token_info = parse_token_limit_error(error_str)
-                if token_info is None:
-                    # Not a transient error or token error - re-raise
-                    raise
-                actual_tokens, max_tokens = token_info
-
-            # Measure against every step captured since this pass started, not
-            # just since the last failure -- once a digest resume has run, a
-            # second overflow with no newly-recorded step would otherwise be
-            # misread as the zero-steps case and fall through to a blind char
-            # trim of the (now short) digest text, which has no safe trim
-            # points and would raise instead of retrying or exhausting cleanly.
-            recovered_steps = captured_agent_actions_as_intermediate_steps(
-                get_current_agent_context(), since_offset=pass_capture_offset,
-            )
-
-            if trim_attempt >= max_trim_retries:
-                logger.error(f"❌ Token limit exceeded after {max_trim_retries} trim attempts: {actual_tokens:,} > {max_tokens:,}")
-                if recovered_steps:
-                    logger.warning(
-                        "⚠️ Finalizing %s captured step(s) instead of raising a resultless failure",
-                        len(recovered_steps),
-                    )
-                    return {
-                        "output": (
-                            f"Stopped: the model's context window was exceeded "
-                            f"({actual_tokens:,} > {max_tokens:,} tokens) after "
-                            f"{max_trim_retries} attempt(s) to continue. "
-                            f"{len(recovered_steps)} tool step(s) completed before that."
-                        ),
-                        "intermediate_steps": recovered_steps,
-                        "context_window_exceeded": {
-                            "actual_tokens": actual_tokens,
-                            "max_tokens": max_tokens,
-                        },
-                    }, current_input
-                raise
-
-            if recovered_steps:
-                logger.warning(
-                    "⚠️ Prompt too long: %s > %s tokens (attempt %s/%s). Resuming "
-                    "with a digest of %s captured tool step(s) instead of blindly "
-                    "trimming the original input.",
-                    f"{actual_tokens:,}", f"{max_tokens:,}", trim_attempt + 1, max_trim_retries, len(recovered_steps),
-                )
-                current_input = build_context_overflow_resume_input(user_input, recovered_steps)
-            else:
-                overage_tokens = actual_tokens - max_tokens + 5000
-                chars_to_remove = overage_tokens * 4
-
-                logger.warning(
-                    f"⚠️ Prompt too long: {actual_tokens:,} > {max_tokens:,} tokens "
-                    f"(attempt {trim_attempt + 1}/{max_trim_retries}). "
-                    f"Trimming ~{chars_to_remove:,} chars from context..."
-                )
-
-                trimmed_input = trim_oldest_context(current_input, chars_to_remove, logger)
-
-                if trimmed_input is None:
-                    logger.error("❌ Cannot trim context further - no safe trim points found")
-                    raise
-
-                current_input = trimmed_input
-
-            logger.info(f"📏 Retrying with updated input ({len(current_input):,} chars)")
-            # Reset transient retry count when trimming (new attempt)
-            transient_retry_count = 0
-
-    raise RuntimeError("Execution loop completed without result")

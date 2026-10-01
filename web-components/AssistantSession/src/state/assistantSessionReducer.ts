@@ -58,6 +58,7 @@ export const initialAssistantSessionState: AssistantSessionState = {
   isRefinementMode: false,
   iterationCount: 0,
   showRefinementIndicator: false,
+  typedRefinementRequestSerial: 0,
   inputMode: 'speak',
   inputCommitted: false,
   typedInstruction: '',

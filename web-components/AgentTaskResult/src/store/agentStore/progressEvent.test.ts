@@ -30,7 +30,7 @@ describe('parseProgressEvent', () => {
 
   it('preserves legacy top-level progress events as a step fallback', () => {
     const parsed = parseProgressEvent({
-      event_type: 'agentTask_progress',
+      event_type: 'agent_task_progress',
       step: 'Preparing request',
       status: 'completed',
     });

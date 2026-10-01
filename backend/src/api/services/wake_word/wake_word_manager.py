@@ -22,7 +22,7 @@ class VoiceListenerWakeWordManager:
         
         # Wake word detection state
         self._is_capturing_agent_task = False
-        self._agent_task_cancelled = False
+        self._agent_task_canceled = False
         self._last_wake_word_time = 0.0
         self._wake_word_debounce_seconds = 3.0  # Different utterances - prevent rapid successive agent tasks
         self._same_utterance_debounce_seconds = 0.01  # Same utterance, different models - 10ms window
@@ -30,10 +30,10 @@ class VoiceListenerWakeWordManager:
         # Thread-safe lock for wake word detection to prevent race conditions
         self._wake_word_lock = threading.Lock()
 
-    def set_agent_task_state(self, is_capturing: bool, is_cancelled: bool = False):
+    def set_agent_task_state(self, is_capturing: bool, is_canceled: bool = False):
         """Set the agent-task capture state."""
         self._is_capturing_agent_task = is_capturing
-        self._agent_task_cancelled = is_cancelled
+        self._agent_task_canceled = is_canceled
 
     @staticmethod
     def _is_api_transcription_selected() -> bool:
@@ -120,8 +120,8 @@ class VoiceListenerWakeWordManager:
                 logger.info(f"🔄 [WAKE_WORD_CALLBACK] Ignoring wake word '{detected_phrase}' - agent_task operation already in progress (is_capturing_agent_task=True)")
                 return
                 
-            if self._agent_task_cancelled:
-                logger.info(f"🔄 [WAKE_WORD_CALLBACK] AgentTask processing was cancelled, ignoring wake word '{detected_phrase}' (agent_task_cancelled=True)")
+            if self._agent_task_canceled:
+                logger.info(f"🔄 [WAKE_WORD_CALLBACK] AgentTask processing was canceled, ignoring wake word '{detected_phrase}' (agent_task_canceled=True)")
                 return
 
             # FRONTEND OPERATION STATE CHECK - Prevent agent_tasks during transcription, etc.
@@ -367,7 +367,7 @@ class VoiceListenerWakeWordManager:
         try:
             exc = fut.exception()
         except asyncio.CancelledError:
-            logger.info("Agent_task processing was cancelled")
+            logger.info("Agent_task processing was canceled")
             return
         except Exception as cb_err:
             logger.warning(
@@ -390,7 +390,7 @@ class VoiceListenerWakeWordManager:
         try:
             if self.orchestration_service:
                 # Sync state with orchestration service
-                self.orchestration_service.set_agent_task_cancelled(self._agent_task_cancelled)
+                self.orchestration_service.set_agent_task_canceled(self._agent_task_canceled)
                 # Delegate to orchestration service
                 # Frontend will decide if this is a follow-up (same as hotkey flow)
                 await self.orchestration_service._capture_and_process_agent_task(wake_phrase)
@@ -398,7 +398,7 @@ class VoiceListenerWakeWordManager:
                 logger.error("Cannot initiate agent-task processing - orchestration service not available")
         finally:
             self._is_capturing_agent_task = False
-            self._agent_task_cancelled = False  # Clear cancellation flag
+            self._agent_task_canceled = False  # Clear cancellation flag
             
             # CRITICAL: Also clear the flag in the main service for hotkey-initiated agent tasks
             # This ensures the status endpoint shows the correct state for subsequent agent tasks
@@ -406,7 +406,7 @@ class VoiceListenerWakeWordManager:
                 hasattr(self.orchestration_service, 'main_service') and 
                 self.orchestration_service.main_service):
                 self.orchestration_service.main_service._is_capturing_agent_task = False
-                self.orchestration_service.main_service._agent_task_cancelled = False
+                self.orchestration_service.main_service._agent_task_canceled = False
 
     def _pause_wake_word_detection(self):
         """

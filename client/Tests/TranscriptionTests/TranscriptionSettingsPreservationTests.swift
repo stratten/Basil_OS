@@ -240,4 +240,25 @@ final class TranscriptionSettingsPreservationTests: XCTestCase {
             try decoder.decode(TranscriptionSettingsResponse.self, from: Data(payload.utf8))
         )
     }
+
+    func testLiveTranscriptionByDefaultDecodesAndDefaultsToOn() throws {
+        let withoutKey = """
+        {"status":"success","settings":{"model_unload_delay":60,"auto_paste":true,"auto_close_on_paste":false,"language":"en","selected_model":"base","is_widget_minimized":false,"enable_push_to_talk":false,"push_to_talk_threshold_ms":750}}
+        """
+        let defaulted = try JSONDecoder().decode(TranscriptionSettingsResponse.self, from: Data(withoutKey.utf8))
+        XCTAssertTrue(defaulted.settings.liveTranscriptionByDefault)
+
+        let withKey = """
+        {"status":"success","settings":{"model_unload_delay":60,"auto_paste":true,"auto_close_on_paste":false,"language":"en","selected_model":"base","is_widget_minimized":false,"enable_push_to_talk":false,"push_to_talk_threshold_ms":750,"live_transcription_by_default":false}}
+        """
+        let explicit = try JSONDecoder().decode(TranscriptionSettingsResponse.self, from: Data(withKey.utf8))
+        XCTAssertFalse(explicit.settings.liveTranscriptionByDefault)
+    }
+
+    func testApplyingPreservesLiveTranscriptionByDefault() {
+        let original = sampleSettingsWithAutomation().applying(liveTranscriptionByDefault: false)
+        XCTAssertFalse(original.liveTranscriptionByDefault)
+        XCTAssertFalse(original.applying(widgetSize: WidgetSize(width: 10, height: 10)).liveTranscriptionByDefault)
+        XCTAssertTrue(original.applying(liveTranscriptionByDefault: true).liveTranscriptionByDefault)
+    }
 }

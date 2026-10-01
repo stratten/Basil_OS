@@ -185,21 +185,21 @@ struct AestheticSystem {
         /// Border for input fields/editors and tool cards. Mirrors the
         /// transcription area outline (Duke-blue `secondary` at 0.2, lineWidth 1)
         /// so field outlines read as a consistent, lightly-weighted blue rather
-        /// than a heavy neutral grey, while staying more visible than the faint
+        /// than a heavy neutral gray, while staying more visible than the faint
         /// system `separatorColor`.
         static var fieldBorder: Color { secondary.opacity(0.2) }
         
         // MARK: - High-Contrast Onboarding Colors
-        // Simple, readable pairings: black on white, blue on white, black on light grey
+        // Simple, readable pairings: black on white, blue on white, black on light gray
         // NOT vibrant - just actual contrast
         
         /// Pure white for card backgrounds
         static let onboardingCardBackground = Color.white
         /// Pure black for primary text
         static let onboardingTextPrimary = Color.black
-        /// Dark grey for secondary text (still readable, not washed out)
+        /// Dark gray for secondary text (still readable, not washed out)
         static let onboardingTextSecondary = Color.black.opacity(0.7)
-        /// Light grey for section backgrounds (actual light, not mid-grey)
+        /// Light gray for section backgrounds (actual light, not mid-gray)
         static let onboardingBackgroundLight = Color(white: 0.95)
         /// Blue for links/interactive elements on white
         static let onboardingLink = Color(red: 0.0, green: 0.4, blue: 0.8)

@@ -6,7 +6,8 @@ import ExecutionDisclosureChevron from '@shared/ExecutionDisclosureChevron';
 import { ProgressStepsSection } from './ExecutionTimeline';
 import { ThinkingSegments } from './ThinkingSections';
 import { FilesDisplay, ReferencePathsList } from './ResultAttachments';
-import { formatBulletPoints, normalizeResultForPresentation, parseResult } from './resultContentUtils';
+import { formatBulletPoints, normalizeResultForPresentation, parseResult, splitRunDetails } from './resultContentUtils';
+import { RunDetailsDisclosure } from './RunDetailsDisclosure';
 import { formatHistoryTimestamp, useDateDisplayStyle } from '../../app/dateDisplay';
 import AgentTaskOriginChip from '../request/AgentTaskOriginChip';
 import RequestDisplay from '../request/RequestDisplay';
@@ -29,6 +30,7 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
     [item.outcome, item.result],
   );
   const histParsed = useMemo(() => parseResult(presentationResult), [presentationResult]);
+  const histRunDetails = useMemo(() => splitRunDetails(histParsed.userSummary), [histParsed.userSummary]);
   const alertColor = item.resultSeverity === 'warning' ? 'var(--warning-base)' : 'var(--error-base)';
   const alertBorder = item.resultSeverity === 'warning'
     ? '1px solid rgba(198, 121, 0, 0.28)'
@@ -53,9 +55,6 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
       {!isExpanded ? (
         <div style={{ padding: 'var(--padding-m)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--padding-s)' }}>
-            <svg width="11" height="11" viewBox="0 0 16 16" fill="var(--success-base)" style={{ flexShrink: 0 }}>
-              <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm3.41 5.09a.75.75 0 0 0-1.06-.04L7.2 8.04 5.64 6.59a.75.75 0 1 0-1.02 1.1l2.1 1.95a.75.75 0 0 0 1.04-.03l3.65-3.46a.75.75 0 0 0-.04-1.06z"/>
-            </svg>
             <span style={{
               fontFamily: 'var(--font-family-medium)', fontSize: 'var(--font-size-status-small)',
               color: 'var(--text-secondary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -76,7 +75,7 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
             display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
             wordBreak: 'break-word', userSelect: 'text',
           }}>
-            {histParsed.userSummary.substring(0, 200)}
+            {histRunDetails.narrative.substring(0, 200)}
           </div>
           {item.files.length > 0 && (
             <div style={{
@@ -100,9 +99,6 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
             display: 'flex', alignItems: 'flex-start', gap: 'var(--padding-s)',
             padding: 'var(--padding-m) var(--padding-l) 0',
           }}>
-            <svg width="11" height="11" viewBox="0 0 16 16" fill="var(--success-base)" style={{ marginTop: 2, flexShrink: 0 }}>
-              <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm3.41 5.09a.75.75 0 0 0-1.06-.04L7.2 8.04 5.64 6.59a.75.75 0 1 0-1.02 1.1l2.1 1.95a.75.75 0 0 0 1.04-.03l3.65-3.46a.75.75 0 0 0-.04-1.06z"/>
-            </svg>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: 'var(--font-family-light)', fontSize: 10, color: 'var(--text-primary)', wordBreak: 'break-word' }}>
                 {item.agentTaskText}
@@ -198,8 +194,9 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
               position: 'relative',
             }}>
               <CopyButtonGroup text={presentationResult} />
-              <MarkdownRenderer content={formatBulletPoints(histParsed.userSummary)} />
+              <MarkdownRenderer content={formatBulletPoints(histRunDetails.narrative)} />
             </div>
+            <RunDetailsDisclosure details={histRunDetails.details} />
             <FilesDisplay files={item.files} resultText={presentationResult} />
           </div>
         </div>

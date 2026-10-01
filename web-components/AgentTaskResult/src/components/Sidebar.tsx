@@ -295,7 +295,7 @@ export default function Sidebar({
   }, [itemForAgentId]);
 
   const cancelAgentTask = useCallback(async (agentTaskId: string) => {
-    agentStore.markCancelling(agentTaskId);
+    agentStore.markCanceling(agentTaskId);
     try {
       await api.cancelSession(agentTaskId);
     } catch (err) {

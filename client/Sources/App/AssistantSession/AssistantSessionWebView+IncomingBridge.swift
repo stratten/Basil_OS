@@ -52,11 +52,13 @@ extension AssistantSessionWebView {
                     category: isApiModel ? "api" : "local"
                 )
             }
-            let anchorRect = NSRect(
-                x: CGFloat(x),
-                y: webView.bounds.height - CGFloat(y) - CGFloat(height),
+            let anchorRect = NativeModelPickerPopoverSupport.anchorRect(
+                webX: CGFloat(x),
+                webY: CGFloat(y),
                 width: CGFloat(width),
-                height: CGFloat(height)
+                height: CGFloat(height),
+                hostBounds: webView.bounds,
+                hostIsFlipped: webView.isFlipped
             )
             showNativeModelPicker(
                 models: models,

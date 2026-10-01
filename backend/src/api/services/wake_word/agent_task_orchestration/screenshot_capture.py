@@ -36,7 +36,9 @@ def capture_immediate_screenshot(service) -> Dict[str, Any]:
         import requests
 
         try:
-            response = requests.post(capture_url, timeout=5.0)
+            from ....core.security.backend_credentials import BACKEND_TOKEN_HEADER, load_host_token
+
+            response = requests.post(capture_url, headers={BACKEND_TOKEN_HEADER: load_host_token()}, timeout=5.0)
 
             if response.status_code == 200:
                 capture_data = response.json()

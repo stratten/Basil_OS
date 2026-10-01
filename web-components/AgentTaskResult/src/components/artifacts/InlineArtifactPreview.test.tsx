@@ -102,6 +102,7 @@ function mount(
           onOpenContainingFolder={actions.onOpenContainingFolder}
           onOpenPreviewWindow={actions.onOpenPreviewWindow}
           onOpenLocalWebPreview={actions.onOpenLocalWebPreview}
+          subscribeToEvents={() => () => undefined}
         />,
       );
     });

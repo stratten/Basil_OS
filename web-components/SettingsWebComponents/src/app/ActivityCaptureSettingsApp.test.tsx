@@ -116,14 +116,14 @@ describe('ActivityCaptureSettingsApp', () => {
     expect(container.querySelector('.activity-capture-progress')).toBeNull()
   })
 
-  it('sends Clear Backlog and treats a native "cancelled" intentResult as a no-op, without a status refresh', () => {
+  it('sends Clear Backlog and treats a native "canceled" intentResult as a no-op, without a status refresh', () => {
     act(() => { window.basilActivityCaptureSettings!.onEvent(initEvent({ status: { isSchedulerRunning: true, nextCaptureTime: null, todaysCaptures: 0, totalCapturesLast7Days: 0, totalCapturesLast30Days: 0, pendingCaptures: 3, failedCaptures: 1, skippedCaptureCount: 0, compactedCaptureCount: 0, lastPolicyDecision: null } })) })
     const clearButton = Array.from(container.querySelectorAll('button')).find((btn) => btn.textContent === 'Clear Backlog')!
     act(() => { clearButton.click() })
     expect(clearButton.textContent).toBe('Clearing…')
     const requestId = postMessage.mock.calls.map(([value]) => value).find((value) => value.type === 'requestClearBacklog').requestId
     postMessage.mockClear()
-    act(() => { window.basilActivityCaptureSettings!.onEvent({ type: 'intentResult', requestId, status: 'cancelled' }) })
+    act(() => { window.basilActivityCaptureSettings!.onEvent({ type: 'intentResult', requestId, status: 'canceled' }) })
     expect(clearButton.textContent).toBe('Clear Backlog')
     expect(postMessage).not.toHaveBeenCalledWith({ type: 'requestStatus' })
     expect(container.querySelector('.activity-capture-status-message')).toBeNull()

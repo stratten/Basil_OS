@@ -153,7 +153,7 @@ def test_cancel_stops_pass_after_current_entry(conn, monkeypatch):
     assert states.count("final") == 1
     assert states.count("pending") == 2
 
-    # Entries never reached keep a zero attempt count, so cancelling does not
+    # Entries never reached keep a zero attempt count, so canceling does not
     # burn retries or push anything toward 'failed'.
     untouched = conn.execute(
         "SELECT narrative_attempts FROM zettel_entries WHERE narrative_state='pending'"
@@ -173,11 +173,11 @@ def test_cancel_flag_does_not_leak_into_the_next_pass(conn, monkeypatch):
     _card(conn, "t1")
     enricher = _enricher(conn)
 
-    async def _cancelling(entry, context, *, model_id=None):
+    async def _canceling(entry, context, *, model_id=None):
         enricher.request_cancel()
         return SynthesisResult(narrative="one", model_name="m")
 
-    monkeypatch.setattr(enricher_module, "synthesize", _cancelling)
+    monkeypatch.setattr(enricher_module, "synthesize", _canceling)
     asyncio.run(enricher.run_pass(batch_size=10, max_attempts=3))
     assert enricher.get_progress().cancel_requested is True
 

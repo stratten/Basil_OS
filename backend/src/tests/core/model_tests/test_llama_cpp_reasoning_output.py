@@ -22,6 +22,7 @@ from api.core.models.reasoning.llama_cpp_model import (
     DEFAULT_MAX_TOKENS,
     LocalCompletionTelemetry,
     LlamaCppModel,
+    LlamaCppTokenizerWrapper,
     shutdown_cached_llama_cpp_models,
 )
 
@@ -458,3 +459,29 @@ async def test_length_finish_inside_reasoning_publishes_telemetry_before_truncat
 async def test_generate_response_string_contract_unchanged_without_callback():
     model = _model(f"{_OPEN}r{_CLOSE}answer")
     assert await model.generate_response("prompt") == "answer"
+
+
+def test_tokenizer_wrapper_reports_exact_native_counts():
+    wrapper = LlamaCppTokenizerWrapper(_FakeLlm("unused", "stop"))
+    assert wrapper.exact_token_counts is True
+    assert wrapper.encode("three short words") == [0, 1, 2]
+
+
+@pytest.mark.asyncio
+async def test_cached_load_sets_exact_tokenizer_and_native_context(monkeypatch, tmp_path):
+    from api.core.models.reasoning import llama_cpp_model
+
+    model_path = tmp_path / "cached.gguf"
+    cached_llm = _FakeLlm("unused", "stop")
+    monkeypatch.setattr(llama_cpp_model, "_MODEL_CACHE", {str(model_path.resolve()): cached_llm})
+    model = LlamaCppModel.__new__(LlamaCppModel)
+    model.state = ModelState.UNLOADED
+    model.model_path = model_path
+
+    await model.load()
+
+    assert model.llm is cached_llm
+    assert model.state == ModelState.READY
+    assert isinstance(model.tokenizer, LlamaCppTokenizerWrapper)
+    assert model.tokenizer.encode("two words") == [0, 1]
+    assert model.max_context_length == 32_768

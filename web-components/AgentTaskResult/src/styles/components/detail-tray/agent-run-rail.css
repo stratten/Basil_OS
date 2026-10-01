@@ -178,14 +178,13 @@
   height: 9px;
 }
 
+/* Transform-only on purpose: if WebKit does not advance this animation for a stage inserted into an already-visible rail, the glyph must still be visible. */
 @keyframes run-rail-stage-arrive {
   from {
-    opacity: 0;
     transform: translateY(-8px) scale(0.8);
   }
 
   to {
-    opacity: 1;
     transform: translateY(0) scale(1);
   }
 }

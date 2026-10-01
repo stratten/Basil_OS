@@ -222,8 +222,8 @@ export class AgentStoreCore {
     this.emitAgent(agentTaskId);
   }
 
-  protected isAgentCancelled(agentTaskId: string): boolean {
-    return this.agents.get(agentTaskId)?.isCancelled === true;
+  protected isAgentCanceled(agentTaskId: string): boolean {
+    return this.agents.get(agentTaskId)?.isCanceled === true;
   }
 
   protected clearPendingStepTimer(agentTaskId: string) {
@@ -235,7 +235,7 @@ export class AgentStoreCore {
   }
 
   updateStatus(agentTaskId: string, status: AgentStatus) {
-    if (this.isAgentCancelled(agentTaskId)) return;
+    if (this.isAgentCanceled(agentTaskId)) return;
     this.updateAgent(agentTaskId, a => {
       if ((a.status === 'completed' || a.status === 'failed') && status !== 'completed' && status !== 'failed') {
         return;
@@ -258,7 +258,7 @@ export class AgentStoreCore {
   }
 
   markCheckpointResumeProcessing(agentTaskId: string, step = 'Resuming...') {
-    if (this.isAgentCancelled(agentTaskId)) return;
+    if (this.isAgentCanceled(agentTaskId)) return;
     this.clearPendingStepTimer(agentTaskId);
     this.updateAgent(agentTaskId, a => {
       a.status = 'processing';

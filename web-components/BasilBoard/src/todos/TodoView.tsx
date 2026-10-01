@@ -211,11 +211,11 @@ export default function TodoView({ originNavigation }: TodoViewProps) {
 
   useEffect(() => {
     if (originNavigation?.originType !== 'todo' || loading) return;
-    let cancelled = false;
+    let canceled = false;
     setConflictMessage(null);
     void getTodoItem(originNavigation.originId)
       .then((item) => {
-        if (cancelled) return;
+        if (canceled) return;
         setError(null);
         setItems(current => current.some(existing => existing.id === item.id)
           ? current.map(existing => existing.id === item.id ? item : existing)
@@ -225,13 +225,13 @@ export default function TodoView({ originNavigation }: TodoViewProps) {
         setCurrentDetail(item);
       })
       .catch(() => {
-        if (cancelled) return;
+        if (canceled) return;
         setViewingId(null);
         setCurrentDetail(null);
         setError('The referenced To-Do could not be found.');
       });
     return () => {
-      cancelled = true;
+      canceled = true;
     };
   }, [loading, originNavigation]);
 
@@ -240,13 +240,13 @@ export default function TodoView({ originNavigation }: TodoViewProps) {
       setCurrentDetail(null);
       return;
     }
-    let cancelled = false;
+    let canceled = false;
     void getTodoItem(viewingId)
       .then((item) => {
-        if (!cancelled) setCurrentDetail(item);
+        if (!canceled) setCurrentDetail(item);
       })
       .catch(() => {
-        if (cancelled) return;
+        if (canceled) return;
         setDetail((current) => {
           const nextDetail = current?.id === viewingId ? current : null;
           detailRef.current = nextDetail;
@@ -254,7 +254,7 @@ export default function TodoView({ originNavigation }: TodoViewProps) {
         });
       });
     return () => {
-      cancelled = true;
+      canceled = true;
     };
   }, [viewingId]);
 

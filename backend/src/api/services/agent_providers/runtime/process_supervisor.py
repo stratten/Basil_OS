@@ -37,6 +37,9 @@ from api.services.agent_providers.profiles.launch_validation import (
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 120.0
 MAX_DIAGNOSTIC_MESSAGE_BYTES = 4_096
 _SPONTANEOUS_EXIT_GRACE_SECONDS = 0.5
+PROMPT_INACTIVITY_TIMEOUT_SECONDS = 600.0
+PROMPT_TOOL_CALL_INACTIVITY_TIMEOUT_SECONDS = 1800.0
+PROMPT_MAX_TURN_SECONDS = 21600.0
 logger = logging.getLogger(__name__)
 
 
@@ -55,7 +58,7 @@ class ProviderLaunchOutcomeStatus(str, Enum):
     TIMED_OUT = "timed_out"
     CRASHED = "crashed"
     COMPLETED = "completed"
-    CANCELLED = "cancelled"
+    CANCELED = "canceled"
 
 
 @dataclass(frozen=True)
@@ -118,8 +121,14 @@ class ProviderProcessSupervisor:
         client_info: Mapping[str, str],
         client_capabilities: Mapping[str, Any],
         request_timeout_seconds: float = DEFAULT_REQUEST_TIMEOUT_SECONDS,
+        prompt_inactivity_timeout_seconds: float = PROMPT_INACTIVITY_TIMEOUT_SECONDS,
+        prompt_tool_call_inactivity_timeout_seconds: float = PROMPT_TOOL_CALL_INACTIVITY_TIMEOUT_SECONDS,
+        prompt_max_turn_seconds: float = PROMPT_MAX_TURN_SECONDS,
     ) -> None:
         self._validated_request = validated_request
+        self._prompt_inactivity_timeout_seconds = float(prompt_inactivity_timeout_seconds)
+        self._prompt_tool_call_inactivity_timeout_seconds = float(prompt_tool_call_inactivity_timeout_seconds)
+        self._prompt_max_turn_seconds = float(prompt_max_turn_seconds)
         self._client_info = dict(client_info)
         self._client_capabilities = dict(client_capabilities)
         child_env = _build_child_environment(validated_request.environment_allowlist)
@@ -236,7 +245,7 @@ class ProviderProcessSupervisor:
                 await self._close_client()
                 self._outcome = self._build_outcome(
                     ProviderLaunchOutcomeStatus.AUTHENTICATION_FAILED,
-                    diagnostic_message="CancelledError: authentication exchange cancelled",
+                    diagnostic_message="CancelledError: authentication exchange canceled",
                     exit_code=self._client.exit_code,
                 )
                 raise
@@ -267,7 +276,13 @@ class ProviderProcessSupervisor:
 
         self._require_running()
         try:
-            return await self._client.send_prompt(session_id=session_id, prompt=prompt)
+            return await self._client.send_prompt(
+                session_id=session_id,
+                prompt=prompt,
+                inactivity_timeout_seconds=self._prompt_inactivity_timeout_seconds,
+                tool_call_inactivity_timeout_seconds=self._prompt_tool_call_inactivity_timeout_seconds,
+                max_turn_seconds=self._prompt_max_turn_seconds,
+            )
         except (AcpClientError, OSError) as exc:
             await self._classify_and_seal_client_error(exc)
             raise
@@ -337,7 +352,7 @@ class ProviderProcessSupervisor:
         return self._outcome
 
     async def cancel(self) -> ProviderLaunchOutcome:
-        """Terminate the entire process group and report a CANCELLED outcome.
+        """Terminate the entire process group and report a CANCELED outcome.
 
         Only valid while the current outcome is `RUNNING`. Guarantees no
         descendant process remains once this returns.
@@ -384,7 +399,7 @@ class ProviderProcessSupervisor:
     async def _cancel_and_close(self) -> None:
         await self._close_client()
         self._outcome = self._build_outcome(
-            ProviderLaunchOutcomeStatus.CANCELLED, exit_code=self._client.exit_code
+            ProviderLaunchOutcomeStatus.CANCELED, exit_code=self._client.exit_code
         )
 
     async def _close_client(self) -> None:
@@ -445,7 +460,7 @@ async def finalize_interrupted_provider_runs(
         "running": "interrupted",
         "waiting_user_input": "interrupted",
         "waiting_permission": "interrupted",
-        "cancelling": "interrupted",
+        "canceling": "interrupted",
     }
     interruption_reason_template = (
         "Backend restarted while the provider run was {status!r}; the prior run was not resumed."

@@ -1,5 +1,6 @@
 import type {
   CheckpointData,
+  CommandInputMetadata,
   ProviderPermissionApprovalMetadata,
   ResultSeverity,
   StepDetailEntry,
@@ -22,17 +23,12 @@ export class AgentStore extends BlockerEventAgentStore {
   ) {
     const eventType = event.event_type as string;
     const isResultStreamingEvent =
-      eventType === 'agentTask_streaming' ||
       eventType === 'agent_task_streaming' ||
-      eventType === 'agentTask_streaming_complete' ||
       eventType === 'agent_task_streaming_complete';
-    const isStreamingEvent = eventType === 'agentTask_streaming' || eventType === 'agent_task_streaming';
+    const isStreamingEvent = eventType === 'agent_task_streaming';
     const isActiveExecutionEvent = [
-      'agentTask_progress',
       'agent_task_progress',
-      'agentTask_streaming',
       'agent_task_streaming',
-      'agentTask_streaming_complete',
       'agent_task_streaming_complete',
       'step_progress_update',
       'dynamic_step_added',
@@ -140,8 +136,8 @@ export class AgentStore extends BlockerEventAgentStore {
       this.recordChainIdentity(agentTaskId, rootTaskId, previousTaskId);
     } else {
       if (!this.agents.has(agentTaskId)) {
-        if (eventType === 'agentTask_cancelled' || eventType === 'agent_task_cancelled') {
-          console.log(`[AgentStore] Ignoring cancelled event for unknown/deleted agent: ${agentTaskId}`);
+        if (eventType === 'agent_task_canceled') {
+          console.log(`[AgentStore] Ignoring canceled event for unknown/deleted agent: ${agentTaskId}`);
           return;
         }
         console.log(`[AgentStore] WS new agent created: ${agentTaskId}`);
@@ -161,12 +157,11 @@ export class AgentStore extends BlockerEventAgentStore {
     }
 
     const cancellationAllowedEvent = [
-      'agentTask_cancelled',
-      'agent_task_cancelled',
+      'agent_task_canceled',
       'agent_task_origin',
     ].includes(eventType);
     const cancellationState = this.getAgent(agentTaskId);
-    if ((cancellationState?.isCancelled || cancellationState?.isCancelling) && !cancellationAllowedEvent) {
+    if ((cancellationState?.isCanceled || cancellationState?.isCanceling) && !cancellationAllowedEvent) {
       console.debug(`[AgentStore] Ignoring ${eventType} after cancellation started for ${agentTaskId}`);
       return;
     }
@@ -178,28 +173,23 @@ export class AgentStore extends BlockerEventAgentStore {
     }
 
     switch (eventType) {
-      case 'agentTask_progress':
       case 'agent_task_progress':
         this.handleProgress(agentTaskId, event);
         break;
-      case 'agentTask_result':
       case 'agent_task_result':
         this.handleResult(agentTaskId, event);
         break;
       case 'agent_task_outcome_update':
         this.handleOutcomeUpdate(agentTaskId, event);
         break;
-      case 'agentTask_streaming':
       case 'agent_task_streaming':
         this.handleStreaming(agentTaskId, event);
         break;
-      case 'agentTask_streaming_complete':
       case 'agent_task_streaming_complete':
         this.handleStreamingComplete(agentTaskId, event);
         break;
-      case 'agentTask_cancelled':
-      case 'agent_task_cancelled':
-        this.handleCancelled(agentTaskId, event);
+      case 'agent_task_canceled':
+        this.handleCanceled(agentTaskId, event);
         break;
       case 'step_progress_update':
         this.handleStepProgressUpdate(agentTaskId, event);
@@ -297,7 +287,7 @@ export class AgentStore extends BlockerEventAgentStore {
   }
 
   private handleProgress(agentTaskId: string, event: WSEvent) {
-    if (this.isAgentCancelled(agentTaskId)) return;
+    if (this.isAgentCanceled(agentTaskId)) return;
     const streaming = event.streaming as boolean | undefined;
     if (streaming) {
       const partialResult = event.partial_result as string;
@@ -334,7 +324,7 @@ export class AgentStore extends BlockerEventAgentStore {
   }
 
   private handleResult(agentTaskId: string, event: WSEvent) {
-    if (this.isAgentCancelled(agentTaskId)) return;
+    if (this.isAgentCanceled(agentTaskId)) return;
     const resultPayload = (
       event.result_payload ?? event.payload
     ) as Record<string, unknown> | undefined;
@@ -425,7 +415,7 @@ export class AgentStore extends BlockerEventAgentStore {
   }
 
   private handleOutcomeUpdate(agentTaskId: string, event: WSEvent) {
-    if (this.isAgentCancelled(agentTaskId)) return;
+    if (this.isAgentCanceled(agentTaskId)) return;
     const resultPayload = (
       event.result_payload ?? event.payload
     ) as Record<string, unknown> | undefined;
@@ -463,7 +453,7 @@ export class AgentStore extends BlockerEventAgentStore {
   }
 
   private handleStreaming(agentTaskId: string, event: WSEvent) {
-    if (this.isAgentCancelled(agentTaskId)) return;
+    if (this.isAgentCanceled(agentTaskId)) return;
     const partialResult = event.partial_result as string;
     if (partialResult) {
       this.appendStreamingResult(agentTaskId, partialResult);
@@ -471,7 +461,7 @@ export class AgentStore extends BlockerEventAgentStore {
   }
 
   private handleStreamingComplete(agentTaskId: string, event: WSEvent) {
-    if (this.isAgentCancelled(agentTaskId)) return;
+    if (this.isAgentCanceled(agentTaskId)) return;
     const finalResult =
       (event.final_result as string | undefined) ||
       (event.result as string | undefined) ||
@@ -485,8 +475,8 @@ export class AgentStore extends BlockerEventAgentStore {
     });
   }
 
-  private handleCancelled(agentTaskId: string, event: WSEvent) {
-    const message = (event.message as string | undefined) || 'Agent task cancelled';
+  private handleCanceled(agentTaskId: string, event: WSEvent) {
+    const message = (event.message as string | undefined) || 'Agent task canceled';
     if (this.isTransientWithoutDurableData(agentTaskId)) {
       this.removeAgent(agentTaskId);
       return;
@@ -496,14 +486,14 @@ export class AgentStore extends BlockerEventAgentStore {
     this.updateAgent(agentTaskId, a => {
       a.status = 'failed';
       a.isStreaming = false;
-      a.isCancelling = false;
-      a.isCancelled = true;
+      a.isCanceling = false;
+      a.isCanceled = true;
       a.cancellationError = undefined;
-      a.currentStep = 'Cancelled';
+      a.currentStep = 'Canceled';
       a.errorMessage = message;
       a.timestamp = new Date().toISOString();
     });
-    this.updateProgressStep(agentTaskId, 'Cancelled', false, true);
+    this.updateProgressStep(agentTaskId, 'Canceled', false, true);
   }
 
   private handleStepProgressUpdate(agentTaskId: string, event: WSEvent) {
@@ -659,13 +649,18 @@ export class AgentStore extends BlockerEventAgentStore {
         | 'applescript'
         | 'browser_sensitive_fill'
         | 'provider_permission'
+        | 'command_input'
         | undefined,
       browser_metadata: event.browser_metadata as Record<string, unknown> | undefined,
       provider_permission: event.provider_permission as ProviderPermissionApprovalMetadata | undefined,
+      command_input: event.command_input as CommandInputMetadata | undefined,
       revision: event.revision as number | undefined,
     };
+    const waitingMessage = approval.execution_type === 'command_input'
+      ? 'Waiting for your input'
+      : 'Waiting for your approval';
     this.showApproval(agentTaskId, approval);
-    this.updateProgressStep(agentTaskId, 'Waiting for your approval', true, false);
-    this.updateStep(agentTaskId, 'Waiting for your approval');
+    this.updateProgressStep(agentTaskId, waitingMessage, true, false);
+    this.updateStep(agentTaskId, waitingMessage);
   }
 }

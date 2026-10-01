@@ -21,7 +21,7 @@ final class MeetingAssistantWebView: NSObject, WKScriptMessageHandler, WKNavigat
     var onIntent: ((MeetingBridgeIntent, [String: Any]) -> Void)?
 
     override init() {
-        let configuration = WKWebViewConfiguration()
+        let configuration = BasilWebViewConfigurationFactory.makeConfiguration()
         configuration.preferences.setValue(true, forKey: "developerExtrasEnabled")
         configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
         configuration.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
@@ -119,7 +119,7 @@ final class MeetingAssistantWebView: NSObject, WKScriptMessageHandler, WKNavigat
 
     /// Only local file navigations inside the staged asset bundle are
     /// permitted; anything else (an accidental external link, a malformed
-    /// deep link) is cancelled rather than navigated.
+    /// deep link) is canceled rather than navigated.
     func webView(
         _ webView: WKWebView,
         decidePolicyFor navigationAction: WKNavigationAction,

@@ -49,7 +49,7 @@ final class MemoriesSettingsPayloadTests: XCTestCase {
     func testNarrativeProgressPayloadIncludesOptionalNulls() {
         let progress = NarrativeProgressData(
             active: true, total: 10, processed: 3, finalized: 3, stillOpen: 0, failed: 0, remaining: 7,
-            etaSeconds: nil, lastError: nil, cancelling: nil, analysisConcurrency: nil, processingStrategy: nil
+            etaSeconds: nil, lastError: nil, canceling: nil, analysisConcurrency: nil, processingStrategy: nil
         )
         let payload = MemoriesSettingsPayloadBuilder.narrativeProgressPayload(progress) as? [String: Any]
         XCTAssertTrue(payload?["etaSeconds"] is NSNull)

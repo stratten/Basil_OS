@@ -4,7 +4,8 @@ import numpy as np
 from time import time
 import logging
 import traceback
-from typing import Optional, Union, List, Any, AsyncGenerator
+from dataclasses import dataclass
+from typing import Optional, Union, List, Any, AsyncGenerator, Callable
 from whisper_live_core.timed_objects import ASRToken, Silence, Line, FrontData, State, Transcript, ChangeSpeaker
 from .core import TranscriptionEngine, online_factory, online_diarization_factory, online_translation_factory
 from whisper_live_core.silero_vad_iterator import FixedVADIterator
@@ -24,6 +25,13 @@ logger.setLevel(logging.DEBUG)
 
 SENTINEL = object() # unique sentinel object for end of stream marker
 MIN_DURATION_REAL_SILENCE = 2  # Reduced to 2 seconds to match line break logic and prevent context contamination
+
+
+@dataclass
+class PcmSpan:
+    """Active PCM queued for transcription, tagged with the processor sample index where it ends."""
+    samples: np.ndarray
+    sample_end: int
 
 async def get_all_from_queue(queue: asyncio.Queue) -> Union[object, Silence, np.ndarray, List[Any]]:
     items: List[Any] = []
@@ -46,6 +54,8 @@ async def get_all_from_queue(queue: asyncio.Queue) -> Union[object, Silence, np.
             break
         items.append(await queue.get())
         queue.task_done()
+    if isinstance(items[0], PcmSpan):
+        return PcmSpan(np.concatenate([item.samples for item in items]), items[-1].sample_end)
     if isinstance(items[0], np.ndarray):
         return np.concatenate(items)
     else: #translation
@@ -149,6 +159,7 @@ class AudioProcessor:
         self.pcm_buffer: bytearray = bytearray()
         self.total_pcm_samples: int = 0
         self.native_stream_offset_seconds: float = 0.0
+        self.timeline_seconds_for_sample: Optional[Callable[[int], Optional[float]]] = None
         self.transcription_task: Optional[asyncio.Task] = None
         self.diarization_task: Optional[asyncio.Task] = None
         self.translation_task: Optional[asyncio.Task] = None
@@ -194,6 +205,33 @@ class AudioProcessor:
                 self.meeting_recorder.timeline_offset_seconds + offset_seconds
             )
 
+    def _timeline_end_for_sample(self, sample_end: int) -> float:
+        """Meeting-elapsed seconds at the processor sample index where committed audio ends."""
+        if self.timeline_seconds_for_sample is not None:
+            mapped = self.timeline_seconds_for_sample(sample_end)
+            if mapped is not None:
+                return mapped
+        return self.native_stream_offset_seconds + sample_end / self.sample_rate
+
+    async def begin_capture_pause(self) -> None:
+        """Close the active utterance when native capture pauses so a pause never joins two utterances."""
+        if self.beg_loop is None or self.vac is None:
+            return
+        self.vac.triggered = False
+        self.vac.temp_end = 0
+        await self._begin_silence()
+
+    def take_unhandled_pcm(self, include_partial_sample: bool = False) -> bytes:
+        """Remove and return received PCM not yet handled; sample-aligned unless the trailing partial byte is requested."""
+        size = len(self.pcm_buffer)
+        if not include_partial_sample:
+            size -= size % self.bytes_per_sample
+        if size <= 0:
+            return b""
+        pcm = bytes(self.pcm_buffer[:size])
+        del self.pcm_buffer[:size]
+        return pcm
+
     async def _begin_silence(self) -> None:
         if self.current_silence:
             return
@@ -216,13 +254,13 @@ class AudioProcessor:
         await self._push_silence_event()
         self.current_silence = None
 
-    async def _enqueue_active_audio(self, pcm_chunk: np.ndarray) -> None:
+    async def _enqueue_active_audio(self, pcm_chunk: np.ndarray, sample_end: int) -> None:
         if pcm_chunk is None or pcm_chunk.size == 0:
             return
         self.enqueued_active_audio_count += 1
         transcription_queue_size_before = self.transcription_queue.qsize() if self.transcription_queue else None
         if self.transcription_queue:
-            await self.transcription_queue.put(pcm_chunk.copy())
+            await self.transcription_queue.put(PcmSpan(pcm_chunk.copy(), sample_end))
         transcription_queue_size_after = self.transcription_queue.qsize() if self.transcription_queue else None
         if self._should_log_pcm_diagnostic(self.enqueued_active_audio_count):
             rms, peak = self._calculate_pcm_stats(pcm_chunk)
@@ -348,7 +386,7 @@ class AudioProcessor:
                 await self.handle_pcm_data()
 
             except asyncio.CancelledError:
-                logger.info("ffmpeg_stdout_reader cancelled.")
+                logger.info("ffmpeg_stdout_reader canceled.")
                 break
             except Exception as e:
                 logger.warning(f"Exception in ffmpeg_stdout_reader: {e}")
@@ -366,6 +404,7 @@ class AudioProcessor:
     async def transcription_processor(self) -> None:
         """Process audio chunks for transcription."""
         cumulative_pcm_duration_stream_time = 0.0
+        last_pcm_sample_end = 0
         
         while True:
             try:
@@ -409,8 +448,12 @@ class AudioProcessor:
                 elif isinstance(item, ChangeSpeaker):
                     self.transcription.new_speaker(item)
                     continue
-                elif isinstance(item, np.ndarray):
-                    pcm_array = item
+                elif isinstance(item, (PcmSpan, np.ndarray)):
+                    if isinstance(item, PcmSpan):
+                        pcm_array = item.samples
+                        last_pcm_sample_end = item.sample_end
+                    else:
+                        pcm_array = item
                     logger.info(asr_processing_logs)
                     cumulative_pcm_duration_stream_time += len(pcm_array) / self.sample_rate
                     stream_time_end_of_current_pcm = cumulative_pcm_duration_stream_time
@@ -471,7 +514,7 @@ class AudioProcessor:
                         _buffer_transcript.text = ""
                     assign_token_timeline(
                         new_tokens,
-                        stream_time_end_of_current_pcm + self.native_stream_offset_seconds,
+                        self._timeline_end_for_sample(last_pcm_sample_end),
                     )
 
                 candidate_end_times = [self.state.end_buffer]
@@ -714,7 +757,7 @@ class AudioProcessor:
                         tasks_remaining.remove(task)
                     
             except asyncio.CancelledError:
-                logger.info("Watchdog task cancelled.")
+                logger.info("Watchdog task canceled.")
                 break
             except Exception as e:
                 logger.error(f"Error in watchdog task: {e}", exc_info=True)
@@ -730,7 +773,7 @@ class AudioProcessor:
         created_tasks = [t for t in self.all_tasks_for_cleanup if t]
         if created_tasks:
             await asyncio.gather(*created_tasks, return_exceptions=True)
-        logger.info("All processing tasks cancelled or finished.")
+        logger.info("All processing tasks canceled or finished.")
 
         if not self.is_pcm_input and self.ffmpeg_manager:
             try:
@@ -869,7 +912,9 @@ class AudioProcessor:
                 )
                 if pre_silence_chunk is not None and pre_silence_chunk.size > 0:
                     vad_action = "enqueue_pre_silence_then_begin_silence"
-                    await self._enqueue_active_audio(pre_silence_chunk)
+                    await self._enqueue_active_audio(
+                        pre_silence_chunk, chunk_sample_start + pre_silence_chunk.size
+                    )
                 else:
                     vad_action = "begin_silence_without_pre_silence_audio"
                 await self._begin_silence()
@@ -880,7 +925,7 @@ class AudioProcessor:
         if not self.current_silence:
             if vad_action == "no_transition":
                 vad_action = "enqueue_active_audio"
-            await self._enqueue_active_audio(pcm_array)
+            await self._enqueue_active_audio(pcm_array, chunk_sample_end)
         elif vad_action == "no_transition":
             vad_action = "blocked_by_current_silence"
 

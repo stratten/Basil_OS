@@ -52,7 +52,8 @@ extension LiveTranscriptionViewModel {
     /// pass never overlaps the next tick or doubles up across tracks.
     func runRetranscribeCadenceTickIfDue() async {
         guard !retranscribeWindowInFlight else { return }
-        guard let startTime = recordingStartTime else { return }
+        // Mid-recording upgrades are skipped while paused or in record-only mode; the on-stop pass covers that audio.
+        guard recordingStartTime != nil, !isCapturePaused, sessionLiveTranscriptionEnabled else { return }
         guard !postProcessingModel.isEmpty else {
             #if DEBUG
             DevLogger.shared.info("Deferring mid-recording re-transcription until an execution model is available", context: "LiveTranscriptionViewModel")
@@ -60,7 +61,7 @@ extension LiveTranscriptionViewModel {
             return
         }
 
-        let elapsed = Date().timeIntervalSince(startTime)
+        let elapsed = recordingClock.elapsedSeconds()
         let interval = Double(max(1, sessionRetranscribeWindowSeconds))
 
         let tracks: [(meetingId: String, source: AudioSource)] = [
@@ -106,7 +107,7 @@ extension LiveTranscriptionViewModel {
     /// the next time that meeting is opened with a model available.
     @discardableResult
     func performOnStopTailRetranscription() async -> Bool {
-        guard let startTime = recordingStartTime else { return false }
+        guard recordingStartTime != nil else { return false }
 
         if postProcessingModel.isEmpty {
             let retryCount = 5
@@ -133,7 +134,7 @@ extension LiveTranscriptionViewModel {
             }
         }
 
-        let total = Date().timeIntervalSince(startTime)
+        let total = recordingClock.elapsedSeconds()
 
         let tracks: [(meetingId: String, source: AudioSource)] = [
             (microphoneMeetingId, AudioSource.microphone),

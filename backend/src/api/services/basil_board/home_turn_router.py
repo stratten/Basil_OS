@@ -316,7 +316,7 @@ class HomeTurnRouter:
             await self._board.update_inquiry(inquiry_id, state=HomeTurnState.FAILED)
             raise
 
-        accepted = bool(result.get("success", True)) and result.get("operation") != "cancelled"
+        accepted = bool(result.get("success", True)) and result.get("operation") != "canceled"
         next_state = HomeTurnState.RUNNING if accepted else HomeTurnState.FAILED
         await self._board.update_inquiry(inquiry_id, state=next_state)
 

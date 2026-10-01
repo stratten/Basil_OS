@@ -594,32 +594,42 @@ class ConversationRepository:
         
         return await asyncio.to_thread(_sync_list)
     
-    async def update_message(self, message_id: str, content: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None) -> None:
-        """Update a message's content and/or metadata.
+    async def update_message(
+        self,
+        message_id: str,
+        content: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        model_id: Optional[str] = None,
+    ) -> None:
+        """Update a message's content, metadata, and/or answering model.
         
         Args:
             message_id: ID of the message to update
             content: New content (if provided)
             metadata: New metadata (if provided)
+            model_id: Model that actually wrote the message (if provided)
         """
+        assignments: List[str] = []
+        values: List[Any] = []
+        if content is not None:
+            assignments.append("content = ?")
+            values.append(content)
+        if metadata is not None:
+            assignments.append("metadata = ?")
+            values.append(json.dumps(metadata))
+        if model_id is not None:
+            assignments.append("model_id = ?")
+            values.append(model_id)
+
         def _sync_update():
+            if not assignments:
+                return
             conn = get_sync_connection(self.db_path)
             with conn:
-                if content is not None and metadata is not None:
-                    conn.execute(
-                        "UPDATE conversation_messages SET content = ?, metadata = ? WHERE id = ?",
-                        (content, json.dumps(metadata), message_id)
-                    )
-                elif content is not None:
-                    conn.execute(
-                        "UPDATE conversation_messages SET content = ? WHERE id = ?",
-                        (content, message_id)
-                    )
-                elif metadata is not None:
-                    conn.execute(
-                        "UPDATE conversation_messages SET metadata = ? WHERE id = ?",
-                        (json.dumps(metadata), message_id)
-                    )
+                conn.execute(
+                    f"UPDATE conversation_messages SET {', '.join(assignments)} WHERE id = ?",
+                    (*values, message_id),
+                )
                 conn.commit()
         
         return await asyncio.to_thread(_sync_update)
@@ -814,8 +824,13 @@ class ConversationRepository:
         self,
         message_id: str,
         metadata_patch: Dict[str, Any],
+        *,
+        touch_conversation: bool = True,
     ) -> Dict[str, Any]:
-        """Recursively merge metadata into one message without erasing other keys."""
+        """Recursively merge metadata into one message without erasing other keys.
+
+        Background bookkeeping passes touch_conversation=False so the conversation keeps its place in recency-ordered lists.
+        """
         if not metadata_patch:
             raise ValueError("metadata_patch must not be empty")
         metadata_patch_copy = dict(metadata_patch)
@@ -839,15 +854,48 @@ class ConversationRepository:
                     "UPDATE conversation_messages SET metadata = ? WHERE id = ?",
                     (json.dumps(merged_metadata), message_id),
                 )
-                conn.execute(
-                    "UPDATE conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                    (row["conversation_id"],),
-                )
+                if touch_conversation:
+                    conn.execute(
+                        "UPDATE conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                        (row["conversation_id"],),
+                    )
                 return merged_metadata
 
             return run_write_transaction(self.db_path, "merge_message_metadata", _body)
 
         return await asyncio.to_thread(_sync_merge_metadata)
+
+    async def merge_conversation_metadata(
+        self,
+        conversation_id: str,
+        metadata_patch: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Recursively merge metadata into one conversation without changing its updated_at."""
+        if not metadata_patch:
+            raise ValueError("metadata_patch must not be empty")
+        metadata_patch_copy = dict(metadata_patch)
+
+        def _sync_merge_conversation_metadata() -> Dict[str, Any]:
+            def _body(conn) -> Dict[str, Any]:
+                row = conn.execute(
+                    "SELECT metadata FROM conversations WHERE id = ?",
+                    (conversation_id,),
+                ).fetchone()
+                if row is None:
+                    raise ValueError(f"Conversation {conversation_id} not found")
+                existing_metadata = json.loads(row["metadata"]) if row["metadata"] else {}
+                if not isinstance(existing_metadata, dict):
+                    raise ValueError(f"Conversation {conversation_id} has invalid metadata")
+                merged_metadata = self._merge_metadata(existing_metadata, metadata_patch_copy)
+                conn.execute(
+                    "UPDATE conversations SET metadata = ? WHERE id = ?",
+                    (json.dumps(merged_metadata), conversation_id),
+                )
+                return merged_metadata
+
+            return run_write_transaction(self.db_path, "merge_conversation_metadata", _body)
+
+        return await asyncio.to_thread(_sync_merge_conversation_metadata)
 
     async def get_bounded_recent_messages(
         self,

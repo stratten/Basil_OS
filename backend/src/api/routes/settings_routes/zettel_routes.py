@@ -185,18 +185,18 @@ async def cancel_narrative_pass() -> UpdateResponse[ZettelSettings]:
     try:
         from api.services.zettel.narrative.enricher import get_zettel_enricher
 
-        cancelled = get_zettel_enricher().request_cancel()
+        canceled = get_zettel_enricher().request_cancel()
         preferences = load_preferences()
         return UpdateResponse(
             updated_settings=preferences.zettel,
             message=(
                 "Stopping summaries after items in progress."
-                if cancelled
+                if canceled
                 else "No summarize pass is running."
             ),
         )
     except Exception as exc:
-        api_logger.error(f"Error cancelling narrative pass: {exc}", exc_info=True)
+        api_logger.error(f"Error canceling narrative pass: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
@@ -223,7 +223,7 @@ async def get_narrative_progress() -> NarrativeProgressResponse:
             remaining=remaining,
             eta_seconds=eta_seconds,
             last_error=progress.last_error,
-            cancelling=progress.cancel_requested,
+            canceling=progress.cancel_requested,
             analysis_concurrency=progress.analysis_concurrency,
             processing_strategy=progress.processing_strategy,
         )

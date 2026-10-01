@@ -24,7 +24,8 @@ extension LiveTranscriptionViewModel {
         var queryItems = [
             URLQueryItem(name: "model", value: settings.selected_model),
             URLQueryItem(name: "language", value: settings.language),
-            URLQueryItem(name: "client", value: "native")
+            URLQueryItem(name: "client", value: "native"),
+            URLQueryItem(name: "live_transcription", value: sessionLiveTranscriptionEnabled ? "true" : "false")
         ]
 
         if !meetingName.isEmpty {
@@ -63,7 +64,7 @@ extension LiveTranscriptionViewModel {
 
         let session = URLSession(configuration: .default)
         systemAudioStreamTimingReady = false
-        systemAudioWebSocketTask = session.webSocketTask(with: url)
+        systemAudioWebSocketTask = session.webSocketTask(with: BackendAuthorization.authorizedRequest(for: url))
         systemAudioWebSocketTask?.resume()
 
         #if DEBUG

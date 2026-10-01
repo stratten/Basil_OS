@@ -30,7 +30,7 @@ class VoiceListenerAgentTaskOrchestrationService:
         self.agent_task_orchestrator = agent_task_orchestrator
         self.feedback_manager = feedback_manager
         self.main_service = main_service
-        self._agent_task_cancelled = False
+        self._agent_task_canceled = False
         self._current_screenshot_data = None
         self._operation_state_responses = {}  # Track responses by request_id
         self._widget_state_responses = {}  # Track widget state responses by request_id
@@ -75,11 +75,11 @@ class VoiceListenerAgentTaskOrchestrationService:
         self.processing_started_event: asyncio.Event = asyncio.Event()
         self._capture_handoff_ts: float = 0.0
 
-    def set_agent_task_cancelled(self, cancelled: bool):
+    def set_agent_task_canceled(self, canceled: bool):
         """Set the agent-task cancellation flag and sync with capture service."""
-        self._agent_task_cancelled = cancelled
+        self._agent_task_canceled = canceled
         if self.agent_task_capture_service:
-            self.agent_task_capture_service.set_agent_task_cancelled(cancelled)
+            self.agent_task_capture_service.set_agent_task_canceled(canceled)
 
     def signal_processing_started(self, agent_task_id: str, started_at: float) -> None:
         """

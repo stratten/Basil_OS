@@ -554,8 +554,15 @@
   gap: 6px;
 }
 
+.connections-row-edit-token {
+  box-sizing: border-box;
+  margin-top: 6px;
+  width: 100%;
+}
+
 .connections-row-edit-name,
-.connections-row-edit-description {
+.connections-row-edit-description,
+.connections-row-edit-token {
   background: var(--background-primary);
   border: 1px solid var(--field-border);
   border-radius: 6px;

@@ -105,3 +105,33 @@
   gap: 12px;
   max-width: 700px;
 }
+
+.reasoning-defaults-columns {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.reasoning-defaults-column {
+  border-left: 3px solid var(--primary);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding-left: 14px;
+}
+
+.reasoning-defaults-column h3 {
+  color: var(--primary);
+  font-family: var(--font-family-medium);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+@media (max-width: 640px) {
+  .reasoning-defaults-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

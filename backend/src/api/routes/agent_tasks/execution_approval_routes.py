@@ -6,6 +6,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from api.core.models.preferences import ExecutionApprovalMode
 from api.core.preferences.preferences_io import load_preferences, save_preferences
+from api.core.security.backend_request_guard import require_host_credential
+from api.core.security.execution_approval_risk import (
+    added_whitelist_pattern_risk,
+    approval_settings_change_risk,
+    require_risk_confirmation,
+    updated_whitelist_pattern_risk,
+)
 from api.services.agent_processing.tools.safety import ExecutionApprovalService
 
 from .execution_models import (
@@ -102,15 +109,22 @@ async def process_approval_decision(
         )
         
         logger.info(f"Approval decision processed: approval_id={request.approval_id}, approved={request.approved}")
-        
-        # If approved and user wants to remember, add to whitelist
-        # (This is separate from resolving the Future - it persists the pattern)
-        if request.approved and request.remember_choice:
+
+        from api.dependencies import get_sqlite_knowledge_service
+
+        # The whitelist must record the command the backend asked about, not whatever the client echoes back.
+        durable_approval = await get_sqlite_knowledge_service().execution_approval_repository.get_approval(
+            request.approval_id
+        )
+
+        if request.approved and request.remember_choice and durable_approval is not None:
+            approved_command = str(durable_approval["command"])
             pattern = await approval_service.add_to_whitelist(
-                command=request.command,
+                command=approved_command,
                 pattern_type=request.pattern_type,
-                description=request.description or f"User-approved: {request.command}",
-                risk_level='low'  # User-approved commands are considered low risk
+                description=request.description or f"User-approved: {approved_command}",
+                risk_level='low',  # User-approved commands are considered low risk
+                record_initial_use=True,
             )
             pattern_id = pattern.id
             message = "Command approved and added to whitelist"
@@ -171,9 +185,10 @@ async def get_approval_settings():
         raise HTTPException(status_code=500, detail=f"Failed to get settings: {str(e)}")
 
 
-@router.post("/approval/settings", response_model=ApprovalSettingsResponse)
+@router.post("/approval/settings", response_model=ApprovalSettingsResponse, dependencies=[Depends(require_host_credential)])
 async def update_approval_settings(
-    request: UpdateApprovalSettingsRequest
+    request: UpdateApprovalSettingsRequest,
+    http_request: Request,
 ):
     """
     Update command approval settings.
@@ -187,6 +202,17 @@ async def update_approval_settings(
     try:
         preferences = load_preferences()
         settings = preferences.tool_execution
+        require_risk_confirmation(
+            http_request,
+            approval_settings_change_risk(
+                requested_approval_mode=request.approval_mode,
+                requested_block_dangerous_patterns=request.block_dangerous_patterns,
+                requested_safe_execution_mode=request.safe_execution_mode,
+                current_approval_mode=settings.approval_mode.value,
+                current_block_dangerous_patterns=settings.block_dangerous_patterns,
+                current_safe_execution_mode=settings.safe_execution_mode,
+            ),
+        )
         
         # Update provided fields
         if request.approval_mode is not None:
@@ -222,6 +248,8 @@ async def update_approval_settings(
             timeout_behavior=settings.timeout_behavior.value,
         )
         
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid approval mode: {str(e)}")
     except Exception as e:
@@ -271,9 +299,10 @@ async def get_whitelist_patterns():
         raise HTTPException(status_code=500, detail=f"Failed to get whitelist: {str(e)}")
 
 
-@router.post("/whitelist", response_model=WhitelistPattern)
+@router.post("/whitelist", response_model=WhitelistPattern, dependencies=[Depends(require_host_credential)])
 async def add_whitelist_pattern(
     request: AddWhitelistRequest,
+    http_request: Request,
     approval_service: ExecutionApprovalService = Depends(get_approval_service)
 ):
     """
@@ -300,6 +329,7 @@ async def add_whitelist_pattern(
                 detail=f"Invalid risk level. Must be one of: {', '.join(valid_risk_levels)}"
             )
         
+        require_risk_confirmation(http_request, added_whitelist_pattern_risk(request.pattern, request.pattern_type))
         pattern = await approval_service.add_to_whitelist(
             command=request.pattern,
             pattern_type=request.pattern_type,
@@ -325,10 +355,11 @@ async def add_whitelist_pattern(
         raise HTTPException(status_code=500, detail=f"Failed to add pattern: {str(e)}")
 
 
-@router.put("/whitelist/{pattern_id}", response_model=WhitelistPattern)
+@router.put("/whitelist/{pattern_id}", response_model=WhitelistPattern, dependencies=[Depends(require_host_credential)])
 async def update_whitelist_pattern(
     pattern_id: str,
     request: AddWhitelistRequest,
+    http_request: Request,
     approval_service: ExecutionApprovalService = Depends(get_approval_service)
 ):
     """
@@ -351,6 +382,7 @@ async def update_whitelist_pattern(
                 detail=f"Invalid pattern type. Must be one of: {', '.join(valid_pattern_types)}"
             )
         
+        require_risk_confirmation(http_request, updated_whitelist_pattern_risk(request.pattern, request.pattern_type))
         pattern = await approval_service.update_whitelist_pattern(
             pattern_id=pattern_id,
             command=request.pattern,

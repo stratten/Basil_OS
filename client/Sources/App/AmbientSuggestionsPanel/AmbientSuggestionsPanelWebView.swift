@@ -20,7 +20,7 @@ final class AmbientSuggestionsPanelWebView: NSObject, WKScriptMessageHandler, WK
     private let maxInitAckRetries = 10
 
     override init() {
-        let configuration = WKWebViewConfiguration()
+        let configuration = BasilWebViewConfigurationFactory.makeConfiguration()
         configuration.preferences.setValue(true, forKey: "developerExtrasEnabled")
         configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
         configuration.setValue(true, forKey: "allowUniversalAccessFromFileURLs")

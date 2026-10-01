@@ -9,6 +9,8 @@ import api.dependencies as dependencies_module
 from api.core.knowledge.sqlite.sqlite_knowledge_service_component_services.providers.errors import (
     ProviderRunConflictError,
 )
+from api.core.security.backend_credentials import BACKEND_TOKEN_HEADER, get_backend_credential_store
+from api.core.security.backend_request_guard import BackendRequestGuardMiddleware
 from api.routes.provider_profiles.routes import router as provider_profiles_router
 
 
@@ -181,6 +183,7 @@ def _build_client(repository: _FakeProviderRunRepository, monkeypatch) -> TestCl
         lambda: _FakeKnowledgeService(repository),
     )
     app = FastAPI()
+    app.add_middleware(BackendRequestGuardMiddleware)
     app.include_router(provider_profiles_router)
     return TestClient(app)
 
@@ -421,3 +424,17 @@ def test_provider_profile_routes_reject_malformed_or_extra_request_fields(monkey
     assert extra_status.status_code == 422
     assert malformed_revision.status_code == 422
     assert all(response.status_code == 422 for response in malformed_authentication_method_ids)
+
+
+def test_webview_credential_cannot_enable_a_provider_profile(monkeypatch) -> None:
+    client = _build_client(_FakeProviderRunRepository(profiles=[]), monkeypatch)
+    webview_token = get_backend_credential_store().current().webview_token
+
+    response = client.post(
+        "/settings/provider-profiles/missing/enable",
+        json={"expected_revision": 0},
+        headers={BACKEND_TOKEN_HEADER: webview_token},
+    )
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": "host_credential_required"}

@@ -33,7 +33,7 @@ extension AssistantSessionViewModel {
         editableContent = "" // Clear edited content
         
         #if DEBUG
-        DevLogger.shared.info("[ASSISTANT_SESSION] Cancelled edit mode", context: "AssistantSessionViewModel")
+        DevLogger.shared.info("[ASSISTANT_SESSION] Canceled edit mode", context: "AssistantSessionViewModel")
         #endif
     }
     

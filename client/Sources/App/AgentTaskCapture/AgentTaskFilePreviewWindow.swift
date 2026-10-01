@@ -62,7 +62,7 @@ private final class AgentTaskFilePreviewWindowHost: NSObject, WKScriptMessageHan
         self.agentTaskId = agentTaskId
         self.rootTaskId = rootTaskId
 
-        let configuration = WKWebViewConfiguration()
+        let configuration = BasilWebViewConfigurationFactory.makeConfiguration()
         configuration.preferences.setValue(true, forKey: "developerExtrasEnabled")
         configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
         configuration.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
@@ -512,7 +512,7 @@ private final class AgentTaskFilePreviewWindowHost: NSObject, WKScriptMessageHan
 
     private func openFile(path: String) {
         let posixPath = FilePathUtility.convertToUnixPath(path)
-        let success = NSWorkspace.shared.open(URL(fileURLWithPath: posixPath))
+        let success = BridgeOpenPolicy.openLocalFile(URL(fileURLWithPath: posixPath))
         #if DEBUG
         DevLogger.shared.info("[AgentTaskFilePreviewWindow] openFile path=\(posixPath), success=\(success)", context: "AgentTaskCapture")
         #endif
@@ -573,6 +573,7 @@ private final class AgentTaskFilePreviewWindowHost: NSObject, WKScriptMessageHan
 
     nonisolated func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         Task { @MainActor in
+            guard message.frameInfo.isMainFrame || message.name == "jsLog" else { return }
             handleMessage(name: message.name, body: message.body)
         }
     }
@@ -624,7 +625,7 @@ private final class AgentTaskFilePreviewWindowHost: NSObject, WKScriptMessageHan
             }
         case "openExternalUrl":
             if let urlString = dict["url"] as? String, let url = URL(string: urlString) {
-                NSWorkspace.shared.open(url)
+                BridgeOpenPolicy.openExternalURL(url)
             }
         case "filePreviewChromeHeight":
             if let height = dict["height"] as? NSNumber {

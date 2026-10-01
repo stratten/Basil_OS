@@ -11,6 +11,12 @@ from typing import Any, Dict, List, Optional
 
 from api.services.agent_processing.shared.agent_runtime_context import get_current_agent_context
 from api.services.agent_processing.lifecycle.execution_graph.tool_run_watchdog import record_tool_progress
+from api.core.security.protected_runtime_paths import (
+    PROTECTED_RUNTIME_REFUSAL,
+    is_protected_runtime_path,
+    log_protected_runtime_refusal,
+    references_protected_runtime_path,
+)
 from api.services.agent_processing.tools.safety import ExecutionApprovalService
 from .shell_execution_result import build_approval_failure_result, build_shell_result
 from .shell_file_artifacts import (
@@ -19,10 +25,30 @@ from .shell_file_artifacts import (
     verify_file_operations,
 )
 from .shell_material_operation_receipts import attach_shell_material_operation_receipts
+from api.services.agent_processing.shared.workflow_budget_pause import pause_workflow_budget
+from .command_input_broker import CommandInputBroker
+from .shell_process_runner import (
+    MAX_INPUT_RELAYS,
+    NON_INTERACTIVE_ENV_DEFAULTS,
+    CommandInputReply,
+    InputRequester,
+    ShellRunOutcome,
+    run_shell_process,
+)
 from ..shared.agent_task_workspace import resolve_agent_task_workspace
 from ..shared.cwd_allowlist import detect_repo_root, home_root, resolve_and_validate_cwd
 
 logger = logging.getLogger(__name__)
+
+_INPUT_STOP_GUIDANCE: Dict[str, str] = {
+    "input_required": (
+        "Nobody was available to answer it. Re-run the command non-interactively "
+        "(for example --yes, -y, --no-input, or a supported flag or file for credentials)."
+    ),
+    "input_canceled": "The user declined to answer. Do not retry the same interactive command; ask the user how to proceed.",
+    "input_timeout": "The user did not answer in time. Ask the user before retrying.",
+    "input_limit": f"The command asked for input more than {MAX_INPUT_RELAYS} times. Re-run it non-interactively.",
+}
 
 
 class ShellService:
@@ -62,7 +88,9 @@ class ShellService:
             "an approval_blocked / approval_decision='denied' response as "
             "final. Do NOT use shell to reimplement native macOS app work "
             "(timers, reminders, calendar events, alarms) - use "
-            "applescript_service for those."
+            "applescript_service for those. If a command stops at a prompt, "
+            "Basil relays it to the user; prefer non-interactive flags "
+            "(--yes, -y, --no-input) so commands never need to ask."
         )
         return {
             "methods": {
@@ -71,8 +99,7 @@ class ShellService:
                         "execute_command("
                         "command: str, args: List[str] = None, cwd: str = None, "
                         "env_overrides: Dict[str,str] = None, timeout_s: int = None, "
-                        "max_output_bytes: int = None, file_operations: List[Dict[str,str]] = None, "
-                        "skip_approval_check: bool = False) -> Dict"
+                        "max_output_bytes: int = None, file_operations: List[Dict[str,str]] = None) -> Dict"
                     ),
                     "doc": "Run a non-interactive shell command. Output is captured and size-limited. Commands may require user approval.",
                     "slim_doc": slim_doc,
@@ -88,7 +115,6 @@ class ShellService:
                             "required": False,
                             "description": "Declared filesystem changes. Each item requires operation and absolute path; copy, move, and rename also require source_path.",
                         },
-                        "skip_approval_check": {"type": "bool", "required": False, "description": "Skip command approval check (for internal use)."},
                     },
                     "returns": "Dict {success, stdout, stderr, exit_code, duration_ms, cwd, command_echo, approval_required?, approval_blocked?, approval_decision?}",
                 }
@@ -118,7 +144,7 @@ class ShellService:
         argv = [command] + (args or [])
         full_command = self._echo_argv(argv)
         shell_execution_id = str(uuid.uuid4())
-        agent_task_id = self._agent_task_id or get_current_agent_context().get("agent_task_id")
+        agent_task_id = get_current_agent_context().get("agent_task_id") or self._agent_task_id
         try:
             declared_file_operations = prepare_file_operations(
                 file_operations,
@@ -154,6 +180,21 @@ class ShellService:
                 "command_echo": self._redact_secrets(full_command),
             }
         
+        env_override_values = [str(value) for value in (env_overrides or {}).values()]
+        if references_protected_runtime_path(full_command, cwd, *env_override_values) or (
+            cwd is not None and is_protected_runtime_path(cwd)
+        ):
+            log_protected_runtime_refusal("shell command")
+            return {
+                "success": False,
+                "stdout": "",
+                "stderr": PROTECTED_RUNTIME_REFUSAL,
+                "exit_code": -1,
+                "duration_ms": 0,
+                "cwd": cwd or "",
+                "command_echo": self._redact_secrets(full_command),
+            }
+
         # Command approval check (if enabled)
         # Create approval service lazily with WebSocket support
         if not skip_approval_check:
@@ -162,94 +203,6 @@ class ShellService:
             
         if not skip_approval_check and self._approval_service:
             try:
-                # Define execution callback that will be called immediately upon approval
-                async def execute_approved_command():
-                    # This is the actual execution logic that will run immediately when user approves
-                    safe_cwd, cwd_error = self._resolve_and_validate_cwd(cwd)
-                    if cwd_error:
-                        return {
-                            "success": False,
-                            "stdout": "",
-                            "stderr": cwd_error,
-                            "exit_code": -1,
-                            "duration_ms": 0,
-                            "cwd": cwd or "",
-                            "command_echo": self._redact_secrets(self._echo_argv(argv)),
-                        }
-                    
-                    # Timeouts and caps
-                    eff_timeout = self._clamp_timeout(timeout_s)
-                    eff_cap = max_output_bytes if (isinstance(max_output_bytes, int) and max_output_bytes > 0) else self._default_output_cap
-                    
-                    # Environment handling
-                    env = os.environ.copy()
-                    if env_overrides:
-                        for k, v in env_overrides.items():
-                            if isinstance(k, str) and isinstance(v, str):
-                                env[k] = v
-                    
-                    start = time.time()
-                    try:
-                        proc = await asyncio.create_subprocess_exec(
-                            *argv,
-                            cwd=str(safe_cwd) if safe_cwd else None,
-                            env=env,
-                            stdout=asyncio.subprocess.PIPE,
-                            stderr=asyncio.subprocess.PIPE,
-                            start_new_session=True,
-                        )
-                        
-                        try:
-                            stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=eff_timeout)
-                        except asyncio.CancelledError:
-                            logger.info("🛑 Shell command cancelled; terminating process PID %s", proc.pid)
-                            await self._terminate_timed_out_process(proc)
-                            raise
-                        except asyncio.TimeoutError:
-                            duration_ms = int((time.time() - start) * 1000)
-                            await self._terminate_timed_out_process(proc)
-                            return build_shell_result(
-                                success=False,
-                                stdout="",
-                                stderr=f"Command timed out after {eff_timeout}s",
-                                exit_code=-1,
-                                duration_ms=duration_ms,
-                                cwd=str(safe_cwd) if safe_cwd else "",
-                                command_echo=self._redact_secrets(self._echo_argv(argv)),
-                                error_type="timeout",
-                                timed_out=True,
-                            )
-                        
-                        stdout, stdout_truncated = self._decode_capped_output(stdout_bytes, eff_cap)
-                        stderr, stderr_truncated = self._decode_capped_output(stderr_bytes, eff_cap)
-                        exit_code = proc.returncode
-                        duration_ms = int((time.time() - start) * 1000)
-                        return build_shell_result(
-                            success=exit_code == 0,
-                            stdout=stdout,
-                            stderr=stderr,
-                            exit_code=exit_code,
-                            duration_ms=duration_ms,
-                            cwd=str(safe_cwd) if safe_cwd else "",
-                            command_echo=self._redact_secrets(self._echo_argv(argv)),
-                            error_type=None if exit_code == 0 else "nonzero_exit",
-                            stdout_truncated=stdout_truncated,
-                            stderr_truncated=stderr_truncated,
-                        )
-                    
-                    except FileNotFoundError:
-                        duration_ms = int((time.time() - start) * 1000)
-                        return build_shell_result(
-                            success=False,
-                            stdout="",
-                            stderr=f"Executable not found: {shlex.quote(command)}",
-                            exit_code=-1,
-                            duration_ms=duration_ms,
-                            cwd=str(safe_cwd) if safe_cwd else "",
-                            command_echo=self._redact_secrets(self._echo_argv(argv)),
-                            error_type="executable_not_found",
-                        )
-                
                 # Request approval - returns immediately so modal can close
                 # Actual execution happens after approval is recorded
                 approval_context: Dict[str, Any] = {
@@ -304,7 +257,8 @@ class ShellService:
                         await self._approval_service.add_to_whitelist(
                             full_command,
                             pattern_type=approval_outcome.pattern_type,
-                            description="User-approved shell command"
+                            description="User-approved shell command",
+                            record_initial_use=True,
                         )
                         logger.info(f"Added command to whitelist: {full_command} (type: {approval_outcome.pattern_type})")
                     except Exception as e:
@@ -378,88 +332,80 @@ class ShellService:
 
         # Environment handling – allow explicit overrides only
         env = os.environ.copy()
+        env.update(NON_INTERACTIVE_ENV_DEFAULTS)
         if env_overrides:
             for k, v in env_overrides.items():
                 if isinstance(k, str) and isinstance(v, str):
                     env[k] = v
 
-        start = time.time()
-        try:
-            # Use non-interactive exec (no shell=True). If user needs shell features, they must pass
-            # command="bash" and args=["-lc", "actual command"] explicitly.
-            proc = await asyncio.create_subprocess_exec(
-                *argv,
-                cwd=str(safe_cwd) if safe_cwd else None,
-                env=env,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                start_new_session=True,
-            )
+        command_echo = self._redact_secrets(self._echo_argv(argv))
+
+        def _record_process_started(pid: int) -> None:
             record_tool_progress(
                 agent_task_id=agent_task_id,
                 tool_name="shell_service_execute_command",
                 status="service_running",
                 progress_kind="process_started",
-                command_echo=self._redact_secrets(self._echo_argv(argv)),
+                command_echo=command_echo,
                 shell_execution_id=shell_execution_id,
-                pid=proc.pid,
+                pid=pid,
+                timeout_seconds=float(eff_timeout),
             )
 
-            try:
-                stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=eff_timeout)
-            except asyncio.CancelledError:
-                logger.info("🛑 Shell command cancelled; terminating process PID %s", proc.pid)
-                await self._terminate_timed_out_process(proc)
-                raise
-            except asyncio.TimeoutError:
-                duration_ms = int((time.time() - start) * 1000)
-                await self._terminate_timed_out_process(proc)
-                record_tool_progress(
+        start = time.time()
+        try:
+            # Use non-interactive exec (no shell=True). If user needs shell features, they must pass
+            # command="bash" and args=["-lc", "actual command"] explicitly.
+            run = await run_shell_process(
+                argv,
+                cwd=str(safe_cwd) if safe_cwd else None,
+                env=env,
+                timeout_seconds=float(eff_timeout),
+                input_requester=self._build_input_requester(
                     agent_task_id=agent_task_id,
-                    tool_name="shell_service_execute_command",
-                    status="returned",
-                    progress_kind="process_timed_out",
-                    command_echo=self._redact_secrets(self._echo_argv(argv)),
                     shell_execution_id=shell_execution_id,
-                    pid=proc.pid,
-                    duration_ms=duration_ms,
-                )
-                return build_shell_result(
-                    success=False,
-                    stdout="",
-                    stderr=f"Command timed out after {eff_timeout}s",
-                    exit_code=-1,
-                    duration_ms=duration_ms,
-                    cwd=str(safe_cwd) if safe_cwd else "",
-                    command_echo=self._redact_secrets(self._echo_argv(argv)),
-                    error_type="timeout",
-                    timed_out=True,
-                )
+                    command_echo=command_echo,
+                ),
+                on_started=_record_process_started,
+            )
 
             # Enforce output caps
-            stdout, stdout_truncated = self._decode_capped_output(stdout_bytes, eff_cap)
-            stderr, stderr_truncated = self._decode_capped_output(stderr_bytes, eff_cap)
-            exit_code = proc.returncode
-            duration_ms = int((time.time() - start) * 1000)
+            stdout, stdout_truncated = self._decode_capped_output(run.stdout_bytes, eff_cap)
+            stderr, stderr_truncated = self._decode_capped_output(run.stderr_bytes, eff_cap)
+            if run.timed_out or run.input_status:
+                return self._build_stopped_result(
+                    run=run,
+                    stdout=stdout,
+                    stderr=stderr,
+                    stdout_truncated=stdout_truncated,
+                    stderr_truncated=stderr_truncated,
+                    eff_timeout=eff_timeout,
+                    cwd=str(safe_cwd) if safe_cwd else "",
+                    command_echo=command_echo,
+                    agent_task_id=agent_task_id,
+                    shell_execution_id=shell_execution_id,
+                )
+            exit_code = run.exit_code
+            duration_ms = run.duration_ms
             record_tool_progress(
                 agent_task_id=agent_task_id,
                 tool_name="shell_service_execute_command",
                 status="returned",
                 progress_kind="process_exited",
-                command_echo=self._redact_secrets(self._echo_argv(argv)),
+                command_echo=command_echo,
                 shell_execution_id=shell_execution_id,
-                pid=proc.pid,
+                pid=run.pid,
                 exit_code=exit_code,
                 duration_ms=duration_ms,
-                stdout_bytes=len(stdout_bytes or b""),
-                stderr_bytes=len(stderr_bytes or b""),
+                stdout_bytes=len(run.stdout_bytes),
+                stderr_bytes=len(run.stderr_bytes),
             )
             file_artifacts: List[Dict[str, str]] = []
             file_artifact_errors: List[str] = []
             if exit_code == 0 and declared_file_operations:
                 file_artifacts, file_artifact_errors = verify_file_operations(declared_file_operations)
 
-            return attach_shell_material_operation_receipts(build_shell_result(
+            return self._attach_run_details(attach_shell_material_operation_receipts(build_shell_result(
                 success=exit_code == 0 and not file_artifact_errors,
                 stdout=stdout,
                 stderr=stderr,
@@ -481,7 +427,7 @@ class ShellService:
                     declared_file_operations,
                     verification_status="verified" if not file_artifact_errors and exit_code == 0 else "not_checked",
                 ),
-            ), declared_file_operations)
+            ), declared_file_operations), run)
 
         except FileNotFoundError:
             duration_ms = int((time.time() - start) * 1000)
@@ -508,6 +454,123 @@ class ShellService:
     # ---------------------------
     # Internal helpers
     # ---------------------------
+    def _build_input_requester(
+        self,
+        *,
+        agent_task_id: Optional[str],
+        shell_execution_id: str,
+        command_echo: str,
+    ) -> Optional[InputRequester]:
+        if not (isinstance(agent_task_id, str) and agent_task_id.strip()) or self._websocket_manager is None:
+            return None
+        websocket_manager = self._websocket_manager
+
+        async def _request(prompt: str, secret: bool) -> CommandInputReply:
+            record_tool_progress(
+                agent_task_id=agent_task_id,
+                tool_name="shell_service_execute_command",
+                status="input_waiting",
+                progress_kind="input_requested",
+                command_echo=command_echo,
+                shell_execution_id=shell_execution_id,
+            )
+            try:
+                with pause_workflow_budget("command_input"):
+                    return await CommandInputBroker.request_input(
+                        agent_task_id=agent_task_id,
+                        prompt=self._redact_secrets(prompt),
+                        secret=secret,
+                        command_echo=command_echo,
+                        websocket_manager=websocket_manager,
+                    )
+            finally:
+                record_tool_progress(
+                    agent_task_id=agent_task_id,
+                    tool_name="shell_service_execute_command",
+                    status="service_running",
+                    progress_kind="input_resolved",
+                    command_echo=command_echo,
+                    shell_execution_id=shell_execution_id,
+                )
+
+        return _request
+
+    def _attach_run_details(self, result: Dict[str, Any], run: ShellRunOutcome) -> Dict[str, Any]:
+        if run.input_exchanges:
+            result["input_exchanges"] = [
+                {
+                    "prompt": self._redact_secrets(str(exchange.get("prompt") or "")),
+                    "secret": bool(exchange.get("secret")),
+                    "status": exchange.get("status"),
+                }
+                for exchange in run.input_exchanges
+            ]
+            result["input_wait_ms"] = run.input_wait_ms
+        if run.input_status:
+            result["input_status"] = run.input_status
+            result["input_prompt"] = self._redact_secrets(run.pending_prompt or "")
+        if run.timeout_clock:
+            result["timeout_clock"] = run.timeout_clock
+        if run.terminal_output.strip():
+            result["terminal_output"] = self._redact_secrets(run.terminal_output)
+        return result
+
+    def _build_stopped_result(
+        self,
+        *,
+        run: ShellRunOutcome,
+        stdout: str,
+        stderr: str,
+        stdout_truncated: bool,
+        stderr_truncated: bool,
+        eff_timeout: int,
+        cwd: str,
+        command_echo: str,
+        agent_task_id: Optional[str],
+        shell_execution_id: str,
+    ) -> Dict[str, Any]:
+        partial_output = bool(run.stdout_bytes or run.stderr_bytes)
+        if run.timed_out:
+            reason = f"Command timed out after {eff_timeout}s"
+            if run.timeout_clock == "wall_clock":
+                reason += " (wall-clock bound reached; the Mac may have slept while it ran)"
+            if partial_output:
+                reason += ". Output above is partial."
+            error_type = "timeout"
+            progress_kind = "process_timed_out"
+        else:
+            prompt = self._redact_secrets(run.pending_prompt or "")
+            guidance = _INPUT_STOP_GUIDANCE.get(run.input_status or "", _INPUT_STOP_GUIDANCE["input_required"])
+            reason = f"Command stopped while waiting for input ({prompt!r}). {guidance}"
+            error_type = run.input_status or "input_required"
+            progress_kind = "process_stopped_for_input"
+        combined_stderr = f"{stderr.rstrip()}\n{reason}" if stderr.strip() else reason
+        record_tool_progress(
+            agent_task_id=agent_task_id,
+            tool_name="shell_service_execute_command",
+            status="returned",
+            progress_kind=progress_kind,
+            command_echo=command_echo,
+            shell_execution_id=shell_execution_id,
+            pid=run.pid,
+            duration_ms=run.duration_ms,
+        )
+        result = build_shell_result(
+            success=False,
+            stdout=stdout,
+            stderr=combined_stderr,
+            exit_code=-1,
+            duration_ms=run.duration_ms,
+            cwd=cwd,
+            command_echo=command_echo,
+            error_type=error_type,
+            timed_out=run.timed_out,
+            stdout_truncated=stdout_truncated,
+            stderr_truncated=stderr_truncated,
+        )
+        result["partial_output"] = partial_output
+        return self._attach_run_details(result, run)
+
     def _resolve_and_validate_cwd(self, cwd: Optional[str]) -> (Optional[Path], Optional[str]):
         if not cwd:
             default_workspace = self._default_task_workspace()

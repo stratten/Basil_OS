@@ -5,6 +5,7 @@ import '@agent-task/styles/theme.css';
 import { applyProcessingDefaults } from './theme/agentTaskTheme';
 import './styles/shell.css';
 import './styles/home.css';
+import './styles/home-markdown-blocks.css';
 import './styles/chats.css';
 import './styles/todos.css';
 import './styles/chats-messages.css';

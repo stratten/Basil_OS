@@ -10,10 +10,15 @@ import glob
 import logging
 import subprocess
 import os
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
 
+from .search_subprocess import run_bounded_search_process
+
 logger = logging.getLogger(__name__)
+
+_FIND_TIMEOUT_SECONDS = 30.0
+_PERMISSION_ONLY_STDERR_MARKERS = ("Permission denied", "Operation not permitted")
 
 
 class CloudStorageService:
@@ -114,7 +119,9 @@ class CloudStorageService:
         
         try:
             # Get all mounted volumes
-            result = subprocess.run(['df', '-h'], capture_output=True, text=True, timeout=10)
+            result = await asyncio.to_thread(
+                subprocess.run, ['df', '-h'], capture_output=True, text=True, timeout=10
+            )
             mounted_paths = []
             
             for line in result.stdout.split('\n')[1:]:  # Skip header
@@ -183,6 +190,13 @@ class CloudStorageService:
             return {}
     
     async def search_cloud_files(self, filename: str, provider: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Search for files across cloud storage and return only the files found."""
+        coverage = await self.search_cloud_files_with_coverage(filename, provider)
+        return coverage["files"]
+
+    async def search_cloud_files_with_coverage(
+        self, filename: str, provider: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Search for files across cloud storage using file system access.
         
@@ -191,7 +205,7 @@ class CloudStorageService:
             provider: Optional specific provider to search (google_drive, onedrive, etc.)
             
         Returns:
-            List of found files with metadata
+            {"files": [...], "incomplete_paths": [{"path": ..., "reason": ...}]}; a path is incomplete when its find timed out, failed, or errored, so empty files plus incomplete paths is not evidence that a file does not exist.
         """
         logger.info(f"🔍 Searching cloud files for: '{filename}' (provider: {provider or 'all'})")
         
@@ -201,7 +215,7 @@ class CloudStorageService:
         
         if not searchable_paths:
             logger.warning("⚠️ No cloud storage paths found to search")
-            return []
+            return {"files": [], "incomplete_paths": []}
         
         # Filter paths by provider if specified
         if provider:
@@ -214,21 +228,34 @@ class CloudStorageService:
         
         # Search in each path
         found_files = []
+        incomplete_paths: List[Dict[str, str]] = []
         for search_path in searchable_paths:
             try:
-                files = await self._search_in_path(search_path, filename)
-                for file_info in files:
-                    file_info['cloud_provider'] = self._identify_provider(search_path)
-                    file_info['is_cloud_file'] = True
-                found_files.extend(files)
+                files, incomplete_reason = await self._search_in_path_with_coverage(search_path, filename)
             except Exception as e:
                 logger.debug(f"⚠️ Error searching in {search_path}: {e}")
+                incomplete_paths.append({"path": search_path, "reason": f"search error: {e}"})
+                continue
+            for file_info in files:
+                file_info['cloud_provider'] = self._identify_provider(search_path)
+                file_info['is_cloud_file'] = True
+            found_files.extend(files)
+            if incomplete_reason:
+                incomplete_paths.append({"path": search_path, "reason": incomplete_reason})
         
-        logger.info(f"✅ Found {len(found_files)} cloud files")
-        return found_files
+        logger.info(f"✅ Found {len(found_files)} cloud files ({len(incomplete_paths)} incomplete path(s))")
+        return {"files": found_files, "incomplete_paths": incomplete_paths}
     
     async def _search_in_path(self, search_path: str, filename: str) -> List[Dict[str, Any]]:
         """Search for files in a specific path using find command."""
+        files, _incomplete_reason = await self._search_in_path_with_coverage(search_path, filename)
+        return files
+
+    async def _search_in_path_with_coverage(
+        self, search_path: str, filename: str
+    ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+        """Search one path with find, keeping partial results and reporting why coverage is incomplete."""
+        incomplete_reason: Optional[str] = None
         try:
             # Case-insensitive find that prunes hidden directories EXCEPT
             # Google Drive's `.shortcut-targets-by-id` subtree, where "Shared with
@@ -240,20 +267,25 @@ class CloudStorageService:
                 '-type', 'f', '-iname', f'*{filename}*', '-print',
             ]
             
-            result = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
+            outcome = await run_bounded_search_process(cmd, timeout_seconds=_FIND_TIMEOUT_SECONDS)
             
-            stdout, stderr = await asyncio.wait_for(result.communicate(), timeout=30)
+            if outcome.timed_out:
+                logger.warning(
+                    f"⏰ Search timed out in {search_path}; keeping {len(outcome.lines)} partial result(s)"
+                )
+                incomplete_reason = f"timed out after {_FIND_TIMEOUT_SECONDS:.0f}s"
             
-            if result.returncode != 0:
-                logger.debug(f"Find command failed for {search_path}: {stderr.decode()}")
-                return []
+            if outcome.returncode not in (0, None) and not outcome.timed_out:
+                stderr_lines = [line for line in outcome.stderr_tail.splitlines() if line.strip()]
+                permission_only = bool(stderr_lines) and all(
+                    any(marker in line for marker in _PERMISSION_ONLY_STDERR_MARKERS)
+                    for line in stderr_lines
+                )
+                logger.debug(f"Find exited {outcome.returncode} for {search_path}: {outcome.stderr_tail[-500:]}")
+                if not permission_only:
+                    incomplete_reason = f"find exited with status {outcome.returncode}"
             
-            file_paths = stdout.decode().strip().split('\n')
-            file_paths = [path for path in file_paths if path]  # Remove empty lines
+            file_paths = [path for path in outcome.lines if path]
             total_found = len(file_paths)
             
             # Get metadata for each file
@@ -274,14 +306,11 @@ class CloudStorageService:
                 except Exception as e:
                     logger.debug(f"⚠️ Could not get metadata for {file_path}: {e}")
             
-            return files
+            return files, incomplete_reason
             
-        except asyncio.TimeoutError:
-            logger.warning(f"⏰ Search timed out in {search_path}")
-            return []
         except Exception as e:
             logger.error(f"❌ Error searching in {search_path}: {e}")
-            return []
+            return [], f"search error: {e}"
     
     def _identify_provider(self, path: str) -> str:
         """Identify which cloud provider a path belongs to."""

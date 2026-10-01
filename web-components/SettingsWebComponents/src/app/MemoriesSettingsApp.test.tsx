@@ -112,7 +112,7 @@ describe('MemoriesSettingsApp', () => {
         requestId: progressCall[0].requestId,
         narrativeProgress: {
           active: true, total: 10, processed: 3, finalized: 3, stillOpen: 0, failed: 0, remaining: 7,
-          etaSeconds: 42, lastError: null, cancelling: false, analysisConcurrency: null, processingStrategy: null,
+          etaSeconds: 42, lastError: null, canceling: false, analysisConcurrency: null, processingStrategy: null,
         },
       })
     })
@@ -123,7 +123,7 @@ describe('MemoriesSettingsApp', () => {
         requestId: progressCall[0].requestId,
         narrativeProgress: {
           active: false, total: 10, processed: 10, finalized: 10, stillOpen: 0, failed: 0, remaining: 0,
-          etaSeconds: null, lastError: null, cancelling: false, analysisConcurrency: null, processingStrategy: null,
+          etaSeconds: null, lastError: null, canceling: false, analysisConcurrency: null, processingStrategy: null,
         },
       })
     })

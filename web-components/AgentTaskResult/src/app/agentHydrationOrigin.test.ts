@@ -369,11 +369,11 @@ describe('hydrateAgentFromBackend durable metadata', () => {
     });
   });
 
-  it('retains a persisted artifact while hydrating a cancelled task', async () => {
-    agentStore.registerAgent('task-artifact-cancelled');
+  it('retains a persisted artifact while hydrating a canceled task', async () => {
+    agentStore.registerAgent('task-artifact-canceled');
     vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
-      id: 'task-artifact-cancelled',
-      status: 'cancelled',
+      id: 'task-artifact-canceled',
+      status: 'canceled',
       execution_timeline: [{
         id: 'artifact_file-0123456789abcdef01234567',
         type: 'artifact',
@@ -402,10 +402,10 @@ describe('hydrateAgentFromBackend durable metadata', () => {
       }],
     }));
 
-    hydrateAgentFromBackend('task-artifact-cancelled');
+    hydrateAgentFromBackend('task-artifact-canceled');
 
     await vi.waitFor(() => {
-      const agent = agentStore.getAgent('task-artifact-cancelled');
+      const agent = agentStore.getAgent('task-artifact-canceled');
       expect(agent?.status).toBe('failed');
       expect(agent?.executionTimeline[0]?.id).toBe('artifact_file-0123456789abcdef01234567');
     });

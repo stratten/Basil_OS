@@ -167,8 +167,8 @@ async def test_missing_durable_artifact_never_writes_or_broadcasts_activity() ->
 
 
 @pytest.mark.asyncio
-async def test_cancelled_placeholder_accepts_durable_artifact_once_without_lifecycle_regression() -> None:
-    durable_metadata = metadata("cancelled")
+async def test_canceled_placeholder_accepts_durable_artifact_once_without_lifecycle_regression() -> None:
+    durable_metadata = metadata("canceled")
 
     async def merge_metadata(_: str, patch: dict) -> None:
         durable_metadata["conversation_turn"].update(patch["conversation_turn"])
@@ -185,7 +185,7 @@ async def test_cancelled_placeholder_accepts_durable_artifact_once_without_lifec
     activity_broadcast = AsyncMock()
     lifecycle = ConversationAgentTurnLifecycle(
         repository=repository,
-        get_agent_task=AsyncMock(return_value=task("cancelled", [direct_write_entry()])),
+        get_agent_task=AsyncMock(return_value=task("canceled", [direct_write_entry()])),
         broadcast_status=AsyncMock(),
         broadcast_activity=activity_broadcast,
     )
@@ -200,6 +200,6 @@ async def test_cancelled_placeholder_accepts_durable_artifact_once_without_lifec
         "file-0123456789abcdef01234567",
     ) is False
 
-    assert durable_metadata["conversation_turn"]["lifecycle"] == "cancelled"
-    assert durable_metadata["conversation_turn"]["activity_summary"]["lifecycle"] == "cancelled"
+    assert durable_metadata["conversation_turn"]["lifecycle"] == "canceled"
+    assert durable_metadata["conversation_turn"]["activity_summary"]["lifecycle"] == "canceled"
     assert activity_broadcast.await_count == 1

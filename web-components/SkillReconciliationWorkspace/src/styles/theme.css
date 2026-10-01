@@ -20,7 +20,7 @@
      App.tsx when the user customizes them via /settings/appearance.
 
      Note: `--processing-base` / `--processing-accent` defaults are
-     intentionally NOT declared here. App.tsx initialises them at module
+     intentionally NOT declared here. App.tsx initializes them at module
      load from `theme/generated-defaults.ts`, which is regenerated from the
      canonical Swift literal in AestheticSystem.swift by
      `scripts/generate_processing_color_defaults.py` (run as STEP 0 of the

@@ -17,6 +17,7 @@ final class ReactReasoningDefaultsSettingsWebView: NSObject {
     var onRequestUpdateAssistantSessionDefaultModality: ((String, AssistantSessionInputMode) -> Void)?
     var onRequestUpdateAssistantSessionPushToTalk: ((String, Bool) -> Void)?
     var onRequestUpdateAssistantSessionPushToTalkThreshold: ((String, Int) -> Void)?
+    var onRequestUpdateConversationDefaultConversationOnly: ((String, Bool) -> Void)?
     var onMalformedIntent: ((String) -> Void)?
 
     init(webView: WKWebView) {
@@ -135,6 +136,12 @@ final class ReactReasoningDefaultsSettingsWebView: NSObject {
                 return
             }
             onRequestUpdateAssistantSessionPushToTalkThreshold?(requestId, thresholdMs)
+        case "requestUpdateConversationDefaultConversationOnly":
+            guard let requestId = body["requestId"] as? String, let enabled = body["enabled"] as? Bool else {
+                onMalformedIntent?("requestUpdateConversationDefaultConversationOnly")
+                return
+            }
+            onRequestUpdateConversationDefaultConversationOnly?(requestId, enabled)
         default:
             onMalformedIntent?(type)
         }

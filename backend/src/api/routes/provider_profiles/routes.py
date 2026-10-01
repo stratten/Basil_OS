@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+
+from api.core.security.backend_request_guard import require_host_credential
 
 from api.core.knowledge.sqlite.sqlite_knowledge_service_component_services.providers.errors import (
     ProviderRunConflictError,
@@ -144,7 +146,12 @@ async def get_provider_profile_configuration(
     )
 
 
-@router.post("", response_model=ProviderProfileConfigurationDTO, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=ProviderProfileConfigurationDTO,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_host_credential)],
+)
 async def create_provider_profile(
     request: ProviderProfileCreateRequest,
 ) -> ProviderProfileConfigurationDTO:
@@ -172,7 +179,11 @@ async def create_provider_profile(
     )
 
 
-@router.put("/{provider_profile_id}", response_model=ProviderProfileConfigurationDTO)
+@router.put(
+    "/{provider_profile_id}",
+    response_model=ProviderProfileConfigurationDTO,
+    dependencies=[Depends(require_host_credential)],
+)
 async def update_provider_profile(
     provider_profile_id: str,
     request: ProviderProfileUpdateRequest,
@@ -201,7 +212,11 @@ async def update_provider_profile(
     )
 
 
-@router.post("/{provider_profile_id}/enable", response_model=ProviderProfileConfigurationDTO)
+@router.post(
+    "/{provider_profile_id}/enable",
+    response_model=ProviderProfileConfigurationDTO,
+    dependencies=[Depends(require_host_credential)],
+)
 async def enable_provider_profile(
     provider_profile_id: str,
     request: ProfileRevisionRequest,
@@ -271,6 +286,7 @@ async def remove_provider_profile(
     "/{provider_profile_id}/workspace-grants",
     response_model=WorkspaceGrantSummaryDTO,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_host_credential)],
 )
 async def create_workspace_grant(
     provider_profile_id: str,
@@ -295,6 +311,7 @@ async def create_workspace_grant(
 @router.put(
     "/{provider_profile_id}/workspace-grants/{workspace_grant_id}",
     response_model=WorkspaceGrantSummaryDTO,
+    dependencies=[Depends(require_host_credential)],
 )
 async def update_workspace_grant(
     provider_profile_id: str,

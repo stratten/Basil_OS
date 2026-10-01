@@ -63,7 +63,7 @@ async def mark_interrupted_active_agent_tasks(db_path: str) -> int:
             conn.execute(
                 f"""
                 UPDATE execution_approvals
-                SET status = 'cancelled',
+                SET status = 'canceled',
                     updated_at = ?,
                     resolved_at = ?,
                     revision = revision + 1
@@ -71,6 +71,24 @@ async def mark_interrupted_active_agent_tasks(db_path: str) -> int:
                 """,
                 (interrupted_at, interrupted_at, *interrupted_task_ids),
             )
+
+        # Pending approvals only have live waiters inside the process that created them, so after a restart any approval owned by a terminal task can never be answered.
+        orphan_cursor = conn.execute(
+            """
+            UPDATE execution_approvals
+            SET status = 'canceled',
+                updated_at = ?,
+                resolved_at = ?,
+                revision = revision + 1
+            WHERE status = 'pending'
+              AND agent_task_id IN (
+                  SELECT id FROM agent_tasks WHERE status IN ('completed', 'failed', 'canceled')
+              )
+            """,
+            (interrupted_at, interrupted_at),
+        )
+        if orphan_cursor.rowcount:
+            logger.info("Canceled %s orphaned pending execution approval(s) on startup", orphan_cursor.rowcount)
 
         for root_task_id in impacted_roots:
             recompute_root_summary(conn, root_task_id)

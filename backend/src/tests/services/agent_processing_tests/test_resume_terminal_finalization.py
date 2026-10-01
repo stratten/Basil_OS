@@ -69,7 +69,7 @@ class _CancellationRegistry:
     def deregister_active_task(self, *_args):
         pass
 
-    def is_cancelled(self, *_args):
+    def is_canceled(self, *_args):
         return False
 
     def get_cancellation_event(self, *_args):
@@ -250,7 +250,7 @@ async def test_finalize_resumed_workflow_missing_record_is_noop(monkeypatch):
 @pytest.mark.asyncio
 async def test_finalize_resumed_workflow_does_not_overwrite_parent_cancellation(monkeypatch):
     ws = _WebsocketRecorder()
-    db = _DbService(_completed_record(status="cancelled"))
+    db = _DbService(_completed_record(status="canceled"))
     import api.dependencies as deps
 
     monkeypatch.setattr(deps, "get_sqlite_knowledge_service", lambda: db)

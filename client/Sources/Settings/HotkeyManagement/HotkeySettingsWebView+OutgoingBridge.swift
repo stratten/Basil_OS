@@ -6,7 +6,7 @@ protocol HotkeySettingsBridgeOutput: AnyObject {
     func sendSnapshot(rows: [HotkeyRowDefinition], bindings: [String: HotkeyBinding], enableMonitoringAtStartup: Bool)
     func sendLoadError(message: String)
     func sendCaptured(id: String, binding: HotkeyBinding)
-    func sendCaptureCancelled(id: String)
+    func sendCaptureCanceled(id: String)
     func sendIntentResult(requestId: String, status: String, message: String?)
 }
 
@@ -38,8 +38,8 @@ extension HotkeySettingsWebView: HotkeySettingsBridgeOutput {
         callJS("window.basilHotkeySettings && window.basilHotkeySettings.onEvent", args: event)
     }
 
-    func sendCaptureCancelled(id: String) {
-        let event: [String: Any] = ["type": "captureCancelled", "id": id]
+    func sendCaptureCanceled(id: String) {
+        let event: [String: Any] = ["type": "captureCanceled", "id": id]
         callJS("window.basilHotkeySettings && window.basilHotkeySettings.onEvent", args: event)
     }
 

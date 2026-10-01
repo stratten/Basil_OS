@@ -104,7 +104,7 @@ async def test_get_pending_interaction_for_agent_task_returns_only_the_live_pend
         fields=_fields(),
     )
 
-    await db_service.provider_interaction_repository.mark_cancelled(
+    await db_service.provider_interaction_repository.mark_canceled(
         interaction_id=second["id"], expected_revision=0
     )
 
@@ -163,7 +163,7 @@ async def test_mark_answered_transitions_pending_to_answered_and_stores_values(t
 
 
 @pytest.mark.asyncio
-async def test_mark_declined_and_mark_cancelled_transition_pending_correctly(tmp_path) -> None:
+async def test_mark_declined_and_mark_canceled_transition_pending_correctly(tmp_path) -> None:
     db_service = SQLiteKnowledgeService(tmp_path / "kb.db")
     run = await _seed_run(db_service)
 
@@ -182,7 +182,7 @@ async def test_mark_declined_and_mark_cancelled_transition_pending_correctly(tmp
     assert declined["outcome"] == "decline"
     assert declined["submitted_values"] is None
 
-    cancelled_source = await db_service.provider_interaction_repository.create_interaction(
+    canceled_source = await db_service.provider_interaction_repository.create_interaction(
         provider_run_id=str(run["id"]),
         agent_task_id="task-1",
         root_task_id="task-1",
@@ -190,11 +190,11 @@ async def test_mark_declined_and_mark_cancelled_transition_pending_correctly(tmp
         requested_schema={"type": "object", "properties": {"strategy": {"type": "string"}}},
         fields=_fields(),
     )
-    cancelled = await db_service.provider_interaction_repository.mark_cancelled(
-        interaction_id=cancelled_source["id"], expected_revision=0
+    canceled = await db_service.provider_interaction_repository.mark_canceled(
+        interaction_id=canceled_source["id"], expected_revision=0
     )
-    assert cancelled["status"] == "cancelled"
-    assert cancelled["outcome"] == "cancel"
+    assert canceled["status"] == "canceled"
+    assert canceled["outcome"] == "cancel"
 
 
 @pytest.mark.asyncio
@@ -537,7 +537,7 @@ async def test_resolve_permission_interaction_rejects_a_provider_user_input_inte
 
 
 @pytest.mark.asyncio
-async def test_cancel_permission_interaction_transitions_to_cancelled(tmp_path) -> None:
+async def test_cancel_permission_interaction_transitions_to_canceled(tmp_path) -> None:
     db_service = SQLiteKnowledgeService(tmp_path / "kb.db")
     run = await _seed_run(db_service)
     interaction = await db_service.provider_interaction_repository.create_permission_interaction(
@@ -547,16 +547,16 @@ async def test_cancel_permission_interaction_transitions_to_cancelled(tmp_path) 
         action_summary=_permission_summary(),
     )
 
-    cancelled = await db_service.provider_interaction_repository.cancel_permission_interaction(
+    canceled = await db_service.provider_interaction_repository.cancel_permission_interaction(
         interaction_id=interaction["id"],
         provider_run_id=str(run["id"]),
         agent_task_id="task-1",
         expected_revision=0,
     )
 
-    assert cancelled["status"] == "cancelled"
-    assert cancelled["outcome"] == "cancel"
-    assert cancelled["submitted_values"] is None
+    assert canceled["status"] == "canceled"
+    assert canceled["outcome"] == "cancel"
+    assert canceled["submitted_values"] is None
 
 
 @pytest.mark.asyncio

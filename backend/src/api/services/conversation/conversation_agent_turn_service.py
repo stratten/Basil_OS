@@ -15,8 +15,8 @@ from .conversation_turn_contract import (
 )
 
 _CONVERSATION_AGENT_TASK_INSTRUCTION = """You are handling a request delegated from Basil Conversation. Use relevant conversation and durable task context when it is available. Work through the request using normal approval-governed Agent Task capabilities when needed, then leave a durable result that Basil Conversation can evaluate and explain to the user."""
-_FAILURE_STATUSES = frozenset({"failed", "error", "cancelled"})
-TERMINAL_AGENT_TASK_STATUSES = frozenset({"completed", "failed", "cancelled"})
+_FAILURE_STATUSES = frozenset({"failed", "error", "canceled"})
+TERMINAL_AGENT_TASK_STATUSES = frozenset({"completed", "failed", "canceled"})
 
 logger = logging.getLogger(__name__)
 

@@ -184,17 +184,17 @@ describe('TodoView list and selection', () => {
     expect(rowWithoutAgent?.querySelector('.todo-list-item-agent-status')).toBeNull();
   });
 
-  it('renders cancelled To-Dos with American-English copy', async () => {
+  it('renders canceled To-Dos with American-English copy', async () => {
     apiMocks.hydrateTodoWorkspace.mockResolvedValue({
-      items: [summary({ id: 't1', title: 'Canceled item', status: 'cancelled' })],
+      items: [summary({ id: 't1', title: 'Canceled item', status: 'canceled' })],
       next_cursor: null,
-      counts_by_status: { cancelled: 1 },
+      counts_by_status: { canceled: 1 },
     });
 
     render(<TodoView />);
     await userEvent.click(screen.getByRole('tab', { name: 'All' }));
     expect(await screen.findByText('Canceled')).toBeInTheDocument();
-    expect(screen.queryByText('cancelled')).not.toBeInTheDocument();
+    expect(screen.queryByText('canceled')).not.toBeInTheDocument();
   });
 
   it('clicking a title views the item without adding it to the workspace selection', async () => {

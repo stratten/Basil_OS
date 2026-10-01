@@ -430,6 +430,8 @@ struct MeetingUIStateDTO: Codable, Equatable {
     var systemAudioLevel: Float
     var microphoneInputRecoveryState: String // "idle" | "reconnecting" | "failed"
     var microphoneInputRecoveryMessage: String?
+    var isCapturePaused: Bool
+    var isLiveTranscriptionEnabled: Bool
 }
 
 // MARK: - Outbound event envelope (Swift -> React)
@@ -529,6 +531,10 @@ enum MeetingBridgeIntent: String {
     case toggleRecording // {}
     case startNewMeeting // {}
     case resumeMeeting // {}
+    case pauseRecording // {}
+    case resumeRecording // {}
+    case cancelRecording // {}
+    case setLiveTranscription // { enabled: Bool }
     case selectMeeting // { meetingId: String }
     case deleteMeeting // { meetingId: String }
     case setSidebarCollapsed // { collapsed: Bool }

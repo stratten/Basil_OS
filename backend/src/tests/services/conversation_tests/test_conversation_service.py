@@ -15,8 +15,10 @@ from api.services.conversation.conversation_models import (
     ConversationResponse
 )
 from api.core.knowledge.sqlite.sqlite_knowledge_service import SQLiteKnowledgeService
+from api.core.models.base_model import BaseAIModel
 from api.core.models.model_types import ModelCapability
 from api.core.knowledge.sqlite.conversation_repository import ConversationMessagePair
+from api.services.conversation.conversation_summary_contract import TURN_SUMMARY_METADATA_KEY, exchange_fingerprint
 from api.services.conversation.conversation_turn_contract import (
     CONVERSATION_TURN_METADATA_KEY,
     ConversationTurnLifecycle,
@@ -506,6 +508,7 @@ async def test_send_message_streaming_creates_direct_pair_and_preserves_caller_m
     conversation_service.conversation_repository.update_message.assert_awaited_once_with(
         message_id="assistant-1",
         content="Hello",
+        model_id=None,
     )
     assert chunks[-1]["is_final"] is True
 
@@ -664,8 +667,8 @@ async def test_send_message_streaming_cancellation_after_tokens_persists_partial
     assert conversation_service.conversation_repository.merge_message_metadata.await_args_list[-1] == call(
         "assistant-1",
         {
-            CONVERSATION_TURN_METADATA_KEY: {"lifecycle": "cancelled"},
-            "cancelled": True,
+            CONVERSATION_TURN_METADATA_KEY: {"lifecycle": "canceled"},
+            "canceled": True,
             "thinking": "secret",
         },
     )
@@ -706,8 +709,8 @@ async def test_send_message_streaming_cancellation_before_first_token_persists_e
     assert conversation_service.conversation_repository.merge_message_metadata.await_args_list[-1] == call(
         "assistant-1",
         {
-            CONVERSATION_TURN_METADATA_KEY: {"lifecycle": "cancelled"},
-            "cancelled": True,
+            CONVERSATION_TURN_METADATA_KEY: {"lifecycle": "canceled"},
+            "canceled": True,
         },
     )
 
@@ -746,18 +749,18 @@ async def test_send_message_streaming_callback_cancellation_persists_direct_plac
     assert persisted["messages"][1]["content"] == ""
     assert persisted["messages"][1]["metadata"][CONVERSATION_TURN_METADATA_KEY] == {
         "route": "direct",
-        "lifecycle": "cancelled",
+        "lifecycle": "canceled",
         "agent_task_id": None,
         "terminal_outcome": None,
         "user_message_id": persisted["messages"][0]["id"],
         "narration": {"lifecycle": "pending", "attempt_count": 0},
     }
-    assert persisted["messages"][1]["metadata"]["cancelled"] is True
+    assert persisted["messages"][1]["metadata"]["canceled"] is True
     model.chat_completion_streaming.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_send_message_streaming_cancellation_during_pair_persistence_marks_placeholder_cancelled(
+async def test_send_message_streaming_cancellation_during_pair_persistence_marks_placeholder_canceled(
     conversation_service,
 ):
     conversation = await conversation_service.create_conversation()
@@ -792,9 +795,9 @@ async def test_send_message_streaming_cancellation_during_pair_persistence_marks
     assert [message["role"] for message in persisted["messages"]] == ["user", "assistant"]
     assert persisted["messages"][1]["content"] == ""
     assert persisted["messages"][1]["metadata"][CONVERSATION_TURN_METADATA_KEY]["lifecycle"] == (
-        ConversationTurnLifecycle.CANCELLED.value
+        ConversationTurnLifecycle.CANCELED.value
     )
-    assert persisted["messages"][1]["metadata"]["cancelled"] is True
+    assert persisted["messages"][1]["metadata"]["canceled"] is True
 
 
 @pytest.mark.asyncio
@@ -836,3 +839,241 @@ async def test_direct_streaming_creates_one_durable_pair_without_duplicate_assis
         "narration": {"lifecycle": "pending", "attempt_count": 0},
     }
     assert chunks[-1]["message_id"] == persisted["messages"][1]["id"]
+
+
+@pytest.mark.asyncio
+async def test_direct_streaming_records_local_fallback_as_answering_model(conversation_service):
+    conversation = await conversation_service.create_conversation()
+    primary_model = AsyncMock()
+
+    async def unreachable_stream(_messages):
+        raise ConnectionError("nodename nor servname provided, or not known")
+        yield ""
+
+    primary_model.chat_completion_streaming = unreachable_stream
+    conversation_service._get_model_for_task = AsyncMock(return_value=primary_model)
+    conversation_service._auto_title_conversation = AsyncMock()
+
+    fallback_model = AsyncMock()
+    fallback_model.model_name = "local-fallback-model"
+
+    async def fallback_stream(_messages):
+        yield "Fallback response"
+
+    fallback_model.chat_completion_streaming = fallback_stream
+    conversation_service.model_usage_service.get_designated_local_fallback_model = AsyncMock(
+        return_value=fallback_model
+    )
+
+    chunks = [
+        chunk
+        async for chunk in conversation_service.send_message_streaming(
+            conversation.id,
+            "Direct request",
+            model_id="cloud-model",
+        )
+    ]
+
+    persisted = await conversation_service.conversation_repository.get_conversation_with_messages(
+        conversation.id,
+    )
+    assistant = persisted["messages"][1]
+    assert assistant["content"] == "Fallback response"
+    assert assistant["model_id"] == "local-fallback-model"
+    assert assistant["metadata"]["answered_by_fallback_model"] == "local-fallback-model"
+    assert chunks[-1]["metadata"]["answered_by_fallback_model"] == "local-fallback-model"
+
+
+@pytest.mark.asyncio
+async def test_direct_streaming_completion_requests_turn_summaries(conversation_service):
+    conversation = await conversation_service.create_conversation()
+    model = AsyncMock()
+
+    async def stream(_messages):
+        yield "Direct response"
+
+    model.chat_completion_streaming = stream
+    conversation_service._get_model_for_task = AsyncMock(return_value=model)
+    conversation_service._auto_title_conversation = AsyncMock()
+    conversation_service.turn_summarizer = MagicMock()
+
+    chunks = [
+        chunk
+        async for chunk in conversation_service.send_message_streaming(
+            conversation.id,
+            "Direct request",
+            model_id="model-1",
+        )
+    ]
+
+    conversation_service.turn_summarizer.request_pass.assert_called_once_with(conversation.id)
+    assert chunks[-1]["is_final"] is True
+
+
+@pytest.mark.asyncio
+async def test_failed_streaming_turn_does_not_request_turn_summaries(conversation_service):
+    conversation = await conversation_service.create_conversation()
+    model = AsyncMock()
+
+    async def failing_stream(_messages):
+        raise RuntimeError("model failed")
+        yield
+
+    model.chat_completion_streaming = failing_stream
+    conversation_service._get_model_for_task = AsyncMock(return_value=model)
+    conversation_service._auto_title_conversation = AsyncMock()
+    conversation_service.turn_summarizer = MagicMock()
+
+    chunks = [
+        chunk
+        async for chunk in conversation_service.send_message_streaming(conversation.id, "Hello")
+    ]
+
+    conversation_service.turn_summarizer.request_pass.assert_not_called()
+    assert chunks[-1]["error"] is True
+
+
+@pytest.mark.asyncio
+async def test_send_message_requests_turn_summaries_only_after_a_reply(conversation_service):
+    conversation = await conversation_service.create_conversation()
+    conversation_service.turn_summarizer = MagicMock()
+
+    await conversation_service.send_message(conversation.id, "Hello")
+    conversation_service.turn_summarizer.request_pass.assert_called_once_with(conversation.id)
+
+    failing_model = AsyncMock()
+    failing_model.chat_completion.side_effect = RuntimeError("model failed")
+    conversation_service._get_model_for_task = AsyncMock(return_value=failing_model)
+    conversation_service.turn_summarizer.request_pass.reset_mock()
+
+    await conversation_service.send_message(conversation.id, "Again")
+    conversation_service.turn_summarizer.request_pass.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_streaming_fits_context_with_conversation_metadata_and_file_content(conversation_service):
+    conversation = await conversation_service.create_conversation()
+    model = AsyncMock()
+
+    async def stream(_messages):
+        yield "Done"
+
+    model.chat_completion_streaming = stream
+    conversation_service._get_model_for_task = AsyncMock(return_value=model)
+    conversation_service._auto_title_conversation = AsyncMock()
+    conversation_service.turn_summarizer = MagicMock()
+    conversation_service.document_processor.detect_provider = MagicMock(return_value="local")
+    conversation_service.document_processor.process_files_for_model = AsyncMock(
+        return_value={"method": "text_prepend", "content": "File text\n\nHello"}
+    )
+    fitted = [{"role": "system", "content": "s"}, {"role": "user", "content": "File text\n\nHello"}]
+
+    with patch(
+        "api.services.conversation.conversation_service.build_fitted_conversation_messages",
+        return_value=fitted,
+    ) as build_fitted, patch(
+        "api.services.conversation.conversation_service.DocumentProcessingService.build_file_metadata",
+        return_value=[{"path": "/tmp/a.txt"}],
+    ):
+        _ = [
+            chunk
+            async for chunk in conversation_service.send_message_streaming(
+                conversation.id,
+                "Hello",
+                model_id="model-1",
+                file_paths=["/tmp/a.txt"],
+            )
+        ]
+
+    kwargs = build_fitted.call_args.kwargs
+    assert kwargs["llm_model"] is model
+    assert kwargs["requested_model_id"] == "model-1"
+    assert kwargs["conversation_metadata"] == {}
+    assert kwargs["newest_content_override"] == "File text\n\nHello"
+    assert build_fitted.call_args.args[0][-1].content == "Hello"
+
+
+@pytest.mark.asyncio
+async def test_active_summary_model_accepts_only_loaded_model_instances(conversation_service, mock_model_service):
+    mock_model_service.get_ready_model_if_active.return_value = MagicMock()
+    assert conversation_service._get_active_summary_model("model-1") is None
+
+    ready_model = MagicMock(spec=BaseAIModel)
+    mock_model_service.get_ready_model_if_active.return_value = ready_model
+    assert conversation_service._get_active_summary_model("model-1") is ready_model
+
+
+@pytest.mark.asyncio
+async def test_streaming_withholds_inline_note_and_stores_it_as_turn_summary(conversation_service):
+    conversation = await conversation_service.create_conversation()
+    model = AsyncMock()
+
+    async def stream(_messages):
+        for token in ["Hello there.", "\n<basil", "_note>Greeting exchange.</basil", "_note>"]:
+            yield token
+
+    model.chat_completion_streaming = stream
+    conversation_service._get_model_for_task = AsyncMock(return_value=model)
+    conversation_service._auto_title_conversation = AsyncMock()
+    conversation_service.turn_summarizer = MagicMock()
+
+    chunks = [
+        chunk
+        async for chunk in conversation_service.send_message_streaming(conversation.id, "Direct request", model_id="model-1")
+    ]
+
+    streamed = "".join(chunk["token"] for chunk in chunks if not chunk.get("is_final"))
+    assert streamed == "Hello there.\n"
+    assert all("basil" not in chunk["token"] for chunk in chunks)
+    assert TURN_SUMMARY_METADATA_KEY not in chunks[-1]["metadata"]
+    persisted = await conversation_service.conversation_repository.get_conversation_with_messages(conversation.id)
+    assistant = persisted["messages"][1]
+    assert assistant["content"] == "Hello there."
+    summary = assistant["metadata"][TURN_SUMMARY_METADATA_KEY]
+    assert summary["status"] == "completed"
+    assert summary["text"] == "Greeting exchange."
+    assert summary["model_id"] == "model-1"
+    assert summary["source_fingerprint"] == exchange_fingerprint("Direct request", "Hello there.")
+    assert assistant["metadata"][CONVERSATION_TURN_METADATA_KEY]["lifecycle"] == "completed"
+
+
+@pytest.mark.asyncio
+async def test_streaming_with_unclosed_note_stores_reply_without_summary(conversation_service):
+    conversation = await conversation_service.create_conversation()
+    model = AsyncMock()
+
+    async def stream(_messages):
+        yield "Answer"
+        yield "<basil_note>cut off"
+
+    model.chat_completion_streaming = stream
+    conversation_service._get_model_for_task = AsyncMock(return_value=model)
+    conversation_service._auto_title_conversation = AsyncMock()
+    conversation_service.turn_summarizer = MagicMock()
+
+    _ = [chunk async for chunk in conversation_service.send_message_streaming(conversation.id, "Q", model_id="model-1")]
+
+    persisted = await conversation_service.conversation_repository.get_conversation_with_messages(conversation.id)
+    assistant = persisted["messages"][1]
+    assert assistant["content"] == "Answer"
+    assert TURN_SUMMARY_METADATA_KEY not in assistant["metadata"]
+    conversation_service.turn_summarizer.request_pass.assert_called_once_with(conversation.id)
+
+
+@pytest.mark.asyncio
+async def test_send_message_strips_inline_note_and_stores_it_as_turn_summary(conversation_service):
+    conversation = await conversation_service.create_conversation()
+    model = AsyncMock()
+    model.chat_completion.return_value = {"content": "Reply.\n<basil_note>Note.</basil_note>", "metadata": {}}
+    conversation_service._get_model_for_task = AsyncMock(return_value=model)
+    conversation_service.turn_summarizer = MagicMock()
+
+    response = await conversation_service.send_message(conversation.id, "Hello", model_id="model-1")
+
+    assert response.message.content == "Reply."
+    persisted = await conversation_service.conversation_repository.get_conversation_with_messages(conversation.id)
+    assistant = persisted["messages"][-1]
+    assert assistant["content"] == "Reply."
+    summary = assistant["metadata"][TURN_SUMMARY_METADATA_KEY]
+    assert summary["text"] == "Note."
+    assert summary["source_fingerprint"] == exchange_fingerprint("Hello", "Reply.")

@@ -4,7 +4,9 @@ import TokenizedSelect from '@shared/TokenizedSelect'
 import {
   requestCheckConnectionStatus,
   requestDeleteConnection,
+  requestReconnectConnection,
   requestRefreshTools,
+  requestReplaceConnectionToken,
   requestUpdateConnectionMetadata,
   requestUpdatePolicy,
 } from '../services/connectionsBridge'
@@ -45,12 +47,20 @@ function statusClassName(status: string | null): string {
   return 'connections-row-status connections-row-status-unknown'
 }
 
+function requiresReconnect(status: string | null): boolean {
+  return status === 'needs_reconnect' || status === 'token_unavailable'
+}
+
 export function ConnectionRow({ connection, pendingId, onTrackRequest }: ConnectionRowProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editedName, setEditedName] = useState(connection.friendlyName)
   const [editedDescription, setEditedDescription] = useState(connection.description ?? '')
+  const [isReplacingToken, setIsReplacingToken] = useState(false)
+  const [replacementToken, setReplacementToken] = useState('')
   const disabled = pendingId !== null
+  const needsReconnect = requiresReconnect(connection.lastConnectionStatus)
+  const trimmedReplacementToken = replacementToken.trim()
 
   function beginEditing() {
     setEditedName(connection.friendlyName)
@@ -63,6 +73,27 @@ export function ConnectionRow({ connection, pendingId, onTrackRequest }: Connect
     if (trimmedName.length === 0) return
     onTrackRequest(requestUpdateConnectionMetadata(connection.id, trimmedName, editedDescription.trim()))
     setIsEditing(false)
+  }
+
+  function reconnect() {
+    if (connection.authKind === 'manual_token') {
+      setReplacementToken('')
+      setIsReplacingToken(true)
+      return
+    }
+    onTrackRequest(requestReconnectConnection(connection.id))
+  }
+
+  function cancelTokenReplacement() {
+    setReplacementToken('')
+    setIsReplacingToken(false)
+  }
+
+  function saveReplacementToken() {
+    if (trimmedReplacementToken.length === 0) return
+    onTrackRequest(requestReplaceConnectionToken(connection.id, trimmedReplacementToken))
+    setReplacementToken('')
+    setIsReplacingToken(false)
   }
 
   return (
@@ -109,6 +140,17 @@ export function ConnectionRow({ connection, pendingId, onTrackRequest }: Connect
                   <span className="connections-row-status-checked-at">Checked {connection.lastConnectionCheckAt}</span>
                 )}
               </p>
+              {isReplacingToken && (
+                <input
+                  type="password"
+                  className="connections-row-edit-token"
+                  aria-label={`New bearer token for ${connection.friendlyName}`}
+                  placeholder="Paste a new bearer token"
+                  value={replacementToken}
+                  disabled={disabled}
+                  onChange={(event) => setReplacementToken(event.target.value)}
+                />
+              )}
             </>
           )}
         </div>
@@ -119,17 +161,40 @@ export function ConnectionRow({ connection, pendingId, onTrackRequest }: Connect
               <button type="button" className="connections-row-action-button" disabled={disabled} onClick={() => setIsEditing(false)}>Cancel</button>
               <button type="button" className="connections-row-action-button connections-row-action-primary" disabled={disabled || editedName.trim().length === 0} onClick={saveEditing}>Save</button>
             </>
+          ) : isReplacingToken ? (
+            <>
+              <button type="button" className="connections-row-action-button" disabled={disabled} onClick={cancelTokenReplacement}>Cancel</button>
+              <button
+                type="button"
+                className="connections-row-action-button connections-row-action-primary"
+                disabled={disabled || trimmedReplacementToken.length === 0}
+                onClick={saveReplacementToken}
+              >
+                Save Token
+              </button>
+            </>
           ) : (
             <>
               <button type="button" className="connections-row-action-button" disabled={disabled} onClick={beginEditing}>Edit</button>
-              <button
-                type="button"
-                className="connections-row-action-button"
-                disabled={disabled}
-                onClick={() => onTrackRequest(requestCheckConnectionStatus(connection.id))}
-              >
-                Check Status
-              </button>
+              {needsReconnect ? (
+                <button
+                  type="button"
+                  className="connections-row-action-button connections-row-action-primary"
+                  disabled={disabled}
+                  onClick={reconnect}
+                >
+                  Reconnect
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="connections-row-action-button"
+                  disabled={disabled}
+                  onClick={() => onTrackRequest(requestCheckConnectionStatus(connection.id))}
+                >
+                  Check Status
+                </button>
+              )}
               <button
                 type="button"
                 className="connections-row-action-button"

@@ -13,7 +13,7 @@ const TODO_STATUS_LABELS: Record<string, string> = {
   ready_for_review: 'Ready for review',
   completed: 'Completed',
   dismissed: 'Dismissed',
-  cancelled: 'Cancelled',
+  canceled: 'Canceled',
 };
 
 export default function SuggestedActionWorkspace({ proposals }: { proposals: MeetingActionProposalDTO[] }) {

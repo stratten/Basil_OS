@@ -63,7 +63,7 @@ logger = logging.getLogger(__name__)
 
 # Default instruction substituted when the user submits a AssistantSession request
 # with no spoken audio and no typed instruction. Replaces the legacy basic
-# ``/suggestion`` behaviour: produce something useful from the captured
+# ``/suggestion`` behavior: produce something useful from the captured
 # screen context alone rather than asking the user what they want.
 NO_INSTRUCTION_DEFAULT = (
     "Look at what's on the user's screen and generate the most useful "
@@ -404,7 +404,7 @@ async def run_process_audio(
         # Parity persistence: the streaming branch always persists; the
         # non-streaming branch did not, so historically only AssistantSession
         # widgets that streamed produced history rows. Mirror the
-        # streaming behaviour here so non-streaming clients also show
+        # streaming behavior here so non-streaming clients also show
         # up in Assistant Output History.
         await _persist_non_streaming_assistant_output(
             service=service,

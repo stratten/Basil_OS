@@ -54,7 +54,7 @@ function referenceBasename(path: string): string {
 }
 
 function formatTodoStatus(status: string): string {
-  return status === 'cancelled' ? 'Canceled' : status.replace(/_/g, ' ');
+  return status === 'canceled' ? 'Canceled' : status.replace(/_/g, ' ');
 }
 
 function formatTodoDate(value: string): string {
@@ -139,7 +139,7 @@ export default function TodoDetailPane({
 
   const isDirty = draftNotesHtml !== sanitizeRichText(item.notes);
   const isDetailDirty = draftTitle.trim() !== item.title || draftDescriptionHtml !== sanitizeRichText(item.description);
-  const isTerminal = ['completed', 'dismissed', 'cancelled'].includes(item.status);
+  const isTerminal = ['completed', 'dismissed', 'canceled'].includes(item.status);
 
   async function saveDetails(): Promise<void> {
     if (!draftTitle.trim() || !isDetailDirty || savingDetails) return;

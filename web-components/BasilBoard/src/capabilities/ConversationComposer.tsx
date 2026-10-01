@@ -21,7 +21,7 @@ interface ConversationComposerProps {
   voiceError?: string;
   attachmentPaths: string[];
   processing: boolean;
-  cancelling: boolean;
+  canceling: boolean;
   voiceState: ConversationVoiceCaptureState;
   activeFormats: Record<string, boolean>;
   models: ReasoningModel[];
@@ -72,7 +72,7 @@ function ConversationComposerComponent({
   voiceError,
   attachmentPaths,
   processing,
-  cancelling,
+  canceling,
   voiceState,
   models,
   selectedModelId,
@@ -254,7 +254,7 @@ function ConversationComposerComponent({
             ) : null}
           </>
         )}
-        sendReplacement={processing ? <StopAction isStopping={cancelling} onStop={onCancelResponse} /> : undefined}
+        sendReplacement={processing ? <StopAction isStopping={canceling} onStop={onCancelResponse} /> : undefined}
       />
     </div>
   );

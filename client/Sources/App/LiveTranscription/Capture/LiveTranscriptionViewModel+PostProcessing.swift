@@ -250,7 +250,7 @@ extension LiveTranscriptionViewModel {
         let port = APIClient.shared.currentPort
         let wsUrl = URL(string: "ws://localhost:\(port)/meetings/\(meetingId)/post-process/status")!
         
-        postProcessingWebSocket = URLSession.shared.webSocketTask(with: wsUrl)
+        postProcessingWebSocket = URLSession.shared.webSocketTask(with: BackendAuthorization.authorizedRequest(for: wsUrl))
         postProcessingWebSocket?.resume()
         
         #if DEBUG

@@ -133,7 +133,7 @@ extension AssistantSessionViewModel {
                 DevLogger.shared.info("[ASSISTANT_SESSION] Re-armed audio capture after modality switch", context: "AssistantSessionViewModel")
                 #endif
             } catch {
-                if !isCancelled {
+                if !isCanceled {
                     transcriptionStatus = .failed
                     errorMessage = "Failed to start recording: \(error.localizedDescription)"
                     #if DEBUG
@@ -153,7 +153,7 @@ extension AssistantSessionViewModel {
     }
 
     /// Emit the appropriate widget size for the current `inputMode` /
-    /// `inputCommitted` state. Centralised so both the toggle and any
+    /// `inputCommitted` state. Centralized so both the toggle and any
     /// initial-mode seeding (e.g. the default-modality preference at
     /// widget show time) flow through the same animated resize seam.
     @MainActor
@@ -185,11 +185,11 @@ extension AssistantSessionViewModel {
     
     func cancelOperation() {
         #if DEBUG
-        DevLogger.shared.info("[ASSISTANT_SESSION] cancelOperation called - cancelling all pending operations", context: "AssistantSessionViewModel")
+        DevLogger.shared.info("[ASSISTANT_SESSION] cancelOperation called - canceling all pending operations", context: "AssistantSessionViewModel")
         #endif
         
         // Set cancellation flag to prevent further processing
-        isCancelled = true
+        isCanceled = true
         
         // 1. Cancel all ongoing async tasks
         ocrStreamingTask?.cancel()
@@ -218,11 +218,11 @@ extension AssistantSessionViewModel {
             }
         }
         
-        // 5. Reset all UI state to cancelled/failed state
+        // 5. Reset all UI state to canceled/failed state
         ocrStatus = .failed
         transcriptionStatus = .failed
         assistantSessionStatus = .failed
-        errorMessage = "Operation cancelled by user"
+        errorMessage = "Operation canceled by user"
         transcriptionText = ""
         assistantOutput = ""
         thinkingContent = nil
@@ -247,16 +247,16 @@ extension AssistantSessionViewModel {
     // MARK: - Main AssistantSession Flow
     
     func startAssistantSessionFlow(activityImagePath: String, preDetectedSelection: TextSelectionResult? = nil) async {
-        // Check if already cancelled before starting
-        guard !isCancelled else {
+        // Check if already canceled before starting
+        guard !isCanceled else {
             #if DEBUG
-            DevLogger.shared.info("[ASSISTANT_SESSION] Flow start cancelled - operation was already cancelled", context: "AssistantSessionViewModel")
+            DevLogger.shared.info("[ASSISTANT_SESSION] Flow start canceled - operation was already canceled", context: "AssistantSessionViewModel")
             #endif
             return
         }
         
         // Reset cancellation flag for new operation
-        isCancelled = false
+        isCanceled = false
         
         // Reset statuses
         ocrStatus = .idle
@@ -343,9 +343,9 @@ extension AssistantSessionViewModel {
                 let (stream, response) = try await URLSession.shared.bytes(for: request)
                 
                 // Check for cancellation before processing response
-                if Task.isCancelled || isCancelled {
+                if Task.isCancelled || isCanceled {
                     #if DEBUG
-                    DevLogger.shared.info("[ASSISTANT_SESSION] OCR streaming cancelled before response processing", context: "AssistantSessionViewModel")
+                    DevLogger.shared.info("[ASSISTANT_SESSION] OCR streaming canceled before response processing", context: "AssistantSessionViewModel")
                     #endif
                     return
                 }
@@ -362,9 +362,9 @@ extension AssistantSessionViewModel {
                 var firstChunk = true
                 for try await line in stream.lines {
                     // Check for cancellation in streaming loop
-                    if Task.isCancelled || isCancelled {
+                    if Task.isCancelled || isCanceled {
                         #if DEBUG
-                        DevLogger.shared.info("[ASSISTANT_SESSION] OCR streaming cancelled during line processing", context: "AssistantSessionViewModel")
+                        DevLogger.shared.info("[ASSISTANT_SESSION] OCR streaming canceled during line processing", context: "AssistantSessionViewModel")
                         #endif
                         return
                     }
@@ -387,9 +387,9 @@ extension AssistantSessionViewModel {
                             // Start recording as soon as we have the session
                             Task {
                                 // Check for cancellation before starting recording
-                                if Task.isCancelled || isCancelled {
+                                if Task.isCancelled || isCanceled {
                                     #if DEBUG
-                                    DevLogger.shared.info("[ASSISTANT_SESSION] Recording start cancelled", context: "AssistantSessionViewModel")
+                                    DevLogger.shared.info("[ASSISTANT_SESSION] Recording start canceled", context: "AssistantSessionViewModel")
                                     #endif
                                     return
                                 }
@@ -404,7 +404,7 @@ extension AssistantSessionViewModel {
                                     #endif
                                 } catch {
                                     // Check for cancellation before setting error state
-                                    if !Task.isCancelled && !isCancelled {
+                                    if !Task.isCancelled && !isCanceled {
                                         transcriptionStatus = .failed
                                         errorMessage = "Failed to start recording: \(error.localizedDescription)"
                                         #if DEBUG
@@ -435,7 +435,7 @@ extension AssistantSessionViewModel {
                 }
             } catch {
                 // Check for cancellation before setting error state
-                if !Task.isCancelled && !isCancelled {
+                if !Task.isCancelled && !isCanceled {
                     ocrStatus = .failed
                     errorMessage = error.localizedDescription
                     assistantSessionStatus = .failed
@@ -444,13 +444,13 @@ extension AssistantSessionViewModel {
             }
         }
         
-        // Wait for OCR task to complete (or be cancelled)
+        // Wait for OCR task to complete (or be canceled)
         await ocrStreamingTask?.value
         
-        // Check if operation was cancelled after OCR
-        if isCancelled {
+        // Check if operation was canceled after OCR
+        if isCanceled {
             #if DEBUG
-            DevLogger.shared.info("[ASSISTANT_SESSION] Operation cancelled after OCR phase", context: "AssistantSessionViewModel")
+            DevLogger.shared.info("[ASSISTANT_SESSION] Operation canceled after OCR phase", context: "AssistantSessionViewModel")
             #endif
             return
         }
@@ -468,16 +468,16 @@ extension AssistantSessionViewModel {
         await awaitInputCommit()
         transcriptionStatus = .completed
 
-        // Check if operation was cancelled during the input phase
-        if isCancelled {
+        // Check if operation was canceled during the input phase
+        if isCanceled {
             #if DEBUG
-            DevLogger.shared.info("[ASSISTANT_SESSION] Operation cancelled after input phase", context: "AssistantSessionViewModel")
+            DevLogger.shared.info("[ASSISTANT_SESSION] Operation canceled after input phase", context: "AssistantSessionViewModel")
             #endif
             return
         }
 
         guard let sessionId = sessionId else {
-            if !isCancelled {
+            if !isCanceled {
                 assistantSessionStatus = .failed
                 errorMessage = "No session ID available for AssistantSession upload"
             }
@@ -489,7 +489,7 @@ extension AssistantSessionViewModel {
 
         if inputMode == .speak {
             guard let audioData = audioCaptureService.lastRecordingData, !audioData.isEmpty else {
-                if !isCancelled {
+                if !isCanceled {
                     assistantSessionStatus = .failed
                     errorMessage = "No audio data recorded for AssistantSession"
                 }
@@ -509,7 +509,7 @@ extension AssistantSessionViewModel {
                 modelId: selectedModelId
             )
         } else {
-            // `.type`: trimmed-empty is normalised to nil inside the
+            // `.type`: trimmed-empty is normalized to nil inside the
             // upload helper, which omits both `audio_file` and
             // `instruction_text` to invoke the server's no-input
             // modality. So submit-empty is a deliberate user action
@@ -530,7 +530,7 @@ extension AssistantSessionViewModel {
 
     /// Suspends until the user has committed input (either speak via
     /// `stopRecording()` or type via `submitTypedInstruction()`), the
-    /// operation is cancelled, or the session disappears.
+    /// operation is canceled, or the session disappears.
     /// The latch is consumed (reset to `false`) on exit so a subsequent
     /// flow start within the same view model gets a fresh signal.
     private func awaitInputCommit() async {
@@ -539,9 +539,9 @@ extension AssistantSessionViewModel {
             return
         }
         for await committed in $inputCommitted.values {
-            if Task.isCancelled || isCancelled {
+            if Task.isCancelled || isCanceled {
                 #if DEBUG
-                DevLogger.shared.info("[ASSISTANT_SESSION] Input-commit wait cancelled", context: "AssistantSessionViewModel")
+                DevLogger.shared.info("[ASSISTANT_SESSION] Input-commit wait canceled", context: "AssistantSessionViewModel")
                 #endif
                 return
             }
@@ -580,7 +580,7 @@ extension AssistantSessionViewModel {
         contextText: String,
         modelId: String?
     ) async {
-        isCancelled = false
+        isCanceled = false
 
         // Seed view-model state to look exactly like a freshly OCR'd,
         // typed-submit-armed session. `ocrText` non-empty is the gate the

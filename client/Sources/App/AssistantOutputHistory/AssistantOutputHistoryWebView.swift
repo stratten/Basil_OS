@@ -8,17 +8,17 @@ final class AssistantOutputHistoryWebView: NSObject {
     var onClose: (() -> Void)?
     var onMinimize: (() -> Void)?
     var onToggleChromeCollapse: ((Bool) -> Void)?
-    var onRefineFromHistory: ((Int) -> Void)?
+    var onRefineFromHistory: ((Int, AssistantSessionRefinementInput) -> Void)?
     var onReady: (() -> Void)?
 
     private(set) var hasReceivedReadyAck = false
     private(set) var dragAreaView: WindowDragAreaView?
 
     override init() {
-        let configuration = WKWebViewConfiguration()
+        let configuration = BasilWebViewConfigurationFactory.makeConfiguration()
         configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
         configuration.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
-        webView = WKWebView(frame: .zero, configuration: configuration)
+        webView = FirstClickWebView(frame: .zero, configuration: configuration)
         webView.setValue(false, forKey: "drawsBackground")
         if #available(macOS 12.0, *) {
             webView.underPageBackgroundColor = .clear
@@ -103,7 +103,8 @@ final class AssistantOutputHistoryWebView: NSObject {
             let assistantOutputId = (body["assistantOutputId"] as? Int)
                 ?? (body["assistantOutputId"] as? NSNumber)?.intValue
             guard let assistantOutputId else { return }
-            onRefineFromHistory?(assistantOutputId)
+            let input = (body["input"] as? String).flatMap(AssistantSessionRefinementInput.init(rawValue:)) ?? .voice
+            onRefineFromHistory?(assistantOutputId, input)
         case "copyHistoryMarkdown":
             guard let content = body["content"] as? String else { return }
             let pasteboard = NSPasteboard.general

@@ -96,4 +96,45 @@ describe('ConnectionsPanel', () => {
     act(() => { container.querySelector<HTMLButtonElement>('.connections-add-form-actions button')!.click() })
     expect(container.querySelector('.connections-add-modal')).toBeNull()
   })
+
+  const DEVICE_FLOW = {
+    deviceCode: 'dc-1',
+    userCode: 'WXYZ-9876',
+    verificationUri: 'https://github.com/login/device',
+    expiresIn: 900,
+    interval: 5,
+    requestedScopes: ['repo'],
+  }
+
+  it('shows the GitHub device code outside the Add modal so a reconnect can be completed', () => {
+    render({ ...BASE_FIELDS, githubDeviceFlow: DEVICE_FLOW, isPollingGitHubDeviceFlow: true })
+    expect(container.querySelector('.connections-add-modal')).toBeNull()
+    expect(container.querySelector('.connections-device-flow-code')?.textContent).toBe('WXYZ-9876')
+    act(() => { container.querySelector<HTMLButtonElement>('.connections-device-flow-cancel')!.click() })
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'requestCancelGitHubDeviceFlow' }))
+  })
+
+  it('renders the device code only once while the Add modal is open', () => {
+    render({ ...BASE_FIELDS, githubDeviceFlow: DEVICE_FLOW, isPollingGitHubDeviceFlow: true })
+    act(() => { container.querySelector<HTMLButtonElement>('.connections-add-toggle')!.click() })
+    expect(container.querySelectorAll('.connections-device-flow-code')).toHaveLength(1)
+  })
+
+  it('shows a waiting card for a browser reconnect and lets the user hide it', () => {
+    render({ ...BASE_FIELDS, pendingFlowFriendlyName: 'Linear', statusMessage: 'Complete sign-in in your browser to reconnect Linear.' })
+    expect(container.querySelector('.connections-device-flow-title')?.textContent).toBe('Waiting for Linear')
+    expect(container.querySelector('.connections-device-flow-hint')?.textContent).toBe('Complete sign-in in your browser to reconnect Linear.')
+    const hide = Array.from(container.querySelectorAll<HTMLButtonElement>('.connections-device-flow button')).find((button) => button.textContent === 'Continue in Background')!
+    act(() => { hide.click() })
+    expect(container.querySelector('.connections-device-flow')).toBeNull()
+  })
+
+  it('shows the waiting card again for the next sign-in after the previous one finished', () => {
+    render({ ...BASE_FIELDS, pendingFlowFriendlyName: 'Linear' })
+    const hide = Array.from(container.querySelectorAll<HTMLButtonElement>('.connections-device-flow button')).find((button) => button.textContent === 'Continue in Background')!
+    act(() => { hide.click() })
+    render({ ...BASE_FIELDS, pendingFlowFriendlyName: null })
+    render({ ...BASE_FIELDS, pendingFlowFriendlyName: 'Linear' })
+    expect(container.querySelector('.connections-device-flow-title')?.textContent).toBe('Waiting for Linear')
+  })
 })

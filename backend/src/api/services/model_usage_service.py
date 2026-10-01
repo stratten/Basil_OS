@@ -560,7 +560,7 @@ def is_model_unreachable_error(error: Exception) -> bool:
 
     Used only to decide eligibility for the first-attempt local fallback (never for
     mid-task retries). Covers the same network-transient signal as
-    agent_execution_core._is_transient_error plus authentication/authorization
+    model_error_policy.is_transient_error plus authentication/authorization
     failures, since an invalid or expired API key is also "cannot reach this model"
     from the caller's perspective, but should not be retried with backoff.
     """

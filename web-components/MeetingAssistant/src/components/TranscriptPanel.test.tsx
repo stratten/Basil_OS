@@ -44,6 +44,17 @@ describe('TranscriptPanel', () => {
     expect(screen.queryByText('Transcript will appear here once recording starts.')).not.toBeInTheDocument();
   });
 
+  it('says the recording is paused instead of listening', () => {
+    render(<TranscriptPanel transcript={[]} ui={{ transcriptionState: 'idle', isApplyingWindowedRetranscription: false, isRecording: true, isCapturePaused: true }} />);
+    expect(screen.getByText('Recording is paused.')).toBeInTheDocument();
+    expect(screen.queryByText('Listening for speech…')).not.toBeInTheDocument();
+  });
+
+  it('explains that a record-only meeting is transcribed when it ends', () => {
+    render(<TranscriptPanel transcript={[]} ui={{ transcriptionState: 'idle', isApplyingWindowedRetranscription: false, isRecording: true, isLiveTranscriptionEnabled: false }} />);
+    expect(screen.getByText('Live transcription is off. The transcript will be generated when the meeting ends.')).toBeInTheDocument();
+  });
+
   it('points to Transcript Tools when audio was captured but no transcript was saved', () => {
     render(<TranscriptPanel transcript={[]} ui={{ transcriptionState: 'idle', isApplyingWindowedRetranscription: false, hasRecordedAudio: true }} />);
     expect(screen.getByText('No transcript was saved for this recording, but the audio was captured. Use Transcript Tools below to generate one.')).toBeInTheDocument();

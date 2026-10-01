@@ -80,6 +80,7 @@ struct TranscriptionSettings: Codable {
     var autoAnalyzeModes: [String] = []
     var autoAnalyzeCustomInstructions: String = ""
     var autoAnalyzeTiming: String = "after"
+    var liveTranscriptionByDefault: Bool = true
     var textReplacements: [TranscriptionTextReplacementRule] = []
 
     enum CodingKeys: String, CodingKey {
@@ -100,6 +101,7 @@ struct TranscriptionSettings: Codable {
         case autoAnalyzeModes = "auto_analyze_modes"
         case autoAnalyzeCustomInstructions = "auto_analyze_custom_instructions"
         case autoAnalyzeTiming = "auto_analyze_timing"
+        case liveTranscriptionByDefault = "live_transcription_by_default"
         case textReplacements = "text_replacements"
     }
 }
@@ -129,6 +131,7 @@ extension TranscriptionSettings {
         autoAnalyzeModes = try container.decodeIfPresent([String].self, forKey: .autoAnalyzeModes) ?? []
         autoAnalyzeCustomInstructions = try container.decodeIfPresent(String.self, forKey: .autoAnalyzeCustomInstructions) ?? ""
         autoAnalyzeTiming = try container.decodeIfPresent(String.self, forKey: .autoAnalyzeTiming) ?? "after"
+        liveTranscriptionByDefault = try container.decodeIfPresent(Bool.self, forKey: .liveTranscriptionByDefault) ?? true
         textReplacements = try container.decodeIfPresent([TranscriptionTextReplacementRule].self, forKey: .textReplacements) ?? []
     }
 
@@ -158,6 +161,7 @@ extension TranscriptionSettings {
         autoAnalyzeModes: [String]? = nil,
         autoAnalyzeCustomInstructions: String? = nil,
         autoAnalyzeTiming: String? = nil,
+        liveTranscriptionByDefault: Bool? = nil,
         textReplacements: [TranscriptionTextReplacementRule]? = nil
     ) -> TranscriptionSettings {
         TranscriptionSettings(
@@ -178,6 +182,7 @@ extension TranscriptionSettings {
             autoAnalyzeModes: autoAnalyzeModes ?? self.autoAnalyzeModes,
             autoAnalyzeCustomInstructions: autoAnalyzeCustomInstructions ?? self.autoAnalyzeCustomInstructions,
             autoAnalyzeTiming: autoAnalyzeTiming ?? self.autoAnalyzeTiming,
+            liveTranscriptionByDefault: liveTranscriptionByDefault ?? self.liveTranscriptionByDefault,
             textReplacements: textReplacements ?? self.textReplacements
         )
     }

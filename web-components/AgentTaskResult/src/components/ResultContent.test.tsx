@@ -377,3 +377,88 @@ describe('ResultContent retry model selector', () => {
     container.remove();
   });
 });
+
+describe('ResultContent turn chain and run details', () => {
+  const chainTask: DisplayableAgentTask = {
+    ...completedTask,
+    currentTurnTaskId: 'follow-up-1',
+    result: 'Here is the comparison.\n\n• Active app at request: Mail\n\n• Tool calls: 3',
+    agentTaskHistory: [{
+      id: 'root-task',
+      agentTaskText: 'Investigate the workflow',
+      result: 'Investigation stopped.',
+      errorMessage: 'The tool crashed.',
+      status: 'failed',
+      files: [],
+      reference_paths: [],
+      timestamp: '2026-09-24T12:00:00.000Z',
+    }],
+  };
+
+  it('labels every turn and shows a failed glyph for a failed earlier turn', () => {
+    const markup = renderToStaticMarkup(
+      <ResultContent agentTask={chainTask} onRetry={() => {}} onContinue={() => {}} />,
+    );
+
+    expect(markup).toContain('Initial request');
+    expect(markup).toContain('Follow-up 1');
+    expect(markup.indexOf('Initial request')).toBeLessThan(markup.indexOf('Follow-up 1'));
+    expect(markup).toContain('turn-status-glyph--failed');
+    expect(markup).toContain('turn-status-glyph--success');
+  });
+
+  it('omits turn labels for a single-turn task', () => {
+    const markup = renderToStaticMarkup(
+      <ResultContent agentTask={completedTask} onRetry={() => {}} onContinue={() => {}} />,
+    );
+
+    expect(markup).not.toContain('turn-label');
+  });
+
+  it('focuses the clicked run and marks the focused label', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const onFocusRun = vi.fn();
+
+    try {
+      act(() => {
+        root.render(
+          <ResultContent
+            agentTask={chainTask}
+            onRetry={() => {}}
+            onContinue={() => {}}
+            focusedRunId="root-task"
+            onFocusRun={onFocusRun}
+          />,
+        );
+      });
+      const labels = Array.from(container.querySelectorAll<HTMLButtonElement>('button.turn-label--interactive'));
+
+      expect(labels).toHaveLength(2);
+      expect(labels[0].getAttribute('aria-pressed')).toBe('true');
+      expect(labels[1].getAttribute('aria-pressed')).toBe('false');
+
+      act(() => {
+        labels[1].click();
+      });
+
+      expect(onFocusRun).toHaveBeenCalledWith('follow-up-1');
+    } finally {
+      act(() => { root.unmount(); });
+      container.remove();
+    }
+  });
+
+  it('moves the finalizer metadata into a collapsed run details section', () => {
+    const markup = renderToStaticMarkup(
+      <ResultContent agentTask={chainTask} onRetry={() => {}} onContinue={() => {}} />,
+    );
+
+    expect(markup).toContain('Here is the comparison.');
+    expect(markup).toContain('run-details-toggle');
+    expect(markup).toContain('3 tool calls · Mail');
+    expect(markup).not.toContain('run-details-list');
+    expect(markup).not.toContain('Active app at request');
+  });
+});

@@ -929,7 +929,7 @@
 }
 
 .todo-worker-status-card--error .todo-worker-status-card-icon,
-.todo-worker-status-card--cancelled .todo-worker-status-card-icon,
+.todo-worker-status-card--canceled .todo-worker-status-card-icon,
 .todo-worker-status-card.is-needs-attention .todo-worker-status-card-icon {
   background: var(--error-base);
 }

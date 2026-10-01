@@ -143,7 +143,7 @@ fi
 
 # build_one_bundle <src_dir> <staged_dir> <expected_dist_html_relpath> [...]
 #
-# Generic per-bundle Vite build → stage flow. Centralising this avoids the
+# Generic per-bundle Vite build → stage flow. Centralizing this avoids the
 # previous per-bundle copy/paste drift the comment block above warns about.
 build_one_bundle() {
     local web_dir="$1"

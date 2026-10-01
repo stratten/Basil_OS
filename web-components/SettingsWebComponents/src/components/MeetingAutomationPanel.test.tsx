@@ -10,6 +10,7 @@ let root: Root
 let postMessage: ReturnType<typeof vi.fn>
 
 const SETTINGS: MeetingAutomationSettingsFields = {
+  liveTranscriptionByDefault: true,
   autoRetranscribeOnStop: false,
   autoRetranscribeDuringRecording: false,
   retranscribeWindowMinutes: 10,
@@ -80,6 +81,23 @@ describe('MeetingAutomationPanel', () => {
     act(() => { checkbox.click() })
     const call = postMessage.mock.calls.map(([message]) => message).find((message) => message.type === 'requestUpdateAutoAnalyzeMode')
     expect(call).toMatchObject({ mode: 'action_items', isOn: true })
+  })
+
+  it('renders the live transcription default first and sends a correlated update', () => {
+    sendInit({ liveTranscriptionByDefault: true })
+    const toggle = container.querySelector<HTMLInputElement>('#meetings-automation-live-transcription')!
+    const firstCheckbox = container.querySelector<HTMLInputElement>('input[type="checkbox"]')!
+    expect(firstCheckbox).toBe(toggle)
+    expect(toggle.checked).toBe(true)
+    act(() => { toggle.click() })
+    const call = postMessage.mock.calls.map(([message]) => message).find((message) => message.type === 'requestUpdateLiveTranscriptionByDefault')
+    expect(call).toMatchObject({ enabled: false })
+    expect(toggle.checked).toBe(false)
+  })
+
+  it('reflects a record-only default from the native snapshot', () => {
+    sendInit({ liveTranscriptionByDefault: false })
+    expect(container.querySelector<HTMLInputElement>('#meetings-automation-live-transcription')!.checked).toBe(false)
   })
 
   it('surfaces an error from a failed update instead of assuming success', () => {

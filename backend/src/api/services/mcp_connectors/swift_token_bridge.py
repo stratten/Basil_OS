@@ -101,7 +101,7 @@ async def _ask_swift_for_credentials(
 
     Returns a dict with at minimum ``kind`` (``token_available``,
     ``token_missing``, ``client_unavailable``, ``token_response_timeout``,
-    ``token_request_cancelled``), plus ``access_token`` and (when
+    ``token_request_canceled``), plus ``access_token`` and (when
     requested) ``refresh_token``, and the user-facing ``message`` /
     ``user_action_required`` strings if the request failed.
     """
@@ -160,10 +160,12 @@ async def _ask_swift_for_credentials(
         from api.services.agent_processing.shared.cancellable_wait import (
             await_future_with_cancellation,
         )
+        from api.services.agent_processing.shared.workflow_budget_pause import pause_workflow_budget
 
-        wait_kind, response = await await_future_with_cancellation(
-            future, timeout_s=timeout_s, cancel_event=cancel_event
-        )
+        with pause_workflow_budget("external_service_token"):
+            wait_kind, response = await await_future_with_cancellation(
+                future, timeout_s=timeout_s, cancel_event=cancel_event
+            )
         if wait_kind == "timeout":
             logger.warning(
                 "Swift client did not respond with MCP token for connection %s within %ss",
@@ -183,22 +185,22 @@ async def _ask_swift_for_credentials(
                 "message": "Timed out waiting for the Basil client to provide the external service token.",
                 "user_action_required": "Grant Keychain access, then retry.",
             }
-        if wait_kind == "cancelled":
+        if wait_kind == "canceled":
             logger.info(
-                "MCP token request for connection %s cancelled before a response arrived",
+                "MCP token request for connection %s canceled before a response arrived",
                 connection_id,
             )
             if agent_task_id:
                 await _broadcast_to_active_connections({
                     "event_type": "agent_task_blocker_resolved",
                     "agent_task_id": agent_task_id,
-                    "kind": "token_request_cancelled",
-                    "message": "External service token request was cancelled.",
+                    "kind": "token_request_canceled",
+                    "message": "External service token request was canceled.",
                     "connection_id": connection_id,
                 })
             return {
-                "kind": "token_request_cancelled",
-                "message": "The external service token request was cancelled.",
+                "kind": "token_request_canceled",
+                "message": "The external service token request was canceled.",
             }
         access_token = response.get("access_token") if isinstance(response, dict) else response
         refresh_token = (
@@ -242,8 +244,8 @@ async def _ask_swift_for_credentials(
         # run actually aborts. Cooperative cancellation via ``cancel_event`` is
         # handled above and returns a clean outcome; this path is the hard stop.
         # We deliberately do not await a broadcast here because the surrounding
-        # task is already being cancelled — the UI blocker is cleared by the
-        # orchestrator's agent_task_cancelled event.
+        # task is already being canceled — the UI blocker is cleared by the
+        # orchestrator's agent_task_canceled event.
         raise
     finally:
         _token_response_waiters.pop(correlation_id, None)

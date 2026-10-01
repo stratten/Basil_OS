@@ -196,20 +196,11 @@ async def handle_schedule_model_unload(websocket, msg_data, Preferences, schedul
     logger.info(f"Scheduling model unload with {delay_seconds} seconds delay")
     schedule_model_unload(delay_seconds)
 
-async def handle_cancel_model_unload(websocket, send_transcription_status, cancel_model_unload):
-    logger = logging.getLogger(__name__)
-    logger.info("Cancelling scheduled model unload")
-    cancel_model_unload()
-    await websocket.send_json({
-        "status": "success",
-        "message": "Model unload cancelled"
-    })
-
 async def handle_cancel_transcription(websocket, send_transcription_status):
     logger = logging.getLogger(__name__)
     logger.info("Received request to cancel transcription")
     await send_transcription_status("transcription_completed", "")
-    logger.info("Transcription cancelled successfully")
+    logger.info("Transcription canceled successfully")
 
 async def handle_set_context_info(websocket, msg_data):
     logger = logging.getLogger(__name__)

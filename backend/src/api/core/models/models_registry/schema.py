@@ -90,7 +90,7 @@ class ModelFeature(str, Enum):
 
     # Runtime features (primarily local models).
     GPU_ACCELERATION = "gpu_acceleration"  # Can use GPU (CUDA/MPS).
-    QUANTIZATION = "quantization"  # Is a quantised model (GGUF).
+    QUANTIZATION = "quantization"  # Is a quantized model (GGUF).
 
     # Internal use features.
     API_KEY_VALIDATION = "api_key_validation"  # Designated for API key validation (cheap, fast).

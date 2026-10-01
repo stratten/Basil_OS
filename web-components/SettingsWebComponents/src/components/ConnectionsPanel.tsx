@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ConnectionsSettingsFields } from '../types'
 import { AddConnectionModal } from './AddConnectionModal'
 import { ConnectionRow } from './ConnectionRow'
+import { ConnectionSignInProgress } from './ConnectionSignInProgress'
 
 interface ConnectionsPanelProps {
   fields: ConnectionsSettingsFields
@@ -11,7 +12,17 @@ interface ConnectionsPanelProps {
 
 export function ConnectionsPanel({ fields, pendingId, onTrackRequest }: ConnectionsPanelProps) {
   const [showAddModal, setShowAddModal] = useState(false)
+  const [hiddenPendingFlowName, setHiddenPendingFlowName] = useState<string | null>(null)
   const disabled = pendingId !== null
+
+  useEffect(() => {
+    if (!fields.pendingFlowFriendlyName) setHiddenPendingFlowName(null)
+  }, [fields.pendingFlowFriendlyName])
+
+  function dismissAddModal() {
+    setHiddenPendingFlowName(fields.pendingFlowFriendlyName)
+    setShowAddModal(false)
+  }
 
   return (
     <section className="connections-panel" aria-labelledby="connections-servers-heading">
@@ -26,6 +37,15 @@ export function ConnectionsPanel({ fields, pendingId, onTrackRequest }: Connecti
           + Add Connection
         </button>
       </div>
+
+      {!showAddModal && (
+        <ConnectionSignInProgress
+          fields={fields}
+          onTrackRequest={onTrackRequest}
+          onContinueInBackground={() => setHiddenPendingFlowName(fields.pendingFlowFriendlyName)}
+          showPendingFlow={fields.pendingFlowFriendlyName !== hiddenPendingFlowName}
+        />
+      )}
 
       {fields.isLoading ? (
         <p className="connections-panel-status" role="status">Loading connections...</p>
@@ -53,7 +73,7 @@ export function ConnectionsPanel({ fields, pendingId, onTrackRequest }: Connecti
             fields={fields}
             pendingId={pendingId}
             onTrackRequest={onTrackRequest}
-            onDismiss={() => setShowAddModal(false)}
+            onDismiss={dismissAddModal}
           />
         </div>
       )}

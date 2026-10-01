@@ -30,7 +30,7 @@ function renderMarkdownBlock(block: string, blockIndex: number) {
   const lines = block.split('\n').filter(line => line.trim().length > 0)
 
   // Case A: every line in the block is a bulleted line. Standard
-  // markdown list rendering. Preserves the existing behaviour for
+  // markdown list rendering. Preserves the existing behavior for
   // any prompt that already produces newline-separated `- item`
   // bullets and adds U+2022 to the accepted leading-glyph set.
   if (lines.length > 0 && lines.every(line => LEADING_BULLET.test(line.trim()))) {

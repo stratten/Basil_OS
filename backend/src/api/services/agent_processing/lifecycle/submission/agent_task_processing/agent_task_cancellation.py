@@ -3,7 +3,7 @@
 This module owns the per-agent-task cancellation bookkeeping that previously
 lived inline in ``AgentTaskOrchestrator``:
 
-  * the set of cancelled agent-task ids,
+  * the set of canceled agent-task ids,
   * the cooperative ``asyncio.Event`` signals threaded into workflow execution,
   * and (new) a registry of the live top-level ``asyncio.Task`` objects running
     each agent task's workflow, so cancellation can *preempt* them via
@@ -75,7 +75,7 @@ class AgentTaskCancellationRegistry:
 
     def __init__(self) -> None:
         self._lock = threading.RLock()
-        self._cancelled_agent_tasks: Set[str] = set()
+        self._canceled_agent_tasks: Set[str] = set()
         self._notified_agent_tasks: Set[str] = set()
         self._cancellation_events: Dict[str, ThreadSafeCancellationSignal] = {}
         self._active_tasks: Dict[str, asyncio.Task] = {}
@@ -83,11 +83,11 @@ class AgentTaskCancellationRegistry:
         self._alias_members: Dict[str, Set[str]] = {}
         self._aliases_by_task: Dict[str, Set[str]] = {}
 
-    def is_cancelled(self, agent_task_id: str) -> bool:
-        """Return True if this agent task has been marked cancelled."""
+    def is_canceled(self, agent_task_id: str) -> bool:
+        """Return True if this agent task has been marked canceled."""
         with self._lock:
             return any(
-                task_id in self._cancelled_agent_tasks
+                task_id in self._canceled_agent_tasks
                 for task_id in self._resolve_ids_locked(agent_task_id)
             )
 
@@ -96,19 +96,19 @@ class AgentTaskCancellationRegistry:
 
         The event is lazily created and the same instance is returned on every
         subsequent call for the id, so callers that cached the event still see
-        it fire when the task is cancelled.
+        it fire when the task is canceled.
         """
         with self._lock:
             event = self._cancellation_events.get(agent_task_id)
             if event is None:
                 event = ThreadSafeCancellationSignal()
-                if agent_task_id in self._cancelled_agent_tasks:
+                if agent_task_id in self._canceled_agent_tasks:
                     event.set()
                 self._cancellation_events[agent_task_id] = event
             return event
 
-    def mark_cancelled(self, agent_task_ids: Iterable[str]) -> None:
-        """Mark ids cancelled and set their cooperative events.
+    def mark_canceled(self, agent_task_ids: Iterable[str]) -> None:
+        """Mark ids canceled and set their cooperative events.
 
         Empty/falsy ids are ignored so a bad id can never create a spurious
         cancellation event.
@@ -120,7 +120,7 @@ class AgentTaskCancellationRegistry:
                 if agent_task_id:
                     expanded_ids.update(self._resolve_ids_locked(agent_task_id))
             for agent_task_id in expanded_ids:
-                self._cancelled_agent_tasks.add(agent_task_id)
+                self._canceled_agent_tasks.add(agent_task_id)
                 event = self._cancellation_events.get(agent_task_id)
                 if event is None:
                     event = ThreadSafeCancellationSignal()
@@ -148,10 +148,10 @@ class AgentTaskCancellationRegistry:
                     continue
                 self._alias_members.setdefault(alias, set()).add(agent_task_id)
                 self._aliases_by_task.setdefault(agent_task_id, set()).add(alias)
-                if alias in self._cancelled_agent_tasks:
-                    self._cancelled_agent_tasks.add(agent_task_id)
+                if alias in self._canceled_agent_tasks:
+                    self._canceled_agent_tasks.add(agent_task_id)
                     self.get_cancellation_event(agent_task_id).set()
-            should_cancel = agent_task_id in self._cancelled_agent_tasks
+            should_cancel = agent_task_id in self._canceled_agent_tasks
         if should_cancel and not task.done():
             self._schedule_task_cancel(task, loop)
 
@@ -162,21 +162,21 @@ class AgentTaskCancellationRegistry:
         with self._lock:
             self._alias_members.setdefault(alias, set()).add(agent_task_id)
             self._aliases_by_task.setdefault(agent_task_id, set()).add(alias)
-            should_cancel = alias in self._cancelled_agent_tasks
+            should_cancel = alias in self._canceled_agent_tasks
             task = self._active_tasks.get(agent_task_id)
             loop = self._active_task_loops.get(agent_task_id)
             if should_cancel:
-                self._cancelled_agent_tasks.add(agent_task_id)
+                self._canceled_agent_tasks.add(agent_task_id)
                 self.get_cancellation_event(agent_task_id).set()
         if should_cancel and task is not None and loop is not None and not task.done():
             self._schedule_task_cancel(task, loop)
 
-    def clear_cancelled(self, agent_task_id: str) -> None:
+    def clear_canceled(self, agent_task_id: str) -> None:
         """Clear one completed turn's tombstone without disturbing active aliases."""
         if not agent_task_id:
             return
         with self._lock:
-            self._cancelled_agent_tasks.discard(agent_task_id)
+            self._canceled_agent_tasks.discard(agent_task_id)
             self._notified_agent_tasks.discard(agent_task_id)
             self._cancellation_events.pop(agent_task_id, None)
             if agent_task_id in self._active_tasks:
@@ -247,7 +247,7 @@ class AgentTaskCancellationRegistry:
             if task is None or loop is None or task.done():
                 continue
             logger.info(
-                "🛑 Preemptively cancelling active asyncio.Task for agent_task %s",
+                "🛑 Preemptively canceling active asyncio.Task for agent_task %s",
                 task_id,
             )
             scheduled = self._schedule_task_cancel(task, loop) or scheduled

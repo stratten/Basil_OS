@@ -22,7 +22,7 @@ def get_provider_interaction_schema_statements() -> list[str]:
             requested_schema_json TEXT NOT NULL,
             fields_json TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'pending'
-                CHECK (status IN ('pending', 'answered', 'declined', 'cancelled', 'superseded')),
+                CHECK (status IN ('pending', 'answered', 'declined', 'canceled', 'superseded')),
             outcome TEXT
                 CHECK (outcome IN ('accept', 'decline', 'cancel')),
             submitted_values_json TEXT,

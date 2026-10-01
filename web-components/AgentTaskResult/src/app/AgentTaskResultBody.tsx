@@ -29,7 +29,7 @@ export function SurfaceStack({ surfaceKey, children }: { surfaceKey: string; chi
   // implementation) meant a same-key content update -- e.g. a streaming
   // progress event from a fast local model -- tore the effect down and
   // re-ran it, and React always invokes the prior effect's cleanup first.
-  // That cleanup cancelled the in-flight `requestAnimationFrame` that was
+  // That cleanup canceled the in-flight `requestAnimationFrame` that was
   // the only thing that ever flipped `entering` back to `false`, and the
   // early-return guard then skipped rescheduling it (the key hadn't
   // changed), permanently stranding the new surface at `opacity: 0`.
@@ -278,7 +278,7 @@ export function AgentTaskResultBody({
           baseColor={getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#33559B'}
           accentColor="#FFFFFF"
           showCancelStop={displaySourceDetached ? false : showCancelStop}
-          isCancelling={selectedAgent?.isCancelling === true}
+          isCanceling={selectedAgent?.isCanceling === true}
           onCancelRunning={onCancelRunningAgent}
           canCollapse={!embedded}
           hideWindowControls={embedded}

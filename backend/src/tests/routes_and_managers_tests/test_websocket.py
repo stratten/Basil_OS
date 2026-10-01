@@ -20,9 +20,6 @@ async def test_websocket_connection():
 
     await websocket_endpoint(
         websocket=websocket,
-        query_intent_handler=MagicMock(),
-        model_service=MagicMock(),
-        model_usage_service=MagicMock(),
         agent_task_submission_service=MagicMock(),
         wake_word_service=MagicMock(),
         transcription_service=MagicMock(),

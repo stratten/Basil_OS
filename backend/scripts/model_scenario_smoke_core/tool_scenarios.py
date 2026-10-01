@@ -220,7 +220,7 @@ async def run_tool_scenario(candidate: ModelCandidate, spec: ToolScenarioSpec) -
                 continue
             except Exception as exc:
                 return ScenarioOutcome.fail(f"get_agent_task_status raised: {exc}")
-            if last_status and last_status.get("status") in {"completed", "failed", "error", "cancelled"}:
+            if last_status and last_status.get("status") in {"completed", "failed", "error", "canceled"}:
                 break
 
         if not last_status:

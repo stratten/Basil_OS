@@ -44,6 +44,7 @@ from api.core.models.reasoning.model_runtime_profile import (
     resolve_tool_call_format_for,
     resolve_tool_rendering_for,
 )
+from .model_errors import TransientModelError
 from .local_tool_call_parser import (
     extract_text_tool_calls,
     parse_structured_tool_calls,
@@ -56,6 +57,10 @@ from .slim_catalog_renderer import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class LocalModelGenerationStalled(TransientModelError):
+    """The local model stopped emitting tokens mid-generation for longer than the stall limit."""
 
 
 class LocalModelContextWindowExceeded(RuntimeError):
@@ -438,6 +443,8 @@ class LlamaCppLangChainAdapter(BaseChatModel):
             )
 
     _HEARTBEAT_INTERVAL_SECONDS = 5.0
+    _QUEUE_POLL_SECONDS = 10.0
+    _MID_STREAM_STALL_SECONDS = 180.0
 
     async def _agenerate(
         self,
@@ -522,6 +529,8 @@ class LlamaCppLangChainAdapter(BaseChatModel):
         # -- Async bridge: thread pushes chunks, we consume on the event loop --
         queue: asyncio.Queue = asyncio.Queue()
         loop = asyncio.get_running_loop()
+        stop_event = threading.Event()
+        stream_state: Dict[str, Any] = {"phase": "waiting_for_model"}
 
         def _stream_worker() -> None:
             waiting_at = time.monotonic()
@@ -535,6 +544,13 @@ class LlamaCppLangChainAdapter(BaseChatModel):
                     tool_count=len(self._bound_tools or []),
                 )
                 with self._native_execution_lock:
+                    if stop_event.is_set():
+                        _emit_runtime_trace(
+                            "adapter_native_stream_skipped_after_stop",
+                            model_name=self.model_name,
+                        )
+                        return
+                    stream_state["phase"] = "processing_prompt"
                     native_started_at = time.monotonic()
                     _emit_runtime_trace(
                         "adapter_native_stream_started",
@@ -544,15 +560,27 @@ class LlamaCppLangChainAdapter(BaseChatModel):
                         message_count=len(converted_messages),
                         tool_count=len(self._bound_tools or []),
                     )
-                    for chunk in self._llama_instance.create_chat_completion(**call_kwargs):
+                    stream = self._llama_instance.create_chat_completion(**call_kwargs)
+                    for chunk in stream:
+                        if stop_event.is_set():
+                            _emit_runtime_trace(
+                                "adapter_native_stream_stopped",
+                                model_name=self.model_name,
+                                chunk_count=chunk_count,
+                            )
+                            break
                         chunk_count += 1
                         if chunk_count == 1:
+                            stream_state["phase"] = "generating"
                             _emit_runtime_trace(
                                 "adapter_native_stream_first_chunk",
                                 model_name=self.model_name,
                                 first_chunk_seconds=time.monotonic() - native_started_at,
                             )
                         loop.call_soon_threadsafe(queue.put_nowait, chunk)
+                    close_stream = getattr(stream, "close", None)
+                    if stop_event.is_set() and callable(close_stream):
+                        close_stream()
                     _emit_runtime_trace(
                         "adapter_native_stream_completed",
                         model_name=self.model_name,
@@ -605,51 +633,68 @@ class LlamaCppLangChainAdapter(BaseChatModel):
         accumulated_tool_calls: Dict[int, Dict[str, Any]] = {}
         tokens_generated = 0
         last_heartbeat = time.time()
+        last_chunk_at = time.monotonic()
 
-        while True:
-            try:
-                chunk = await asyncio.wait_for(queue.get(), timeout=10.0)
-            except asyncio.TimeoutError:
-                self._fire_heartbeat(tokens_generated, content_parts)
-                continue
+        try:
+            while True:
+                try:
+                    chunk = await asyncio.wait_for(queue.get(), timeout=self._QUEUE_POLL_SECONDS)
+                except asyncio.TimeoutError:
+                    phase = str(stream_state.get("phase") or "generating")
+                    silent_for = time.monotonic() - last_chunk_at
+                    if phase == "generating" and silent_for >= self._MID_STREAM_STALL_SECONDS:
+                        logger.error(
+                            "LlamaCpp generation stalled: no chunk for %.0fs after %s token(s)",
+                            silent_for,
+                            tokens_generated,
+                        )
+                        raise LocalModelGenerationStalled(
+                            f"Local model produced no output for {silent_for:.0f}s mid-generation"
+                        )
+                    self._fire_heartbeat(tokens_generated, content_parts, phase=phase)
+                    continue
 
-            if chunk is None:
-                break
-            if isinstance(chunk, Exception):
-                logger.error(f"LlamaCpp streaming error: {chunk}")
-                raise chunk
+                if chunk is None:
+                    break
+                if isinstance(chunk, Exception):
+                    logger.error(f"LlamaCpp streaming error: {chunk}")
+                    raise chunk
+                last_chunk_at = time.monotonic()
 
-            if "choices" in chunk and chunk["choices"]:
-                delta = chunk["choices"][0].get("delta", {})
+                if "choices" in chunk and chunk["choices"]:
+                    delta = chunk["choices"][0].get("delta", {})
 
-                if delta.get("content"):
-                    content_parts.append(delta["content"])
-                    tokens_generated += 1
+                    if delta.get("content"):
+                        content_parts.append(delta["content"])
+                        tokens_generated += 1
 
-                for tc_delta in delta.get("tool_calls", []):
-                    idx = tc_delta.get("index", 0)
-                    if idx not in accumulated_tool_calls:
-                        accumulated_tool_calls[idx] = {
-                            "id": "",
-                            "type": "function",
-                            "function": {"name": "", "arguments": ""},
-                        }
-                    entry = accumulated_tool_calls[idx]
-                    if tc_delta.get("id"):
-                        entry["id"] = tc_delta["id"]
-                    func_delta = tc_delta.get("function", {})
-                    if func_delta.get("name"):
-                        entry["function"]["name"] = func_delta["name"]
-                    if "arguments" in func_delta:
-                        entry["function"]["arguments"] += func_delta["arguments"]
-                    tokens_generated += 1
+                    for tc_delta in delta.get("tool_calls", []):
+                        idx = tc_delta.get("index", 0)
+                        if idx not in accumulated_tool_calls:
+                            accumulated_tool_calls[idx] = {
+                                "id": "",
+                                "type": "function",
+                                "function": {"name": "", "arguments": ""},
+                            }
+                        entry = accumulated_tool_calls[idx]
+                        if tc_delta.get("id"):
+                            entry["id"] = tc_delta["id"]
+                        func_delta = tc_delta.get("function", {})
+                        if func_delta.get("name"):
+                            entry["function"]["name"] = func_delta["name"]
+                        if "arguments" in func_delta:
+                            entry["function"]["arguments"] += func_delta["arguments"]
+                        tokens_generated += 1
 
-            now = time.time()
-            if now - last_heartbeat >= self._HEARTBEAT_INTERVAL_SECONDS:
-                self._fire_heartbeat(tokens_generated, content_parts)
-                last_heartbeat = now
+                now = time.time()
+                if now - last_heartbeat >= self._HEARTBEAT_INTERVAL_SECONDS:
+                    self._fire_heartbeat(tokens_generated, content_parts)
+                    last_heartbeat = now
 
-        await thread_future
+            await thread_future
+        finally:
+            # Covers cancellation, stalls, and stream errors: the worker stops at its next chunk (or right after it gets the native lock) and releases the lock instead of generating for a caller that is gone.
+            stop_event.set()
 
         # Final heartbeat so the idle timer is fully reset after generation
         self._fire_heartbeat(tokens_generated, content_parts)
@@ -739,7 +784,10 @@ class LlamaCppLangChainAdapter(BaseChatModel):
         return result
 
     def _fire_heartbeat(
-        self, tokens_generated: int, content_parts: Optional[List[str]] = None
+        self,
+        tokens_generated: int,
+        content_parts: Optional[List[str]] = None,
+        phase: str = "generating",
     ) -> None:
         """Invoke the activity callback and log a content preview.
 
@@ -748,8 +796,7 @@ class LlamaCppLangChainAdapter(BaseChatModel):
         agent_executor_factory) can stream it to the frontend.
         """
         if self.reasoning_mode == "none":
-            if self._activity_callback:
-                self._activity_callback(tokens_generated, None, False)
+            self._invoke_activity_callback(tokens_generated, None, False, phase)
             return
         thinking_text: Optional[str] = None
         thinking_complete = False
@@ -782,11 +829,25 @@ class LlamaCppLangChainAdapter(BaseChatModel):
                     f"LlamaCpp stream [{tokens_generated} tokens]: {preview}"
                 )
 
-        if self._activity_callback:
-            try:
-                self._activity_callback(tokens_generated, thinking_text, thinking_complete)
-            except Exception:
-                pass
+        self._invoke_activity_callback(tokens_generated, thinking_text, thinking_complete, phase)
+
+    def _invoke_activity_callback(
+        self,
+        tokens_generated: int,
+        thinking_text: Optional[str],
+        thinking_complete: bool,
+        phase: str,
+    ) -> None:
+        callback = self._activity_callback
+        if not callback:
+            return
+        try:
+            if getattr(callback, "accepts_phase", False):
+                callback(tokens_generated, thinking_text, thinking_complete, phase=phase)
+            else:
+                callback(tokens_generated, thinking_text, thinking_complete)
+        except Exception:
+            pass
 
 
 def create_langchain_llm_from_llama_cpp(

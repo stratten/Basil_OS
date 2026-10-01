@@ -180,7 +180,7 @@ def migrate_assistant_outputs_table(conn: sqlite3.Connection) -> None:
             "UPDATE assistant_outputs SET output_type = 'assistant_session' WHERE output_type = 'voice'"
         )
         logger.info(
-            f"Assistant output migration: relabelled {legacy_voice_count['cnt']} legacy "
+            f"Assistant output migration: relabeled {legacy_voice_count['cnt']} legacy "
             f"assistant_outputs rows to 'assistant_session'"
         )
 

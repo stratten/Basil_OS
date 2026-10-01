@@ -333,6 +333,8 @@ export interface MeetingUIStateDTO {
   systemAudioLevel: number;
   microphoneInputRecoveryState: MicrophoneInputRecoveryStateDTO;
   microphoneInputRecoveryMessage: string | null;
+  isCapturePaused: boolean;
+  isLiveTranscriptionEnabled: boolean;
 }
 
 export type MeetingSearchTermModeDTO = 'and' | 'or';
@@ -398,6 +400,10 @@ export type MeetingBridgeIntent =
   | { type: 'toggleRecording' }
   | { type: 'startNewMeeting' }
   | { type: 'resumeMeeting' }
+  | { type: 'pauseRecording' }
+  | { type: 'resumeRecording' }
+  | { type: 'cancelRecording' }
+  | { type: 'setLiveTranscription'; enabled: boolean }
   | { type: 'selectMeeting'; meetingId: string }
   | { type: 'deleteMeeting'; meetingId: string }
   | { type: 'setSidebarCollapsed'; collapsed: boolean }

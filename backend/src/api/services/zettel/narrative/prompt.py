@@ -42,7 +42,7 @@ _KIND_HINTS = {
         "produced"
     ),
     "conversation_turn": (
-        "one user message and its completed, failed, or cancelled assistant response; "
+        "one user message and its completed, failed, or canceled assistant response; "
         "summarize the exchange and its terminal outcome"
     ),
     "screen_block": (

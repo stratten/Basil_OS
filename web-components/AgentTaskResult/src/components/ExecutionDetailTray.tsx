@@ -14,6 +14,7 @@ import { AgentRunHistoryTray } from './run/AgentRunHistoryTray';
 import type { AgentTaskRunFocusSummary } from './run/agentTaskRunFocus';
 import NativeSymbolIcon, { type NativeSymbolName } from '../../../shared/NativeSymbolIcon';
 import { agentTaskArtifactPreviewTransport } from '../services/bridge';
+import { wsManager, type AgentTaskEventSubscriber } from '../services/websocket';
 import {
   clampDetailTrayWidth,
   DETAIL_TRAY_KEYBOARD_STEP,
@@ -22,6 +23,8 @@ import {
 import type { PresencePhase } from '../app/usePresenceTransition';
 
 const RESIZE_ACTIVATION_DISTANCE_PX = 4;
+
+const subscribeToAgentTaskEvents: AgentTaskEventSubscriber = handler => wsManager.subscribe(handler);
 
 function logTrayDiagnostic(event: string, payload: Record<string, unknown>): void {
   console.log(`[AgentTaskResult][ExecutionDetailTray][${event}] ${JSON.stringify(payload)}`);
@@ -636,6 +639,7 @@ export default function ExecutionDetailTray({
               showDocumentTabs={false}
               previewTransport={agentTaskArtifactPreviewTransport}
               runs={runs}
+              subscribeToEvents={subscribeToAgentTaskEvents}
             />
           ) : (
             <InlineArtifactPreview
@@ -645,6 +649,7 @@ export default function ExecutionDetailTray({
               transport={agentTaskArtifactPreviewTransport}
               agentTaskId={agentTaskId}
               rootTaskId={rootTaskId}
+              subscribeToEvents={subscribeToAgentTaskEvents}
             />
           )}
         </div>

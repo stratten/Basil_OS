@@ -1,12 +1,18 @@
 """Async service execution wrapper for LangChain StructuredTool instances."""
 
+import asyncio
 import json
 import logging
 from dataclasses import asdict, is_dataclass
 from typing import Any, Dict, List, Type
 
 from api.services.agent_processing.shared.agent_runtime_context import get_current_agent_context
-from api.services.agent_processing.lifecycle.execution_graph.tool_run_watchdog import record_tool_progress
+from api.services.agent_processing.lifecycle.execution_graph.tool_run_watchdog import (
+    ToolRunWatchdogStopped,
+    attach_tool_cancel_handle,
+    detach_tool_cancel_handle,
+    record_tool_progress,
+)
 
 from .models import BaseModel, BaseTool
 
@@ -154,7 +160,24 @@ def create_tool_function(
                 service_name=service_name,
                 method_name=method_name,
             )
-            result = await execution_engine.execute_service_method(service_name, method_name, kwargs)
+            service_task = asyncio.ensure_future(
+                execution_engine.execute_service_method(service_name, method_name, kwargs)
+            )
+            watched_run = attach_tool_cancel_handle(
+                agent_task_id=agent_task_id,
+                tool_name=registry_tool_name,
+                handle=service_task,
+            )
+            try:
+                result = await service_task
+            except asyncio.CancelledError:
+                stop_reason = watched_run.force_cancel_reason if watched_run is not None else None
+                current_task = asyncio.current_task()
+                if stop_reason is None or (current_task is not None and current_task.cancelling()):
+                    raise
+                raise ToolRunWatchdogStopped(stop_reason) from None
+            finally:
+                detach_tool_cancel_handle(watched_run)
             record_tool_progress(
                 agent_task_id=agent_task_id,
                 tool_name=registry_tool_name,

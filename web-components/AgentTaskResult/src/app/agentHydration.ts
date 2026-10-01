@@ -125,9 +125,16 @@ async function restorePendingExecutionApproval(
         revision: approval.revision,
       });
     }
+    const restoredCommandInputs = await restorePendingCommandInputs(storeAgentTaskId, sessionAgentTaskId, isCurrent);
+    if (!isCurrent()) return false;
     if (approvals.length > 0) {
       agentStore.updateProgressStep(storeAgentTaskId, 'Waiting for your approval', true, false);
       agentStore.updateStep(storeAgentTaskId, 'Waiting for your approval');
+      return true;
+    }
+    if (restoredCommandInputs > 0) {
+      agentStore.updateProgressStep(storeAgentTaskId, 'Waiting for your input', true, false);
+      agentStore.updateStep(storeAgentTaskId, 'Waiting for your input');
       return true;
     }
     return false;
@@ -137,6 +144,39 @@ async function restorePendingExecutionApproval(
       error,
     });
     return false;
+  }
+}
+
+async function restorePendingCommandInputs(
+  storeAgentTaskId: string,
+  sessionAgentTaskId: string,
+  isCurrent: () => boolean = () => true,
+): Promise<number> {
+  try {
+    const { requests } = await api.getPendingCommandInputs(sessionAgentTaskId);
+    if (!isCurrent()) return 0;
+    const latestAgent = agentStore.getAgent(storeAgentTaskId);
+    if (!latestAgent || latestAgent.status === 'completed' || latestAgent.status === 'failed') {
+      return 0;
+    }
+    for (const pending of requests) {
+      agentStore.showApproval(storeAgentTaskId, {
+        approval_id: pending.request_id,
+        agent_task_id: pending.agent_task_id,
+        command: pending.command,
+        reason: `The command is asking for input: ${pending.prompt}`,
+        risk_level: pending.secret ? 'medium' : 'low',
+        execution_type: 'command_input',
+        command_input: pending,
+      });
+    }
+    return requests.length;
+  } catch (error) {
+    console.warn('[AgentTaskResult] Failed to recover pending command input', {
+      storeAgentTaskId,
+      error,
+    });
+    return 0;
   }
 }
 
@@ -332,11 +372,11 @@ export function hydrateAgentFromBackend(agentTaskId: string): Promise<HydrationO
         if (turn.execution_timeline && turn.execution_timeline.length > 0) {
           agentStore.setExecutionTimeline(agentTaskId, turn.execution_timeline);
         }
-      } else if (turn.status === 'cancelled') {
+      } else if (turn.status === 'canceled') {
         if (turn.execution_timeline && turn.execution_timeline.length > 0) {
           agentStore.setExecutionTimeline(agentTaskId, turn.execution_timeline);
         }
-        agentStore.setError(agentTaskId, 'Agent task was cancelled.');
+        agentStore.setError(agentTaskId, 'Agent task was canceled.');
         agentStore.updateStatus(agentTaskId, 'failed');
       }
       return 'hydrated';

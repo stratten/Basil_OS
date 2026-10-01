@@ -192,7 +192,7 @@ class ProgressTracker:
         only flows through callbacks (no file write).
         """
         model_id = f"{model_type}-{variant}"
-        terminal = {"completed", "error", "cancelled", "user_cancelled", "failed"}
+        terminal = {"completed", "error", "canceled", "user_canceled", "failed"}
         api_logger.debug(f"[HEARTBEAT] started for {model_id}")
         try:
             while self._current_operations.get(model_id) not in terminal:

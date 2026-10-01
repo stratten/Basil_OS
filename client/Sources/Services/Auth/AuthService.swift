@@ -437,56 +437,15 @@ final class AuthService: ObservableObject {
     func saveToKeychain(key: String, value: String) throws {
         let data = value.data(using: .utf8)!
 
-        // Stored items carry a ``kSecAttrAccessControl`` ACL with the
-        // ``.userPresence`` flag. On read, macOS presents the system
-        // sheet that accepts EITHER an enrolled biometric (Touch ID)
-        // OR the user's Mac login password — the user picks the method
-        // they prefer per prompt. This replaces the previous
-        // ``kSecAttrAccessibleWhenUnlockedThisDeviceOnly`` accessibility,
-        // which produced a password-only sheet whenever the system
-        // needed to re-authorize an item (most commonly during dev
-        // rebuilds when the app's code-signing identity changed).
-        //
-        // ``kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly`` is the
-        // accessibility class the ACL flags require: a biometric ACL
-        // is meaningless without a passcode, so this constraint must
-        // accompany ``.userPresence``. Every macOS user account has a
-        // login password by definition, so this never fails in
-        // practice on a logged-in machine.
-        var aclError: Unmanaged<CFError>?
-        guard let accessControl = SecAccessControlCreateWithFlags(
-            nil,
-            kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly,
-            [.userPresence],
-            &aclError
-        ) else {
-            let underlying = aclError?.takeRetainedValue()
-            let message = (underlying as Error?)?.localizedDescription ?? "unknown"
-            logger.error("Failed to create Keychain access control: \(message)")
-            DevLogger.shared.error(
-                "Keychain ACL creation failed: \(message)",
-                context: "AuthService.saveToKeychain"
-            )
-            throw AuthError.networkError("Failed to create keychain access control: \(message)")
-        }
-
+        // Items live in the login keychain with no per-read user-presence requirement. macOS trusts the creating app by its code-signing designated requirement, so a Developer ID build (stable team ID and bundle ID) reads silently across launches and updates. Ad-hoc development builds get a new designated requirement on every rebuild, so macOS asks once per item after each rebuild.
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
             kSecValueData as String: data,
-            kSecAttrAccessControl as String: accessControl
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
         ]
 
-        // Delete any existing item first. This both prevents
-        // ``errSecDuplicateItem`` and gives us automatic in-place
-        // migration: an entry written with the previous accessibility
-        // attribute is removed here and rewritten below with the new
-        // ACL on the very next save.
-        let deleteQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: key
-        ]
-        SecItemDelete(deleteQuery as CFDictionary)
+        deleteFromKeychain(key: key)
 
         let status = SecItemAdd(query as CFDictionary, nil)
         guard status == errSecSuccess else {
@@ -495,32 +454,6 @@ final class AuthService: ObservableObject {
                 "Keychain SecItemAdd failed (status=\(status)) for key=\(key)",
                 context: "AuthService.saveToKeychain"
             )
-
-            if status == errSecMissingEntitlement {
-                // Ad-hoc/dev signing may not carry the entitlement needed for
-                // kSecAttrAccessControl. Fall back to the pre-ACL storage mode
-                // so reconnects keep working in dev; properly signed builds
-                // still get the biometric/passcode ACL above.
-                let fallbackQuery: [String: Any] = [
-                    kSecClass as String: kSecClassGenericPassword,
-                    kSecAttrAccount as String: key,
-                    kSecValueData as String: data,
-                    kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
-                ]
-                let fallbackStatus = SecItemAdd(fallbackQuery as CFDictionary, nil)
-                if fallbackStatus == errSecSuccess {
-                    DevLogger.shared.info(
-                        "Keychain saved with dev fallback accessibility for key=\(key)",
-                        context: "AuthService.saveToKeychain"
-                    )
-                    return
-                }
-                logger.error("Failed to save fallback keychain item: \(fallbackStatus)")
-                DevLogger.shared.error(
-                    "Keychain fallback SecItemAdd failed (status=\(fallbackStatus)) for key=\(key)",
-                    context: "AuthService.saveToKeychain"
-                )
-            }
             throw AuthError.networkError("Failed to save to keychain")
         }
     }
@@ -541,8 +474,9 @@ final class AuthService: ObservableObject {
               let value = String(data: data, encoding: .utf8) else {
             if status != errSecItemNotFound {
                 logger.error("Keychain read failed: \(status)")
+                return nil
             }
-            return nil
+            return migrateUserPresenceProtectedKeychainItem(key: key)
         }
         
         return value
@@ -554,6 +488,9 @@ final class AuthService: ObservableObject {
             kSecAttrAccount as String: key
         ]
         SecItemDelete(query as CFDictionary)
+        var protectedQuery = query
+        protectedQuery[kSecUseDataProtectionKeychain as String] = true
+        SecItemDelete(protectedQuery as CFDictionary)
     }
 
 }

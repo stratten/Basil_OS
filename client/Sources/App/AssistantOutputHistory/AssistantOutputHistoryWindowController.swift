@@ -84,8 +84,8 @@ final class AssistantOutputHistoryWindowController: NSWindowController, NSWindow
         webView.onToggleChromeCollapse = { [weak controller] collapsed in
             controller?.setChromeCollapsed(collapsed)
         }
-        webView.onRefineFromHistory = { [weak controller] assistantOutputId in
-            controller?.rehydrateAndShowWidget(assistantOutputId: assistantOutputId)
+        webView.onRefineFromHistory = { [weak controller] assistantOutputId, input in
+            controller?.rehydrateAndShowWidget(assistantOutputId: assistantOutputId, input: input)
         }
         webView.onReady = { [weak webView] in
             webView?.sendInit(
@@ -114,10 +114,10 @@ final class AssistantOutputHistoryWindowController: NSWindowController, NSWindow
         #endif
     }
 
-    func rehydrateAndShowWidget(assistantOutputId: Int) {
+    func rehydrateAndShowWidget(assistantOutputId: Int, input: AssistantSessionRefinementInput) {
         Task { @MainActor in
             viewModel.errorMessage = nil
-            await viewModel.resumeRefinement(id: assistantOutputId, outputType: "assistant_session")
+            await viewModel.resumeRefinement(id: assistantOutputId, outputType: "assistant_session", input: input)
             if let errorMessage = viewModel.errorMessage {
                 webView?.sendHistoryActionError(errorMessage)
             }

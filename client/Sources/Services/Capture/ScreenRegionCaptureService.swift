@@ -86,7 +86,7 @@ class ScreenRegionCaptureService: ObservableObject {
             #endif
             
             // Check if capture was successful
-            // Exit code 0 = success, non-zero = cancelled or error
+            // Exit code 0 = success, non-zero = canceled or error
             if task.terminationStatus == 0 && FileManager.default.fileExists(atPath: capturePath) {
                 // Verify file size
                 do {
@@ -127,9 +127,9 @@ class ScreenRegionCaptureService: ObservableObject {
                     )
                 }
             } else {
-                // User cancelled (pressed Escape) or capture failed
+                // User canceled (pressed Escape) or capture failed
                 #if DEBUG
-                DevLogger.shared.info("Region capture cancelled or failed", context: "ScreenRegionCaptureService")
+                DevLogger.shared.info("Region capture canceled or failed", context: "ScreenRegionCaptureService")
                 #endif
                 
                 // Clean up any partial file
@@ -138,7 +138,7 @@ class ScreenRegionCaptureService: ObservableObject {
                 return CaptureResult.failure(
                     appName: "Unknown",
                     windowTitle: "Unknown",
-                    error: "Region selection cancelled by user"
+                    error: "Region selection canceled by user"
                 )
             }
         } catch {

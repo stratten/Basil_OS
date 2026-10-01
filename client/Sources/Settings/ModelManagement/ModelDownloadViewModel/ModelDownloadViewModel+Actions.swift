@@ -230,7 +230,7 @@ extension ModelDownloadViewModel {
         // 2. Cancel local streaming task
         if let streamingTask = progressTimers[modelId] {
             streamingTask.cancel()
-            Self.logger.info("🔪 Cancelled local progress streaming task for \(modelId)")
+            Self.logger.info("🔪 Canceled local progress streaming task for \(modelId)")
         }
         progressTimers.removeValue(forKey: modelId)
 
@@ -245,7 +245,7 @@ extension ModelDownloadViewModel {
         for groupKey in modelGroups.keys {
             if var modelsInGroup = modelGroups[groupKey],
                let index = modelsInGroup.firstIndex(where: { $0.id == modelId }) {
-                modelsInGroup[index].status = .downloadable // Or .error("Cancelled by user") to be more specific
+                modelsInGroup[index].status = .downloadable // Or .error("Canceled by user") to be more specific
                 modelGroups[groupKey] = modelsInGroup
                 modelFoundAndUpdated = true
                 Self.logger.info("🔄 Updated status of \(modelId) to downloadable after cancellation.")

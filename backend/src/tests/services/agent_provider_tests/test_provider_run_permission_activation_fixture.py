@@ -238,4 +238,4 @@ async def test_permission_activation_cancellation_supersedes_pending_row(tmp_pat
 
     refreshed = await db_service.provider_interaction_repository.get_interaction(interaction_id)
     assert refreshed is not None
-    assert refreshed["status"] in {"cancelled", "superseded"}
+    assert refreshed["status"] in {"canceled", "superseded"}

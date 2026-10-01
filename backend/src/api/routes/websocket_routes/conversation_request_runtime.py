@@ -67,7 +67,7 @@ class ConversationRequestRuntime:
             try:
                 await worker(state)
             except asyncio.CancelledError:
-                logger.debug("Conversation request task cancelled: %s", request_id)
+                logger.debug("Conversation request task canceled: %s", request_id)
             except Exception:
                 logger.exception("Unhandled Conversation request failure: %s", request_id)
             finally:

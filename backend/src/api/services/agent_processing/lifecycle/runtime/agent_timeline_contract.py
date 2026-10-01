@@ -13,7 +13,7 @@ AgentTimelineState = Literal[
     "in_progress",
     "completed",
     "failed",
-    "cancelled",
+    "canceled",
     "waiting_user_input",
     "blocked",
 ]

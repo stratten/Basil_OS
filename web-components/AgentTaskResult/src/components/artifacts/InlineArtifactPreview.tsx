@@ -10,7 +10,7 @@ import { useLiveHtmlPreview } from './livePreview/useLiveHtmlPreview';
 import { LiveHtmlPreviewSurface } from './livePreview/LiveHtmlPreviewSurface';
 import { buildInlineStaticPreviewUrl } from '../../services/bridge';
 import { getBaseUrl } from '../../services/api';
-import { wsManager } from '../../services/websocket';
+import type { AgentTaskEventSubscriber } from '../../services/websocket';
 
 export interface InlineArtifactPreviewProps {
   artifact?: AgentTaskArtifactPresentation;
@@ -23,6 +23,8 @@ export interface InlineArtifactPreviewProps {
   onOpenContainingFolder?: (path: string) => void;
   onOpenPreviewWindow?: (path: string) => void;
   onOpenLocalWebPreview?: (path: string) => void;
+  /** Live artifact events from the host surface's own connected WebSocket. */
+  subscribeToEvents: AgentTaskEventSubscriber;
 }
 
 type InlinePreviewStatus = 'empty' | 'loading' | 'ready' | 'unsupported' | 'error';
@@ -69,6 +71,7 @@ export function InlineArtifactPreview({
   onOpenContainingFolder,
   onOpenPreviewWindow,
   onOpenLocalWebPreview,
+  subscribeToEvents,
 }: InlineArtifactPreviewProps) {
   const nextRequestSerial = useRef(0);
   const lastFetchKey = useRef<string>();
@@ -193,7 +196,7 @@ export function InlineArtifactPreview({
   const liveHtmlPath = isLiveHtmlCandidate ? renderState.artifact?.localPath : undefined;
   const subscribeToLiveHtmlEvents = useCallback((onEvent: () => void) => {
     if (!agentTaskId || !liveHtmlArtifactId) return () => undefined;
-    return wsManager.subscribe(event => {
+    return subscribeToEvents(event => {
       if (event.event_type !== 'agent_task_artifact') return;
       const sourceTaskId = typeof event.agent_task_id === 'string' ? event.agent_task_id : '';
       const eventRootTaskId = typeof event.root_task_id === 'string' ? event.root_task_id : '';
@@ -208,7 +211,7 @@ export function InlineArtifactPreview({
       }
       onEvent();
     });
-  }, [agentTaskId, liveHtmlArtifactId]);
+  }, [agentTaskId, liveHtmlArtifactId, subscribeToEvents]);
   const liveHtmlPreview = useLiveHtmlPreview({
     mode: 'static',
     targetUrl: liveHtmlPath ?? '',

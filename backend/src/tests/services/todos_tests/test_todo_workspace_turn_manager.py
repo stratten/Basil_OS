@@ -1,5 +1,5 @@
 """TodoWorkspaceTurnManager coverage: single/multi-item selection, dismissed
-or cancelled To-Dos are rejected from selection, duplicate ids are
+or canceled To-Dos are rejected from selection, duplicate ids are
 deduplicated, an empty selection is rejected, and submission-service
 rejection surfaces as an exception."""
 
@@ -121,19 +121,19 @@ async def test_submit_turn_rejects_a_dismissed_selected_item(todo_service: TodoS
 
 
 @pytest.mark.asyncio
-async def test_submit_turn_rejects_a_cancelled_selected_item(todo_service: TodoService) -> None:
+async def test_submit_turn_rejects_a_canceled_selected_item(todo_service: TodoService) -> None:
     item = await todo_service.create_manual_todo(
-        title="Will be cancelled", description="", notes="", responsibility="user", priority="normal",
+        title="Will be canceled", description="", notes="", responsibility="user", priority="normal",
         due_at=None, idempotency_key=None, payload_for_hash={},
     )
-    cancelled = await todo_service.cancel(item.id, item.revision)
+    canceled = await todo_service.cancel(item.id, item.revision)
     submission_service = FakeAgentTaskSubmissionService()
     manager = TodoWorkspaceTurnManager(todo_service=todo_service, agent_task_submission_service=submission_service)
 
     with pytest.raises(TodoWorkspaceValidationError):
         await manager.submit_turn(
             workspace_id="ws-5", request_id="req-5", message="hi", transcript=[],
-        selected_todo_ids=[cancelled.id], reference_paths=[], model_id=None,
+        selected_todo_ids=[canceled.id], reference_paths=[], model_id=None,
         )
 
 

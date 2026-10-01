@@ -49,7 +49,7 @@ class AgentTaskEventHandlers:
             "handle_processing_failed": self.handle_processing_failed,
             "handle_provider_delegation_waiting": self.handle_provider_delegation_waiting,
             "handle_provider_delegation_resumed": self.handle_provider_delegation_resumed,
-            "handle_processing_cancelled": self.handle_processing_cancelled,
+            "handle_processing_canceled": self.handle_processing_canceled,
         }
         
         for handler_name, handler_func in handlers.items():
@@ -332,11 +332,11 @@ class AgentTaskEventHandlers:
         """The result bridge owns continuation; never schedule initial processing again."""
         return True
 
-    def handle_processing_cancelled(
+    def handle_processing_canceled(
         self, event: AgentTaskEvent, transition: StateTransition
     ) -> bool:
         """Cancellation is already durable; only release the local lifecycle gate."""
-        self._release_lifecycle_for_task(event.agent_task_id, "cancelled")
+        self._release_lifecycle_for_task(event.agent_task_id, "canceled")
         return True
     
     def handle_processing_completed(self, event: AgentTaskEvent, transition: StateTransition) -> bool:

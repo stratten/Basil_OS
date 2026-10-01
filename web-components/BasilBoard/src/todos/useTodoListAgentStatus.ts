@@ -17,7 +17,7 @@ export default function useTodoListAgentStatus(
   const debounceRef = useRef<number>();
 
   useEffect(() => {
-    let cancelled = false;
+    let canceled = false;
     const ids = idsKey ? idsKey.split(',') : [];
 
     const refresh = () => {
@@ -27,7 +27,7 @@ export default function useTodoListAgentStatus(
       }
       void getTodoAgentStatuses(ids)
         .then((result) => {
-          if (cancelled) return;
+          if (canceled) return;
           setStatuses(result as Record<string, AgentOriginStatusSummary | null>);
         })
         .catch(() => {
@@ -44,7 +44,7 @@ export default function useTodoListAgentStatus(
     });
 
     return () => {
-      cancelled = true;
+      canceled = true;
       window.clearTimeout(debounceRef.current);
       unsubscribe();
     };

@@ -16,7 +16,8 @@ enum ReasoningDefaultsSettingsPayloadBuilder {
         agentTaskPushToTalkThreshold: Int,
         assistantSessionDefaultModality: AssistantSessionInputMode,
         assistantSessionPushToTalk: Bool,
-        assistantSessionPushToTalkThreshold: Int
+        assistantSessionPushToTalkThreshold: Int,
+        conversationDefaultConversationOnly: Bool = false
     ) -> [String: Any] {
         [
             "localModels": localModels.map(makeModelInfoPayload),
@@ -34,6 +35,7 @@ enum ReasoningDefaultsSettingsPayloadBuilder {
             "assistantSessionDefaultModality": assistantSessionDefaultModality.rawValue,
             "assistantSessionPushToTalk": assistantSessionPushToTalk,
             "assistantSessionPushToTalkThreshold": assistantSessionPushToTalkThreshold,
+            "conversationDefaultConversationOnly": conversationDefaultConversationOnly,
         ]
     }
 
@@ -54,7 +56,8 @@ enum ReasoningDefaultsSettingsPayloadBuilder {
             agentTaskPushToTalkThreshold: viewModel.agentTaskPushToTalkThreshold,
             assistantSessionDefaultModality: viewModel.assistantSessionDefaultModality,
             assistantSessionPushToTalk: viewModel.assistantSessionPushToTalk,
-            assistantSessionPushToTalkThreshold: viewModel.assistantSessionPushToTalkThreshold
+            assistantSessionPushToTalkThreshold: viewModel.assistantSessionPushToTalkThreshold,
+            conversationDefaultConversationOnly: viewModel.conversationDefaultConversationOnly
         )
     }
 

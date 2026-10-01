@@ -509,8 +509,9 @@ class ServiceExecutionEngine:
         """Remove common internal processing parameters that shouldn't be passed to service methods."""
         # Remove common internal processing parameters
         internal_keys = {
-            'working_memory', 'step_id', 'todo_context', 
-            'previous_results', '_retry_reasoning', '_alternative_method'
+            'working_memory', 'step_id', 'todo_context',
+            'previous_results', '_retry_reasoning', '_alternative_method',
+            'skip_approval_check',
         }
         
         return {k: v for k, v in parameters.items() if k not in internal_keys}

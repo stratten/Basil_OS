@@ -42,7 +42,7 @@ function Harness() {
         editorRef={stableEditorRef}
         attachmentPaths={stableAttachmentPaths}
         processing={false}
-        cancelling={false}
+        canceling={false}
         voiceState="idle"
         activeFormats={stableActiveFormats}
         models={stableModels}

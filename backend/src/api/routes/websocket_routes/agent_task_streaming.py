@@ -575,7 +575,7 @@ def cleanup_streaming_session(session_id: str):
     if processor and not processor.capture_completed:
         # Synchronously mark as complete to stop further processing
         processor.capture_completed = True
-        processor.completion_reason = "cancelled"
+        processor.completion_reason = "canceled"
         logger.debug(f"Force-stopped streaming processor for session: {session_id}")
     
     streaming_manager.remove_session(session_id)

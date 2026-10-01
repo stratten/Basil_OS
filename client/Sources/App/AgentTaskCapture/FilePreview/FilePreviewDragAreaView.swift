@@ -13,7 +13,10 @@ final class FilePreviewDragAreaView: NSView {
         return self
     }
 
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
     override func mouseDown(with event: NSEvent) {
+        window?.makeKey()
         window?.performDrag(with: event)
     }
 }

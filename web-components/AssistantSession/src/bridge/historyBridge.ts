@@ -1,6 +1,6 @@
 // web-components/AssistantSession/src/bridge/historyBridge.ts
 
-import type { AssistantOutputHistoryBridgeEvent, AssistantOutputHistoryBridgeIntent } from './historyTypes';
+import type { AssistantOutputHistoryBridgeEvent, AssistantOutputHistoryBridgeIntent, HistoryRefinementInput } from './historyTypes';
 
 type EventListener = (event: AssistantOutputHistoryBridgeEvent) => void;
 
@@ -52,8 +52,8 @@ export function minimizeWindow(): void {
 export function toggleChromeCollapse(collapsed: boolean): void {
   postToSwift({ type: 'toggleChromeCollapse', collapsed });
 }
-export function refineFromHistory(assistantOutputId: number): void {
-  postToSwift({ type: 'refineFromHistory', assistantOutputId });
+export function refineFromHistory(assistantOutputId: number, input: HistoryRefinementInput): void {
+  postToSwift({ type: 'refineFromHistory', assistantOutputId, input });
 }
 export function copyHistoryRichText(content: string): void {
   postToSwift({ type: 'copyHistoryRichText', content });

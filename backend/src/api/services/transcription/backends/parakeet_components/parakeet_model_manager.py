@@ -223,14 +223,14 @@ class ParakeetModelManager:
                         )
                         cls()._unload_locked()
             except asyncio.CancelledError:
-                logger.info("🚫 Scheduled Parakeet model unload was cancelled")
+                logger.info("🚫 Scheduled Parakeet model unload was canceled")
                 raise
             except Exception as exc:
                 logger.warning(f"❌ Error during scheduled Parakeet unload: {exc}")
 
         with cls._model_lock:
             if cls._shared_unload_task is not None and not cls._shared_unload_task.done():
-                logger.info("🔄 Cancelling existing Parakeet unload task")
+                logger.info("🔄 Canceling existing Parakeet unload task")
                 cls._shared_unload_task.cancel()
 
             if delay_seconds == 0:
@@ -244,7 +244,7 @@ class ParakeetModelManager:
     def cancel_unload(cls) -> None:
         with cls._model_lock:
             if cls._shared_unload_task is not None and not cls._shared_unload_task.done():
-                logger.info("🚫 Cancelling scheduled Parakeet model unload")
+                logger.info("🚫 Canceling scheduled Parakeet model unload")
                 cls._shared_unload_task.cancel()
                 cls._shared_unload_task = None
 
@@ -447,7 +447,7 @@ class ParakeetModelManager:
     def _cancel_pending_unload_locked(self) -> None:
         task = ParakeetModelManager._shared_unload_task
         if task is not None and not task.done():
-            logger.info("🚫 Cancelling pending Parakeet unload due to new usage")
+            logger.info("🚫 Canceling pending Parakeet unload due to new usage")
             task.cancel()
             ParakeetModelManager._shared_unload_task = None
 

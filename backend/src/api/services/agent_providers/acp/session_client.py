@@ -194,14 +194,27 @@ class AcpSessionClient:
         *,
         session_id: str,
         prompt: Sequence[Mapping[str, Any]],
+        inactivity_timeout_seconds: float | None = None,
+        tool_call_inactivity_timeout_seconds: float | None = None,
+        max_turn_seconds: float | None = None,
     ) -> dict[str, Any]:
-        """Send a prompt turn and return the agent's acceptance result."""
+        """Send a prompt turn and return the agent's acceptance result.
+
+        Without ``inactivity_timeout_seconds`` the turn uses the fixed per-request timeout. With it, the turn may run as long as the agent keeps producing ACP traffic, up to ``max_turn_seconds``.
+        """
 
         self._require_initialized()
-        response = await self._transport.send_request(
-            "session/prompt",
-            {"sessionId": session_id, "prompt": [dict(block) for block in prompt]},
-        )
+        params = {"sessionId": session_id, "prompt": [dict(block) for block in prompt]}
+        if inactivity_timeout_seconds is None:
+            response = await self._transport.send_request("session/prompt", params)
+        else:
+            response = await self._transport.send_request_with_inactivity_timeout(
+                "session/prompt",
+                params,
+                inactivity_timeout_seconds=inactivity_timeout_seconds,
+                tool_call_inactivity_timeout_seconds=tool_call_inactivity_timeout_seconds,
+                max_total_seconds=max_turn_seconds,
+            )
         result = response.get("result")
         if not isinstance(result, Mapping):
             raise AcpClientProtocolError("session/prompt response result must be an object")

@@ -38,7 +38,7 @@ describe('ThinkingSegments grouped reasoning history', () => {
     try {
       act(() => {
         root.render(
-          <ThinkingSegments segments={makeSegments(6)} isLive={false} collapseForResponse={false} />
+          <ThinkingSegments segments={makeSegments(6)} isLive={false} isRunActive collapseForResponse={false} />
         );
       });
 
@@ -52,7 +52,7 @@ describe('ThinkingSegments grouped reasoning history', () => {
 
       const groupToggle = container.querySelector('.thinking-history-group > .execution-steps-header');
       expect(groupToggle).not.toBeNull();
-      expect(groupToggle?.textContent).toContain('5 earlier reasoning steps');
+      expect(groupToggle?.textContent).toContain('5 earlier reasoning passes');
 
       // The 5 earlier pills exist in the DOM (for smooth collapse
       // animation) but are not shown as their own top-level headers.
@@ -70,7 +70,7 @@ describe('ThinkingSegments grouped reasoning history', () => {
     try {
       act(() => {
         root.render(
-          <ThinkingSegments segments={makeSegments(6)} isLive={false} collapseForResponse={false} />
+          <ThinkingSegments segments={makeSegments(6)} isLive={false} isRunActive collapseForResponse={false} />
         );
       });
 
@@ -88,5 +88,71 @@ describe('ThinkingSegments grouped reasoning history', () => {
     } finally {
       act(() => root.unmount());
     }
+  });
+});
+
+describe('ThinkingSegments after the run finishes', () => {
+  it('folds every step, including the latest, into one group', () => {
+    const container = document.createElement('div');
+    const root = createRoot(container);
+
+    try {
+      act(() => {
+        root.render(
+          <ThinkingSegments segments={makeSegments(6)} isLive={false} isRunActive={false} collapseForResponse={false} />
+        );
+      });
+
+      expect(container.querySelectorAll('.thinking-segments > .thinking-pill')).toHaveLength(0);
+      const groupToggle = container.querySelector('.thinking-history-group > .execution-steps-header');
+      expect(groupToggle?.textContent).toContain('6 reasoning passes');
+      expect(groupToggle?.textContent).not.toContain('earlier');
+      expect(container.querySelectorAll('.thinking-history-group .thinking-pill')).toHaveLength(6);
+      expect(container.textContent).toContain('Reasoning (Step 6)');
+    } finally {
+      act(() => root.unmount());
+    }
+  });
+
+  it('keeps the latest step separate while the run is active, then folds it in on completion', () => {
+    const container = document.createElement('div');
+    const root = createRoot(container);
+
+    try {
+      act(() => {
+        root.render(
+          <ThinkingSegments segments={makeSegments(3)} isLive={false} isRunActive collapseForResponse={false} />
+        );
+      });
+      expect(container.querySelectorAll('.thinking-segments > .thinking-pill')).toHaveLength(1);
+
+      act(() => {
+        root.render(
+          <ThinkingSegments segments={makeSegments(3)} isLive={false} isRunActive={false} collapseForResponse={false} />
+        );
+      });
+      expect(container.querySelectorAll('.thinking-segments > .thinking-pill')).toHaveLength(0);
+      expect(container.querySelector('.thinking-history-group > .execution-steps-header')?.textContent)
+        .toContain('3 reasoning passes');
+    } finally {
+      act(() => root.unmount());
+    }
+  });
+
+  it('leaves a single step as a standalone pill', () => {
+    const markup = renderToStaticMarkup(
+      <ThinkingSegments segments={makeSegments(1)} isLive={false} isRunActive={false} collapseForResponse={false} />
+    );
+
+    expect(markup).toContain('thinking-pill');
+    expect(markup).not.toContain('thinking-history-group');
+  });
+
+  it('falls back to isLive when isRunActive is omitted', () => {
+    const markup = renderToStaticMarkup(
+      <ThinkingSegments segments={makeSegments(4)} isLive={false} collapseForResponse={false} />
+    );
+
+    expect(markup).toContain('4 reasoning passes');
   });
 });

@@ -29,12 +29,12 @@ class VoiceListenerAgentTaskCapture:
         """
         self.audio_capturer = audio_capturer
         self.transcription_service = transcription_service
-        self._agent_task_cancelled = False
+        self._agent_task_canceled = False
         self._active_transcription_task: Optional[asyncio.Task] = None
 
-    def set_agent_task_cancelled(self, cancelled: bool):
+    def set_agent_task_canceled(self, canceled: bool):
         """Set the agent-task cancellation flag."""
-        self._agent_task_cancelled = cancelled
+        self._agent_task_canceled = canceled
 
     async def _capture_agent_task(self, hotkey_mode: bool = False) -> Optional[str]:
         """
@@ -145,8 +145,8 @@ class VoiceListenerAgentTaskCapture:
                         capture_complete = True
                         break
                     # Check for cancellation
-                    if self._agent_task_cancelled:
-                        logger.info("🎤 [VOICE_CAPTURE_DEBUG] Agent-task processing cancelled during intelligent capture")
+                    if self._agent_task_canceled:
+                        logger.info("🎤 [VOICE_CAPTURE_DEBUG] Agent-task processing canceled during intelligent capture")
                         self.audio_capturer.stop_agent_task_capture_and_get_audio()  # Discard the audio
                         return None
                     
@@ -234,8 +234,8 @@ class VoiceListenerAgentTaskCapture:
                     await asyncio.sleep(check_interval)
                     
                     # CRITICAL: Check cancellation flag again after sleep
-                    if self._agent_task_cancelled:
-                        logger.info("🎤 [VOICE_CAPTURE_DEBUG] Agent task cancelled during intelligent capture loop")
+                    if self._agent_task_canceled:
+                        logger.info("🎤 [VOICE_CAPTURE_DEBUG] Agent task canceled during intelligent capture loop")
                         capture_complete = True
                         break
                     
@@ -271,8 +271,8 @@ class VoiceListenerAgentTaskCapture:
                     logger.warning(f"🎤 [VOICE_CAPTURE_DEBUG] Error cleaning up streaming session: {e}")
 
             # Check for cancellation before audio processing
-            if self._agent_task_cancelled:
-                logger.info("Agent-task processing cancelled before audio processing")
+            if self._agent_task_canceled:
+                logger.info("Agent-task processing canceled before audio processing")
                 return None
 
             # Convert s16le bytes to temporary WAV file for proven file-based transcription
@@ -292,8 +292,8 @@ class VoiceListenerAgentTaskCapture:
             logger.info(f"Read WAV file back as {len(audio_wav_file_bytes)} bytes for transcription service")
 
             # Check for cancellation before transcription
-            if self._agent_task_cancelled:
-                logger.info("Agent-task processing cancelled before transcription")
+            if self._agent_task_canceled:
+                logger.info("Agent-task processing canceled before transcription")
                 return None
 
             if not self.transcription_service:
@@ -314,8 +314,8 @@ class VoiceListenerAgentTaskCapture:
             # even though the loaded model was never used in this code path.
 
             # Final cancellation check before handing off to Swift transcription
-            if self._agent_task_cancelled:
-                logger.info("Agent-task processing cancelled just before Swift transcription handoff")
+            if self._agent_task_canceled:
+                logger.info("Agent-task processing canceled just before Swift transcription handoff")
                 return None
 
             logger.info("FFmpeg track complete - Swift will handle final transcription")
@@ -358,8 +358,8 @@ class VoiceListenerAgentTaskCapture:
             elapsed_time = 0.0
             check_interval = 0.1
             while elapsed_time < capture_wait_time:
-                if self._agent_task_cancelled:
-                    logger.info("Agent-task processing cancelled during fallback audio capture")
+                if self._agent_task_canceled:
+                    logger.info("Agent-task processing canceled during fallback audio capture")
                     try:
                         self.audio_capturer.stop_agent_task_capture_and_get_audio()  # Discard the audio
                     except Exception as e:
@@ -373,8 +373,8 @@ class VoiceListenerAgentTaskCapture:
             agent_task_audio_s16le_bytes = self.audio_capturer.stop_agent_task_capture_and_get_audio()
 
             # CRITICAL: Check for cancellation immediately after audio retrieval
-            if self._agent_task_cancelled:
-                logger.info("Agent-task processing cancelled immediately after fallback audio retrieval")
+            if self._agent_task_canceled:
+                logger.info("Agent-task processing canceled immediately after fallback audio retrieval")
                 return None
 
             if not agent_task_audio_s16le_bytes:
@@ -384,8 +384,8 @@ class VoiceListenerAgentTaskCapture:
             logger.info(f"Retrieved {len(agent_task_audio_s16le_bytes)} bytes of s16le agent-task audio via fallback.")
 
             # Check for cancellation before audio processing
-            if self._agent_task_cancelled:
-                logger.info("Agent-task processing cancelled before fallback audio processing")
+            if self._agent_task_canceled:
+                logger.info("Agent-task processing canceled before fallback audio processing")
                 return None
 
             # Convert s16le bytes to temporary WAV file for proven file-based transcription (same as main method)
@@ -416,8 +416,8 @@ class VoiceListenerAgentTaskCapture:
                 max_wait_time = 30.0
                 
                 while not self.transcription_service.is_model_loaded() and elapsed < max_wait_time:
-                    if self._agent_task_cancelled:
-                        logger.info("Agent task cancelled while waiting for model loading in fallback")
+                    if self._agent_task_canceled:
+                        logger.info("Agent task canceled while waiting for model loading in fallback")
                         return None
                         
                     await asyncio.sleep(wait_interval)
@@ -433,13 +433,13 @@ class VoiceListenerAgentTaskCapture:
                         return None
             
             # Final cancellation check
-            if self._agent_task_cancelled:
-                logger.info("Agent-task processing cancelled just before fallback transcription")
+            if self._agent_task_canceled:
+                logger.info("Agent-task processing canceled just before fallback transcription")
                 return None
             
             # CRITICAL: Final cancellation check before expensive transcription operation
-            if self._agent_task_cancelled:
-                logger.info("Agent-task processing cancelled just before fallback transcription - skipping expensive operation")
+            if self._agent_task_canceled:
+                logger.info("Agent-task processing canceled just before fallback transcription - skipping expensive operation")
                 return None
             
             logger.info("Transcribing fallback agent-task audio...")

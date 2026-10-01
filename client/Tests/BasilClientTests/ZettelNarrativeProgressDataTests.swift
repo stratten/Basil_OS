@@ -15,7 +15,7 @@ final class ZettelNarrativeProgressDataTests: XCTestCase {
               "remaining": 7,
               "eta_seconds": 42.0,
               "last_error": null,
-              "cancelling": false,
+              "canceling": false,
               "analysis_concurrency": 8,
               "processing_strategy": "api_parallel"
             }
@@ -42,7 +42,7 @@ final class ZettelNarrativeProgressDataTests: XCTestCase {
               "remaining": 0,
               "eta_seconds": null,
               "last_error": null,
-              "cancelling": false
+              "canceling": false
             }
             """.utf8
         )

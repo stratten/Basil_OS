@@ -99,13 +99,13 @@ class AgentTaskOrchestrator:
             db_service=self.db_service,
             websocket_manager=self.websocket_manager,
             basil_services=self.basil_services,
-            is_cancelled=self.is_agent_task_cancelled,
+            is_canceled=self.is_agent_task_canceled,
             logger=self.logger,
         )
         self.routing_service = AgentTaskRoutingService(
             db_service=self.db_service,
             websocket_manager=self.websocket_manager,
-            is_cancelled=self.is_agent_task_cancelled,
+            is_canceled=self.is_agent_task_canceled,
             logger=self.logger,
         )
         self.workflow_coordinator = WorkflowCoordinator(
@@ -157,7 +157,7 @@ class AgentTaskOrchestrator:
             screen_context_service=self.screen_context_service,
             routing_service=self.routing_service,
             processing_service=self.processing_service,
-            is_cancelled=self.is_agent_task_cancelled,
+            is_canceled=self.is_agent_task_canceled,
             logger=self.logger,
         )
         self.authorized_provider_delegation_submission_service = (
@@ -199,12 +199,12 @@ class AgentTaskOrchestrator:
             return False
 
         request_received_at = time.perf_counter()
-        self._cancellation.mark_cancelled({agent_task_id})
+        self._cancellation.mark_canceled({agent_task_id})
         signal_set_at = time.perf_counter()
         task_cancel_scheduled = self._cancellation.cancel_active_task(agent_task_id)
         task_cancel_scheduled_at = time.perf_counter()
         self._processing_agent_tasks.discard(agent_task_id)
-        self._release_lifecycle_for_cancelled_task(agent_task_id)
+        self._release_lifecycle_for_canceled_task(agent_task_id)
         self.logger.info(
             "🛑 Cancellation preemption task=%s request_received=%.6f signal_set=%.6f "
             "task_cancel_scheduled=%.6f active_task_found=%s",
@@ -245,7 +245,7 @@ class AgentTaskOrchestrator:
                     "awaiting_provider_delegation",
                     "awaiting_delegated_agents",
                     "paused",
-                    "cancelled",
+                    "canceled",
                 }
                 cancellation_broadcast_ids = {
                     c.id for c in chain if c.status in active_statuses
@@ -278,28 +278,28 @@ class AgentTaskOrchestrator:
         except Exception as exc:
             self.logger.warning("🛑 Failed to fence delegated provider cancellation for %s: %s", agent_task_id, exc)
 
-        self._cancellation.mark_cancelled(cancellation_ids)
-        for cancelled_id in cancellation_ids:
-            self._processing_agent_tasks.discard(cancelled_id)
-            self._cancellation.cancel_active_task(cancelled_id)
-            self._release_lifecycle_for_cancelled_task(cancelled_id)
+        self._cancellation.mark_canceled(cancellation_ids)
+        for canceled_id in cancellation_ids:
+            self._processing_agent_tasks.discard(canceled_id)
+            self._cancellation.cancel_active_task(canceled_id)
+            self._release_lifecycle_for_canceled_task(canceled_id)
 
         if self.websocket_manager:
-            for cancelled_id in cancellation_broadcast_ids:
-                if not self._cancellation.claim_terminal_notification(cancelled_id):
+            for canceled_id in cancellation_broadcast_ids:
+                if not self._cancellation.claim_terminal_notification(canceled_id):
                     continue
                 try:
                     await self.websocket_manager.broadcast({
-                        "event_type": "agent_task_cancelled",
-                        "agent_task_id": cancelled_id,
+                        "event_type": "agent_task_canceled",
+                        "agent_task_id": canceled_id,
                         "root_task_id": root_task_id,
-                        "message": "AgentTask cancelled",
+                        "message": "AgentTask canceled",
                     })
                 except Exception as exc:
-                    self._cancellation.release_terminal_notification(cancelled_id)
+                    self._cancellation.release_terminal_notification(canceled_id)
                     self.logger.warning(
                         "Failed to broadcast cancel notification for %s: %s",
-                        cancelled_id,
+                        canceled_id,
                         exc,
                     )
 
@@ -310,16 +310,16 @@ class AgentTaskOrchestrator:
         )
         return True
 
-    def is_agent_task_cancelled(self, agent_task_id: str) -> bool:
-        """Check if an agent task has been cancelled."""
-        return self._cancellation.is_cancelled(agent_task_id)
+    def is_agent_task_canceled(self, agent_task_id: str) -> bool:
+        """Check if an agent task has been canceled."""
+        return self._cancellation.is_canceled(agent_task_id)
 
     def _get_cancellation_event(self, agent_task_id: str) -> asyncio.Event:
         """Return the cooperative cancellation signal for an agent task."""
         return self._cancellation.get_cancellation_event(agent_task_id)
 
-    def _release_lifecycle_for_cancelled_task(self, agent_task_id: str) -> None:
-        """Release the wake lifecycle gate immediately when a task is cancelled."""
+    def _release_lifecycle_for_canceled_task(self, agent_task_id: str) -> None:
+        """Release the wake lifecycle gate immediately when a task is canceled."""
         if not agent_task_id:
             return
         try:
@@ -332,7 +332,7 @@ class AgentTaskOrchestrator:
                 else None
             )
             if orchestration is not None and hasattr(orchestration, "release_lifecycle"):
-                orchestration.release_lifecycle(f"task:{agent_task_id}", "user_cancelled")
+                orchestration.release_lifecycle(f"task:{agent_task_id}", "user_canceled")
         except Exception as release_err:
             self.logger.debug("Lifecycle release on cancel skipped for %s: %s", agent_task_id, release_err)
 
@@ -393,9 +393,9 @@ class AgentTaskOrchestrator:
             for old_event in old_events:
                 self._processed_events.discard(old_event)
 
-        if self.is_agent_task_cancelled(event.agent_task_id):
+        if self.is_agent_task_canceled(event.agent_task_id):
             self.logger.info(
-                "🛑 Ignoring database event for cancelled agent_task %s: %s",
+                "🛑 Ignoring database event for canceled agent_task %s: %s",
                 event.agent_task_id,
                 event.event_type,
             )
@@ -411,9 +411,9 @@ class AgentTaskOrchestrator:
             handled = self.state_machine.handle_event(event)
             if event.event_type == "status_changed":
                 new_status = event.new_status
-                if new_status in {"completed", "failed", "cancelled"}:
+                if new_status in {"completed", "failed", "canceled"}:
                     self._processing_agent_tasks.discard(event.agent_task_id)
-                    self._release_lifecycle_for_cancelled_task(event.agent_task_id)
+                    self._release_lifecycle_for_canceled_task(event.agent_task_id)
                 elif new_status in {"routing", "processing", "clarification_added"}:
                     self._processing_agent_tasks.add(event.agent_task_id)
             return handled
@@ -527,9 +527,9 @@ class AgentTaskOrchestrator:
         )
 
     async def _broadcast_agent_task_message(self, agent_task_id: Optional[str], message: Dict[str, Any]) -> bool:
-        if agent_task_id and self.is_agent_task_cancelled(agent_task_id):
+        if agent_task_id and self.is_agent_task_canceled(agent_task_id):
             self.logger.info(
-                "🛑 Suppressing %s for cancelled agent_task %s",
+                "🛑 Suppressing %s for canceled agent_task %s",
                 message.get("event_type"),
                 agent_task_id,
             )

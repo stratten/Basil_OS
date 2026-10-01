@@ -69,14 +69,14 @@ async def test_mark_persistence_ready_then_cancels():
     runtime = ConversationRequestRuntime()
     websocket = object()
     entered = asyncio.Event()
-    cancelled = asyncio.Event()
+    canceled = asyncio.Event()
 
     async def worker(state):
         entered.set()
         try:
             await asyncio.Event().wait()
         except asyncio.CancelledError:
-            cancelled.set()
+            canceled.set()
             raise
 
     assert runtime.start(websocket, "request-1", None, worker) is True
@@ -84,7 +84,7 @@ async def test_mark_persistence_ready_then_cancels():
     state = runtime._requests[(id(websocket), "request-1")]
     runtime.request_cancel(websocket, "request-1")
     runtime.mark_persistence_ready(state, "user-1", "assistant-1")
-    await asyncio.wait_for(cancelled.wait(), timeout=1)
+    await asyncio.wait_for(canceled.wait(), timeout=1)
 
 
 @pytest.mark.asyncio
@@ -92,14 +92,14 @@ async def test_cancel_after_persistence_cancels_immediately():
     runtime = ConversationRequestRuntime()
     websocket = object()
     entered = asyncio.Event()
-    cancelled = asyncio.Event()
+    canceled = asyncio.Event()
 
     async def worker(state):
         entered.set()
         try:
             await asyncio.Event().wait()
         except asyncio.CancelledError:
-            cancelled.set()
+            canceled.set()
             raise
 
     assert runtime.start(websocket, "request-1", None, worker) is True
@@ -107,7 +107,7 @@ async def test_cancel_after_persistence_cancels_immediately():
     state = runtime._requests[(id(websocket), "request-1")]
     runtime.mark_persistence_ready(state, "user-1", "assistant-1")
     runtime.request_cancel(websocket, "request-1")
-    await asyncio.wait_for(cancelled.wait(), timeout=1)
+    await asyncio.wait_for(canceled.wait(), timeout=1)
 
 
 @pytest.mark.asyncio
@@ -131,15 +131,15 @@ async def test_disconnect_cancels_all_and_waits():
     websocket = object()
     started_a = asyncio.Event()
     started_b = asyncio.Event()
-    cancelled_a = asyncio.Event()
-    cancelled_b = asyncio.Event()
+    canceled_a = asyncio.Event()
+    canceled_b = asyncio.Event()
 
     async def worker_a(_state):
         started_a.set()
         try:
             await asyncio.Event().wait()
         except asyncio.CancelledError:
-            cancelled_a.set()
+            canceled_a.set()
             raise
 
     async def worker_b(_state):
@@ -147,7 +147,7 @@ async def test_disconnect_cancels_all_and_waits():
         try:
             await asyncio.Event().wait()
         except asyncio.CancelledError:
-            cancelled_b.set()
+            canceled_b.set()
             raise
 
     assert runtime.start(websocket, "request-1", None, worker_a) is True
@@ -159,8 +159,8 @@ async def test_disconnect_cancels_all_and_waits():
     runtime.mark_persistence_ready(state_a, "user-1", "assistant-1")
     runtime.mark_persistence_ready(state_b, "user-2", "assistant-2")
     await runtime.cancel_for_websocket(websocket)
-    await asyncio.wait_for(cancelled_a.wait(), timeout=1)
-    await asyncio.wait_for(cancelled_b.wait(), timeout=1)
+    await asyncio.wait_for(canceled_a.wait(), timeout=1)
+    await asyncio.wait_for(canceled_b.wait(), timeout=1)
 
 
 def test_bind_agent_task_then_claim_returns_the_agent_task_id():
@@ -369,7 +369,7 @@ async def test_request_cancel_for_conversation_cancels_the_owning_direct_request
     runtime = ConversationRequestRuntime()
     websocket = object()
     entered = asyncio.Event()
-    cancelled = asyncio.Event()
+    canceled = asyncio.Event()
 
     async def worker(state):
         entered.set()
@@ -377,7 +377,7 @@ async def test_request_cancel_for_conversation_cancels_the_owning_direct_request
         try:
             await asyncio.Event().wait()
         except asyncio.CancelledError:
-            cancelled.set()
+            canceled.set()
             raise
 
     assert runtime.start(websocket, "request-1", "conversation-1", worker) is True
@@ -385,7 +385,7 @@ async def test_request_cancel_for_conversation_cancels_the_owning_direct_request
     state, agent_task_id = runtime.request_cancel_for_conversation("conversation-1")
     assert state is not None
     assert agent_task_id is None
-    await asyncio.wait_for(cancelled.wait(), timeout=1)
+    await asyncio.wait_for(canceled.wait(), timeout=1)
 
 
 @pytest.mark.asyncio

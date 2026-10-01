@@ -14,6 +14,7 @@ import {
   formatConversationTimestamp,
 } from './chatsPresentation';
 import { shouldShowAgentTaskStatusCard } from './conversationAgentStatusPresentation';
+import { usePacedStreamingText } from './usePacedStreamingText';
 
 export interface ConversationMessageRowProps {
   message: ConversationMessageItem;
@@ -36,7 +37,9 @@ function ConversationMessageRowComponent({
   const isUser = message.role === 'user';
   const isLoading = message.metadata.loading === true;
   const isStreaming = message.metadata.streaming === true;
-  const isCancelled = message.metadata.cancelled === true;
+  const isCanceled = message.metadata.canceled === true;
+  const pacedContent = usePacedStreamingText(message.id, isUser ? '' : message.content, !isUser && isStreaming);
+  const [streamedInView] = useState(() => !isUser && isStreaming);
   const thinking = typeof message.metadata.thinking === 'string' ? message.metadata.thinking : '';
   const answeredByFallbackModel = typeof message.metadata.answered_by_fallback_model === 'string'
     ? message.metadata.answered_by_fallback_model
@@ -46,7 +49,7 @@ function ConversationMessageRowComponent({
 
   return (
     <article
-      className={`chats-message chats-message-${isUser ? 'user' : 'assistant'}`}
+      className={`chats-message chats-message-${isUser ? 'user' : 'assistant'}${streamedInView ? ' is-stream-stable' : ''}`}
       aria-label={`${isUser ? 'You' : 'Basil'} at ${formatConversationTimestamp(message.timestamp)}`}
     >
       {!isUser ? <span className="chats-message-icon" aria-hidden="true">B</span> : null}
@@ -85,11 +88,11 @@ function ConversationMessageRowComponent({
                 </span>
                 Thinking
               </span>
-            ) : isCancelled && !message.content.trim() ? (
-              <span>Response cancelled before content was generated.</span>
+            ) : isCanceled && !message.content.trim() ? (
+              <span>Response canceled before content was generated.</span>
             ) : (
               <HomeMarkdown
-                content={isUser ? conversationDisplayMarkdown(message) : message.content}
+                content={isUser ? conversationDisplayMarkdown(message) : pacedContent}
                 variant={isUser ? 'user' : 'assistant'}
               />
             )}
@@ -109,9 +112,9 @@ function ConversationMessageRowComponent({
             {formatConversationTimestamp(message.timestamp)}
             {!isUser && message.model_id ? ` · ${modelDisplayNames.get(message.model_id) ?? message.model_id}` : ''}
           </time>
-          {isCancelled ? <span className="chats-cancelled-label">Cancelled</span> : null}
+          {isCanceled ? <span className="chats-canceled-label">Canceled</span> : null}
           {answeredByFallbackModel ? (
-            <span className="chats-cancelled-label" title={`Preferred model was unreachable; answered by local fallback: ${answeredByFallbackModel}`}>
+            <span className="chats-canceled-label" title={`Preferred model was unreachable; answered by local fallback: ${answeredByFallbackModel}`}>
               Answered with local fallback
             </span>
           ) : null}

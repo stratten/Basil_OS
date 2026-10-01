@@ -22,6 +22,7 @@ from .browser_safety import (
     normalize_domain_from_url,
 )
 from .browser_sensitive_value_store import get_browser_sensitive_value_store
+from api.services.agent_processing.shared.workflow_budget_pause import pause_workflow_budget
 
 logger = logging.getLogger(__name__)
 
@@ -171,7 +172,8 @@ class BrowserSensitiveApprovalManager:
             from api.core.preferences.preferences_io import load_preferences as _load_preferences
             approval_timeout = _load_preferences().tool_execution.approval_timeout_seconds
             wait_start = time.time()
-            result = await asyncio.wait_for(future, timeout=float(approval_timeout))
+            with pause_workflow_budget("browser_sensitive_approval"):
+                result = await asyncio.wait_for(future, timeout=float(approval_timeout))
             logger.info(
                 "Browser sensitive-fill approval resolved after %.2fs for domain=%s",
                 time.time() - wait_start,

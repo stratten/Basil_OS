@@ -5,7 +5,7 @@ export type ConversationAgentTurnLifecycle =
   | 'running'
   | 'completed'
   | 'failed'
-  | 'cancelled';
+  | 'canceled';
 
 export interface ConversationAgentTurnMetadata {
   route: 'agent_task';
@@ -23,7 +23,7 @@ const KNOWN_LIFECYCLES: ReadonlySet<string> = new Set([
   'running',
   'completed',
   'failed',
-  'cancelled',
+  'canceled',
 ]);
 
 function isKnownLifecycle(value: unknown): value is ConversationAgentTurnLifecycle {
@@ -32,8 +32,8 @@ function isKnownLifecycle(value: unknown): value is ConversationAgentTurnLifecyc
 
 export function isTerminalConversationAgentStatusLifecycle(
   lifecycle: unknown,
-): lifecycle is 'completed' | 'failed' | 'cancelled' {
-  return lifecycle === 'completed' || lifecycle === 'failed' || lifecycle === 'cancelled';
+): lifecycle is 'completed' | 'failed' | 'canceled' {
+  return lifecycle === 'completed' || lifecycle === 'failed' || lifecycle === 'canceled';
 }
 
 export function conversationAgentTurnMetadata(

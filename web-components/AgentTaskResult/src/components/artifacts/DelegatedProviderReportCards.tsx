@@ -10,7 +10,7 @@ type DelegatedWorkState = 'working' | 'review' | 'verified' | 'completed';
 function delegatedWorkState(cards: DelegatedProviderReportCard[]): DelegatedWorkState {
   if (cards.some((card) => (
     card.runStatus === 'failed'
-    || card.runStatus === 'cancelled'
+    || card.runStatus === 'canceled'
     || card.runStatus === 'interrupted'
     || card.captureState === 'unavailable'
     || card.verificationState === 'verification_mismatch'
@@ -23,7 +23,7 @@ function delegatedWorkState(cards: DelegatedProviderReportCard[]): DelegatedWork
     || card.runStatus === 'waiting_user_input'
     || card.runStatus === 'waiting_permission'
     || card.runStatus === 'supervision_due'
-    || card.runStatus === 'cancelling'
+    || card.runStatus === 'canceling'
     || card.verificationState === 'pending'
   ))) {
     return 'working';

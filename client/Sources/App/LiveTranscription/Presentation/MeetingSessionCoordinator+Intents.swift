@@ -37,6 +37,33 @@ extension MeetingSessionCoordinator {
                 return
             }
             Task { await viewModel.resumeSelectedMeeting() }
+        case .pauseRecording:
+            guard viewModel.isRecording,
+                  !viewModel.isCapturePaused,
+                  viewModel.connectionState == .recording else {
+                publishValidationError("pause_unavailable", "Recording can be paused once capture is running.")
+                return
+            }
+            viewModel.pauseCapture()
+        case .resumeRecording:
+            guard viewModel.isRecording, viewModel.isCapturePaused else {
+                publishValidationError("resume_recording_unavailable", "There is no paused recording to resume.")
+                return
+            }
+            Task { await viewModel.resumeCapture() }
+        case .cancelRecording:
+            guard viewModel.isRecording else {
+                publishValidationError("cancel_unavailable", "There is no active recording to cancel.")
+                return
+            }
+            bridgePublisher?.advanceSelectionGeneration()
+            Task { await viewModel.cancelActiveRecording() }
+        case .setLiveTranscription:
+            guard let enabled = payload["enabled"] as? Bool else {
+                publishValidationError("invalid_live_transcription", "The live transcription setting was malformed.")
+                return
+            }
+            viewModel.setSessionLiveTranscriptionEnabled(enabled)
         case .selectMeeting:
             guard let meetingId = payload["meetingId"] as? String,
                   viewModel.meetings.contains(where: { $0.id == meetingId }) else {

@@ -117,12 +117,12 @@ class FakeAgentTaskService:
         matches = [t for t in self.tasks if t.origin_type == origin_type and t.origin_id == origin_id]
         if include_terminal:
             return matches
-        return [t for t in matches if t.status not in ("completed", "failed", "cancelled")]
+        return [t for t in matches if t.status not in ("completed", "failed", "canceled")]
 
     async def list_nonterminal_agent_tasks_by_origin_type(self, origin_type: str):
         return [
             t for t in self.tasks
-            if t.origin_type == origin_type and t.status not in ("completed", "failed", "cancelled")
+            if t.origin_type == origin_type and t.status not in ("completed", "failed", "canceled")
         ]
 
     async def list_agent_task_origin_ids_by_origin_type(self, origin_type: str):
@@ -268,8 +268,8 @@ async def test_accept_dismiss_reopen_cancel_transitions(service: TodoService) ->
     assert dismissed.status == "dismissed"
     reopened = await service.reopen(dismissed.id, dismissed.revision)
     assert reopened.status == "open"
-    cancelled = await service.cancel(reopened.id, reopened.revision)
-    assert cancelled.status == "cancelled"
+    canceled = await service.cancel(reopened.id, reopened.revision)
+    assert canceled.status == "canceled"
 
 
 @pytest.mark.asyncio
@@ -584,13 +584,13 @@ async def test_reconcile_todo_from_worker_tasks_is_a_noop_for_a_terminal_todo(
     service: TodoService, agent_tasks: FakeAgentTaskService,
 ) -> None:
     detail = await service.create_manual_todo(
-        title="Already cancelled", description="", notes="", responsibility="user", priority="normal",
+        title="Already canceled", description="", notes="", responsibility="user", priority="normal",
         due_at=None, idempotency_key=None, payload_for_hash={},
     )
-    cancelled = await service.cancel(detail.id, detail.revision)
-    agent_tasks.tasks.append(FakeAgentTask(id="w-3", status="processing", origin_type="todo", origin_id=cancelled.id))
-    result = await service.reconcile_todo_from_worker_tasks(cancelled.id)
-    assert result.status == "cancelled"  # unchanged despite an "active" worker row
+    canceled = await service.cancel(detail.id, detail.revision)
+    agent_tasks.tasks.append(FakeAgentTask(id="w-3", status="processing", origin_type="todo", origin_id=canceled.id))
+    result = await service.reconcile_todo_from_worker_tasks(canceled.id)
+    assert result.status == "canceled"  # unchanged despite an "active" worker row
 
 
 @pytest.mark.asyncio

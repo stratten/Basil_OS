@@ -34,7 +34,7 @@ class AgentTaskStatus(Enum):
     # Final states
     COMPLETED = "completed"                # Final result ready
     FAILED = "failed"                      # Unrecoverable error
-    CANCELLED = "cancelled"                # Explicit user or parent-chain cancellation
+    CANCELED = "canceled"                # Explicit user or parent-chain cancellation
 
 @dataclass(frozen=True)
 class StateTransition:
@@ -191,16 +191,16 @@ class AgentTaskStateMachine:
             ),
             StateTransition(
                 from_status=AgentTaskStatus.AWAITING_PROVIDER_DELEGATION,
-                to_status=AgentTaskStatus.CANCELLED,
+                to_status=AgentTaskStatus.CANCELED,
                 trigger_event="status_changed",
-                handler="handle_processing_cancelled",
+                handler="handle_processing_canceled",
                 description="Parent cancellation fences delegated-provider continuation",
             ),
             StateTransition(
                 from_status=AgentTaskStatus.AWAITING_DELEGATED_AGENTS,
-                to_status=AgentTaskStatus.CANCELLED,
+                to_status=AgentTaskStatus.CANCELED,
                 trigger_event="status_changed",
-                handler="handle_processing_cancelled",
+                handler="handle_processing_canceled",
                 description="Parent cancellation fences generic delegated children",
             ),
             StateTransition(

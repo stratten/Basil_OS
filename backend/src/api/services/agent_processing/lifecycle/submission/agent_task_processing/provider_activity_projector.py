@@ -481,7 +481,7 @@ class ProviderActivityProjector:
         elif state == "idle" and stop_reason == "end_turn":
             message = "Provider completed this turn."
         elif state == "idle" and stop_reason == "cancelled":
-            message = "Provider cancelled this turn."
+            message = "Provider canceled this turn."
         elif state == "requires_action":
             message = "Provider is waiting for an action."
         else:

@@ -9,17 +9,17 @@ Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
 describe('SurfaceStack', () => {
   const animationFrames: FrameRequestCallback[] = [];
-  const cancelledFrames = new Set<number>();
+  const canceledFrames = new Set<number>();
 
   beforeEach(() => {
     animationFrames.length = 0;
-    cancelledFrames.clear();
+    canceledFrames.clear();
     vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
       animationFrames.push(callback);
       return animationFrames.length;
     });
     vi.stubGlobal('cancelAnimationFrame', (handle: number) => {
-      cancelledFrames.add(handle);
+      canceledFrames.add(handle);
     });
   });
 
@@ -28,10 +28,10 @@ describe('SurfaceStack', () => {
   });
 
   function flushFrames() {
-    // Mirrors the browser: skip any frame index that was cancelled before
+    // Mirrors the browser: skip any frame index that was canceled before
     // it ran, exactly like a real cancelAnimationFrame would.
     for (let index = 0; index < animationFrames.length; index += 1) {
-      if (!cancelledFrames.has(index + 1)) animationFrames[index]?.(0);
+      if (!canceledFrames.has(index + 1)) animationFrames[index]?.(0);
     }
     animationFrames.length = 0;
   }
@@ -73,7 +73,7 @@ describe('SurfaceStack', () => {
     // Same surfaceKey, fresh children -- mimics a burst of WS progress
     // events landing before the entrance frame is serviced. Under the old
     // implementation (effect deps included `children`), each of these
-    // re-renders cancelled the pending frame via its own cleanup and never
+    // re-renders canceled the pending frame via its own cleanup and never
     // rescheduled a replacement, permanently stranding the surface at
     // opacity: 0.
     act(() => {

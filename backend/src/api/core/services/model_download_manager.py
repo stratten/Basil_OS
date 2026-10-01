@@ -38,7 +38,7 @@ DownloadStatus = Literal[
     "downloading",
     "completed",
     "failed",
-    "user_cancelled",
+    "user_canceled",
     "skipped_installed",
 ]
 
@@ -183,7 +183,7 @@ class DownloadManager:
         if not entry or entry.status not in _ACTIVE_STATUSES:
             return False
         entry.cancel_event.set()
-        entry.message = "Cancelling..."
+        entry.message = "Canceling..."
         task = self._tasks.get(model_id)
         if task and not task.done():
             task.cancel()
@@ -234,7 +234,7 @@ class DownloadManager:
         if not self._tasks:
             return
         api_logger.info(
-            "[DOWNLOAD_MANAGER] shutdown: cancelling %d task(s)", len(self._tasks)
+            "[DOWNLOAD_MANAGER] shutdown: canceling %d task(s)", len(self._tasks)
         )
         for entry in self._entries.values():
             if entry.status in _ACTIVE_STATUSES:
@@ -258,7 +258,7 @@ class DownloadManager:
         return variant in (provider_block.get("variants") or {})
 
     # Subset of DownloadStatus values that are valid mid-download. The
-    # terminal transitions (`completed`, `failed`, `user_cancelled`,
+    # terminal transitions (`completed`, `failed`, `user_canceled`,
     # `skipped_installed`) are owned by `_run` itself; the progress pipeline
     # may not overwrite them with `"downloading"` after the fact.
     _PROGRESS_STATUSES: frozenset = frozenset({"downloading", "queued"})
@@ -313,8 +313,8 @@ class DownloadManager:
         try:
             async with self._semaphore:
                 if entry.cancel_event.is_set():
-                    entry.status = "user_cancelled"
-                    entry.message = "Cancelled before start"
+                    entry.status = "user_canceled"
+                    entry.message = "Canceled before start"
                     return
                 entry.status = "downloading"
                 entry.started_at = datetime.now()
@@ -328,15 +328,15 @@ class DownloadManager:
                     cancel_event=entry.cancel_event,
                 )
                 if entry.cancel_event.is_set():
-                    entry.status = "user_cancelled"
-                    entry.message = "Cancelled by user"
+                    entry.status = "user_canceled"
+                    entry.message = "Canceled by user"
                     return
                 entry.status = "completed"
                 entry.progress = 1.0
                 entry.message = "Download complete"
         except asyncio.CancelledError:
-            entry.status = "user_cancelled"
-            entry.message = "Cancelled by user"
+            entry.status = "user_canceled"
+            entry.message = "Canceled by user"
             raise
         except Exception as exc:
             api_logger.exception(

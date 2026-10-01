@@ -30,8 +30,8 @@ class TodoWorkspaceTurnManager:
         snapshots = []
         for todo_id in selected_todo_ids:
             item = await self.todo_service.get_item_detail(todo_id)
-            if item.status in ("dismissed", "cancelled"):
-                raise TodoWorkspaceValidationError(f"{todo_id} is dismissed or cancelled and cannot be selected")
+            if item.status in ("dismissed", "canceled"):
+                raise TodoWorkspaceValidationError(f"{todo_id} is dismissed or canceled and cannot be selected")
             snapshots.append(item)
 
         transcript_digest = _bounded_transcript_digest(transcript)

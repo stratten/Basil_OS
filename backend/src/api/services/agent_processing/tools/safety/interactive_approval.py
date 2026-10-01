@@ -15,6 +15,7 @@ from api.core.knowledge.sqlite.sqlite_knowledge_service_component_services.execu
 )
 from api.core.models.preferences import ApprovalTimeoutBehavior
 from api.services.agent_processing.lifecycle.runtime.timeline_persistence import persist_timeline_entry
+from api.services.agent_processing.shared.workflow_budget_pause import pause_workflow_budget
 from api.services.conversation.conversation_agent_turn_lifecycle import (
     clear_conversation_agent_attention,
     publish_conversation_agent_attention,
@@ -208,22 +209,15 @@ class InteractiveApprovalManager:
                 )
                 wait_start = time.time()
 
-                if _timeout_behavior == ApprovalTimeoutBehavior.WAIT_FOREVER:
-                    result = await future
-                else:
-                    result = await asyncio.wait_for(future, timeout=float(_timeout_seconds))
+                with pause_workflow_budget("execution_approval"):
+                    if _timeout_behavior == ApprovalTimeoutBehavior.WAIT_FOREVER:
+                        result = await future
+                    else:
+                        result = await asyncio.wait_for(future, timeout=float(_timeout_seconds))
 
                 wait_duration = time.time() - wait_start
                 logger.info("Received approval response after %.2fs: %s", wait_duration, type(result))
-
-                if isinstance(result, dict):
-                    logger.info(
-                        "Immediate execution result: success=%s, exit_code=%s",
-                        result.get("success"),
-                        result.get("exit_code"),
-                    )
-                else:
-                    logger.info("Approval tuple: approved=%s", result[0] if result else "N/A")
+                logger.info("Approval tuple: approved=%s", result[0] if result else "N/A")
 
                 return result
 
@@ -250,6 +244,32 @@ class InteractiveApprovalManager:
                 if _timeout_behavior == ApprovalTimeoutBehavior.RETRY_ALTERNATIVE:
                     return (False, False, "timeout_retry_hint")
                 return (False, False, "timeout_denied")
+
+            except asyncio.CancelledError:
+                # Either the surrounding task is being canceled (re-raise after cleanup) or the durable approval was retired by cancel/retry, which cancels only this future (report it as unavailable instead of leaking CancelledError out of a task nobody canceled).
+                current_task = asyncio.current_task()
+                task_is_canceling = bool(current_task is not None and current_task.cancelling())
+                try:
+                    await knowledge_service.execution_approval_repository.cancel_pending_approval(
+                        approval_id=approval_id,
+                        expected_revision=persisted_revision,
+                    )
+                except Exception:
+                    logger.info(
+                        "Approval %s was already resolved or retired when its waiter was interrupted",
+                        approval_id,
+                    )
+                try:
+                    await clear_conversation_agent_attention(agent_task_id, approval_id)
+                except Exception:
+                    logger.exception(
+                        "Failed to clear execution approval attention after interruption for %s",
+                        approval_id,
+                    )
+                if task_is_canceling:
+                    raise
+                logger.info("Approval %s was retired while waiting; reporting it as unavailable", approval_id)
+                return (False, False, "approval_unavailable")
 
         finally:
             if approval_id and approval_id in InteractiveApprovalManager._pending_approvals:

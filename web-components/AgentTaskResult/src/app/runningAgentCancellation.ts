@@ -3,10 +3,10 @@ import { reportAgentTaskCancellationStage } from '../services/bridge';
 
 export interface RunningAgentCancellationStore {
   isTransientWithoutDurableData: (agentTaskId: string) => boolean;
-  markCancelling: (agentTaskId: string) => void;
+  markCanceling: (agentTaskId: string) => void;
   markCancellationUnconfirmed: (agentTaskId: string, message: string) => void;
   removeAgent: (agentTaskId: string) => void;
-  getAgent: (agentTaskId: string) => { isCancelling?: boolean; isCancelled?: boolean } | undefined;
+  getAgent: (agentTaskId: string) => { isCanceling?: boolean; isCanceled?: boolean } | undefined;
 }
 
 type CancellationRequest = (agentTaskId: string, reason?: string) => Promise<unknown>;
@@ -23,7 +23,7 @@ export function beginRunningAgentCancellation(
   const attempt = Symbol(executionTaskId);
   activeAttempts.set(rootTaskId, attempt);
   const isProvisional = store.isTransientWithoutDurableData(rootTaskId);
-  store.markCancelling(rootTaskId);
+  store.markCanceling(rootTaskId);
   reportCancellationStage(executionTaskId, 'clicked');
 
   if (isProvisional) {
@@ -59,7 +59,7 @@ export function beginRunningAgentCancellation(
     if (activeAttempts.get(rootTaskId) !== attempt) return;
     activeAttempts.delete(rootTaskId);
     const agent = store.getAgent(rootTaskId);
-    if (!agent?.isCancelling || agent.isCancelled) {
+    if (!agent?.isCanceling || agent.isCanceled) {
       reportCancellationStage(executionTaskId, 'terminal_confirmed');
       return;
     }

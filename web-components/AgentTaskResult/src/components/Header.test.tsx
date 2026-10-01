@@ -140,17 +140,17 @@ describe('Header collapsed status', () => {
       showCancelStop: true,
       onCancelRunning: vi.fn(),
     });
-    const cancellingMarkup = renderHeader({
+    const cancelingMarkup = renderHeader({
       showCancelStop: true,
-      isCancelling: true,
+      isCanceling: true,
       onCancelRunning: vi.fn(),
     });
 
     expect(activeMarkup).toContain('basil-stop-action');
     expect(activeMarkup).toContain('>Stop</button>');
     expect(activeMarkup).not.toContain('header-stop-icon');
-    expect(cancellingMarkup).toContain('>Stopping</button>');
-    expect(cancellingMarkup).toContain('disabled=""');
-    expect(cancellingMarkup).toContain('class="header-right has-stop-action is-stopping"');
+    expect(cancelingMarkup).toContain('>Stopping</button>');
+    expect(cancelingMarkup).toContain('disabled=""');
+    expect(cancelingMarkup).toContain('class="header-right has-stop-action is-stopping"');
   });
 });

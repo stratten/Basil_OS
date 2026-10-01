@@ -277,7 +277,7 @@ def get_schema_statements() -> List[str]:
             
             -- Session fields (used for both manual chains and agent-planned workflows)
             session_type TEXT,  -- NULL='standalone', 'chain'='manual follow-ups', 'collaborative'='agent-planned workflow'
-            session_status TEXT,  -- NULL, 'planning', 'active', 'waiting_input', 'waiting_approval', 'continuing', 'completed', 'cancelled', 'failed'
+            session_status TEXT,  -- NULL, 'planning', 'active', 'waiting_input', 'waiting_approval', 'continuing', 'completed', 'canceled', 'failed'
             workflow_plan TEXT,  -- JSON: Array of planned steps with checkpoint configurations (NULL for simple/chain agent tasks)
             current_step INTEGER,  -- Current step index (for collaborative workflows)
             total_planned_steps INTEGER,  -- Total steps planned (for collaborative workflows)
@@ -925,7 +925,7 @@ def get_schema_statements() -> List[str]:
             title TEXT NOT NULL CHECK(length(trim(title)) BETWEEN 1 AND 240),
             description TEXT NOT NULL DEFAULT '' CHECK(length(description) <= 12000),
             notes TEXT NOT NULL DEFAULT '' CHECK(length(notes) <= 12000),
-            status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('candidate', 'open', 'in_progress', 'ready_for_review', 'completed', 'dismissed', 'cancelled')),
+            status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('candidate', 'open', 'in_progress', 'ready_for_review', 'completed', 'dismissed', 'canceled')),
             responsibility TEXT NOT NULL DEFAULT 'unspecified' CHECK(responsibility IN ('user', 'agent', 'shared', 'unspecified')),
             priority TEXT NOT NULL DEFAULT 'normal' CHECK(priority IN ('low', 'normal', 'high')),
             due_at TEXT,
@@ -1042,7 +1042,7 @@ def get_schema_statements() -> List[str]:
             route_confidence REAL,
             agent_task_id TEXT UNIQUE,
             assistant_message_id TEXT,
-            state TEXT NOT NULL CHECK (state IN ('routing', 'running', 'completed', 'failed', 'cancelled')),
+            state TEXT NOT NULL CHECK (state IN ('routing', 'running', 'completed', 'failed', 'canceled')),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (conversation_id) REFERENCES conversations(id),
@@ -1070,7 +1070,7 @@ def get_schema_statements() -> List[str]:
             route_kind TEXT CHECK (route_kind IN ('conversation', 'agent_task')),
             route_reason TEXT,
             route_confidence REAL,
-            state TEXT NOT NULL DEFAULT 'routing' CHECK (state IN ('routing', 'running', 'completed', 'failed', 'cancelled')),
+            state TEXT NOT NULL DEFAULT 'routing' CHECK (state IN ('routing', 'running', 'completed', 'failed', 'canceled')),
             conversation_id TEXT,
             user_message_id TEXT UNIQUE,
             assistant_message_id TEXT,

@@ -1,6 +1,14 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import type { MeetingUIStateDTO } from '../bridge/types';
-import { resumeMeeting, startNewMeeting, toggleRecording } from '../bridge/meetingBridge';
+import {
+  cancelRecording,
+  pauseRecording,
+  resumeMeeting,
+  resumeRecording,
+  setLiveTranscription,
+  startNewMeeting,
+  toggleRecording,
+} from '../bridge/meetingBridge';
 import { useMeetingMeter } from '../bridge/meetingMeterStore';
 
 interface RecordingControlsProps {
@@ -9,8 +17,40 @@ interface RecordingControlsProps {
 
 function RecordingControls({ ui }: RecordingControlsProps) {
   const loadingModels = ui.transcriptionState === 'loadingModels';
+  const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+  const keepRecordingButtonRef = useRef<HTMLButtonElement>(null);
+  const restoreCancelFocusRef = useRef(false);
+
+  useEffect(() => {
+    if (!ui.isRecording) setIsConfirmingCancel(false);
+  }, [ui.isRecording]);
+
+  useEffect(() => {
+    if (!isConfirmingCancel) {
+      // The Cancel button is disabled while confirming, so focus can only return after this render enables it.
+      if (restoreCancelFocusRef.current) cancelButtonRef.current?.focus();
+      restoreCancelFocusRef.current = false;
+      return undefined;
+    }
+    keepRecordingButtonRef.current?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      restoreCancelFocusRef.current = true;
+      setIsConfirmingCancel(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isConfirmingCancel]);
+
+  const confirmCancel = () => {
+    setIsConfirmingCancel(false);
+    cancelRecording();
+  };
+
   return (
-    <section className={`meeting-recording-controls${ui.isRecording ? ' is-recording' : ''}`}>
+    <section className={`meeting-recording-controls${ui.isRecording ? ' is-recording' : ''}${ui.isCapturePaused ? ' is-paused' : ''}`}>
       {!ui.isRecording && !ui.isViewingPastMeeting && <StatusRow ui={ui} />}
       {ui.isViewingPastMeeting ? (
         <div className="meeting-recording-button-row">
@@ -22,23 +62,76 @@ function RecordingControls({ ui }: RecordingControlsProps) {
             <PlusCircleIcon />
             Start New Meeting
           </button>
+          <LiveTranscriptionSwitch enabled={ui.isLiveTranscriptionEnabled} />
         </div>
       ) : ui.isRecording ? (
-        <div className="meeting-active-recording-row">
-          <button type="button" className="meeting-record-button meeting-record-button--stop" onClick={toggleRecording} disabled={loadingModels}>
-            <StopCircleIcon />
-            End Meeting
-          </button>
-          <StatusRow ui={ui} />
-          <RecordingIndicators ui={ui} />
-        </div>
+        <>
+          <div className="meeting-active-recording-row">
+            <div className="meeting-recording-actions">
+              <button type="button" className="meeting-record-button meeting-record-button--stop" onClick={toggleRecording} disabled={loadingModels}>
+                <StopCircleIcon />
+                End Meeting
+              </button>
+              {ui.isCapturePaused ? (
+                <button type="button" className="meeting-record-button" onClick={resumeRecording}>
+                  <PlayCircleIcon />
+                  Resume
+                </button>
+              ) : (
+                <button type="button" className="meeting-record-button" onClick={pauseRecording} disabled={ui.connectionState !== 'recording'}>
+                  <PauseCircleIcon />
+                  Pause
+                </button>
+              )}
+              <button
+                ref={cancelButtonRef}
+                type="button"
+                className="meeting-record-button meeting-record-button--cancel"
+                onClick={() => setIsConfirmingCancel(true)}
+                disabled={isConfirmingCancel}
+              >
+                <CancelCircleIcon />
+                Cancel
+              </button>
+            </div>
+            <StatusRow ui={ui} />
+            <RecordingIndicators ui={ui} />
+          </div>
+          <LiveTranscriptionSwitch enabled={ui.isLiveTranscriptionEnabled} />
+          {isConfirmingCancel && (
+            <div className="meeting-cancel-confirmation" role="alertdialog" aria-labelledby="meeting-cancel-confirmation-message">
+              <p id="meeting-cancel-confirmation-message">Discard this recording? The audio and transcript captured since you pressed Start Meeting or Resume Meeting will be deleted.</p>
+              <div className="meeting-cancel-confirmation-actions">
+                <button type="button" className="meeting-record-button meeting-record-button--stop" onClick={confirmCancel}>
+                  Discard Recording
+                </button>
+                <button ref={keepRecordingButtonRef} type="button" className="meeting-record-button" onClick={() => setIsConfirmingCancel(false)}>
+                  Keep Recording
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       ) : (
-        <button type="button" className="meeting-record-button" onClick={toggleRecording} disabled={loadingModels}>
-          <RecordCircleIcon />
-          Start Meeting
-        </button>
+        <div className="meeting-recording-button-row">
+          <button type="button" className="meeting-record-button" onClick={toggleRecording} disabled={loadingModels}>
+            <RecordCircleIcon />
+            Start Meeting
+          </button>
+          <LiveTranscriptionSwitch enabled={ui.isLiveTranscriptionEnabled} />
+        </div>
       )}
     </section>
+  );
+}
+
+function LiveTranscriptionSwitch({ enabled }: { enabled: boolean }) {
+  return (
+    <label className="meeting-switch-control meeting-live-transcription-switch">
+      <span>Live transcription</span>
+      <input type="checkbox" checked={enabled} onChange={(event) => setLiveTranscription(event.target.checked)} />
+      <span className="meeting-switch-track" aria-hidden="true" />
+    </label>
   );
 }
 
@@ -137,6 +230,14 @@ function PlayCircleIcon() {
 
 function PlusCircleIcon() {
   return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true"><circle cx="8" cy="8" r="5.7" /><path d="M8 5v6M5 8h6" strokeLinecap="round" /></svg>;
+}
+
+function PauseCircleIcon() {
+  return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true"><circle cx="8" cy="8" r="5.7" /><path d="M6.6 5.6v4.8M9.4 5.6v4.8" strokeLinecap="round" /></svg>;
+}
+
+function CancelCircleIcon() {
+  return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true"><circle cx="8" cy="8" r="5.7" /><path d="m5.9 5.9 4.2 4.2m0-4.2-4.2 4.2" strokeLinecap="round" /></svg>;
 }
 
 function ClockIcon() {

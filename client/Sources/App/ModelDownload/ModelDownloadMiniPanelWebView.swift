@@ -20,10 +20,10 @@ final class ModelDownloadMiniPanelWebView: NSObject, WKScriptMessageHandler, WKN
     private var initialSnapshot: ModelDownloadPanelSnapshot?
 
     override init() {
-        let configuration = WKWebViewConfiguration()
+        let configuration = BasilWebViewConfigurationFactory.makeConfiguration()
         configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
         configuration.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
-        let webView = WKWebView(frame: .zero, configuration: configuration)
+        let webView = FirstClickWebView(frame: .zero, configuration: configuration)
         self.webView = webView
         super.init()
 

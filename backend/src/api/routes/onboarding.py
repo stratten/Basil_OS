@@ -232,9 +232,9 @@ async def get_all_download_progress(
             }
             continue
 
-        # Treat user_cancelled as pending so the UI lets the user retry from
+        # Treat user_canceled as pending so the UI lets the user retry from
         # zero (matches the prior behavior).
-        status = entry.status if entry.status != "user_cancelled" else "pending"
+        status = entry.status if entry.status != "user_canceled" else "pending"
         progress_pct = entry.progress * 100 if status != "pending" else 0.0
         total_progress += progress_pct
 

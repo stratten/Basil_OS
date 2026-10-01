@@ -49,12 +49,13 @@ from .sqlite_knowledge_service_component_services.providers.runtime_evidence_rep
 )
 from .sqlite_knowledge_service_component_services.providers.target_authorization_repository import ProviderTargetAuthorizationRepository
 from .sqlite_knowledge_service_component_services.scheduling.repository import ScheduledAgentTaskRepository
+from .sqlite_knowledge_service_component_services.agent_tasks.follow_up_repository import AgentTaskFollowUpRepository
 
 logger = logging.getLogger(__name__)
 
 
 class SQLiteKnowledgeService:
-    """Thin orchestrator that composes specialised component services."""
+    """Thin orchestrator that composes specialized component services."""
 
     def __init__(self, db_path: Optional[Union[str, Path]] = None) -> None:
         """Initialize the knowledge base service."""
@@ -126,6 +127,7 @@ class SQLiteKnowledgeService:
         self.delegated_agent_repository = DelegatedAgentRepository(self.db_path)
         self.delegated_agent_evidence_repository = DelegatedAgentEvidenceRepository(self.db_path)
         self.scheduled_agent_task_repository = ScheduledAgentTaskRepository(self.db_path)
+        self.agent_task_follow_up_repository = AgentTaskFollowUpRepository(self.db_path)
         self.mcp_call_log_repository = MCPCallLogRepository(self.db_path)
         self.agent_work_session_repository = AgentWorkSessionRepository(self.db_path)
         self.agent_work_item_repository = AgentWorkItemRepository(self.db_path)

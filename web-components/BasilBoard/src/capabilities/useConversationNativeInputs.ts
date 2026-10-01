@@ -82,7 +82,7 @@ export function useConversationNativeInputs({
 
   useEffect(
     () => registerConversationVoiceCaptureFinishedHandler((payload) => {
-      if (payload.error === 'cancelled') {
+      if (payload.error === 'canceled') {
         onVoiceError(undefined);
         onVoiceStateChange('idle');
         voiceStateRef.current = 'idle';

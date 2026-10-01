@@ -15,9 +15,9 @@ extension LiveTranscriptionViewModel {
     
     /// Updates the recording time string display
     func updateRecordingTime() {
-        guard let startTime = recordingStartTime else { return }
+        guard recordingStartTime != nil else { return }
         
-        let elapsed = Int(-startTime.timeIntervalSinceNow)
+        let elapsed = Int(recordingClock.elapsedSeconds())
         let minutes = elapsed / 60
         let seconds = elapsed % 60
         recordingTimeString = String(format: "%02d:%02d", minutes, seconds)

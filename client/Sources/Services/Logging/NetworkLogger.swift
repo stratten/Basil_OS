@@ -33,7 +33,7 @@ final class NetworkLogger: ObservableObject {
                     print("❌ Network logging failed: \(error)")
                     self?.isEnabled = false
                 case .cancelled:
-                    print("🛑 Network logging cancelled")
+                    print("🛑 Network logging canceled")
                     self?.isEnabled = false
                 default:
                     break

@@ -5,6 +5,8 @@ from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 from datetime import datetime
 
+from .conversation_timestamps import utc_now_naive
+
 
 class MessageRole(str, Enum):
     """Roles for conversation messages."""
@@ -19,7 +21,7 @@ class Message(BaseModel):
     id: str
     content: str
     role: MessageRole
-    timestamp: datetime = Field(default_factory=datetime.now)
+    timestamp: datetime = Field(default_factory=utc_now_naive)
     model_id: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
@@ -28,8 +30,8 @@ class Conversation(BaseModel):
     """A conversation between a user and the assistant."""
     id: str
     messages: List[Message] = Field(default_factory=list)
-    created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=utc_now_naive)
+    updated_at: datetime = Field(default_factory=utc_now_naive)
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 

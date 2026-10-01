@@ -142,7 +142,7 @@ extension SettingsShellWindowController {
         alert.beginSheetModal(for: window) { [weak self] response in
             guard let self else { return }
             guard response == .alertFirstButtonReturn else {
-                self.modelsWebView?.sendIntentResult(requestId: requestId, status: "cancelled", message: nil)
+                self.modelsWebView?.sendIntentResult(requestId: requestId, status: "canceled", message: nil)
                 return
             }
             Task { @MainActor in

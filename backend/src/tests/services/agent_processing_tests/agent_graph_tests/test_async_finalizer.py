@@ -272,7 +272,7 @@ async def test_refined_outcome_replaces_provisional_timeline_summary():
 
 
 @pytest.mark.asyncio
-async def test_schedule_outcome_verification_skips_when_cancelled():
+async def test_schedule_outcome_verification_skips_when_canceled():
     cancel_event = asyncio.Event()
     cancel_event.set()
     mock_finalize = AsyncMock()

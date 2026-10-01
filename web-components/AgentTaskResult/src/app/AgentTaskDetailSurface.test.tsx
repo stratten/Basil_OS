@@ -574,3 +574,83 @@ describe('AgentTaskDetailSurface artifact route', () => {
     }
   });
 });
+
+describe('AgentTaskDetailSurface turn labels', () => {
+  const chainSource: DisplayableAgentTask = {
+    ...displaySource,
+    currentTurnTaskId: 'follow-up-task',
+    agentTaskHistory: [{
+      id: 'root-task',
+      agentTaskText: 'Create report',
+      result: 'Created report.md.',
+      files: [],
+      reference_paths: [],
+      timestamp: '2026-08-10T12:00:00Z',
+    }],
+  };
+
+  it('opens the run overview when a turn label is clicked', () => {
+    const onOpenDetailTray = vi.fn();
+    const onDetailTrayModeChange = vi.fn();
+    const container = document.createElement('div');
+    const root = createRoot(container);
+
+    try {
+      act(() => {
+        root.render(surface(null, undefined, false, onOpenDetailTray, onDetailTrayModeChange, chainSource));
+      });
+      const rootLabel = Array.from(container.querySelectorAll<HTMLButtonElement>('button.turn-label--interactive'))
+        .find(button => button.textContent?.includes('Initial request'));
+
+      expect(rootLabel).toBeDefined();
+      act(() => {
+        rootLabel?.click();
+      });
+      expect(onDetailTrayModeChange).toHaveBeenCalledWith('overview');
+      expect(onOpenDetailTray).toHaveBeenCalledWith('overview');
+    } finally {
+      act(() => {
+        root.unmount();
+      });
+    }
+  });
+
+  it('marks the focused turn only while the run overview is open', async () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const pressed = () => Array.from(
+      container.querySelectorAll<HTMLButtonElement>('button.turn-label--interactive[aria-pressed="true"]'),
+    ).map(button => button.textContent);
+
+    try {
+      act(() => {
+        root.render(surface(null, undefined, false, () => {}, () => {}, chainSource));
+      });
+      expect(pressed()).toEqual([]);
+
+      const rootLabel = Array.from(container.querySelectorAll<HTMLButtonElement>('button.turn-label--interactive'))
+        .find(button => button.textContent?.includes('Initial request'));
+      act(() => {
+        rootLabel?.click();
+      });
+      act(() => {
+        root.render(surface(null, undefined, true, () => {}, () => {}, chainSource));
+      });
+      await flushPreviewAvailability();
+
+      expect(pressed()).toHaveLength(1);
+      expect(pressed()[0]).toContain('Initial request');
+
+      act(() => {
+        root.render(surface(null, undefined, false, () => {}, () => {}, chainSource));
+      });
+      expect(pressed()).toEqual([]);
+    } finally {
+      act(() => {
+        root.unmount();
+      });
+      container.remove();
+    }
+  });
+});

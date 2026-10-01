@@ -56,9 +56,9 @@ async def stream_start_session(
             print(f"🎤 [START] OCR task completed for session {session_id}", flush=True)
             logger.info(f"🎤 [ROUTER] asyncio.to_thread for OCR completed for session {session_id}")
         except asyncio.CancelledError:
-            print(f"🎤 [START] OCR task CANCELLED for session {session_id}", flush=True)
-            logger.info(f"🎤 [ROUTER] OCR task cancelled for session {session_id}")
-            yield json.dumps({"session_id": session_id, "ocr_text": "", "error": "Operation cancelled by user"}) + "\n"
+            print(f"🎤 [START] OCR task CANCELED for session {session_id}", flush=True)
+            logger.info(f"🎤 [ROUTER] OCR task canceled for session {session_id}")
+            yield json.dumps({"session_id": session_id, "ocr_text": "", "error": "Operation canceled by user"}) + "\n"
             return
         finally:
             assistant_session_state.active_ocr_tasks.pop(session_id, None)

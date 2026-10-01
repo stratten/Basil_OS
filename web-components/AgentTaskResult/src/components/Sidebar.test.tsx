@@ -104,7 +104,7 @@ describe('Sidebar', () => {
     expect(isLiveAgentTaskStatus('needs_clarification')).toBe(true);
     expect(isLiveAgentTaskStatus('completed')).toBe(false);
     expect(isLiveAgentTaskStatus('failed')).toBe(false);
-    expect(isLiveAgentTaskStatus('cancelled')).toBe(false);
+    expect(isLiveAgentTaskStatus('canceled')).toBe(false);
   });
 
   it('opens a live history row through the task hydrator instead of historical detail', async () => {

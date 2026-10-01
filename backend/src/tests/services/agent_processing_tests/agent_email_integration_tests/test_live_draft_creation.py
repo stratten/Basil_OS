@@ -33,7 +33,7 @@ async def test_live_draft_creation():
     # Confirm with user (for safety)
     confirm = input("Continue? (yes/no): ").lower().strip()
     if confirm != 'yes':
-        print("❌ Test cancelled by user")
+        print("❌ Test canceled by user")
         return
     
     try:

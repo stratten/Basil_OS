@@ -18,14 +18,24 @@ extension AuthService {
     }
 
     /// Persist the access token for a remote MCP connection. If a refresh token
-    /// is supplied it is stored alongside; passing nil leaves any existing
-    /// refresh token in place.
-    func storeMCPToken(connectionId: String, accessToken: String, refreshToken: String? = nil) throws {
+    /// is supplied it is stored alongside. Passing nil leaves any existing
+    /// refresh token in place unless `replacingRefreshToken` is true, in which
+    /// case the old refresh token is removed so it cannot outlive the grant it
+    /// belonged to.
+    func storeMCPToken(
+        connectionId: String,
+        accessToken: String,
+        refreshToken: String? = nil,
+        replacingRefreshToken: Bool = false
+    ) throws {
         try saveToKeychain(key: mcpAccessTokenKey(connectionId: connectionId), value: accessToken)
         cachedMCPAccessTokens[connectionId] = accessToken
         if let refresh = refreshToken {
             try saveToKeychain(key: mcpRefreshTokenKey(connectionId: connectionId), value: refresh)
             cachedMCPRefreshTokens[connectionId] = refresh
+        } else if replacingRefreshToken {
+            cachedMCPRefreshTokens.removeValue(forKey: connectionId)
+            deleteFromKeychain(key: mcpRefreshTokenKey(connectionId: connectionId))
         }
     }
 

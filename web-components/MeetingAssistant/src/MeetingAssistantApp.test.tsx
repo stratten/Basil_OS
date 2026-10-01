@@ -18,6 +18,10 @@ vi.mock('./bridge/meetingBridge', () => ({
   resumeMeeting: vi.fn(),
   startNewMeeting: vi.fn(),
   loadMoreMeetings: vi.fn(),
+  pauseRecording: vi.fn(),
+  resumeRecording: vi.fn(),
+  cancelRecording: vi.fn(),
+  setLiveTranscription: vi.fn(),
 }));
 
 vi.mock('./lib/hostAppearance', () => ({
@@ -134,6 +138,8 @@ const minimalUI: MeetingBridgeEvent['ui'] = {
   systemAudioLevel: 0,
   microphoneInputRecoveryState: 'idle',
   microphoneInputRecoveryMessage: null,
+  isCapturePaused: false,
+  isLiveTranscriptionEnabled: true,
 };
 
 describe('MeetingAssistantApp collapse retention', () => {

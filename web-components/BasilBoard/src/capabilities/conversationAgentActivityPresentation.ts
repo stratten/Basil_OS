@@ -26,7 +26,7 @@ const ACTIVITY_LIFECYCLES: ReadonlySet<string> = new Set([
   'clarification_added',
   'completed',
   'failed',
-  'cancelled',
+  'canceled',
 ]);
 const ARTIFACT_KINDS: ReadonlySet<string> = new Set(['file', 'directory', 'unknown']);
 const ARTIFACT_LIFECYCLES: ReadonlySet<string> = new Set([

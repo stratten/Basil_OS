@@ -7,6 +7,7 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 
+from api.services.meetings import meeting_recording_registry
 from api.services.meetings.meeting_recorder import MeetingRecorder
 from api.services.whisper_live_core.post_processing.meeting_transcript_upgrade_ledger import (
     finalize_recorded_window_upgrades,
@@ -63,12 +64,16 @@ async def retranscribe_window(meeting_id: str, config: RetranscribeWindowConfig)
             audio_path=audio_path,
             live=config.live,
         )
+        if meeting_recording_registry.is_discarded(meeting_id):
+            raise HTTPException(status_code=410, detail=f"Meeting {meeting_id} was discarded")
         record_window_upgrade(
             meeting_dir,
             config.start_seconds,
             config.end_seconds,
             segments,
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(
             "Error re-transcribing window for meeting %s [%.2f, %.2f): %s",

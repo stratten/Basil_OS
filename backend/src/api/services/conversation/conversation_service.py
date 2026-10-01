@@ -28,6 +28,12 @@ from .conversation_models import (
     ConversationResponse
 )
 from .document_processing_service import DocumentProcessingService
+from .conversation_timestamps import utc_now_naive
+from .conversation_context_builder import user_message_model_content
+from .conversation_context_window import build_fitted_conversation_messages
+from .conversation_inline_note import InlineNoteStreamFilter, build_inline_turn_summary, split_inline_note
+from .conversation_summary_contract import TURN_SUMMARY_METADATA_KEY
+from .conversation_turn_summarizer import ConversationTurnSummarizer
 from .conversation_turn_contract import (
     CONVERSATION_TURN_METADATA_KEY,
     ConversationTurnLifecycle,
@@ -88,6 +94,13 @@ class ConversationService:
         # Configure logging
         self.logger = api_logger.getChild("conversation_service")
         self._background_tasks: set[asyncio.Task[None]] = set()
+        self.turn_summarizer = ConversationTurnSummarizer(
+            repository=self.conversation_repository,
+            load_conversation=self.get_conversation,
+            get_active_model=self._get_active_summary_model,
+            load_model=self._load_cloud_summary_model,
+            schedule_task=self._schedule_background_task,
+        )
 
     def _schedule_background_task(
         self,
@@ -137,6 +150,20 @@ class ConversationService:
             capabilities=capabilities,
             explicit_model_id=explicit_model_id
         )
+
+    def _get_active_summary_model(self, model_id: str) -> Optional[BaseAIModel]:
+        getter = getattr(self.model_service, "get_ready_model_if_active", None)
+        model = getter(model_id) if callable(getter) else None
+        return model if isinstance(model, BaseAIModel) else None
+
+    async def _load_cloud_summary_model(self, model_id: str) -> Optional[BaseAIModel]:
+        return await self._get_model_for_task([ModelCapability.REASONING], explicit_model_id=model_id)
+
+    def _request_turn_summaries(self, conversation_id: str) -> None:
+        try:
+            self.turn_summarizer.request_pass(conversation_id)
+        except Exception as exc:
+            self.logger.warning("Could not schedule conversation summaries for %s: %s", conversation_id, exc)
 
     async def _auto_title_conversation(self, conversation_id: str, first_message: str) -> None:
         """Generate and set a title for a new conversation based on the first user message."""
@@ -191,8 +218,8 @@ class ConversationService:
         # Convert to Conversation object
         conversation = Conversation(
             id=conv_data["id"],
-            created_at=datetime.fromisoformat(conv_data["created_at"]) if conv_data["created_at"] else datetime.now(),
-            updated_at=datetime.fromisoformat(conv_data["updated_at"]) if conv_data["updated_at"] else datetime.now(),
+            created_at=datetime.fromisoformat(conv_data["created_at"]) if conv_data["created_at"] else utc_now_naive(),
+            updated_at=datetime.fromisoformat(conv_data["updated_at"]) if conv_data["updated_at"] else utc_now_naive(),
             metadata=conv_data.get("metadata", {})
         )
         
@@ -224,7 +251,7 @@ class ConversationService:
                 id=msg_data["id"],
                 content=msg_data["content"],
                 role=MessageRole(msg_data["role"]),
-                timestamp=datetime.fromisoformat(msg_data["timestamp"]) if msg_data["timestamp"] else datetime.now(),
+                timestamp=datetime.fromisoformat(msg_data["timestamp"]) if msg_data["timestamp"] else utc_now_naive(),
                 model_id=msg_data.get("model_id"),
                 metadata=msg_data.get("metadata", {})
             )
@@ -343,7 +370,12 @@ class ConversationService:
             content=content,
             metadata=user_metadata
         )
-        user_message = Message(id=user_message_id, content=content, role=MessageRole.USER)
+        user_message = Message(
+            id=user_message_id,
+            content=content,
+            role=MessageRole.USER,
+            metadata=dict(user_metadata or {}),
+        )
         conversation.messages.append(user_message)
         
         if sum(1 for m in conversation.messages if m.role == MessageRole.USER) == 1:
@@ -363,8 +395,7 @@ class ConversationService:
                 error_message_id=error_message.id,
             )
         
-        # Format conversation history
-        formatted_messages = [{"role": msg.role.value, "content": msg.content} for msg in conversation.messages]
+        newest_content_override: Any = None
         
         try:
             # Process files if attached
@@ -380,20 +411,29 @@ class ConversationService:
                             file_contents=processed["file_contents"]
                         )
                         assistant_message = await self.add_message(conversation_id, "assistant", response_text, model_id=model_id)
+                        self._request_turn_summaries(conversation_id)
                         return ConversationResponse(
                             message=assistant_message,
                             conversation_id=conversation_id,
                             user_message_id=user_message_id,
                         )
                     else:
-                        formatted_messages[-1]["content"] = processed["content"]
+                        newest_content_override = processed["content"]
                 elif processed["method"] == "multimodal":
-                    formatted_messages[-1]["content"] = processed["content"]
+                    newest_content_override = processed["content"]
                 elif processed["method"] == "text_prepend":
-                    formatted_messages[-1]["content"] = processed["content"]
+                    newest_content_override = processed["content"]
             
+            formatted_messages = build_fitted_conversation_messages(
+                conversation.messages,
+                llm_model=model,
+                requested_model_id=model_id,
+                conversation_metadata=conversation.metadata,
+                newest_content_override=newest_content_override,
+            )
             response, fallback_model_id = await self._call_model_with_fallback(model, formatted_messages)
-            assistant_content = response.get("content", "") or "I'm sorry, I couldn't generate a response."
+            note_split = split_inline_note(response.get("content", "") or "")
+            assistant_content = note_split.reply or "I'm sorry, I couldn't generate a response."
 
             response_metadata = dict(response.get("metadata", {}))
             if fallback_model_id:
@@ -403,6 +443,22 @@ class ConversationService:
                 conversation_id, "assistant", assistant_content,
                 model_id=fallback_model_id or model_id,
             )
+            inline_summary = build_inline_turn_summary(
+                note_split.note,
+                user_text=user_message_model_content(user_message),
+                reply_text=assistant_content,
+                model_id=fallback_model_id or model_id,
+            )
+            if inline_summary is not None:
+                try:
+                    await self.conversation_repository.merge_message_metadata(
+                        assistant_message.id,
+                        {TURN_SUMMARY_METADATA_KEY: inline_summary},
+                        touch_conversation=False,
+                    )
+                except Exception as note_error:
+                    self.logger.warning(f"Could not store the inline summary for message {assistant_message.id}: {note_error}")
+            self._request_turn_summaries(conversation_id)
             return ConversationResponse(
                 message=assistant_message,
                 conversation_id=conversation_id,
@@ -464,13 +520,18 @@ class ConversationService:
                 pair.assistant_message_id,
                 {
                     CONVERSATION_TURN_METADATA_KEY: {
-                        "lifecycle": ConversationTurnLifecycle.CANCELLED.value,
+                        "lifecycle": ConversationTurnLifecycle.CANCELED.value,
                     },
-                    "cancelled": True,
+                    "canceled": True,
                 },
             )
             raise
-        user_message = Message(id=pair.user_message_id, content=content, role=MessageRole.USER)
+        user_message = Message(
+            id=pair.user_message_id,
+            content=content,
+            role=MessageRole.USER,
+            metadata=dict(user_metadata or {}),
+        )
         conversation.messages.append(user_message)
 
         if sum(1 for message in conversation.messages if message.role == MessageRole.USER) == 1:
@@ -498,10 +559,7 @@ class ConversationService:
             if not model:
                 raise ModelNotAvailableError("No suitable model available for conversation")
 
-            formatted_messages = [
-                {"role": message.role.value, "content": message.content}
-                for message in conversation.messages
-            ]
+            newest_content_override: Any = None
             use_anthropic_file_streaming = False
             anthropic_file_contents = None
 
@@ -518,38 +576,43 @@ class ConversationService:
                     if isinstance(model, ClaudeModel):
                         use_anthropic_file_streaming = True
                         anthropic_file_contents = processed["file_contents"]
-                    formatted_messages[-1]["content"] = processed["content"]
+                    newest_content_override = processed["content"]
                 elif processed["method"] in ("multimodal", "text_prepend"):
-                    formatted_messages[-1]["content"] = processed["content"]
+                    newest_content_override = processed["content"]
 
             from ..model_usage_service import is_model_unreachable_error
 
+            formatted_messages = build_fitted_conversation_messages(
+                conversation.messages,
+                llm_model=model,
+                requested_model_id=model_id,
+                conversation_metadata=conversation.metadata,
+                newest_content_override=newest_content_override,
+            )
             active_model = model
             fallback_model_id: Optional[str] = None
             tokens_yielded = False
+            note_filter = InlineNoteStreamFilter()
             while True:
                 try:
                     if use_anthropic_file_streaming:
-                        async for token in active_model.chat_completion_streaming_with_files(
+                        token_stream = active_model.chat_completion_streaming_with_files(
                             messages=formatted_messages,
                             file_contents=anthropic_file_contents,
-                        ):
-                            tokens_yielded = True
-                            full_content += token
-                            yield {
-                                "token": token,
-                                "message_id": pair.assistant_message_id,
-                                "conversation_id": conversation_id,
-                            }
+                        )
                     else:
-                        async for token in active_model.chat_completion_streaming(formatted_messages):
-                            tokens_yielded = True
-                            full_content += token
-                            yield {
-                                "token": token,
-                                "message_id": pair.assistant_message_id,
-                                "conversation_id": conversation_id,
-                            }
+                        token_stream = active_model.chat_completion_streaming(formatted_messages)
+                    async for token in token_stream:
+                        tokens_yielded = True
+                        visible = note_filter.feed(token)
+                        if not visible:
+                            continue
+                        full_content += visible
+                        yield {
+                            "token": visible,
+                            "message_id": pair.assistant_message_id,
+                            "conversation_id": conversation_id,
+                        }
                     break
                 except Exception as stream_error:
                     if tokens_yielded or not is_model_unreachable_error(stream_error):
@@ -566,6 +629,15 @@ class ConversationService:
                     active_model = fallback_candidate
                     fallback_model_id = fallback_candidate.model_name
                     continue
+
+            note_outcome = note_filter.finish()
+            if note_outcome.visible_tail:
+                full_content += note_outcome.visible_tail
+                yield {
+                    "token": note_outcome.visible_tail,
+                    "message_id": pair.assistant_message_id,
+                    "conversation_id": conversation_id,
+                }
 
             if fallback_model_id:
                 response_metadata["answered_by_fallback_model"] = fallback_model_id
@@ -585,16 +657,27 @@ class ConversationService:
             await self.conversation_repository.update_message(
                 message_id=pair.assistant_message_id,
                 content=content_without_thinking,
+                model_id=fallback_model_id,
             )
+            completion_patch: Dict[str, Any] = {
+                CONVERSATION_TURN_METADATA_KEY: {
+                    "lifecycle": ConversationTurnLifecycle.COMPLETED.value,
+                },
+                **response_metadata,
+            }
+            inline_summary = build_inline_turn_summary(
+                note_outcome.note,
+                user_text=user_message_model_content(user_message),
+                reply_text=content_without_thinking,
+                model_id=fallback_model_id or model_id,
+            )
+            if inline_summary is not None:
+                completion_patch[TURN_SUMMARY_METADATA_KEY] = inline_summary
             await self.conversation_repository.merge_message_metadata(
                 pair.assistant_message_id,
-                {
-                    CONVERSATION_TURN_METADATA_KEY: {
-                        "lifecycle": ConversationTurnLifecycle.COMPLETED.value,
-                    },
-                    **response_metadata,
-                },
+                completion_patch,
             )
+            self._request_turn_summaries(conversation_id)
             yield {
                 "token": "",
                 "message_id": pair.assistant_message_id,
@@ -613,7 +696,7 @@ class ConversationService:
                 flags=re.DOTALL,
             ).strip()
             thinking_matches = re.findall(r"<think>(.*?)</think>", full_content, flags=re.DOTALL)
-            cancellation_metadata: Dict[str, Any] = {"cancelled": True}
+            cancellation_metadata: Dict[str, Any] = {"canceled": True}
             if thinking_matches:
                 cancellation_metadata["thinking"] = "\n\n".join(thinking_matches)
 
@@ -625,7 +708,7 @@ class ConversationService:
                 pair.assistant_message_id,
                 {
                     CONVERSATION_TURN_METADATA_KEY: {
-                        "lifecycle": ConversationTurnLifecycle.CANCELLED.value,
+                        "lifecycle": ConversationTurnLifecycle.CANCELED.value,
                     },
                     **cancellation_metadata,
                 },

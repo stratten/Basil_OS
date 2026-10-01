@@ -14,6 +14,7 @@ import {
   requestUpdateAssistantSessionPushToTalkThreshold,
   requestUpdateAutoPasteAssistantOutput,
   requestUpdateCloseAssistantSessionOnInsert,
+  requestUpdateConversationDefaultConversationOnly,
   requestUpdateSelectedModel,
   requestUpdateUseRegionSelection,
 } from '../services/reasoningDefaultsBridge'
@@ -245,6 +246,9 @@ export function ReasoningDefaultsSettingsApp() {
 
       <section className="reasoning-defaults-section" aria-labelledby="reasoning-defaults-assistant-session-heading">
         <h2 id="reasoning-defaults-assistant-session-heading">AssistantSession</h2>
+        <div className="reasoning-defaults-columns">
+          <div className="reasoning-defaults-column" role="group" aria-labelledby="reasoning-defaults-assistant-session-input-heading">
+            <h3 id="reasoning-defaults-assistant-session-input-heading">Input</h3>
         <PolicyRadioGroup
           legend="Default input mode"
           name="assistant-session-default-modality"
@@ -276,10 +280,9 @@ export function ReasoningDefaultsSettingsApp() {
             onCommit={(thresholdMs) => { setSettings({ ...s, assistantSessionPushToTalkThreshold: thresholdMs }); submit(requestUpdateAssistantSessionPushToTalkThreshold(thresholdMs)) }}
           />
         )}
-      </section>
-
-      <section className="reasoning-defaults-section" aria-labelledby="reasoning-defaults-behavior-heading">
-        <h2 id="reasoning-defaults-behavior-heading">Behavior</h2>
+          </div>
+          <div className="reasoning-defaults-column" role="group" aria-labelledby="reasoning-defaults-behavior-heading">
+            <h3 id="reasoning-defaults-behavior-heading">Behavior</h3>
         <Switch
           id="reasoning-defaults-close-on-insert"
           label="Close AssistantSession after inserting"
@@ -303,6 +306,20 @@ export function ReasoningDefaultsSettingsApp() {
           onChange={(checked) => { setSettings({ ...s, useRegionSelection: checked }); submit(requestUpdateUseRegionSelection(checked)) }}
         />
         <p className="reasoning-defaults-field-hint">When enabled, allows manual screen region selection instead of automatic window capture for Enhanced and AssistantSession.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="reasoning-defaults-section" aria-labelledby="reasoning-defaults-conversation-heading">
+        <h2 id="reasoning-defaults-conversation-heading">Conversation</h2>
+        <Switch
+          id="reasoning-defaults-conversation-only-default"
+          label="Start new conversations in Conversation only"
+          checked={s.conversationDefaultConversationOnly === true}
+          disabled={disabled}
+          onChange={(checked) => { setSettings({ ...s, conversationDefaultConversationOnly: checked }); submit(requestUpdateConversationDefaultConversationOnly(checked)) }}
+        />
+        <p className="reasoning-defaults-field-hint">New conversations keep replies in the conversation instead of starting agent tasks. Each conversation remembers its own Conversation only choice, so changing this default does not change existing conversations.</p>
       </section>
 
       {pendingId && <p className="reasoning-defaults-status" role="status">Saving setting...</p>}

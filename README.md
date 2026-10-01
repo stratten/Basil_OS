@@ -8,7 +8,7 @@ Basil is a local-first macOS AI assistant. It combines a native Swift client, a 
 
 The Basil Board is the main workspace for beginning an inquiry, reopening work, viewing meeting state, and moving among conversations, Agent Tasks, and todos. Conversations retain threaded work around an ongoing subject. Assistant Session provides a focused text-or-voice assistant surface with saved outputs, refinement, and copy controls.
 
-Agent Tasks are goal-oriented workflows that can start from text, files, images, captured audio, or screen context. A task can show progress and intermediate activity, present results and local artifact previews, accept revisions, and request approval before taking an action. Tasks can be scheduled, reviewed, paused, or cancelled when their state supports it. The todo workspace tracks work through inbox, open, in-progress, review, and completed views, with details, ordering, dates, and status for agent-backed work.
+Agent Tasks are goal-oriented workflows that can start from text, files, images, captured audio, or screen context. A task can show progress and intermediate activity, present results and local artifact previews, accept revisions, and request approval before taking an action. Tasks can be scheduled, reviewed, paused, or canceled when their state supports it. The todo workspace tracks work through inbox, open, in-progress, review, and completed views, with details, ordering, dates, and status for agent-backed work.
 
 ### Capture, OCR, and transcription
 

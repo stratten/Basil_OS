@@ -303,7 +303,7 @@ async def test_agent_task_submission_prefixes_conversation_instruction(
     "submission_result",
     [
         {"success": False, "status": "failed", "error": "rejected"},
-        {"success": True, "status": "cancelled", "message": "cancelled"},
+        {"success": True, "status": "canceled", "message": "canceled"},
         "invalid-result",
     ],
 )
@@ -396,7 +396,7 @@ async def test_direct_route_is_rejected_without_persistence_or_submission(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("leaf_status", ["completed", "failed", "cancelled"])
+@pytest.mark.parametrize("leaf_status", ["completed", "failed", "canceled"])
 async def test_terminal_conversation_candidate_submits_a_linked_child(
     repository: SimpleNamespace,
     lifecycle: SimpleNamespace,

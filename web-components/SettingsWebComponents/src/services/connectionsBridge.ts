@@ -12,6 +12,8 @@ type OutgoingConnectionsMessage =
   | { type: 'requestRefreshTools'; requestId: string; connectionId: string }
   | { type: 'requestUpdateConnectionMetadata'; requestId: string; connectionId: string; friendlyName: string; description: string }
   | { type: 'requestCheckConnectionStatus'; requestId: string; connectionId: string }
+  | { type: 'requestReconnectConnection'; requestId: string; connectionId: string }
+  | { type: 'requestReplaceConnectionToken'; requestId: string; connectionId: string; bearerToken: string }
   | { type: 'requestUpdatePolicy'; requestId: string; connectionId: string; toolName: string; policy: string }
   | { type: 'requestRefreshCallLog'; requestId: string }
   | { type: 'requestCreateProviderProfile'; requestId: string; displayName: string; launchArgv: string[]; environmentAllowlist: string[]; authenticationMethodId?: string; description?: string; routingHints: string[] }
@@ -126,6 +128,18 @@ export function requestUpdateConnectionMetadata(connectionId: string, friendlyNa
 export function requestCheckConnectionStatus(connectionId: string): string {
   const id = requestId('checkConnectionStatus')
   postMessage({ type: 'requestCheckConnectionStatus', requestId: id, connectionId })
+  return id
+}
+
+export function requestReconnectConnection(connectionId: string): string {
+  const id = requestId('reconnectConnection')
+  postMessage({ type: 'requestReconnectConnection', requestId: id, connectionId })
+  return id
+}
+
+export function requestReplaceConnectionToken(connectionId: string, bearerToken: string): string {
+  const id = requestId('replaceConnectionToken')
+  postMessage({ type: 'requestReplaceConnectionToken', requestId: id, connectionId, bearerToken })
   return id
 }
 

@@ -89,3 +89,36 @@ async def test_waiting_provider_delegation_parent_is_preserved_for_bridge_reconc
     refreshed = await service.get_agent_task("waiting-parent")
     assert refreshed is not None
     assert refreshed.status == "awaiting_provider_delegation"
+
+
+@pytest.mark.asyncio
+async def test_restart_cancels_pending_approvals_owned_by_terminal_tasks(tmp_path) -> None:
+    service = SQLiteKnowledgeService(tmp_path / "orphan-approvals.db")
+    for task_id in ("task-done", "task-waiting"):
+        await service.store_agent_task(
+            agent_task_id=task_id,
+            original_prompt="Prompt",
+            transcribed_prompt="Prompt",
+            status="processing",
+        )
+    approvals = {}
+    for task_id in ("task-done", "task-waiting"):
+        approvals[task_id] = await service.execution_approval_repository.create_pending_approval(
+            agent_task_id=task_id,
+            root_task_id=task_id,
+            execution_type="shell",
+            command="pwd",
+            reason="Not whitelisted",
+            risk_level="low",
+            generalized_pattern="pwd",
+            render_context={},
+        )
+    await service.update_agent_task_status(agent_task_id="task-done", status="completed")
+    await service.update_agent_task_status(agent_task_id="task-waiting", status="awaiting_provider_delegation")
+
+    await service.agent_task_service.mark_interrupted_active_agent_tasks()
+
+    done_record = await service.execution_approval_repository.get_approval(str(approvals["task-done"]["id"]))
+    waiting_record = await service.execution_approval_repository.get_approval(str(approvals["task-waiting"]["id"]))
+    assert done_record["status"] == "canceled"
+    assert waiting_record["status"] == "pending"

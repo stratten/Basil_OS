@@ -309,7 +309,7 @@
 
 /* Checkpoint selectable option cards — rendered by CheckpointFlow for `choice`
    (select-then-Continue) and `confirmation` (submit-on-click) checkpoints.
-   Cards use solid blue selection/intent treatment rather than flat grey-on-grey
+   Cards use solid blue selection/intent treatment rather than flat gray-on-gray
    so the active option reads clearly. */
 .checkpoint-options {
   display: flex;

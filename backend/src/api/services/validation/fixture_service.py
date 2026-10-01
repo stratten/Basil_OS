@@ -541,7 +541,7 @@ class ValidationFixtureService:
                 # scenario is active: create_pending_execution_approval (see
                 # execution_approvals/repository.py) can only transition an
                 # agent task into 'awaiting_user_input' when its current
-                # status is not already completed/failed/cancelled, so a
+                # status is not already completed/failed/canceled, so a
                 # live Approve/Deny prompt can never appear against a
                 # terminal fixture task. Every other validation scenario
                 # (including this same fixture's static/whitelisted-command

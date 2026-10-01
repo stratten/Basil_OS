@@ -119,6 +119,11 @@ extension LiveTranscriptionViewModel {
             
             // Send to dedicated microphone WebSocket
             guard self.microphoneStreamTimingReady else { return }
+            // Periodic clock markers pin this socket's samples to the meeting clock so live timestamps never drift.
+            let captureStartElapsed = max(0, self.recordingClock.elapsedSeconds() - Double(outputBuffer.frameLength) / 16000.0)
+            if self.recordingClock.claimMarker(for: .microphone, at: captureStartElapsed) {
+                self.microphoneWebSocketTask?.send(.string(LiveTranscriptionViewModel.streamClockMarkerMessage(elapsedSeconds: captureStartElapsed))) { _ in }
+            }
             self.microphoneWebSocketTask?.send(.data(data)) { error in
                 if let error = error {
                     DispatchQueue.main.async {
@@ -222,10 +227,12 @@ extension LiveTranscriptionViewModel {
                 guard self.microphoneRecoveryGeneration == recoveryGeneration,
                       self.isRecording,
                       !Task.isCancelled else { return }
-                try self.setupAudioEngine()
+                if !self.isCapturePaused {
+                    try self.setupAudioEngine()
+                }
                 self.microphoneInputRecoveryState = .idle
                 self.connectionState = .recording
-                self.statusMessage = "Recording and transcribing..."
+                self.statusMessage = self.recordingStatusMessage()
             } catch {
                 guard self.microphoneRecoveryGeneration == recoveryGeneration,
                       self.isRecording,
@@ -304,6 +311,9 @@ extension LiveTranscriptionViewModel {
                 await MainActor.run {
                     isRecording = true
                     recordingStartTime = Date()
+                    recordingClock.start()
+                    isCapturePaused = false
+                    liveTranscriptionWasDisabledThisPart = !sessionLiveTranscriptionEnabled
                     startTimer()
                 }
 
@@ -341,7 +351,7 @@ extension LiveTranscriptionViewModel {
                 await MainActor.run {
                     isRecording = true
                     connectionState = .recording
-                    statusMessage = "Recording and transcribing..."
+                    statusMessage = recordingStatusMessage()
                     startRetranscribeCadence()
                     NotificationCenter.default.post(name: .liveTranscriptionRecordingDidStart, object: nil)
                 }
@@ -456,7 +466,7 @@ extension LiveTranscriptionViewModel {
     }
 
     /// Stops recording and cleans up audio resources
-    func stopRecording() {
+    func stopRecording(runPostStopActions: Bool = true) {
         #if DEBUG
         DevLogger.shared.info("Stopping live transcription recording", context: "LiveTranscriptionViewModel")
         DevLogger.shared.info("[AUDIO ENGINE] stopRecording called. Engine pointer: \(audioEngine != nil ? String(describing: Unmanaged.passUnretained(audioEngine!).toOpaque()) : "nil")", context: "LiveTranscriptionViewModel")
@@ -493,7 +503,7 @@ extension LiveTranscriptionViewModel {
                 task.cancel(with: .normalClosure, reason: nil)
                 
                 #if DEBUG
-                DevLogger.shared.info("\(label) WebSocket task cancelled", context: "LiveTranscriptionViewModel")
+                DevLogger.shared.info("\(label) WebSocket task canceled", context: "LiveTranscriptionViewModel")
                 #endif
             }
         }
@@ -526,6 +536,8 @@ extension LiveTranscriptionViewModel {
         systemAudioReconnectAttempt = 0
         microphoneInputRecoveryState = .idle
         stopMicrophoneAudioEngine()
+        recordingClock.stop()
+        isCapturePaused = false
 
         // Reset recording state
         isRecording = false
@@ -588,7 +600,12 @@ extension LiveTranscriptionViewModel {
         DevLogger.shared.info("Recording stopped completely", context: "LiveTranscriptionViewModel")
         #endif
 
-        triggerStopAutomationIfNeeded()
+        let liveTranscriptionWasDisabled = liveTranscriptionWasDisabledThisPart
+        liveTranscriptionWasDisabledThisPart = false
+        // Cancel (and closing the window while paused) skips post-processing and the auto-view of the part.
+        guard runPostStopActions else { return }
+
+        triggerStopAutomationIfNeeded(forceRetranscribe: liveTranscriptionWasDisabled)
 
         // Drop into read-only viewing of the meeting just recorded so the
         // Resume / Start New controls appear instead of a bare Start button.
@@ -599,11 +616,15 @@ extension LiveTranscriptionViewModel {
     /// auto-analyze) once recording has fully stopped. Honors the per-session
     /// overrides seeded from the global defaults; ordering of analysis vs.
     /// re-transcription follows the configured timing.
-    private func triggerStopAutomationIfNeeded() {
+    private func triggerStopAutomationIfNeeded(forceRetranscribe: Bool = false) {
+        // A part recorded (even partly) without live transcription has no complete transcript until it is re-transcribed.
         let autoRetranscribe = PostProcessingAutomation.shouldAutoRetranscribeOnStop(
-            enabled: sessionAutoRetranscribeOnStop,
+            enabled: sessionAutoRetranscribeOnStop || forceRetranscribe,
             hasRecordedAudio: hasRecordedAudio
         )
+        if forceRetranscribe && sessionAutoAnalyzeOnComplete {
+            sessionAutoAnalyzeTiming = "after"
+        }
         let plan = PostProcessingAutomation.plan(
             autoRetranscribe: autoRetranscribe,
             autoAnalyze: sessionAutoAnalyzeOnComplete,

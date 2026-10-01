@@ -219,6 +219,22 @@ def test_native_stream_origins_preserve_discontinuous_reconnect_timestamps(isola
     ]
 
 
+def test_empty_stream_range_reanchors_to_measured_capture_start(isolated_home):
+    recorder = MeetingRecorder(meeting_id="meeting-delayed-capture")
+    recorder.start_recording("Delayed Capture")
+    assert recorder.reanchor_empty_stream_timeline_range(5.0) is False
+    recorder.set_stream_timeline_origin_seconds(0.15)
+    assert recorder.reanchor_empty_stream_timeline_range(float("nan")) is False
+    assert recorder.reanchor_empty_stream_timeline_range(16.2) is True
+    recorder.write_audio_chunk(b"\x00\x01" * 16000)
+    assert recorder.reanchor_empty_stream_timeline_range(30.0) is False
+    recorder.stop_recording()
+
+    metadata = MeetingRecorder.load_metadata("meeting-delayed-capture")
+    assert metadata is not None
+    assert metadata.stream_timeline_ranges == [{"start": 16.2, "end": pytest.approx(17.2)}]
+
+
 def test_reconnect_on_empty_meeting_starts_fresh(isolated_home):
     """resume_existing=True with no prior content behaves like a fresh start."""
     recorder = MeetingRecorder(meeting_id="meeting-reconnect-empty")

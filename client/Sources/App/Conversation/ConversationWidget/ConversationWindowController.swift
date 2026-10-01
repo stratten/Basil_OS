@@ -29,9 +29,11 @@ final class ConversationWindowController: NSObject, NSWindowDelegate {
             if panel?.isMiniaturized == true {
                 panel?.deminiaturize(nil)
             }
+            NSApp.activate(ignoringOtherApps: true)
             panel?.makeKeyAndOrderFront(nil)
             ConversationPresentationCoordinator.shared.standaloneDidBecomeVisible()
             navigateToConversation(conversationId)
+            webViewHost?.focusConversationComposer()
             return
         }
 
@@ -130,7 +132,9 @@ final class ConversationWindowController: NSObject, NSWindowDelegate {
         )
 
         // Make the window visible and key for text input
+        NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
+        host.focusConversationComposer()
         ConversationPresentationCoordinator.shared.standaloneDidBecomeVisible()
         navigateToConversation(conversationId)
 
@@ -187,7 +191,7 @@ final class ConversationWindowController: NSObject, NSWindowDelegate {
             show()
             return
         }
-        if isVisible {
+        if isVisible && NSApp.isActive && panel?.isKeyWindow == true {
             hide()
         } else {
             show()

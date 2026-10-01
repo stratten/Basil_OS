@@ -64,7 +64,6 @@ if LANGCHAIN_AVAILABLE:
         timeout_s: Optional[int] = Field(default=None, description="Optional timeout in seconds, capped by the shell service at 60 seconds.")
         max_output_bytes: Optional[int] = Field(default=None, description="Optional per-stream output cap in bytes.")
         file_operations: Optional[List[ShellFileOperationArgs]] = Field(default=None, description="Exact declared filesystem transitions for a shell mutation. Each path must be absolute and within the allowed roots.")
-        skip_approval_check: bool = Field(default=False, description="Internal-only flag for tests and trusted service composition; agents must not set it.")
 
     class WriteTextFileArgs(BaseModel):
         path: str = Field(description="Absolute target path inside the user home directory or Basil backend repository root. The path must not traverse a symbolic link.")

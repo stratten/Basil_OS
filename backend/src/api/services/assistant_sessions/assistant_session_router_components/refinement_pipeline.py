@@ -17,7 +17,7 @@ transcription for audio), then streams LLM tokens; the non-streaming
 branch defers to ``service.process_refinement_audio`` /
 ``service.process_refinement_text`` depending on modality.
 
-Rehydration materialises a fresh in-memory session from a persisted history
+Rehydration materializes a fresh in-memory session from a persisted history
 row whose shape matches what ``service._build_refinement_prompt`` expects --
 this is the only way the refinement endpoints can run against a history
 item without forcing the user to recapture their screen and re-record an
@@ -290,7 +290,7 @@ async def materialize_session_from_history(
     The persisted AssistantSession output only stores text fields (no live OCR
     object, no transcription pipeline state). To make the existing
     ``/assistant-sessions/{session_id}/refine`` endpoint usable against
-    history items, we materialise a synthetic session whose shape matches
+    history items, we materialize a synthetic session whose shape matches
     what the refinement code path expects:
 
     - ``ocr_result`` exposes ``.cleaned_text`` so ``_build_refinement_prompt``

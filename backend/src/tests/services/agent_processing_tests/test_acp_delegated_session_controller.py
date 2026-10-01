@@ -34,7 +34,7 @@ class _FailingSupervisor:
         self.mark_turn_idle_calls += 1
 
 
-class _CancellingSupervisor:
+class _CancelingSupervisor:
     def __init__(self) -> None:
         self.mark_turn_idle_calls = 0
 
@@ -89,7 +89,7 @@ async def test_send_follow_up_preserves_prompt_failure_without_idle_transition()
 
 @pytest.mark.asyncio
 async def test_send_follow_up_preserves_cancellation_without_idle_transition() -> None:
-    supervisor = _CancellingSupervisor()
+    supervisor = _CancelingSupervisor()
     controller = AcpDelegatedSessionController()
     controller.register(
         provider_run_id="provider-run",
@@ -114,7 +114,7 @@ async def test_cancel_releases_a_session_after_its_supervisor_already_timed_out(
         last_outcome = SimpleNamespace(status=ProviderLaunchOutcomeStatus.TIMED_OUT)
 
         async def cancel(self) -> None:
-            raise AssertionError("a terminal supervisor must not be cancelled again")
+            raise AssertionError("a terminal supervisor must not be canceled again")
 
     controller = AcpDelegatedSessionController()
     controller.register(

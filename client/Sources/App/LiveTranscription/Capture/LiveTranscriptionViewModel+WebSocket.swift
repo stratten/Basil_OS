@@ -48,7 +48,8 @@ extension LiveTranscriptionViewModel {
         var queryItems = [
             URLQueryItem(name: "model", value: settings.selected_model),
             URLQueryItem(name: "language", value: settings.language),
-            URLQueryItem(name: "client", value: "native")  // Specify native client
+            URLQueryItem(name: "client", value: "native"),  // Specify native client
+            URLQueryItem(name: "live_transcription", value: sessionLiveTranscriptionEnabled ? "true" : "false")
         ]
         
         // Add meeting information for microphone
@@ -97,7 +98,7 @@ extension LiveTranscriptionViewModel {
         
         let session = URLSession(configuration: .default)
         microphoneStreamTimingReady = false
-        microphoneWebSocketTask = session.webSocketTask(with: url)
+        microphoneWebSocketTask = session.webSocketTask(with: BackendAuthorization.authorizedRequest(for: url))
         
         // Create a flag to track if we've received the first message
         var receivedFirstMessage = false
@@ -148,7 +149,7 @@ extension LiveTranscriptionViewModel {
             }
         }
         
-        // Create a task that will be cancelled when the first message is received
+        // Create a task that will be canceled when the first message is received
         connectionError = nil
         connectionTask = Task {
             do {
@@ -158,19 +159,19 @@ extension LiveTranscriptionViewModel {
                 // If we get here, the timeout occurred
                 throw NSError(domain: "com.basil.websocket", code: -1, userInfo: [NSLocalizedDescriptionKey: "WebSocket connection timeout"])
             } catch is CancellationError {
-                // Check if we were cancelled due to an error
+                // Check if we were canceled due to an error
                 if let error = connectionError {
                     throw error
                 }
                 
-                // Otherwise we were cancelled because we received a message - success!
+                // Otherwise we were canceled because we received a message - success!
                 #if DEBUG
                 DevLogger.shared.info("Microphone WebSocket connection established successfully", context: "LiveTranscriptionViewModel")
                 #endif
             }
         }
         
-        // Wait for the connection task to complete (either by timeout or by being cancelled)
+        // Wait for the connection task to complete (either by timeout or by being canceled)
         try await connectionTask?.value
         
         #if DEBUG
@@ -259,6 +260,11 @@ extension LiveTranscriptionViewModel {
             #if DEBUG
             DevLogger.shared.error("Failed to decode message - invalid JSON format: \(text)", context: "LiveTranscriptionViewModel")
             #endif
+            return
+        }
+
+        if let status = response.status,
+           status == Self.recordingOnlyStatus || status == Self.liveTranscriptionUnavailableStatus {
             return
         }
 
@@ -400,7 +406,7 @@ extension LiveTranscriptionViewModel {
         // Update UI on success
         await MainActor.run {
             connectionState = .recording
-            statusMessage = "Recording and transcribing..."
+            statusMessage = recordingStatusMessage()
             microphoneReconnectAttempt = 0
         }
         
@@ -507,6 +513,14 @@ extension LiveTranscriptionViewModel {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             
+            if response.status == Self.liveTranscriptionUnavailableStatus {
+                self.handleLiveTranscriptionUnavailable()
+                return
+            }
+            if response.status == Self.recordingOnlyStatus {
+                return
+            }
+
             // Update event-driven state
             if let stateString = response.state,
                let state = TranscriptionState(rawValue: stateString) {
@@ -537,6 +551,14 @@ extension LiveTranscriptionViewModel {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             
+            if response.status == Self.liveTranscriptionUnavailableStatus {
+                self.handleLiveTranscriptionUnavailable()
+                return
+            }
+            if response.status == Self.recordingOnlyStatus {
+                return
+            }
+
             // Fold the new tokens into the system-audio transcript via the shared
             // merge path (handles new-vs-extend, cross-source line breaks, the
             // global line-break timer, resume-offset stamping, and the combined

@@ -54,9 +54,9 @@ async def finalize_resumed_workflow(
     if not agent_task_record:
         logger.warning("⚠️ finalize_resumed_workflow: agent task %s not found; skipping finalization", agent_task_id)
         return
-    if getattr(agent_task_record, "status", None) == "cancelled":
+    if getattr(agent_task_record, "status", None) == "canceled":
         logger.info(
-            "↩️ finalize_resumed_workflow: agent task %s was cancelled; skipping terminal finalization",
+            "↩️ finalize_resumed_workflow: agent task %s was canceled; skipping terminal finalization",
             agent_task_id,
         )
         return

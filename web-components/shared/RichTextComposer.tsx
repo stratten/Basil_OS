@@ -10,6 +10,13 @@ import {
   type RefObject,
 } from 'react';
 import './rich-text-followup.css';
+import {
+  applyCodeBlockKey,
+  editorSelectionRange,
+  enclosingCodeBlock,
+  unwrapCodeBlock,
+  wrapSelectionInCodeBlock,
+} from './richTextCodeBlock';
 
 export interface RichTextComposerProps {
   editorRef: RefObject<HTMLDivElement>;
@@ -160,6 +167,7 @@ export default function RichTextComposer({
     insertUnorderedList: false,
     insertOrderedList: false,
   });
+  const [inCodeBlock, setInCodeBlock] = useState(false);
   const [resizedEditorHeight, setResizedEditorHeight] = useState<number>();
   const resizeStateRef = useRef<{ pointerId: number; startY: number; startHeight: number }>();
 
@@ -167,6 +175,7 @@ export default function RichTextComposer({
     const updateActiveFormats = () => {
       reconcilePhantomTypingStyle(editorRef);
       setActiveFormats(computeActiveFormats(editorRef));
+      setInCodeBlock(caretCodeBlock() !== null);
     };
     document.addEventListener('selectionchange', updateActiveFormats);
     return () => document.removeEventListener('selectionchange', updateActiveFormats);
@@ -246,8 +255,41 @@ export default function RichTextComposer({
     selection.addRange(range);
   }
 
+  function caretCodeBlock(): { pre: HTMLElement; range: Range } | null {
+    const editor = editorRef.current;
+    if (!editor) return null;
+    const range = editorSelectionRange(editor);
+    const pre = range ? enclosingCodeBlock(range.startContainer, editor) : null;
+    return range && pre ? { pre, range } : null;
+  }
+
+  function notifyEditorChanged(): void {
+    setActiveFormats(computeActiveFormats(editorRef));
+    setInCodeBlock(caretCodeBlock() !== null);
+    onDraftChange(editorText(editorRef));
+    onHtmlChange?.(editorRef.current?.innerHTML ?? '');
+  }
+
+  function toggleCodeBlock(): void {
+    focusEditor();
+    const editor = editorRef.current;
+    if (!editor) return;
+    const current = caretCodeBlock();
+    if (current) unwrapCodeBlock(current.pre, current.range);
+    else wrapSelectionInCodeBlock(editor, editorSelectionRange(editor));
+    notifyEditorChanged();
+  }
+
+  function handleCodeBlockKey(event: KeyboardEvent<HTMLDivElement>): boolean {
+    if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey || event.nativeEvent.isComposing) return false;
+    const current = caretCodeBlock();
+    return current ? applyCodeBlockKey(event.key, current.pre, current.range) : false;
+  }
+
   function clearFormatting(): void {
     focusEditor();
+    const current = caretCodeBlock();
+    if (current) unwrapCodeBlock(current.pre, current.range);
     document.execCommand('removeFormat', false);
     setActiveFormats(computeActiveFormats(editorRef));
     onDraftChange(editorText(editorRef));
@@ -286,6 +328,11 @@ export default function RichTextComposer({
     if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
       if (!submitDisabled) onSubmit();
+      return;
+    }
+    if (handleCodeBlockKey(event)) {
+      event.preventDefault();
+      notifyEditorChanged();
     }
   }
 
@@ -335,7 +382,7 @@ export default function RichTextComposer({
             <polyline points="12,4 15,8 12,12" />
           </svg>
         </ToolbarButton>
-        <ToolbarButton disabled={disabled} onClick={() => executeCommand('formatBlock', 'pre')} title="Code block">
+        <ToolbarButton disabled={disabled} onClick={toggleCodeBlock} title="Code block" active={inCodeBlock}>
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <rect x="1" y="1" width="14" height="14" rx="2" />
             <polyline points="5,5 3,8 5,11" />

@@ -93,7 +93,7 @@
   margin-top: 0;
 }
 
-/* A collapsing SmoothReveal still occupies a grid slot until it unmounts; cancelling the step gap here and restoring it inside the revealed body keeps the surrounding content from snapping by one gap when the slot disappears. */
+/* A collapsing SmoothReveal still occupies a grid slot until it unmounts; canceling the step gap here and restoring it inside the revealed body keeps the surrounding content from snapping by one gap when the slot disappears. */
 .intro-step-body > .intro-step-reveal {
   align-self: start;
   margin-top: calc(-1 * var(--padding-m));

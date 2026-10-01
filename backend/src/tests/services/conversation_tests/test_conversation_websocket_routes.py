@@ -99,6 +99,7 @@ async def test_streaming_forwards_plain_content_metadata_files_and_request_id():
         "on_persistence_ready": None,
     }
     assert websocket.send_json.await_args_list[0].args[0] == {
+        "event_type": "conversation_message_accepted",
         "status": "success",
         "message": "Message received",
         "request_id": "request-1",
@@ -262,6 +263,7 @@ async def test_empty_message_rejection_echoes_request_id():
     )
 
     websocket.send_json.assert_awaited_once_with({
+        "event_type": "conversation_message_rejected",
         "status": "error",
         "message": "Empty message received",
         "request_id": "request-1",
@@ -469,10 +471,10 @@ async def test_streaming_cancellation_emits_single_event_and_skips_final_token(m
 
     websocket = SimpleNamespace(send_json=AsyncMock())
     broadcast = AsyncMock()
-    monkeypatch.setattr(conversation_module, "broadcast_conversation_cancelled", broadcast)
+    monkeypatch.setattr(conversation_module, "broadcast_conversation_canceled", broadcast)
     service = build_service()
 
-    async def cancelled_stream(**kwargs):
+    async def canceled_stream(**kwargs):
         service.streaming_kwargs = kwargs
         yield {
             "token": "Partial",
@@ -481,7 +483,7 @@ async def test_streaming_cancellation_emits_single_event_and_skips_final_token(m
         }
         raise asyncio.CancelledError()
 
-    service.send_message_streaming = cancelled_stream
+    service.send_message_streaming = canceled_stream
     send_token = AsyncMock()
 
     await handle_conversation_message(
@@ -497,11 +499,11 @@ async def test_streaming_cancellation_emits_single_event_and_skips_final_token(m
     )
 
     broadcast.assert_awaited_once_with({
-        "event_type": "conversation_cancelled",
+        "event_type": "conversation_canceled",
         "conversation_id": "conversation-1",
         "message_id": "assistant-1",
         "request_id": "request-1",
-        "cancelled": True,
+        "canceled": True,
     })
     assert all(
         call.kwargs.get("is_final") is not True
@@ -561,7 +563,7 @@ def build_turn_router(turn):
 
 
 @pytest.mark.asyncio
-async def test_agent_task_turn_sends_only_acknowledgement_and_binds_runtime_mapping():
+async def test_agent_task_turn_sends_only_acknowledgment_and_binds_runtime_mapping():
     websocket = SimpleNamespace(send_json=AsyncMock())
     runtime = ConversationRequestRuntime()
     request_state = ConversationRequestState(
@@ -596,6 +598,7 @@ async def test_agent_task_turn_sends_only_acknowledgement_and_binds_runtime_mapp
 
     assert len(websocket.send_json.await_args_list) == 2
     assert websocket.send_json.await_args_list[0].args[0] == {
+        "event_type": "conversation_message_accepted",
         "status": "success",
         "message": "Message received",
         "request_id": "request-1",
@@ -663,7 +666,7 @@ async def test_agent_task_turn_cancels_durably_when_cancel_requested_before_bind
 
     submission_service.cancel_agent_task_durably.assert_awaited_once_with(
         "task-1",
-        "User cancelled Conversation request",
+        "User canceled Conversation request",
     )
     assert runtime.claim_agent_task_cancellation(websocket, "request-1") is None
 

@@ -50,6 +50,7 @@ from .connection_route_helpers import (
     load_connection_preferences,
     save_connection_preferences,
 )
+from .reconnect_support import load_reconnect_target, reauthorize_connection
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,9 @@ the ``start_oauth`` -> Slack browser consent -> Swift custom URI ->
 
 _slack_connection_descriptions: dict[str, Optional[str]] = {}
 """State-keyed pending custom descriptions for Slack OAuth callbacks."""
+
+_slack_reconnect_targets: dict[str, str] = {}
+"""State-keyed connection ids for Slack flows that re-authorize an existing connection."""
 
 
 def _connection_to_dto(record: MCPConnectionRecord) -> ConnectionDTO:
@@ -147,15 +151,21 @@ async def slack_start_oauth(
         if payload.requested_scopes
         else list(SLACK_DEFAULT_USER_SCOPES)
     )
+    reconnect_record = (
+        load_reconnect_target(payload.connection_id, "slack") if payload.connection_id else None
+    )
     try:
         result = await _slack_pkce_coordinator.begin_authorization(
-            friendly_name=payload.friendly_name,
-            server_url=payload.server_url or SLACK_MCP_SERVER_URL,
+            friendly_name=reconnect_record.friendly_name if reconnect_record else payload.friendly_name,
+            server_url=SLACK_MCP_SERVER_URL if reconnect_record else (payload.server_url or SLACK_MCP_SERVER_URL),
             scopes=requested_scopes,
         )
-        _slack_connection_descriptions[result["state"]] = _normalize_optional_description(
-            payload.description
-        )
+        if reconnect_record is not None:
+            _slack_reconnect_targets[result["state"]] = reconnect_record.id
+        else:
+            _slack_connection_descriptions[result["state"]] = _normalize_optional_description(
+                payload.description
+            )
     except SlackPKCEError as exc:
         code = str(exc)
         raise HTTPException(
@@ -181,6 +191,7 @@ async def slack_complete_oauth(
     payload: SlackCompleteOAuthRequest,
 ) -> SlackCompleteOAuthResponse:
     """Exchange Slack's ``code`` for tokens, persist, and push to Swift."""
+    reconnect_connection_id = _slack_reconnect_targets.pop(payload.state, None)
     try:
         descriptor = await _slack_pkce_coordinator.complete_authorization(
             state=payload.state,
@@ -200,8 +211,20 @@ async def slack_complete_oauth(
         logger.exception("Unexpected failure completing Slack PKCE flow")
         raise HTTPException(status_code=500, detail=f"Slack OAuth completion failed: {exc}")
 
-    description = _slack_connection_descriptions.pop(payload.state, None)
-    record = _persist_slack_connection(descriptor, description=description)
+    if reconnect_connection_id is not None:
+        _slack_connection_descriptions.pop(payload.state, None)
+        record = reauthorize_connection(
+            reconnect_connection_id,
+            oauth_client_id=descriptor.client_id,
+            oauth_authorization_server="https://slack.com",
+            oauth_token_endpoint="https://slack.com/api/oauth.v2.user.access",
+            oauth_scopes=descriptor.scopes,
+        )
+        if record is None:
+            raise HTTPException(status_code=404, detail="Connection not found")
+    else:
+        description = _slack_connection_descriptions.pop(payload.state, None)
+        record = _persist_slack_connection(descriptor, description=description)
     await _push_token_to_swift(
         connection_id=record.id,
         access_token=descriptor.token.access_token,

@@ -9,16 +9,16 @@ describe('cancelSession', () => {
   it('issues one REST cancellation request and decodes the cancellation receipt', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       success: true,
-      message: 'AgentTask cancelled',
+      message: 'AgentTask canceled',
       finalized_via_agent: false,
       agent_task_id: 'task-1',
     }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
     vi.stubGlobal('fetch', fetchMock);
     setBaseUrl(8000);
 
-    await expect(cancelSession('task-1', 'User cancelled')).resolves.toEqual({
+    await expect(cancelSession('task-1', 'User canceled')).resolves.toEqual({
       success: true,
-      message: 'AgentTask cancelled',
+      message: 'AgentTask canceled',
       finalized_via_agent: false,
       agent_task_id: 'task-1',
     });
@@ -45,7 +45,7 @@ describe('cancelSession', () => {
   it('allows repeated idempotent cancellation requests', async () => {
     const response = {
       success: true,
-      message: 'AgentTask cancelled',
+      message: 'AgentTask canceled',
       finalized_via_agent: false,
       agent_task_id: 'task-3',
     };

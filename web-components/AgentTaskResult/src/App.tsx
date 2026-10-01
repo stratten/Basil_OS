@@ -26,7 +26,7 @@ import { AgentTaskResultBody } from './app/AgentTaskResultBody';
 import { effectiveRootId, isDisplaySourceDetached } from './app/detachedPresentation';
 import { beginRunningAgentCancellation } from './app/runningAgentCancellation';
 
-// Initialise the processing-bubble CSS variables at module-load time, before
+// Initialize the processing-bubble CSS variables at module-load time, before
 // React renders, so the bubble has its Royal Purple default *before* the
 // Swift host pushes its theme payload.
 applyProcessingDefaults();

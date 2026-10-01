@@ -105,7 +105,7 @@ describe('ProfileSettingsApp', () => {
     act(() => { findButton('Clear All').click() })
     const requestId = postMessage.mock.calls.map(([value]) => value).find((value) => value.type === 'requestClearProfile').requestId
     act(() => {
-      window.basilProfileSettings!.onEvent({ type: 'intentResult', requestId, status: 'cancelled' })
+      window.basilProfileSettings!.onEvent({ type: 'intentResult', requestId, status: 'canceled' })
     })
     expect(container.querySelector('.profile-settings-inline-error')).toBeNull()
     const fullName = container.querySelector<HTMLInputElement>('input[placeholder="Your full name"]')!

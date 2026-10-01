@@ -92,7 +92,7 @@ class WakeWordService:
             
             self._is_actively_listening = False
             self._is_capturing_agent_task = False
-            self._agent_task_cancelled = False
+            self._agent_task_canceled = False
             self._agent_task_capture_task: Optional[asyncio.Task] = None
             self._active_transcription_task: Optional[asyncio.Task] = None
             self._last_wake_word_time = 0.0
@@ -300,14 +300,14 @@ class WakeWordService:
         """
         try:
             self._is_capturing_agent_task = True
-            self._agent_task_cancelled = False  # Reset cancellation flag at start
+            self._agent_task_canceled = False  # Reset cancellation flag at start
             
             # Sync state with wake word manager
             if self.wake_word_manager:
-                self.wake_word_manager.set_agent_task_state(self._is_capturing_agent_task, self._agent_task_cancelled)
+                self.wake_word_manager.set_agent_task_state(self._is_capturing_agent_task, self._agent_task_canceled)
             
             # Sync cancellation state and get screenshot data from orchestration service
-            self.agent_task_orchestration_service.set_agent_task_cancelled(self._agent_task_cancelled)
+            self.agent_task_orchestration_service.set_agent_task_canceled(self._agent_task_canceled)
             # Get the screenshot data that was captured during wake word detection
             self._current_screenshot_data = self.agent_task_orchestration_service._current_screenshot_data
             
@@ -320,14 +320,14 @@ class WakeWordService:
                 logger.info("🎤 [VOICE_CAPTURE_DEBUG] Hotkey client-owned capture active - keeping is_capturing_agent_task=True until client stop")
                 # Ensure the status endpoint reflects active capture for the second hotkey press
                 self._is_capturing_agent_task = True
-                self._agent_task_cancelled = False
+                self._agent_task_canceled = False
             else:
                 self._is_capturing_agent_task = False
-                self._agent_task_cancelled = False  # Clear cancellation flag
+                self._agent_task_canceled = False  # Clear cancellation flag
                 
                 # Sync final state with wake word manager
                 if self.wake_word_manager:
-                    self.wake_word_manager.set_agent_task_state(self._is_capturing_agent_task, self._agent_task_cancelled)
+                    self.wake_word_manager.set_agent_task_state(self._is_capturing_agent_task, self._agent_task_canceled)
 
     async def _capture_agent_task(self) -> Optional[str]:
         """
@@ -340,7 +340,7 @@ class WakeWordService:
             Transcribed agent_task or None if capture failed
         """
         # Sync cancellation state with the agent-task capture service
-        self.agent_task_capture_service.set_agent_task_cancelled(self._agent_task_cancelled)
+        self.agent_task_capture_service.set_agent_task_canceled(self._agent_task_canceled)
         
         # Delegate to the agent-task capture service
         return await self.agent_task_capture_service._capture_agent_task()
@@ -354,7 +354,7 @@ class WakeWordService:
             Transcribed agent_task or None if capture failed
         """
         # Sync cancellation state with the agent-task capture service
-        self.agent_task_capture_service.set_agent_task_cancelled(self._agent_task_cancelled)
+        self.agent_task_capture_service.set_agent_task_canceled(self._agent_task_canceled)
         
         # Delegate to the agent-task capture service
         return await self.agent_task_capture_service._capture_agent_task_fallback()
@@ -652,10 +652,10 @@ class WakeWordService:
                     logger.info("🚫 Direct processing suppressed due to recent cancellation window (<5s)")
                     return {
                         "success": False,
-                        "operation": "cancelled",
+                        "operation": "canceled",
                         "confidence": 0.0,
-                        "reasoning": "User cancelled the agent_task; ignoring late-arriving audio.",
-                        "message": "Task was cancelled",
+                        "reasoning": "User canceled the agent_task; ignoring late-arriving audio.",
+                        "message": "Task was canceled",
                     }
             except Exception:
                 pass
@@ -858,7 +858,7 @@ class WakeWordService:
                 if not agent_task_id:
                     logger.warning("🚫 [DIRECT_CANCEL] Received empty agent_task_id for scoped cancel")
                     return False
-                logger.info(f"🚫 [DIRECT_CANCEL] Cancelling specific agent-task thread: {agent_task_id}")
+                logger.info(f"🚫 [DIRECT_CANCEL] Canceling specific agent-task thread: {agent_task_id}")
                 if self.agent_task_orchestrator and hasattr(self.agent_task_orchestrator, 'cancel_agent_task'):
                     return await self.agent_task_orchestrator.cancel_agent_task(agent_task_id)
                 else:
@@ -873,7 +873,7 @@ class WakeWordService:
                 self._last_cancel_timestamp = _time.time()
             except Exception:
                 self._last_cancel_timestamp = 0.0
-            self._agent_task_cancelled = True
+            self._agent_task_canceled = True
             
             # STEP 2: FORCE-STOP audio capturer immediately - don't check state, just force it
             logger.info("🚫 [DIRECT_CANCEL] FORCE-STOPPING audio capturer...")
@@ -884,11 +884,11 @@ class WakeWordService:
                 logger.info("🚫 [DIRECT_CANCEL] Wake word manager cancellation flag set")
             
             if self.agent_task_capture_service:
-                self.agent_task_capture_service.set_agent_task_cancelled(True)
+                self.agent_task_capture_service.set_agent_task_canceled(True)
                 logger.info("🚫 [DIRECT_CANCEL] Agent-task capture service cancellation flag set")
             
             if self.agent_task_orchestration_service:
-                self.agent_task_orchestration_service.set_agent_task_cancelled(True)
+                self.agent_task_orchestration_service.set_agent_task_canceled(True)
                 logger.info("🚫 [DIRECT_CANCEL] Agent-task orchestration service cancellation flag set")
             
             if self.audio_capturer:
@@ -929,26 +929,26 @@ class WakeWordService:
                 logger.error(f"🚫 [DIRECT_CANCEL] Error terminating streaming sessions: {e}")
             
             # STEP 4: CANCEL all asyncio tasks related to agent task processing
-            logger.info("🚫 [DIRECT_CANCEL] CANCELLING all agent_task tasks...")
+            logger.info("🚫 [DIRECT_CANCEL] CANCELING all agent_task tasks...")
             
             # Cancel main agent-task capture task
             if self._agent_task_capture_task and not self._agent_task_capture_task.done():
-                logger.info("🚫 [DIRECT_CANCEL] Cancelling main agent-task capture task")
+                logger.info("🚫 [DIRECT_CANCEL] Canceling main agent-task capture task")
                 self._agent_task_capture_task.cancel()
                 try:
                     await asyncio.wait_for(self._agent_task_capture_task, timeout=0.3)
                 except (asyncio.CancelledError, asyncio.TimeoutError):
-                    logger.info("🚫 [DIRECT_CANCEL] Main agent-task task cancelled")
+                    logger.info("🚫 [DIRECT_CANCEL] Main agent-task task canceled")
             
             # Cancel transcription task
             if hasattr(self, '_active_transcription_task') and self._active_transcription_task:
                 if not self._active_transcription_task.done():
-                    logger.info("🚫 [DIRECT_CANCEL] Cancelling transcription task")
+                    logger.info("🚫 [DIRECT_CANCEL] Canceling transcription task")
                     self._active_transcription_task.cancel()
                     try:
                         await asyncio.wait_for(self._active_transcription_task, timeout=0.2)
                     except (asyncio.CancelledError, asyncio.TimeoutError):
-                        logger.info("🚫 [DIRECT_CANCEL] Transcription task cancelled")
+                        logger.info("🚫 [DIRECT_CANCEL] Transcription task canceled")
                 self._active_transcription_task = None
             
             # STEP 5: Find and cancel ANY running tasks that might be part of agent task processing
@@ -964,29 +964,29 @@ class WakeWordService:
                         agent_task_tasks.append(task)
             
             if agent_task_tasks:
-                logger.info(f"🚫 [DIRECT_CANCEL] Found {len(agent_task_tasks)} potentially related tasks, cancelling...")
+                logger.info(f"🚫 [DIRECT_CANCEL] Found {len(agent_task_tasks)} potentially related tasks, canceling...")
                 for task in agent_task_tasks:
                     try:
                         task.cancel()
-                        logger.debug(f"🚫 [DIRECT_CANCEL] Cancelled task: {task}")
+                        logger.debug(f"🚫 [DIRECT_CANCEL] Canceled task: {task}")
                     except Exception as e:
-                        logger.debug(f"🚫 [DIRECT_CANCEL] Error cancelling task {task}: {e}")
+                        logger.debug(f"🚫 [DIRECT_CANCEL] Error canceling task {task}: {e}")
             
             # STEP 6: Cancel agent-task orchestrator operations
             if self.agent_task_orchestrator and hasattr(self.agent_task_orchestrator, 'cancel_current_processing'):
-                logger.info("🚫 [DIRECT_CANCEL] Cancelling agent-task orchestrator operations")
+                logger.info("🚫 [DIRECT_CANCEL] Canceling agent-task orchestrator operations")
                 try:
                     await asyncio.wait_for(self.agent_task_orchestrator.cancel_current_processing(), timeout=1.0)
-                    logger.info("🚫 [DIRECT_CANCEL] Agent-task orchestrator cancelled")
+                    logger.info("🚫 [DIRECT_CANCEL] Agent-task orchestrator canceled")
                 except asyncio.TimeoutError:
                     logger.warning("🚫 [DIRECT_CANCEL] Agent-task orchestrator cancellation timed out")
                 except Exception as e:
-                    logger.error(f"🚫 [DIRECT_CANCEL] Error cancelling agent-task orchestrator: {e}")
+                    logger.error(f"🚫 [DIRECT_CANCEL] Error canceling agent-task orchestrator: {e}")
             
             # STEP 7: FORCE reset all state flags
             logger.info("🚫 [DIRECT_CANCEL] FORCE-resetting all state flags...")
             self._is_capturing_agent_task = False
-            self._agent_task_cancelled = False  # Clear this after everything is cancelled
+            self._agent_task_canceled = False  # Clear this after everything is canceled
             
             # CRITICAL: Also clear cancellation flags in all child services
             # This ensures subsequent wake word/hotkey triggers aren't blocked
@@ -995,11 +995,11 @@ class WakeWordService:
                 logger.info("🚫 [DIRECT_CANCEL] Wake word manager flags cleared")
             
             if self.agent_task_capture_service:
-                self.agent_task_capture_service.set_agent_task_cancelled(False)
+                self.agent_task_capture_service.set_agent_task_canceled(False)
                 logger.info("🚫 [DIRECT_CANCEL] Agent-task capture service flag cleared")
             
             if self.agent_task_orchestration_service:
-                self.agent_task_orchestration_service.set_agent_task_cancelled(False)
+                self.agent_task_orchestration_service.set_agent_task_canceled(False)
                 logger.info("🚫 [DIRECT_CANCEL] Agent-task orchestration service flag cleared")
             
             # STEP 8: FORCE resume wake word detection
@@ -1025,7 +1025,7 @@ class WakeWordService:
             # Emergency fallback - force reset everything we can
             try:
                 self._is_capturing_agent_task = False
-                self._agent_task_cancelled = False
+                self._agent_task_canceled = False
                 if self.audio_capturer and hasattr(self.audio_capturer, '_capture_mode'):
                     self.audio_capturer._capture_mode = "WAKE_WORD"
                 logger.warning("🚫 [DIRECT_CANCEL] Emergency fallback state reset completed")

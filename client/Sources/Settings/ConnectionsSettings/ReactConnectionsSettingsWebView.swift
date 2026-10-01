@@ -16,6 +16,8 @@ final class ReactConnectionsSettingsWebView: NSObject {
     var onRequestRefreshTools: ((String, String) -> Void)?
     var onRequestUpdateConnectionMetadata: ((String, String, String, String?) -> Void)?
     var onRequestCheckConnectionStatus: ((String, String) -> Void)?
+    var onRequestReconnectConnection: ((String, String) -> Void)?
+    var onRequestReplaceConnectionToken: ((String, String, String) -> Void)?
     var onRequestUpdatePolicy: ((String, String, String, String) -> Void)?
     var onRequestRefreshCallLog: ((String) -> Void)?
     var onRequestCreateProviderProfile: ((String, String, [String], [String], String?, String?, [String]) -> Void)?
@@ -150,6 +152,21 @@ final class ReactConnectionsSettingsWebView: NSObject {
                 return
             }
             onRequestCheckConnectionStatus?(requestId, connectionId)
+        case "requestReconnectConnection":
+            guard let requestId = body["requestId"] as? String,
+                  let connectionId = body["connectionId"] as? String else {
+                onMalformedIntent?("requestReconnectConnection")
+                return
+            }
+            onRequestReconnectConnection?(requestId, connectionId)
+        case "requestReplaceConnectionToken":
+            guard let requestId = body["requestId"] as? String,
+                  let connectionId = body["connectionId"] as? String,
+                  let bearerToken = body["bearerToken"] as? String else {
+                onMalformedIntent?("requestReplaceConnectionToken")
+                return
+            }
+            onRequestReplaceConnectionToken?(requestId, connectionId, bearerToken)
         case "requestUpdatePolicy":
             guard let requestId = body["requestId"] as? String,
                   let connectionId = body["connectionId"] as? String,

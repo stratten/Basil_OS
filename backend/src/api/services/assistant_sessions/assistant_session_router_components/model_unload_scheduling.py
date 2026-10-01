@@ -50,7 +50,7 @@ def schedule_transcription_model_unload_with_voice_listener_check(
                        f"blocking transcription model unload for session: {session_id}")
 
             if current_task and not current_task.done():
-                logger.info(f"🎤 [MODEL_UNLOAD] Cancelling existing model unload task due to active voice listener")
+                logger.info(f"🎤 [MODEL_UNLOAD] Canceling existing model unload task due to active voice listener")
                 current_task.cancel()
 
             return None

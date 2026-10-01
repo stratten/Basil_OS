@@ -311,7 +311,7 @@ if __name__ == "__main__":
     # Confirm
     response = input("Continue with migration? (y/N): ")
     if response.lower() != 'y':
-        print("Migration cancelled.")
+        print("Migration canceled.")
         exit(0)
     
     try:

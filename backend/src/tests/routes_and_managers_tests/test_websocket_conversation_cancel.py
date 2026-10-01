@@ -60,7 +60,7 @@ async def test_no_matching_request_or_agent_task_is_rejected():
 
 
 @pytest.mark.asyncio
-async def test_direct_in_flight_request_is_cancelled_without_durable_call():
+async def test_direct_in_flight_request_is_canceled_without_durable_call():
     websocket = SimpleNamespace(send_json=AsyncMock())
     runtime = ConversationRequestRuntime()
     submission_service = SimpleNamespace(cancel_agent_task_durably=AsyncMock())
@@ -81,7 +81,7 @@ async def test_direct_in_flight_request_is_cancelled_without_durable_call():
 
 
 @pytest.mark.asyncio
-async def test_bound_agent_task_is_cancelled_durably_without_rejection():
+async def test_bound_agent_task_is_canceled_durably_without_rejection():
     websocket = SimpleNamespace(send_json=AsyncMock())
     runtime = ConversationRequestRuntime()
     submission_service = SimpleNamespace(cancel_agent_task_durably=AsyncMock())
@@ -93,7 +93,7 @@ async def test_bound_agent_task_is_cancelled_durably_without_rejection():
 
     submission_service.cancel_agent_task_durably.assert_awaited_once_with(
         "task-1",
-        "User cancelled Conversation request",
+        "User canceled Conversation request",
     )
     websocket.send_json.assert_not_awaited()
 

@@ -19,9 +19,9 @@ final class ModelDownloadMiniPanelWebViewTests: XCTestCase {
         let host = ModelDownloadMiniPanelWebView()
         host.isKnownModelId = { $0 == "OpenAI-whisper-tiny.en" }
         var retriedModelId: String?
-        var cancelledModelId: String?
+        var canceledModelId: String?
         host.onRetryModel = { retriedModelId = $0 }
-        host.onCancelModel = { cancelledModelId = $0 }
+        host.onCancelModel = { canceledModelId = $0 }
 
         host.handleMessage(body: ["type": "retryModel", "protocolVersion": 1, "modelId": "unknown"])
         host.handleMessage(body: ["type": "cancelModel", "protocolVersion": 1, "modelId": ""])
@@ -29,7 +29,7 @@ final class ModelDownloadMiniPanelWebViewTests: XCTestCase {
         host.handleMessage(body: ["type": "cancelModel", "protocolVersion": 1, "modelId": "OpenAI-whisper-tiny.en"])
 
         XCTAssertEqual(retriedModelId, "OpenAI-whisper-tiny.en")
-        XCTAssertEqual(cancelledModelId, "OpenAI-whisper-tiny.en")
+        XCTAssertEqual(canceledModelId, "OpenAI-whisper-tiny.en")
         host.tearDown()
     }
 

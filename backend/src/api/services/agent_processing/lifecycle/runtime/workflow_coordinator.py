@@ -362,14 +362,17 @@ class WorkflowCoordinator:
             # Try to execute - may be interrupted by checkpoint request
             try:
                 workflow_wallclock_limit = float(context.get("workflow_wallclock_limit_seconds") or 1500)
-                from ..execution_graph.workflow_deadline import WorkflowDeadline
+                from ..execution_graph.workflow_deadline import (
+                    WorkflowDeadline,
+                    run_within_workflow_deadline,
+                )
                 context["_workflow_deadline"] = WorkflowDeadline.start(
                     total_seconds=workflow_wallclock_limit,
                     finalization_reserve_seconds=float(context.get("finalization_reserve_seconds") or 60),
                 )
-                tool_results = await asyncio.wait_for(
+                tool_results = await run_within_workflow_deadline(
                     execute_tool_enhanced_workflow(user_agent_task, context),
-                    timeout=workflow_wallclock_limit,
+                    context["_workflow_deadline"],
                 )
                 self.logger.info(f"🔧 DEBUG: execute_tool_enhanced_workflow returned: {type(tool_results)} | keys={list(tool_results.keys()) if isinstance(tool_results, dict) else 'n/a'}")
             except asyncio.TimeoutError:

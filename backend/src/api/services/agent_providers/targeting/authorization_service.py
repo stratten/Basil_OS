@@ -156,8 +156,8 @@ class ProviderTargetAuthorizationService:
         cancel_value = self._checkpoint_factory.cancel_value_from_snapshot(choice_snapshot)
         if response_value == cancel_value:
             return await self._persist_response(
-                parent=parent, proposal=proposal, status="cancelled",
-                reason_code="user_cancelled_delegation", selection=None, response_value=response_value,
+                parent=parent, proposal=proposal, status="canceled",
+                reason_code="user_canceled_delegation", selection=None, response_value=response_value,
             )
         matched = self._checkpoint_factory.match_choice_token(choice_snapshot, response_value)
         if matched is None:

@@ -11,7 +11,10 @@ from api.core.models.preferences import (
     Preferences,
 )
 
-from .models import CachedToolDTO, ConnectionDTO
+from api.services.mcp_connectors.github_device_flow_coordinator import GITHUB_OAUTH_CLIENT_ID
+from api.services.mcp_connectors.slack_token_service import is_slack_connection
+
+from .models import CachedToolDTO, ConnectionAuthKind, ConnectionDTO
 
 
 def load_connection_preferences() -> Preferences:
@@ -44,6 +47,17 @@ def default_policy_for_tool(tool: MCPCachedTool) -> MCPToolPolicy:
     return "always_allow" if tool.is_read_only_hint else "always_ask"
 
 
+def connection_auth_kind(record: MCPConnectionRecord) -> ConnectionAuthKind:
+    """Identify which sign-in flow re-authorizes this connection."""
+    if is_slack_connection(record):
+        return "slack"
+    if record.oauth_client_id == GITHUB_OAUTH_CLIENT_ID:
+        return "github_device"
+    if record.oauth_client_id:
+        return "oauth"
+    return "manual_token"
+
+
 def connection_to_dto(record: MCPConnectionRecord) -> ConnectionDTO:
     """Map one persisted connection record to the Swift-facing DTO."""
     tools = [
@@ -68,11 +82,13 @@ def connection_to_dto(record: MCPConnectionRecord) -> ConnectionDTO:
         last_connection_status_message=record.last_connection_status_message,
         server_name=record.server_name,
         server_instructions=record.server_instructions,
+        auth_kind=connection_auth_kind(record),
         tools=tools,
     )
 
 
 __all__ = [
+    "connection_auth_kind",
     "connection_to_dto",
     "default_policy_for_tool",
     "find_connection_or_404",

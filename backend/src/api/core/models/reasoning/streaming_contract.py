@@ -20,7 +20,7 @@ StreamTerminalReason = Literal[
     "completed",
     "max_tokens",
     "length",
-    "cancelled",
+    "canceled",
     "safety",
     "error",
     "unknown",
@@ -92,7 +92,7 @@ def normalize_terminal_reason(provider_reason: Optional[str]) -> StreamTerminalR
     if reason in {"max_tokens", "max_output_tokens", "length", "content_filter_length"}:
         return "max_tokens" if "token" in reason else "length"
     if reason in {"cancelled", "canceled"}:
-        return "cancelled"
+        return "canceled"
     if reason in {"safety", "content_filter", "blocked", "recitation"}:
         return "safety"
     if reason in {"error", "failed"}:

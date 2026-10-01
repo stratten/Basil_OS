@@ -6,14 +6,14 @@ import ConversationComposer from './ConversationComposer';
 
 function renderComposer(
   onSubmit = vi.fn(),
-  options: Partial<{ processing: boolean; cancelling: boolean }> = {},
+  options: Partial<{ processing: boolean; canceling: boolean }> = {},
 ) {
   render(
     <ConversationComposer
       editorRef={createRef<HTMLDivElement>()}
       attachmentPaths={[]}
       processing={options.processing ?? false}
-      cancelling={options.cancelling ?? false}
+      canceling={options.canceling ?? false}
       voiceState="idle"
       activeFormats={{}}
       models={[]}

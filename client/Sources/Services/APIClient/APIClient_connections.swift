@@ -54,6 +54,7 @@ extension APIClient {
         let lastConnectionStatusMessage: String?
         let serverName: String?
         let serverInstructions: String?
+        let authKind: String?
         let tools: [MCPConnectionTool]
 
         enum CodingKeys: String, CodingKey {
@@ -69,6 +70,7 @@ extension APIClient {
             case lastConnectionStatusMessage = "last_connection_status_message"
             case serverName = "server_name"
             case serverInstructions = "server_instructions"
+            case authKind = "auth_kind"
             case tools
         }
     }
@@ -124,10 +126,12 @@ extension APIClient {
         let serverUrl: String
         let friendlyName: String
         let description: String?
+        let connectionId: String?
         enum CodingKeys: String, CodingKey {
             case serverUrl = "server_url"
             case friendlyName = "friendly_name"
             case description
+            case connectionId = "connection_id"
         }
     }
 
@@ -180,10 +184,12 @@ extension APIClient {
         let friendlyName: String
         let serverUrl: String
         let description: String?
+        let connectionId: String?
         enum CodingKeys: String, CodingKey {
             case friendlyName = "friendly_name"
             case serverUrl = "server_url"
             case description
+            case connectionId = "connection_id"
         }
     }
 
@@ -212,11 +218,13 @@ extension APIClient {
         let serverUrl: String
         let description: String?
         let requestedScopes: [String]?
+        let connectionId: String?
         enum CodingKeys: String, CodingKey {
             case friendlyName = "friendly_name"
             case serverUrl = "server_url"
             case description
             case requestedScopes = "requested_scopes"
+            case connectionId = "connection_id"
         }
     }
 
@@ -286,12 +294,14 @@ extension APIClient {
     func startMCPOAuth(
         serverUrl: String,
         friendlyName: String,
-        description: String? = nil
+        description: String? = nil,
+        connectionId: String? = nil
     ) async throws -> URL {
         let body = StartOAuthRequest(
             serverUrl: serverUrl,
             friendlyName: friendlyName,
-            description: description
+            description: description,
+            connectionId: connectionId
         )
         let payload = try JSONEncoder().encode(body)
         let data = try await postJSON("/settings/connections/start_oauth", body: payload)
@@ -324,12 +334,14 @@ extension APIClient {
     func startGitHubDeviceFlow(
         serverUrl: String,
         friendlyName: String = "GitHub",
-        description: String? = nil
+        description: String? = nil,
+        connectionId: String? = nil
     ) async throws -> GitHubDeviceFlowStartResponse {
         let body = GitHubDeviceFlowStartRequest(
             friendlyName: friendlyName,
             serverUrl: serverUrl,
-            description: description
+            description: description,
+            connectionId: connectionId
         )
         let payload = try JSONEncoder().encode(body)
         let data = try await postJSON("/settings/connections/github/start_device_flow", body: payload)
@@ -352,13 +364,15 @@ extension APIClient {
         serverUrl: String,
         friendlyName: String = "Slack",
         description: String? = nil,
-        requestedScopes: [String]? = nil
+        requestedScopes: [String]? = nil,
+        connectionId: String? = nil
     ) async throws -> SlackOAuthStartResponse {
         let body = SlackOAuthStartRequest(
             friendlyName: friendlyName,
             serverUrl: serverUrl,
             description: description,
-            requestedScopes: requestedScopes
+            requestedScopes: requestedScopes,
+            connectionId: connectionId
         )
         let payload = try JSONEncoder().encode(body)
         let data = try await postJSON("/settings/connections/slack/start_oauth", body: payload)

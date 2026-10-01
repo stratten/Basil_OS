@@ -21,14 +21,14 @@ export function SkillEditor({ apiBaseUrl, slug }: Props) {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
+    let canceled = false;
     setIsLoading(true);
     setHasLoaded(false);
     setError(null);
     setIsConfirmingDelete(false);
     getSkill(apiBaseUrl, slug)
       .then((skill) => {
-        if (cancelled) return;
+        if (canceled) return;
         setHasLoaded(true);
         setTitle(skill.title);
         setWhenToUse(skill.when_to_use);
@@ -38,13 +38,13 @@ export function SkillEditor({ apiBaseUrl, slug }: Props) {
         setObservationCount(skill.observation_count);
       })
       .catch((err) => {
-        if (!cancelled) setError(errorMessage(err));
+        if (!canceled) setError(errorMessage(err));
       })
       .finally(() => {
-        if (!cancelled) setIsLoading(false);
+        if (!canceled) setIsLoading(false);
       });
     return () => {
-      cancelled = true;
+      canceled = true;
     };
   }, [apiBaseUrl, slug]);
 

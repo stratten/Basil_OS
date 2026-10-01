@@ -19,7 +19,7 @@ final class StatusBarWindowCoordinator {
     ///
     /// Do NOT call this from a progress/state event handler (e.g.
     /// `dynamic_step_added`, `dynamic_step_updated`, `agent_progress_update`,
-    /// `agentTask_progress`). The capture controller's contract is to take
+    /// `agent_task_progress`). The capture controller's contract is to take
     /// *new* user input; progress display for an already-running agent
     /// is owned by `AgentTaskResultWidgetController.shared`. Re-entering
     /// this function from a progress event spawns spurious capture

@@ -22,7 +22,7 @@ class CreateTodosArgs(BaseModel):
 class ListTodosArgs(BaseModel):
     status: Optional[str] = Field(
         default=None,
-        description="Optional status filter: candidate, open, in_progress, ready_for_review, completed, dismissed, or cancelled.",
+        description="Optional status filter: candidate, open, in_progress, ready_for_review, completed, dismissed, or canceled.",
     )
 
 

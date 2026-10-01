@@ -38,10 +38,15 @@ final class WebSocketService_MCP {
         }
         let refreshToken = json["refresh_token"] as? String
         do {
+            // Every backend push is a complete grant: the Slack and generic OAuth
+            // refresh paths resend the previous refresh token when the provider
+            // omits a new one, so a missing refresh token here means the grant
+            // has none and any stored one is stale.
             try AuthService.shared.storeMCPToken(
                 connectionId: connectionId,
                 accessToken: accessToken,
-                refreshToken: refreshToken
+                refreshToken: refreshToken,
+                replacingRefreshToken: true
             )
             #if DEBUG
             DevLogger.shared.info(

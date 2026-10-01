@@ -30,6 +30,10 @@ class ConversationWidgetPreferences(BaseModel):
         default=False,
         description="Whether the conversation history sidebar is collapsed"
     )
+    default_conversation_only: bool = Field(
+        default=False,
+        description="Whether new conversations start with Conversation only enabled, which keeps replies inline instead of delegating to an agent task"
+    )
 
 
 class AgentTaskPreferences(BaseModel):

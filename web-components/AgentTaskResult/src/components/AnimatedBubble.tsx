@@ -142,7 +142,7 @@ export default function AnimatedBubble({ size, mode, baseColor, accentColor, acc
       const accentSrgb = rgbTransitionValue(accentTransition, now);
       // No CSS scale on the canvas: the shader hard-clips every capsule to the
       // fixed circle (uRadius = px/2), so scaling the element would grow the
-      // whole disc past its `size` box (purple spilling outside the circle).
+      // whole disk past its `size` box (purple spilling outside the circle).
       // The "breathing"/growth read is carried entirely by the interior capsule
       // animation (height/radial expansion), never by the bubble's outer bound.
       renderer.draw(baseSrgb, accentSrgb, computeCapsules(size, dpr, t, model));

@@ -121,7 +121,7 @@ extension LiveTranscriptionViewModel {
 
     /// Sends the current recording-part capture offset before this source emits PCM.
     func sendNativeStreamTimingControl(for source: AudioSource) async throws {
-        guard let recordingStartTime else {
+        guard recordingStartTime != nil else {
             throw WebSocketError.invalidResponse
         }
 
@@ -138,15 +138,17 @@ extension LiveTranscriptionViewModel {
             throw WebSocketError.invalidResponse
         }
 
+        // Paused spans are excluded so the transcript timeline matches the visible recording timer.
         let payload: [String: Any] = [
             "type": "native_stream_timing",
-            "stream_offset_seconds": max(0, Date().timeIntervalSince(recordingStartTime))
+            "stream_offset_seconds": max(0, recordingClock.elapsedSeconds())
         ]
         let data = try JSONSerialization.data(withJSONObject: payload)
         guard let text = String(data: data, encoding: .utf8) else {
             throw WebSocketError.invalidResponse
         }
         try await socket.send(.string(text))
+        recordingClock.resetMarker(for: source)
 
         switch source {
         case .microphone:

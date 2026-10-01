@@ -118,7 +118,7 @@ class CaptureCleanupScheduler:
                 if await self._wait(_POST_RUN_COOLDOWN_SECONDS):
                     return
         except asyncio.CancelledError:
-            api_logger.info("[CAPTURE_CLEANUP] loop cancelled")
+            api_logger.info("[CAPTURE_CLEANUP] loop canceled")
             raise
 
     async def _wait(self, seconds: float) -> bool:

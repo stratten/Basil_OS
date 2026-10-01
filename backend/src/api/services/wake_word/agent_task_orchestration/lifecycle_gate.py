@@ -135,7 +135,7 @@ def schedule_idle_resume(service, reason: str) -> None:
                 f"[LIFECYCLE] Skipping idle resume - gate became busy again (reason={reason})"
             )
             return
-        if service._agent_task_cancelled:
+        if service._agent_task_canceled:
             logger.info(
                 f"[LIFECYCLE] Lifecycle idle (reason={reason}) - cancellation flag set, "
                 "resuming immediately"

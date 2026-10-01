@@ -260,13 +260,13 @@ class SnapshotDownloader:
 
                 except asyncio.CancelledError:
                     api_logger.info(f"[CANCEL_DEBUG] Download of {model_id} explicitly caught asyncio.CancelledError in snapshot_download/copying try block.")
-                    self.progress_tracker._current_operations[model_id] = "user_cancelled"
+                    self.progress_tracker._current_operations[model_id] = "user_canceled"
                     await self.update_progress(
                         model_type,
                         variant,
                         self.progress_tracker._progress.get(model_id, 0.0),
-                        status="user_cancelled",
-                        metadata={"message": "Download cancelled by user (in CancelledError block)."},
+                        status="user_canceled",
+                        metadata={"message": "Download canceled by user (in CancelledError block)."},
                     )
                     raise
             finally:

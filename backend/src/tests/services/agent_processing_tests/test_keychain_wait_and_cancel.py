@@ -75,7 +75,7 @@ async def test_helper_timeout():
 
 
 @pytest.mark.asyncio
-async def test_helper_cancelled_when_event_already_set():
+async def test_helper_canceled_when_event_already_set():
     loop = asyncio.get_running_loop()
     future = loop.create_future()  # never resolved
     cancel_event = asyncio.Event()
@@ -85,12 +85,12 @@ async def test_helper_cancelled_when_event_already_set():
         future, timeout_s=5.0, cancel_event=cancel_event
     )
 
-    assert kind == "cancelled"
+    assert kind == "canceled"
     assert value is None
 
 
 @pytest.mark.asyncio
-async def test_helper_cancelled_when_event_set_midwait():
+async def test_helper_canceled_when_event_set_midwait():
     loop = asyncio.get_running_loop()
     future = loop.create_future()  # never resolved
     cancel_event = asyncio.Event()
@@ -104,7 +104,7 @@ async def test_helper_cancelled_when_event_set_midwait():
         future, timeout_s=5.0, cancel_event=cancel_event
     )
 
-    assert kind == "cancelled"
+    assert kind == "canceled"
     assert value is None
 
 
@@ -160,9 +160,9 @@ async def test_bridge_cancel_emits_blocker_resolved(monkeypatch):
         cancel_event=cancel_event,
     )
 
-    assert result["kind"] == "token_request_cancelled"
+    assert result["kind"] == "token_request_canceled"
     resolved = [e for e in events if e.get("event_type") == "agent_task_blocker_resolved"]
-    assert any(e.get("kind") == "token_request_cancelled" for e in resolved)
+    assert any(e.get("kind") == "token_request_canceled" for e in resolved)
     assert not bridge._token_response_waiters
 
 
@@ -326,13 +326,13 @@ class _DurableCancellationDb:
 
 
 class _FakeOrchestrator:
-    def __init__(self, runtime_cancelled):
-        self.runtime_cancelled = runtime_cancelled
-        self.cancelled_ids = []
+    def __init__(self, runtime_canceled):
+        self.runtime_canceled = runtime_canceled
+        self.canceled_ids = []
 
     async def cancel_agent_task(self, agent_task_id):
-        self.cancelled_ids.append(agent_task_id)
-        return self.runtime_cancelled
+        self.canceled_ids.append(agent_task_id)
+        return self.runtime_canceled
 
 
 class _FakeCheckpointHandler:
@@ -374,8 +374,8 @@ class _FakeSubmissionService:
         self.calls.append((agent_task_id, reason))
         return {
             "root_task_id": agent_task_id,
-            "cancelled_task_ids": [agent_task_id],
-            "runtime_cancelled": False,
+            "canceled_task_ids": [agent_task_id],
+            "runtime_canceled": False,
         }
 
 
@@ -408,7 +408,7 @@ async def test_durable_cancellation_preserves_completed_root_and_cancels_active_
     root = _AgentTask("root-1", "completed")
     child = _AgentTask("child-1", "processing", root_task_id=root.id)
     db_service = _DurableCancellationDb([root, child])
-    orchestrator = _FakeOrchestrator(runtime_cancelled=False)
+    orchestrator = _FakeOrchestrator(runtime_canceled=False)
     submission = AgentTaskSubmissionService(
         agent_task_orchestrator=orchestrator,
         db_service=db_service,
@@ -422,20 +422,20 @@ async def test_durable_cancellation_preserves_completed_root_and_cancels_active_
 
     receipt = await submission.cancel_agent_task_durably(
         agent_task_id=root.id,
-        reason="User cancelled",
+        reason="User canceled",
     )
 
-    assert orchestrator.cancelled_ids == [root.id]
+    assert orchestrator.canceled_ids == [root.id]
     assert receipt["root_task_id"] == root.id
-    assert receipt["cancelled_task_ids"] == [child.id]
-    assert db_service.updates[0][0:2] == (child.id, "cancelled")
+    assert receipt["canceled_task_ids"] == [child.id]
+    assert db_service.updates[0][0:2] == (child.id, "canceled")
     assert root.status == "completed"
-    assert child.status == "cancelled"
+    assert child.status == "canceled"
     assert broadcasts == [{
-        "event_type": "agent_task_cancelled",
+        "event_type": "agent_task_canceled",
         "agent_task_id": child.id,
         "root_task_id": root.id,
-        "message": "AgentTask cancelled",
+        "message": "AgentTask canceled",
     }]
 
 
@@ -446,7 +446,7 @@ async def test_durable_cancellation_accepts_provisional_id_before_persistence():
     )
 
     db_service = _DurableCancellationDb([])
-    orchestrator = _FakeOrchestrator(runtime_cancelled=True)
+    orchestrator = _FakeOrchestrator(runtime_canceled=True)
     submission = AgentTaskSubmissionService(
         agent_task_orchestrator=orchestrator,
         db_service=db_service,
@@ -454,13 +454,13 @@ async def test_durable_cancellation_accepts_provisional_id_before_persistence():
 
     receipt = await submission.cancel_agent_task_durably(
         agent_task_id="provisional-1",
-        reason="User cancelled",
+        reason="User canceled",
     )
 
-    assert orchestrator.cancelled_ids == ["provisional-1"]
+    assert orchestrator.canceled_ids == ["provisional-1"]
     assert receipt["root_task_id"] == "provisional-1"
-    assert receipt["cancelled_task_ids"] == ["provisional-1"]
-    assert receipt["runtime_cancelled"] is True
+    assert receipt["canceled_task_ids"] == ["provisional-1"]
+    assert receipt["runtime_canceled"] is True
     assert receipt["preemption_completed_at"] <= receipt["durable_completed_at"]
     assert receipt["durable_completed_at"] <= receipt["cleanup_completed_at"]
     assert db_service.updates == []
@@ -473,24 +473,24 @@ async def test_durable_cancellation_is_idempotent_for_terminal_chain():
     )
 
     root = _AgentTask("root-1", "completed")
-    child = _AgentTask("child-1", "cancelled", root_task_id=root.id)
+    child = _AgentTask("child-1", "canceled", root_task_id=root.id)
     db_service = _DurableCancellationDb([root, child])
     submission = AgentTaskSubmissionService(
-        agent_task_orchestrator=_FakeOrchestrator(runtime_cancelled=True),
+        agent_task_orchestrator=_FakeOrchestrator(runtime_canceled=True),
         db_service=db_service,
     )
 
     receipt = await submission.cancel_agent_task_durably(
         agent_task_id=root.id,
-        reason="User cancelled",
+        reason="User canceled",
     )
 
-    assert receipt["cancelled_task_ids"] == []
+    assert receipt["canceled_task_ids"] == []
     assert db_service.updates == []
 
 
 @pytest.mark.asyncio
-async def test_submission_persists_preemptively_cancelled_task_as_terminal():
+async def test_submission_persists_preemptively_canceled_task_as_terminal():
     from api.services.agent_processing.lifecycle.submission.agent_task_processing.agent_task_submission_service import (
         AgentTaskSubmissionService,
     )
@@ -502,7 +502,7 @@ async def test_submission_persists_preemptively_cancelled_task_as_terminal():
         screen_context_service=SimpleNamespace(),
         routing_service=routing_service,
         processing_service=SimpleNamespace(),
-        is_cancelled=lambda agent_task_id: agent_task_id == "provisional-1",
+        is_canceled=lambda agent_task_id: agent_task_id == "provisional-1",
     )
 
     result = await submission.process_agent_task(
@@ -512,16 +512,16 @@ async def test_submission_persists_preemptively_cancelled_task_as_terminal():
 
     assert db_service.stored_ids == ["provisional-1"]
     assert len(db_service.status_updates) == 1
-    cancelled_id, cancelled_status, cancellation_payload = db_service.status_updates[0]
-    assert (cancelled_id, cancelled_status) == ("provisional-1", "cancelled")
-    assert cancellation_payload["cancelled"] is True
-    assert cancellation_payload["cancellation_reason"] == "User cancelled"
+    canceled_id, canceled_status, cancellation_payload = db_service.status_updates[0]
+    assert (canceled_id, canceled_status) == ("provisional-1", "canceled")
+    assert cancellation_payload["canceled"] is True
+    assert cancellation_payload["cancellation_reason"] == "User canceled"
     assert routing_service.title_calls == []
     assert result == {
         "success": False,
         "agent_task_id": "provisional-1",
-        "status": "cancelled",
-        "message": "AgentTask cancelled",
+        "status": "canceled",
+        "message": "AgentTask canceled",
     }
 
 
@@ -542,12 +542,12 @@ async def test_cancel_route_uses_durable_cancellation_without_resuming_checkpoin
     response = await cancel_session(
         agent_task_id="task-1",
         request=request,
-        body=CancelSessionRequest(reason="User cancelled"),
+        body=CancelSessionRequest(reason="User canceled"),
     )
 
     assert response.success is True
     assert response.finalized_via_agent is False
-    assert submission.calls == [("task-1", "User cancelled")]
+    assert submission.calls == [("task-1", "User canceled")]
 
 
 @pytest.mark.asyncio
@@ -556,7 +556,7 @@ async def test_checkpoint_status_keeps_stored_checkpoint_visible_but_terminal_ta
     from api.routes.agent_tasks.session_control_routes import get_checkpoint_status
     import api.dependencies as dependencies
 
-    record = _AgentTask("task-1", "cancelled")
+    record = _AgentTask("task-1", "canceled")
     submission = _FakeSubmissionService()
     _FakeCoordinator.instances = []
     monkeypatch.setattr(session_control_routes, "WorkflowCoordinator", _FakeCoordinator)
@@ -577,7 +577,7 @@ async def test_checkpoint_status_keeps_stored_checkpoint_visible_but_terminal_ta
 
 
 @pytest.mark.asyncio
-async def test_continue_rejects_cancelled_task_before_resume(monkeypatch):
+async def test_continue_rejects_canceled_task_before_resume(monkeypatch):
     from fastapi import HTTPException
 
     from api.routes.agent_tasks import session_control_routes
@@ -585,7 +585,7 @@ async def test_continue_rejects_cancelled_task_before_resume(monkeypatch):
     from api.routes.agent_tasks.session_control_routes import continue_session
     import api.dependencies as dependencies
 
-    record = _AgentTask("task-1", "cancelled")
+    record = _AgentTask("task-1", "canceled")
     submission = _FakeSubmissionService()
     _FakeCoordinator.instances = []
     monkeypatch.setattr(session_control_routes, "WorkflowCoordinator", _FakeCoordinator)

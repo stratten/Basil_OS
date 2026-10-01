@@ -465,39 +465,39 @@ async def test_allowed_transitions_and_terminal_guardrails(tmp_path) -> None:
         expected_revision=waiting["revision"],
         next_status="running",
     )
-    cancelling = await service.provider_run_repository.transition_run(
+    canceling = await service.provider_run_repository.transition_run(
         provider_run_id=str(resumed["id"]),
         expected_revision=resumed["revision"],
-        next_status="cancelling",
+        next_status="canceling",
     )
 
     with pytest.raises(ProviderRunConflictError, match="revision mismatch"):
         await service.provider_run_repository.transition_run(
-            provider_run_id=str(cancelling["id"]),
-            expected_revision=cancelling["revision"] - 1,
-            next_status="cancelled",
+            provider_run_id=str(canceling["id"]),
+            expected_revision=canceling["revision"] - 1,
+            next_status="canceled",
         )
 
-    cancelled = await service.provider_run_repository.transition_run(
-        provider_run_id=str(cancelling["id"]),
-        expected_revision=cancelling["revision"],
-        next_status="cancelled",
+    canceled = await service.provider_run_repository.transition_run(
+        provider_run_id=str(canceling["id"]),
+        expected_revision=canceling["revision"],
+        next_status="canceled",
     )
 
-    assert cancelled["status"] == "cancelled"
-    assert cancelled["terminal_at"] is not None
+    assert canceled["status"] == "canceled"
+    assert canceled["terminal_at"] is not None
 
     with pytest.raises(ProviderRunConflictError, match="revision mismatch"):
         await service.provider_run_repository.transition_run(
-            provider_run_id=str(cancelled["id"]),
-            expected_revision=cancelled["revision"] - 1,
+            provider_run_id=str(canceled["id"]),
+            expected_revision=canceled["revision"] - 1,
             next_status="running",
         )
 
     with pytest.raises(ProviderRunTransitionError, match="terminal"):
         await service.provider_run_repository.transition_run(
-            provider_run_id=str(cancelled["id"]),
-            expected_revision=cancelled["revision"],
+            provider_run_id=str(canceled["id"]),
+            expected_revision=canceled["revision"],
             next_status="running",
         )
 
@@ -560,7 +560,7 @@ async def test_interrupted_recovery_and_profile_status_blocks_new_runs(tmp_path)
         await second_repository.transition_run(
             provider_run_id=str(run["id"]),
             expected_revision=stale_running["revision"],
-            next_status="cancelling",
+            next_status="canceling",
         )
     assert waiting["status"] == "waiting_permission"
 

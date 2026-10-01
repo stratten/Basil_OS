@@ -19,7 +19,7 @@ extension WebSocketService {
         configuration.timeoutIntervalForRequest = 0  // No timeout
         configuration.timeoutIntervalForResource = 0  // No timeout
         session = URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
-        webSocket = session?.webSocketTask(with: url)
+        webSocket = session?.webSocketTask(with: BackendAuthorization.authorizedRequest(for: url))
 
         webSocket?.resume()
         receiveMessage()
@@ -134,7 +134,7 @@ extension WebSocketService {
                 print("Attempting reconnection after \(delaySeconds)s delay...")
                 self.connect()
             } catch {
-                print("Reconnection attempt cancelled or failed: \(error)")
+                print("Reconnection attempt canceled or failed: \(error)")
                 self.isReconnecting = false
             }
         }

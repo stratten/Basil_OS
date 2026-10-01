@@ -288,7 +288,7 @@ def _delegated_provider_report_cards(value: Optional[Sequence[Mapping[str, Any]]
         latest_summary = _bounded_plain_text(candidate.get("latest_summary"))
         if (
             run_id is None
-            or run_status not in {"admitted", "running", "idle", "waiting_user_input", "waiting_permission", "supervision_due", "cancelling", "interrupted", "settled", "failed", "cancelled"}
+            or run_status not in {"admitted", "running", "idle", "waiting_user_input", "waiting_permission", "supervision_due", "canceling", "interrupted", "settled", "failed", "canceled"}
             or capture_state not in {"available", "unavailable"}
             or verification_state not in {"not_applicable", "pending", "verified", "verification_mismatch", "unavailable"}
             or type(revision) is not int

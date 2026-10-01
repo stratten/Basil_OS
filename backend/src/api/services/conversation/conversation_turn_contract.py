@@ -40,7 +40,7 @@ class ConversationTurnLifecycle(StrEnum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
-    CANCELLED = "cancelled"
+    CANCELED = "canceled"
 
 
 class ConversationTurnNarrationLifecycle(StrEnum):
@@ -52,7 +52,7 @@ class ConversationTurnNarrationLifecycle(StrEnum):
     RETRYING = "retrying"
     COMPLETED = "completed"
     FAILED = "failed"
-    CANCELLED = "cancelled"
+    CANCELED = "canceled"
 
 
 @dataclass(frozen=True)
@@ -80,7 +80,7 @@ def is_terminal_conversation_turn_lifecycle(lifecycle: ConversationTurnLifecycle
     return lifecycle in {
         ConversationTurnLifecycle.COMPLETED,
         ConversationTurnLifecycle.FAILED,
-        ConversationTurnLifecycle.CANCELLED,
+        ConversationTurnLifecycle.CANCELED,
     }
 
 

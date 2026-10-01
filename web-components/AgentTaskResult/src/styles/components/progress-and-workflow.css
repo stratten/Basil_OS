@@ -91,7 +91,7 @@
   margin-top: var(--padding-s);
 }
 
-/* Collapsible "N earlier reasoning steps" group (see ThinkingSections.tsx's
+/* Collapsible "N earlier reasoning passes" group (see ThinkingSections.tsx's
    ThinkingHistoryGroup) that replaces stacking every earlier
    ThinkingSegment as its own always-visible pill. Sits before the latest
    segment's standalone pill, so needs the same sibling gap .thinking-pill
@@ -263,7 +263,7 @@
 
 .execution-activity-dock-header {
   display: grid;
-  grid-template-columns: 10px 7.5rem minmax(0, 1fr) auto;
+  grid-template-columns: 10px auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--padding-s);
   width: 100%;
@@ -291,7 +291,12 @@
 }
 
 .execution-activity-dock-count {
-  width: 7.5rem;
+  /* Fixed to fit "Activity · 99999 updates" so the latest-activity text keeps one start position as the count grows. */
+  width: 24ch;
+  margin-right: var(--padding-s);
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
   transform: translateY(-1px);
   white-space: nowrap;
 }

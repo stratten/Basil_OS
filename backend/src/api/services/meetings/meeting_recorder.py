@@ -10,6 +10,8 @@ from datetime import datetime
 from typing import Optional, Dict, List, Any
 from dataclasses import dataclass, asdict
 
+from . import meeting_recording_registry
+
 logger = logging.getLogger(__name__)
 
 @dataclass
@@ -72,6 +74,9 @@ class MeetingRecorder:
         self.recording_part_index = recording_part_index
         self.resumed_from_meeting_id = resumed_from_meeting_id
         
+        if meeting_recording_registry.is_discarded(meeting_id):
+            raise PermissionError(f"Meeting {meeting_id} was discarded and cannot record again")
+
         # Create meeting directory
         self.meeting_dir = Path.home() / ".basil" / "meetings" / meeting_id
         self.meeting_dir.mkdir(parents=True, exist_ok=True)
@@ -184,6 +189,7 @@ class MeetingRecorder:
             self.is_recording = True
             self.frames_written = 0
             self._frames_since_flush = 0
+            meeting_recording_registry.register(self.meeting_id, self)
             
             logger.info(f"Started recording meeting {self.meeting_id}: {meeting_name}")
             logger.info(f"Audio file: {self.audio_path}")
@@ -210,6 +216,23 @@ class MeetingRecorder:
         ranges.append(active_range)
         self._active_stream_timeline_range = active_range
         self._save_metadata()
+
+    def reanchor_empty_stream_timeline_range(self, origin_seconds: float) -> bool:
+        """Move the active range origin to a measured capture time while the range holds no audio, so a capture start delayed after the timing control still lands at the right meeting time."""
+        if (
+            self._active_stream_timeline_range is None
+            or self._stream_start_frame_count is None
+            or self.frames_written != self._stream_start_frame_count
+            or not math.isfinite(origin_seconds)
+            or origin_seconds < 0.0
+        ):
+            return False
+        self._stream_timeline_origin_seconds = origin_seconds
+        self._active_stream_timeline_range["start"] = origin_seconds
+        self._active_stream_timeline_range["end"] = origin_seconds
+        if self.metadata is not None:
+            self._save_metadata()
+        return True
 
     def _update_active_stream_timeline_range(self) -> None:
         if self._active_stream_timeline_range is None or self._stream_start_frame_count is None:
@@ -278,6 +301,7 @@ class MeetingRecorder:
 
             self.is_recording = True
             self.frames_written = existing_nframes
+            meeting_recording_registry.register(self.meeting_id, self)
             self._frames_since_flush = 0
 
             logger.info(
@@ -422,6 +446,7 @@ class MeetingRecorder:
             
             self.is_recording = False
             
+            meeting_recording_registry.unregister(self.meeting_id, self)
             logger.info(f"Stopped recording meeting {self.meeting_id}")
             logger.info(f"Duration: {duration_seconds:.1f}s, Segments: {len(self.transcript_segments)}")
             logger.info(f"Audio saved to: {self.audio_path}")
@@ -433,6 +458,24 @@ class MeetingRecorder:
             logger.error(f"Failed to stop recording: {e}", exc_info=True)
             raise
     
+    def abandon_recording(self) -> None:
+        """Stop recording without finalizing: close handles and drop in-memory state so nothing is written again."""
+        for handle_name in ("audio_file", "_raw_audio_handle"):
+            handle = getattr(self, handle_name)
+            if handle is None:
+                continue
+            try:
+                handle.close()
+            except Exception:
+                pass
+            setattr(self, handle_name, None)
+        self.is_recording = False
+        self.metadata = None
+        self.transcript_segments = []
+        self._active_stream_timeline_range = None
+        meeting_recording_registry.unregister(self.meeting_id, self)
+        logger.info(f"Abandoned recording for meeting {self.meeting_id}")
+
     def _existing_audio_has_content(self) -> bool:
         """
         Return True if an audio.wav already exists for this meeting and contains

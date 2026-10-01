@@ -198,6 +198,28 @@ def register_optional_tools(
         optional_warnings.append(err)
         factory.logger.warning(f"   ⚠️ {err}")
 
+    # Add re-engagement tools: a bounded in-task wait for every task, plus durable
+    # follow-up checks for tasks that may also request user input.
+    try:
+        from ....tools.internal_basil_tools.agent_follow_up_tool import create_agent_follow_up_tools
+
+        follow_up_tools = create_agent_follow_up_tools(
+            agent_task_id=getattr(factory, "current_agent_task_id", None),
+            root_task_id=getattr(factory, "current_root_task_id", None),
+            include_durable=should_register_child_interaction_tools(factory),
+        )
+        for follow_up_tool in follow_up_tools:
+            tools.append(follow_up_tool)
+            tool_map[f"follow_up.{follow_up_tool.name}"] = follow_up_tool
+        factory.logger.info(
+            "   ✅ Added follow-up tools (%s)",
+            ", ".join(follow_up_tool.name for follow_up_tool in follow_up_tools),
+        )
+    except Exception as e:
+        err = f"Failed to add follow-up tools: {e}"
+        optional_warnings.append(err)
+        factory.logger.warning(f"   ⚠️ {err}")
+
     # Add web search tool for internet searches and current information
     try:
         from ....tools.external_services.web_search_tool import create_web_search_tool

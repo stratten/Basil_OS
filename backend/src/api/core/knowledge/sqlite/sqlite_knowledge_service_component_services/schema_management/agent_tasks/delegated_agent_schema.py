@@ -23,8 +23,8 @@ def get_delegated_agent_schema_statements() -> list[str]:
             status TEXT NOT NULL
                 CHECK (status IN (
                     'admitted', 'running', 'idle', 'waiting_user_input',
-                    'waiting_permission', 'supervision_due', 'cancelling',
-                    'interrupted', 'settled', 'failed', 'cancelled'
+                    'waiting_permission', 'supervision_due', 'canceling',
+                    'interrupted', 'settled', 'failed', 'canceled'
                 )),
             revision INTEGER NOT NULL DEFAULT 0,
             created_at TIMESTAMP NOT NULL,
@@ -40,7 +40,7 @@ def get_delegated_agent_schema_statements() -> list[str]:
             delegated_agent_run_id TEXT NOT NULL,
             turn_sequence INTEGER NOT NULL,
             controller_instruction TEXT NOT NULL,
-            status TEXT NOT NULL CHECK (status IN ('created', 'running', 'idle', 'failed', 'cancelled')),
+            status TEXT NOT NULL CHECK (status IN ('created', 'running', 'idle', 'failed', 'canceled')),
             terminal_response_json TEXT,
             created_at TIMESTAMP NOT NULL,
             started_at TIMESTAMP,
@@ -86,7 +86,7 @@ def get_delegated_agent_schema_statements() -> list[str]:
             dependency_run_ids_json TEXT NOT NULL DEFAULT '[]',
             strategic_assessment_json TEXT NOT NULL DEFAULT '{"child_cannot_delegate":true,"expected_benefit":"legacy reservation","independence_rationale":"legacy reservation","parallelism_reason":"legacy reservation","parent_work_can_continue":false}',
             status TEXT NOT NULL
-                CHECK (status IN ('reserved', 'dispatched', 'dispatch_failed', 'cancelled')),
+                CHECK (status IN ('reserved', 'dispatched', 'dispatch_failed', 'canceled')),
             created_at TIMESTAMP NOT NULL,
             updated_at TIMESTAMP NOT NULL,
             FOREIGN KEY (child_agent_task_id) REFERENCES agent_tasks(id) ON DELETE CASCADE,

@@ -235,24 +235,24 @@ async def test_thinking_only_output_is_treated_as_empty_and_exhausts_retries():
 
 
 @pytest.mark.asyncio
-async def test_cancelled_task_uses_durable_terminal_outcome_in_prompt():
-    context = make_context(turn_lifecycle="cancelled", terminal_outcome="Agent task was cancelled.")
+async def test_canceled_task_uses_durable_terminal_outcome_in_prompt():
+    context = make_context(turn_lifecycle="canceled", terminal_outcome="Agent task was canceled.")
     captured_messages = {}
 
     async def capturing_stream(messages):
         captured_messages["messages"] = messages
-        yield "Understood, it was cancelled."
+        yield "Understood, it was canceled."
 
     model = SimpleNamespace(chat_completion_streaming=capturing_stream)
-    service, recorded = build_service(context=context, task=make_task(status="cancelled"), models=[model])
+    service, recorded = build_service(context=context, task=make_task(status="canceled"), models=[model])
 
     await service.narrate("task-1")
 
     prompt_text = captured_messages["messages"][1]["content"]
-    assert "Agent task was cancelled." in prompt_text
-    assert recorded["content_updates"] == [("assistant-1", "Understood, it was cancelled.")]
-    assert recorded["statuses"][-1]["lifecycle"] == "cancelled"
-    assert recorded["statuses"][-1]["agent_status"] == "cancelled"
+    assert "Agent task was canceled." in prompt_text
+    assert recorded["content_updates"] == [("assistant-1", "Understood, it was canceled.")]
+    assert recorded["statuses"][-1]["lifecycle"] == "canceled"
+    assert recorded["statuses"][-1]["agent_status"] == "canceled"
 
 
 @pytest.mark.asyncio

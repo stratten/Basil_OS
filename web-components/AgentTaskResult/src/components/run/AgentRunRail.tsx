@@ -31,22 +31,40 @@ function railStageTitle(stage: AgentRunOverviewPresentation['stages'][number]): 
 interface AgentRunRailProps {
   overview: AgentRunOverviewPresentation;
   artifactCount?: number;
+  runId?: string;
+  isProcessing?: boolean;
   onExpand: () => void;
 }
 
-export function AgentRunRail({ overview, artifactCount = overview.artifactCount, onExpand }: AgentRunRailProps) {
+const STARTING_STAGE: AgentRunOverviewPresentation['stages'][number] = {
+  id: 'overview:starting',
+  kind: 'phase',
+  label: 'Starting',
+  state: 'active',
+  startedAt: '',
+  artifactCount: 0,
+};
+
+export function AgentRunRail({
+  overview,
+  artifactCount = overview.artifactCount,
+  runId,
+  isProcessing = false,
+  onExpand,
+}: AgentRunRailProps) {
   const phaseCount = overview.stages.filter(stage => stage.kind === 'phase').length;
   const documentLabel = artifactCount === 1 ? 'document' : 'documents';
   const ariaLabel = `Expand ${overview.terminalState} run overview, ${phaseCount} phases, ${artifactCount} ${documentLabel}`;
+  const stages = overview.stages.length === 0 && isProcessing ? [STARTING_STAGE] : overview.stages;
 
   return (
     <aside className="agent-run-rail" aria-label="Run overview">
       <button type="button" className="agent-run-rail-toggle" onClick={onExpand} aria-label={ariaLabel}>
         <span className="agent-run-rail-flow" aria-hidden="true">
-          {overview.stages.map((stage, index) => (
+          {stages.map((stage, index) => (
             <span
               className={`agent-run-rail-flow-stage agent-run-rail-flow-stage--${stage.kind} is-${stage.state}`}
-              key={stage.id}
+              key={`${runId ?? 'run'}:${stage.id}`}
               style={{
                 '--run-rail-enter-delay': `${index * 50}ms`,
                 '--run-rail-connector-delay': `${(index + 1) * 50 + 130}ms`,

@@ -24,8 +24,21 @@ def _free_port() -> int:
         return sock.getsockname()[1]
 
 
-def _http_server_args(port: int) -> list[str]:
-    return ["-m", "http.server", str(port), "--bind", "127.0.0.1"]
+_LOOPBACK_LISTENER_SCRIPT = (
+    "import socket, sys\n"
+    "listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n"
+    "listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\n"
+    "listener.bind(('127.0.0.1', int(sys.argv[1])))\n"
+    "listener.listen()\n"
+    "while True:\n"
+    "    connection, _ = listener.accept()\n"
+    "    connection.close()\n"
+)
+
+
+def _loopback_listener_args(port: int) -> list[str]:
+    # http.server resolves the host name before listen(), which can stall past the readiness window on CI runners.
+    return ["-c", _LOOPBACK_LISTENER_SCRIPT, str(port)]
 
 
 def _assert_running(session) -> None:
@@ -146,7 +159,7 @@ async def test_start_session_running_flips_status_after_port_listens(
             agent_task_id="task-1",
             artifact_id="artifact-1",
             command=sys.executable,
-            args=_http_server_args(port),
+            args=_loopback_listener_args(port),
             cwd=str(allowed_cwd),
             port=port,
         )
@@ -206,7 +219,7 @@ async def test_stop_all_sessions_terminates_every_active_session(
             agent_task_id="task-1",
             artifact_id="artifact-a",
             command=sys.executable,
-            args=_http_server_args(port_a),
+            args=_loopback_listener_args(port_a),
             cwd=str(allowed_cwd),
             port=port_a,
         )
@@ -214,7 +227,7 @@ async def test_stop_all_sessions_terminates_every_active_session(
             agent_task_id="task-1",
             artifact_id="artifact-b",
             command=sys.executable,
-            args=_http_server_args(port_b),
+            args=_loopback_listener_args(port_b),
             cwd=str(allowed_cwd),
             port=port_b,
         )
@@ -246,7 +259,7 @@ async def test_second_session_for_same_artifact_stops_first(
             agent_task_id="task-1",
             artifact_id="artifact-a1",
             command=sys.executable,
-            args=_http_server_args(port_a),
+            args=_loopback_listener_args(port_a),
             cwd=str(allowed_cwd),
             port=port_a,
         )
@@ -257,7 +270,7 @@ async def test_second_session_for_same_artifact_stops_first(
             agent_task_id="task-1",
             artifact_id="artifact-a1",
             command=sys.executable,
-            args=_http_server_args(port_b),
+            args=_loopback_listener_args(port_b),
             cwd=str(allowed_cwd),
             port=port_b,
         )
@@ -288,7 +301,7 @@ async def test_denied_replacement_preserves_existing_artifact_session(
             agent_task_id="task-1",
             artifact_id="artifact-a1",
             command=sys.executable,
-            args=_http_server_args(port),
+            args=_loopback_listener_args(port),
             cwd=str(allowed_cwd),
             port=port,
         )
@@ -297,7 +310,7 @@ async def test_denied_replacement_preserves_existing_artifact_session(
             agent_task_id="task-1",
             artifact_id="artifact-a1",
             command=sys.executable,
-            args=_http_server_args(replacement_port),
+            args=_loopback_listener_args(replacement_port),
             cwd=str(allowed_cwd),
             port=replacement_port,
         )
@@ -324,7 +337,7 @@ async def test_two_tasks_can_share_an_artifact_id_without_replacing_each_other(l
             agent_task_id="task-1",
             artifact_id="shared-artifact",
             command=sys.executable,
-            args=_http_server_args(port_a),
+            args=_loopback_listener_args(port_a),
             cwd=str(allowed_cwd),
             port=port_a,
         )
@@ -332,7 +345,7 @@ async def test_two_tasks_can_share_an_artifact_id_without_replacing_each_other(l
             agent_task_id="task-2",
             artifact_id="shared-artifact",
             command=sys.executable,
-            args=_http_server_args(port_b),
+            args=_loopback_listener_args(port_b),
             cwd=str(allowed_cwd),
             port=port_b,
         )
@@ -345,3 +358,36 @@ async def test_two_tasks_can_share_an_artifact_id_without_replacing_each_other(l
 
     await launcher.stop_session(first.session_id)
     await launcher.stop_session(second.session_id)
+
+
+@pytest.mark.asyncio
+async def test_start_session_refuses_a_port_that_is_already_listening(
+    launcher: LocalPreviewServerLauncher,
+    registry: LocalPreviewSessionRegistry,
+    allowed_cwd: Path,
+) -> None:
+    approved_outcome = ExecutionApprovalOutcome(approved=True, status="approved", reason="Approved.")
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as occupant:
+        occupant.bind(("127.0.0.1", 0))
+        occupant.listen()
+        port = occupant.getsockname()[1]
+        with patch(
+            "api.services.agent_processing.tools.direct_application_interactions.local_web_preview.local_preview_server_launcher.ExecutionApprovalService"
+        ) as approval_cls, patch(
+            "api.services.agent_processing.tools.direct_application_interactions.local_web_preview.local_preview_server_launcher.asyncio.create_subprocess_exec"
+        ) as spawn:
+            approval_cls.return_value.request_approval_with_outcome = AsyncMock(return_value=approved_outcome)
+            session = await launcher.start_session(
+                agent_task_id="task-1",
+                artifact_id="artifact-occupied",
+                command=sys.executable,
+                args=_loopback_listener_args(port),
+                cwd=str(allowed_cwd),
+                port=port,
+            )
+
+    assert session.status == "error"
+    assert session.last_error == f"Port {port} on 127.0.0.1 is already in use by another process."
+    spawn.assert_not_called()
+    assert registry.get_process(session.session_id) is None

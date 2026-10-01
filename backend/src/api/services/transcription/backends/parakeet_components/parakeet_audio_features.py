@@ -83,7 +83,7 @@ class FeatureParams:
     # Power-of-two clip on the mel energies before log; matches NeMo's
     # ``log_zero_guard_value=2**-24`` and prevents -inf for silent frames.
     log_zero_guard: float = float(2 ** -24)
-    # Per-feature mean/var normalisation across the time axis is the
+    # Per-feature mean/var normalization across the time axis is the
     # default for FastConformer encoders; ``per_feature`` below.
     normalize: str = "per_feature"
 

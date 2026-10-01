@@ -41,7 +41,7 @@ struct AssistantSessionSettings: Codable {
     }
 
     /// Resolves the wire string into the typed view-model enum. Any
-    /// unrecognised value falls back to `.speak` so a malformed string
+    /// unrecognized value falls back to `.speak` so a malformed string
     /// degrades to the dominant modality rather than crashing the widget.
     var resolvedDefaultInputMode: AssistantSessionInputMode {
         AssistantSessionInputMode(rawValue: defaultInputModality.lowercased()) ?? .speak
@@ -54,4 +54,10 @@ struct AssistantSessionSettings: Codable {
 enum AssistantSessionInputMode: String {
     case speak
     case type
+}
+
+/// How a refinement started from a history item takes its instruction.
+enum AssistantSessionRefinementInput: String {
+    case voice
+    case typed
 }

@@ -10,6 +10,7 @@ import {
   requestUpdateAutoAnalyzeTiming,
   requestUpdateAutoRetranscribeDuringRecording,
   requestUpdateAutoRetranscribeOnStop,
+  requestUpdateLiveTranscriptionByDefault,
   requestUpdateRetranscribeWindowMinutes,
 } from '../services/meetingAutomationBridge'
 import type { MeetingAutomationAnalysisModeOption, MeetingAutomationSettingsFields } from '../types'
@@ -95,6 +96,14 @@ export function MeetingAutomationPanel() {
   return (
     <section className="meetings-settings-section" aria-labelledby="meetings-automation-heading">
       <h2 id="meetings-automation-heading">Meeting Automation</h2>
+      <Switch
+        id="meetings-automation-live-transcription"
+        label="Live transcription by default"
+        checked={s.liveTranscriptionByDefault}
+        disabled={disabled}
+        onChange={(checked) => { setSettings({ ...s, liveTranscriptionByDefault: checked }); submit(requestUpdateLiveTranscriptionByDefault(checked)) }}
+      />
+      <p className="meetings-settings-hint">Transcribe meetings as they are recorded. When off, meetings are recorded only and transcribed when they end, which uses less energy. You can still switch live transcription on or off during any meeting.</p>
       <Switch
         id="meetings-automation-retranscribe-on-stop"
         label="Auto-retranscribe on stop"

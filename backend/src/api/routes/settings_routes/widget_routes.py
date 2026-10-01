@@ -139,6 +139,7 @@ async def get_transcription_settings() -> SettingsResponse[TranscriptionSettings
             auto_analyze_modes=preferences.transcription.auto_analyze_modes,
             auto_analyze_custom_instructions=preferences.transcription.auto_analyze_custom_instructions,
             auto_analyze_timing=preferences.transcription.auto_analyze_timing,
+            live_transcription_by_default=preferences.transcription.live_transcription_by_default,
             text_replacements=preferences.transcription.text_replacements,
         )
         return SettingsResponse(settings=settings)
@@ -174,6 +175,7 @@ async def update_transcription_settings(settings: TranscriptionSettings) -> Upda
         preferences.transcription.auto_analyze_modes = settings.auto_analyze_modes
         preferences.transcription.auto_analyze_custom_instructions = settings.auto_analyze_custom_instructions
         preferences.transcription.auto_analyze_timing = settings.auto_analyze_timing
+        preferences.transcription.live_transcription_by_default = settings.live_transcription_by_default
         preferences.transcription.text_replacements = settings.text_replacements
 
         # Update model settings

@@ -22,7 +22,8 @@ export function ModelPickerMenu({
       category: model.isApiModel ? 'api' as const : 'local' as const,
     }
   ));
-  const disabled = state.assistantSessionStatus === 'running' || state.transcriptionStatus === 'running' || state.isLoadingModels;
+  // The reasoning model is read only when the request is sent (status flips to running), so it stays selectable throughout audio capture.
+  const disabled = state.assistantSessionStatus === 'running' || state.isLoadingModels;
 
   if (variant === 'miniChevron') {
     return (

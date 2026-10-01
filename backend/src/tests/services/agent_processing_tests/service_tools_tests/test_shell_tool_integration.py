@@ -22,14 +22,23 @@ from api.services.agent_processing.service_capabilities.service_execution_engine
 from api.services.agent_processing.tools.direct_application_interactions.shell.shell_service import (
     ShellService,
 )
+from api.services.agent_processing.tools.safety.models import ExecutionApprovalOutcome
 from api.services.agent_processing.shared.agent_runtime_context import (
     reset_current_agent_context,
     set_current_agent_context,
 )
 
 
+class _ApprovingApprovalService:
+    """Approves every command so tool-level tests exercise execution without an interactive channel."""
+
+    async def request_approval_with_outcome(self, command, context=None):
+        return ExecutionApprovalOutcome(approved=True, reason="Approved by test fixture.")
+
+
 def test_shell_tool_progress_metadata_and_execution():
     shell_service = ShellService()
+    shell_service._approval_service = _ApprovingApprovalService()
 
     analyzer = ServiceCapabilityAnalyzer(shell_service=shell_service)
     services = analyzer.discover_available_services()
@@ -66,7 +75,6 @@ def test_shell_tool_progress_metadata_and_execution():
         "command": "bash",
         "args": ["-lc", "echo hello"],
         "timeout_s": 5,
-        "skip_approval_check": True,
     }))
 
     assert isinstance(result_str, str) and result_str, "tool should return a JSON string"
@@ -78,6 +86,7 @@ def test_shell_tool_progress_metadata_and_execution():
 
 def test_shell_tool_creates_file_with_absolute_path_and_cwd_allowlist():
     shell_service = ShellService()
+    shell_service._approval_service = _ApprovingApprovalService()
 
     # Use the service's allowlisted repo root as cwd
     repo_root = getattr(shell_service, "_repo_root")
@@ -113,7 +122,6 @@ def test_shell_tool_creates_file_with_absolute_path_and_cwd_allowlist():
             ],
             "cwd": str(repo_root),
             "timeout_s": 10,
-            "skip_approval_check": True,
             "file_operations": [{"operation": "create", "path": str(file_path)}],
         }))
 
@@ -139,6 +147,7 @@ def test_shell_tool_creates_file_with_absolute_path_and_cwd_allowlist():
 
 def test_shell_tool_returns_verified_declared_created_file():
     shell_service = ShellService()
+    shell_service._approval_service = _ApprovingApprovalService()
     repo_root = Path(getattr(shell_service, "_repo_root"))
     analyzer = ServiceCapabilityAnalyzer(shell_service=shell_service)
     services = analyzer.discover_available_services()
@@ -160,7 +169,6 @@ def test_shell_tool_returns_verified_declared_created_file():
             "args": ["-lc", f"printf 'verified' > {sh_quote(str(output_path))}"],
             "cwd": str(repo_root),
             "timeout_s": 10,
-            "skip_approval_check": True,
             "file_operations": [{"operation": "create", "path": str(output_path)}],
         }))
 

@@ -164,7 +164,7 @@ extension SettingsShellWindowController {
 
         alert.beginSheetModal(for: window) { [weak self] response in
             guard response == .alertFirstButtonReturn else {
-                webView.sendIntentResult(requestId: requestId, status: "cancelled", message: nil)
+                webView.sendIntentResult(requestId: requestId, status: "canceled", message: nil)
                 return
             }
             Task { @MainActor in

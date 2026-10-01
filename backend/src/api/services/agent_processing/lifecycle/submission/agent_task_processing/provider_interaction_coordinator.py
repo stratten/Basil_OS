@@ -11,10 +11,12 @@ of `provider_interaction_schema.py` for the forward-compatibility contract).
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any, Mapping, Sequence
 
 from api.services.agent_providers.acp.session_client import AcpRequestError
+from api.services.agent_processing.shared.workflow_budget_pause import pause_workflow_budget
 
 MAX_MESSAGE_BYTES = 2_048
 MAX_FIELD_LABEL_BYTES = 256
@@ -260,7 +262,8 @@ class ProviderInteractionCoordinator:
             )
             if not published:
                 ProviderInteractionDeliveryRegistry.resolve(interaction_id, "cancel", None)
-            resolution = await future
+            with pause_workflow_budget("provider_user_input"):
+                resolution = await future
         except asyncio.CancelledError:
             await self.cancel_pending_interaction()
             raise
@@ -296,7 +299,7 @@ class ProviderInteractionCoordinator:
                         expected_revision=expected_revision,
                     )
                 else:
-                    await self._provider_interaction_repository.mark_cancelled(
+                    await self._provider_interaction_repository.mark_canceled(
                         interaction_id=interaction_id,
                         expected_revision=expected_revision,
                     )
@@ -328,7 +331,7 @@ class ProviderInteractionCoordinator:
         """Resolve any interaction this coordinator is currently awaiting as `cancel`.
 
         Called from the provider run's cancellation/shutdown paths so a
-        cancelled run never leaves a dangling future or an unresolved
+        canceled run never leaves a dangling future or an unresolved
         `pending` durable row.
         """
         from api.services.agent_providers.interaction_delivery import (

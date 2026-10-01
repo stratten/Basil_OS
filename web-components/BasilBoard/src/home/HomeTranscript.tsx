@@ -23,7 +23,7 @@ function stateLabel(state: Extract<HomeTimelineItem, { kind: 'agent_task' }>['st
     case 'failed':
       return 'Failed';
     default:
-      return 'Cancelled';
+      return 'Canceled';
   }
 }
 
@@ -35,7 +35,7 @@ function stateIcon(state: Extract<HomeTimelineItem, { kind: 'agent_task' }>['sta
       </svg>
     );
   }
-  if (state === 'failed' || state === 'cancelled') {
+  if (state === 'failed' || state === 'canceled') {
     return (
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
         <circle cx="8" cy="8" r="6.5" /><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" />

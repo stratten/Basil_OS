@@ -150,7 +150,7 @@ async def _reconciler_loop(repo: "ScheduledAgentTaskRepository") -> None:
                 logger.exception("scheduler_reconciler: tick failed")
             await asyncio.sleep(_RECONCILE_INTERVAL_SECONDS)
     except asyncio.CancelledError:
-        logger.info("scheduler_reconciler: cancelled")
+        logger.info("scheduler_reconciler: canceled")
         raise
 
 

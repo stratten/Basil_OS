@@ -218,7 +218,7 @@ def _browser_name_from_error_text(error_text: str) -> Optional[str]:
 
 
 async def _terminate_process_for_cancellation(process: asyncio.subprocess.Process) -> None:
-    """Terminate a child process when its parent agent task is cancelled."""
+    """Terminate a child process when its parent agent task is canceled."""
     if process.returncode is not None:
         return
     try:

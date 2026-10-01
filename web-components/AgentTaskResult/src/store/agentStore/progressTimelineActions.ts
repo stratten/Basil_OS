@@ -20,18 +20,18 @@ import {
 import { reconcileDurableArtifactEntries } from './artifactTimelineReconciliation';
 
 export class ProgressTimelineAgentStore extends FollowUpAgentStore {
-  markCancelling(agentTaskId: string) {
+  markCanceling(agentTaskId: string) {
     this.updateAgent(agentTaskId, a => {
-      a.isCancelling = true;
+      a.isCanceling = true;
       a.cancellationError = undefined;
-      a.currentStep = 'Cancelling...';
+      a.currentStep = 'Canceling...';
     });
-    this.updateProgressStep(agentTaskId, 'Cancelling...', true, false);
+    this.updateProgressStep(agentTaskId, 'Canceling...', true, false);
   }
 
   markCancellationUnconfirmed(agentTaskId: string, message: string) {
     this.updateAgent(agentTaskId, a => {
-      a.isCancelling = false;
+      a.isCanceling = false;
       a.cancellationError = message;
       a.currentStep = message;
     });
@@ -94,7 +94,7 @@ export class ProgressTimelineAgentStore extends FollowUpAgentStore {
   }
 
   protected recordVisibleProgressUpdate(agentTaskId: string, step: string, isActive: boolean, isComplete: boolean) {
-    if (this.isAgentCancelled(agentTaskId)) return;
+    if (this.isAgentCanceled(agentTaskId)) return;
     this.updateProgressStep(agentTaskId, step, isActive, isComplete);
     if (isActive || isComplete) {
       this.updateStep(agentTaskId, step);
@@ -105,7 +105,7 @@ export class ProgressTimelineAgentStore extends FollowUpAgentStore {
   }
 
   appendStreamingResult(agentTaskId: string, partialResult: string) {
-    if (this.isAgentCancelled(agentTaskId)) return;
+    if (this.isAgentCanceled(agentTaskId)) return;
     this.updateAgent(agentTaskId, a => {
       a.result = partialResult;
       a.isStreaming = true;
@@ -114,7 +114,7 @@ export class ProgressTimelineAgentStore extends FollowUpAgentStore {
   }
 
   setResult(agentTaskId: string, result: string, files: StructuredFile[] = []) {
-    if (this.isAgentCancelled(agentTaskId)) return;
+    if (this.isAgentCanceled(agentTaskId)) return;
     this.updateAgent(agentTaskId, a => {
       a.result = result;
       a.structuredFiles = files;
@@ -152,7 +152,7 @@ export class ProgressTimelineAgentStore extends FollowUpAgentStore {
   }
 
   setError(agentTaskId: string, error: string) {
-    if (this.isAgentCancelled(agentTaskId)) return;
+    if (this.isAgentCanceled(agentTaskId)) return;
     this.updateAgent(agentTaskId, a => {
       a.errorMessage = error;
       a.status = 'failed';
@@ -172,8 +172,8 @@ export class ProgressTimelineAgentStore extends FollowUpAgentStore {
     agent.presentationSummary = undefined;
     agent.delegatedProviderReportCards = [];
     agent.isStreaming = false;
-    agent.isCancelling = false;
-    agent.isCancelled = false;
+    agent.isCanceling = false;
+    agent.isCanceled = false;
     agent.checkpointAvailable = false;
     agent.showCheckpointPrompt = false;
     agent.currentCheckpoint = undefined;

@@ -27,6 +27,7 @@ final class TranscriptionSettingsViewModel: ObservableObject {
     @Published var autoAnalyzeModes: [String] = []
     @Published var autoAnalyzeCustomInstructions: String = ""
     @Published var autoAnalyzeTiming: String = "after"
+    @Published var liveTranscriptionByDefault: Bool = true
     @Published var textReplacements: [TranscriptionTextReplacementRule] = []
     // Meeting Detection startup preference. Owned by MeetingDetectionSettings
     // (loaded/saved via /settings/meeting-detection) and surfaced here so the
@@ -238,6 +239,7 @@ final class TranscriptionSettingsViewModel: ObservableObject {
         autoAnalyzeModes = settings.autoAnalyzeModes
         autoAnalyzeCustomInstructions = settings.autoAnalyzeCustomInstructions
         autoAnalyzeTiming = settings.autoAnalyzeTiming
+        liveTranscriptionByDefault = settings.liveTranscriptionByDefault
         textReplacements = settings.textReplacements
     }
 
@@ -260,6 +262,7 @@ final class TranscriptionSettingsViewModel: ObservableObject {
             autoAnalyzeModes: autoAnalyzeModes,
             autoAnalyzeCustomInstructions: autoAnalyzeCustomInstructions,
             autoAnalyzeTiming: autoAnalyzeTiming,
+            liveTranscriptionByDefault: liveTranscriptionByDefault,
             textReplacements: textReplacements
         )
     }
@@ -296,6 +299,7 @@ final class TranscriptionSettingsViewModel: ObservableObject {
             autoAnalyzeModes: server.autoAnalyzeModes,
             autoAnalyzeCustomInstructions: server.autoAnalyzeCustomInstructions,
             autoAnalyzeTiming: server.autoAnalyzeTiming,
+            liveTranscriptionByDefault: server.liveTranscriptionByDefault,
             textReplacements: server.textReplacements
         )
     }
@@ -539,6 +543,17 @@ final class TranscriptionSettingsViewModel: ObservableObject {
     func updateAutoAnalyzeTiming(_ timing: String) async -> Bool {
         autoAnalyzeTiming = timing
         return await persistAutomationSettings()
+    }
+
+    @discardableResult
+    func updateLiveTranscriptionByDefault(_ enabled: Bool) async -> Bool {
+        let previousValue = liveTranscriptionByDefault
+        liveTranscriptionByDefault = enabled
+        let success = await persistAutomationSettings()
+        if !success {
+            liveTranscriptionByDefault = previousValue
+        }
+        return success
     }
 
     @discardableResult

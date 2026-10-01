@@ -13,6 +13,7 @@ from api.core.knowledge.sqlite.sqlite_knowledge_service import SQLiteKnowledgeSe
 from api.core.knowledge.sqlite.sqlite_knowledge_service_component_services.infrastructure.connection import (
     get_sync_connection,
 )
+from api.core.security.backend_request_guard import current_credential_type
 from api.dependencies import get_agent_task_submission_service, get_sqlite_knowledge_service
 from api.services.agent_processing.lifecycle.submission import AgentTaskSubmissionService
 from api.services.skills.skill_service import get_skill_service
@@ -136,6 +137,7 @@ async def process_agent_task(
     payload: AgentTaskRequest,
     service: AgentTaskSubmissionService = Depends(get_agent_task_submission_service),
     knowledge_service: SQLiteKnowledgeService = Depends(get_sqlite_knowledge_service),
+    credential_type: Optional[str] = Depends(current_credential_type),
 ) -> AgentTaskProcessingResponse:
     """
     Process a agent_task through the complete pipeline.
@@ -149,6 +151,9 @@ async def process_agent_task(
     try:
         if not payload.agent_task.strip():
             raise HTTPException(status_code=400, detail="AgentTask cannot be empty")
+
+        if payload.approval_policy_override and credential_type != "host":
+            raise HTTPException(status_code=403, detail="approval_policy_override requires the host credential.")
 
         logger.info(f"Testing agent-task processing with: '{payload.agent_task}'")
 
@@ -489,25 +494,12 @@ async def _retire_pending_execution_approval_for_retry(
     agent_task_id: str,
 ) -> None:
     """Cancel an obsolete approval before the same task ID re-enters routing."""
-    from api.services.agent_processing.tools.safety.interactive_approval import (
-        InteractiveApprovalManager,
-    )
-    from api.services.conversation.conversation_agent_turn_lifecycle import (
-        clear_conversation_agent_attention,
+    from api.services.agent_processing.tools.safety.execution_approval_retirement import (
+        retire_pending_execution_approvals,
     )
 
-    approvals = await (
-        knowledge_service.execution_approval_repository
-        .list_pending_approvals_for_agent_task(agent_task_id)
-    )
-    if not approvals:
-        return
-
-    for approval in approvals:
-        approval_id = str(approval["id"])
-        await clear_conversation_agent_attention(agent_task_id, approval_id)
-        InteractiveApprovalManager.cancel_pending_future(approval_id)
-    await knowledge_service.execution_approval_repository.cancel_pending_approvals_for_tasks(
+    await retire_pending_execution_approvals(
+        knowledge_service.execution_approval_repository,
         [agent_task_id],
     )
 
@@ -632,7 +624,7 @@ async def delete_agent_task(
         # First, cancel any active processing for this agent task
         try:
             await service.cancel_current_agent_task(agent_task_id=agent_task_id)
-            logger.info(f"Cancelled active processing for agent task {agent_task_id}")
+            logger.info(f"Canceled active processing for agent task {agent_task_id}")
         except Exception as cancel_err:
             # Non-fatal - agent task might not be actively processing
             logger.debug(f"Cancel processing returned: {cancel_err}")

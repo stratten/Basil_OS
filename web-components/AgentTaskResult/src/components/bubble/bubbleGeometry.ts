@@ -157,7 +157,7 @@ export function computeCapsules(size: number, dpr: number, t: number, m: BubbleA
     // Swift adds `baseBlur = 2 + index*0.8` points on TOP of the per-mode blur
     // (AnimatedBubbleView.capsuleBlurRadius). Omitting it made the web capsules
     // ~4-6x sharper than native, so the accent stayed a tight cluster in the
-    // center instead of a Gaussian dome that spreads across the disc, and left
+    // center instead of a Gaussian dome that spreads across the disk, and left
     // audioResponsive capsules hard-edged whenever springOpacity fell to ~0.
     u.blur[i] = blur * dpr;
   }

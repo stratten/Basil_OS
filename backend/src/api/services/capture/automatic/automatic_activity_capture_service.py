@@ -170,7 +170,7 @@ class AutomaticActivityCaptureService:
                     await asyncio.sleep(60)  # Wait longer after errors
                     
         except asyncio.CancelledError:
-            logger.info("Activity capture loop cancelled")
+            logger.info("Activity capture loop canceled")
             raise
         except Exception as e:
             logger.error(f"Fatal error in activity capture loop: {e}", exc_info=True)

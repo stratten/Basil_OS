@@ -182,7 +182,7 @@ class AgentTaskService:
             await self._settle_active_work_session(updated_agent_task, status)
         return True
 
-    _TERMINAL_AGENT_TASK_STATUSES = {"completed", "failed", "cancelled"}
+    _TERMINAL_AGENT_TASK_STATUSES = {"completed", "failed", "canceled"}
 
     async def _settle_active_work_session(self, agent_task: Optional[Any], status: str) -> None:
         """Best-effort: close out a still-open work session when its task ends.

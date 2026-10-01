@@ -1,6 +1,6 @@
 """Tests for AgentTaskCancellationRegistry.
 
-Covers the cooperative-state surface (cancelled set + events) and the new
+Covers the cooperative-state surface (canceled set + events) and the new
 preemptive task-tracking surface (register / deregister / cancel_active_task),
 including the negative and adversarial cases called out in the plan:
   * cancel with nothing registered / with an already-done task -> no-op (False),
@@ -18,30 +18,30 @@ from api.services.agent_processing.lifecycle.submission.agent_task_processing.ag
 )
 
 
-def test_is_cancelled_false_by_default():
+def test_is_canceled_false_by_default():
     registry = AgentTaskCancellationRegistry()
-    assert registry.is_cancelled("task-1") is False
+    assert registry.is_canceled("task-1") is False
 
 
 @pytest.mark.asyncio
-async def test_mark_cancelled_flips_state_and_sets_event():
+async def test_mark_canceled_flips_state_and_sets_event():
     registry = AgentTaskCancellationRegistry()
     event = registry.get_cancellation_event("task-1")
     assert event.is_set() is False
 
-    registry.mark_cancelled(["task-1"])
+    registry.mark_canceled(["task-1"])
 
-    assert registry.is_cancelled("task-1") is True
+    assert registry.is_canceled("task-1") is True
     assert event.is_set() is True
 
 
 @pytest.mark.asyncio
-async def test_mark_cancelled_ignores_empty_ids():
+async def test_mark_canceled_ignores_empty_ids():
     registry = AgentTaskCancellationRegistry()
 
-    registry.mark_cancelled(["", None])  # type: ignore[list-item]
+    registry.mark_canceled(["", None])  # type: ignore[list-item]
 
-    assert registry.is_cancelled("") is False
+    assert registry.is_canceled("") is False
     # No spurious events were created for the falsy ids.
     assert registry._cancellation_events == {}
 

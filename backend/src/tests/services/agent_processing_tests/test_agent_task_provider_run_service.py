@@ -155,7 +155,7 @@ class _FakeSupervisor:
     async def cancel(self) -> ProviderLaunchOutcome:
         self.cancel_called = True
         self.last_outcome = ProviderLaunchOutcome(
-            status=ProviderLaunchOutcomeStatus.CANCELLED,
+            status=ProviderLaunchOutcomeStatus.CANCELED,
             provider_profile_id=self.validated_request.provider_profile_id,
             display_name=self.validated_request.display_name,
             runtime_version="2.0.0-fixture",
@@ -525,7 +525,7 @@ async def test_run_provider_task_reports_launch_validation_failure_without_creat
 
 
 @pytest.mark.asyncio
-async def test_cancelling_run_provider_task_cancels_the_supervisor_and_marks_the_run_cancelled(
+async def test_canceling_run_provider_task_cancels_the_supervisor_and_marks_the_run_canceled(
     tmp_path,
 ) -> None:
     workspace_root = tmp_path / "workspace"
@@ -573,18 +573,18 @@ async def test_cancelling_run_provider_task_cancels_the_supervisor_and_marks_the
     assert created_supervisors
     assert created_supervisors[0].cancel_called is True
     runs = await db_service.provider_run_repository.list_runs_for_root("task-5")
-    assert runs[0]["status"] == "cancelled"
+    assert runs[0]["status"] == "canceled"
 
 
 @pytest.mark.asyncio
-async def test_shutdown_supervisor_skips_a_supervisor_already_cancelled_by_prompt_cancellation() -> None:
+async def test_shutdown_supervisor_skips_a_supervisor_already_canceled_by_prompt_cancellation() -> None:
     service = object.__new__(AgentTaskProviderRunService)
     supervisor = SimpleNamespace(
-        last_outcome=SimpleNamespace(status=ProviderLaunchOutcomeStatus.CANCELLED),
+        last_outcome=SimpleNamespace(status=ProviderLaunchOutcomeStatus.CANCELED),
         cancel=AsyncMock(),
     )
 
-    await service._shutdown_supervisor(supervisor, "run-already-cancelled")
+    await service._shutdown_supervisor(supervisor, "run-already-canceled")
 
     supervisor.cancel.assert_not_awaited()
 
@@ -652,7 +652,7 @@ async def test_cancellation_after_initialization_uses_the_persisted_run_revision
 
     assert created_supervisors[0].cancel_called is True
     runs = await db_service.provider_run_repository.list_runs_for_root("task-5b")
-    assert runs[0]["status"] == "cancelled"
+    assert runs[0]["status"] == "canceled"
 
 
 @pytest.mark.asyncio

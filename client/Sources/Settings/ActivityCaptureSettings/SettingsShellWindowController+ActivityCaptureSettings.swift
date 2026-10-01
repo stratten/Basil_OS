@@ -117,7 +117,7 @@ extension SettingsShellWindowController {
         guard let webView = activityCaptureWebView else { return }
         let alert = Self.makeClearActivityCaptureBacklogConfirmationAlert()
         guard alert.runModal() == .alertSecondButtonReturn else {
-            webView.sendIntentResult(requestId: requestId, status: "cancelled", message: nil)
+            webView.sendIntentResult(requestId: requestId, status: "canceled", message: nil)
             return
         }
         performActivityCaptureUpdate(requestId: requestId) { vm in await vm.clearBacklog() }
@@ -127,7 +127,7 @@ extension SettingsShellWindowController {
         guard let webView = activityCaptureWebView else { return }
         let alert = Self.makeClearAllCapturesConfirmationAlert()
         guard alert.runModal() == .alertSecondButtonReturn else {
-            webView.sendIntentResult(requestId: requestId, status: "cancelled", message: nil)
+            webView.sendIntentResult(requestId: requestId, status: "canceled", message: nil)
             return
         }
         performActivityCaptureUpdate(requestId: requestId) { vm in await vm.clearAllCaptures() }

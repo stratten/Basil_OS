@@ -45,7 +45,7 @@ def build_select_query(
     columns: List[str],
     conditions: Optional[List[Tuple[str, str, Any]]] = None,
 ) -> Tuple[str, List[Any]]:
-    """Build a parameterised SELECT query with schema validation."""
+    """Build a parameterized SELECT query with schema validation."""
     valid_columns = validate_query_columns(schema, table, columns)
     if not valid_columns:
         raise ValueError(f"No valid columns provided for table {table}")

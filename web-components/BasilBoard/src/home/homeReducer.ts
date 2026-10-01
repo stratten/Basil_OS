@@ -135,20 +135,20 @@ export function timelineKey(item: HomeTimelineItem): string {
 
 export function mapTurnState(
   state: HomeTurnResponse['state'],
-): 'queued' | 'running' | 'completed' | 'failed' | 'cancelled' {
+): 'queued' | 'running' | 'completed' | 'failed' | 'canceled' {
   if (state === 'routing') return 'queued';
   if (state === 'running') return 'running';
   if (state === 'completed') return 'completed';
   if (state === 'failed') return 'failed';
-  return 'cancelled';
+  return 'canceled';
 }
 
 function mapAgentTaskEventState(
   event: WSEvent,
-): 'queued' | 'running' | 'completed' | 'failed' | 'cancelled' | undefined {
+): 'queued' | 'running' | 'completed' | 'failed' | 'canceled' | undefined {
   const eventType = event.event_type ?? '';
   if (event.success === false || event.status === 'failed') return 'failed';
-  if (event.status === 'cancelled') return 'cancelled';
+  if (event.status === 'canceled') return 'canceled';
   if (eventType === 'agent_task_result' || event.status === 'completed') return 'completed';
   if (eventType === 'agent_task_progress') return 'running';
   return undefined;
@@ -161,7 +161,7 @@ export function isTerminalAgentTaskEvent(event: WSEvent): boolean {
     || event.success === false
     || event.status === 'completed'
     || event.status === 'failed'
-    || event.status === 'cancelled'
+    || event.status === 'canceled'
   );
 }
 

@@ -14,7 +14,7 @@ Design points worth keeping in mind when modifying this:
     ``initialize_scheduled_agent_task_runtime`` (which calls
     ``recover_missed_runs`` then ``ensure_active_schedules_enqueued`` on
     the orchestrator service).
-  * "One pending run per scheduled agent task" is enforced by ``schedule()`` cancelling
+  * "One pending run per scheduled agent task" is enforced by ``schedule()`` canceling
     any existing in-memory task for that ``scheduled_agent_task_id`` BEFORE
     creating a new one. The DB-side counterpart
     (``cancel_pending_runs_for_agent_task`` on the repository) is invoked by
@@ -99,12 +99,12 @@ class AsyncScheduledAgentTaskRunner:
     def cancel(self, scheduled_agent_task_id: str, quiet: bool = False) -> bool:
         """Cancel any in-flight task for ``scheduled_agent_task_id``.
 
-        Returns ``True`` if a task was found and cancelled, ``False`` if
+        Returns ``True`` if a task was found and canceled, ``False`` if
         there was nothing scheduled for that scheduled agent task. Safe to call from any
         async context; the cancellation propagates via the task's own
         ``CancelledError`` handler.
 
-        ``quiet=True`` demotes the "cancelled in-flight task..." line
+        ``quiet=True`` demotes the "canceled in-flight task..." line
         to DEBUG. Used by the reconciler's reuse path (see ``schedule``
         for the same rationale) so the same-eta re-anchoring does not
         spam INFO every minute. Genuine cancellations (run-now,
@@ -118,7 +118,7 @@ class AsyncScheduledAgentTaskRunner:
             task.cancel()
             log_method = logger.debug if quiet else logger.info
             log_method(
-                "AsyncScheduledAgentTaskRunner: cancelled in-flight task for scheduled_agent_task_id=%s",
+                "AsyncScheduledAgentTaskRunner: canceled in-flight task for scheduled_agent_task_id=%s",
                 scheduled_agent_task_id,
             )
         return True
@@ -131,7 +131,7 @@ class AsyncScheduledAgentTaskRunner:
         for scheduled_agent_task_id in ids:
             self.cancel(scheduled_agent_task_id)
         logger.info(
-            "AsyncScheduledAgentTaskRunner: cancelled %d in-flight task(s) on shutdown",
+            "AsyncScheduledAgentTaskRunner: canceled %d in-flight task(s) on shutdown",
             len(ids),
         )
 
@@ -160,7 +160,7 @@ class AsyncScheduledAgentTaskRunner:
             await service.execute_scheduled_run(scheduled_agent_task_id, run_id)
         except asyncio.CancelledError:
             logger.debug(
-                "AsyncScheduledAgentTaskRunner: task for scheduled_agent_task_id=%s run_id=%s cancelled",
+                "AsyncScheduledAgentTaskRunner: task for scheduled_agent_task_id=%s run_id=%s canceled",
                 scheduled_agent_task_id,
                 run_id,
             )

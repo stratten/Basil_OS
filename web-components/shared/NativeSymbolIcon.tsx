@@ -10,6 +10,7 @@ import analysisQuestions from './assets/native-symbols/analysis-questions.png';
 import analysisSentiment from './assets/native-symbols/analysis-sentiment.png';
 import analysisSuggestedActions from './assets/native-symbols/analysis-suggested-actions.png';
 import analysisSummary from './assets/native-symbols/analysis-summary.png';
+import assistantRefine from './assets/native-symbols/assistant-refine.png';
 import conversationNew from './assets/native-symbols/conversation-new.png';
 import conversationSidebar from './assets/native-symbols/conversation-sidebar.png';
 import conversationSidebarExpand from './assets/native-symbols/conversation-sidebar-expand.png';
@@ -46,7 +47,8 @@ export type NativeSymbolName =
   | 'refresh'
   | 'openExternal'
   | 'send'
-  | 'play';
+  | 'play'
+  | 'retry';
 
 const symbolSources: Record<NativeSymbolName, string> = {
   conversationNew,
@@ -73,6 +75,7 @@ const symbolSources: Record<NativeSymbolName, string> = {
   openExternal: openLocalWebPreview,
   send: localPreviewSend,
   play: localPreviewPlay,
+  retry: assistantRefine,
 };
 
 const symbolSizes: Record<NativeSymbolName, number> = {
@@ -100,6 +103,7 @@ const symbolSizes: Record<NativeSymbolName, number> = {
   openExternal: 14,
   send: 14,
   play: 14,
+  retry: 12,
 };
 
 export default function NativeSymbolIcon({

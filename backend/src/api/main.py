@@ -41,6 +41,8 @@ from .core.models.model_downloader import ModelDownloader
 from .routes.registry import register_application_routers
 from .settings import get_models_dir
 from .dependencies import get_model_service, get_sqlite_knowledge_service
+from .core.security.backend_credentials import prepare_backend_credentials_for_startup
+from .core.security.backend_request_guard import BackendRequestGuardMiddleware, resolve_loopback_bind_host
 from .services.ios_pairing.bonjour_broadcaster import BonjourBroadcaster
 
 # Import for Voice Listener
@@ -89,10 +91,12 @@ app = FastAPI(
     debug=settings.DEBUG
 )
 
-# Configure CORS for local development
+# Starlette runs the last-added middleware outermost; registering the guard first keeps CORS outermost so guard rejections still carry CORS headers.
+app.add_middleware(BackendRequestGuardMiddleware)
+# Basil's bundled web views load from file:// and therefore send Origin: null.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"] if settings.DEBUG else [f"http://{settings.HOST}:{settings.PORT}"],
+    allow_origins=["null"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -140,6 +144,11 @@ async def startup_event():
     """Initialize application state and log system information."""
     try:
         await _update_startup_status_file("Initializing backend...")
+        try:
+            credential_store = prepare_backend_credentials_for_startup()
+            logger.info(f"🔐 Backend credentials ready at {credential_store.path}")
+        except OSError as credential_error:
+            logger.error(f"🚨 Backend credentials could not be prepared: {credential_error}", exc_info=True)
         logger.info("🔄 Startup event: beginning initialization")
         global model_manager, model_downloader
 
@@ -364,6 +373,19 @@ async def startup_event():
                     logger.info(f"Startup: Scheduled agent task runtime initialized: {scheduled_init}")
                 except Exception as scheduled_err:
                     logger.error(f"Startup: Failed to initialize scheduled agent task runtime: {scheduled_err}", exc_info=True)
+
+                try:
+                    from .services.agent_follow_ups import start_agent_follow_up_scheduler
+
+                    follow_up_db = get_sqlite_knowledge_service()
+                    follow_up_init = await start_agent_follow_up_scheduler(
+                        repository=follow_up_db.agent_task_follow_up_repository,
+                        chain_reader=follow_up_db,
+                        submission_service=app.state.agent_task_submission_service,
+                    )
+                    logger.info(f"Startup: Agent follow-up scheduler started: {follow_up_init}")
+                except Exception as follow_up_err:
+                    logger.error(f"Startup: Failed to start agent follow-up scheduler: {follow_up_err}", exc_info=True)
 
             try:
                 from .dependencies import get_todo_service
@@ -765,7 +787,7 @@ async def shutdown_event():
             # Cancel any active agent-task capture tasks
             if hasattr(app.state.wake_word_service, '_agent_task_capture_task') and app.state.wake_word_service._agent_task_capture_task:
                 app.state.wake_word_service._agent_task_capture_task.cancel()
-                logger.info("Shutdown: wake-word agent-task capture task cancelled.")
+                logger.info("Shutdown: wake-word agent-task capture task canceled.")
             
             # Stop the listener
             app.state.wake_word_service.stop_listening()
@@ -802,7 +824,7 @@ async def shutdown_event():
 
     # Cancel any in-flight scheduled-agent-task timers so they don't log
     # spurious CancelledError noise on shutdown. Persistence is in SQLite,
-    # not in these in-memory tasks, so cancelling them is safe — recovery
+    # not in these in-memory tasks, so canceling them is safe — recovery
     # on the next startup will re-install timers from the database.
     try:
         from .services.scheduled_agent_tasks import (
@@ -815,9 +837,17 @@ async def shutdown_event():
         # the per-task asyncio timers themselves.
         await shutdown_scheduled_agent_task_runtime()
         get_async_scheduled_agent_task_runner().cancel_all()
-        logger.info("Shutdown: AsyncScheduledAgentTaskRunner cancelled all in-flight tasks")
+        logger.info("Shutdown: AsyncScheduledAgentTaskRunner canceled all in-flight tasks")
     except Exception as e:
-        logger.error(f"🚨 Shutdown: Error cancelling scheduled-agent-task runner: {e}", exc_info=True)
+        logger.error(f"🚨 Shutdown: Error canceling scheduled-agent-task runner: {e}", exc_info=True)
+
+    try:
+        from .services.agent_follow_ups import stop_agent_follow_up_scheduler
+
+        await stop_agent_follow_up_scheduler()
+        logger.info("Shutdown: Agent follow-up scheduler stopped")
+    except Exception as e:
+        logger.error(f"🚨 Shutdown: Error stopping agent follow-up scheduler: {e}", exc_info=True)
 
     # Stop the in-process model download manager. Each in-flight DownloadEntry
     # has its asyncio.Event.set() and its background asyncio.Task .cancel()'d;
@@ -835,7 +865,7 @@ async def shutdown_event():
 
     # Stop the asyncio capture-cleanup scheduler. Replaces the Huey periodic
     # task `reasoning_capture_cleanup_task`; persistence (next-run time,
-    # enabled flag) lives in `reasoning_settings.json`, so cancelling the
+    # enabled flag) lives in `reasoning_settings.json`, so canceling the
     # in-flight task is safe — startup re-reads the config and re-arms.
     capture_cleanup_scheduler = getattr(app.state, "capture_cleanup_scheduler", None)
     if capture_cleanup_scheduler is not None:
@@ -1047,7 +1077,7 @@ if __name__ == "__main__":
         port-file cascade can pick up `--port-file` / `--port` without
         threading them through FastAPI dependency injection.
         """
-        default_host = "0.0.0.0" if settings.ALLOW_LAN_BIND else settings.HOST
+        default_host = settings.HOST
         default_port = settings.PORT
         default_log_level = getattr(settings, 'LOG_LEVEL', 'info').lower()
         default_workers = getattr(settings, 'UVICORN_WORKERS', 1)
@@ -1070,7 +1100,10 @@ if __name__ == "__main__":
     _parse_and_set_global_args()
 
     main_cli_args = globals().get('cli_args')
-    selected_host = main_cli_args.host if main_cli_args else ("0.0.0.0" if settings.ALLOW_LAN_BIND else settings.HOST)
+    selected_host = resolve_loopback_bind_host(
+        main_cli_args.host if main_cli_args else settings.HOST,
+        allow_lan_bind=settings.ALLOW_LAN_BIND,
+    )
     selected_port = main_cli_args.port if main_cli_args else settings.PORT
     selected_log_level = (
         main_cli_args.log_level.lower()

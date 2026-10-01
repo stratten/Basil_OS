@@ -37,3 +37,34 @@ describe('HistoryCard reasoning trace', () => {
     expect(withoutReasoning).not.toContain('thinking-segments');
   });
 });
+
+describe('HistoryCard status and run details', () => {
+  const finalizerResult = 'The report is complete.\n\n• Active app at request: Pages\n\n• Steps: 2/2 completed';
+
+  it('no longer draws the always-green success check on a failed turn', () => {
+    const collapsed = renderToStaticMarkup(
+      <HistoryCard item={historyItem({ status: 'failed', errorMessage: 'The tool crashed.' })} isExpanded={false} onToggle={() => {}} />,
+    );
+    const expanded = renderToStaticMarkup(
+      <HistoryCard item={historyItem({ status: 'failed', errorMessage: 'The tool crashed.' })} isExpanded onToggle={() => {}} />,
+    );
+
+    expect(collapsed).not.toContain('fill="var(--success-base)"');
+    expect(expanded).not.toContain('fill="var(--success-base)"');
+  });
+
+  it('keeps finalizer metadata out of the collapsed preview and in a collapsed run details section when expanded', () => {
+    const collapsed = renderToStaticMarkup(
+      <HistoryCard item={historyItem({ result: finalizerResult })} isExpanded={false} onToggle={() => {}} />,
+    );
+    const expanded = renderToStaticMarkup(
+      <HistoryCard item={historyItem({ result: finalizerResult })} isExpanded onToggle={() => {}} />,
+    );
+
+    expect(collapsed).toContain('The report is complete.');
+    expect(collapsed).not.toContain('Active app at request');
+    expect(expanded).toContain('run-details-toggle');
+    expect(expanded).toContain('2 tool calls · Pages');
+    expect(expanded).not.toContain('Active app at request');
+  });
+});

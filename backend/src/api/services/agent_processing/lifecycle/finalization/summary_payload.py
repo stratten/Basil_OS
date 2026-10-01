@@ -83,9 +83,9 @@ def compose_summary(
         if is_non_empty_string(first.get("full_path")):
             metadata_lines.append(f"• Path: {first['full_path']}")
 
-    # Show step progress if there were actual steps
+    # A total only: individual tool calls routinely fail and recover in longer runs, so a success ratio would read as a problem when it isn't.
     if steps_total > 0:
-        metadata_lines.append(f"• Steps: {steps_completed}/{steps_total} completed")
+        metadata_lines.append(f"• Tool calls: {steps_total}")
 
     if metadata_lines:
         # Use double newlines to ensure markdown renders each bullet on its own line

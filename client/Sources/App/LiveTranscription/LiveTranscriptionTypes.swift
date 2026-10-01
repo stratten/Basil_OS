@@ -233,6 +233,7 @@ struct LiveTranscriptionResponse: Codable {
     let state: String?
     let accumulated_duration: Double?
     let trigger_reason: String?
+    let status: String?
     
     enum CodingKeys: String, CodingKey {
         case lines
@@ -243,6 +244,7 @@ struct LiveTranscriptionResponse: Codable {
         case state
         case accumulated_duration
         case trigger_reason
+        case status
     }
 }
 

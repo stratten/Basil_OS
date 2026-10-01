@@ -31,7 +31,7 @@ describe('respondToProviderInteraction', () => {
     );
   });
 
-  it('omits values when cancelling without a values argument', async () => {
+  it('omits values when canceling without a values argument', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       success: true,
       message: 'Provider interaction answer delivered.',

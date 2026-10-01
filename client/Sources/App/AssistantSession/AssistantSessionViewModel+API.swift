@@ -62,9 +62,9 @@ extension AssistantSessionViewModel {
         audioUploadTask = Task { @MainActor in
             do {
                 // Check for cancellation before starting upload
-                if Task.isCancelled || isCancelled {
+                if Task.isCancelled || isCanceled {
                     #if DEBUG
-                    DevLogger.shared.info("[ASSISTANT_SESSION] Audio upload cancelled before starting", context: "AssistantSessionViewModel")
+                    DevLogger.shared.info("[ASSISTANT_SESSION] Audio upload canceled before starting", context: "AssistantSessionViewModel")
                     #endif
                     return
                 }
@@ -149,9 +149,9 @@ extension AssistantSessionViewModel {
                 let (stream, response) = try await URLSession.shared.bytes(for: request)
                 
                 // Check for cancellation after upload completes
-                if Task.isCancelled || isCancelled {
+                if Task.isCancelled || isCanceled {
                     #if DEBUG
-                    DevLogger.shared.info("[ASSISTANT_SESSION] Audio upload cancelled after completion", context: "AssistantSessionViewModel")
+                    DevLogger.shared.info("[ASSISTANT_SESSION] Audio upload canceled after completion", context: "AssistantSessionViewModel")
                     #endif
                     return
                 }
@@ -175,14 +175,14 @@ extension AssistantSessionViewModel {
                 
             } catch {
                 // Check for cancellation before setting error state
-                if !Task.isCancelled && !isCancelled {
+                if !Task.isCancelled && !isCanceled {
                     assistantSessionStatus = .failed
                     errorMessage = error.localizedDescription
                 }
             }
         }
         
-        // Wait for audio upload task to complete (or be cancelled)
+        // Wait for audio upload task to complete (or be canceled)
         await audioUploadTask?.value
     }
     
@@ -198,14 +198,14 @@ extension AssistantSessionViewModel {
     /// - Parameters:
     ///   - sessionId: Backend session previously created via `/start`.
     ///   - instructionText: Trimmed typed instruction. Pass `nil` (or
-    ///     empty after trimming, which is normalised to `nil`) to invoke
+    ///     empty after trimming, which is normalized to `nil`) to invoke
     ///     the no-input modality.
     func uploadInstructionTextAndStreamAssistantSession(
         sessionId: String,
         instructionText: String?,
         modelId: String? = nil
     ) async {
-        let normalisedInstruction: String? = {
+        let normalizedInstruction: String? = {
             guard let raw = instructionText?.trimmingCharacters(in: .whitespacesAndNewlines),
                   !raw.isEmpty else { return nil }
             return raw
@@ -213,15 +213,15 @@ extension AssistantSessionViewModel {
 
         audioUploadTask = Task { @MainActor in
             do {
-                if Task.isCancelled || isCancelled {
+                if Task.isCancelled || isCanceled {
                     #if DEBUG
-                    DevLogger.shared.info("[ASSISTANT_SESSION] Instruction-text upload cancelled before starting", context: "AssistantSessionViewModel")
+                    DevLogger.shared.info("[ASSISTANT_SESSION] Instruction-text upload canceled before starting", context: "AssistantSessionViewModel")
                     #endif
                     return
                 }
 
                 #if DEBUG
-                let modalityLabel = normalisedInstruction == nil ? "no-input" : "typed (\(normalisedInstruction!.count) chars)"
+                let modalityLabel = normalizedInstruction == nil ? "no-input" : "typed (\(normalizedInstruction!.count) chars)"
                 DevLogger.shared.info("[ASSISTANT_SESSION] POSTing \(modalityLabel) to /assistant-sessions/\(sessionId)/process-input", context: "AssistantSessionViewModel")
                 #endif
 
@@ -254,7 +254,7 @@ extension AssistantSessionViewModel {
                     }
                 }
 
-                if let instruction = normalisedInstruction {
+                if let instruction = normalizedInstruction {
                     body.append("--\(boundary)\r\n".data(using: .utf8)!)
                     body.append("Content-Disposition: form-data; name=\"instruction_text\"\r\n\r\n".data(using: .utf8)!)
                     body.append(instruction.data(using: .utf8) ?? Data())
@@ -279,9 +279,9 @@ extension AssistantSessionViewModel {
 
                 let (stream, response) = try await URLSession.shared.bytes(for: request)
 
-                if Task.isCancelled || isCancelled {
+                if Task.isCancelled || isCanceled {
                     #if DEBUG
-                    DevLogger.shared.info("[ASSISTANT_SESSION] Instruction-text upload cancelled after completion", context: "AssistantSessionViewModel")
+                    DevLogger.shared.info("[ASSISTANT_SESSION] Instruction-text upload canceled after completion", context: "AssistantSessionViewModel")
                     #endif
                     return
                 }
@@ -302,7 +302,7 @@ extension AssistantSessionViewModel {
                 try await processStreamingResponse(stream: stream)
 
             } catch {
-                if !Task.isCancelled && !isCancelled {
+                if !Task.isCancelled && !isCanceled {
                     assistantSessionStatus = .failed
                     errorMessage = error.localizedDescription
                 }
@@ -352,9 +352,9 @@ extension AssistantSessionViewModel {
         var completedSuccessfully = false
         for try await line in stream.lines {
             // Check for cancellation in streaming loop
-            if Task.isCancelled || isCancelled {
+            if Task.isCancelled || isCanceled {
                 #if DEBUG
-                DevLogger.shared.info("[ASSISTANT_SESSION] Streaming response cancelled during processing", context: "AssistantSessionViewModel")
+                DevLogger.shared.info("[ASSISTANT_SESSION] Streaming response canceled during processing", context: "AssistantSessionViewModel")
                 #endif
                 return
             }

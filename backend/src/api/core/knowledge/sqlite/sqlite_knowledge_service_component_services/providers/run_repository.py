@@ -21,39 +21,39 @@ from .records import (
 from .validation import _json_dump_object, _require_nonblank
 
 ALLOWED_RUN_TRANSITIONS = {
-    "created": {"failed", "cancelled"},
+    "created": {"failed", "canceled"},
     "running": {
         "waiting_user_input",
         "waiting_permission",
-        "cancelling",
+        "canceling",
         "interrupted",
         "recoverable",
         "completed",
         "failed",
-        "cancelled",
+        "canceled",
     },
     "waiting_user_input": {
         "running",
-        "cancelling",
+        "canceling",
         "interrupted",
         "recoverable",
         "failed",
-        "cancelled",
+        "canceled",
     },
     "waiting_permission": {
         "running",
-        "cancelling",
+        "canceling",
         "interrupted",
         "recoverable",
         "failed",
-        "cancelled",
+        "canceled",
     },
-    "cancelling": {"interrupted", "failed", "cancelled"},
-    "interrupted": {"recoverable", "failed", "cancelled"},
-    "recoverable": {"running", "failed", "cancelled"},
+    "canceling": {"interrupted", "failed", "canceled"},
+    "interrupted": {"recoverable", "failed", "canceled"},
+    "recoverable": {"running", "failed", "canceled"},
 }
 
-TERMINAL_RUN_STATUSES = {"completed", "failed", "cancelled"}
+TERMINAL_RUN_STATUSES = {"completed", "failed", "canceled"}
 
 # Package 4C.1: provider-run statuses reachable during ordinary operation that a
 # backend restart can leave stranded. "interrupted" and "recoverable" are
@@ -65,7 +65,7 @@ ACTIVE_RECONCILIATION_STATUSES = {
     "running",
     "waiting_user_input",
     "waiting_permission",
-    "cancelling",
+    "canceling",
 }
 
 
@@ -200,7 +200,7 @@ class ProviderRunRepository:
         """Return every provider run left in a pre-4C.2 active status.
 
         Used only by Package 4C.1's backend-startup reconciliation. A run already
-        `completed`, `failed`, `cancelled`, `interrupted`, or `recoverable` is
+        `completed`, `failed`, `canceled`, `interrupted`, or `recoverable` is
         excluded, so calling this after reconciliation has already run returns an
         empty list and callers naturally get idempotent behavior.
         """

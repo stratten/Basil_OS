@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   getConversationMessages: vi.fn(),
   deleteConversation: vi.fn(),
   getReasoningModels: vi.fn(),
+  getConversationWidgetSettings: vi.fn(),
   pickConversationFiles: vi.fn(),
   sendConversationMessage: vi.fn(),
   cancelConversationResponse: vi.fn(),
@@ -38,6 +39,7 @@ vi.mock('../services/api', () => ({
   getConversationMessages: mocks.getConversationMessages,
   deleteConversation: mocks.deleteConversation,
   getReasoningModels: mocks.getReasoningModels,
+  getConversationWidgetSettings: mocks.getConversationWidgetSettings,
 }));
 
 vi.mock('../services/bridge', async (importOriginal) => {
@@ -211,6 +213,10 @@ describe('ChatsTab', () => {
       Promise.resolve(history(conversationId, []))
     ));
     mocks.deleteConversation.mockResolvedValue({ status: 'success', message: 'deleted' });
+    mocks.getConversationWidgetSettings.mockResolvedValue({
+      status: 'success',
+      settings: { default_conversation_only: false },
+    });
     mocks.getReasoningModels.mockResolvedValue({
       models: [
         {
@@ -423,6 +429,114 @@ describe('ChatsTab', () => {
       editorHtml: '<strong>Hello</strong> Basil',
     });
     expect(await screen.findByRole('status', { name: /Thinking/ })).toBeTruthy();
+  });
+
+  it('starts a new conversation in Conversation only when the default is on', async () => {
+    mocks.getConversationWidgetSettings.mockResolvedValue({
+      status: 'success',
+      settings: { default_conversation_only: true },
+    });
+    render(<ChatsTab />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Start new conversation' }));
+    await waitFor(() => {
+      expect((screen.getByRole('checkbox', { name: 'Conversation only' }) as HTMLInputElement).checked).toBe(true);
+    });
+
+    const input = editor();
+    input.textContent = 'Stay inline by default';
+    fireEvent.input(input);
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    expect(mocks.sendConversationMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ delegationOptOut: true, conversationId: undefined }),
+    );
+  });
+
+  it('keeps a manual Conversation only change on a new conversation when the default is re-read', async () => {
+    mocks.getConversationWidgetSettings.mockResolvedValue({
+      status: 'success',
+      settings: { default_conversation_only: true },
+    });
+    render(<ChatsTab />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Start new conversation' }));
+    const checkbox = screen.getByRole('checkbox', { name: 'Conversation only' }) as HTMLInputElement;
+    await waitFor(() => expect(checkbox.checked).toBe(true));
+
+    await userEvent.click(checkbox);
+    const callsBeforeFocus = mocks.getConversationWidgetSettings.mock.calls.length;
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+    await waitFor(() => expect(mocks.getConversationWidgetSettings.mock.calls.length).toBeGreaterThan(callsBeforeFocus));
+    expect(checkbox.checked).toBe(false);
+
+    const input = editor();
+    input.textContent = 'Delegate this one';
+    fireEvent.input(input);
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+    expect(mocks.sendConversationMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ delegationOptOut: false }),
+    );
+  });
+
+  it('restores Conversation only from history and ignores the default for existing conversations', async () => {
+    mocks.getConversationWidgetSettings.mockResolvedValue({
+      status: 'success',
+      settings: { default_conversation_only: true },
+    });
+    mocks.getConversationMessages.mockImplementation((conversationId: string) => Promise.resolve(
+      conversationId === 'conversation-1'
+        ? history('conversation-1', [
+          userMessage('u1', 'Hi', { delegation_opt_out: true }),
+          assistantMessage('a1', 'Hello there'),
+        ])
+        : history(conversationId, [userMessage('u2', 'Older turn')]),
+    ));
+    render(<ChatsTab />);
+
+    await selectConversation('Alpha');
+    expect(await screen.findByText('Hello there')).toBeTruthy();
+    await waitFor(() => {
+      expect((screen.getByRole('checkbox', { name: 'Conversation only' }) as HTMLInputElement).checked).toBe(true);
+    });
+
+    await selectConversation('Beta');
+    expect(await screen.findByText('Older turn')).toBeTruthy();
+    expect((screen.getByRole('checkbox', { name: 'Conversation only' }) as HTMLInputElement).checked).toBe(false);
+  });
+
+  it('keeps composing when the default cannot be read', async () => {
+    mocks.getConversationWidgetSettings.mockRejectedValue(new Error('offline'));
+    render(<ChatsTab />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Start new conversation' }));
+
+    const input = editor();
+    input.textContent = 'Still works';
+    fireEvent.input(input);
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+    expect(mocks.sendConversationMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ delegationOptOut: false }),
+    );
+  });
+
+  it('focuses the composer with the caret at the end when the native hotkey asks for it', async () => {
+    render(<ChatsTab />);
+    await selectConversation('Alpha');
+    const input = editor();
+    input.textContent = 'Unsent draft';
+    fireEvent.input(input);
+    const search = screen.getByLabelText('Search conversations');
+    search.focus();
+    expect(document.activeElement).toBe(search);
+
+    act(() => {
+      window.basilBoardBridge?.onFocusConversationComposer?.();
+    });
+
+    await waitFor(() => expect(document.activeElement).toBe(editor()));
+    const selection = window.getSelection();
+    expect(selection?.anchorNode).toBe(editor());
+    expect(selection?.anchorOffset).toBe(editor().childNodes.length);
   });
 
   it('submits delegation opt-out when the checkbox is checked', async () => {
@@ -822,7 +936,7 @@ describe('ChatsTab', () => {
     expect(mocks.cancelConversationResponse).toHaveBeenCalledTimes(1);
   });
 
-  it('reconciles cancelled partial history from durable reload', async () => {
+  it('reconciles canceled partial history from durable reload', async () => {
     mocks.getConversationMessages
       .mockResolvedValueOnce(history('conversation-1', []))
       .mockResolvedValueOnce(history('conversation-1', [
@@ -832,7 +946,7 @@ describe('ChatsTab', () => {
           role: 'assistant',
           content: 'Partial answer',
           timestamp: '2026-07-30T12:01:00Z',
-          metadata: { cancelled: true },
+          metadata: { canceled: true },
         },
       ]));
     render(<ChatsTab />);
@@ -844,16 +958,16 @@ describe('ChatsTab', () => {
     const submission = mocks.sendConversationMessage.mock.calls[0][0];
 
     emit({
-      event_type: 'conversation_cancelled',
+      event_type: 'conversation_canceled',
       request_id: submission.requestId,
       conversation_id: 'conversation-1',
       message_id: 'assistant-1',
-      cancelled: true,
+      canceled: true,
     });
 
     await waitFor(() => expect(mocks.getConversationMessages).toHaveBeenCalledTimes(2));
     expect(await screen.findByText('Partial answer')).toBeTruthy();
-    expect(await screen.findByText('Cancelled')).toBeTruthy();
+    expect(await screen.findByText('Canceled')).toBeTruthy();
   });
 
   it('preserves active processing when cancellation is rejected', async () => {

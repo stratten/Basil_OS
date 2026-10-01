@@ -202,14 +202,14 @@ describe('ModelsSettingsApp', () => {
     expect(lastMessageOfType('requestDownloadModel')?.modelId).toBe('Qwen-a')
   })
 
-  it('deletes an available model and surfaces a cancelled result without an error message', () => {
+  it('deletes an available model and surfaces a canceled result without an error message', () => {
     sendInit()
     const deleteButton = Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Delete') as HTMLButtonElement
     act(() => { deleteButton.click() })
     const requestId = lastMessageOfType('requestDeleteModel')?.requestId
     expect(deleteButton.textContent).toBe('Deleting...')
     expect(deleteButton.disabled).toBe(true)
-    act(() => { window.basilModelsSettings!.onEvent({ type: 'intentResult', requestId, status: 'cancelled' }) })
+    act(() => { window.basilModelsSettings!.onEvent({ type: 'intentResult', requestId, status: 'canceled' }) })
     expect(container.querySelector('.models-settings-status-error')).toBeNull()
     expect(deleteButton.disabled).toBe(false)
   })

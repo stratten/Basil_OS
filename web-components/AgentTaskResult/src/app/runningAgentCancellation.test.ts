@@ -9,14 +9,14 @@ vi.mock('../services/bridge', () => ({
 }));
 
 function makeStore(isProvisional = false) {
-  const agent: { isCancelling?: boolean; isCancelled?: boolean } = {};
+  const agent: { isCanceling?: boolean; isCanceled?: boolean } = {};
   const store: RunningAgentCancellationStore = {
     isTransientWithoutDurableData: vi.fn(() => isProvisional),
-    markCancelling: vi.fn(() => {
-      agent.isCancelling = true;
+    markCanceling: vi.fn(() => {
+      agent.isCanceling = true;
     }),
     markCancellationUnconfirmed: vi.fn(() => {
-      agent.isCancelling = false;
+      agent.isCanceling = false;
     }),
     removeAgent: vi.fn(),
     getAgent: vi.fn(() => agent),
@@ -33,12 +33,12 @@ describe('running agent cancellation', () => {
     vi.useRealTimers();
   });
 
-  it('uses the current turn and avoids native fallback after a fast REST acknowledgement', async () => {
+  it('uses the current turn and avoids native fallback after a fast REST acknowledgment', async () => {
     const { store } = makeStore();
     const notifyHost = vi.fn();
     const requestCancellation = vi.fn().mockResolvedValue({
       success: true,
-      message: 'cancelled',
+      message: 'canceled',
       finalized_via_agent: false,
       agent_task_id: 'turn-2',
     });
@@ -53,7 +53,7 @@ describe('running agent cancellation', () => {
     await Promise.resolve();
     await vi.advanceTimersByTimeAsync(350);
 
-    expect(store.markCancelling).toHaveBeenCalledWith('root-task');
+    expect(store.markCanceling).toHaveBeenCalledWith('root-task');
     expect(requestCancellation).toHaveBeenCalledWith('turn-2', 'User requested cancellation');
     expect(notifyHost).not.toHaveBeenCalled();
   });
@@ -93,7 +93,7 @@ describe('running agent cancellation', () => {
     const { store } = makeStore();
     const requestCancellation = vi.fn().mockResolvedValue({
       success: true,
-      message: 'cancelled',
+      message: 'canceled',
       finalized_via_agent: false,
       agent_task_id: 'turn-4',
     });
@@ -117,13 +117,13 @@ describe('running agent cancellation', () => {
       vi.fn(),
       vi.fn().mockResolvedValue({
         success: true,
-        message: 'cancelled',
+        message: 'canceled',
         finalized_via_agent: false,
         agent_task_id: 'turn-5',
       }),
     );
-    agent.isCancelling = false;
-    agent.isCancelled = true;
+    agent.isCanceling = false;
+    agent.isCanceled = true;
     await vi.advanceTimersByTimeAsync(5000);
 
     expect(store.markCancellationUnconfirmed).not.toHaveBeenCalled();
@@ -172,6 +172,6 @@ describe('running agent cancellation', () => {
 
     expect(requestCancellation).toHaveBeenCalledTimes(2);
     expect(notifyHost).toHaveBeenCalledTimes(2);
-    expect(store.markCancelling).toHaveBeenCalledTimes(2);
+    expect(store.markCanceling).toHaveBeenCalledTimes(2);
   });
 });

@@ -54,6 +54,30 @@ describe('measureOverlayDialogIntrinsicHeight', () => {
     ).toBe(248);
   });
 
+  it('adds the clipped overflow of the question and option scroll regions', () => {
+    const regions = [
+      { scrollHeight: 420, clientHeight: 120 },
+      { scrollHeight: 260, clientHeight: 80 },
+    ];
+    const querySelectorAll = (selector: string) => {
+      expect(selector).toBe('.checkpoint-prompt-details, .checkpoint-response-scroll-region');
+      return regions;
+    };
+    expect(
+      measureOverlayDialogIntrinsicHeight({ offsetHeight: 300, scrollHeight: 300, querySelectorAll }),
+    ).toBe(300 + 300 + 180);
+  });
+
+  it('keeps the measurement stable once the window has grown enough to show every region in full', () => {
+    const querySelectorAll = () => [
+      { scrollHeight: 420, clientHeight: 420 },
+      { scrollHeight: 260, clientHeight: 260 },
+    ];
+    expect(
+      measureOverlayDialogIntrinsicHeight({ offsetHeight: 780, scrollHeight: 780, querySelectorAll }),
+    ).toBe(780);
+  });
+
   it('returns zero when the dialog is absent or unmeasurable', () => {
     expect(measureOverlayDialogIntrinsicHeight(null)).toBe(0);
     expect(measureOverlayDialogIntrinsicHeight({})).toBe(0);

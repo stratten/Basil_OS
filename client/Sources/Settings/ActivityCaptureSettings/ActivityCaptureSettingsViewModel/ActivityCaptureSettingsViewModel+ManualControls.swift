@@ -115,11 +115,11 @@ extension ActivityCaptureSettingsViewModel {
     }
 
     func cancelProcessingBacklog() async {
-        isCancellingProcessing = true
+        isCancelingProcessing = true
         do {
             _ = try await apiClient.cancelActivityCaptureProcessing()
         } catch {
-            isCancellingProcessing = false
+            isCancelingProcessing = false
             showOperationMessage("Error: Failed to cancel processing - \(error.localizedDescription)")
         }
     }
@@ -154,7 +154,7 @@ extension ActivityCaptureSettingsViewModel {
             // The progress readout only represents an in-flight run. Clear it
             // after completion, cancellation, or an unrecoverable poll error.
             await MainActor.run {
-                self.isCancellingProcessing = false
+                self.isCancelingProcessing = false
                 self.processingProgress = nil
             }
         }

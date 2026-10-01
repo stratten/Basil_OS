@@ -20,14 +20,14 @@ class AgentTaskSubmissionService:
         screen_context_service: Any,
         routing_service: Any,
         processing_service: Any,
-        is_cancelled: Optional[Callable[[str], bool]] = None,
+        is_canceled: Optional[Callable[[str], bool]] = None,
         logger: Optional[logging.Logger] = None,
     ) -> None:
         self.db_service = db_service
         self.screen_context_service = screen_context_service
         self.routing_service = routing_service
         self.processing_service = processing_service
-        self._is_cancelled = is_cancelled or (lambda _agent_task_id: False)
+        self._is_canceled = is_canceled or (lambda _agent_task_id: False)
         self.logger = logger or logging.getLogger(__name__)
         self._delegated_agent_runs = getattr(db_service, "delegated_agent_repository", None)
 
@@ -90,7 +90,7 @@ class AgentTaskSubmissionService:
         except Exception:
             await self._delegated_agent_runs.mark_reservation_dispatch_failed(child_agent_task_id)
             run = await self._delegated_agent_runs.get_run_for_child(child_agent_task_id)
-            if run is not None and run["status"] not in {"settled", "failed", "cancelled"}:
+            if run is not None and run["status"] not in {"settled", "failed", "canceled"}:
                 await self._delegated_agent_runs.record_outcome(
                     delegated_agent_run_id=str(run["id"]),
                     expected_revision=int(run["revision"]),
@@ -176,25 +176,25 @@ class AgentTaskSubmissionService:
                 origin_id=origin_id,
             )
 
-            if self._is_cancelled(agent_task_id):
+            if self._is_canceled(agent_task_id):
                 await self.db_service.update_agent_task_status(
                     agent_task_id=agent_task_id,
-                    status="cancelled",
+                    status="canceled",
                     result_data={
-                        "cancelled": True,
-                        "cancellation_reason": "User cancelled",
-                        "cancelled_at": datetime.utcnow().isoformat(),
+                        "canceled": True,
+                        "cancellation_reason": "User canceled",
+                        "canceled_at": datetime.utcnow().isoformat(),
                     },
                 )
                 self.logger.info(
-                    "🛑 Persisted preemptively cancelled agent_task %s as terminal",
+                    "🛑 Persisted preemptively canceled agent_task %s as terminal",
                     agent_task_id,
                 )
                 return {
                     "success": False,
                     "agent_task_id": agent_task_id,
-                    "status": "cancelled",
-                    "message": "AgentTask cancelled",
+                    "status": "canceled",
+                    "message": "AgentTask canceled",
                 }
 
             asyncio.ensure_future(self.routing_service.generate_agent_task_title(agent_task_id, agent_task))

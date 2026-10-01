@@ -21,7 +21,7 @@ const LIFECYCLE_LABEL: Record<string, string> = {
   running: 'Agent task in progress',
   completed: 'Agent task completed',
   failed: 'Agent task failed',
-  cancelled: 'Agent task cancelled',
+  canceled: 'Agent task canceled',
 };
 
 const LIFECYCLE_ICON: Record<string, string> = {
@@ -29,7 +29,7 @@ const LIFECYCLE_ICON: Record<string, string> = {
   running: '\u22EF',
   completed: '\u2713',
   failed: '!',
-  cancelled: '\u29B8',
+  canceled: '\u29B8',
 };
 
 const VERIFICATION_LABEL: Record<ConversationAgentActivityPresentation['verificationStatus'], string> = {

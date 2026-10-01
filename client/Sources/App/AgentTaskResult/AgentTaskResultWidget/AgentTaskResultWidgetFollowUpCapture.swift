@@ -52,7 +52,7 @@ extension AgentTaskResultWidgetController {
 
             // Pass the parent linkage explicitly so the React handler
             // doesn't have to rely on a pre-stashed
-            // ``pendingFollowUpParent`` to recognise this register-and-
+            // ``pendingFollowUpParent`` to recognize this register-and-
             // select as a follow-up. The hotkey-initiated path goes
             // straight from Swift to here without ever touching React's
             // pre-capture state, so without this argument the React

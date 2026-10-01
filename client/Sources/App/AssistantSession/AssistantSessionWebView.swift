@@ -79,7 +79,7 @@ final class AssistantSessionWebView: NSObject {
     private var modelPickerPopover: NSPopover?
 
     override init() {
-        let configuration = WKWebViewConfiguration()
+        let configuration = BasilWebViewConfigurationFactory.makeConfiguration()
         configuration.preferences.setValue(true, forKey: "developerExtrasEnabled")
         configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
         configuration.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
@@ -108,7 +108,7 @@ final class AssistantSessionWebView: NSObject {
         )
         configuration.userContentController.addUserScript(consoleForwardingScript)
 
-        webView = WKWebView(frame: .zero, configuration: configuration)
+        webView = FirstClickWebView(frame: .zero, configuration: configuration)
         webView.setValue(false, forKey: "drawsBackground")
         if #available(macOS 12.0, *) {
             webView.underPageBackgroundColor = .clear
@@ -165,7 +165,7 @@ final class AssistantSessionWebView: NSObject {
 
         let popover = NSPopover()
         popover.behavior = .transient
-        popover.appearance = NSAppearance(named: .aqua)
+        popover.appearance = NativeModelPickerPopoverSupport.themedAppearance()
         popover.contentSize = NSSize(width: 210, height: min(260, max(70, 34 + (models.count * 28))))
         popover.contentViewController = NSHostingController(
             rootView: AssistantSessionModelPickerPopover(
@@ -180,6 +180,7 @@ final class AssistantSessionWebView: NSObject {
         )
         modelPickerPopover = popover
         popover.show(relativeTo: anchorRect, of: webView, preferredEdge: .minY)
+        NativeModelPickerPopoverSupport.paintThemedFrameBackground(of: popover)
     }
 
     func markReadyFromReact() {

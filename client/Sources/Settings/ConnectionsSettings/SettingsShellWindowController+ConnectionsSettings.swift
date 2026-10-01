@@ -37,6 +37,7 @@ extension SettingsShellWindowController {
         webView.onRequestCheckConnectionStatus = { [weak self] requestId, connectionId in
             self?.performConnectionsCheckConnectionStatus(requestId: requestId, connectionId: connectionId)
         }
+        wireConnectionReconnectCallbacks(webView)
         webView.onRequestUpdatePolicy = { [weak self] requestId, connectionId, toolName, policy in
             self?.performConnectionsUpdatePolicy(requestId: requestId, connectionId: connectionId, toolName: toolName, policy: policy)
         }
@@ -278,7 +279,7 @@ extension SettingsShellWindowController {
 
         alert.beginSheetModal(for: window) { [weak self] response in
             guard response == .alertFirstButtonReturn else {
-                webView.sendIntentResult(requestId: requestId, status: "cancelled", message: nil)
+                webView.sendIntentResult(requestId: requestId, status: "canceled", message: nil)
                 return
             }
             Task { @MainActor in
@@ -472,7 +473,7 @@ extension SettingsShellWindowController {
 
         alert.beginSheetModal(for: window) { [weak self] response in
             guard response == .alertFirstButtonReturn else {
-                webView.sendIntentResult(requestId: requestId, status: "cancelled", message: nil)
+                webView.sendIntentResult(requestId: requestId, status: "canceled", message: nil)
                 return
             }
             Task { @MainActor in
@@ -511,7 +512,7 @@ extension SettingsShellWindowController {
             guard let self else { return }
             guard response == .OK, let url = panel.urls.first else {
                 webView.sendWorkspaceFolderChosen(requestId: requestId, profileId: profileId, canonicalWorkspaceRoot: nil, errorMessage: nil)
-                webView.sendIntentResult(requestId: requestId, status: "cancelled", message: nil)
+                webView.sendIntentResult(requestId: requestId, status: "canceled", message: nil)
                 return
             }
             switch WorkspaceDirectoryCanonicalizer.canonicalize(url) {
@@ -598,7 +599,7 @@ extension SettingsShellWindowController {
 
         alert.beginSheetModal(for: window) { [weak self] response in
             guard response == .alertFirstButtonReturn else {
-                webView.sendIntentResult(requestId: requestId, status: "cancelled", message: nil)
+                webView.sendIntentResult(requestId: requestId, status: "canceled", message: nil)
                 return
             }
             Task { @MainActor in

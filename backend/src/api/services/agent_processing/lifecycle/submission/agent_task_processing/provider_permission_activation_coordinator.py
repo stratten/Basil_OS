@@ -27,6 +27,7 @@ from api.services.agent_providers.acp.session_client import AcpRequestError
 from .provider_permission_request_coordinator import (
     normalize_provider_permission_request,
 )
+from api.services.agent_processing.shared.workflow_budget_pause import pause_workflow_budget
 
 _ALLOW_KIND_PRIORITY = ("allow_once", "allow_always")
 _REJECT_KIND_PRIORITY = ("reject_once", "reject_always")
@@ -176,7 +177,8 @@ class ProviderPermissionActivationCoordinator:
             )
             if not published:
                 ProviderInteractionDeliveryRegistry.resolve(interaction_id, "cancel", None)
-            resolution = await future
+            with pause_workflow_budget("provider_permission"):
+                resolution = await future
         except asyncio.CancelledError:
             ProviderInteractionDeliveryRegistry.resolve(interaction_id, "cancel", None)
             try:
@@ -257,7 +259,7 @@ class ProviderPermissionActivationCoordinator:
         """Resolve any interaction this coordinator is currently awaiting as `cancel`.
 
         Called from the provider run's cancellation/shutdown paths so a
-        cancelled run never leaves a dangling future or an unresolved
+        canceled run never leaves a dangling future or an unresolved
         `pending` durable row.
         """
         from api.services.agent_providers.interaction_delivery import (

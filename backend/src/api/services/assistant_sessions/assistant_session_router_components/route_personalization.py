@@ -28,7 +28,7 @@ async def save_assistant_session_as_sample_endpoint(
 
     Called when the user explicitly clicks "Save as Sample" on a voice
     suggestion result. This captures the suggestion (or a user-edited
-    variant) for future use in personalising email/document generation.
+    variant) for future use in personalizing email/document generation.
 
     Optional request body:
         - content: str -- Custom content to save (overrides session

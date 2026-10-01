@@ -254,7 +254,7 @@ async def test_terminal_task_malformed_output_and_persistence_failure_publish_no
     )
     await service.agent_task_service._mutations.update_agent_task_status(
         "task-3",
-        "cancelled",
+        "canceled",
     )
     assert not await notifier.publish_agent_task_artifact(
         output={"agent_task_artifact": artifact()},

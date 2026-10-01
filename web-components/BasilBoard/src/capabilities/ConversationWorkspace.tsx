@@ -26,6 +26,7 @@ import {
   copyToClipboard,
   openConversationThreadWindow,
   pickConversationFiles,
+  registerConversationComposerFocusHandler,
   setBoardFileDropTarget,
   startConversationVoiceCapture,
   stopConversationVoiceCapture,
@@ -54,6 +55,10 @@ import { useConversationList } from './useConversationList';
 import { useConversationNativeInputs } from './useConversationNativeInputs';
 import { useConversationWebSocket } from './useConversationWebSocket';
 import { useStableReadonlySet } from './useStableReadonlySet';
+import { useConversationAutoScroll } from './useConversationAutoScroll';
+import { useConversationPreferences } from './useConversationPreferences';
+import { resolveThreadDelegationOptOut, withHistoryDelegationOptOut } from './conversationDelegationPreference';
+import { focusEditableAtEnd } from './focusEditableAtEnd';
 
 interface ConversationWorkspaceProps {
   onConversationSubtitleChange?: (subtitle?: string) => void;
@@ -123,6 +128,8 @@ export default function ConversationWorkspace({
     hasMore,
     onQueryChange,
     reload: refreshConversations,
+    refresh: refreshConversationsSilently,
+    removeConversation,
     loadMore: loadMoreConversations,
   } = useConversationList();
 
@@ -206,6 +213,12 @@ export default function ConversationWorkspace({
     if (!selectedConversationId) window.requestAnimationFrame(focusEditor);
   }, [focusEditor, selectedConversationId]);
 
+  useEffect(() => registerConversationComposerFocusHandler(() => {
+    window.requestAnimationFrame(() => focusEditableAtEnd(editorRef.current));
+  }), []);
+
+  const { defaultConversationOnly, refresh: refreshConversationPreferences } = useConversationPreferences();
+
   const loadHistory = useCallback(async (conversationId: string) => {
     const version = (historyRequestVersions.current[conversationId] ?? 0) + 1;
     historyRequestVersions.current[conversationId] = version;
@@ -217,14 +230,14 @@ export default function ConversationWorkspace({
     try {
       const history = await getConversationMessages(conversationId);
       if (historyRequestVersions.current[conversationId] !== version) return;
-      setStore((current) => withThread(current, conversationId, (thread) => ({
+      setStore((current) => withThread(current, conversationId, (thread) => withHistoryDelegationOptOut({
         ...thread,
         messages: mergeHistoryWithInFlightAgentTaskStatus(
           thread.messages,
           history.messages.filter((message) => message.role !== 'system'),
         ),
         messagesLoading: false,
-      })));
+      }, history.messages)));
       if (conversationId === selectedThreadKeyRef.current) pinnedToBottom.current = true;
     } catch (error) {
       if (historyRequestVersions.current[conversationId] === version) {
@@ -247,8 +260,8 @@ export default function ConversationWorkspace({
   }, []);
 
   const refreshConversationsForEvents = useCallback(async () => {
-    refreshConversations();
-  }, [refreshConversations]);
+    await refreshConversationsSilently();
+  }, [refreshConversationsSilently]);
 
   const { connectionState, submit, cancel } = useConversationWebSocket({
     store,
@@ -258,9 +271,10 @@ export default function ConversationWorkspace({
   });
 
   const selectedThread = store.threadsByKey[selectedThreadKey] ?? createDraftThreadSession(selectedThreadKey);
+  const selectedDelegationOptOut = resolveThreadDelegationOptOut(selectedThread, defaultConversationOnly);
   const selectedRequest = selectedThread.activeRequestId ? store.requestsById[selectedThread.activeRequestId] : undefined;
   const processing = Boolean(selectedThread.activeRequestId);
-  const cancelling = Boolean(selectedRequest?.cancelling);
+  const canceling = Boolean(selectedRequest?.canceling);
   const rawActiveConversationIds = useMemo(() => activeConversationIds(store), [store]);
   const conversationActiveIds = useStableReadonlySet(rawActiveConversationIds);
 
@@ -325,6 +339,8 @@ export default function ConversationWorkspace({
       // "Conversation only" is a per-thread choice that should persist across
       // messages within the same conversation until the user manually
       // changes it, so it is intentionally not reset here after a send.
+      delegationOptOut: submission.delegationOptOut,
+      delegationOptOutSource: thread.delegationOptOutSource ?? 'resolved',
       messages: [
         ...thread.messages,
         messageFromSubmission(submission),
@@ -382,12 +398,12 @@ export default function ConversationWorkspace({
       conversationId: threadKey === DRAFT_THREAD_KEY ? undefined : threadKey,
       modelId: selectedModelId,
       filePaths: [],
-      delegationOptOut: thread?.delegationOptOut ?? false,
+      delegationOptOut: resolveThreadDelegationOptOut(thread ?? createDraftThreadSession(threadKey), defaultConversationOnly),
       source: 'voice',
       editorHtml: '',
     };
     sendSubmission(submission, { clearComposer: false }, threadKey);
-  }, [sendSubmission, selectedModelId, store]);
+  }, [defaultConversationOnly, sendSubmission, selectedModelId, store]);
 
   const { handlePastedImages } = useConversationNativeInputs({
     focusEditor,
@@ -402,7 +418,14 @@ export default function ConversationWorkspace({
     const currentThreadKey = selectedThreadKeyRef.current;
     if (currentThreadKey === DRAFT_THREAD_KEY) {
       const voiceThreadKey = pendingConversationThreadKey(createLocalId('voice'));
-      setStore((current) => withThread(current, voiceThreadKey, (thread) => thread));
+      setStore((current) => {
+        const draftThread = current.threadsByKey[DRAFT_THREAD_KEY];
+        return withThread(current, voiceThreadKey, (thread) => (
+          draftThread?.delegationOptOutSource
+            ? { ...thread, delegationOptOut: draftThread.delegationOptOut, delegationOptOutSource: draftThread.delegationOptOutSource }
+            : thread
+        ));
+      });
       voiceCaptureThreadKeyRef.current = voiceThreadKey;
     } else {
       voiceCaptureThreadKeyRef.current = currentThreadKey;
@@ -436,7 +459,8 @@ export default function ConversationWorkspace({
     setSelectedConversationId(undefined);
     if (editorRef.current) editorRef.current.innerHTML = '';
     window.requestAnimationFrame(focusEditor);
-  }, [focusEditor]);
+    refreshConversationPreferences();
+  }, [focusEditor, refreshConversationPreferences]);
 
   const setSelectedDraftText = useCallback((value: string) => {
     setStore((current) => withThread(current, selectedThreadKeyRef.current, (thread) => ({ ...thread, draftText: value })));
@@ -452,7 +476,7 @@ export default function ConversationWorkspace({
   const submitDraft = useCallback(() => {
     const editor = editorRef.current;
     const content = editor?.innerText.trim() ?? '';
-    if (processing || cancelling || (!content && selectedThread.attachmentPaths.length === 0)) return;
+    if (processing || canceling || (!content && selectedThread.attachmentPaths.length === 0)) return;
     const displayMarkdown = editor ? editorHtmlToDisplayMarkdown(editor) : content;
     const submission: ConversationDraftSubmission = {
       requestId: createLocalId('request'),
@@ -462,12 +486,12 @@ export default function ConversationWorkspace({
       conversationId: selectedConversationId,
       modelId: selectedModelId,
       filePaths: [...selectedThread.attachmentPaths],
-      delegationOptOut: selectedThread.delegationOptOut,
+      delegationOptOut: selectedDelegationOptOut,
       source: 'composer',
       editorHtml: editor?.innerHTML ?? '',
     };
     sendSubmission(submission, { clearComposer: true });
-  }, [processing, cancelling, selectedThread, selectedConversationId, selectedModelId, sendSubmission]);
+  }, [processing, canceling, selectedThread, selectedConversationId, selectedModelId, selectedDelegationOptOut, sendSubmission]);
 
   const restoreFailedSubmission = useCallback((submission: ConversationDraftSubmission) => {
     const threadKey = submission.conversationId ?? DRAFT_THREAD_KEY;
@@ -480,6 +504,7 @@ export default function ConversationWorkspace({
       draftHtml: submission.editorHtml,
       attachmentPaths: submission.filePaths,
       delegationOptOut: submission.delegationOptOut,
+      delegationOptOutSource: 'user',
       persistedFailedSubmission: undefined,
       responseError: undefined,
     })));
@@ -522,7 +547,7 @@ export default function ConversationWorkspace({
   }, [focusEditor, setSelectedDraftText]);
 
   const setDelegationOptOut = useCallback((value: boolean) => {
-    setStore((current) => withThread(current, selectedThreadKeyRef.current, (thread) => ({ ...thread, delegationOptOut: value })));
+    setStore((current) => withThread(current, selectedThreadKeyRef.current, (thread) => ({ ...thread, delegationOptOut: value, delegationOptOutSource: 'user' })));
   }, []);
 
   const removeAttachment = useCallback((path: string) => {
@@ -538,7 +563,8 @@ export default function ConversationWorkspace({
     setDeleteError(undefined);
     try {
       await deleteConversation(conversationId);
-      void refreshConversations();
+      removeConversation(conversationId);
+      void refreshConversationsSilently();
       if (selectedConversationId === conversationId) startNewConversation();
       setConfirmingDeleteId(undefined);
     } catch (error) {
@@ -546,7 +572,7 @@ export default function ConversationWorkspace({
     } finally {
       setDeletingId(undefined);
     }
-  }, [conversationActiveIds, refreshConversations, selectedConversationId, startNewConversation]);
+  }, [conversationActiveIds, refreshConversationsSilently, removeConversation, selectedConversationId, startNewConversation]);
 
   useEffect(() => {
     if (
@@ -595,7 +621,8 @@ export default function ConversationWorkspace({
     selectedConversationId && detachedConversationIds?.has(selectedConversationId),
   );
   const voiceBusy = voiceState === 'starting' || voiceState === 'recording' || voiceState === 'processing';
-  const sendDisabled = processing || cancelling || voiceBusy || (!selectedThread.draftText.trim() && selectedThread.attachmentPaths.length === 0);
+  const sendDisabled = processing || canceling || voiceBusy || (!selectedThread.draftText.trim() && selectedThread.attachmentPaths.length === 0);
+  useConversationAutoScroll(messageViewportRef, pinnedToBottom, canCompose && !isSelectedConversationDetachedElsewhere);
 
   useEffect(() => {
     onConversationSubtitleChange?.(selectedConversationSubtitle);
@@ -718,12 +745,12 @@ export default function ConversationWorkspace({
               voiceError={voiceError}
               attachmentPaths={selectedThread.attachmentPaths}
               processing={processing}
-              cancelling={cancelling}
+              canceling={canceling}
               voiceState={voiceState}
               activeFormats={selectedThread.activeFormats}
               models={models}
               selectedModelId={selectedModelId}
-              delegationOptOut={selectedThread.delegationOptOut}
+              delegationOptOut={selectedDelegationOptOut}
               onDelegationOptOutChange={setDelegationOptOut}
               sendDisabled={sendDisabled}
               canRetryUnsent={Boolean(selectedThread.unsentSubmission)}

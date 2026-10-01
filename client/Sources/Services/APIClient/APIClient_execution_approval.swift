@@ -182,7 +182,7 @@ extension APIClient {
             DevLogger.shared.info("🔄 Updating approval settings...", context: "APIClient")
             #endif
             
-            let data = try await post(endpoint, body: jsonData)
+            let data = try await postConfirmingExecutionApprovalRisk(endpoint, body: jsonData)
             let decoder = JSONDecoder()
             // Don't use convertFromSnakeCase - ExecutionApprovalSettings has explicit CodingKeys
             let response = try decoder.decode(ExecutionApprovalSettings.self, from: data)
@@ -261,7 +261,7 @@ extension APIClient {
         DevLogger.shared.info("[WHITELIST] Adding pattern: \(request.pattern)", context: "APIClient")
         #endif
         
-        let (data, response) = try await URLSession.shared.data(for: urlRequest)
+        let (data, response) = try await ExecutionApprovalRiskConfirmation.send(urlRequest)
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
@@ -309,7 +309,7 @@ extension APIClient {
         DevLogger.shared.info("[WHITELIST] Updating pattern: \(id) to '\(request.pattern)'", context: "APIClient")
         #endif
         
-        let (data, response) = try await URLSession.shared.data(for: urlRequest)
+        let (data, response) = try await ExecutionApprovalRiskConfirmation.send(urlRequest)
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.invalidResponse

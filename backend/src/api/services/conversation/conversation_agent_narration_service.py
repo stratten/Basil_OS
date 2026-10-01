@@ -154,9 +154,9 @@ class ConversationAgentNarrationService:
             {
                 CONVERSATION_TURN_METADATA_KEY: {
                     "narration": {
-                        "lifecycle": ConversationTurnNarrationLifecycle.CANCELLED.value,
+                        "lifecycle": ConversationTurnNarrationLifecycle.CANCELED.value,
                     },
-                    "cancelled": True,
+                    "canceled": True,
                 }
             },
         )
@@ -168,10 +168,10 @@ class ConversationAgentNarrationService:
                     placeholder_message_id=context.assistant_message_id,
                     agent_task_id=agent_task_id,
                     lifecycle=parsed.lifecycle,
-                    status_text="Conversation response cancelled.",
+                    status_text="Conversation response canceled.",
                     terminal_outcome=parsed.terminal_outcome,
                     agent_status=parsed.lifecycle.value,
-                    narration_state="cancelled",
+                    narration_state="canceled",
                 )
             )
         await self._send_token(
@@ -206,7 +206,7 @@ class ConversationAgentNarrationService:
         if parsed.narration.lifecycle in {
             ConversationTurnNarrationLifecycle.COMPLETED,
             ConversationTurnNarrationLifecycle.FAILED,
-            ConversationTurnNarrationLifecycle.CANCELLED,
+            ConversationTurnNarrationLifecycle.CANCELED,
         }:
             self._release_agent_task(agent_task_id)
             return

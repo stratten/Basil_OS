@@ -157,7 +157,7 @@ def _insert_conversation_pair(
 
 
 def test_terminal_conversation_pairs_card_once_per_assistant_placeholder(conn):
-    for lifecycle in ("completed", "failed", "cancelled"):
+    for lifecycle in ("completed", "failed", "canceled"):
         _insert_conversation_pair(
             conn,
             conversation_id=f"conversation-{lifecycle}",
@@ -177,7 +177,7 @@ def test_terminal_conversation_pairs_card_once_per_assistant_placeholder(conn):
         """
     ).fetchall()
     assert [(row["source_id"], row["source_status"]) for row in rows] == [
-        ("assistant-cancelled", "cancelled"),
+        ("assistant-canceled", "canceled"),
         ("assistant-completed", "completed"),
         ("assistant-failed", "failed"),
     ]

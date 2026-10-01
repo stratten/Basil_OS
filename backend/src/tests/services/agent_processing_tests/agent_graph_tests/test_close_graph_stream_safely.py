@@ -1,7 +1,7 @@
 """Regression tests for the benign aclose() re-entrancy race guard.
 
 See agent_graph_runtime._close_graph_stream_safely: graph_stream.aclose() is
-called from a finally block after a cancelled __anext__() task may still be
+called from a finally block after a canceled __anext__() task may still be
 mid-unwind, which can raise a specific, narrow RuntimeError from CPython's
 async generator machinery. These tests exercise that guard directly with
 fake stream objects instead of standing up a full LangGraph app.

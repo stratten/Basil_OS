@@ -252,6 +252,8 @@ log "Changed directory to $(pwd) for uvicorn launch."
 
 # Set environment variable to indicate this is a bundled production build
 export BASIL_BUNDLED=true
+# The backend replaces its loopback credentials at startup so every app launch gets fresh tokens.
+export BASIL_ROTATE_BACKEND_CREDENTIALS=1
 
 # Verify libsndfile is working before starting the backend
 log "🔍 Verifying libsndfile setup before backend startup..."

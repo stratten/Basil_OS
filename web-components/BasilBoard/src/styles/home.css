@@ -203,7 +203,7 @@
 }
 
 .home-agent-task-failed,
-.home-agent-task-cancelled {
+.home-agent-task-canceled {
   border-left: 3px solid var(--warning-base, #b45309);
 }
 
@@ -490,7 +490,7 @@
 }
 
 .home-inquiry-history-failed,
-.home-inquiry-history-cancelled {
+.home-inquiry-history-canceled {
   border-left: 3px solid var(--warning-base, #b45309);
 }
 

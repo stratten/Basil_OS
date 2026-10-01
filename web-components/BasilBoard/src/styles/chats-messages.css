@@ -40,6 +40,10 @@
   align-self: flex-start;
 }
 
+.chats-message-assistant.is-stream-stable .chats-message-column {
+  flex: 1 1 auto;
+}
+
 .chats-message-column {
   min-width: 0;
   max-width: calc(100% - 30px);
@@ -582,7 +586,7 @@
   }
 }
 
-.chats-cancelled-label {
+.chats-canceled-label {
   padding: 1px 6px;
   border: 1px solid color-mix(in srgb, var(--error-base) 28%, transparent);
   border-radius: 999px;
@@ -713,7 +717,7 @@
 }
 
 .chats-agent-task-card-failed .chats-agent-task-icon,
-.chats-agent-task-card-cancelled .chats-agent-task-icon {
+.chats-agent-task-card-canceled .chats-agent-task-icon {
   background: color-mix(in srgb, var(--error-base) 14%, transparent);
   color: var(--error-base);
 }
@@ -745,7 +749,7 @@
 }
 
 .chats-agent-task-card-failed .chats-agent-task-outcome,
-.chats-agent-task-card-cancelled .chats-agent-task-outcome {
+.chats-agent-task-card-canceled .chats-agent-task-outcome {
   color: var(--error-base);
 }
 

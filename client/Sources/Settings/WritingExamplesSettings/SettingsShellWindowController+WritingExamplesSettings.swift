@@ -172,7 +172,7 @@ extension SettingsShellWindowController {
         guard let writingExamplesWebView else { return }
         let alert = Self.makeDeleteSampleConfirmationAlert()
         guard alert.runModal() == .alertSecondButtonReturn else {
-            writingExamplesWebView.sendIntentResult(requestId: requestId, status: "cancelled", message: nil)
+            writingExamplesWebView.sendIntentResult(requestId: requestId, status: "canceled", message: nil)
             return
         }
         do {
@@ -198,7 +198,7 @@ extension SettingsShellWindowController {
         }
         let alert = Self.makeDeleteAllSamplesConfirmationAlert(filter: filter)
         guard alert.runModal() == .alertSecondButtonReturn else {
-            writingExamplesWebView.sendIntentResult(requestId: requestId, status: "cancelled", message: nil)
+            writingExamplesWebView.sendIntentResult(requestId: requestId, status: "canceled", message: nil)
             return
         }
         do {

@@ -75,7 +75,7 @@ enum ActivityCaptureSettingsPayloadBuilder {
             "failed": progress.failed,
             "remaining": progress.remaining,
             "etaSeconds": progress.etaSeconds ?? NSNull(),
-            "cancelRequested": progress.cancelRequested || viewModel.isCancellingProcessing,
+            "cancelRequested": progress.cancelRequested || viewModel.isCancelingProcessing,
             "processingStrategy": progress.processingStrategy ?? NSNull(),
             "analysisConcurrency": progress.analysisConcurrency ?? NSNull(),
         ] as [String: Any]

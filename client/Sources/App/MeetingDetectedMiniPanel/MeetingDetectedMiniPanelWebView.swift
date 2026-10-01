@@ -22,7 +22,7 @@ final class MeetingDetectedMiniPanelWebView: NSObject, WKScriptMessageHandler, W
     private var pendingMeeting: DetectedMeetingInfo?
 
     override init() {
-        let configuration = WKWebViewConfiguration()
+        let configuration = BasilWebViewConfigurationFactory.makeConfiguration()
         configuration.preferences.setValue(true, forKey: "developerExtrasEnabled")
         configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
         configuration.setValue(true, forKey: "allowUniversalAccessFromFileURLs")

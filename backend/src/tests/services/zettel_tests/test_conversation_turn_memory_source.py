@@ -136,7 +136,7 @@ def test_source_skips_malformed_metadata_and_keeps_missing_linked_task_visible(c
         conversation_id="missing",
         user_id="user-missing",
         assistant_id="assistant-missing",
-        lifecycle="cancelled",
+        lifecycle="canceled",
         timestamp="2026-08-10T11:00:00+00:00",
         route="agent_task",
         agent_task_id="missing-task",
@@ -192,7 +192,7 @@ def test_stale_turns_close_at_the_exact_six_hour_boundary_and_fail_stale_tasks(c
             "SELECT metadata FROM conversation_messages WHERE id = 'assistant-stale'"
         ).fetchone()["metadata"]
     )
-    assert metadata["conversation_turn"]["lifecycle"] == "cancelled"
+    assert metadata["conversation_turn"]["lifecycle"] == "canceled"
     assert metadata["conversation_turn"]["terminal_outcome"] == STALE_CONVERSATION_TURN_OUTCOME
     assert metadata["surface"] == "basil_board_chats"
     task = conn.execute(

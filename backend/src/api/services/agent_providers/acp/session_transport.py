@@ -56,6 +56,8 @@ class AcpSessionTransport:
         self._notification_handlers: dict[str, NotificationHandler] = {}
         self._has_started = False
         self._lifecycle_lock = asyncio.Lock()
+        self._last_activity_at: float | None = None
+        self._open_tool_call_ids: set[str] = set()
 
     @property
     def process(self) -> asyncio.subprocess.Process | None:
@@ -187,6 +189,92 @@ class AcpSessionTransport:
             self._pending.pop(request_id, None)
             raise AcpClientTimeoutError(f"timed out waiting for JSON-RPC response id {request_id}") from exc
 
+    @property
+    def open_tool_call_count(self) -> int:
+        return len(self._open_tool_call_ids)
+
+    async def send_request_with_inactivity_timeout(
+        self,
+        method: str,
+        params: Mapping[str, Any],
+        *,
+        inactivity_timeout_seconds: float,
+        tool_call_inactivity_timeout_seconds: float | None = None,
+        max_total_seconds: float | None = None,
+    ) -> dict[str, Any]:
+        """Send a request that may run as long as the peer stays active.
+
+        Fails with ``AcpClientTimeoutError`` only after ``inactivity_timeout_seconds`` without peer activity (``tool_call_inactivity_timeout_seconds`` while a reported tool call is open), or once ``max_total_seconds`` elapse.
+        """
+        if self._reader_error is not None:
+            raise self._reader_error
+        process = self._require_process()
+        if process.stdin is None:
+            raise AcpClientError("ACP process does not expose a stdin pipe")
+        idle_limit_default = float(inactivity_timeout_seconds)
+        idle_limit_tool = float(tool_call_inactivity_timeout_seconds or inactivity_timeout_seconds)
+        request_id = self._next_request_id
+        self._next_request_id += 1
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future[dict[str, Any]] = loop.create_future()
+        self._pending[request_id] = future
+        try:
+            await self._write({"jsonrpc": "2.0", "id": request_id, "method": method, "params": dict(params)})
+        except BaseException:
+            self._pending.pop(request_id, None)
+            raise
+        started_at = loop.time()
+        self._last_activity_at = started_at
+        try:
+            while True:
+                now = loop.time()
+                if self._pending_incoming:
+                    self._last_activity_at = now
+                idle_limit = idle_limit_tool if self._open_tool_call_ids else idle_limit_default
+                idle_for = now - (self._last_activity_at or started_at)
+                if idle_for >= idle_limit:
+                    self._pending.pop(request_id, None)
+                    raise AcpClientTimeoutError(
+                        f"timed out waiting for JSON-RPC response id {request_id}: "
+                        f"no ACP activity for {idle_for:.0f}s"
+                    )
+                elapsed = now - started_at
+                if max_total_seconds is not None and elapsed >= float(max_total_seconds):
+                    self._pending.pop(request_id, None)
+                    raise AcpClientTimeoutError(
+                        f"timed out waiting for JSON-RPC response id {request_id}: "
+                        f"exceeded the maximum turn duration of {float(max_total_seconds):.0f}s"
+                    )
+                wait_seconds = idle_limit - idle_for
+                if max_total_seconds is not None:
+                    wait_seconds = min(wait_seconds, float(max_total_seconds) - elapsed)
+                done, _pending = await asyncio.wait({future}, timeout=max(0.01, min(wait_seconds, 1.0)))
+                if future in done:
+                    return future.result()
+        except asyncio.CancelledError:
+            if not future.done():
+                future.cancel()
+            raise
+
+    def _note_activity(self) -> None:
+        try:
+            self._last_activity_at = asyncio.get_running_loop().time()
+        except RuntimeError:
+            return
+
+    def _observe_session_update(self, params: Mapping[str, Any]) -> None:
+        update = params.get("update")
+        if not isinstance(update, Mapping):
+            return
+        tool_call_id = update.get("toolCallId")
+        if not isinstance(tool_call_id, str) or not tool_call_id:
+            return
+        status = update.get("status")
+        if status in ("completed", "failed", "canceled"):
+            self._open_tool_call_ids.discard(tool_call_id)
+        elif update.get("sessionUpdate") == "tool_call" or status in ("pending", "in_progress"):
+            self._open_tool_call_ids.add(tool_call_id)
+
     async def send_notification(self, method: str, params: Mapping[str, Any]) -> None:
         if self._reader_error is not None:
             raise self._reader_error
@@ -243,6 +331,7 @@ class AcpSessionTransport:
                     if self._pending or exit_code != 0:
                         self._poison(AcpClientProtocolError(f"peer closed its stdout with exit code {exit_code}: {self.stderr_text!r}"))
                     return
+                self._note_activity()
                 try:
                     message = json.loads(line.decode("utf-8"))
                 except (UnicodeDecodeError, json.JSONDecodeError):
@@ -271,6 +360,8 @@ class AcpSessionTransport:
                 return self._fail("peer notification must contain a non-empty method")
             if not isinstance(params, Mapping):
                 return self._fail("peer notification params must be an object")
+            if method == "session/update":
+                self._observe_session_update(params)
             handler = self._notification_handlers.get(method)
             if handler is not None:
                 await handler(params)
@@ -350,6 +441,7 @@ class AcpSessionTransport:
             await self._write({"jsonrpc": "2.0", "id": request_id, "result": dict(result)})
         finally:
             self._pending_incoming.discard(request_id)
+            self._note_activity()
 
     async def _write_error_response(self, request_id: Any, *, code: int, message_text: str) -> None:
         if self._reader_error is None and self._process is not None:
@@ -369,6 +461,7 @@ class AcpSessionTransport:
         if process is None or process.stderr is None:
             return
         while chunk := await process.stderr.read(1_024):
+            self._note_activity()
             remaining = MAX_STDERR_BYTES - len(self._stderr_bytes)
             if remaining > 0:
                 self._stderr_bytes.extend(chunk[:remaining])

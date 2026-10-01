@@ -50,7 +50,7 @@ async def initialize_scheduled_agent_task_runtime() -> Dict[str, int]:
     past its planned wall-clock target (typically because the macOS
     host slept while the FastAPI process was running). The reconciler
     is paired with ``shutdown_scheduled_agent_task_runtime`` so the
-    task is cancelled cleanly on app shutdown.
+    task is canceled cleanly on app shutdown.
     """
     repo = get_sqlite_knowledge_service().scheduled_agent_task_repository
     # Wire the agent_task status callback before any runs can fire so the

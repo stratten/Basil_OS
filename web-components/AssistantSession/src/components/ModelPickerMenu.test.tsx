@@ -46,4 +46,44 @@ describe('ModelPickerMenu', () => {
       }),
     });
   });
+
+  it('stays enabled while audio is being captured, including refinement recording', () => {
+    const models = { localModels: [{ id: 'local-1', displayName: 'Local One', isApiModel: false }] };
+    const { rerender } = render(
+      <ModelPickerMenu
+        variant="miniChevron"
+        state={{ ...initialAssistantSessionState, ...models, transcriptionStatus: 'running', isRecording: true }}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Reasoning model' })).not.toBeDisabled();
+
+    rerender(
+      <ModelPickerMenu
+        variant="miniChevron"
+        state={{
+          ...initialAssistantSessionState,
+          ...models,
+          assistantOutput: 'Prior output',
+          isRefinementMode: true,
+          transcriptionStatus: 'running',
+          isRecording: true,
+        }}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Reasoning model' })).not.toBeDisabled();
+  });
+
+  it('locks once the request is being processed', () => {
+    render(
+      <ModelPickerMenu
+        variant="miniChevron"
+        state={{
+          ...initialAssistantSessionState,
+          localModels: [{ id: 'local-1', displayName: 'Local One', isApiModel: false }],
+          assistantSessionStatus: 'running',
+        }}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Reasoning model' })).toBeDisabled();
+  });
 });

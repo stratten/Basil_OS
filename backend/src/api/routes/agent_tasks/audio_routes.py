@@ -130,7 +130,7 @@ async def process_agent_task_audio(
                 wake_word_service._hotkey_client_owned_capture = False
             if wake_word_service:
                 wake_word_service._is_capturing_agent_task = False
-                wake_word_service._agent_task_cancelled = False
+                wake_word_service._agent_task_canceled = False
         except Exception as cleanup_exc:
             logger.debug(
                 f"[AGENT_TASK_AUDIO] Capture state cleanup '{reason}' failed: {cleanup_exc}"
@@ -199,16 +199,16 @@ async def process_agent_task_audio(
         
         logger.info(f"[AGENT_TASK_AUDIO] Processing audio with context: {context_info}")
 
-        # Hard cancellation guard: if user explicitly cancelled, drop immediately
+        # Hard cancellation guard: if user explicitly canceled, drop immediately
         # Accept post-completion uploads (normal case) to avoid losing final audio
         try:
-            is_cancelled = bool(getattr(wake_word_service, "_agent_task_cancelled", False))
-            if is_cancelled:
+            is_canceled = bool(getattr(wake_word_service, "_agent_task_canceled", False))
+            if is_canceled:
                 logger.info("[AGENT_TASK_AUDIO] Dropping audio due to explicit cancel request")
-                _release_transcription_lifecycle("cancelled_by_user")
+                _release_transcription_lifecycle("canceled_by_user")
                 return AgentTaskAudioResponse(
                     success=False,
-                    message="Agent task was cancelled",
+                    message="Agent task was canceled",
                     transcription="",
                     processed=False,
                     method="swift_audio_capture_service"

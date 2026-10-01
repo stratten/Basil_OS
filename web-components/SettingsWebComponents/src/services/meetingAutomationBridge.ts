@@ -2,6 +2,7 @@ import type { MeetingAutomationNativeEvent } from '../types'
 
 type OutgoingMeetingAutomationMessage =
   | { type: 'reactReady'; protocolVersion: 1 }
+  | { type: 'requestUpdateLiveTranscriptionByDefault'; requestId: string; enabled: boolean }
   | { type: 'requestUpdateAutoRetranscribeOnStop'; requestId: string; enabled: boolean }
   | { type: 'requestUpdateAutoRetranscribeDuringRecording'; requestId: string; enabled: boolean }
   | { type: 'requestUpdateRetranscribeWindowMinutes'; requestId: string; minutes: number }
@@ -53,6 +54,12 @@ function requestId(prefix: string): string {
 
 export function notifyMeetingAutomationSettingsReady() {
   postMessage({ type: 'reactReady', protocolVersion: 1 })
+}
+
+export function requestUpdateLiveTranscriptionByDefault(enabled: boolean): string {
+  const id = requestId('updateLiveTranscriptionByDefault')
+  postMessage({ type: 'requestUpdateLiveTranscriptionByDefault', requestId: id, enabled })
+  return id
 }
 
 export function requestUpdateAutoRetranscribeOnStop(enabled: boolean): string {

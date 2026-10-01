@@ -1,10 +1,35 @@
 import type { ExecutionApprovalRequest } from '../types';
 import ApprovalOverlay from './ApprovalOverlay';
+import CommandInputRequestCard from './CommandInputRequestCard';
 
 interface Props {
   agentTaskId: string;
   approvals: ExecutionApprovalRequest[];
   rememberChoice: boolean;
+}
+
+function ApprovalItem({
+  agentTaskId,
+  approval,
+  rememberChoice,
+  embedded,
+}: {
+  agentTaskId: string;
+  approval: ExecutionApprovalRequest;
+  rememberChoice: boolean;
+  embedded: boolean;
+}) {
+  if (approval.execution_type === 'command_input') {
+    return <CommandInputRequestCard agentTaskId={agentTaskId} approval={approval} embedded={embedded} />;
+  }
+  return (
+    <ApprovalOverlay
+      agentTaskId={agentTaskId}
+      approval={approval}
+      rememberChoice={rememberChoice}
+      embedded={embedded}
+    />
+  );
 }
 
 export default function ApprovalSetOverlay({
@@ -23,13 +48,19 @@ export default function ApprovalSetOverlay({
   // approvals to stack.
   if (approvals.length === 1) {
     return (
-      <ApprovalOverlay
+      <ApprovalItem
         agentTaskId={agentTaskId}
         approval={approvals[0]}
         rememberChoice={rememberChoice}
+        embedded={false}
       />
     );
   }
+
+  const includesCommandInput = approvals.some(approval => approval.execution_type === 'command_input');
+  const title = includesCommandInput
+    ? `${approvals.length} Requests Need Your Response`
+    : `${approvals.length} Command Approvals Required`;
 
   return (
     <div className="overlay-backdrop">
@@ -39,11 +70,11 @@ export default function ApprovalSetOverlay({
         style={{ maxWidth: 'clamp(360px, 60vw, 640px)', maxHeight: '82vh', overflowY: 'auto' }}
       >
         <div className="overlay-title">
-          {`${approvals.length} Command Approvals Required`}
+          {title}
         </div>
         <div style={{ display: 'grid', gap: 'var(--padding-m)' }}>
           {approvals.map(approval => (
-            <ApprovalOverlay
+            <ApprovalItem
               key={approval.approval_id}
               agentTaskId={agentTaskId}
               approval={approval}

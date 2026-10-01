@@ -79,7 +79,7 @@ class ZettelEnricher:
     def request_cancel(self) -> bool:
         """Ask an in-flight pass to stop after currently admitted entries resolve.
 
-        Cooperative on purpose: cancelling asyncio tasks mid-generation would abandon model calls and leave their entries' attempt counts unbumped, so workers check this flag before admitting queued entries. Returns whether a pass was actually running to cancel.
+        Cooperative on purpose: canceling asyncio tasks mid-generation would abandon model calls and leave their entries' attempt counts unbumped, so workers check this flag before admitting queued entries. Returns whether a pass was actually running to cancel.
         """
         if not self._progress.active:
             return False
@@ -139,7 +139,7 @@ class ZettelEnricher:
             while True:
                 if self._cancel_requested:
                     logger.info(
-                        "Zettel narrative pass cancelled after %s entries",
+                        "Zettel narrative pass canceled after %s entries",
                         self._progress.processed,
                     )
                     break

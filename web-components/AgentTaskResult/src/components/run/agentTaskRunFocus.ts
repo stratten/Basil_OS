@@ -21,6 +21,10 @@ export interface AgentTaskRunFocusSummary {
   executionTimeline: TimelineEntry[];
 }
 
+export function agentTaskRunLabel(turnIndex: number): string {
+  return turnIndex === 0 ? 'Initial request' : `Follow-up ${turnIndex}`;
+}
+
 function documentCount(files: StructuredFile[], timeline: TimelineEntry[]): number {
   return deriveAgentTaskArtifacts(files, timeline).produced.length;
 }
@@ -39,7 +43,7 @@ export function deriveAgentTaskRunFocusSummaries(
     id: item.id,
     kind: index === 0 ? 'root' as const : 'follow_up' as const,
     ordinal: index + 1,
-    label: index === 0 ? 'Initial request' : `Follow-up ${index}`,
+    label: agentTaskRunLabel(index),
     requestText: item.agentTaskText,
     resultText: item.result,
     timestamp: item.timestamp,
@@ -60,7 +64,7 @@ export function deriveAgentTaskRunFocusSummaries(
       id: displaySource.currentTurnTaskId || displaySource.agentTaskId,
       kind: historicalRuns.length === 0 ? 'root' : 'follow_up',
       ordinal,
-      label: historicalRuns.length === 0 ? 'Initial request' : `Follow-up ${historicalRuns.length}`,
+      label: agentTaskRunLabel(historicalRuns.length),
       requestText: displaySource.originalPrompt,
       resultText: displaySource.result,
       timestamp: displaySource.timestamp || '',

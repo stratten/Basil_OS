@@ -96,6 +96,22 @@ export function resumeMeeting() {
   postToSwift({ type: 'resumeMeeting' });
 }
 
+export function pauseRecording() {
+  postToSwift({ type: 'pauseRecording' });
+}
+
+export function resumeRecording() {
+  postToSwift({ type: 'resumeRecording' });
+}
+
+export function cancelRecording() {
+  postToSwift({ type: 'cancelRecording' });
+}
+
+export function setLiveTranscription(enabled: boolean) {
+  postToSwift({ type: 'setLiveTranscription', enabled });
+}
+
 export function selectMeeting(meetingId: string) {
   postToSwift({ type: 'selectMeeting', meetingId });
 }

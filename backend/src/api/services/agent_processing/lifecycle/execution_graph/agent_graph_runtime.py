@@ -205,7 +205,7 @@ async def _close_graph_stream_safely(graph_stream: Any) -> None:
     """Best-effort ``aclose()`` on a graph astream, tolerating one benign race.
 
     ``graph_stream.aclose()`` runs in a ``finally`` block after we may have
-    just cancelled an in-flight ``__anext__()`` call on this same async
+    just canceled an in-flight ``__anext__()`` call on this same async
     generator (see the cancel_event branch in
     ``execute_tool_enhanced_workflow`` below). If that cancellation has not
     fully unwound the generator's frame yet, CPython's async generator
@@ -215,7 +215,7 @@ async def _close_graph_stream_safely(graph_stream: Any) -> None:
     is best-effort cleanup only: swallowing this one narrow, known-benign
     error does not hide any user-facing correctness issue -- it only stops an
     internal cleanup collision from crashing an otherwise-complete or
-    already-cancelled agent-task run.
+    already-canceled agent-task run.
     """
     if not hasattr(graph_stream, "aclose"):
         return
@@ -265,10 +265,10 @@ async def execute_tool_enhanced_workflow(user_agent_task: str, context: Dict[str
     graph_started_at = time.monotonic()
     cancel_event = context.get("cancel_event") if isinstance(context, dict) else None
 
-    def _is_cancelled() -> bool:
+    def _is_canceled() -> bool:
         return bool(cancel_event is not None and hasattr(cancel_event, "is_set") and cancel_event.is_set())
 
-    if _is_cancelled():
+    if _is_canceled():
         raise asyncio.CancelledError()
     
     logger.info(f"🔧 DEBUG: About to build tool-enhanced graph")
@@ -294,7 +294,7 @@ async def execute_tool_enhanced_workflow(user_agent_task: str, context: Dict[str
         try:
             if cancel_event is not None and hasattr(cancel_event, "wait"):
                 while True:
-                    if _is_cancelled():
+                    if _is_canceled():
                         raise asyncio.CancelledError()
                     next_event_task = asyncio.create_task(graph_stream.__anext__())
                     cancel_task = asyncio.create_task(cancel_event.wait())

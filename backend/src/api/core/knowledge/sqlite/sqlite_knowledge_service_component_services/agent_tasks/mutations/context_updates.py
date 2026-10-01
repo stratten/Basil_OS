@@ -221,7 +221,7 @@ async def update_execution_timeline_if_active(
             """
             SELECT execution_timeline
             FROM agent_tasks
-            WHERE id = ? AND status NOT IN ('completed', 'failed', 'cancelled')
+            WHERE id = ? AND status NOT IN ('completed', 'failed', 'canceled')
             """,
             (agent_task_id,),
         ).fetchone()
@@ -236,7 +236,7 @@ async def update_execution_timeline_if_active(
             """
             UPDATE agent_tasks
             SET execution_timeline = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE id = ? AND status NOT IN ('completed', 'failed', 'cancelled')
+            WHERE id = ? AND status NOT IN ('completed', 'failed', 'canceled')
             """,
             (json.dumps(timeline_with_artifacts), agent_task_id),
         )
@@ -291,7 +291,7 @@ async def upsert_execution_timeline_artifact(
             """
             SELECT execution_timeline
             FROM agent_tasks
-            WHERE id = ? AND status NOT IN ('completed', 'failed', 'cancelled')
+            WHERE id = ? AND status NOT IN ('completed', 'failed', 'canceled')
             """,
             (agent_task_id,),
         ).fetchone()
@@ -347,7 +347,7 @@ async def upsert_execution_timeline_artifact(
             """
             UPDATE agent_tasks
             SET execution_timeline = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE id = ? AND status NOT IN ('completed', 'failed', 'cancelled')
+            WHERE id = ? AND status NOT IN ('completed', 'failed', 'canceled')
             """,
             (json.dumps(updated_timeline), agent_task_id),
         )

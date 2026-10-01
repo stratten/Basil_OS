@@ -369,8 +369,8 @@ class ModelManager:
         """Cancel any pending unload task for a model entry.
         
         Args:
-            entry: The model entry whose unload task should be cancelled
-            reason: Why the unload is being cancelled (for logging)
+            entry: The model entry whose unload task should be canceled
+            reason: Why the unload is being canceled (for logging)
         """
         if entry.unload_task is not None and not entry.unload_task.done():
             # Store the cancellation reason in the task for logging
@@ -419,6 +419,6 @@ class ModelManager:
                 'reschedule': 'timer rescheduled',
                 'unknown': 'reason unknown'
             }.get(reason, reason)
-            self.logger.debug(f"Idle unload task cancelled for '{model_name}' ({reason_text})")
+            self.logger.debug(f"Idle unload task canceled for '{model_name}' ({reason_text})")
         except Exception as e:
             self.logger.error(f"Error unloading model '{model_name}': {e}") 

@@ -132,7 +132,7 @@ async def _handle_existing_run_action(
             }
         )
     if action == "cancel":
-        if run["status"] in {"settled", "failed", "cancelled"}:
+        if run["status"] in {"settled", "failed", "canceled"}:
             return json.dumps({"ok": True, "status": run["status"]})
         if controller is None:
             return json.dumps({"ok": False, "error": "delegated cancellation is unavailable"})
@@ -142,22 +142,22 @@ async def _handle_existing_run_action(
                     {
                         "ok": False,
                         "error": (
-                            "an ACP delegated child can be cancelled by its supervisor "
+                            "an ACP delegated child can be canceled by its supervisor "
                             "only while supervision_due"
                         ),
                     }
                 )
             try:
-                cancelled_run = await controller.cancel_acp_run_for_supervision(
+                canceled_run = await controller.cancel_acp_run_for_supervision(
                     delegated_agent_run=run,
-                    summary=summary.strip() or "Parent cancelled this delegated ACP run.",
+                    summary=summary.strip() or "Parent canceled this delegated ACP run.",
                 )
             except Exception as exc:
                 return json.dumps({"ok": False, "error": str(exc)})
-            return json.dumps({"ok": True, "status": cancelled_run["status"]})
-        cancelled = await controller.cancel_parent_runs(parent_agent_task_id=parent_agent_task_id)
-        matching = [item for item in cancelled if str(item.get("id")) == delegated_agent_run_id]
-        status = matching[0]["status"] if matching else "cancelling"
+            return json.dumps({"ok": True, "status": canceled_run["status"]})
+        canceled = await controller.cancel_parent_runs(parent_agent_task_id=parent_agent_task_id)
+        matching = [item for item in canceled if str(item.get("id")) == delegated_agent_run_id]
+        status = matching[0]["status"] if matching else "canceling"
         return json.dumps({"ok": True, "status": status})
     if action == "continue":
         if run["executor_kind"] != "acp_provider":

@@ -13,6 +13,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - run: python scripts/spelling/check_american_spelling.py
+      - run: python scripts/check_literal_structural_colors.py
       - uses: snok/install-poetry@v1
       - run: poetry install --no-interaction
       - run: PYTHONPATH=.:backend/src poetry run pytest backend/src/tests -q
@@ -23,7 +25,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: "web-components/**/package-lock.json"
       - name: Install, typecheck, test, and build each web component

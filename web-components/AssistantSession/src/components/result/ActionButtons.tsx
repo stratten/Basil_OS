@@ -1,6 +1,7 @@
 import { cancelEditMode, enterEditMode, enterVoiceRefinement, saveAsSample } from '../../bridge/assistantSessionBridge';
 import type { AssistantSessionState } from '../../state/assistantSessionReducer';
 import { NativeSymbol } from '../NativeSymbol';
+import { RefineBadge } from '../RefineBadge';
 
 export function ActionButtons({
   state,
@@ -68,16 +69,5 @@ export function ActionButtons({
         </>
       )}
     </div>
-  );
-}
-
-function RefineBadge({ kind }: { kind: 'mic' | 'pencil' }) {
-  return (
-    <span className="assistant-session-actions__refine">
-      <NativeSymbol name="refine" size={15} />
-      <span className="assistant-session-actions__refine-badge" aria-hidden="true">
-        <NativeSymbol name={kind === 'mic' ? 'micFill' : 'pencil'} size={8} />
-      </span>
-    </span>
   );
 }

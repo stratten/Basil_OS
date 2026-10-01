@@ -2,6 +2,7 @@
 @import './components/detail-tray/agent-run-rail.css';
 @import './components/detail-tray/execution-detail-tray.css';
 @import './components/result-content.css';
+@import './components/turn-and-run-details.css';
 @import './components/detail-tray/agent-task-work-summary.css';
 @import './components/detail-tray/inline-artifact-preview.css';
 @import './components/artifact-review-workspace.css';

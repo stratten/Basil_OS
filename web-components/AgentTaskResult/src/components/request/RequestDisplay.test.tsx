@@ -1,11 +1,13 @@
+// @vitest-environment jsdom
+
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 let RequestDisplay: typeof import('./RequestDisplay').default;
 let hasClippedRequestContent: typeof import('./RequestDisplay').hasClippedRequestContent;
 
+// Markdown is sanitized with DOMPurify, which needs a real DOM window rather than a stub.
 beforeAll(async () => {
-  vi.stubGlobal('window', {});
   const requestDisplayModule = await import('./RequestDisplay');
   RequestDisplay = requestDisplayModule.default;
   hasClippedRequestContent = requestDisplayModule.hasClippedRequestContent;

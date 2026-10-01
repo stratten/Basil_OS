@@ -268,7 +268,7 @@ extension LiveTranscriptionViewModel {
         }
         
         let session = URLSession(configuration: .default)
-        let webSocketTask = session.webSocketTask(with: url)
+        let webSocketTask = session.webSocketTask(with: BackendAuthorization.authorizedRequest(for: url))
         analysisWebSocketTask = webSocketTask
         
         webSocketTask.resume()

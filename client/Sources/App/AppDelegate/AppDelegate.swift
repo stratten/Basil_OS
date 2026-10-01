@@ -142,6 +142,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @MainActor
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSLog("🚀 BASIL APP HAS LAUNCHED - applicationDidFinishLaunching anfang") // German for beginning :)
+        URLProtocol.registerClass(BackendAuthorizationURLProtocol.self)
 
         applyRuntimeCircularDockIcon()
         configureBackendStartupFromArguments()

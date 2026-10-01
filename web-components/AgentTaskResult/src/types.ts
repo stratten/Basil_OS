@@ -219,8 +219,8 @@ export interface DisplayableAgentTask {
   workflowPlan?: WorkflowPlan;
   showWorkflowPlan: boolean;
   isStreaming: boolean;
-  isCancelling?: boolean;
-  isCancelled?: boolean;
+  isCanceling?: boolean;
+  isCanceled?: boolean;
   cancellationError?: string;
   checkpointAvailable: boolean;
   thinking?: string;
@@ -291,6 +291,16 @@ export interface ProviderPermissionApprovalMetadata {
   reject_option_id: string;
 }
 
+export interface CommandInputMetadata {
+  request_id: string;
+  agent_task_id: string;
+  prompt: string;
+  secret: boolean;
+  command?: string;
+  created_at?: number;
+  expires_at?: number;
+}
+
 export interface ExecutionApprovalRequest {
   approval_id: string;
   agent_task_id: string;
@@ -300,9 +310,10 @@ export interface ExecutionApprovalRequest {
   generalized_pattern?: string;
   risk_metadata?: Record<string, unknown>;
   script_content?: string;
-  execution_type?: 'shell' | 'applescript' | 'browser_foreground_control' | 'browser_sensitive_fill' | 'provider_permission';
+  execution_type?: 'shell' | 'applescript' | 'browser_foreground_control' | 'browser_sensitive_fill' | 'provider_permission' | 'command_input';
   browser_metadata?: BrowserSensitiveApprovalMetadata;
   provider_permission?: ProviderPermissionApprovalMetadata;
+  command_input?: CommandInputMetadata;
   revision?: number;
 }
 
@@ -395,7 +406,7 @@ export interface ScheduledAgentTask {
   is_active: boolean;
   source_type: 'manual' | 'smart' | string;
   // Absolute filesystem paths attached to the schedule. Forwarded into
-  // process_agentTask_direct(reference_paths=...) at every scheduled run.
+  // process_agent_task_direct(reference_paths=...) at every scheduled run.
   // Always present on responses (defaults to []); optional on
   // create/update payloads where omission means "leave unchanged" and
   // an empty array means "clear all".
@@ -625,23 +636,14 @@ export type SwiftMessage =
 
 // WebSocket event types from the backend
 export type WSEventType =
-  | 'agentTask_progress'
   | 'agent_task_progress'
-  | 'agentTask_result'
   | 'agent_task_result'
-  | 'agentTask_streaming'
   | 'agent_task_streaming'
-  | 'agentTask_streaming_complete'
   | 'agent_task_streaming_complete'
-  | 'agentTask_cancelled'
-  | 'agent_task_cancelled'
-  | 'agentTask_capture_started'
+  | 'agent_task_canceled'
   | 'agent_task_capture_started'
-  | 'agentTask_capture_complete'
   | 'agent_task_capture_complete'
-  | 'agentTask_word_detected'
   | 'agent_task_word_detected'
-  | 'agentTask_silence_progress'
   | 'agent_task_silence_progress'
   | 'agent_task_outcome_update'
   | 'step_progress_update'

@@ -259,6 +259,23 @@
   padding: 16px;
 }
 
+.permissions-command-security-pair {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.permissions-command-security-pair > .permissions-command-security-section {
+  min-width: 0;
+}
+
+.permissions-command-security-switch-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 6px;
+}
+
 .permissions-command-security-section-title {
   color: var(--text-primary);
   font-family: var(--font-family-medium);
@@ -580,6 +597,10 @@
 }
 
 @container permissions (max-width: 720px) {
+  .permissions-command-security-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .permission-row {
     flex-wrap: wrap;
     padding-right: 14px;

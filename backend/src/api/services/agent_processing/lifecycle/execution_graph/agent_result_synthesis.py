@@ -468,10 +468,10 @@ async def stream_synthesized_final_answer(
     terminal = terminal_from_provider_reason("unknown")
     evidence = list(truncation_evidence or [])
 
-    def _is_cancelled() -> bool:
+    def _is_canceled() -> bool:
         return bool(cancel_event is not None and hasattr(cancel_event, "is_set") and cancel_event.is_set())
 
-    if _is_cancelled():
+    if _is_canceled():
         raise asyncio.CancelledError()
 
     if stream_notifier and hasattr(stream_notifier, "send_agent_progress_update"):
@@ -529,7 +529,7 @@ async def stream_synthesized_final_answer(
         # Single-shot fallback: no token stream on this object
         raw_response = ""
         try:
-            if _is_cancelled():
+            if _is_canceled():
                 raise asyncio.CancelledError()
             if hasattr(llm_model, "chat_completion"):
                 out = await llm_model.chat_completion(messages)
@@ -582,7 +582,7 @@ async def stream_synthesized_final_answer(
             )
             if hasattr(llm_model, "stream_chat_completion"):
                 async for event in llm_model.stream_chat_completion(messages, resolved_budget):
-                    if _is_cancelled():
+                    if _is_canceled():
                         raise asyncio.CancelledError()
                     if event.is_terminal:
                         terminal = event.terminal or terminal_from_provider_reason("unknown")
@@ -591,7 +591,7 @@ async def stream_synthesized_final_answer(
                         await _route_token(event.text)
             else:
                 async for token in llm_model.chat_completion_streaming(messages):
-                    if _is_cancelled():
+                    if _is_canceled():
                         raise asyncio.CancelledError()
                     if token:
                         await _route_token(token)

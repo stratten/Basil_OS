@@ -11,9 +11,14 @@ import type { AssistantSessionState } from '../state/assistantSessionReducer';
 export function ResultState({
   state,
   onTypedRefinementModeChange,
+  typedRefinementRequested = false,
+  onTypedRefinementRequestHandled,
 }: {
   state: AssistantSessionState;
   onTypedRefinementModeChange?: (isOpen: boolean) => void;
+  /** Set when the header switched a refinement recording to typed input; the bridge call has already been made. */
+  typedRefinementRequested?: boolean;
+  onTypedRefinementRequestHandled?: () => void;
 }) {
   const [editedContent, setEditedContent] = useState(state.editableContentSeed);
   const [lastAppliedContent, setLastAppliedContent] = useState<string | null>(null);
@@ -32,6 +37,13 @@ export function ResultState({
       setLastAppliedContent(null);
     }
   }, [onTypedRefinementModeChange, state.assistantSessionStatus]);
+
+  useEffect(() => {
+    if (!typedRefinementRequested) return;
+    setIsTypedRefinementMode(true);
+    onTypedRefinementModeChange?.(true);
+    onTypedRefinementRequestHandled?.();
+  }, [onTypedRefinementModeChange, onTypedRefinementRequestHandled, typedRefinementRequested]);
 
   return (
     <div className="assistant-session-result">

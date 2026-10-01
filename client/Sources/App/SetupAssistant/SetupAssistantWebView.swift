@@ -21,7 +21,7 @@ struct SetupAssistantWebView: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> WKWebView {
-        let configuration = WKWebViewConfiguration()
+        let configuration = BasilWebViewConfigurationFactory.makeConfiguration()
         configuration.preferences.setValue(true, forKey: "developerExtrasEnabled")
         configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
         configuration.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
@@ -597,7 +597,7 @@ struct SetupAssistantWebView: NSViewRepresentable {
             // long-lived or stuck. Progress emissions are gated by a 10-second
             // minimum gap and a content-change check so we never spam the
             // setup agent with redundant turns.
-            let terminalStatuses: Set<String> = ["completed", "failed", "cancelled"]
+            let terminalStatuses: Set<String> = ["completed", "failed", "canceled"]
             let stagedIntervalsNs: [UInt64] = [2_000_000_000, 4_000_000_000, 8_000_000_000]
             let steadyIntervalNs: UInt64 = 10_000_000_000
             let hardCeilingSeconds: TimeInterval = 600

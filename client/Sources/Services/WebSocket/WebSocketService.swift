@@ -273,7 +273,7 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
                                     #endif
                                     self.agentTask.handleAgentTaskStreamingComplete(json: json)
 
-                                case "agentTask_progress", "agentTask_result", "capture_request", "agentTask_capture_started", "agentTask_word_detected", "agentTask_silence_progress", "agentTask_capture_complete", "agentTask_streaming", "agentTask_streaming_complete", "workflow_plan_ready", "step_progress_update", "dynamic_step_added", "dynamic_step_updated", "agent_progress_update", "collaborative_checkpoint_request", "checkpoint_waiting", "checkpoint_resumed", "session_context_info", "execution_approval_request":
+                                case "capture_request", "workflow_plan_ready", "step_progress_update", "dynamic_step_added", "dynamic_step_updated", "agent_progress_update", "collaborative_checkpoint_request", "checkpoint_waiting", "checkpoint_resumed", "session_context_info", "execution_approval_request":
                                     #if DEBUG
                                     DevLogger.shared.info("Routing agentTask event_type '\(eventType)' to agentTask handler", context: "websocket")
                                     #endif
@@ -359,12 +359,6 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
                             } else if let messageType = json["type"] as? String {
                                 // Handle messages with "type" field (legacy format)
                                 switch messageType {
-                                case "agentTask_started":
-                                    #if DEBUG
-                                    DevLogger.shared.info("Routing agentTask type '\(messageType)' to agentTask handler", context: "websocket")
-                                    #endif
-                                    self.agentTask.handleWebSocketMessage(json)
-                                    
                                 case "operation_state_query":
                                     #if DEBUG
                                     DevLogger.shared.info("Handling operation state query from backend (type field)", context: "websocket")
@@ -546,7 +540,7 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
         
         var cancellationMessage: [String: String] = [
             "agent_task_action": "cancel_agent_task",
-            "reason": "user_cancelled"
+            "reason": "user_canceled"
         ]
         if let agentTaskId, !agentTaskId.isEmpty {
             cancellationMessage["agent_task_id"] = agentTaskId

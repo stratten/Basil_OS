@@ -1,4 +1,7 @@
-"""Progress-aware tool run tracking for Agent Task execution."""
+"""Progress-aware tool run tracking for Agent Task execution.
+
+The registry only declares a run stale when it can reconcile that verdict: either the tool already returned (and only the callback is missing), or the tool declared its own timeout, overran it well past its own bound, and exposed a cancel handle the heartbeat can use to stop it.
+"""
 
 from __future__ import annotations
 
@@ -6,8 +9,29 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
+WAIT_STATUSES = {"approval_waiting", "input_waiting", "waiting"}
+ACTIVE_STATUSES = {
+    "active",
+    "approval_waiting",
+    "input_waiting",
+    "waiting",
+    "service_running",
+    "serializing",
+    "returned",
+}
+DECLARED_TIMEOUT_MULTIPLIER = 2.0
+DECLARED_TIMEOUT_GRACE_SECONDS = 30.0
+RETURNED_WITHOUT_CALLBACK_SECONDS = 15.0
 
-ACTIVE_STATUSES = {"active", "approval_waiting", "service_running", "serializing", "returned"}
+_monotonic = time.monotonic
+
+
+def _now() -> float:
+    return _monotonic()
+
+
+class ToolRunWatchdogStopped(RuntimeError):
+    """Raised inside the tool wrapper when the watchdog canceled the service call."""
 
 
 @dataclass
@@ -19,27 +43,54 @@ class ActiveToolRun:
     step_id: str
     tool_name: str
     description: str
-    started_at_monotonic: float = field(default_factory=time.monotonic)
-    last_progress_at_monotonic: float = field(default_factory=time.monotonic)
+    started_at_monotonic: float = field(default_factory=_now)
+    last_progress_at_monotonic: float = field(default_factory=_now)
     status: str = "active"
     progress_kind: str = "started"
     expected_silence_seconds: float = 90.0
     hard_ceiling_seconds: float = 300.0
     metadata: Dict[str, Any] = field(default_factory=dict)
+    excluded_wait_seconds: float = 0.0
+    wait_started_at_monotonic: Optional[float] = None
+    declared_timeout_seconds: Optional[float] = None
+    cancel_handle: Optional[Any] = field(default=None, repr=False)
+    force_cancel_reason: Optional[str] = None
 
     def mark(self, status: str, progress_kind: str, **metadata: Any) -> None:
+        now = _monotonic()
+        if status in WAIT_STATUSES:
+            if self.wait_started_at_monotonic is None:
+                self.wait_started_at_monotonic = now
+        elif self.wait_started_at_monotonic is not None:
+            self.excluded_wait_seconds += max(0.0, now - self.wait_started_at_monotonic)
+            self.wait_started_at_monotonic = None
+        declared_timeout = metadata.get("timeout_seconds")
+        if isinstance(declared_timeout, (int, float)) and not isinstance(declared_timeout, bool) and declared_timeout > 0:
+            self.declared_timeout_seconds = float(declared_timeout)
         self.status = status
         self.progress_kind = progress_kind
-        self.last_progress_at_monotonic = time.monotonic()
+        self.last_progress_at_monotonic = now
         self.metadata.update({k: v for k, v in metadata.items() if v is not None})
 
     @property
     def elapsed_seconds(self) -> float:
-        return time.monotonic() - self.started_at_monotonic
+        return _monotonic() - self.started_at_monotonic
 
     @property
     def silence_seconds(self) -> float:
-        return time.monotonic() - self.last_progress_at_monotonic
+        return _monotonic() - self.last_progress_at_monotonic
+
+    @property
+    def active_elapsed_seconds(self) -> float:
+        now = _monotonic()
+        open_wait = now - self.wait_started_at_monotonic if self.wait_started_at_monotonic is not None else 0.0
+        return max(0.0, (now - self.started_at_monotonic) - self.excluded_wait_seconds - max(0.0, open_wait))
+
+    @property
+    def declared_ceiling_seconds(self) -> Optional[float]:
+        if self.declared_timeout_seconds is None:
+            return None
+        return self.declared_timeout_seconds * DECLARED_TIMEOUT_MULTIPLIER + DECLARED_TIMEOUT_GRACE_SECONDS
 
 
 @dataclass
@@ -51,6 +102,13 @@ class WatchdogAssessment:
     should_continue: bool = True
     stale_reason: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+def _format_quiet_duration(seconds: float) -> str:
+    whole = int(max(0.0, seconds))
+    if whole < 120:
+        return f"{whole}s"
+    return f"{whole // 60}m"
 
 
 class ActiveToolRunRegistry:
@@ -108,18 +166,9 @@ class ActiveToolRunRegistry:
     def discard(self, run_id: str) -> None:
         self._runs_by_id.pop(str(run_id), None)
 
-    def mark_latest_for_tool(
-        self,
-        *,
-        agent_task_id: Optional[str],
-        tool_name: str,
-        status: str,
-        progress_kind: str,
-        **metadata: Any,
-    ) -> Optional[ActiveToolRun]:
+    def latest_active_run(self, *, agent_task_id: Optional[str], tool_name: str) -> Optional[ActiveToolRun]:
         if not agent_task_id:
             return None
-
         candidates = [
             run
             for run in self._runs_by_id.values()
@@ -129,10 +178,53 @@ class ActiveToolRunRegistry:
         ]
         if not candidates:
             return None
+        return max(candidates, key=lambda item: item.started_at_monotonic)
 
-        run = max(candidates, key=lambda item: item.started_at_monotonic)
+    def mark_latest_for_tool(
+        self,
+        *,
+        agent_task_id: Optional[str],
+        tool_name: str,
+        status: str,
+        progress_kind: str,
+        **metadata: Any,
+    ) -> Optional[ActiveToolRun]:
+        run = self.latest_active_run(agent_task_id=agent_task_id, tool_name=tool_name)
+        if run is None:
+            return None
         run.mark(status, progress_kind, **metadata)
         return run
+
+    def attach_cancel_handle(
+        self,
+        *,
+        agent_task_id: Optional[str],
+        tool_name: str,
+        handle: Any,
+    ) -> Optional[ActiveToolRun]:
+        run = self.latest_active_run(agent_task_id=agent_task_id, tool_name=tool_name)
+        if run is not None:
+            run.cancel_handle = handle
+            run.force_cancel_reason = None
+        return run
+
+    def detach_cancel_handle(self, run: Optional[ActiveToolRun]) -> None:
+        if run is not None:
+            run.cancel_handle = None
+
+    def force_cancel(self, run_id: str, *, reason: str) -> bool:
+        """Cancel the service call behind ``run_id``; True when a live handle was canceled."""
+        run = self.get(run_id)
+        if run is None:
+            return False
+        handle = run.cancel_handle
+        done = getattr(handle, "done", None)
+        cancel = getattr(handle, "cancel", None)
+        if handle is None or not callable(cancel) or (callable(done) and done()):
+            return False
+        run.force_cancel_reason = str(reason)
+        cancel()
+        return True
 
     def assess(self, run_id: str) -> WatchdogAssessment:
         run = self.get(run_id)
@@ -150,8 +242,22 @@ class ActiveToolRunRegistry:
                 metadata=dict(run.metadata),
             )
 
+        if run.status == "input_waiting":
+            return WatchdogAssessment(
+                status="input_waiting",
+                message=f"Waiting for your input: {run.description}",
+                metadata=dict(run.metadata),
+            )
+
+        if run.status == "waiting":
+            return WatchdogAssessment(
+                status="waiting",
+                message=f"Waiting before checking again: {run.description}",
+                metadata=dict(run.metadata),
+            )
+
         if run.status == "returned":
-            if run.silence_seconds > 15.0:
+            if run.silence_seconds > RETURNED_WITHOUT_CALLBACK_SECONDS:
                 return WatchdogAssessment(
                     status="stale",
                     message="Tool returned; waiting for agent result propagation.",
@@ -165,21 +271,26 @@ class ActiveToolRunRegistry:
                 metadata=dict(run.metadata),
             )
 
-        if run.elapsed_seconds > run.hard_ceiling_seconds:
+        declared_ceiling = run.declared_ceiling_seconds
+        if declared_ceiling is not None and run.active_elapsed_seconds > declared_ceiling:
+            if run.cancel_handle is not None:
+                return WatchdogAssessment(
+                    status="stale",
+                    message=f"Tool run exceeded its own time limit and was stopped: {run.description}",
+                    should_continue=False,
+                    stale_reason="declared_timeout_exceeded",
+                    metadata=dict(run.metadata),
+                )
             return WatchdogAssessment(
-                status="stale",
-                message=f"Tool run exceeded safety ceiling: {run.description}",
-                should_continue=False,
-                stale_reason="hard_ceiling_exceeded",
-                metadata=dict(run.metadata),
+                status="unresponsive",
+                message=f"Still working past its time limit ({_format_quiet_duration(run.active_elapsed_seconds)}): {run.description}",
+                metadata={**run.metadata, "unresponsive": True},
             )
 
         if run.silence_seconds > run.expected_silence_seconds:
             return WatchdogAssessment(
-                status="stale",
-                message=f"Tool run has not reported progress: {run.description}",
-                should_continue=False,
-                stale_reason="progress_silence_exceeded",
+                status="quiet",
+                message=f"Still working (no progress reported for {_format_quiet_duration(run.silence_seconds)}): {run.description}",
                 metadata=dict(run.metadata),
             )
 
@@ -225,3 +336,20 @@ def record_tool_progress(
         progress_kind=progress_kind,
         **metadata,
     )
+
+
+def attach_tool_cancel_handle(
+    *,
+    agent_task_id: Optional[str],
+    tool_name: str,
+    handle: Any,
+) -> Optional[ActiveToolRun]:
+    return _GLOBAL_TOOL_RUN_REGISTRY.attach_cancel_handle(
+        agent_task_id=agent_task_id,
+        tool_name=tool_name,
+        handle=handle,
+    )
+
+
+def detach_tool_cancel_handle(run: Optional[ActiveToolRun]) -> None:
+    _GLOBAL_TOOL_RUN_REGISTRY.detach_cancel_handle(run)

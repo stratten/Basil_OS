@@ -135,7 +135,7 @@ struct NarrativeProgressData: Codable, Equatable {
     let lastError: String?
     /// Optional so progress polling keeps working against a backend that
     /// predates the cancel endpoint rather than failing to decode entirely.
-    let cancelling: Bool?
+    let canceling: Bool?
     /// Optional so progress polling keeps working against a backend that predates parallel narrative processing.
     let analysisConcurrency: Int?
     let processingStrategy: String?
@@ -150,12 +150,12 @@ struct NarrativeProgressData: Codable, Equatable {
         case remaining
         case etaSeconds = "eta_seconds"
         case lastError = "last_error"
-        case cancelling
+        case canceling
         case analysisConcurrency = "analysis_concurrency"
         case processingStrategy = "processing_strategy"
     }
 
-    var isCancelling: Bool { cancelling == true }
+    var isCanceling: Bool { canceling == true }
     var isApiParallel: Bool { processingStrategy == "api_parallel" }
 }
 

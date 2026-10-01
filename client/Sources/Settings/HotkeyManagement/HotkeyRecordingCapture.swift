@@ -10,7 +10,7 @@ final class HotkeyRecordingCapture {
 
     private var eventMonitor: Any?
     private var onCaptured: ((String) -> Void)?
-    private var onCancelled: (() -> Void)?
+    private var onCanceled: (() -> Void)?
     private var isCapturing = false
     private var lastModifierPress: (flag: NSEvent.ModifierFlags, timestamp: TimeInterval)?
     private var previousModifierFlags: NSEvent.ModifierFlags = []
@@ -19,11 +19,11 @@ final class HotkeyRecordingCapture {
 
     /// Begins capturing the next key combo from the Settings window. Calling
     /// this while already capturing for a different row is a caller error.
-    func startCapture(in _: NSView, onCaptured: @escaping (String) -> Void, onCancelled: @escaping () -> Void) {
+    func startCapture(in _: NSView, onCaptured: @escaping (String) -> Void, onCanceled: @escaping () -> Void) {
         guard !isCapturing else { return }
         isCapturing = true
         self.onCaptured = onCaptured
-        self.onCancelled = onCancelled
+        self.onCanceled = onCanceled
         lastModifierPress = nil
         previousModifierFlags = []
         HotkeyService.shared.suspendListeners()
@@ -36,7 +36,7 @@ final class HotkeyRecordingCapture {
     /// Cancels an in-progress capture without producing a binding.
     func cancelCapture() {
         guard isCapturing else { return }
-        let callback = onCancelled
+        let callback = onCanceled
         finishCapture()
         callback?()
     }
@@ -104,7 +104,7 @@ final class HotkeyRecordingCapture {
         }
         isCapturing = false
         onCaptured = nil
-        onCancelled = nil
+        onCanceled = nil
         lastModifierPress = nil
         previousModifierFlags = []
         HotkeyService.shared.resumeListeners()

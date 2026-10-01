@@ -20,7 +20,7 @@ from .records import row_to_todo_detail, row_to_todo_source, row_to_todo_summary
 DEFAULT_TODO_WORKSPACE_PAGE_LIMIT = 50
 MAX_TODO_WORKSPACE_PAGE_LIMIT = 200
 _TODO_STATUSES = frozenset({
-    "candidate", "open", "in_progress", "ready_for_review", "completed", "dismissed", "cancelled",
+    "candidate", "open", "in_progress", "ready_for_review", "completed", "dismissed", "canceled",
 })
 
 
@@ -779,7 +779,7 @@ _TODO_SORT_COLUMN_EXPR = {
         "CASE status "
         "WHEN 'candidate' THEN 0 WHEN 'open' THEN 1 WHEN 'in_progress' THEN 2 "
         "WHEN 'ready_for_review' THEN 3 WHEN 'completed' THEN 4 "
-        "WHEN 'dismissed' THEN 5 WHEN 'cancelled' THEN 6 ELSE 7 END"
+        "WHEN 'dismissed' THEN 5 WHEN 'canceled' THEN 6 ELSE 7 END"
     ),
 }
 
@@ -905,7 +905,7 @@ def _todo_workspace_sort_value(row: sqlite3.Row, sort_by: str) -> Any:
             "ready_for_review": 3,
             "completed": 4,
             "dismissed": 5,
-            "cancelled": 6,
+            "canceled": 6,
         }.get(row["status"], 7)
     return row[sort_by]
 

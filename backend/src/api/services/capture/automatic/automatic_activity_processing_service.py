@@ -379,7 +379,7 @@ class AutomaticActivityProcessingService:
                     await asyncio.sleep(300)  # Wait 5 minutes after errors
                     
         except asyncio.CancelledError:
-            logger.info("Scheduled processing loop cancelled")
+            logger.info("Scheduled processing loop canceled")
             raise
         except Exception as e:
             logger.error(f"Fatal error in scheduled processing loop: {e}", exc_info=True)
@@ -530,9 +530,9 @@ class AutomaticActivityProcessingService:
             total_ms = int((time.perf_counter() - run_started_at) * 1000)
             logger.info(
                 "activity_processing_run_completed run_id=%s outcome=%s processed=%s "
-                "succeeded=%s failed=%s cancelled=%s total_ms=%s average_item_ms=%s",
+                "succeeded=%s failed=%s canceled=%s total_ms=%s average_item_ms=%s",
                 run_id,
-                "cancelled" if self._processing_progress.cancel_requested else run_outcome,
+                "canceled" if self._processing_progress.cancel_requested else run_outcome,
                 progress.processed,
                 progress.succeeded,
                 progress.failed,

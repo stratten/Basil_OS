@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 import shutil
 import uuid
 from datetime import datetime
@@ -11,7 +12,7 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, HTTPException
 
 from api.services.meetings.meeting_recorder import MeetingMetadata, MeetingRecorder
-from api.services.meetings import meeting_search_indexer
+from api.services.meetings import meeting_recording_registry, meeting_search_indexer
 
 from .meeting_grouping import (
     clean_meeting_name as _clean_meeting_name,
@@ -23,6 +24,7 @@ from .models import MeetingInfo, MeetingMetadataUpdate, MeetingResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+_DISCARDABLE_MEETING_ID = re.compile(r"[A-Za-z0-9-]+")
 
 
 def _meeting_name_for_source(base_name: str, audio_source: str | None) -> str:
@@ -314,3 +316,13 @@ async def delete_meeting(meeting_id: str) -> Dict[str, str]:
     except Exception as e:
         logger.error(f"Error deleting meeting {meeting_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{meeting_id}/discard-recording")
+async def discard_meeting_recording(meeting_id: str) -> Dict[str, str]:
+    """Cancel a recording part: abandon its live recorder, delete its files, and refuse any reconnect for it."""
+    if not _DISCARDABLE_MEETING_ID.fullmatch(meeting_id):
+        raise HTTPException(status_code=400, detail="Invalid meeting id")
+    found = meeting_recording_registry.discard(meeting_id, MeetingRecorder.get_meeting_directory(meeting_id))
+    meeting_search_indexer.remove(meeting_id)
+    return {"status": "discarded" if found else "not_found", "meeting_id": meeting_id}

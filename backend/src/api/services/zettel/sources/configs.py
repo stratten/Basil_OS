@@ -17,7 +17,7 @@ from api.services.zettel.sources.table_source import TableSourceConfig, TableZet
 _OUTCOME_BY_STATUS = {
     "completed": "succeeded",
     "failed": "failed",
-    "cancelled": "cancelled",
+    "canceled": "canceled",
     "missed": "skipped",
     "skipped": "skipped",
 }

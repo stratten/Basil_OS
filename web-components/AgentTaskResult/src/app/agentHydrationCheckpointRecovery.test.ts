@@ -160,7 +160,7 @@ describe('hydrateAgentFromBackend checkpoint recovery', () => {
       orphaned_approval_ids: ['approval-orphaned'],
     });
     const recover = vi.spyOn(api, 'recoverOrphanedExecutionApprovals').mockResolvedValue({
-      cancelled_approval_ids: ['approval-orphaned'],
+      canceled_approval_ids: ['approval-orphaned'],
     });
 
     hydrateAgentFromBackend('orphaned-approval-task');

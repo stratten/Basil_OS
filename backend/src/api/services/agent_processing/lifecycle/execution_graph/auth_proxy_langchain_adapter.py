@@ -37,6 +37,7 @@ from pydantic import Field
 from api.core.models.models_registry import apply_request_parameter_omissions
 
 from .auth_proxy_stream import StreamAccumulator, consume_auth_proxy_stream
+from .model_errors import TransientModelError, is_transient_error_text
 
 logger = logging.getLogger(__name__)
 
@@ -348,6 +349,8 @@ class AuthProxyLangChainAdapter(BaseChatModel):
             raise ValueError("Payment required - please add a payment method")
         if status_code == 403:
             raise ValueError("Subscription inactive")
+        if status_code in (408, 429) or status_code >= 500:
+            raise TransientModelError(f"Auth service error ({status_code}): {body}")
         if status_code >= 400:
             raise ValueError(f"Auth service error ({status_code}): {body}")
 
@@ -518,7 +521,10 @@ class AuthProxyLangChainAdapter(BaseChatModel):
                 acc = await self._stream_route_request(client, payload, run_manager)
 
                 if acc.stream_error:
-                    raise ValueError(f"Auth service stream error: {acc.stream_error}")
+                    stream_error_message = f"Auth service stream error: {acc.stream_error}"
+                    if is_transient_error_text(str(acc.stream_error)):
+                        raise TransientModelError(stream_error_message)
+                    raise ValueError(stream_error_message)
 
                 result = acc.as_openai_response()
 
@@ -570,9 +576,12 @@ class AuthProxyLangChainAdapter(BaseChatModel):
                     generations=[ChatGeneration(message=ai_message)]
                 )
                 
-            except httpx.TimeoutException:
+            except httpx.TimeoutException as e:
                 logger.error("Auth service request timed out")
-                raise ValueError("Request timed out - please try again")
+                raise TransientModelError("Request timed out - please try again") from e
+            except httpx.TransportError as e:
+                logger.error(f"Auth service connection failed: {e}")
+                raise TransientModelError(f"Auth service connection failed: {e}") from e
             except Exception as e:
                 logger.error(f"AuthProxyLangChain error: {e}")
                 raise

@@ -122,8 +122,8 @@ async def enqueue_scheduled_agent_task(
       runner is in-memory only, so startup must re-arm it from DB
       state, but it should leave the audit trail alone.
     * Otherwise (no pending row, or the time has changed), any prior
-      ``scheduled`` run is marked ``cancelled`` ("Superseded by
-      reschedule"), the corresponding asyncio.Task is cancelled, and
+      ``scheduled`` run is marked ``canceled`` ("Superseded by
+      reschedule"), the corresponding asyncio.Task is canceled, and
       a fresh run row is created and timer-armed. This is what
       prevents duplicate firings when a scheduled agent task is genuinely
       rescheduled (edited to a new time, finalized into its next
@@ -131,7 +131,7 @@ async def enqueue_scheduled_agent_task(
 
     Without the idempotency check, every cold start (and every edit
     that didn't actually change the time) would write a phantom
-    ``cancelled - Superseded by reschedule`` row plus a new
+    ``canceled - Superseded by reschedule`` row plus a new
     ``scheduled`` row, polluting the user-visible run history with
     churn that doesn't reflect any real change.
     """

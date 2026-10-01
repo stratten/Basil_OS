@@ -33,6 +33,7 @@ from api.services.agent_processing.lifecycle.execution_graph.agent_executor_fact
 from api.services.agent_processing.lifecycle.execution_graph.llama_cpp_langchain_adapter import (
     create_langchain_llm_from_llama_cpp,
 )
+from api.services.agent_processing.lifecycle.execution_graph.model_errors import LLM_RETRY_EXCEPTION_TYPES
 from api.services.setup_assistant.agent_graph.setup_agent_progress import SetupAgentProgressCallback
 from api.services.setup_assistant.agent_graph.setup_agent_system_prompt import (
     build_setup_agent_system_prompt,
@@ -156,6 +157,7 @@ class SetupAgentRuntime:
             ]
         )
         llm_with_tools = langchain_model.bind_tools(tools).with_retry(
+            retry_if_exception_type=LLM_RETRY_EXCEPTION_TYPES,
             stop_after_attempt=3,
             wait_exponential_jitter=True,
         )

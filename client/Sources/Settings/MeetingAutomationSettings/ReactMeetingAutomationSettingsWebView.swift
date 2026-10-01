@@ -13,6 +13,7 @@ final class ReactMeetingAutomationSettingsWebView: NSObject {
     var onRequestUpdateAutoAnalyzeMode: ((String, String, Bool) -> Void)?
     var onRequestUpdateAutoAnalyzeCustomInstructions: ((String, String) -> Void)?
     var onRequestUpdateAutoAnalyzeTiming: ((String, String) -> Void)?
+    var onRequestUpdateLiveTranscriptionByDefault: ((String, Bool) -> Void)?
     var onMalformedIntent: ((String) -> Void)?
 
     private static let allowedTimings: Set<String> = ["after", "before"]
@@ -109,6 +110,12 @@ final class ReactMeetingAutomationSettingsWebView: NSObject {
                 return
             }
             onRequestUpdateAutoAnalyzeTiming?(requestId, timing)
+        case "requestUpdateLiveTranscriptionByDefault":
+            guard let requestId = body["requestId"] as? String, let enabled = body["enabled"] as? Bool else {
+                onMalformedIntent?("requestUpdateLiveTranscriptionByDefault")
+                return
+            }
+            onRequestUpdateLiveTranscriptionByDefault?(requestId, enabled)
         default:
             onMalformedIntent?(type)
         }

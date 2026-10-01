@@ -182,7 +182,7 @@ final class ModelDownloadWindowController: NSObject, NSWindowDelegate, Appearanc
         let readyStatuses: Set<String> = ["completed", "skipped_installed"]
         let readyCount = entries.filter { readyStatuses.contains($0.status) }.count
         let isComplete = !entries.isEmpty && readyCount == entries.count
-        let hasFailedEntry = entries.contains { $0.status == "failed" || $0.status == "user_cancelled" }
+        let hasFailedEntry = entries.contains { $0.status == "failed" || $0.status == "user_canceled" }
         let rows = entries.map { entry in
             return ModelDownloadPanelSnapshot.Row(
                 modelId: entry.modelId,

@@ -610,7 +610,7 @@ async def test_validation_provider_interaction_fixtures_publish_through_the_real
         str(interaction["id"])
     )
     assert refreshed is not None
-    assert refreshed["status"] in {"cancelled", "superseded"}
+    assert refreshed["status"] in {"canceled", "superseded"}
 
 
 @pytest.mark.asyncio

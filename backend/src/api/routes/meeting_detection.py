@@ -30,7 +30,7 @@ router = APIRouter(tags=["meeting-detection"])
 
 
 class ProbeResponseAck(BaseModel):
-    """Acknowledgement for a delivered meeting-detection probe response."""
+    """Acknowledgment for a delivered meeting-detection probe response."""
     status: str
     message: str
 

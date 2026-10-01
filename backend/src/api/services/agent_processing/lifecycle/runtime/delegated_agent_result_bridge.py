@@ -14,7 +14,7 @@ from api.core.knowledge.sqlite.sqlite_knowledge_service_component_services.agent
 )
 
 logger = logging.getLogger(__name__)
-_TERMINAL_STATUSES = frozenset({"completed", "failed", "cancelled"})
+_TERMINAL_STATUSES = frozenset({"completed", "failed", "canceled"})
 
 
 def _bounded_summary(event: AgentTaskEvent) -> str:
@@ -63,7 +63,7 @@ class DelegatedAgentResultBridge:
 
     async def _record_terminal_child(self, event: AgentTaskEvent) -> None:
         run = await self._runs.get_run_for_child(event.agent_task_id)
-        if run is None or run["status"] in {"settled", "failed", "cancelled"}:
+        if run is None or run["status"] in {"settled", "failed", "canceled"}:
             return
         status = str(event.new_status)
         try:
@@ -76,7 +76,7 @@ class DelegatedAgentResultBridge:
             )
         except DelegatedAgentConflictError:
             refreshed = await self._runs.get_run_for_child(event.agent_task_id)
-            if refreshed is None or refreshed["status"] not in {"settled", "failed", "cancelled"}:
+            if refreshed is None or refreshed["status"] not in {"settled", "failed", "canceled"}:
                 raise
         if self._routing is not None and hasattr(self._routing, "publish_delegated_provider_state"):
             await self._routing.publish_delegated_provider_state(
@@ -88,15 +88,15 @@ class DelegatedAgentResultBridge:
             )
 
     async def request_parent_cancellation(self, parent_agent_task_id: str) -> str | None:
-        cancelled = await self._controller.cancel_parent_runs(parent_agent_task_id=parent_agent_task_id)
-        return str(cancelled[0]["child_agent_task_id"]) if cancelled else None
+        canceled = await self._controller.cancel_parent_runs(parent_agent_task_id=parent_agent_task_id)
+        return str(canceled[0]["child_agent_task_id"]) if canceled else None
 
     async def reconcile_startup(self) -> int:
         """Truthfully mark ACP runs interrupted when their live session was lost."""
 
         count = 0
         for run in await self._runs.list_restart_reconciliation_candidates():
-            if run["executor_kind"] != "acp_provider" or run["status"] in {"cancelling", "interrupted"}:
+            if run["executor_kind"] != "acp_provider" or run["status"] in {"canceling", "interrupted"}:
                 continue
             interrupted = await self._runs.transition_run(
                 delegated_agent_run_id=str(run["id"]),

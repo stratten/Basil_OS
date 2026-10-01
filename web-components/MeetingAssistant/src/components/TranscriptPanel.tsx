@@ -15,6 +15,8 @@ interface TranscriptPanelProps {
     isPostProcessing?: boolean;
     activePostProcessingMeetingId?: string | null;
     displayedMeetingWorkOwnerId?: string | null;
+    isCapturePaused?: boolean;
+    isLiveTranscriptionEnabled?: boolean;
   };
 }
 
@@ -91,7 +93,11 @@ function TranscriptPanel({ transcript, ui }: TranscriptPanelProps) {
             {ui.transcriptionState === 'loadingModels'
               ? 'Loading transcription models…'
               : ui.isRecording
-                ? 'Listening for speech…'
+                ? ui.isCapturePaused
+                  ? 'Recording is paused.'
+                  : ui.isLiveTranscriptionEnabled === false
+                    ? 'Live transcription is off. The transcript will be generated when the meeting ends.'
+                    : 'Listening for speech…'
                 : isGeneratingTranscriptForThisMeeting
                   ? 'Generating a transcript from the recorded audio…'
                   : ui.hasRecordedAudio
@@ -188,6 +194,8 @@ export default memo(TranscriptPanel, (previous, next) => (
   && previous.ui.isPostProcessing === next.ui.isPostProcessing
   && previous.ui.activePostProcessingMeetingId === next.ui.activePostProcessingMeetingId
   && previous.ui.displayedMeetingWorkOwnerId === next.ui.displayedMeetingWorkOwnerId
+  && previous.ui.isCapturePaused === next.ui.isCapturePaused
+  && previous.ui.isLiveTranscriptionEnabled === next.ui.isLiveTranscriptionEnabled
 ));
 
 function HighlightedText({ text, query }: { text: string; query: string }) {

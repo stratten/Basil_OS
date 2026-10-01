@@ -299,7 +299,7 @@ class AgentTaskQueries:
             raise ValueError("conversation_id must not be empty")
         if limit < 1:
             raise ValueError("limit must be at least 1")
-        terminal_statuses = ("completed", "failed", "cancelled")
+        terminal_statuses = ("completed", "failed", "canceled")
         with self._get_connection() as conn:
             cursor = conn.execute(
                 """
@@ -598,7 +598,7 @@ class AgentTaskQueries:
                 rows = conn.execute(
                     f"SELECT {self._SELECT_COLUMNS} FROM agent_tasks "
                     "WHERE origin_type = ? AND origin_id = ? "
-                    "AND status NOT IN ('completed', 'failed', 'cancelled') "
+                    "AND status NOT IN ('completed', 'failed', 'canceled') "
                     "ORDER BY timestamp ASC, id ASC",
                     (origin_type, origin_id),
                 ).fetchall()
@@ -614,7 +614,7 @@ class AgentTaskQueries:
             rows = conn.execute(
                 f"SELECT {self._SELECT_COLUMNS} FROM agent_tasks "
                 "WHERE origin_type = ? "
-                "AND status NOT IN ('completed', 'failed', 'cancelled') "
+                "AND status NOT IN ('completed', 'failed', 'canceled') "
                 "ORDER BY timestamp ASC, id ASC",
                 (origin_type,),
             ).fetchall()

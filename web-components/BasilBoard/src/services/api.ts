@@ -258,6 +258,17 @@ export function getReasoningModels(): Promise<{
   return requestJson('/settings/api_models/reasoning');
 }
 
+export interface ConversationWidgetPreferences {
+  default_conversation_only?: boolean;
+}
+
+export function getConversationWidgetSettings(): Promise<{
+  status: string;
+  settings: ConversationWidgetPreferences;
+}> {
+  return requestJson('/settings/conversation-widget');
+}
+
 export interface ConversationPageResponse {
   conversations: ConversationListItem[];
   has_more: boolean;

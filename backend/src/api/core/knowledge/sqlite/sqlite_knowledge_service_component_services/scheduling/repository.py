@@ -478,7 +478,7 @@ class ScheduledAgentTaskRepository:
         per scheduled agent task" invariant: any time we re-enqueue a
         scheduled agent task (initial create, edit, toggle-active, recovery,
         finalize-into-next-occurrence) we first mark all existing
-        ``scheduled`` runs as ``cancelled`` so the in-process
+        ``scheduled`` runs as ``canceled`` so the in-process
         ``AsyncScheduledAgentTaskRunner`` finds the run row in a
         non-actionable state on its defensive status re-check inside
         ``execute_scheduled_run`` and skips execution. The runner's own
@@ -488,20 +488,20 @@ class ScheduledAgentTaskRepository:
         Deliberately scoped to ``status = 'scheduled'`` only:
 
         * ``running`` runs are mid-execution; we let them complete normally.
-          Cancelling them mid-flight would leave the voice_listener in an
+          Canceling them mid-flight would leave the voice_listener in an
           inconsistent state (partial agent execution, dangling
           agent_tasks rows) for no benefit.
         * Terminal statuses (``completed``, ``failed``, ``skipped``,
-          ``missed``, ``cancelled``) are already finalized and don't need
+          ``missed``, ``canceled``) are already finalized and don't need
           touching.
 
-        Returns the number of rows transitioned to ``cancelled``.
+        Returns the number of rows transitioned to ``canceled``.
         """
         with self._get_connection() as conn:
             cursor = conn.execute(
                 """
                 UPDATE scheduled_agent_task_runs
-                SET status = 'cancelled',
+                SET status = 'canceled',
                     completed_at = COALESCE(completed_at, ?),
                     error_message = COALESCE(error_message, 'Superseded by reschedule')
                 WHERE scheduled_agent_task_id = ?

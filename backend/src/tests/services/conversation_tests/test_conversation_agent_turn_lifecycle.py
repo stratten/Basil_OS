@@ -178,7 +178,7 @@ async def test_agent_task_completion_keeps_placeholder_content_empty(
     ("status", "expected_lifecycle", "expected_outcome", "expected_status_text"),
     [
         ("failed", "failed", "Agent task failed. Preparing a conversation response.", "Agent task failed. Preparing a conversation response."),
-        ("cancelled", "cancelled", "Agent task was cancelled. Preparing a conversation response.", "Agent task was cancelled. Preparing a conversation response."),
+        ("canceled", "canceled", "Agent task was canceled. Preparing a conversation response.", "Agent task was canceled. Preparing a conversation response."),
         ("capturing", "running", None, "Agent task is gathering context."),
         ("routing", "running", None, "Agent task is selecting an approach."),
         ("routed", "running", None, "Agent task is ready to begin."),
@@ -210,7 +210,7 @@ async def test_status_projection_maps_terminal_and_running_states(
     payload = lifecycle._broadcast_status.await_args.args[0]
     assert payload["agent_status"] == status
     assert payload["status_text"] == expected_status_text
-    if expected_lifecycle in {"failed", "cancelled"}:
+    if expected_lifecycle in {"failed", "canceled"}:
         assert payload["narration_state"] == "ready"
 
 

@@ -61,7 +61,7 @@ async def test_transition_run_allows_created_to_failed(tmp_path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_transition_run_allows_created_to_cancelled(tmp_path) -> None:
+async def test_transition_run_allows_created_to_canceled(tmp_path) -> None:
     workspace_root = tmp_path / "workspace"
     workspace_root.mkdir()
     service = SQLiteKnowledgeService(tmp_path / "provider_runs.db")
@@ -70,10 +70,10 @@ async def test_transition_run_allows_created_to_cancelled(tmp_path) -> None:
     updated = await service.provider_run_repository.transition_run(
         provider_run_id=str(run["id"]),
         expected_revision=int(run["revision"]),
-        next_status="cancelled",
+        next_status="canceled",
     )
 
-    assert updated["status"] == "cancelled"
+    assert updated["status"] == "canceled"
     assert updated["terminal_at"] is not None
 
 

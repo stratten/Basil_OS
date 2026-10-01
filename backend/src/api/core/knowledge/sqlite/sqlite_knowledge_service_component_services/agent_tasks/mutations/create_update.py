@@ -184,7 +184,7 @@ async def update_agent_task_status_if_active(
                 UPDATE agent_tasks
                 SET {', '.join(updates)}
                 WHERE id = ?
-                  AND status NOT IN ('completed', 'failed', 'cancelled')
+                  AND status NOT IN ('completed', 'failed', 'canceled')
             """,
             params,
         )
@@ -209,7 +209,7 @@ async def cancel_agent_tasks_if_active(
     agent_task_ids: list[str],
     result_data: Dict[str, Any],
 ) -> list[str]:
-    """Atomically mark every named nonterminal Agent Task as cancelled."""
+    """Atomically mark every named nonterminal Agent Task as canceled."""
     normalized_ids = list(dict.fromkeys(agent_task_id for agent_task_id in agent_task_ids if agent_task_id))
     if not normalized_ids:
         return []
@@ -221,7 +221,7 @@ async def cancel_agent_tasks_if_active(
                 SELECT id
                 FROM agent_tasks
                 WHERE id IN ({placeholders})
-                  AND status NOT IN ('completed', 'failed', 'cancelled')
+                  AND status NOT IN ('completed', 'failed', 'canceled')
             """,
             normalized_ids,
         ).fetchall()
@@ -234,11 +234,11 @@ async def cancel_agent_tasks_if_active(
         conn.execute(
             f"""
                 UPDATE agent_tasks
-                SET status = 'cancelled',
+                SET status = 'canceled',
                     result_data = ?,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id IN ({changed_placeholders})
-                  AND status NOT IN ('completed', 'failed', 'cancelled')
+                  AND status NOT IN ('completed', 'failed', 'canceled')
             """,
             [serialized_result, *changed_ids],
         )
@@ -249,7 +249,7 @@ async def cancel_agent_tasks_if_active(
         }
         for root_task_id in root_task_ids:
             recompute_root_summary(conn, root_task_id)
-        logger.info("Atomically cancelled %s Agent Tasks", len(changed_ids))
+        logger.info("Atomically canceled %s Agent Tasks", len(changed_ids))
         return changed_ids
 
     return await run_write_transaction_async(

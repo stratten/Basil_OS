@@ -346,21 +346,8 @@ final class WebSocketService_AgentTask {
         let incomingEventType = (json["event_type"] as? String) ?? (json["type"] as? String) ?? "unknown"
         DevLogger.shared.info("[WS VOICE] received event_type=\(incomingEventType)", context: "websocket")
         #endif
-        // Handle messages with "type" field (legacy support)
-        if let type = json["type"] as? String, type == "agentTask_started" {
-            handleAgentTaskStarted(json: json)
-            return
-        }
-        
-        // Handle messages with "event_type" field
         if let eventType = json["event_type"] as? String {
             switch eventType {
-            case "agentTask_capture_started":
-                handleAgentTaskStarted(json: json)
-            case "agentTask_progress":
-                handleAgentTaskProgress(json: json)
-            case "agentTask_result":
-                handleAgentTaskResult(json: json)
             case "workflow_plan_ready":
                 handleWorkflowPlanReady(json: json)
             case "step_progress_update":
@@ -383,16 +370,6 @@ final class WebSocketService_AgentTask {
                 handleExecutionApprovalRequest(json: json)
             case "capture_request":
                 handleCaptureRequest(json)
-            case "agentTask_word_detected":
-                handleAgentTaskWordDetected(json: json)
-            case "agentTask_silence_progress":
-                handleAgentTaskSilenceProgress(json: json)
-            case "agentTask_capture_complete":
-                handleAgentTaskCaptureComplete(json: json)
-            case "agentTask_streaming":
-                handleAgentTaskStreaming(json: json)
-            case "agentTask_streaming_complete":
-                handleAgentTaskStreamingComplete(json: json)
             default:
                 #if DEBUG
                 DevLogger.shared.warning("Unknown agentTask event_type: \(eventType)", context: "websocket")

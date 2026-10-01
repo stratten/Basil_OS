@@ -189,15 +189,15 @@ async def test_a_run_waiting_on_provider_input_supersedes_it_and_interrupts_the_
 
 
 @pytest.mark.asyncio
-async def test_a_cancelling_run_finalizes_to_interrupted(tmp_path) -> None:
+async def test_a_canceling_run_finalizes_to_interrupted(tmp_path) -> None:
     service = SQLiteKnowledgeService(tmp_path / "db.sqlite3")
     profile, grant = await _seed_profile_and_grant(service)
-    run = await _seed_run(service, agent_task_id="task-cancelling", profile=profile, grant=grant)
+    run = await _seed_run(service, agent_task_id="task-canceling", profile=profile, grant=grant)
     running = await _advance_run_to(service, run, "running")
-    cancelling = await service.provider_run_repository.transition_run(
+    canceling = await service.provider_run_repository.transition_run(
         provider_run_id=str(running["id"]),
         expected_revision=int(running["revision"]),
-        next_status="cancelling",
+        next_status="canceling",
     )
 
     finalized = await finalize_interrupted_provider_runs(
@@ -206,7 +206,7 @@ async def test_a_cancelling_run_finalizes_to_interrupted(tmp_path) -> None:
     )
 
     assert finalized == 1
-    refreshed = await service.provider_run_repository.get_run(str(cancelling["id"]))
+    refreshed = await service.provider_run_repository.get_run(str(canceling["id"]))
     assert refreshed["status"] == "interrupted"
 
 

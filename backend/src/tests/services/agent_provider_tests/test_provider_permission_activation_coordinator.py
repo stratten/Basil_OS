@@ -19,7 +19,7 @@ from api.services.agent_processing.lifecycle.submission.agent_task_processing.pr
 class _FakePermissionRepository:
     def __init__(self) -> None:
         self.created: list[dict] = []
-        self.cancelled: list[str] = []
+        self.canceled: list[str] = []
         self._next_id = 0
 
     async def create_permission_interaction(self, **kwargs):
@@ -42,11 +42,11 @@ class _FakePermissionRepository:
 
     async def cancel_permission_interaction(self, **kwargs):
         interaction_id = kwargs["interaction_id"]
-        self.cancelled.append(interaction_id)
+        self.canceled.append(interaction_id)
         for record in self.created:
             if record["id"] == interaction_id:
-                record["status"] = "cancelled"
-        return {"id": interaction_id, "status": "cancelled"}
+                record["status"] = "canceled"
+        return {"id": interaction_id, "status": "canceled"}
 
     async def supersede_pending_for_run(self, provider_run_id: str) -> int:
         return 1
@@ -169,7 +169,7 @@ async def test_handle_request_permission_returns_allow_when_user_selects_allow()
 
     assert result == {"outcome": {"outcome": "selected", "optionId": "allow-once"}}
     assert len(repository.created) == 1
-    assert repository.cancelled == []
+    assert repository.canceled == []
     assert routing.requests[0]["subject"] == {
         "type": "command",
         "command": "rm -rf /tmp/scratch",
@@ -200,7 +200,7 @@ async def test_handle_request_permission_cancels_pending_row_when_resolution_is_
 
     assert result == {"outcome": {"outcome": "selected", "optionId": "reject-once"}}
     assert len(repository.created) == 1
-    assert repository.cancelled == ["permission-1"]
+    assert repository.canceled == ["permission-1"]
     assert routing.resolutions == [{
         "agent_task_id": "task-1",
         "root_task_id": "task-1",
@@ -220,7 +220,7 @@ async def test_handle_request_permission_falls_back_when_publish_returns_false()
 
     assert result == {"outcome": {"outcome": "selected", "optionId": "reject-once"}}
     assert len(repository.created) == 1
-    assert repository.cancelled == ["permission-1"]
+    assert repository.canceled == ["permission-1"]
 
 
 @pytest.mark.asyncio

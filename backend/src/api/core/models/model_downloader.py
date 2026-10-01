@@ -284,9 +284,9 @@ class ModelDownloader:
             if isinstance(e, asyncio.CancelledError):
                 api_logger.error(f"[CANCEL_DEBUG] Main exception handler caught asyncio.CancelledError for {model_type}-{variant}: {e}")
                 # Ensure in-memory status is also updated here if not already.
-                self.progress_tracker._current_operations[model_id] = "user_cancelled"
-                await self._update_progress(model_type, variant, self.progress_tracker._progress.get(model_id, 0.0), status="user_cancelled", 
-                                           metadata={"error": str(e), "message": "Download cancelled (main handler)."})
+                self.progress_tracker._current_operations[model_id] = "user_canceled"
+                await self._update_progress(model_type, variant, self.progress_tracker._progress.get(model_id, 0.0), status="user_canceled",
+                                           metadata={"error": str(e), "message": "Download canceled (main handler)."})
             else:
                 api_logger.error(f"[DOWNLOAD_ERROR] General error downloading model {model_type}-{variant}: {type(e).__name__} - {e}", exc_info=True)
                 await self._update_progress(model_type, variant, 0.0, status="error", 
@@ -303,7 +303,7 @@ class ModelDownloader:
         return await self.direct_file_downloader.verify_checksum(file_path, expected_sha256)
 
     def remove_partial_model(self, model_type: str, variant: str) -> bool:
-        """Remove incomplete or complete artifacts for one cancelled download."""
+        """Remove incomplete or complete artifacts for one canceled download."""
         return self.artifacts.remove_partial_artifacts(model_type, variant)
 
     def remove_model(self, model_type: str, variant: str) -> bool:

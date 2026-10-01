@@ -37,6 +37,21 @@ _MODEL_EXECUTION_LOCKS: Dict[str, Any] = {}
 _MODEL_EXECUTION_LOCKS_GUARD = threading.Lock()
 
 
+class LlamaCppTokenizerWrapper:
+    """Exposes llama.cpp tokenization through the encode/decode interface base_reasoning expects."""
+
+    exact_token_counts = True
+
+    def __init__(self, llm: Any) -> None:
+        self.llm = llm
+
+    def encode(self, text: Any) -> List[int]:
+        return self.llm.tokenize(text.encode() if isinstance(text, str) else text)
+
+    def decode(self, tokens: Any) -> str:
+        return self.llm.detokenize(tokens).decode()
+
+
 def _get_model_execution_lock(model_path: Path) -> Any:
     """Return the shared native-execution lock for one canonical GGUF path."""
     cache_key = str(model_path.expanduser().resolve())
@@ -389,6 +404,11 @@ class LlamaCppModel(BaseReasoningModel):
         if cached_model is not None:
             logger.info(f"Using cached Llama.cpp model for {self.model_path}")
             self.llm = cached_model
+            self.tokenizer = LlamaCppTokenizerWrapper(cached_model)
+            native_context = getattr(cached_model, "n_ctx", None)
+            if callable(native_context):
+                self.n_ctx = native_context()
+                self.max_context_length = self.n_ctx
             self.state = ModelState.READY
             return
 
@@ -468,21 +488,6 @@ class LlamaCppModel(BaseReasoningModel):
             self.max_context_length = context_window
             
             logger.info(f"Successfully loaded Llama.cpp model with {context_window} token context")
-            
-            # Create a wrapper tokenizer object that base_reasoning can use
-            # llama.cpp doesn't expose a standard tokenizer object, so we create one
-            class LlamaCppTokenizerWrapper:
-                """Wrapper to make llama.cpp tokenizer work like HuggingFace tokenizer."""
-                def __init__(self, llm):
-                    self.llm = llm
-                
-                def encode(self, text):
-                    """Encode text to tokens."""
-                    return self.llm.tokenize(text.encode() if isinstance(text, str) else text)
-                
-                def decode(self, tokens):
-                    """Decode tokens to text."""
-                    return self.llm.detokenize(tokens).decode()
             
             self.tokenizer = LlamaCppTokenizerWrapper(self.llm)
             logger.info("Created llama.cpp tokenizer wrapper")

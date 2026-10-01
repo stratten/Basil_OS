@@ -483,3 +483,45 @@ async def test_local_preview_feedback_rejects_a_basil_preview_file_url_outside_t
 
     assert excinfo.value.status_code == 422
     assert excinfo.value.detail == "Preview feedback URL is not a permitted local preview URL."
+
+
+@pytest.mark.asyncio
+async def test_approval_policy_override_requires_the_host_credential():
+    service = _FakeAgentTaskService()
+    payload = AgentTaskRequest(
+        agent_task="Create a report from my recent activity",
+        agent_task_id="agent-task-123",
+        approval_policy_override={"approval_mode": "always_approve"},
+    )
+
+    with pytest.raises(HTTPException) as excinfo:
+        await process_agent_task(
+            payload=payload,
+            service=service,
+            knowledge_service=_FakeKnowledgeServiceForRouting(),
+            credential_type="webview",
+        )
+
+    assert excinfo.value.status_code == 403
+    assert excinfo.value.detail == "approval_policy_override requires the host credential."
+    assert service.direct_calls == []
+
+
+@pytest.mark.asyncio
+async def test_host_credential_forwards_the_approval_policy_override():
+    service = _FakeAgentTaskService()
+    payload = AgentTaskRequest(
+        agent_task="Create a report from my recent activity",
+        agent_task_id="agent-task-123",
+        approval_policy_override={"approval_mode": "always_approve"},
+    )
+
+    await process_agent_task(
+        payload=payload,
+        service=service,
+        knowledge_service=_FakeKnowledgeServiceForRouting(),
+        credential_type="host",
+    )
+
+    assert len(service.direct_calls) == 1
+    assert service.direct_calls[0]["approval_policy_override"] == {"approval_mode": "always_approve"}

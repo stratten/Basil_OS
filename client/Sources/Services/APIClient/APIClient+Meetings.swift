@@ -160,6 +160,12 @@ extension APIClient {
         DevLogger.shared.info("✅ Successfully deleted meeting", context: "APIClient")
         #endif
     }
+
+    /// Discard a canceled recording part: the backend abandons any live recorder for it, deletes its files, and refuses reconnects. Returns "discarded" or "not_found".
+    func discardMeetingRecording(id meetingId: String) async throws -> String {
+        let response = try await post("/meetings/\(meetingId)/discard-recording")
+        return response.status
+    }
     
     /// Update editable metadata for a saved meeting.
     func updateMeetingMetadata(

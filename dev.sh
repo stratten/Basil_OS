@@ -266,7 +266,7 @@ if [ -n "$POETRY_PATH" ]; then
 fi
 
 dev_log backend "Spawning initial uvicorn (port=$PORT, reason=initial_start)"
-PYTHONUNBUFFERED=1 QT_MAC_DISABLE_MENUBAR=1 NSApplicationActivationPolicy=1 PYTHONPATH="$(pwd)/src:$(pwd)" \
+PYTHONUNBUFFERED=1 QT_MAC_DISABLE_MENUBAR=1 NSApplicationActivationPolicy=1 PYTHONPATH="$(pwd)/src:$(pwd)" BASIL_ROTATE_BACKEND_CREDENTIALS=1 \
   PATH="$CLEAN_PATH" poetry run python -m uvicorn api.main:app --host 127.0.0.1 --port $PORT --log-level debug --use-colors 2>&1 | tee -a "$LOG_FILE" &
 
 INITIAL_BACKEND_PID=$!

@@ -19,7 +19,7 @@ interface Props {
 // Each row that has been linked to an executed agentTask (via the
 // scheduled-run executor) becomes navigable: clicking or hitting
 // Enter/Space routes to ``onViewAgentTask(agentTaskId)``. We deliberately
-// don't gate navigability on the run's status — a cancelled or
+// don't gate navigability on the run's status — a canceled or
 // failed run that reached the executor far enough to mint a
 // agent_task_id is still worth opening, since the user usually wants to
 // see the partial output / error trace in the result widget.

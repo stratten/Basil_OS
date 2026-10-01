@@ -14,7 +14,7 @@ import {
   applyTokenToRequest,
   bindAgentTaskToRequest,
   clearRequest,
-  markRequestCancelling,
+  markRequestCanceling,
   pendingRequestForConversation,
   reconcileConnectionLoss,
   registerSubmission,
@@ -61,7 +61,7 @@ function reduceConversationEvent(
     if (
       owningRequestId
       && isTerminalConversationAgentStatusLifecycle(event.lifecycle)
-      && ['completed', 'failed', 'cancelled'].includes(event.narration_state ?? '')
+      && ['completed', 'failed', 'canceled'].includes(event.narration_state ?? '')
     ) {
       nextStore = clearRequest(nextStore, owningRequestId);
       refresh();
@@ -157,7 +157,7 @@ function reduceConversationEvent(
     return { store: nextStore, effects };
   }
 
-  if (event.event_type === 'conversation_cancelled') {
+  if (event.event_type === 'conversation_canceled') {
     if (requestId && owningThreadKey) {
       const nextStore = clearRequest(store, requestId);
       refresh();
@@ -184,7 +184,7 @@ function reduceConversationEvent(
     }));
     const request = nextStore.requestsById[requestId];
     if (request) {
-      nextStore = { ...nextStore, requestsById: { ...nextStore.requestsById, [requestId]: { ...request, cancelling: false } } };
+      nextStore = { ...nextStore, requestsById: { ...nextStore.requestsById, [requestId]: { ...request, canceling: false } } };
     }
     return { store: nextStore, effects };
   }
@@ -271,10 +271,10 @@ export function useConversationWebSocket({
     const requestId = thread?.activeRequestId;
     if (!requestId) return false;
     const request = storeRef.current.requestsById[requestId];
-    if (request?.cancelling) return false;
+    if (request?.canceling) return false;
     const sent = basilBoardWebSocket.cancelConversationResponse(requestId, request?.conversationId ?? threadKey);
     if (!sent) return false;
-    const nextStore = markRequestCancelling(storeRef.current, requestId);
+    const nextStore = markRequestCanceling(storeRef.current, requestId);
     storeRef.current = nextStore;
     setStore(nextStore);
     return true;

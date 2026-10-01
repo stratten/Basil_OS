@@ -21,7 +21,7 @@ class ProviderTargetAuthorizationConflictError(ProviderTargetAuthorizationPersis
 
 
 AUTHORIZATION_STATUSES = frozenset(
-    {"authorized", "needs_user", "rejected", "clarification_received", "cancelled"}
+    {"authorized", "needs_user", "rejected", "clarification_received", "canceled"}
 )
 
 

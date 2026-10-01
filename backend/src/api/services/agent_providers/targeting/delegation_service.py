@@ -142,7 +142,7 @@ class ProviderTargetDelegationService:
         if existing is not None:
             run_id = existing.get("delegated_agent_run_id")
             run = await self._delegated_agent_runs.get_run(str(run_id)) if run_id else None
-            if run is not None and run["status"] not in {"settled", "failed", "cancelled"}:
+            if run is not None and run["status"] not in {"settled", "failed", "canceled"}:
                 raise ProviderDelegationWaitRequest(
                     delegation_id=str(existing["id"]),
                     child_agent_task_id=str(existing["child_agent_task_id"]),
@@ -268,7 +268,7 @@ class ProviderTargetDelegationService:
             raise
         except Exception as exc:
             current = await self._delegated_agent_runs.get_run_for_child(child_id)
-            if current is not None and current["status"] not in {"settled", "failed", "cancelled"}:
+            if current is not None and current["status"] not in {"settled", "failed", "canceled"}:
                 await self._delegated_agent_runs.record_outcome(
                     delegated_agent_run_id=str(current["id"]),
                     expected_revision=int(current["revision"]),
@@ -303,7 +303,7 @@ class ProviderTargetDelegationService:
     async def _record_launch_failure(self, *, run: Mapping[str, object], summary: str) -> None:
         if self._delegated_agent_runs is None:
             return
-        if run["status"] in {"settled", "failed", "cancelled"}:
+        if run["status"] in {"settled", "failed", "canceled"}:
             return
         await self._delegated_agent_runs.record_outcome(
             delegated_agent_run_id=str(run["id"]),

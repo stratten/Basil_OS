@@ -120,6 +120,7 @@ extension ReactConnectionsSettingsWebView: ReactConnectionsSettingsBridgeOutput 
             "lastConnectionStatusMessage": connection.lastConnectionStatusMessage as Any,
             "serverName": connection.serverName as Any,
             "serverInstructions": connection.serverInstructions as Any,
+            "authKind": connection.authKind ?? "manual_token",
             "tools": connection.tools.map { tool -> [String: Any] in
                 [
                     "name": tool.name,

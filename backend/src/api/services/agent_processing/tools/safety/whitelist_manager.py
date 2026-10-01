@@ -31,9 +31,13 @@ class WhitelistManager:
         command: str,
         pattern_type: str = 'exact',
         description: str = '',
-        risk_level: str = 'low'
+        risk_level: str = 'low',
+        record_initial_use: bool = False
     ) -> CommandPattern:
-        """Add a command to the whitelist."""
+        """Add a command to the whitelist.
+
+        ``record_initial_use`` counts the approved execution that created the pattern; manual additions leave it unset.
+        """
         try:
             pattern_to_save = self.generalizer.generalize_command(command)
 
@@ -54,13 +58,16 @@ class WhitelistManager:
                     logger.info(f"Pattern '{pattern_to_save}' already exists in whitelist, skipping duplicate")
                     return existing_pattern
 
+            added_at = datetime.now()
             new_pattern = CommandPattern(
                 id=str(uuid.uuid4()),
                 pattern=pattern_to_save,
                 pattern_type='prefix',
                 description=description or f"Generalized from: {command[:100]}...",
-                added_date=datetime.now(),
-                risk_level=risk_level
+                added_date=added_at,
+                risk_level=risk_level,
+                use_count=1 if record_initial_use else 0,
+                last_used=added_at if record_initial_use else None,
             )
 
             preferences.tool_execution.whitelisted_commands.append(new_pattern)
@@ -139,10 +146,11 @@ class WhitelistManager:
                 if pattern.id == pattern_id:
                     pattern.use_count += 1
                     pattern.last_used = datetime.now()
-                    break
+                    save_preferences(preferences)
+                    logger.debug(f"Updated usage stats for pattern: {pattern_id}")
+                    return
 
-            save_preferences(preferences)
-            logger.debug(f"Updated usage stats for pattern: {pattern_id}")
+            logger.warning(f"Cannot record usage; pattern not found in whitelist: {pattern_id}")
 
         except Exception as e:
             logger.error(f"Error updating pattern usage: {e}", exc_info=True)

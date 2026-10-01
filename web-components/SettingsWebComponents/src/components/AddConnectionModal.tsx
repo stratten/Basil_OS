@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  requestCancelGitHubDeviceFlow,
-  requestOpenExternalUrl,
   requestRegisterManualToken,
   requestStartGitHubDeviceFlow,
   requestStartOAuth,
   requestStartSlackOAuth,
 } from '../services/connectionsBridge'
 import type { ConnectionsSettingsFields, MCPStarterServer } from '../types'
+import { ConnectionSignInProgress } from './ConnectionSignInProgress'
 
 interface AddConnectionModalProps {
   fields: ConnectionsSettingsFields
@@ -118,51 +117,7 @@ export function AddConnectionModal({ fields, pendingId, onTrackRequest, onDismis
         />
       </label>
 
-      {fields.githubDeviceFlow && (
-        <div className="connections-device-flow" role="status">
-          <p className="connections-device-flow-title">Authorize GitHub</p>
-          <p className="connections-device-flow-hint">Enter this code at GitHub. Basil will continue automatically after approval.</p>
-          <div className="connections-device-flow-code-row">
-            <span className="connections-device-flow-code">{fields.githubDeviceFlow.userCode}</span>
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => navigator.clipboard.writeText(fields.githubDeviceFlow!.userCode)}
-            >
-              Copy Code
-            </button>
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => onTrackRequest(requestOpenExternalUrl(fields.githubDeviceFlow!.verificationUri))}
-            >
-              Open GitHub
-            </button>
-            {fields.isPollingGitHubDeviceFlow && (
-              <button
-                type="button"
-                className="connections-device-flow-cancel"
-                onClick={() => onTrackRequest(requestCancelGitHubDeviceFlow())}
-              >
-                Cancel
-              </button>
-            )}
-          </div>
-          {fields.isPollingGitHubDeviceFlow && (
-            <p className="connections-device-flow-waiting">Waiting for authorization...</p>
-          )}
-        </div>
-      )}
-
-      {!fields.githubDeviceFlow && fields.pendingFlowFriendlyName && (
-        <div className="connections-device-flow" role="status">
-          <p className="connections-device-flow-title">Waiting for {fields.pendingFlowFriendlyName}</p>
-          <p className="connections-device-flow-hint">
-            {fields.statusMessage ?? `Complete sign-in in your browser to finish adding ${fields.pendingFlowFriendlyName}.`}
-          </p>
-          <button type="button" className="secondary-button" onClick={onDismiss}>Continue in Background</button>
-        </div>
-      )}
+      <ConnectionSignInProgress fields={fields} onTrackRequest={onTrackRequest} onContinueInBackground={onDismiss} />
 
       <h4 className="connections-add-modal-section-title">Starter Servers</h4>
 

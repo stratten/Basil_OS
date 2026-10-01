@@ -35,14 +35,14 @@ type AgentTaskOriginNavigationHandler = (payload: AgentTaskOriginNavigationPaylo
 
 interface WorkspaceDirectoryPickedPayload {
   requestId: string;
-  status: 'selected' | 'cancelled' | 'error';
+  status: 'selected' | 'canceled' | 'error';
   path?: string;
   message?: string;
 }
 
 export type WorkspaceDirectoryPickResult =
   | { status: 'selected'; path: string }
-  | { status: 'cancelled' }
+  | { status: 'canceled' }
   | { status: 'error'; message: string };
 type BoardAgentTasksAvailabilityHandler = (payload: BoardAgentTasksAvailabilityPayload) => void;
 type BoardConversationAvailabilityHandler = (payload: BoardConversationAvailabilityPayload) => void;
@@ -79,6 +79,7 @@ declare global {
       onWidgetLaunchFailed?: WidgetFailedHandler;
       onFilesPicked?: (payload: { paths: string[] }) => void;
       onConversationFilesPicked?: (payload: { paths: string[] }) => void;
+      onFocusConversationComposer?: () => void;
       onTodoWorkspaceFilesPicked?: (payload: { paths: string[] }) => void;
       onTodoReferenceFilesPicked?: (payload: { paths: string[] }) => void;
       onWorkspaceDirectoryPicked?: (payload: WorkspaceDirectoryPickedPayload) => void;
@@ -122,6 +123,8 @@ let conversationAttachmentErrorHandler: ConversationAttachmentErrorHandler | nul
 let statusIconHandler: StatusIconHandler | null = null;
 let filesPickedHandler: FilesPickedHandler | null = null;
 let conversationFilesPickedHandler: ConversationFilesPickedHandler | null = null;
+let conversationComposerFocusHandler: (() => void) | null = null;
+let pendingConversationComposerFocus = false;
 let todoWorkspaceFilesPickedHandler: TodoWorkspaceFilesPickedHandler | null = null;
 let todoReferenceFilesPickedHandler: TodoReferenceFilesPickedHandler | null = null;
 let detachedTabsChangedHandler: DetachedTabsChangedHandler | null = null;
@@ -151,8 +154,8 @@ function handleWorkspaceDirectoryPicked(payload: WorkspaceDirectoryPickedPayload
   clearTimeout(pending.timeoutId);
   pendingWorkspaceDirectoryPickRequests.delete(payload.requestId);
 
-  if (payload.status === 'cancelled') {
-    pending.resolve({ status: 'cancelled' });
+  if (payload.status === 'canceled') {
+    pending.resolve({ status: 'canceled' });
     return;
   }
   if (payload.status === 'selected' && typeof payload.path === 'string' && payload.path.trim().length > 0) {
@@ -403,6 +406,32 @@ export function enqueueConversationFilesPicked(payload: { paths: string[] }): vo
     return;
   }
   pendingConversationFilesPicked.push(paths);
+}
+
+export function enqueueConversationComposerFocus(): void {
+  if (conversationComposerFocusHandler) {
+    conversationComposerFocusHandler();
+    return;
+  }
+  pendingConversationComposerFocus = true;
+}
+
+export function registerConversationComposerFocusHandler(handler: () => void): () => void {
+  conversationComposerFocusHandler = handler;
+  window.basilBoardBridge = {
+    ...window.basilBoardBridge,
+    onFocusConversationComposer: () => enqueueConversationComposerFocus(),
+  };
+  if (pendingConversationComposerFocus) {
+    pendingConversationComposerFocus = false;
+    handler();
+  }
+
+  return () => {
+    if (conversationComposerFocusHandler === handler) {
+      conversationComposerFocusHandler = null;
+    }
+  };
 }
 
 export function registerTodoWorkspaceFilesPickedHandler(handler: (paths: string[]) => void): () => void {
@@ -790,6 +819,7 @@ export function registerBridgeHandlers(handlers: {
     onStatusIconChanged: (payload) => enqueueStatusIconChanged(payload),
     onFilesPicked: (payload) => enqueueHomeFilesPicked(payload),
     onConversationFilesPicked: (payload) => enqueueConversationFilesPicked(payload),
+    onFocusConversationComposer: () => enqueueConversationComposerFocus(),
     onTodoWorkspaceFilesPicked: (payload) => enqueueTodoWorkspaceFilesPicked(payload),
     onTodoReferenceFilesPicked: (payload) => enqueueTodoReferenceFilesPicked(payload),
     onDetachedBoardTabsChanged: (payload) => enqueueDetachedTabsChanged(payload),

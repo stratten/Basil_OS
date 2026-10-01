@@ -48,7 +48,7 @@ class _ApprovalRepository:
         record = self.records[approval_id]
         assert record["status"] == "pending"
         assert record["revision"] == expected_revision
-        record["status"] = "cancelled"
+        record["status"] = "canceled"
         record["revision"] += 1
         return dict(record)
 
@@ -111,8 +111,8 @@ async def test_recovery_cancels_only_named_orphaned_approvals(route_dependencies
         RecoverExecutionApprovalsRequest(approval_ids=["orphaned-approval"]),
     )
 
-    assert response.cancelled_approval_ids == ["orphaned-approval"]
-    assert repository.records["orphaned-approval"]["status"] == "cancelled"
+    assert response.canceled_approval_ids == ["orphaned-approval"]
+    assert repository.records["orphaned-approval"]["status"] == "canceled"
     assert repository.records["live-approval"]["status"] == "pending"
     clear_attention.assert_awaited_once_with("task-1", "orphaned-approval")
     task_service.update_agent_task_status.assert_not_awaited()
@@ -145,7 +145,7 @@ async def test_recovery_marks_task_retryable_after_retiring_the_last_orphan(rout
         status="failed",
         result_data={
             "approval_recovery": {
-                "cancelled_approval_ids": ["orphaned-approval"],
+                "canceled_approval_ids": ["orphaned-approval"],
                 "reason": "backend_interrupted_approval_wait",
             }
         },

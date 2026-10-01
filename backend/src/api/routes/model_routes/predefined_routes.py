@@ -424,7 +424,7 @@ async def cancel_model_download(
       3. `task.cancel()` covers the case where no tqdm tick fires before
          cancellation lands (tiny window, tiny files).
       4. The DownloadManager `_run` finally block flips status to
-         `user_cancelled`, which Swift's progress poll picks up.
+         `user_canceled`, which Swift's progress poll picks up.
 
     Partial-file cleanup on disk is best-effort and runs after cancellation
     is requested. The HF cache keeps any fully-fetched blobs so a subsequent
@@ -438,16 +438,16 @@ async def cancel_model_download(
     manager = _get_download_manager(http_request)
 
     try:
-        cancelled = await manager.cancel(model_id)
-        if not cancelled:
+        canceled = await manager.cancel(model_id)
+        if not canceled:
             api_logger.warning(f"No active download found for {model_id}")
             return {"status": "not_found", "message": "No active download found"}
 
         if not model_service.model_downloader.remove_partial_model(model_type, variant):
             api_logger.warning("Partial cleanup reported failure for %s", model_id)
 
-        api_logger.info(f"Successfully cancelled download for {model_id}")
-        return {"status": "success", "message": "Download cancelled"}
+        api_logger.info(f"Successfully canceled download for {model_id}")
+        return {"status": "success", "message": "Download canceled"}
     except Exception as e:
-        api_logger.error(f"Error cancelling download: {e}")
+        api_logger.error(f"Error canceling download: {e}")
         raise HTTPException(status_code=500, detail=str(e))

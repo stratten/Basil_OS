@@ -68,13 +68,15 @@ def stub_executor(monkeypatch):
     canned: list[dict] = []
     tool_surfaces: list[list[str]] = []
 
-    async def fake_execute(agent_executor, user_input, callbacks, cancel_event):
+    async def fake_execute(agent_executor, user_input, callbacks, cancel_event, **_budget_kwargs):
+        calls.setdefault("budget_kwargs", []).append(dict(_budget_kwargs))
         calls["count"] += 1
         calls["inputs"].append(user_input)
         index = min(calls["count"] - 1, len(canned) - 1)
         return canned[index], user_input
 
     def fake_create_agent_executor(*args, **kwargs):
+        calls.setdefault("executor_kwargs", []).append(dict(kwargs))
         tools = args[1] if len(args) > 1 else (kwargs.get("tools") or [])
         tool_surfaces.append([str(getattr(item, "name", "") or "") for item in tools])
         return object()
@@ -248,5 +250,86 @@ async def test_delegated_supervision_binds_delegated_agent_without_family_load(s
     assert result.loaded_families == ["delegation"]
     assert "delegated_agent" in stub_executor.tool_surfaces[0]
     assert "provider_catalog" not in stub_executor.tool_surfaces[0]
+
+
+@pytest.mark.asyncio
+async def test_staged_pass_uses_pause_aware_budget_instead_of_native_cap(stub_executor):
+    stub_executor.canned.append({"intermediate_steps": [], "output": "done"})
+
+    await run_staged_tool_loading(_make_request())
+
+    executor_kwargs = stub_executor.calls["executor_kwargs"][0]
+    assert executor_kwargs["enforce_native_time_limit"] is False
+    budget_kwargs = stub_executor.calls["budget_kwargs"][0]
+    assert budget_kwargs["pass_budget_seconds"] == executor_kwargs["max_execution_time_seconds"]
+    assert budget_kwargs["workflow_deadline"] is None
+
+
+@pytest.mark.asyncio
+async def test_expanded_pass_is_told_which_tool_calls_already_ran(stub_executor):
+    shell_step = (
+        AgentAction(
+            tool="shell_service_execute_command",
+            tool_input={"command": "python3", "args": ["-c", "input('word: ')"]},
+            log="shell",
+        ),
+        json.dumps({"success": True, "stdout": "You typed: basil-live-ok"}),
+    )
+    rejected_step = (
+        AgentAction(tool="wait_before_checking_again", tool_input={"seconds": 10}, log="wait"),
+        "wait_before_checking_again is not a valid tool, try one of [load_tool_family]",
+    )
+    stub_executor.canned.extend([
+        {"intermediate_steps": [shell_step, rejected_step, _load_step("schedule")], "output": ""},
+        {"intermediate_steps": [_work_step("wait_before_checking_again")], "output": "done"},
+    ])
+
+    await run_staged_tool_loading(_make_request())
+
+    first_input, second_input = stub_executor.calls["inputs"]
+    assert "TOOL CALLS ALREADY COMPLETED EARLIER IN THIS RUN" not in first_input
+    assert "TOOL CALLS ALREADY COMPLETED EARLIER IN THIS RUN" in second_input
+    assert "shell_service_execute_command(" in second_input
+    assert "You typed: basil-live-ok" in second_input
+    assert "Do NOT repeat them" in second_input
+    assert "wait_before_checking_again(" not in second_input
+    assert "load_tool_family(" not in second_input
+
+
+@pytest.mark.asyncio
+async def test_scripting_floor_input_lists_prior_tool_calls(stub_executor, monkeypatch):
+    monkeypatch.setattr(staged_execution_loop, "scripting_floor_owed", lambda steps: True)
+    stub_executor.canned.extend([
+        {"intermediate_steps": [_work_step("email_service_search_emails")], "output": "failed"},
+        {"intermediate_steps": [], "output": "scripted"},
+    ])
+
+    await run_staged_tool_loading(_make_request())
+
+    floor_input = stub_executor.calls["inputs"][-1]
+    assert "MANDATORY LAST-RESORT SCRIPTING FLOOR" in floor_input
+    assert "email_service_search_emails({}) -> done" in floor_input
+
+
+def test_prior_steps_block_is_empty_without_effectful_calls():
+    block = staged_execution_loop._completed_prior_steps_block
+    assert block([]) == ""
+    assert block([_load_step("email"), "not-a-step"]) == ""
+
+
+def test_prior_steps_block_clips_long_values_and_keeps_the_latest_calls():
+    steps = [
+        (AgentAction(tool="file_service_prepare_file_by_path", tool_input={"index": index}, log=""), "x" * 5000)
+        for index in range(staged_execution_loop.PRIOR_PASS_STEP_LIMIT + 5)
+    ]
+
+    lines = staged_execution_loop._completed_prior_steps_block(steps).strip().splitlines()
+
+    assert lines[1] == "- (5 earlier calls omitted)"
+    call_lines = [line for line in lines if line.startswith("- file_service_prepare_file_by_path(")]
+    assert len(call_lines) == staged_execution_loop.PRIOR_PASS_STEP_LIMIT
+    assert '{"index": 5}' in call_lines[0]
+    assert call_lines[-1].endswith("[truncated]")
+    assert all(len(line) < staged_execution_loop.PRIOR_PASS_OBSERVATION_CHARS + 120 for line in call_lines)
 
 

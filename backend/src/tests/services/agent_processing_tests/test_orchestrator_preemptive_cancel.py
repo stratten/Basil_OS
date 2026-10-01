@@ -3,8 +3,8 @@
 Proves the normal user flow for preemptive cancellation:
   * _perform_processing registers its top-level asyncio.Task,
   * cancel_agent_task calls Task.cancel() on it (not just the cooperative event),
-  * the task ends CANCELLED, its registration is cleaned up in the finally, and
-  * no 'completed'/'failed' status is written for the cancelled task.
+  * the task ends CANCELED, its registration is cleaned up in the finally, and
+  * no 'completed'/'failed' status is written for the canceled task.
 """
 
 from __future__ import annotations
@@ -93,7 +93,7 @@ async def test_cancel_agent_task_preempts_running_processing():
     # The workflow blocks on a fresh, never-set Event, so the ONLY way the task
     # can finish is Task.cancel() injecting CancelledError. The orchestrator's
     # top-level handler intentionally converts that into a clean return, so the
-    # task ends done (not in CANCELLED state) rather than re-raising. If
+    # task ends done (not in CANCELED state) rather than re-raising. If
     # preemption had failed, this await would hang and time out.
     await asyncio.wait_for(task, timeout=5)
     assert task.done() is True
@@ -104,7 +104,7 @@ async def test_cancel_agent_task_preempts_running_processing():
     assert orchestrator._cancellation._active_tasks.get(agent_task_id) is None
 
     # Cooperative state is also set (belt-and-suspenders / thread path).
-    assert orchestrator.is_agent_task_cancelled(agent_task_id) is True
+    assert orchestrator.is_agent_task_canceled(agent_task_id) is True
     assert orchestrator._get_cancellation_event(agent_task_id).is_set() is True
 
     # Negative assertion: a preempted task must NOT be marked completed/failed.
@@ -124,7 +124,7 @@ async def test_cancel_agent_task_no_active_task_is_safe():
     # Nothing running for this id -> cancel still succeeds and marks cooperative state.
     result = await orchestrator.cancel_agent_task(agent_task_id)
     assert result is True
-    assert orchestrator.is_agent_task_cancelled(agent_task_id) is True
+    assert orchestrator.is_agent_task_canceled(agent_task_id) is True
 
 
 @pytest.mark.asyncio
@@ -148,7 +148,7 @@ async def test_duplicate_runtime_cancellation_broadcasts_terminal_event_once():
 
     cancellation_events = [
         event for event in websocket.events
-        if event.get("event_type") == "agent_task_cancelled"
+        if event.get("event_type") == "agent_task_canceled"
     ]
     assert len(cancellation_events) == 1
 
@@ -205,7 +205,7 @@ async def test_cancel_session_synthetic_task_end_to_end(tmp_path, monkeypatch):
         await asyncio.Event().wait()
 
     orchestrator._execute_multi_step_workflow = _blocking_workflow
-    cancelled_task = asyncio.create_task(orchestrator._perform_processing("cancel-me"))
+    canceled_task = asyncio.create_task(orchestrator._perform_processing("cancel-me"))
     unrelated_task = asyncio.create_task(orchestrator._perform_processing("leave-running"))
     await asyncio.wait_for(both_started.wait(), timeout=5)
 
@@ -220,12 +220,12 @@ async def test_cancel_session_synthetic_task_end_to_end(tmp_path, monkeypatch):
         CancelSessionRequest(reason="Synthetic validation"),
     )
 
-    await asyncio.wait_for(cancelled_task, timeout=5)
+    await asyncio.wait_for(canceled_task, timeout=5)
     assert response.success is True
-    assert (await db_service.get_agent_task("cancel-me")).status == "cancelled"
+    assert (await db_service.get_agent_task("cancel-me")).status == "canceled"
     assert unrelated_task.done() is False
     assert any(
-        event.get("event_type") == "agent_task_cancelled"
+        event.get("event_type") == "agent_task_canceled"
         and event.get("agent_task_id") == "cancel-me"
         for event in websocket.events
     )

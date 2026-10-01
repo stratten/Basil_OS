@@ -153,20 +153,20 @@ async def cancel_assistant_session_session(
 ) -> CancelSessionResponse:
     """Cancel an active AssistantSession session and clean up resources."""
     try:
-        logger.info(f"🎤 [ROUTER] Cancelling AssistantSession session: {session_id}")
+        logger.info(f"🎤 [ROUTER] Canceling AssistantSession session: {session_id}")
 
         if session_id in assistant_session_state.active_ocr_tasks:
             task = assistant_session_state.active_ocr_tasks[session_id]
             if not task.done():
                 task.cancel()
-                logger.info(f"🎤 [ROUTER] Cancelled active OCR task for session: {session_id}")
+                logger.info(f"🎤 [ROUTER] Canceled active OCR task for session: {session_id}")
             del assistant_session_state.active_ocr_tasks[session_id]
 
         if session_id in service.sessions:
             del service.sessions[session_id]
             logger.info(f"🎤 [ROUTER] Removed session: {session_id}")
 
-        return CancelSessionResponse(status="cancelled", session_id=session_id)
+        return CancelSessionResponse(status="canceled", session_id=session_id)
 
     except Exception as e:
         logger.error(f"❌ [ROUTER] Failed to cancel session {session_id}: {e}")

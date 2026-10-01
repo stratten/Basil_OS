@@ -15,10 +15,26 @@ function readOffsetHeight(element: LayoutNode): number | null {
   return typeof value === 'number' ? value : null;
 }
 
+type ScrollRegionReadable = {
+  scrollHeight?: number;
+  clientHeight?: number;
+};
+
 type ScrollHeightReadable = {
   offsetHeight?: number;
   scrollHeight?: number;
+  querySelectorAll?: (selector: string) => ArrayLike<ScrollRegionReadable>;
 };
+
+// The question text and the response options scroll independently inside the dialog, so their clipped overflow is
+// invisible to the dialog's own offsetHeight/scrollHeight. They are siblings, never nested, so their overflow adds.
+const OVERLAY_DIALOG_SCROLL_REGION_SELECTOR = '.checkpoint-prompt-details, .checkpoint-response-scroll-region';
+
+function hiddenScrollOverflow(region: ScrollRegionReadable): number {
+  const scrollHeight = typeof region.scrollHeight === 'number' ? region.scrollHeight : 0;
+  const clientHeight = typeof region.clientHeight === 'number' ? region.clientHeight : 0;
+  return Math.max(scrollHeight - clientHeight, 0);
+}
 
 export function measureOverlayDialogIntrinsicHeight(
   dialog: ScrollHeightReadable | null,
@@ -26,7 +42,9 @@ export function measureOverlayDialogIntrinsicHeight(
   if (!dialog) return 0;
   const offsetHeight = typeof dialog.offsetHeight === 'number' ? dialog.offsetHeight : 0;
   const scrollHeight = typeof dialog.scrollHeight === 'number' ? dialog.scrollHeight : 0;
-  return Math.max(offsetHeight, scrollHeight, 0);
+  const scrollRegions = dialog.querySelectorAll?.(OVERLAY_DIALOG_SCROLL_REGION_SELECTOR) ?? [];
+  const hiddenOverflow = Array.from(scrollRegions).reduce((total, region) => total + hiddenScrollOverflow(region), 0);
+  return Math.max(offsetHeight + hiddenOverflow, scrollHeight, 0);
 }
 
 export function measureContentAreaLayoutHeight(

@@ -1,0 +1,6 @@
+#!/bin/sh
+# Enable once per clone with: git config core.hooksPath .githooks
+set -e
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+python3 scripts/spelling/check_american_spelling.py

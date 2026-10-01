@@ -1,10 +1,11 @@
-import { memo } from 'react';
+import { memo, useRef } from 'react';
 import type { ConversationListItem } from '../contracts';
 import { OpenInSeparateWindowIcon, StatusIcon, TrashIcon } from '@agent-task/components/sidebar/SidebarIcons';
 import { CollapsedHistoryRail, HistorySearchField, HistorySidebarHeader } from '../../../shared/HistorySidebarControls';
 import { useHistoryRowRevealDelete } from '../../../shared/useHistoryRowRevealDelete';
 import { openConversationThreadWindow } from '../services/bridge';
 import { formatConversationTimestamp } from './chatsPresentation';
+import { useConversationListMotion } from './useConversationListMotion';
 
 interface ConversationSidebarProps {
   conversations: ConversationListItem[];
@@ -57,6 +58,8 @@ function ConversationSidebarComponent({
   onCancelDelete,
   onConfirmDelete,
 }: ConversationSidebarProps) {
+  const listRef = useRef<HTMLUListElement>(null);
+  useConversationListMotion(listRef, conversations);
   if (isCollapsed) {
     return (
       <aside className="chats-sidebar chats-sidebar-collapsed" aria-label="Conversation history">
@@ -81,7 +84,7 @@ function ConversationSidebarComponent({
         <div className="chats-sidebar-state">No conversations yet</div>
       ) : (
         <>
-          <ul className="chats-conversation-list">
+          <ul className="chats-conversation-list" ref={listRef}>
             {conversations.map((conversation) => (
               <ConversationHistoryRow
                 key={conversation.id}
@@ -133,7 +136,7 @@ interface ConversationHistoryRowProps {
   onConfirmDelete: (conversationId: string) => void;
 }
 
-function ConversationHistoryRow({
+function ConversationHistoryRowComponent({
   conversation,
   isSelected,
   isDeleteDisabled,
@@ -167,7 +170,7 @@ function ConversationHistoryRow({
   };
 
   return (
-    <li onWheel={revealDelete.handleWheel}>
+    <li onWheel={revealDelete.handleWheel} data-conversation-id={conversation.id}>
       {revealDelete.isOpen && (
         <button type="button" className="chats-swipe-delete-button" onClick={requestDelete}>Delete</button>
       )}
@@ -252,5 +255,7 @@ function ConversationHistoryRow({
     </li>
   );
 }
+
+const ConversationHistoryRow = memo(ConversationHistoryRowComponent);
 
 export default memo(ConversationSidebarComponent);

@@ -8,6 +8,7 @@ for improved buffer management and segment stitching.
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 import asyncio
+import gc
 import json
 import logging
 import math
@@ -16,7 +17,17 @@ import os
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
+from .live_stream_session import (
+    NATIVE_LIVE_TRANSCRIPTION_TYPE,
+    NATIVE_STREAM_CLOCK_TYPE,
+    RECORDING_ONLY_STATUS,
+    LiveStreamSession,
+    status_payload,
+)
+
 logger = logging.getLogger(__name__)
+# After a meeting switches to record-only, the live model stays loaded this long in case live transcription is turned back on.
+LIVE_ENGINE_IDLE_UNLOAD_SECONDS = 600.0
 TERMINATION_CONTROL_SUBSTRINGS = (
     "close",
     "terminate",
@@ -70,6 +81,9 @@ class WhisperLiveService:
         self.last_initialize_at: Optional[float] = None
         self.active_websockets = set()
         self.active_processors = {}
+        self._engine_init_lock = asyncio.Lock()
+        self._idle_unload_task: Optional[asyncio.Task] = None
+        self.idle_unload_seconds = LIVE_ENGINE_IDLE_UNLOAD_SECONDS
         
         # Configuration
         self.base_path = "/whisper-live"
@@ -177,6 +191,7 @@ class WhisperLiveService:
             Called when the Live Transcription widget opens, giving models time to load
             while the user fills out the meeting form.
             """
+            self._cancel_idle_unload()
             if not self.is_initialized:
                 logger.info("Pre-initialization requested - loading models in background...")
                 success = await self.initialize()
@@ -201,25 +216,88 @@ class WhisperLiveService:
         
         logger.info(f"WhisperLive routes added at {self.base_path}")
     
+    async def _ensure_live_engine(self) -> Any:
+        """Return the initialized transcription engine, initializing it once under a lock; None when unavailable."""
+        self._cancel_idle_unload()
+        async with self._engine_init_lock:
+            if not self.is_initialized:
+                await self.initialize()
+            return self.kit if self.is_initialized else None
+
+    def _live_engine_in_use(self) -> bool:
+        return any(
+            getattr(session, "uses_live_engine", True)
+            for session in self.active_processors.values()
+        )
+
+    def _cancel_idle_unload(self) -> None:
+        if self._idle_unload_task is not None and not self._idle_unload_task.done():
+            self._idle_unload_task.cancel()
+        self._idle_unload_task = None
+
+    def _schedule_idle_unload(self) -> None:
+        """Unload the live model after a record-only switch once no socket has needed it for the idle delay."""
+        if not self.is_initialized:
+            return
+        self._cancel_idle_unload()
+        self._idle_unload_task = asyncio.create_task(self._unload_after_idle_delay())
+
+    async def _unload_after_idle_delay(self) -> None:
+        try:
+            await asyncio.sleep(self.idle_unload_seconds)
+        except asyncio.CancelledError:
+            return
+        self._idle_unload_task = None
+        await self.unload_live_engine_if_idle()
+
+    async def unload_live_engine_if_idle(self) -> bool:
+        """Release the live transcription engine when no socket uses it; True when it was unloaded."""
+        async with self._engine_init_lock:
+            if not self.is_initialized or self._live_engine_in_use():
+                return False
+            engine = self.kit
+            if self._engine_shared_with_agent_streaming(engine):
+                logger.info("Live transcription engine left loaded: agent-task streaming shares it")
+                return False
+            from api.services.whisper_live_core import TranscriptionEngine
+            if TranscriptionEngine._instance is engine:
+                TranscriptionEngine._instance = None
+                TranscriptionEngine._initialized = False
+            self.kit = None
+            self.is_initialized = False
+            engine = None
+        await asyncio.to_thread(gc.collect)
+        logger.info("Unloaded idle live transcription engine")
+        return True
+
+    @staticmethod
+    def _engine_shared_with_agent_streaming(engine: Any) -> bool:
+        try:
+            from api.routes.websocket_routes.agent_task_streaming import streaming_manager
+        except Exception:
+            return False
+        shared_kit = getattr(streaming_manager, "whisper_kit", None)
+        return shared_kit is not None and shared_kit is engine
+
     async def _handle_websocket(self, websocket: WebSocket):
-        """Handle a WebSocket connection for audio processing."""
-        # Lazy initialize if necessary
-        if not self.is_initialized:
-            await self.initialize()
-            
-        if not self.is_initialized:
+        """Handle one audio socket: always record, and transcribe live unless a native client opts out."""
+        params = websocket.query_params
+        is_pcm = params.get("client") == "native"
+        input_format = "pcm" if is_pcm else "webm"
+        # Only native PCM clients can record without live transcription; browser
+        # (webm) clients always transcribe live.
+        live_transcription_requested = (not is_pcm) or (
+            (params.get("live_transcription") or "true").lower() != "false"
+        )
+
+        if live_transcription_requested and await self._ensure_live_engine() is None:
             if self.last_initialize_error:
                 logger.warning(
                     f"WhisperLive WebSocket refused; init failed with: {self.last_initialize_error}"
                 )
             await websocket.close(code=1000, reason="Service not initialized")
             return
-            
-        # Get client type from query parameters
-        params = websocket.query_params
-        is_pcm = params.get("client") == "native"
-        input_format = "pcm" if is_pcm else "webm"
-        
+
         # Get meeting info from query parameters (optional - for recording)
         meeting_id = params.get("meeting_id")
         meeting_name = params.get("meeting_name")
@@ -231,7 +309,7 @@ class WhisperLiveService:
         # drop. Tells the recorder to append to the existing part rather than
         # refuse (id collision guard) or truncate it.
         is_reconnect = (params.get("reconnect") or "").lower() == "true"
-        
+
         # Resume continuation context. Defaults make a normal fresh recording; a
         # resumed part carries a timeline offset and ordering so its transcript
         # lands on the logical meeting timeline (see MeetingRecorder).
@@ -245,31 +323,37 @@ class WhisperLiveService:
             recording_part_index = int(params.get("recording_part_index") or 0)
         except (TypeError, ValueError):
             recording_part_index = 0
-        
+
         logger.info(
-            f"Creating AudioProcessor for {input_format} input (pcm={is_pcm}), "
+            f"Creating live stream session for {input_format} input (pcm={is_pcm}), "
             f"audio_source={audio_source or 'Microphone'}, recording_mode={recording_mode}, "
-            f"timeline_offset_seconds={timeline_offset_seconds}, recording_part_index={recording_part_index}"
+            f"timeline_offset_seconds={timeline_offset_seconds}, recording_part_index={recording_part_index}, "
+            f"live_transcription={live_transcription_requested}"
         )
-        
+
         # Create meeting recorder if meeting info provided
         meeting_recorder = None
         if meeting_id and meeting_name:
             from api.services.meetings.meeting_recorder import MeetingRecorder
-            meeting_recorder = MeetingRecorder(
-                meeting_id=meeting_id,
-                audio_source=audio_source,
-                session_id=session_id,
-                timeline_offset_seconds=timeline_offset_seconds,
-                recording_part_index=recording_part_index,
-                resumed_from_meeting_id=resumed_from_meeting_id
-            )
-            
+            try:
+                meeting_recorder = MeetingRecorder(
+                    meeting_id=meeting_id,
+                    audio_source=audio_source,
+                    session_id=session_id,
+                    timeline_offset_seconds=timeline_offset_seconds,
+                    recording_part_index=recording_part_index,
+                    resumed_from_meeting_id=resumed_from_meeting_id
+                )
+            except PermissionError as error:
+                logger.warning(f"WhisperLive WebSocket refused: {error}")
+                await websocket.close(code=1000, reason="Recording discarded")
+                return
+
             # Parse participants list
             participants = []
             if meeting_participants:
                 participants = [p.strip() for p in meeting_participants.split(",") if p.strip()]
-            
+
             # Start recording (append to the in-progress part on auto-reconnect)
             meeting_recorder.start_recording(
                 meeting_name=meeting_name,
@@ -281,81 +365,88 @@ class WhisperLiveService:
                 f"Started meeting recording: {meeting_id} - {meeting_name}, "
                 f"source={audio_source or 'Microphone'}, reconnect={is_reconnect}"
             )
-            
-        # Guarantee a model is ready before the synchronous AudioProcessor
-        # constructor pops one. Loading runs in a worker thread so a cold pool
-        # cannot block the event loop and starve sibling WebSocket keepalives.
-        asr = getattr(self.kit, "asr", None)
-        if asr is not None and hasattr(asr, "ensure_model_ready"):
-            await asyncio.to_thread(asr.ensure_model_ready)
 
-        # Create audio processor with the transcription engine and optional meeting recorder.
-        # audio_source is threaded through so the per-stream diagnostics (PCM/VAD
-        # logs, StreamCommitWatchdog) are tagged Microphone vs System Audio instead
-        # of "unknown".
-        from api.services.whisper_live_core import AudioProcessor
-        audio_processor = AudioProcessor(
-            transcription_engine=self.kit,
-            input_format=input_format,
+        send_lock = asyncio.Lock()
+
+        async def send_json(payload: Dict[str, Any]) -> None:
+            if websocket not in self.active_websockets:
+                return
+            async with send_lock:
+                await websocket.send_json(payload)
+
+        def create_audio_processor(**processor_kwargs: Any) -> Any:
+            from api.services.whisper_live_core import AudioProcessor
+            return AudioProcessor(**processor_kwargs)
+
+        session = LiveStreamSession(
             meeting_recorder=meeting_recorder,
             audio_source=audio_source,
+            input_format=input_format,
+            send_json=send_json,
+            engine_provider=self._ensure_live_engine,
+            processor_factory=create_audio_processor,
+            results_forwarder=lambda results_generator: self._handle_websocket_results(
+                websocket, results_generator, send_json=send_json
+            ),
         )
-
-        # Refill the preloaded model pool in the background so the NEXT connection
-        # (the sibling source, or an auto-reconnect) pops a ready model instead of
-        # loading a checkpoint synchronously on the event loop. Guarded so it only
-        # runs for the simulstreaming backend that exposes the pool.
-        if asr is not None and hasattr(asr, "new_model_to_stack"):
-            asyncio.create_task(asyncio.to_thread(asr.new_model_to_stack))
 
         # Track this connection
         await websocket.accept()
         self.active_websockets.add(websocket)
-        processor_id = id(audio_processor)
-        self.active_processors[processor_id] = audio_processor
-        
-        logger.info(f"WhisperLive WebSocket connection opened (id: {processor_id}, format: {input_format})")
-        
-        # Set up processing pipeline
+        processor_id = id(session)
+        self.active_processors[processor_id] = session
+
+        logger.info(
+            f"WhisperLive WebSocket connection opened (id: {processor_id}, format: {input_format}, "
+            f"live_transcription={live_transcription_requested})"
+        )
+
         try:
-            # Start processing tasks and get the results generator by awaiting create_tasks
-            results_generator = await audio_processor.create_tasks()
-            
-            # Handle results in separate task
-            results_task = asyncio.create_task(
-                self._handle_websocket_results(websocket, results_generator)
-            )
-            
-            # Process incoming audio
+            if live_transcription_requested:
+                if not await session.start_live():
+                    await websocket.close(code=1000, reason="Service not initialized")
+                    return
+            else:
+                await send_json(status_payload(RECORDING_ONLY_STATUS))
+
             while True:
                 message = await websocket.receive()
-                
-                # Handle binary audio data
+
                 if message["type"] == "websocket.receive" and "bytes" in message:
-                    await audio_processor.process_audio(message["bytes"])
-                    
-                # Handle text control messages (termination, etc.)
+                    await session.handle_audio(message["bytes"])
+
                 elif message["type"] == "websocket.receive" and "text" in message:
                     text_data = message["text"]
-                    logger.info(f"Received control message: {text_data}")
-                    
                     # Preserve legacy termination commands before considering
-                    # structured native timing controls.
+                    # structured native controls.
                     if is_legacy_termination_control(text_data):
-                        logger.info(f"Received termination command, breaking loop")
+                        logger.info(f"Received termination command, breaking loop: {text_data}")
                         break
-                    apply_native_stream_timing_control(text_data, audio_processor)
-                        
-                # Handle disconnect
+                    if apply_native_stream_timing_control(text_data, session):
+                        logger.info(f"Applied native stream timing control: {text_data}")
+                        continue
+                    control_kind = await session.handle_control(text_data)
+                    if control_kind == NATIVE_STREAM_CLOCK_TYPE:
+                        logger.debug(f"Applied native stream clock marker: {text_data}")
+                    else:
+                        logger.info(f"Received control message: {text_data}")
+                    if control_kind == NATIVE_LIVE_TRANSCRIPTION_TYPE and not session.is_live:
+                        self._schedule_idle_unload()
+
                 elif message["type"] == "websocket.disconnect":
                     logger.info(f"WebSocket disconnected")
                     break
-                
+
         except WebSocketDisconnect:
             logger.info(f"WhisperLive WebSocket disconnected (id: {processor_id})")
         except Exception as e:
             logger.error(f"Error in WhisperLive WebSocket: {e}", exc_info=True)
         finally:
+            try:
+                session.flush_pending_audio()
+            except Exception as e:
+                logger.error(f"Error flushing pending audio: {e}", exc_info=True)
+
             # Stop meeting recording if active
             if meeting_recorder and meeting_recorder.is_recording:
                 try:
@@ -370,21 +461,26 @@ class WhisperLiveService:
                         meeting_search_indexer.reindex(metadata['id'])
                 except Exception as e:
                     logger.error(f"Error stopping meeting recording: {e}", exc_info=True)
-            
+
+            ended_record_only = session.supports_record_only and not session.is_live
+
             # Clean up resources
             if processor_id in self.active_processors:
                 try:
-                    await audio_processor.cleanup()
+                    await session.cleanup()
                 except Exception as e:
-                    logger.error(f"Error during audio processor cleanup: {e}", exc_info=True)
+                    logger.error(f"Error during live stream session cleanup: {e}", exc_info=True)
                 del self.active_processors[processor_id]
-            
+
             if websocket in self.active_websockets:
                 self.active_websockets.remove(websocket)
-                
+
+            if ended_record_only:
+                self._schedule_idle_unload()
+
             logger.info(f"WhisperLive WebSocket connection closed (id: {processor_id})")
-    
-    async def _handle_websocket_results(self, websocket, results_generator):
+
+    async def _handle_websocket_results(self, websocket, results_generator, send_json=None):
         """Process results from the audio processor and send via WebSocket."""
         try:
             sent_count = 0
@@ -412,12 +508,16 @@ class WhisperLiveService:
                     
                     # Send the response (convert FrontData to dict)
                     response_dict = response.to_dict() if hasattr(response, 'to_dict') else response
-                    await websocket.send_json(response_dict)
+                    if send_json is not None:
+                        await send_json(response_dict)
+                    else:
+                        await websocket.send_json(response_dict)
         except Exception as e:
             logger.error(f"Error in WhisperLive results handler: {e}", exc_info=True)
     
     async def shutdown(self):
         """Clean up resources when the service is stopped."""
+        self._cancel_idle_unload()
         if not self.is_initialized:
             return
             

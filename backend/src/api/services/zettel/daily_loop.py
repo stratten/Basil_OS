@@ -81,7 +81,7 @@ class DailyLoopScheduler:
                     return
                 await self._guarded_run()
         except asyncio.CancelledError:
-            logger.info("%s loop cancelled", self._name)
+            logger.info("%s loop canceled", self._name)
             raise
         finally:
             self._status.is_running = False

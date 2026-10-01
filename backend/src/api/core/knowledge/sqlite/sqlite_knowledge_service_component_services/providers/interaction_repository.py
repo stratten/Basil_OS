@@ -22,7 +22,7 @@ class ProviderInteractionConflictError(ProviderInteractionPersistenceError):
     """Stale revision, unknown interaction, or invalid run/task preconditions."""
 
 
-TERMINAL_INTERACTION_STATUSES = {"answered", "declined", "cancelled", "superseded"}
+TERMINAL_INTERACTION_STATUSES = {"answered", "declined", "canceled", "superseded"}
 
 
 class ProviderInteractionRepository:
@@ -244,11 +244,11 @@ class ProviderInteractionRepository:
             submitted_values=None,
         )
 
-    async def mark_cancelled(self, *, interaction_id: str, expected_revision: int) -> dict[str, object]:
+    async def mark_canceled(self, *, interaction_id: str, expected_revision: int) -> dict[str, object]:
         return await self._resolve(
             interaction_id=interaction_id,
             expected_revision=expected_revision,
-            next_status="cancelled",
+            next_status="canceled",
             outcome="cancel",
             submitted_values=None,
         )
@@ -493,13 +493,13 @@ class ProviderInteractionRepository:
         agent_task_id: str,
         expected_revision: int,
     ) -> dict[str, object]:
-        """CAS-transition one pending `provider_permission` interaction to `cancelled` (Package 4B.2)."""
+        """CAS-transition one pending `provider_permission` interaction to `canceled` (Package 4B.2)."""
         return await self._resolve_permission(
             interaction_id=interaction_id,
             provider_run_id=provider_run_id,
             agent_task_id=agent_task_id,
             expected_revision=expected_revision,
-            next_status="cancelled",
+            next_status="canceled",
             outcome="cancel",
             submitted_values=None,
         )

@@ -331,6 +331,19 @@ class ModelService:
 
         return status
 
+    def get_ready_model_if_active(self, model_id: str) -> Optional[BaseAIModel]:
+        """Return an already-loaded, ready model for a registry id without loading anything."""
+        candidates = [model_id]
+        if "/" in model_id:
+            provider_slug, _, variant = model_id.partition("/")
+            candidates.append(f"{provider_slug.capitalize()}-{variant}")
+            candidates.append(model_id.replace("/", "-"))
+        for candidate in candidates:
+            model = self._active_models.get(candidate)
+            if model is not None and model.state == ModelState.READY:
+                return model
+        return None
+
     def touch_model(self, model_type: str, variant: str) -> None:
         """Update last-used timestamp for a model to reset its idle timer."""
         model_id = f"{model_type}-{variant}"

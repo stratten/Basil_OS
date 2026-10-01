@@ -306,7 +306,7 @@ class WarmWhisperPipeline:
                     logger.info("Warm Whisper: unloading after %ss delay", delay_seconds)
                     cls.unload()
             except asyncio.CancelledError:
-                logger.info("Warm Whisper: scheduled unload cancelled")
+                logger.info("Warm Whisper: scheduled unload canceled")
                 raise
             except Exception as exc:  # pragma: no cover - defensive
                 logger.error("Warm Whisper: error during scheduled unload: %s", exc)
@@ -325,6 +325,6 @@ class WarmWhisperPipeline:
     @classmethod
     def _cancel_unload_locked(cls) -> None:
         if cls._unload_task is not None and not cls._unload_task.done():
-            logger.info("Warm Whisper: cancelling pending unload")
+            logger.info("Warm Whisper: canceling pending unload")
             cls._unload_task.cancel()
         cls._unload_task = None

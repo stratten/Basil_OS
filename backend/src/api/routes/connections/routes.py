@@ -35,6 +35,8 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
+from api.core.security.backend_request_guard import require_host_credential
+
 from api.core.knowledge.sqlite.sqlite_knowledge_service import SQLiteKnowledgeService
 from api.core.models.preferences import (
     MCPCachedTool,
@@ -85,6 +87,7 @@ from .connection_route_helpers import (
     save_connection_preferences,
 )
 from .metadata_routes import register_metadata_routes
+from .reconnect_support import load_reconnect_target, reauthorize_connection
 from .slack_routes import register_slack_routes
 from .status_routes import register_status_routes
 
@@ -112,6 +115,12 @@ _oauth_connection_descriptions: dict[str, Optional[str]] = {}
 
 _github_connection_descriptions: dict[str, Optional[str]] = {}
 """Device-code-keyed pending custom descriptions for GitHub OAuth flow."""
+
+_oauth_reconnect_targets: dict[str, str] = {}
+"""State-keyed connection ids for generic OAuth flows that re-authorize an existing connection."""
+
+_github_reconnect_targets: dict[str, str] = {}
+"""Device-code-keyed connection ids for GitHub device flows that re-authorize an existing connection."""
 
 
 register_slack_routes(router)
@@ -153,7 +162,7 @@ async def list_connections() -> ConnectionsListResponse:
     )
 
 
-@router.post("/manual_token", response_model=ConnectionDTO)
+@router.post("/manual_token", response_model=ConnectionDTO, dependencies=[Depends(require_host_credential)])
 async def register_manual_token_connection(
     payload: RegisterManualTokenConnectionRequest,
 ) -> ConnectionDTO:
@@ -182,15 +191,21 @@ async def start_github_device_flow(
     payload: GitHubDeviceFlowStartRequest,
 ) -> GitHubDeviceFlowStartResponse:
     """Start GitHub OAuth App device flow for the hosted GitHub MCP server."""
+    reconnect_record = (
+        load_reconnect_target(payload.connection_id, "github_device") if payload.connection_id else None
+    )
     try:
         auth = await _github_device_flow_coordinator.begin_authorization(
-            friendly_name=payload.friendly_name,
-            server_url=payload.server_url,
+            friendly_name=reconnect_record.friendly_name if reconnect_record else payload.friendly_name,
+            server_url=reconnect_record.server_url if reconnect_record else payload.server_url,
             scopes=payload.requested_scopes or list(GITHUB_MCP_SCOPES),
         )
-        _github_connection_descriptions[auth.device_code] = _normalize_optional_description(
-            payload.description
-        )
+        if reconnect_record is not None:
+            _github_reconnect_targets[auth.device_code] = reconnect_record.id
+        else:
+            _github_connection_descriptions[auth.device_code] = _normalize_optional_description(
+                payload.description
+            )
     except GitHubDeviceFlowError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
@@ -227,19 +242,33 @@ async def poll_github_device_flow(
                 interval=latest.interval if latest else pending.interval,
                 message=code,
             )
-        if code in ("expired_token", "access_denied", "unknown_device_code"):
-            raise HTTPException(status_code=400, detail=code)
+        _github_reconnect_targets.pop(payload.device_code, None)
+        _github_connection_descriptions.pop(payload.device_code, None)
         raise HTTPException(status_code=400, detail=code)
     except Exception as exc:
         logger.exception("Unexpected failure polling GitHub device flow")
         raise HTTPException(status_code=500, detail=f"GitHub device flow polling failed: {exc}")
 
-    record = _persist_github_device_connection(
-        friendly_name=pending.friendly_name,
-        server_url=pending.server_url,
-        scopes=(token.scope.split(",") if token.scope else pending.scopes),
-        description=_github_connection_descriptions.pop(payload.device_code, None),
-    )
+    scopes = token.scope.split(",") if token.scope else pending.scopes
+    reconnect_connection_id = _github_reconnect_targets.pop(payload.device_code, None)
+    if reconnect_connection_id is not None:
+        _github_connection_descriptions.pop(payload.device_code, None)
+        record = reauthorize_connection(
+            reconnect_connection_id,
+            oauth_client_id=GITHUB_OAUTH_CLIENT_ID,
+            oauth_authorization_server="https://github.com/login/oauth",
+            oauth_token_endpoint="https://github.com/login/oauth/access_token",
+            oauth_scopes=scopes,
+        )
+        if record is None:
+            raise HTTPException(status_code=404, detail="Connection not found")
+    else:
+        record = _persist_github_device_connection(
+            friendly_name=pending.friendly_name,
+            server_url=pending.server_url,
+            scopes=scopes,
+            description=_github_connection_descriptions.pop(payload.device_code, None),
+        )
     await _push_token_to_swift(
         connection_id=record.id,
         access_token=token.access_token,
@@ -262,16 +291,22 @@ async def start_oauth(payload: StartOAuthRequest, request: Request) -> StartOAut
     launcher uses.
     """
     redirect_uri = _build_redirect_uri(request)
+    reconnect_record = (
+        load_reconnect_target(payload.connection_id, "oauth") if payload.connection_id else None
+    )
     try:
         result = await _oauth_coordinator.begin_registration(
-            server_url=payload.server_url,
-            friendly_name=payload.friendly_name,
+            server_url=reconnect_record.server_url if reconnect_record else payload.server_url,
+            friendly_name=reconnect_record.friendly_name if reconnect_record else payload.friendly_name,
             redirect_uri=redirect_uri,
             requested_scopes=payload.requested_scopes,
         )
-        _oauth_connection_descriptions[result["state"]] = _normalize_optional_description(
-            payload.description
-        )
+        if reconnect_record is not None:
+            _oauth_reconnect_targets[result["state"]] = reconnect_record.id
+        else:
+            _oauth_connection_descriptions[result["state"]] = _normalize_optional_description(
+                payload.description
+            )
     except OAuthCoordinatorError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
@@ -295,6 +330,7 @@ async def oauth_callback(
     back into the Basil app via the ``basil://mcp/connection_complete``
     custom URL scheme so the Connections tab can refresh.
     """
+    reconnect_connection_id = _oauth_reconnect_targets.pop(state, None)
     if error:
         message = error_description or error
         return RedirectResponse(
@@ -315,8 +351,23 @@ async def oauth_callback(
             status_code=302,
         )
 
-    description = _oauth_connection_descriptions.pop(state, None)
-    record = _persist_connection_from_descriptor(descriptor, description=description)
+    if reconnect_connection_id is not None:
+        record = reauthorize_connection(
+            reconnect_connection_id,
+            oauth_client_id=descriptor.client_id,
+            oauth_authorization_server=descriptor.authorization_server,
+            oauth_token_endpoint=descriptor.token_endpoint,
+            oauth_scopes=descriptor.scopes,
+        )
+        if record is None:
+            return RedirectResponse(
+                f"{_SWIFT_REDIRECT_SCHEME}?status=error&message="
+                f"{_url_quote('This connection was removed before sign-in finished.')}",
+                status_code=302,
+            )
+    else:
+        description = _oauth_connection_descriptions.pop(state, None)
+        record = _persist_connection_from_descriptor(descriptor, description=description)
     await _push_token_to_swift(
         connection_id=record.id,
         access_token=descriptor.token.access_token,
@@ -351,7 +402,7 @@ async def delete_connection(
     return {"status": "deleted", "connection_id": connection_id}
 
 
-@router.put("/{connection_id}/policy", response_model=ConnectionDTO)
+@router.put("/{connection_id}/policy", response_model=ConnectionDTO, dependencies=[Depends(require_host_credential)])
 async def update_tool_policy(
     connection_id: str,
     payload: ToolPolicyBulkUpdate,

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
+from ...tools.internal_basil_tools.checkpoint_tool import CheckpointRequest
 from ..runtime.agent_timeline_contract import (
     normalize_timeline_entry,
     sanitize_timeline_title,
@@ -114,4 +115,8 @@ class ActivityProgressCallbackHandler(LiveProgressCallbackHandler):
 
     async def on_tool_error(self, error: Any, **kwargs: Any) -> None:
         await super().on_tool_error(error, **kwargs)
+        if isinstance(error, CheckpointRequest):
+            # The tool raises this on purpose to pause the run for the user's answer; it is not a failure.
+            await self._emit_phase("tool_execution", "completed", "Requested your input")
+            return
         await self._emit_phase("tool_execution", "failed", "Approved tool failed", error)

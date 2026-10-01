@@ -168,3 +168,39 @@ describe('AgentStore provider permission approval handling', () => {
     expect(store.getAgent('task-1')?.showApprovalPrompt).toBe(true);
   });
 });
+
+describe('AgentStore command input requests', () => {
+  it('stores command_input metadata and shows a waiting-for-input step', () => {
+    const store = new AgentStore();
+    store.registerAgent('task-1');
+
+    const event: WSEvent = {
+      event_type: 'execution_approval_request',
+      agent_task_id: 'task-1',
+      approval_id: 'command-input-1',
+      command: 'sudo ls',
+      reason: 'The command is asking for input: Password:',
+      risk_level: 'medium',
+      execution_type: 'command_input',
+      command_input: {
+        request_id: 'command-input-1',
+        agent_task_id: 'task-1',
+        prompt: 'Password:',
+        secret: true,
+        command: 'sudo ls',
+        created_at: 1_800_000_000,
+        expires_at: 1_800_000_300,
+      },
+    };
+    store.handleWSEvent(event);
+
+    const agent = store.getAgent('task-1');
+    expect(agent?.showApprovalPrompt).toBe(true);
+    expect(agent?.approvalRequests[0]?.execution_type).toBe('command_input');
+    expect(agent?.approvalRequests[0]?.command_input).toMatchObject({
+      request_id: 'command-input-1',
+      prompt: 'Password:',
+      secret: true,
+    });
+  });
+});

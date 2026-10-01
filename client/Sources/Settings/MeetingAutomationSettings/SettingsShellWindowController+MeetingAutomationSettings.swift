@@ -26,6 +26,9 @@ extension SettingsShellWindowController {
         webView.onRequestUpdateAutoAnalyzeTiming = { [weak self] requestId, timing in
             self?.performMeetingAutomationUpdate(requestId: requestId) { vm in await vm.updateAutoAnalyzeTiming(timing) }
         }
+        webView.onRequestUpdateLiveTranscriptionByDefault = { [weak self] requestId, enabled in
+            self?.performMeetingAutomationUpdate(requestId: requestId) { vm in await vm.updateLiveTranscriptionByDefault(enabled) }
+        }
         webView.onMalformedIntent = { type in
             #if DEBUG
             DevLogger.shared.error("[MEETING_AUTOMATION_SETTINGS] Malformed intent: \(type)", context: "SettingsShellWindowController")

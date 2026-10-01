@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 # being submitted. Anything not in this set is an in-flight intermediate
 # state (``routing``, ``processing``, ``needs_clarification``, etc.) that
 # we want to keep waiting through.
-_TERMINAL_MINION_STATUSES = frozenset({"completed", "failed", "cancelled"})
+_TERMINAL_MINION_STATUSES = frozenset({"completed", "failed", "canceled"})
 
 
 # Upper bound on how long ``execute_scheduled_run`` will wait for an agent
@@ -337,7 +337,7 @@ async def execute_scheduled_run(
     """Execute a queued scheduled run and persist completion status."""
     # Defensive idempotency: a run can reach this method via the
     # in-process runner's timer after the run row was already
-    # cancelled, missed, or finalized by another path (e.g. user
+    # canceled, missed, or finalized by another path (e.g. user
     # toggled the schedule inactive while we were sleeping, or the
     # row was marked missed by recover_missed_runs on an earlier
     # crash that we somehow survived). Refusing to execute anything

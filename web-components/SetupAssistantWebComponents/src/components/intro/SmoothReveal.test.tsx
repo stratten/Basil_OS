@@ -128,7 +128,7 @@ describe('SmoothReveal', () => {
     }
   })
 
-  it('keeps closing when a reversed opening transition is cancelled and replaced', () => {
+  it('keeps closing when a reversed opening transition is canceled and replaced', () => {
     setReducedMotion(false)
     const prototype = HTMLElement.prototype as HTMLElement & { getAnimations?: () => Animation[] }
     let running = true

@@ -35,16 +35,16 @@ class _Runs:
 class _Controller:
     def __init__(self) -> None:
         self.settled: list[dict] = []
-        self.cancelled: list[str] = []
+        self.canceled: list[str] = []
 
     async def settle_run_and_maybe_resume_parent(self, **kwargs):
         self.settled.append(kwargs)
         run = dict(kwargs["delegated_agent_run"])
-        run["status"] = {"completed": "settled", "failed": "failed", "cancelled": "cancelled"}[kwargs["child_status"]]
+        run["status"] = {"completed": "settled", "failed": "failed", "canceled": "canceled"}[kwargs["child_status"]]
         return run
 
     async def cancel_parent_runs(self, *, parent_agent_task_id: str):
-        self.cancelled.append(parent_agent_task_id)
+        self.canceled.append(parent_agent_task_id)
         return [{"child_agent_task_id": "child-1"}]
 
 
@@ -135,7 +135,7 @@ async def test_parent_cancellation_routes_only_through_generic_controller() -> N
     )
 
     assert await bridge.request_parent_cancellation("parent-1") == "child-1"
-    assert controller.cancelled == ["parent-1"]
+    assert controller.canceled == ["parent-1"]
 
 
 @pytest.mark.asyncio

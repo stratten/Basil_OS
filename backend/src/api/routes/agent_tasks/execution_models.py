@@ -116,7 +116,7 @@ class RecoverExecutionApprovalsRequest(BaseModel):
 class RecoverExecutionApprovalsResponse(BaseModel):
     """Result of retiring orphaned approvals without executing their commands."""
 
-    cancelled_approval_ids: List[str] = Field(default_factory=list)
+    canceled_approval_ids: List[str] = Field(default_factory=list)
 
 
 class ApprovalDecisionResponse(BaseModel):

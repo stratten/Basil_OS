@@ -168,3 +168,68 @@ export function formatBulletPoints(text: string): string {
 export function isUserFacingResponseStreaming(isStreaming: boolean, result: string | undefined): boolean {
   return isStreaming && Boolean(result);
 }
+
+export type RunDetailKey = 'app' | 'file' | 'path' | 'toolCalls';
+
+export interface RunDetailItem {
+  key: RunDetailKey;
+  label: string;
+  value: string;
+}
+
+const RUN_DETAIL_LINE = /^•\s*(Active app at request|File|Path|Tool calls|Steps):\s*(.+)$/;
+const RUN_DETAIL_TOOL_CALLS_VALUE = /^\d+$/;
+// Results stored before the "Tool calls" wording end with "Steps: N/N completed", where the total was the tool-call count.
+const LEGACY_RUN_DETAIL_STEPS_VALUE = /^\d+\/(\d+) completed$/;
+
+const RUN_DETAIL_DESCRIPTORS: Record<string, { key: RunDetailKey; label: string }> = {
+  'Active app at request': { key: 'app', label: 'Active app' },
+  File: { key: 'file', label: 'File' },
+  Path: { key: 'path', label: 'Path' },
+  'Tool calls': { key: 'toolCalls', label: 'Tool calls' },
+  Steps: { key: 'toolCalls', label: 'Tool calls' },
+};
+
+function toolCallsValue(heading: string, value: string): string | null {
+  if (heading === 'Steps') return value.match(LEGACY_RUN_DETAIL_STEPS_VALUE)?.[1] ?? null;
+  return RUN_DETAIL_TOOL_CALLS_VALUE.test(value) ? value : null;
+}
+
+// The backend finalizer (compose_summary in summary_payload.py) appends these bullets after the narrative; stored results keep them, so they are split here rather than removed server-side.
+export function splitRunDetails(summary: string): { narrative: string; details: RunDetailItem[] } {
+  const lines = summary.split('\n');
+  const details: RunDetailItem[] = [];
+  let index = lines.length - 1;
+
+  while (index >= 0) {
+    const trimmed = lines[index].trim();
+    if (trimmed === '') {
+      index -= 1;
+      continue;
+    }
+    const match = trimmed.match(RUN_DETAIL_LINE);
+    if (!match) break;
+    const descriptor = RUN_DETAIL_DESCRIPTORS[match[1]];
+    let value = match[2].trim();
+    if (descriptor.key === 'toolCalls') {
+      const count = toolCallsValue(match[1], value);
+      if (count === null) break;
+      value = count;
+    }
+    details.unshift({ key: descriptor.key, label: descriptor.label, value });
+    index -= 1;
+  }
+
+  const hasFinalizerMarker = details.some(detail => detail.key === 'app' || detail.key === 'toolCalls');
+  const narrative = lines.slice(0, index + 1).join('\n').trim();
+  if (!hasFinalizerMarker || !narrative) {
+    return { narrative: summary, details: [] };
+  }
+  return { narrative, details };
+}
+
+export function runDetailsHint(details: RunDetailItem[]): string {
+  const toolCalls = details.find(detail => detail.key === 'toolCalls')?.value;
+  const app = details.find(detail => detail.key === 'app')?.value;
+  return [toolCalls ? `${toolCalls} tool ${toolCalls === '1' ? 'call' : 'calls'}` : '', app || ''].filter(Boolean).join(' · ');
+}

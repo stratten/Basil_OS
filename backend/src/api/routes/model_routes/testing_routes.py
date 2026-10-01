@@ -195,7 +195,7 @@ async def download_progress(
                     last_progress = current_progress
                     last_status = status
 
-                if status in ["completed", "user_cancelled", "failed"] or current_progress >= 1.0:
+                if status in ["completed", "user_canceled", "failed"] or current_progress >= 1.0:
                     api_logger.info(f"🔌 [WEBSOCKET] Download finished for {entry.model_id}, status: {status}")
                     break
 

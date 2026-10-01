@@ -28,6 +28,13 @@ class LiveTranscriptionViewModel: ObservableObject {
     // Audio source toggles
     @Published var enableMicrophone: Bool = true  // Toggle to enable/disable microphone recording
     @Published var systemAudioCaptureMode: SystemAudioCaptureMode = .globalOutput
+
+    // Capture controls for the active recording part (see LiveTranscriptionViewModel+CaptureControl).
+    @Published var isCapturePaused = false
+    @Published var sessionLiveTranscriptionEnabled = true
+    var liveTranscriptionSelectionTouched = false
+    var liveTranscriptionWasDisabledThisPart = false
+    let recordingClock = RecordingClock()
     
     // Event-driven batched transcription state
     @Published var transcriptionState: TranscriptionState = .loadingModels
@@ -282,6 +289,7 @@ class LiveTranscriptionViewModel: ObservableObject {
         var auto_analyze_modes: [String] = []
         var auto_analyze_custom_instructions: String = ""
         var auto_analyze_timing: String = "after"
+        var live_transcription_by_default: Bool = true
 
         enum CodingKeys: String, CodingKey {
             case model_unload_delay, auto_paste, auto_close_on_paste, language
@@ -289,6 +297,7 @@ class LiveTranscriptionViewModel: ObservableObject {
             case auto_retranscribe_on_stop, auto_retranscribe_during_recording, retranscribe_window_seconds
             case auto_analyze_on_complete
             case auto_analyze_modes, auto_analyze_custom_instructions, auto_analyze_timing
+            case live_transcription_by_default
         }
 
         init(from decoder: Decoder) throws {
@@ -307,6 +316,7 @@ class LiveTranscriptionViewModel: ObservableObject {
             auto_analyze_modes = try c.decodeIfPresent([String].self, forKey: .auto_analyze_modes) ?? []
             auto_analyze_custom_instructions = try c.decodeIfPresent(String.self, forKey: .auto_analyze_custom_instructions) ?? ""
             auto_analyze_timing = try c.decodeIfPresent(String.self, forKey: .auto_analyze_timing) ?? "after"
+            live_transcription_by_default = try c.decodeIfPresent(Bool.self, forKey: .live_transcription_by_default) ?? true
         }
     }
     
@@ -514,8 +524,14 @@ class LiveTranscriptionViewModel: ObservableObject {
         DevLogger.shared.info("Set transcription state to loadingModels", context: "LiveTranscriptionViewModel")
         #endif
         
-        // Pre-initialize backend models
-        await preinitializeBackendModels()
+        // Pre-initialize backend models only when this meeting will transcribe live.
+        await loadLiveTranscriptionDefault()
+        if sessionLiveTranscriptionEnabled {
+            await preinitializeBackendModels()
+        } else {
+            transcriptionState = .idle
+            statusMessage = Self.recordOnlyIdleStatusMessage
+        }
         
         if #available(macOS 14.0, *) {
             guard let controller = systemAudioState?.audioProcessController else {
@@ -565,13 +581,14 @@ class LiveTranscriptionViewModel: ObservableObject {
             #if DEBUG
             DevLogger.shared.info("Stopping active recording before cleanup", context: "LiveTranscriptionViewModel")
             #endif
-            stopRecording()
+            // Closing the window while paused keeps the part but leaves it unprocessed.
+            stopRecording(runPostStopActions: !isCapturePaused)
         }
         
         // AGGRESSIVELY cancel the process observer timer
         if let observer = processObserver {
             #if DEBUG
-            DevLogger.shared.info("Cancelling process observer timer", context: "LiveTranscriptionViewModel")
+            DevLogger.shared.info("Canceling process observer timer", context: "LiveTranscriptionViewModel")
             #endif
             observer.cancel()
         }
@@ -583,7 +600,7 @@ class LiveTranscriptionViewModel: ObservableObject {
         // AGGRESSIVELY cancel recording timer
         if let timer = timerCancellable {
             #if DEBUG
-            DevLogger.shared.info("Cancelling recording timer", context: "LiveTranscriptionViewModel")
+            DevLogger.shared.info("Canceling recording timer", context: "LiveTranscriptionViewModel")
             #endif
             timer.cancel()
         }
@@ -592,7 +609,7 @@ class LiveTranscriptionViewModel: ObservableObject {
         // Clear WebSocket references to avoid orphaned connections
         if let wsTask = microphoneWebSocketTask {
             #if DEBUG
-            DevLogger.shared.info("Cancelling microphone WebSocket task", context: "LiveTranscriptionViewModel")
+            DevLogger.shared.info("Canceling microphone WebSocket task", context: "LiveTranscriptionViewModel")
             #endif
             wsTask.cancel()
         }
@@ -600,7 +617,7 @@ class LiveTranscriptionViewModel: ObservableObject {
         
         if let wsTask = systemAudioWebSocketTask {
             #if DEBUG
-            DevLogger.shared.info("Cancelling system audio WebSocket task", context: "LiveTranscriptionViewModel")
+            DevLogger.shared.info("Canceling system audio WebSocket task", context: "LiveTranscriptionViewModel")
             #endif
             wsTask.cancel()
         }
@@ -609,7 +626,7 @@ class LiveTranscriptionViewModel: ObservableObject {
         // Cancel any connection tasks
         if let connTask = connectionTask {
             #if DEBUG
-            DevLogger.shared.info("Cancelling connection task", context: "LiveTranscriptionViewModel")
+            DevLogger.shared.info("Canceling connection task", context: "LiveTranscriptionViewModel")
             #endif
             connTask.cancel()
         }
@@ -641,7 +658,7 @@ class LiveTranscriptionViewModel: ObservableObject {
         
         // AGGRESSIVELY clear ALL cancellables
         #if DEBUG
-        DevLogger.shared.info("Cancelling \(cancellables.count) remaining cancellables", context: "LiveTranscriptionViewModel")
+        DevLogger.shared.info("Canceling \(cancellables.count) remaining cancellables", context: "LiveTranscriptionViewModel")
         #endif
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()

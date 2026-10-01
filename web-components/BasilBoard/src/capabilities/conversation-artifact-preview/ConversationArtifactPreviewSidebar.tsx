@@ -17,6 +17,14 @@ import type { ConversationArtifactPreviewSelection } from './conversationArtifac
 import { useConversationArtifactSidebarResize } from './useConversationArtifactSidebarResize';
 import type { PresencePhase } from '@agent-task/app/usePresenceTransition';
 import CrossfadeStack from '@agent-task/components/CrossfadeStack';
+import type { WSEvent as AgentTaskWSEvent } from '@agent-task/types';
+import { basilBoardWebSocket } from '../../services/websocket';
+
+function subscribeToAgentTaskEvents(handler: (event: AgentTaskWSEvent) => void): () => void {
+  return basilBoardWebSocket.subscribe((event) => {
+    if (typeof event.event_type === 'string') handler(event as unknown as AgentTaskWSEvent);
+  });
+}
 
 export interface ConversationArtifactPreviewSidebarProps {
   selection: ConversationArtifactPreviewSelection;
@@ -170,6 +178,7 @@ export default function ConversationArtifactPreviewSidebar({
           activeArtifactId={activeArtifact.artifactId}
           onSelectArtifact={onSelectArtifact}
           previewTransport={transport}
+          subscribeToEvents={subscribeToAgentTaskEvents}
         />
       ) : null}
       </CrossfadeStack>

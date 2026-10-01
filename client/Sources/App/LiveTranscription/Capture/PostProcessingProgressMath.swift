@@ -1,7 +1,7 @@
 import Foundation
 
 /// Pure progress math for retranscription, extracted so the combined-duration
-/// behaviour can be unit-tested without instantiating the view model.
+/// behavior can be unit-tested without instantiating the view model.
 enum PostProcessingProgressMath {
 
     /// Combined-duration progress across the sequential tracks of one job.

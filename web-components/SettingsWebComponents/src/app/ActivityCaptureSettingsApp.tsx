@@ -92,7 +92,7 @@ export function ActivityCaptureSettingsApp() {
   const [itemsPerRunText, setItemsPerRunText] = useState('')
   const [isTestCapturing, setIsTestCapturing] = useState(false)
   const [isProcessingBacklog, setIsProcessingBacklog] = useState(false)
-  const [isCancelling, setIsCancelling] = useState(false)
+  const [isCanceling, setIsCanceling] = useState(false)
   const [isClearingBacklog, setIsClearingBacklog] = useState(false)
   const [isClearingAll, setIsClearingAll] = useState(false)
   const requestIdsRef = useRef<PendingActionIds>({})
@@ -174,14 +174,14 @@ export function ActivityCaptureSettingsApp() {
         } else if (sawActiveRef.current) {
           stopProgressPolling()
           setIsProcessingBacklog(false)
-          setIsCancelling(false)
+          setIsCanceling(false)
           requestActivityCaptureStatus()
         } else {
           pollsBeforeStartRef.current += 1
           if (pollsBeforeStartRef.current > 5) {
             stopProgressPolling()
             setIsProcessingBacklog(false)
-            setIsCancelling(false)
+            setIsCanceling(false)
           }
         }
       } else if (event.type === 'intentResult') {
@@ -198,18 +198,18 @@ export function ActivityCaptureSettingsApp() {
           }
         } else if (event.requestId === ids.cancelProcessing) {
           if (event.status === 'error') {
-            setIsCancelling(false)
+            setIsCanceling(false)
             if (event.message) showStatus(event.message)
           }
         } else if (event.requestId === ids.clearBacklog) {
           setIsClearingBacklog(false)
-          if (event.status !== 'cancelled') {
+          if (event.status !== 'canceled') {
             if (event.message) showStatus(event.message)
             requestActivityCaptureStatus()
           }
         } else if (event.requestId === ids.clearAllCaptures) {
           setIsClearingAll(false)
-          if (event.status !== 'cancelled') {
+          if (event.status !== 'canceled') {
             if (event.message) showStatus(event.message)
             requestActivityCaptureStatus()
           }
@@ -294,8 +294,8 @@ export function ActivityCaptureSettingsApp() {
   }
 
   function handleCancelProcessing() {
-    if (isCancelling) return
-    setIsCancelling(true)
+    if (isCanceling) return
+    setIsCanceling(true)
     requestIdsRef.current.cancelProcessing = requestActivityCaptureCancelProcessing()
   }
 
@@ -629,8 +629,8 @@ export function ActivityCaptureSettingsApp() {
             />
             <p className="activity-capture-hint">{progressLine(processingProgress)}</p>
             {processingProgress.active && (
-              <button type="button" className="secondary-button activity-capture-cancel-button" disabled={isCancelling || processingProgress.cancelRequested} onClick={handleCancelProcessing}>
-                {isCancelling ? 'Stopping…' : 'Cancel'}
+              <button type="button" className="secondary-button activity-capture-cancel-button" disabled={isCanceling || processingProgress.cancelRequested} onClick={handleCancelProcessing}>
+                {isCanceling ? 'Stopping…' : 'Cancel'}
               </button>
             )}
           </div>

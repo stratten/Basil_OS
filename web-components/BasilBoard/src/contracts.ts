@@ -13,7 +13,7 @@ export type HomeTimelineItem =
       messageId: string;
       inReplyTo: string;
       agentTaskId: string;
-      state: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+      state: 'queued' | 'running' | 'completed' | 'failed' | 'canceled';
       result?: string;
       outcome?: string;
       createdAt: string;
@@ -39,7 +39,7 @@ export interface BoardInquirySummary {
   routeKind?: 'conversation' | 'agent_task' | null;
   routeReason?: string | null;
   routeConfidence?: number | null;
-  state: 'routing' | 'running' | 'completed' | 'failed' | 'cancelled';
+  state: 'routing' | 'running' | 'completed' | 'failed' | 'canceled';
   conversationId?: string | null;
   agentTaskId?: string | null;
   createdAt?: string | null;
@@ -63,7 +63,7 @@ export interface HomeTurnResponse {
   route_kind: 'conversation' | 'agent_task';
   route_reason: string;
   route_confidence?: number | null;
-  state: 'routing' | 'running' | 'completed' | 'failed' | 'cancelled';
+  state: 'routing' | 'running' | 'completed' | 'failed' | 'canceled';
   assistant_message_id?: string | null;
   agent_task_id?: string | null;
   assistant_content?: string | null;
@@ -115,7 +115,7 @@ export interface ConversationSubmission {
   source: 'composer' | 'voice';
 }
 
-export type TodoStatus = 'candidate' | 'open' | 'in_progress' | 'ready_for_review' | 'completed' | 'dismissed' | 'cancelled';
+export type TodoStatus = 'candidate' | 'open' | 'in_progress' | 'ready_for_review' | 'completed' | 'dismissed' | 'canceled';
 export type TodoResponsibility = 'user' | 'agent' | 'shared' | 'unspecified';
 export type TodoPriority = 'low' | 'normal' | 'high';
 
@@ -345,7 +345,7 @@ export type ConversationAgentActivityLifecycle =
   | 'clarification_added'
   | 'completed'
   | 'failed'
-  | 'cancelled';
+  | 'canceled';
 
 export type ConversationAgentActivityArtifactKind = 'file' | 'directory' | 'unknown';
 export type ConversationAgentActivityArtifactLifecycle = 'discovered' | 'ready' | 'verified' | 'failed' | 'unavailable';
@@ -400,7 +400,7 @@ export interface WSEvent {
   token?: string;
   chunk_id?: number;
   is_final?: boolean;
-  cancelled?: boolean;
+  canceled?: boolean;
   attempt_count?: number;
   placeholder_message_id?: string;
   lifecycle?: string;

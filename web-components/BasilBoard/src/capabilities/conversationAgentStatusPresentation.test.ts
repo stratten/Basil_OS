@@ -166,7 +166,7 @@ describe('conversationAgentStatusPresentation', () => {
   it('classifies terminal lifecycles', () => {
     expect(isTerminalConversationAgentStatusLifecycle('completed')).toBe(true);
     expect(isTerminalConversationAgentStatusLifecycle('failed')).toBe(true);
-    expect(isTerminalConversationAgentStatusLifecycle('cancelled')).toBe(true);
+    expect(isTerminalConversationAgentStatusLifecycle('canceled')).toBe(true);
     expect(isTerminalConversationAgentStatusLifecycle('running')).toBe(false);
     expect(isTerminalConversationAgentStatusLifecycle('pending')).toBe(false);
   });

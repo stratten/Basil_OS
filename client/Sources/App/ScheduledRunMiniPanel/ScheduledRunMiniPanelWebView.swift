@@ -20,7 +20,7 @@ final class ScheduledRunMiniPanelWebView: NSObject, WKScriptMessageHandler, WKNa
 
     /// Called when the user clicks a row. ``agentTaskId`` may be empty if the
     /// row is for a run that hasn't allocated an agent_task_id yet — the
-    /// controller is responsible for ignoring/queueing in that case.
+    /// controller is responsible for ignoring/queuing in that case.
     var onOpenAgentTask: ((_ agentTaskId: String, _ runId: String) -> Void)?
 
     /// Called when the user clicks the row-level dismiss button.
@@ -52,7 +52,7 @@ final class ScheduledRunMiniPanelWebView: NSObject, WKScriptMessageHandler, WKNa
     private var dragAreaView: NSView?
 
     override init() {
-        let configuration = WKWebViewConfiguration()
+        let configuration = BasilWebViewConfigurationFactory.makeConfiguration()
         configuration.preferences.setValue(true, forKey: "developerExtrasEnabled")
         configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
         configuration.setValue(true, forKey: "allowUniversalAccessFromFileURLs")

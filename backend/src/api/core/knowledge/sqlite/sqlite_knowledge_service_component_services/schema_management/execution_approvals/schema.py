@@ -19,7 +19,7 @@ def get_execution_approval_schema_statements() -> list[str]:
             generalized_pattern TEXT NOT NULL,
             render_context_json TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'pending'
-                CHECK (status IN ('pending', 'approved', 'denied', 'cancelled')),
+                CHECK (status IN ('pending', 'approved', 'denied', 'canceled')),
             remember_choice INTEGER NOT NULL DEFAULT 0,
             pattern_type TEXT,
             revision INTEGER NOT NULL DEFAULT 0,

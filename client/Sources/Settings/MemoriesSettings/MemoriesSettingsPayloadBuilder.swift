@@ -50,7 +50,7 @@ enum MemoriesSettingsPayloadBuilder {
             "remaining": progress.remaining,
             "etaSeconds": progress.etaSeconds ?? NSNull(),
             "lastError": progress.lastError ?? NSNull(),
-            "cancelling": progress.cancelling ?? NSNull(),
+            "canceling": progress.canceling ?? NSNull(),
             "analysisConcurrency": progress.analysisConcurrency ?? NSNull(),
             "processingStrategy": progress.processingStrategy ?? NSNull(),
         ] as [String: Any]

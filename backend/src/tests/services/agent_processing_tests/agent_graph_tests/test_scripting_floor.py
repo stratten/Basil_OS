@@ -74,7 +74,7 @@ def stub_executor(monkeypatch):
     canned: list[dict] = []
     tool_surfaces: list[list[str]] = []
 
-    async def fake_execute(agent_executor, user_input, callbacks, cancel_event):
+    async def fake_execute(agent_executor, user_input, callbacks, cancel_event, **_budget_kwargs):
         calls["count"] += 1
         calls["inputs"].append(user_input)
         index = min(calls["count"] - 1, len(canned) - 1)

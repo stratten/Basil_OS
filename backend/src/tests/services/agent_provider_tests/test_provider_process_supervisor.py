@@ -368,7 +368,7 @@ async def test_launch_classifies_a_hung_process_as_timed_out_and_terminates_it(t
 
 
 @pytest.mark.asyncio
-async def test_cancelling_an_inflight_launch_terminates_its_process_group(tmp_path) -> None:
+async def test_canceling_an_inflight_launch_terminates_its_process_group(tmp_path) -> None:
     request = _validated_request(
         launch_argv=_fixture_argv("hang_before_initialize"),
         resolved_workspace_root=str(tmp_path),
@@ -390,7 +390,7 @@ async def test_cancelling_an_inflight_launch_terminates_its_process_group(tmp_pa
         await launch_task
 
     assert supervisor.last_outcome is not None
-    assert supervisor.last_outcome.status == ProviderLaunchOutcomeStatus.CANCELLED
+    assert supervisor.last_outcome.status == ProviderLaunchOutcomeStatus.CANCELED
     assert not _pid_is_alive(process_pid)
 
 
@@ -453,7 +453,7 @@ async def test_cancel_terminates_the_entire_process_group_including_a_grandchild
     assert os.getpgid(outcome.pid) == outcome.pid
 
     cancel_outcome = await supervisor.cancel()
-    assert cancel_outcome.status == ProviderLaunchOutcomeStatus.CANCELLED
+    assert cancel_outcome.status == ProviderLaunchOutcomeStatus.CANCELED
 
     assert await _wait_until(lambda: not _pid_is_alive(grandchild_pid))
     assert not _pid_is_alive(outcome.pid)
@@ -478,7 +478,7 @@ async def test_cancel_escalates_to_kill_when_the_child_ignores_sigterm(tmp_path)
     cancel_outcome = await supervisor.cancel()
     elapsed = loop.time() - started_at
 
-    assert cancel_outcome.status == ProviderLaunchOutcomeStatus.CANCELLED
+    assert cancel_outcome.status == ProviderLaunchOutcomeStatus.CANCELED
     assert 0.9 <= elapsed < 5.0
     assert not _pid_is_alive(outcome.pid)
 

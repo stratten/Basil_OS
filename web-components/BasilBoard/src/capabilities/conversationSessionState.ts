@@ -23,6 +23,10 @@ export function pendingConversationThreadKey(requestId: string): string {
   return `${PENDING_THREAD_KEY_PREFIX}${requestId}`;
 }
 
+export function isPendingConversationThreadKey(key: string): boolean {
+  return key.startsWith(PENDING_THREAD_KEY_PREFIX);
+}
+
 export interface ConversationDraftSubmission {
   requestId: string;
   messageId: string;
@@ -42,7 +46,7 @@ export interface ConversationRequestSession {
   submission: ConversationDraftSubmission;
   streamState: ConversationStreamState;
   agentTaskId?: string;
-  cancelling: boolean;
+  canceling: boolean;
   ownedByThisSocket: boolean;
 }
 
@@ -57,6 +61,7 @@ export interface ConversationThreadSession {
   attachmentPaths: string[];
   activeFormats: Record<string, boolean>;
   delegationOptOut: boolean;
+  delegationOptOutSource?: 'user' | 'resolved';
   responseError?: string;
   unsentSubmission?: ConversationDraftSubmission;
   persistedFailedSubmission?: ConversationDraftSubmission;
@@ -210,7 +215,7 @@ export function registerSubmission(
     submission,
     streamState: initialConversationStreamState(),
     agentTaskId: undefined,
-    cancelling: false,
+    canceling: false,
     ownedByThisSocket: true,
   };
   const updatedStore: ConversationSessionStore = {
@@ -290,12 +295,14 @@ export function applyTokenToRequest(
     { ...store, requestsById: { ...store.requestsById, [requestId]: updatedRequest } },
     threadKey,
     (thread) => {
+      const placeholder = thread.messages.find((message) => message.id === `pending-${requestId}`);
+      const existingAssistant = thread.messages.find((message) => message.id === assistantId);
       const withoutPlaceholder = thread.messages.filter((message) => message.id !== `pending-${requestId}`);
       const assistant: ConversationMessageItem = {
         id: assistantId,
         role: 'assistant',
         content: reduction.state.content,
-        timestamp: new Date().toISOString(),
+        timestamp: existingAssistant?.timestamp ?? placeholder?.timestamp ?? new Date().toISOString(),
         model_id: request.submission.modelId,
         metadata: { thinking: reduction.state.thinking, streaming: !event.is_final },
       };
@@ -309,7 +316,7 @@ export function applyTokenToRequest(
   return { store: nextStore, accepted: true, threadKey, request: updatedRequest };
 }
 
-export function markRequestCancelling(
+export function markRequestCanceling(
   store: ConversationSessionStore,
   requestId: string,
 ): ConversationSessionStore {
@@ -317,7 +324,7 @@ export function markRequestCancelling(
   if (!request) return store;
   return {
     ...store,
-    requestsById: { ...store.requestsById, [requestId]: { ...request, cancelling: true } },
+    requestsById: { ...store.requestsById, [requestId]: { ...request, canceling: true } },
   };
 }
 

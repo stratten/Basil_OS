@@ -28,6 +28,7 @@ final class ReasoningSettingsViewModel: ObservableObject {
     /// `/settings/assistant-session` before `startAssistantSessionFlow` so
     /// the widget renders in the preferred mode without flicker.
     @Published var assistantSessionDefaultModality: AssistantSessionInputMode = .speak
+    @Published var conversationDefaultConversationOnly: Bool = false
 
     // MARK: - Skills Intelligence Properties
     @Published var skillCandidates: [SkillCandidateDTO] = []
@@ -101,6 +102,7 @@ final class ReasoningSettingsViewModel: ObservableObject {
         await loadReasoningModels() // Existing function to load models
         await loadAssistantSessionSettings() // Load AssistantSession (AssistantSession) preferences
         await loadAgentTaskSettings()
+        await loadConversationSettings()
 
         isLoading = false
     }

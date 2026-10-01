@@ -16,12 +16,12 @@ Generated outputs (overwritten on every run; loud warning if content changed):
 
 This script is invoked from scripts/build-agent-task-assets.sh as STEP 0, so dev (dev.sh)
 and release (build/scripts/build_frontend.sh) builds keep all three
-runtimes synchronised without any manual step. Direct invocation also works:
+runtimes synchronized without any manual step. Direct invocation also works:
 
     python3 scripts/generate_processing_color_defaults.py
 
 If the Swift declarations cannot be parsed (e.g. someone reformatted them
-into something this regex does not recognise), the script aborts with a
+into something this regex does not recognize), the script aborts with a
 non-zero exit code so the build fails loudly rather than silently shipping
 stale defaults.
 """
@@ -103,7 +103,7 @@ def _parse_swift_color_literal(swift_text: str, identifier: str) -> RGB:
 
 
 def _hex_from_rgb(rgb: RGB) -> str:
-    """Convert a normalised (R, G, B) triple to an upper-case `#RRGGBB`
+    """Convert a normalized (R, G, B) triple to an upper-case `#RRGGBB`
     string. Mirrors the conversion the Swift `WKWebView` bridge uses when
     forwarding theme colors to the React runtime, so build-time and
     runtime hex values agree."""

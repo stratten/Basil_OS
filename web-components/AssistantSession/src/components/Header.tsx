@@ -1,5 +1,5 @@
 import AnimatedBubble from '../../../shared/bubble/AnimatedBubble';
-import { cancelOperation, minimizeWidget, openHistory, switchInputMode, toggleResultCollapse } from '../bridge/assistantSessionBridge';
+import { cancelOperation, enterTypedRefinement, minimizeWidget, openHistory, switchInputMode, toggleResultCollapse } from '../bridge/assistantSessionBridge';
 import type { AssistantSessionState } from '../state/assistantSessionReducer';
 import type { AssistantSessionThemePayload } from '../bridge/types';
 import type { WidgetPhase } from '../lib/widgetPhase';
@@ -11,14 +11,20 @@ export function Header({
   theme,
   phase,
   showProgressElements,
+  onSwitchToTypedRefinement,
 }: {
   state: AssistantSessionState;
   theme: AssistantSessionThemePayload;
   phase: WidgetPhase;
   showProgressElements: boolean;
+  onSwitchToTypedRefinement?: () => void;
 }) {
   const meterLevel = useAssistantSessionMeter();
-  const modalityMutable = !state.inputCommitted;
+  const isRefinementRecording =
+    state.isRefinementMode &&
+    (state.isRecording || state.transcriptionStatus === 'running') &&
+    state.assistantSessionStatus !== 'running';
+  const modalityMutable = !state.inputCommitted && phase !== 'result';
   const showResultCollapse = phase === 'result';
 
   return (
@@ -68,7 +74,19 @@ export function Header({
         <button type="button" className="assistant-session-header__ghost-btn" title="Dill - Assistant History" onClick={openHistory}>
           <NativeSymbol name="history" size={10} />
         </button>
-        {modalityMutable && (
+        {isRefinementRecording ? (
+          <button
+            type="button"
+            className="assistant-session-header__ghost-btn"
+            title="Switch to typed refinement"
+            onClick={() => {
+              enterTypedRefinement();
+              onSwitchToTypedRefinement?.();
+            }}
+          >
+            <NativeSymbol name="keyboard" size={10} />
+          </button>
+        ) : modalityMutable && (
           <button
             type="button"
             className="assistant-session-header__ghost-btn"

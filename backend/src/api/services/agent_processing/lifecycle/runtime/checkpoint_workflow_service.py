@@ -300,7 +300,7 @@ class WorkflowCheckpointWorkflowService:
             parent = await knowledge_service.get_agent_task(parent_agent_task_id)
             if parent is None:
                 raise ValueError(f"Parent Agent Task {parent_agent_task_id} does not exist")
-            if parent.status in {"completed", "failed", "cancelled"}:
+            if parent.status in {"completed", "failed", "canceled"}:
                 raise ValueError("Parent Agent Task is already terminal")
             await knowledge_service.update_agent_task_status(
                 agent_task_id=parent_agent_task_id,
@@ -389,7 +389,7 @@ class WorkflowCheckpointWorkflowService:
             parent = await knowledge_service.get_agent_task(parent_agent_task_id)
             if parent is None:
                 raise ValueError(f"Parent Agent Task {parent_agent_task_id} does not exist")
-            if parent.status in {"completed", "failed", "cancelled"}:
+            if parent.status in {"completed", "failed", "canceled"}:
                 raise ValueError("Parent Agent Task is already terminal")
             await knowledge_service.update_agent_task_status(
                 agent_task_id=parent_agent_task_id,
@@ -584,7 +584,7 @@ Instructions for this turn (STRICT):
   (your existing tool_execution_results, observations, and intermediate results).
 - Emit your final_envelope now.
 - If no useful work was completed yet, emit a final_envelope explaining that
-  the task was cancelled before completion and briefly summarize what you had
+  the task was canceled before completion and briefly summarize what you had
   planned to do, so the user has a clean record.
 """
 

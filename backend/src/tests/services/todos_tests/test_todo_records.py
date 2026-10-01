@@ -52,7 +52,7 @@ def test_true_failure_still_reports_error_severity():
 
 
 def test_missing_result_data_falls_back_to_status_derived_severity_without_raising():
-    attempt = agent_task_to_work_attempt(_agent_task(status="cancelled", result_data=None))
+    attempt = agent_task_to_work_attempt(_agent_task(status="canceled", result_data=None))
 
     assert attempt.outcome is None
     assert attempt.result_severity == "neutral"

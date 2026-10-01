@@ -199,7 +199,8 @@ class FileContextDetectionService:
         '''
         
         try:
-            result = subprocess.run(
+            result = await asyncio.to_thread(
+                subprocess.run,
                 ['osascript', '-e', script],
                 capture_output=True,
                 text=True,
@@ -586,7 +587,8 @@ class FileContextDetectionService:
         '''
         
         try:
-            result = subprocess.run(
+            result = await asyncio.to_thread(
+                subprocess.run,
                 ['osascript', '-e', script],
                 capture_output=True,
                 text=True,

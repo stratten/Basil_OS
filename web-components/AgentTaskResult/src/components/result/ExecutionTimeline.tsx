@@ -141,7 +141,7 @@ export function ProgressStepsSection({
           <span className="execution-activity-dock-beacon-slot">
             {isLive ? <span className="execution-live-beacon" aria-hidden="true" /> : null}
           </span>
-          <span className="execution-activity-dock-count">Activity · {readableCount} {readableCount === 1 ? 'step' : 'steps'}</span>
+          <span className="execution-activity-dock-count">Activity · {readableCount} {readableCount === 1 ? 'update' : 'updates'}</span>
           {latestActivityLabel ? (
             <span className="execution-activity-dock-latest">{latestActivityLabel}</span>
           ) : null}
@@ -243,7 +243,7 @@ export function ProgressStepsSection({
             onClick={() => setDisclosure(current => nextActivityDisclosure(current, 'toggleTrail'))}
           >
             {isLive ? <span className="execution-live-beacon" aria-hidden="true" /> : null}
-            <span className="activity-summary-header-count">Activity · {readableCount} {readableCount === 1 ? 'step' : 'steps'}</span>
+            <span className="activity-summary-header-count">Activity · {readableCount} {readableCount === 1 ? 'update' : 'updates'}</span>
             {disclosure === 'collapsed' && latestActivityLabel ? (
               <span className="activity-summary-header-latest">{latestActivityLabel}</span>
             ) : null}

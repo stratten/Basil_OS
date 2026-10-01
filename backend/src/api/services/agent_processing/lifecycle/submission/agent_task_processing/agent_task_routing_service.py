@@ -20,12 +20,12 @@ class AgentTaskRoutingService:
         *,
         db_service: Any,
         websocket_manager: Any = None,
-        is_cancelled: Optional[Callable[[str], bool]] = None,
+        is_canceled: Optional[Callable[[str], bool]] = None,
         logger: Optional[logging.Logger] = None,
     ) -> None:
         self.db_service = db_service
         self.websocket_manager = websocket_manager
-        self._is_cancelled = is_cancelled or (lambda _agent_task_id: False)
+        self._is_canceled = is_canceled or (lambda _agent_task_id: False)
         self.logger = logger or logging.getLogger(__name__)
         self._provider_delegation_result_bridge: Any | None = None
 
@@ -114,8 +114,8 @@ class AgentTaskRoutingService:
     async def perform_routing(self, agent_task_id: str) -> None:
         """Route an AgentTask directly to the canonical multi-step workflow."""
         try:
-            if self._is_cancelled(agent_task_id):
-                self.logger.info("🛑 Skipping routing for cancelled agent_task: %s", agent_task_id)
+            if self._is_canceled(agent_task_id):
+                self.logger.info("🛑 Skipping routing for canceled agent_task: %s", agent_task_id)
                 return
 
             agent_task_record = await self.db_service.get_agent_task(agent_task_id)
@@ -323,14 +323,14 @@ class AgentTaskRoutingService:
         """Persist and broadcast one provider-activity timeline entry.
 
         Returns False without persisting or broadcasting when the Agent Task
-        is absent or already terminal (`completed`, `failed`, `cancelled`),
+        is absent or already terminal (`completed`, `failed`, `canceled`),
         so late provider noise cannot revive a finished task. This is the
         sole publication path used by `ProviderActivityProjector`; it never
         touches `send_progress_update`'s behavior.
         """
         try:
             agent_task_record = await self.db_service.get_agent_task(agent_task_id)
-            if not agent_task_record or agent_task_record.status in ("completed", "failed", "cancelled"):
+            if not agent_task_record or agent_task_record.status in ("completed", "failed", "canceled"):
                 return False
 
             timeline_entry = normalize_timeline_entry(
@@ -399,7 +399,7 @@ class AgentTaskRoutingService:
         """
         try:
             agent_task_record = await self.db_service.get_agent_task(agent_task_id)
-            if not agent_task_record or agent_task_record.status in ("completed", "failed", "cancelled"):
+            if not agent_task_record or agent_task_record.status in ("completed", "failed", "canceled"):
                 return False
             from api.services.conversation.conversation_agent_turn_lifecycle import (
                 publish_conversation_agent_attention,
@@ -532,7 +532,7 @@ class AgentTaskRoutingService:
         """
         try:
             agent_task_record = await self.db_service.get_agent_task(agent_task_id)
-            if not agent_task_record or agent_task_record.status in ("completed", "failed", "cancelled"):
+            if not agent_task_record or agent_task_record.status in ("completed", "failed", "canceled"):
                 return False
             from api.services.conversation.conversation_agent_turn_lifecycle import (
                 publish_conversation_agent_attention,
@@ -616,10 +616,10 @@ class AgentTaskRoutingService:
             self.logger.debug("Title generation skipped: %s", exc)
 
     async def broadcast_agent_task_message(self, agent_task_id: Optional[str], message: Dict[str, Any]) -> bool:
-        """Broadcast unless this task has already been cancelled."""
-        if agent_task_id and self._is_cancelled(agent_task_id):
+        """Broadcast unless this task has already been canceled."""
+        if agent_task_id and self._is_canceled(agent_task_id):
             self.logger.info(
-                "🛑 Suppressing %s for cancelled agent_task %s",
+                "🛑 Suppressing %s for canceled agent_task %s",
                 message.get("event_type"),
                 agent_task_id,
             )

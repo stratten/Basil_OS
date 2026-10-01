@@ -15,11 +15,8 @@ import stat
 from ..models.websocket_events import WebSocketEventType, HistoryChatEvent
 import uuid
 import time
-from ..dependencies import get_agent_task_submission_service, get_conversation_turn_router, get_query_intent_handler, get_model_service, get_conversation_service, get_model_usage_service, get_wake_word_service, get_transcription_service, resolve_transcription_service, get_todo_workspace_turn_manager
-from ..core.knowledge.query.query_intent_handler import QueryIntentHandler
-from ..core.services.model_service import ModelService
+from ..dependencies import get_agent_task_submission_service, get_conversation_turn_router, get_conversation_service, get_wake_word_service, get_transcription_service, resolve_transcription_service, get_todo_workspace_turn_manager
 from ..services.conversation import ConversationService
-from ..services.model_usage_service import ModelUsageService
 from ..services.agent_processing.lifecycle.submission import AgentTaskSubmissionService
 from ..services.wake_word import WakeWordService
 from datetime import datetime, timedelta
@@ -38,7 +35,7 @@ from .websocket_routes.transcription import (
     handle_set_context_info,
     handle_audio_transcription
 )
-from .websocket_routes.conversation import send_history_chat_event, send_conversation_token, handle_conversation_message, handle_history_chat_message
+from .websocket_routes.conversation import send_history_chat_event, send_conversation_token, handle_conversation_message
 from .websocket_routes.todo_workspace import handle_todo_workspace_message
 from .websocket_routes.conversation_request_runtime import conversation_request_runtime
 from ..services.conversation.conversation_turn_router import ConversationTurnRouter
@@ -141,30 +138,30 @@ async def _handle_conversation_cancel_message(
     agent_task_id = request_runtime.agent_task_for_request(websocket, request_id)
     if state is None and agent_task_id is None and conversation_id:
         state, agent_task_id = request_runtime.request_cancel_for_conversation(conversation_id)
-    narration_cancelled = False
+    narration_canceled = False
     if agent_task_id:
         from api.services.conversation.conversation_agent_narration_service import (
             get_registered_conversation_agent_narration_service,
         )
 
         try:
-            narration_cancelled = await get_registered_conversation_agent_narration_service().cancel_narration(
+            narration_canceled = await get_registered_conversation_agent_narration_service().cancel_narration(
                 agent_task_id
             )
         except RuntimeError:
-            narration_cancelled = False
-        if not narration_cancelled:
+            narration_canceled = False
+        if not narration_canceled:
             await agent_task_submission_service.cancel_agent_task_durably(
                 agent_task_id,
-                "User cancelled Conversation request",
+                "User canceled Conversation request",
             )
             if request_runtime.claim_agent_task_cancellation(websocket, request_id) is None and conversation_id:
                 request_runtime.claim_agent_task_cancellation_for_conversation(conversation_id)
-    if narration_cancelled:
+    if narration_canceled:
         await websocket.send_json({
-            "event_type": "conversation_cancelled",
+            "event_type": "conversation_canceled",
             "request_id": request_id,
-            "message": "Conversation response cancelled.",
+            "message": "Conversation response canceled.",
         })
     if state is None and agent_task_id is None:
         await websocket.send_json({
@@ -177,9 +174,6 @@ async def _handle_conversation_cancel_message(
 @router.websocket("/ws")
 async def websocket_endpoint(
     websocket: WebSocket,
-    query_intent_handler: QueryIntentHandler = Depends(get_query_intent_handler),
-    model_service: ModelService = Depends(get_model_service),
-    model_usage_service: ModelUsageService = Depends(get_model_usage_service),
     agent_task_submission_service: AgentTaskSubmissionService = Depends(get_agent_task_submission_service),
     wake_word_service: WakeWordService = Depends(get_wake_word_service),
     transcription_service: HuggingFaceTranscriptionService = Depends(get_transcription_service),
@@ -250,8 +244,9 @@ async def websocket_endpoint(
                             elif client_action == "cancel_model_unload":
                                 model_unload_state.cancel_scheduled_model_unload()
                                 await websocket.send_json({
+                                    "event_type": "model_unload_cancel_result",
                                     "status": "success",
-                                    "message": "Model unload cancelled"
+                                    "message": "Model unload canceled"
                                 })
                                 
                             elif client_action == "cancel_transcription":
@@ -263,16 +258,18 @@ async def websocket_endpoint(
                                     agent_task_id = msg_data.get("agent_task_id")
                                     await agent_task_submission_service.cancel_agent_task_durably(
                                         agent_task_id=agent_task_id,
-                                        reason="user_cancelled",
+                                        reason="user_canceled",
                                     )
                                     await websocket.send_json({
+                                        "event_type": "agent_task_cancel_result",
                                         "status": "success",
-                                        "message": "AgentTask cancelled"
+                                        "message": "AgentTask canceled"
                                     })
                                     logger.info("AgentTask cancellation completed successfully")
                                 except Exception as e:
-                                    logger.error(f"Error cancelling agent_task: {e}")
+                                    logger.error(f"Error canceling agent_task: {e}")
                                     await websocket.send_json({
+                                        "event_type": "agent_task_cancel_result",
                                         "status": "error",
                                         "message": f"Failed to cancel agent_task: {str(e)}"
                                     })
@@ -303,7 +300,7 @@ async def websocket_endpoint(
                                         )
                                         if not delivered:
                                             # No waiting future matched — the request
-                                            # already timed out/cancelled and was popped,
+                                            # already timed out/canceled and was popped,
                                             # or the correlation_id never matched. This is
                                             # the signature of the "Waiting for access"
                                             # hang, so surface it above DEBUG.
@@ -382,9 +379,9 @@ async def websocket_endpoint(
                                 except Exception as e:
                                     logger.error(f"Error handling auth token response: {e}")
                                 
-                            elif msg_data.get("type") in ("agentTask_widget_closed", "agent_task_widget_closed"):
-                                # Swift currently sends "agentTask_widget_closed" (camelCase prefix);
-                                # accept the snake_case spelling too so future client changes can't break this.
+                            elif msg_data.get("type") in ("agent_task_widget_closed", "agentTask_widget_closed"):
+                                # BasilClient builds from before 2026-09-29 send the camelCase spelling; keep accepting it so an
+                                # installed client can still dismiss an awaiting task instead of leaving it hung at the checkpoint.
                                 widget_agent_task_id = msg_data.get("agent_task_id")
                                 widget_is_awaiting = bool(msg_data.get("is_awaiting_user_input", False))
                                 logger.info(
@@ -534,17 +531,6 @@ async def websocket_endpoint(
                                         send_conversation_token,
                                         turn_router=conversation_turn_router,
                                         agent_task_submission_service=agent_task_submission_service,
-                                    )
-                            # Handle history chat messages
-                            elif msg_data.get("type") == "history_chat_message":
-                                await handle_history_chat_message(
-                                    websocket,
-                                    msg_data,
-                                    get_conversation_service,
-                                    get_query_intent_handler,
-                                    model_service,
-                                    model_usage_service,
-                                    send_history_chat_event
                                     )
                         
                         except json.JSONDecodeError:

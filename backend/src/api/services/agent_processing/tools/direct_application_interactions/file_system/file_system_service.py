@@ -13,6 +13,11 @@ import inspect
 from typing import List, Dict, Any, Optional, Union
 from pathlib import Path
 
+from api.core.security.protected_runtime_paths import (
+    PROTECTED_RUNTIME_REFUSAL,
+    is_protected_runtime_path,
+    log_protected_runtime_refusal,
+)
 from api.services.agent_processing.shared.agent_runtime_context import get_current_agent_context
 
 from .text_file_write import LocalTextFileWriter
@@ -65,6 +70,19 @@ class FileSystemService:
         never narrows existing agent write capability.
         """
         logger.info("Agent text-file write request path=%s mode=%s", path, mode)
+        if is_protected_runtime_path(path):
+            log_protected_runtime_refusal("file write")
+            return {
+                "success": False,
+                "file_path": path,
+                "operation": "create" if mode == "create" else "modify",
+                "mode": mode,
+                "error_type": "policy_blocked",
+                "error": PROTECTED_RUNTIME_REFUSAL,
+                "previous_sha256": None,
+                "execution_success": False,
+                "file_artifacts": [],
+            }
         context = get_current_agent_context()
         root_task_id = context.get("root_task_id") or context.get("agent_task_id")
         agent_task_id = context.get("agent_task_id")

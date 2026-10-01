@@ -9,6 +9,7 @@ import {
   requestUpdateAutoAnalyzeTiming,
   requestUpdateAutoRetranscribeDuringRecording,
   requestUpdateAutoRetranscribeOnStop,
+  requestUpdateLiveTranscriptionByDefault,
   requestUpdateRetranscribeWindowMinutes,
 } from './meetingAutomationBridge'
 
@@ -32,6 +33,14 @@ describe('meetingAutomationBridge', () => {
     expect(postMessage).toHaveBeenCalledWith({ type: 'requestUpdateAutoRetranscribeDuringRecording', requestId: duringId, enabled: false })
     const analyzeId = requestUpdateAutoAnalyzeOnComplete(true)
     expect(postMessage).toHaveBeenCalledWith({ type: 'requestUpdateAutoAnalyzeOnComplete', requestId: analyzeId, enabled: true })
+  })
+
+  it('sends the live transcription default toggle', () => {
+    const offId = requestUpdateLiveTranscriptionByDefault(false)
+    expect(postMessage).toHaveBeenCalledWith({ type: 'requestUpdateLiveTranscriptionByDefault', requestId: offId, enabled: false })
+    const onId = requestUpdateLiveTranscriptionByDefault(true)
+    expect(postMessage).toHaveBeenCalledWith({ type: 'requestUpdateLiveTranscriptionByDefault', requestId: onId, enabled: true })
+    expect(onId).not.toBe(offId)
   })
 
   it('sends the numeric interval update', () => {
