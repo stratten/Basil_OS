@@ -132,6 +132,24 @@
   border: 1px solid var(--field-border, #dcdfe6);
 }
 
+.assistant-session-result__paste-status {
+  flex-shrink: 0;
+  margin: 6px 0 0;
+  padding: 2px 8px;
+  font-size: 12px;
+  border-radius: 999px;
+  align-self: flex-start;
+  color: var(--text-primary, #111318);
+  border: 1px solid var(--secondary, #4c7bf0);
+  background: color-mix(in srgb, var(--secondary, #4c7bf0) 10%, transparent);
+}
+
+.assistant-session-result__paste-status--pasted {
+  color: var(--success-base, #1a7f37);
+  border-color: var(--success-base, #1a7f37);
+  background: color-mix(in srgb, var(--success-base, #1a7f37) 12%, transparent);
+}
+
 .assistant-session-result__output-wrap {
   display: flex;
   flex: 1;

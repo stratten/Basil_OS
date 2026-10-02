@@ -4,6 +4,12 @@ import * as api from '../services/api';
 import { agentStore } from '../store/agentStore';
 import AgentTaskInputSurface from './AgentTaskInputSurface';
 import MarkdownRenderer from './MarkdownRenderer';
+import {
+  formatCheckpointAnswer,
+  isValidNumericAnswer,
+  orderSelectedValues,
+  toggleCheckpointSelection,
+} from './checkpointAnswer';
 
 interface Props {
   agentTaskId: string;
@@ -11,18 +17,18 @@ interface Props {
   mode: 'overlay' | 'inline';
 }
 
+type ChoiceIndicator = 'radio' | 'checkbox' | 'none';
+
 interface ChoiceCardProps {
   option: CheckpointOption;
   selected: boolean;
   disabled: boolean;
+  indicator: ChoiceIndicator;
   onSelect: (value: string) => void;
 }
 
-// A single selectable checkpoint option, rendered as a card. Used for both
-// multi-choice (`choice`) and binary (`confirmation`) checkpoints. The parent
-// decides whether selecting submits immediately (confirmation) or just marks
-// the card selected until Continue is pressed (choice).
-function CheckpointChoiceCard({ option, selected, disabled, onSelect }: ChoiceCardProps) {
+// A single selectable checkpoint option, rendered as a card. A radio or checkbox indicator marks single- or multi-select choices; confirmation cards submit on click and show no indicator.
+function CheckpointChoiceCard({ option, selected, disabled, indicator, onSelect }: ChoiceCardProps) {
   const variantClass =
     option.variant && option.variant !== 'default' ? ` ${option.variant}` : '';
   return (
@@ -33,14 +39,17 @@ function CheckpointChoiceCard({ option, selected, disabled, onSelect }: ChoiceCa
       disabled={disabled}
       onClick={() => onSelect(option.value)}
     >
+      {indicator !== 'none' && (
+        <span
+          className={`checkpoint-choice-indicator checkpoint-choice-indicator--${indicator}`}
+          aria-hidden="true"
+        />
+      )}
       <span className="checkpoint-choice-body">
         <span className="checkpoint-choice-title">{option.label}</span>
         {option.description && (
           <span className="checkpoint-choice-description">{option.description}</span>
         )}
-      </span>
-      <span className="checkpoint-choice-indicator" aria-hidden="true">
-        {selected ? '✓' : ''}
       </span>
     </button>
   );
@@ -104,6 +113,7 @@ function ProviderFormField({ field, value, disabled, onChange }: ProviderFormFie
               option={option}
               selected={value === option.value}
               disabled={disabled}
+              indicator="radio"
               onSelect={selected => onChange(field.name, selected)}
             />
           ))}
@@ -175,8 +185,8 @@ function normalizeCheckpointPromptForDisplay(prompt: string): string {
 
 export default function CheckpointFlow({ agentTaskId, checkpoint, mode }: Props) {
   const [userInput, setUserInput] = useState(checkpoint.default_value || '');
-  const [choiceSelection, setChoiceSelection] = useState('');
-  const [clarificationText, setClarificationText] = useState('');
+  const [selectedValues, setSelectedValues] = useState<string[]>([]);
+  const [otherText, setOtherText] = useState('');
   const [fieldValues, setFieldValues] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
     (checkpoint.fields || []).forEach(field => {
@@ -199,15 +209,35 @@ export default function CheckpointFlow({ agentTaskId, checkpoint, mode }: Props)
   const missingRequiredProviderField = isProviderFormCheckpoint
     ? (checkpoint.fields || []).some(field => field.required && !(fieldValues[field.name] || '').trim())
     : false;
+  const isConfirmationCheckpoint = checkpoint.input_type === 'confirmation';
+  const isNumericCheckpoint = checkpoint.input_type === 'data' && checkpoint.value_kind === 'numeric';
+  // Target authorization resolves the reply verbatim as a choice token, cancel value, or new target, so it keeps one unlabeled answer.
+  const labeledAnswers = !targetAuthorizationMetadata;
+  const allowMultiple = isChoiceCheckpoint && checkpoint.allow_multiple === true && labeledAnswers;
+  const trimmedOtherText = otherText.trim();
+  const numericInputInvalid = isNumericCheckpoint && userInput.trim() !== '' && !isValidNumericAnswer(userInput);
+  const canSubmit = isProviderFormCheckpoint
+    ? !missingRequiredProviderField
+    : isChoiceCheckpoint
+      ? selectedValues.length > 0 || trimmedOtherText.length > 0
+      : isConfirmationCheckpoint
+        ? trimmedOtherText.length > 0
+        : userInput.trim().length > 0 && !numericInputInvalid;
 
   // Accepts an explicit value so card clicks (especially Yes/No) submit the
   // intended response immediately instead of relying on async setUserInput
   // having flushed before submission.
   const handleSubmit = async (explicitValue?: string) => {
     const response = explicitValue ?? (
-      isChoiceCheckpoint
-        ? (choiceSelection || clarificationText)
-        : userInput
+      isChoiceCheckpoint || isConfirmationCheckpoint
+        ? formatCheckpointAnswer({
+          selectedValues: orderSelectedValues(checkpoint.options || [], selectedValues),
+          otherText,
+          labeled: labeledAnswers,
+        })
+        : isNumericCheckpoint
+          ? userInput.trim()
+          : userInput
     );
     setSubmitting(true);
     try {
@@ -259,6 +289,43 @@ export default function CheckpointFlow({ agentTaskId, checkpoint, mode }: Props)
     setFieldValues(previous => ({ ...previous, [name]: value }));
   };
 
+  const handleChoiceSelect = (value: string) => {
+    setSelectedValues(current => toggleCheckpointSelection(current, value, allowMultiple));
+    if (!labeledAnswers) setOtherText('');
+  };
+
+  const handleOtherTextChange = (value: string) => {
+    setOtherText(value);
+    if (!labeledAnswers && value.trim()) setSelectedValues([]);
+  };
+
+  const otherField = (
+    <div className="checkpoint-clarification">
+      <label className="checkpoint-clarification-label" htmlFor="checkpoint-clarification-input">
+        {targetAuthorizationMetadata ? 'Different target or clarification' : 'Other'}
+      </label>
+      {targetAuthorizationMetadata && (
+        <p id="checkpoint-clarification-help" className="checkpoint-clarification-help">
+          Use this when none of the options fits or you need Basil to change course.
+        </p>
+      )}
+      <textarea
+        id="checkpoint-clarification-input"
+        className="text-followup-input checkpoint-clarification-input"
+        value={otherText}
+        onChange={e => handleOtherTextChange(e.target.value)}
+        placeholder={
+          targetAuthorizationMetadata
+            ? 'Describe a different target or the clarification needed.'
+            : 'Type a different answer or add a note for Basil.'
+        }
+        aria-describedby={targetAuthorizationMetadata ? 'checkpoint-clarification-help' : undefined}
+        rows={2}
+        disabled={submitting}
+      />
+    </div>
+  );
+
   const promptDetails = (
     <div className="checkpoint-prompt-details">
       <div className="checkpoint-prompt">
@@ -287,57 +354,64 @@ export default function CheckpointFlow({ agentTaskId, checkpoint, mode }: Props)
               />
             ))}
           </div>
-        ) : checkpoint.input_type === 'confirmation' ? (
-          <div className="checkpoint-options checkpoint-options-row">
-            {CONFIRMATION_OPTIONS.map(option => (
-              <CheckpointChoiceCard
-                key={option.id}
-                option={option}
-                selected={false}
-                disabled={submitting}
-                onSelect={value => handleSubmit(value)}
-              />
-            ))}
+        ) : isConfirmationCheckpoint ? (
+          <div className="checkpoint-choice-with-clarification">
+            <div className="checkpoint-options checkpoint-options-row">
+              {CONFIRMATION_OPTIONS.map(option => (
+                <CheckpointChoiceCard
+                  key={option.id}
+                  option={option}
+                  selected={false}
+                  disabled={submitting}
+                  indicator="none"
+                  onSelect={value => handleSubmit(formatCheckpointAnswer({
+                    selectedValues: [value],
+                    otherText,
+                    labeled: true,
+                  }))}
+                />
+              ))}
+            </div>
+            {otherField}
           </div>
         ) : isChoiceCheckpoint ? (
           <div className="checkpoint-choice-with-clarification">
+            {allowMultiple && (
+              <p className="checkpoint-choice-hint">Select all that apply.</p>
+            )}
             <div className="checkpoint-options">
               {(checkpoint.options || []).map(option => (
                 <CheckpointChoiceCard
                   key={option.id}
                   option={option}
-                  selected={choiceSelection === option.value}
+                  selected={selectedValues.includes(option.value)}
                   disabled={submitting}
-                  onSelect={value => {
-                    setChoiceSelection(value);
-                    setClarificationText('');
-                  }}
+                  indicator={allowMultiple ? 'checkbox' : 'radio'}
+                  onSelect={handleChoiceSelect}
                 />
               ))}
             </div>
-            <div className="checkpoint-clarification">
-              <label className="checkpoint-clarification-label" htmlFor="checkpoint-clarification-input">
-                Different target or clarification
-              </label>
-              <p id="checkpoint-clarification-help" className="checkpoint-clarification-help">
-                Use this when none of the options fits or you need Basil to change course.
+            {otherField}
+          </div>
+        ) : isNumericCheckpoint ? (
+          <div className="checkpoint-numeric">
+            <input
+              type="text"
+              inputMode="decimal"
+              className="text-followup-input checkpoint-numeric-input"
+              value={userInput}
+              onChange={e => setUserInput(e.target.value)}
+              placeholder="Enter a number"
+              aria-label="Numeric response"
+              aria-invalid={numericInputInvalid}
+              aria-describedby={numericInputInvalid ? 'checkpoint-numeric-error' : undefined}
+              disabled={submitting}
+            />
+            {numericInputInvalid && (
+              <p id="checkpoint-numeric-error" className="checkpoint-numeric-error" role="alert">
+                Enter a number, such as 12 or 3.5.
               </p>
-              <textarea
-                id="checkpoint-clarification-input"
-                className="text-followup-input checkpoint-clarification-input"
-                value={clarificationText}
-                onChange={e => {
-                  setClarificationText(e.target.value);
-                  if (e.target.value.trim()) {
-                    setChoiceSelection('');
-                  }
-                }}
-                placeholder="Describe a different target or the clarification needed."
-                aria-describedby="checkpoint-clarification-help"
-                rows={3}
-                disabled={submitting}
-              />
-            </div>
+            )}
           </div>
         ) : (
           <textarea
@@ -369,37 +443,27 @@ export default function CheckpointFlow({ agentTaskId, checkpoint, mode }: Props)
         </div>
       )}
       </div>
-      {checkpoint.input_type !== 'confirmation' && (
-        <div className="agent-task-input-actions checkpoint-submit-actions">
-          {targetAuthorizationMetadata && (
-            <button
-              className="action-btn"
-              onClick={() => handleSubmit(targetAuthorizationMetadata.cancel_value)}
-              disabled={submitting}
-            >
-              Cancel delegation
-            </button>
-          )}
-          <button className="action-btn" onClick={handleCancel} disabled={submitting}>
-            Skip
-          </button>
+      <div className="agent-task-input-actions checkpoint-submit-actions">
+        {targetAuthorizationMetadata && (
           <button
-            className="action-btn primary"
-            onClick={() => handleSubmit()}
-            disabled={
-              submitting || (
-                isProviderFormCheckpoint
-                  ? missingRequiredProviderField
-                  : isChoiceCheckpoint
-                    ? !(choiceSelection.trim() || clarificationText.trim())
-                    : !userInput.trim()
-              )
-            }
+            className="action-btn"
+            onClick={() => handleSubmit(targetAuthorizationMetadata.cancel_value)}
+            disabled={submitting}
           >
-            {submitting ? 'Submitting...' : 'Continue'}
+            Cancel delegation
           </button>
-        </div>
-      )}
+        )}
+        <button className="action-btn" onClick={handleCancel} disabled={submitting}>
+          Skip
+        </button>
+        <button
+          className="action-btn primary"
+          onClick={() => handleSubmit()}
+          disabled={submitting || !canSubmit}
+        >
+          {submitting ? 'Submitting...' : 'Continue'}
+        </button>
+      </div>
     </div>
   );
 

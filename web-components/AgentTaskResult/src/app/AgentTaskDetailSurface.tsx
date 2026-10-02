@@ -29,7 +29,7 @@ import { deriveAgentRunOverviewPresentation, deriveAgentRunPresentation } from '
 import { deriveAgentTaskRunFocusSummaries, resolveFocusedRun } from '../components/run/agentTaskRunFocus';
 import { AgentRunRail } from '../components/run/AgentRunRail';
 import { checkFilePreviewAvailability, reportValidationRunFocused } from '../services/bridge';
-import { usePresenceTransition } from './usePresenceTransition';
+import { usePresenceTransition } from '@shared/usePresenceTransition';
 
 interface Props {
   displaySource: DisplayableAgentTask;

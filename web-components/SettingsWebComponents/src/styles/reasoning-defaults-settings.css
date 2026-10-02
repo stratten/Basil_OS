@@ -1,7 +1,7 @@
 .reasoning-automation-shell {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--settings-card-gap);
   max-width: 920px;
   width: 100%;
 }
@@ -9,27 +9,9 @@
 .reasoning-defaults-shell {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--settings-card-gap);
   max-width: 920px;
   width: 100%;
-}
-
-.reasoning-defaults-section {
-  background: color-mix(in srgb, var(--background-primary) 92%, var(--primary));
-  border: 1px solid var(--field-border);
-  border-radius: 10px;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 10%), 0 8px 20px rgb(0 0 0 / 8%);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 18px;
-}
-
-.reasoning-defaults-section h2 {
-  color: var(--text-primary);
-  font-family: var(--font-family-medium);
-  font-size: 16px;
-  margin: 0;
 }
 
 .reasoning-defaults-section select {
@@ -40,13 +22,6 @@
   font-family: var(--font-family-light);
   font-size: 13px;
   padding: 6px 8px;
-}
-
-.reasoning-defaults-field-hint {
-  color: var(--text-secondary);
-  font-family: var(--font-family-light);
-  font-size: 12px;
-  margin: 0;
 }
 
 .reasoning-defaults-threshold {
@@ -62,21 +37,6 @@
   font-family: var(--font-family-light);
   font-size: 13px;
   gap: 8px;
-}
-
-.reasoning-defaults-threshold-row input[type='number'] {
-  background: var(--background-primary);
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  font-family: var(--font-family-light);
-  font-size: 13px;
-  padding: 4px 6px;
-  width: 60px;
-}
-
-.reasoning-defaults-threshold input[type='range'] {
-  accent-color: var(--primary);
 }
 
 .reasoning-defaults-status,
@@ -113,7 +73,7 @@
 }
 
 .reasoning-defaults-column {
-  border-left: 3px solid var(--primary);
+  border-left: 1.5px solid var(--primary);
   display: flex;
   flex-direction: column;
   gap: 12px;

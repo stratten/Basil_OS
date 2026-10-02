@@ -3,7 +3,7 @@
   container-type: inline-size;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--settings-card-gap);
 }
 
 .permissions-sub-tab-hidden {
@@ -14,7 +14,7 @@
 .permissions-command-security-panel {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--settings-card-gap);
 }
 
 .permissions-application-panel {
@@ -27,16 +27,6 @@
    full width instead of sizing to its own content. */
 .permissions-command-security-panel > .permissions-application-refresh {
   align-self: flex-start;
-}
-
-.permissions-settings-shell button,
-.permissions-settings-shell input {
-  font-family: inherit;
-}
-
-.permissions-settings-shell input[type='checkbox'],
-.permissions-settings-shell input[type='radio'] {
-  accent-color: var(--secondary, var(--primary));
 }
 
 .permissions-application-header,
@@ -76,17 +66,9 @@
 }
 
 .permissions-application-refresh {
-  background: var(--background-primary);
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  cursor: pointer;
-  font-size: 12px;
-  padding: 5px 10px;
   white-space: nowrap;
 }
 
-.permissions-application-refresh:hover,
 .permissions-application-action-secondary:hover,
 .permissions-whitelist-add-button:hover {
   background: var(--background-secondary);
@@ -94,22 +76,6 @@
 
 .permissions-application-action-primary:hover {
   background: var(--secondary, var(--primary));
-}
-
-.permissions-settings-shell input:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--secondary, var(--primary));
-}
-
-.permissions-settings-shell button:focus-visible {
-  outline: 2px solid var(--secondary, var(--primary));
-  outline-offset: 2px;
-}
-
-.permissions-settings-shell button:disabled,
-.permissions-settings-shell input:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
 }
 
 .permission-list {
@@ -252,16 +218,12 @@
 }
 
 .permissions-command-security-section {
-  background: color-mix(in srgb, var(--background-primary) 91%, var(--secondary, var(--primary)));
-  border: 1px solid color-mix(in srgb, var(--field-border) 78%, var(--secondary, var(--primary)));
-  border-radius: 12px;
-  box-shadow: 0 2px 6px rgb(0 0 0 / 8%), 0 12px 28px rgb(0 0 0 / 6%);
-  padding: 16px;
+  display: block;
 }
 
 .permissions-command-security-pair {
   display: grid;
-  gap: 14px;
+  gap: var(--settings-card-gap);
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
@@ -277,17 +239,11 @@
 }
 
 .permissions-command-security-section-title {
-  color: var(--text-primary);
-  font-family: var(--font-family-medium);
-  font-size: 14px;
-  margin: 0 0 6px;
+  margin-bottom: 6px;
 }
 
 .permissions-command-security-section-description {
-  color: var(--text-secondary);
-  font-size: 12px;
-  line-height: 1.4;
-  margin: 0 0 12px;
+  margin-bottom: 12px;
 }
 
 .permissions-toggle-row {
@@ -334,13 +290,6 @@
   display: flex;
   gap: 8px;
   margin-top: 6px;
-}
-
-.permissions-timeout-stepper input {
-  border: 1px solid var(--field-border);
-  border-radius: 4px;
-  padding: 3px 6px;
-  width: 64px;
 }
 
 .permissions-whitelist-header {
@@ -541,14 +490,6 @@
   font-family: var(--font-family-medium);
 }
 
-.permissions-whitelist-form input {
-  background: var(--background-primary);
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  padding: 7px 9px;
-}
-
 .permissions-whitelist-form-error {
   color: var(--error-base, #d9363e);
   font-size: 12px;
@@ -563,37 +504,6 @@
 .permissions-whitelist-form-actions > .primary-button,
 .permissions-whitelist-form-actions > .secondary-button {
   min-width: 92px;
-}
-
-.permissions-whitelist-form-actions > .primary-button {
-  background: var(--secondary, var(--primary));
-  border: 1px solid color-mix(in srgb, var(--secondary, var(--primary)) 70%, black);
-  border-radius: 6px;
-  color: #fff;
-  cursor: pointer;
-  font-family: var(--font-family-medium);
-  font-size: 12px;
-  padding: 7px 12px;
-}
-
-.permissions-whitelist-form-actions > .secondary-button {
-  background: var(--background-primary);
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  cursor: pointer;
-  font-family: var(--font-family-medium);
-  font-size: 12px;
-  padding: 7px 12px;
-}
-
-.permissions-whitelist-form-actions > .primary-button:hover:not(:disabled) {
-  filter: brightness(0.92);
-}
-
-.permissions-whitelist-form-actions > .secondary-button:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--background-primary) 88%, var(--secondary, var(--primary)));
-  border-color: color-mix(in srgb, var(--secondary, var(--primary)) 45%, var(--field-border));
 }
 
 @container permissions (max-width: 720px) {

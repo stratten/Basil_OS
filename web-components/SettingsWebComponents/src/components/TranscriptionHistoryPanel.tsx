@@ -120,7 +120,7 @@ export function TranscriptionHistoryPanel() {
         )}
       </div>
 
-      {fields.isLoading ? (
+      {fields.isLoading && fields.transcriptions.length === 0 ? (
         <div className="transcription-history-loading">Loading…</div>
       ) : fields.transcriptions.length === 0 ? (
         <div className="transcription-history-empty">
@@ -131,7 +131,7 @@ export function TranscriptionHistoryPanel() {
           </div>
         </div>
       ) : (
-        <div className="transcription-history-list">
+        <div className="transcription-history-list basil-refresh-region" aria-busy={fields.isLoading ? true : undefined}>
           {fields.transcriptions.map((record) => (
             <TranscriptionHistoryItem
               key={record.id}

@@ -16,6 +16,7 @@ from .hotkeys import HotkeySettings
 from .migrations import (
     _migrate_legacy_keys_for_team_identity_rename,
     _normalize_api_key_preference,
+    migrate_assistant_output_paste_mode_in_data,
     migrate_zettel_source_catalog_in_data,
     normalize_auth_preference_in_data,
 )
@@ -56,6 +57,7 @@ def load_preferences_model(
             # Idempotent: if the new name is already present, the legacy
             # entry is dropped without overwriting.
             _migrate_legacy_keys_for_team_identity_rename(data)
+            migrate_assistant_output_paste_mode_in_data(data)
             normalize_auth_preference_in_data(data)
             zettel_catalog_updated = migrate_zettel_source_catalog_in_data(data)
             models_data = data.get("models")

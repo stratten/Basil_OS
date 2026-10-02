@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Switch } from '@shared/Switch'
 import { PolicyRadioGroup, type PolicyRadioOption } from './PolicyRadioGroup'
+import { useOptimisticSettings } from '../app/useOptimisticSettings'
 import {
   notifyMeetingAutomationSettingsReady,
   onMeetingAutomationEvent,
@@ -21,22 +22,17 @@ const TIMING_OPTIONS: readonly PolicyRadioOption<'after' | 'before'>[] = [
 ]
 
 export function MeetingAutomationPanel() {
-  const [settings, setSettings] = useState<MeetingAutomationSettingsFields | null>(null)
+  const { settings, isSaving, setSettings, track, receiveSnapshot, resolveIntent } = useOptimisticSettings<MeetingAutomationSettingsFields>()
   const [analysisModes, setAnalysisModes] = useState<MeetingAutomationAnalysisModeOption[]>([])
   const [intervalDraft, setIntervalDraft] = useState('')
   const [instructionsDraft, setInstructionsDraft] = useState('')
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [pendingId, setPendingId] = useState<string | null>(null)
   const [requestError, setRequestError] = useState<string | null>(null)
-  const pendingRef = useRef<string | null>(null)
-  pendingRef.current = pendingId
 
   useEffect(() => {
     const unsubscribe = onMeetingAutomationEvent((event) => {
       if (event.type === 'init' || event.type === 'snapshot') {
-        setSettings(event.settings)
-        setIntervalDraft(String(event.settings.retranscribeWindowMinutes))
-        setInstructionsDraft(event.settings.autoAnalyzeCustomInstructions)
+        receiveSnapshot(event.settings)
         setLoadError(null)
         if (event.type === 'init') setAnalysisModes(event.analysisModes)
         return
@@ -45,19 +41,28 @@ export function MeetingAutomationPanel() {
         setLoadError(event.message)
         return
       }
-      if (event.type === 'intentResult' && event.requestId === pendingRef.current) {
-        setPendingId(null)
-        setRequestError(event.status === 'error' ? event.message ?? 'Failed to update setting.' : null)
+      if (event.type === 'intentResult' && resolveIntent(event.requestId, event.status) === 'error') {
+        setRequestError(event.message ?? 'Failed to update setting.')
       }
     })
     notifyMeetingAutomationSettingsReady()
     return unsubscribe
   }, [])
 
+  const retranscribeWindowMinutes = settings?.retranscribeWindowMinutes
+  const autoAnalyzeCustomInstructions = settings?.autoAnalyzeCustomInstructions
+
+  useEffect(() => {
+    if (retranscribeWindowMinutes !== undefined) setIntervalDraft(String(retranscribeWindowMinutes))
+  }, [retranscribeWindowMinutes])
+
+  useEffect(() => {
+    if (autoAnalyzeCustomInstructions !== undefined) setInstructionsDraft(autoAnalyzeCustomInstructions)
+  }, [autoAnalyzeCustomInstructions])
+
   function submit(id: string) {
-    if (pendingRef.current) return
     setRequestError(null)
-    setPendingId(id)
+    track(id)
   }
 
   function commitInterval() {
@@ -90,7 +95,6 @@ export function MeetingAutomationPanel() {
     )
   }
 
-  const disabled = pendingId !== null
   const s = settings!
 
   return (
@@ -100,7 +104,6 @@ export function MeetingAutomationPanel() {
         id="meetings-automation-live-transcription"
         label="Live transcription by default"
         checked={s.liveTranscriptionByDefault}
-        disabled={disabled}
         onChange={(checked) => { setSettings({ ...s, liveTranscriptionByDefault: checked }); submit(requestUpdateLiveTranscriptionByDefault(checked)) }}
       />
       <p className="meetings-settings-hint">Transcribe meetings as they are recorded. When off, meetings are recorded only and transcribed when they end, which uses less energy. You can still switch live transcription on or off during any meeting.</p>
@@ -108,7 +111,6 @@ export function MeetingAutomationPanel() {
         id="meetings-automation-retranscribe-on-stop"
         label="Auto-retranscribe on stop"
         checked={s.autoRetranscribeOnStop}
-        disabled={disabled}
         onChange={(checked) => { setSettings({ ...s, autoRetranscribeOnStop: checked }); submit(requestUpdateAutoRetranscribeOnStop(checked)) }}
       />
       <p className="meetings-settings-hint">When a recording stops, automatically re-transcribe it with the selected higher-quality model.</p>
@@ -117,7 +119,6 @@ export function MeetingAutomationPanel() {
         id="meetings-automation-retranscribe-during"
         label="Re-transcribe while recording"
         checked={s.autoRetranscribeDuringRecording}
-        disabled={disabled}
         onChange={(checked) => { setSettings({ ...s, autoRetranscribeDuringRecording: checked }); submit(requestUpdateAutoRetranscribeDuringRecording(checked)) }}
       />
       <p className="meetings-settings-hint">Incrementally upgrade earlier audio with the higher-quality model at a fixed interval while recording continues, so less work remains when you stop.</p>
@@ -130,7 +131,6 @@ export function MeetingAutomationPanel() {
             min={1}
             step={1}
             value={intervalDraft}
-            disabled={disabled}
             onChange={(event) => setIntervalDraft(event.target.value)}
             onBlur={commitInterval}
             onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur() }}
@@ -143,7 +143,6 @@ export function MeetingAutomationPanel() {
         id="meetings-automation-auto-analyze"
         label="Auto-analyze on complete"
         checked={s.autoAnalyzeOnComplete}
-        disabled={disabled}
         onChange={(checked) => { setSettings({ ...s, autoAnalyzeOnComplete: checked }); submit(requestUpdateAutoAnalyzeOnComplete(checked)) }}
       />
       {s.autoAnalyzeOnComplete && (
@@ -153,26 +152,26 @@ export function MeetingAutomationPanel() {
             name="meetings-automation-timing"
             options={TIMING_OPTIONS}
             value={s.autoAnalyzeTiming}
-            disabled={disabled}
             onChange={(next) => { setSettings({ ...s, autoAnalyzeTiming: next }); submit(requestUpdateAutoAnalyzeTiming(next)) }}
           />
           <fieldset className="meetings-automation-modes">
             <legend>Modes</legend>
-            {analysisModes.map((mode) => (
-              <div key={mode.id} className="meetings-automation-mode-toggle">
-                <Switch
-                  id={`meetings-automation-mode-${mode.id}`}
-                  label={mode.label}
-                  checked={s.autoAnalyzeModes.includes(mode.id)}
-                  disabled={disabled}
-                  onChange={(isOn) => {
-                    const nextModes = isOn ? [...s.autoAnalyzeModes, mode.id] : s.autoAnalyzeModes.filter((id) => id !== mode.id)
-                    setSettings({ ...s, autoAnalyzeModes: nextModes })
-                    submit(requestUpdateAutoAnalyzeMode(mode.id, isOn))
-                  }}
-                />
-              </div>
-            ))}
+            <div className="meetings-automation-mode-grid">
+              {analysisModes.map((mode) => (
+                <div key={mode.id} className="meetings-automation-mode-toggle">
+                  <Switch
+                    id={`meetings-automation-mode-${mode.id}`}
+                    label={mode.label}
+                    checked={s.autoAnalyzeModes.includes(mode.id)}
+                    onChange={(isOn) => {
+                      const nextModes = isOn ? [...s.autoAnalyzeModes, mode.id] : s.autoAnalyzeModes.filter((id) => id !== mode.id)
+                      setSettings({ ...s, autoAnalyzeModes: nextModes })
+                      submit(requestUpdateAutoAnalyzeMode(mode.id, isOn))
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
           </fieldset>
           <label htmlFor="meetings-automation-instructions" className="meetings-settings-hint">Custom instructions (optional)</label>
           <textarea
@@ -180,14 +179,13 @@ export function MeetingAutomationPanel() {
             className="meetings-exclusions-textarea"
             rows={3}
             value={instructionsDraft}
-            disabled={disabled}
             onChange={(event) => setInstructionsDraft(event.target.value)}
             onBlur={commitInstructions}
           />
         </>
       )}
 
-      {pendingId && <p className="meetings-settings-status" role="status">Saving setting...</p>}
+      <p className="settings-visually-hidden" role="status">{isSaving ? 'Saving setting...' : ''}</p>
       {requestError && <p className="meetings-settings-inline-error" role="alert">{requestError}</p>}
     </section>
   )

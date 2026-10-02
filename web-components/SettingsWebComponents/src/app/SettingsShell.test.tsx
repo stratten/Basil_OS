@@ -313,7 +313,7 @@ describe('SettingsShell', () => {
           selectedModelId: '',
           useApiModels: false,
           closeAssistantSessionOnInsert: false,
-          autoPasteAssistantOutput: false,
+          assistantOutputPasteMode: 'never',
           useRegionSelection: false,
           agentTaskDefaultModality: 'voice',
           agentTaskAutoReopenOnCompletion: true,
@@ -350,6 +350,43 @@ describe('SettingsShell', () => {
 
     act(() => { navigationButton('Home').click() })
     expect(container.querySelector('.settings-shell-nav-subitems')).toBeNull()
+  })
+
+  it('keeps the sidebar sub-item highlight in sync with sub-tabs chosen at the top of the page', () => {
+    const selectedSubItems = () =>
+      Array.from(container.querySelectorAll('.settings-shell-nav-subitem-selected')).map((item) => item.textContent)
+
+    act(() => { navigationButton('Automation & Agents').click() })
+    expect(selectedSubItems()).toEqual(['Settings'])
+
+    const proactiveSubItem = Array.from(container.querySelectorAll<HTMLButtonElement>('.settings-shell-nav-subitem'))
+      .find((button) => button.textContent === 'Proactive')!
+    act(() => { proactiveSubItem.click() })
+    expect(selectedSubItems()).toEqual(['Proactive'])
+
+    const skillsTopTab = Array.from(container.querySelectorAll<HTMLButtonElement>('.settings-subtabs-tab'))
+      .find((button) => button.textContent === 'Skills')!
+    act(() => { skillsTopTab.click() })
+    expect(selectedSubItems()).toEqual(['Skills'])
+    expect(skillsTopTab.getAttribute('aria-selected')).toBe('true')
+
+    act(() => { navigationButton('Models').click() })
+    expect(selectedSubItems()).toEqual(['Reasoning'])
+    act(() => {
+      window.basilModelsSettings!.onEvent({
+        type: 'init',
+        protocolVersion: 1,
+        isLoadingModels: false,
+        localVisionFallbackEnabled: false,
+        isLocalVisionFallbackModelInstalled: false,
+        reasoningGroups: [],
+        transcriptionGroups: [],
+      } as any)
+    })
+    const transcriptionFilter = Array.from(container.querySelectorAll<HTMLButtonElement>('.models-settings-filter-tab'))
+      .find((button) => button.textContent === 'Transcription')!
+    act(() => { transcriptionFilter.click() })
+    expect(selectedSubItems()).toEqual(['Transcription'])
   })
 
   it('enables the Capture leaf directly, defaults to Activity Capture, and hydrates its React surface', () => {

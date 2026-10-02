@@ -79,6 +79,9 @@ class RetrievalBrowseRequest:
     end: Optional[str] = None
     outcome: Optional[str] = None
     limit: int = 200
+    cursor: Optional[str] = None
+    view: Literal["compact", "full"] = "full"
+    max_output_chars: Optional[int] = None
 
 
 @dataclass(frozen=True)

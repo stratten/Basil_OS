@@ -99,6 +99,32 @@ export type AppearanceNativeEvent =
   | AppearanceIntentResultEvent
   | AppearanceColorPickedEvent
 
+export interface CustomAppearanceTheme {
+  id: string
+  name: string
+  backgroundColorRed: number
+  backgroundColorGreen: number
+  backgroundColorBlue: number
+  primaryColorRed: number
+  primaryColorGreen: number
+  primaryColorBlue: number
+  secondaryColorRed: number
+  secondaryColorGreen: number
+  secondaryColorBlue: number
+  textColorRed: number
+  textColorGreen: number
+  textColorBlue: number
+  surfaceFinish: 'flat' | 'metal'
+}
+
+export type CustomAppearanceThemeInput = Omit<CustomAppearanceTheme, 'id'>
+
+export type AppearanceThemesNativeEvent =
+  | { type: 'init'; protocolVersion: 1; themes: CustomAppearanceTheme[] }
+  | { type: 'snapshot'; themes: CustomAppearanceTheme[] }
+  | { type: 'intentResult'; requestId: string; status: 'success' | 'error'; message?: string }
+  | { type: 'loadError'; message: string }
+
 export interface HotkeyBinding {
   key: string
   modifiers: string[]
@@ -472,6 +498,7 @@ export type BrowserAutomationNativeEvent =
 
 export type AgentTaskInputModality = 'voice' | 'text'
 export type AssistantSessionInputMode = 'speak' | 'type'
+export type AssistantOutputPasteMode = 'always' | 'auto' | 'never'
 
 export interface ReasoningDefaultsModelInfo {
   id: string
@@ -488,7 +515,7 @@ export interface ReasoningDefaultsSettingsSnapshot {
   selectedModelId: string
   useApiModels: boolean
   closeAssistantSessionOnInsert: boolean
-  autoPasteAssistantOutput: boolean
+  assistantOutputPasteMode: AssistantOutputPasteMode
   useRegionSelection: boolean
   agentTaskDefaultModality: AgentTaskInputModality
   agentTaskAutoReopenOnCompletion: boolean
@@ -998,6 +1025,7 @@ declare global {
         basilAppearanceSettingsBridge?: { postMessage: any }
         basilHotkeySettingsBridge?: { postMessage: any }
         basilDateTimeSettingsBridge?: { postMessage: any }
+        basilAppearanceThemesBridge?: { postMessage: any }
         basilProfileSettingsBridge?: { postMessage: any }
         basilMacContactsSettingsBridge?: { postMessage: any }
         basilMemoryIntelligenceSettingsBridge?: { postMessage: any }

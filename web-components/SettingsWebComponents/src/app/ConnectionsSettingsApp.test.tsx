@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { ConnectionsSettingsApp } from './ConnectionsSettingsApp'
-import type { ConnectionsSettingsFields } from '../types'
+import type { ConnectionsSettingsFields, MCPConnection } from '../types'
 
 let container: HTMLElement
 let root: Root
@@ -44,6 +44,25 @@ const EMPTY_FIELDS: ConnectionsSettingsFields = {
   isMutatingProviderProfiles: false,
   providerProfilesStatusMessage: null,
   providerProfilesErrorMessage: null,
+}
+
+const POLICY_CONNECTION: MCPConnection = {
+  id: 'conn-1',
+  friendlyName: 'GitHub',
+  description: 'Work account',
+  serverUrl: 'https://api.githubcopilot.com/mcp',
+  enabled: true,
+  registeredAt: '2026-01-01T00:00:00Z',
+  lastToolRefreshAt: null,
+  lastConnectionCheckAt: '2026-01-02T00:00:00Z',
+  lastConnectionStatus: 'healthy',
+  lastConnectionStatusMessage: 'OK',
+  serverName: 'github-mcp',
+  serverInstructions: null,
+  authKind: 'github_device',
+  tools: [
+    { name: 'create_issue', description: 'Create a GitHub issue', isReadOnlyHint: false, policy: 'always_ask' },
+  ],
 }
 
 function sendInit(fields: ConnectionsSettingsFields) {
@@ -88,6 +107,20 @@ describe('ConnectionsSettingsApp', () => {
     postMessage.mockClear()
     act(() => { container.querySelector<HTMLButtonElement>('.connections-settings-error .secondary-button')!.click() })
     expect(postMessage).toHaveBeenCalledWith({ type: 'reactReady', protocolVersion: 1 })
+  })
+
+  it('keeps connection actions available while a tool policy change is pending and surfaces a policy failure', () => {
+    sendInit({ ...EMPTY_FIELDS, connections: [POLICY_CONNECTION] })
+    act(() => { container.querySelector<HTMLButtonElement>('.connections-row-expand')!.click() })
+    act(() => { container.querySelector<HTMLButtonElement>('.connections-tool-row-policy')!.click() })
+    const neverAllowOption = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="option"]')).find((option) => option.textContent === 'Never allow')!
+    act(() => { neverAllowOption.click() })
+    const policyMessage = postMessage.mock.calls.map(([message]) => message).find((message) => message.type === 'requestUpdatePolicy')!
+    expect(container.querySelector<HTMLButtonElement>('.connections-row-action-danger')!.disabled).toBe(false)
+    act(() => {
+      window.basilConnectionsSettings!.onEvent({ type: 'intentResult', requestId: policyMessage.requestId, status: 'error', message: 'Policy update failed.' })
+    })
+    expect(Array.from(container.querySelectorAll('[role="alert"]')).map((alert) => alert.textContent)).toContain('Policy update failed.')
   })
 
   it('surfaces a native errorMessage banner', () => {

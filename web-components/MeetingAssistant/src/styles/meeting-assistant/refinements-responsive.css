@@ -56,6 +56,10 @@ button:focus-visible {
     width: 180px;
   }
 
+  .meeting-history-collapsible {
+    --basil-sidebar-expanded-width: 180px;
+  }
+
   .meeting-metadata-form,
   .meeting-audio-source-controls,
   .meeting-automation-options {

@@ -1,3 +1,5 @@
+import type { CustomAppearanceTheme } from '../types'
+
 export interface AppearancePresetColor {
   red: number
   green: number
@@ -91,4 +93,32 @@ export const APPEARANCE_PRESETS: AppearancePreset[] = [
 export function toHexColor(color: AppearancePresetColor): string {
   const channel = (value: number) => Math.round(Math.min(1, Math.max(0, value)) * 255).toString(16).padStart(2, '0')
   return `#${channel(color.red)}${channel(color.green)}${channel(color.blue)}`
+}
+
+export const MAX_CUSTOM_APPEARANCE_THEMES = 24
+export const MAX_CUSTOM_APPEARANCE_THEME_NAME_LENGTH = 40
+
+export function customThemePreset(theme: CustomAppearanceTheme): AppearancePreset {
+  return {
+    id: theme.id,
+    name: theme.name,
+    background: { red: theme.backgroundColorRed, green: theme.backgroundColorGreen, blue: theme.backgroundColorBlue },
+    primary: { red: theme.primaryColorRed, green: theme.primaryColorGreen, blue: theme.primaryColorBlue },
+    secondary: { red: theme.secondaryColorRed, green: theme.secondaryColorGreen, blue: theme.secondaryColorBlue },
+    text: { red: theme.textColorRed, green: theme.textColorGreen, blue: theme.textColorBlue },
+  }
+}
+
+export function customThemeNameError(rawName: string, customThemes: readonly CustomAppearanceTheme[]): string | null {
+  const name = rawName.trim()
+  if (name.length === 0) return 'Enter a theme name.'
+  if ([...name].length > MAX_CUSTOM_APPEARANCE_THEME_NAME_LENGTH) {
+    return `Theme names can be up to ${MAX_CUSTOM_APPEARANCE_THEME_NAME_LENGTH} characters.`
+  }
+  const folded = name.toLocaleLowerCase()
+  const existingNames = [...APPEARANCE_PRESETS.map((preset) => preset.name), ...customThemes.map((theme) => theme.name)]
+  if (existingNames.some((existingName) => existingName.toLocaleLowerCase() === folded)) {
+    return 'A theme with that name already exists.'
+  }
+  return null
 }

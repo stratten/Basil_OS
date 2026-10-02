@@ -5,7 +5,7 @@ import type { ArtifactPreviewTransport, FilePreviewPayload } from './transport/a
 import { canOpenStaticLocalWebPreview } from './artifactPreviewEligibility';
 import { presentFilePreview } from './filePreviewPresentation';
 import { useNativeArtifactPreviewSlot } from './useNativeArtifactPreviewSlot';
-import CrossfadeStack from '../CrossfadeStack';
+import CrossfadeStack from '@shared/CrossfadeStack';
 import { useLiveHtmlPreview } from './livePreview/useLiveHtmlPreview';
 import { LiveHtmlPreviewSurface } from './livePreview/LiveHtmlPreviewSurface';
 import { buildInlineStaticPreviewUrl } from '../../services/bridge';

@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { HistorySidebarHeader } from '../../../shared/HistorySidebarControls';
+import PresenceRegion from '@shared/PresenceRegion';
 import TokenizedSelect from '@shared/TokenizedSelect';
 import { useHistoryRowRevealDelete } from '@shared/useHistoryRowRevealDelete';
 import type { MeetingHistorySearchFiltersDTO, MeetingListItemDTO, MeetingSearchTermModeDTO } from '../bridge/types';
@@ -44,7 +45,7 @@ function MeetingHistorySidebar({ history, selectedMeetingId, searchText, searchF
   const isSearching = Boolean(searchText.trim()) || activeFilterCount > 0;
 
   return (
-    <aside className="meeting-history-sidebar" aria-label="Meeting history">
+    <aside className="meeting-history-sidebar basil-presence-enter" aria-label="Meeting history">
       <HistorySidebarHeader title="History" onStartNew={startNewMeeting} onCollapse={() => setSidebarCollapsed(true)} startLabel="Start new meeting" collapseLabel="Hide meeting history" />
       <div className="meeting-history-search-shell">
         <SearchIcon />
@@ -56,15 +57,17 @@ function MeetingHistorySidebar({ history, selectedMeetingId, searchText, searchF
         </button>
         {searchText && <button type="button" className="meeting-history-search-clear" onClick={() => setMeetingSearch('')} aria-label="Clear search">×</button>}
       </div>
-      {filtersExpanded && <AdvancedFilters filters={draftFilters} onChange={updateFilters} />}
-      {isLoading && <div className="meeting-history-empty-state">Loading meetings…</div>}
+      <PresenceRegion visible={filtersExpanded} className="basil-presence" settleWithoutTransition>
+        <AdvancedFilters filters={draftFilters} onChange={updateFilters} />
+      </PresenceRegion>
+      {isLoading && history.length === 0 && <div className="meeting-history-empty-state">Loading meetings…</div>}
       {!isLoading && history.length === 0 && (
         <div className="meeting-history-empty-state">
           <EmptyHistoryIcon isSearching={isSearching} />
           <span>{isSearching ? 'No matching meetings' : 'No past meetings'}</span>
         </div>
       )}
-      <ul className="meeting-history-list">
+      <ul className="meeting-history-list basil-refresh-region" aria-busy={isLoading && history.length > 0 ? true : undefined}>
         {history.map((meeting) => <MeetingHistoryRow
           key={meeting.id}
           meeting={meeting}
@@ -87,7 +90,7 @@ function MeetingHistorySidebar({ history, selectedMeetingId, searchText, searchF
           type="button"
           className="meeting-history-load-more-button"
           onClick={loadMoreMeetings}
-          disabled={isLoadingMore}
+          disabled={isLoadingMore || isLoading}
           aria-busy={isLoadingMore}
         >
           {isLoadingMore ? 'Loading more meetings…' : 'Load more meetings'}

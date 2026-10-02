@@ -1,5 +1,6 @@
 import type {
   AgentTaskInputModality,
+  AssistantOutputPasteMode,
   AssistantSessionInputMode,
   ReasoningDefaultsNativeEvent,
 } from '../types'
@@ -8,7 +9,7 @@ type OutgoingReasoningDefaultsMessage =
   | { type: 'reactReady'; protocolVersion: 1 }
   | { type: 'requestUpdateSelectedModel'; requestId: string; modelId: string }
   | { type: 'requestUpdateCloseAssistantSessionOnInsert'; requestId: string; enabled: boolean }
-  | { type: 'requestUpdateAutoPasteAssistantOutput'; requestId: string; enabled: boolean }
+  | { type: 'requestUpdateAssistantOutputPasteMode'; requestId: string; mode: AssistantOutputPasteMode }
   | { type: 'requestUpdateUseRegionSelection'; requestId: string; enabled: boolean }
   | { type: 'requestUpdateAgentTaskDefaultModality'; requestId: string; modality: AgentTaskInputModality }
   | { type: 'requestUpdateAgentTaskAutoReopenOnCompletion'; requestId: string; enabled: boolean }
@@ -76,9 +77,9 @@ export function requestUpdateCloseAssistantSessionOnInsert(enabled: boolean): st
   return id
 }
 
-export function requestUpdateAutoPasteAssistantOutput(enabled: boolean): string {
-  const id = requestId('updateAutoPasteAssistantOutput')
-  postMessage({ type: 'requestUpdateAutoPasteAssistantOutput', requestId: id, enabled })
+export function requestUpdateAssistantOutputPasteMode(mode: AssistantOutputPasteMode): string {
+  const id = requestId('updateAssistantOutputPasteMode')
+  postMessage({ type: 'requestUpdateAssistantOutputPasteMode', requestId: id, mode })
   return id
 }
 

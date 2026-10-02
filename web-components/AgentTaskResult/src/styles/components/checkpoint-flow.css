@@ -171,14 +171,21 @@
 .checkpoint-choice-with-clarification {
   display: flex;
   flex-direction: column;
+  gap: var(--padding-m);
+}
+
+.checkpoint-choice-hint {
+  margin: 0;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-footnote);
+  line-height: 1.35;
+  color: var(--secondary);
 }
 
 .checkpoint-clarification {
   display: flex;
   flex-direction: column;
-  gap: var(--padding-s);
-  padding-top: var(--padding-m);
-  border-top: var(--border-thin) solid var(--separator-color);
+  gap: var(--padding-xs);
 }
 
 .checkpoint-clarification-label {
@@ -343,8 +350,8 @@
 
 .checkpoint-choice-card {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: flex-start;
+  justify-content: flex-start;
   gap: var(--padding-s);
   width: 100%;
   text-align: left;
@@ -356,7 +363,7 @@
   transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
 }
 
-.checkpoint-choice-card:hover:not(:disabled) {
+.checkpoint-choice-card:hover:not(:disabled):not(.selected) {
   border-color: var(--primary);
   background: color-mix(in srgb, var(--primary) 6%, transparent);
 }
@@ -409,8 +416,16 @@
   color: #FFFFFF;
 }
 
+.checkpoint-choice-card.primary:hover:not(:disabled) .checkpoint-choice-description,
+.checkpoint-choice-card.primary:hover:not(:disabled) .checkpoint-choice-indicator,
+.checkpoint-choice-card.danger:hover:not(:disabled) .checkpoint-choice-description,
+.checkpoint-choice-card.danger:hover:not(:disabled) .checkpoint-choice-indicator {
+  color: var(--background-primary);
+}
+
 .checkpoint-choice-body {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
@@ -431,12 +446,42 @@
 }
 
 .checkpoint-choice-indicator {
+  position: relative;
   flex-shrink: 0;
+  box-sizing: border-box;
   width: 18px;
-  text-align: center;
-  font-family: var(--font-family-bold);
-  font-size: var(--font-size-body);
+  height: 18px;
+  margin-top: 1px;
+  border: var(--border-medium) solid currentColor;
   color: var(--secondary);
+}
+
+.checkpoint-choice-indicator--radio {
+  border-radius: 50%;
+}
+
+.checkpoint-choice-indicator--checkbox {
+  border-radius: var(--corner-radius-small);
+}
+
+.checkpoint-choice-card.selected .checkpoint-choice-indicator--radio::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.checkpoint-choice-card.selected .checkpoint-choice-indicator--checkbox::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 0;
+  width: 5px;
+  height: 10px;
+  border: solid currentColor;
+  border-width: 0 var(--border-medium) var(--border-medium) 0;
+  transform: rotate(45deg);
 }
 
 /* Checkpoint / clarification textarea — used by CheckpointFlow for any
@@ -513,6 +558,30 @@ fieldset.checkpoint-provider-form-field {
   min-height: 0;
   height: 40px;
   resize: none;
+}
+
+.checkpoint-clarification-input {
+  min-height: 56px;
+}
+
+.checkpoint-numeric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-xs);
+}
+
+.checkpoint-numeric-input {
+  min-height: 0;
+  height: 40px;
+  resize: none;
+}
+
+.checkpoint-numeric-error {
+  margin: 0;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-footnote);
+  line-height: 1.35;
+  color: var(--error-base);
 }
 
 @media (prefers-reduced-motion: reduce) {

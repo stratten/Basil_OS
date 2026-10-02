@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import '@agent-task/styles/theme.css';
 import { applyProcessingDefaults } from './theme/agentTaskTheme';
+import '@shared/presence-motion.css';
+import '@shared/collapsible-sidebar.css';
 import './styles/shell.css';
 import './styles/home.css';
 import './styles/home-markdown-blocks.css';

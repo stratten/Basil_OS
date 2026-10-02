@@ -167,6 +167,7 @@ async def handle_checkpoint_request(
                     "prompt": checkpoint_data.get("prompt", "Agent needs your input"),
                     "input_type": checkpoint_data.get("input_type", "text"),
                     "options": checkpoint_data.get("options", []),
+                    "allow_multiple": bool(checkpoint_data.get("allow_multiple", False)),
                     "context_summary": checkpoint_data.get("context_summary", ""),
                     "default_value": checkpoint_data.get("default_value", ""),
                     "metadata": checkpoint_data.get("metadata", {}),

@@ -63,6 +63,7 @@ function withLaunchedWorkerAttempt(item: TodoItemDetail, agentTaskId: string): T
 }
 
 const TODO_WORKSPACE_PAGE_SIZE = 50;
+const TODO_WORKSPACE_MAX_REFRESH_SIZE = 200;
 
 function mergeTodoPages(current: TodoItemSummary[], next: TodoItemSummary[]): TodoItemSummary[] {
   const knownIds = new Set(current.map((item) => item.id));
@@ -71,6 +72,8 @@ function mergeTodoPages(current: TodoItemSummary[], next: TodoItemSummary[]): To
 
 export default function TodoView({ originNavigation }: TodoViewProps) {
   const [items, setItems] = useState<TodoItemSummary[]>([]);
+  const itemsRef = useRef<TodoItemSummary[]>([]);
+  itemsRef.current = items;
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -92,23 +95,28 @@ export default function TodoView({ originNavigation }: TodoViewProps) {
   const [deletingTodoId, setDeletingTodoId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const refreshList = useCallback(async () => {
+  const refreshList = useCallback(async (options: { quiet?: boolean } = {}) => {
+    const quiet = options.quiet === true;
     const version = ++requestVersionRef.current;
     const statuses = filterToStatuses(filter);
     const normalizedQuery = query.trim();
+    const previousCursor = nextCursorRef.current;
     nextCursorRef.current = undefined;
     loadingMoreRef.current = false;
-    setItems([]);
-    setHasMore(false);
     setLoadingMore(false);
-    setLoading(true);
-    setError(null);
     setLoadMoreError(null);
+    if (!quiet) {
+      setHasMore(false);
+      setLoading(true);
+      setError(null);
+    }
     try {
       const hydration = await hydrateTodoWorkspace(sortBy, {
         query: normalizedQuery || undefined,
         statuses,
-        limit: TODO_WORKSPACE_PAGE_SIZE,
+        limit: quiet
+          ? Math.min(TODO_WORKSPACE_MAX_REFRESH_SIZE, Math.max(TODO_WORKSPACE_PAGE_SIZE, itemsRef.current.length))
+          : TODO_WORKSPACE_PAGE_SIZE,
       });
       if (version !== requestVersionRef.current) return;
       setItems(hydration.items);
@@ -116,6 +124,11 @@ export default function TodoView({ originNavigation }: TodoViewProps) {
       nextCursorRef.current = hydration.next_cursor ?? undefined;
     } catch (err) {
       if (version !== requestVersionRef.current) return;
+      if (quiet) {
+        nextCursorRef.current = previousCursor;
+        return;
+      }
+      setItems([]);
       setError(err instanceof Error ? err.message : 'Failed to load To-Dos');
     } finally {
       if (version === requestVersionRef.current) setLoading(false);
@@ -155,7 +168,6 @@ export default function TodoView({ originNavigation }: TodoViewProps) {
     requestVersionRef.current += 1;
     nextCursorRef.current = undefined;
     loadingMoreRef.current = false;
-    setItems([]);
     setHasMore(false);
     setLoadingMore(false);
     setError(null);
@@ -293,7 +305,7 @@ export default function TodoView({ originNavigation }: TodoViewProps) {
     });
     setViewingId(item.id);
     setCurrentDetail(item);
-    await refreshList();
+    await refreshList({ quiet: true });
   }
 
   async function withConflictHandling(action: () => Promise<TodoItemDetail>) {
@@ -302,7 +314,7 @@ export default function TodoView({ originNavigation }: TodoViewProps) {
       setCurrentDetail(updated);
       setSelectedItemsById((current) => current[updated.id] ? { ...current, [updated.id]: updated } : current);
       setConflictMessage(null);
-      await refreshList();
+      await refreshList({ quiet: true });
     } catch (err) {
       setConflictMessage(err instanceof Error ? err.message : 'That change could not be applied. It may be stale.');
     }
@@ -314,7 +326,7 @@ export default function TodoView({ originNavigation }: TodoViewProps) {
       setCurrentDetail(updated);
       setSelectedItemsById((current) => current[updated.id] ? { ...current, [updated.id]: updated } : current);
       setConflictMessage(null);
-      await refreshList();
+      await refreshList({ quiet: true });
       return updated;
     } catch (err) {
       setConflictMessage(err instanceof Error ? err.message : 'That change could not be applied. It may be stale.');
@@ -329,7 +341,7 @@ export default function TodoView({ originNavigation }: TodoViewProps) {
       setCurrentDetail(updated);
       setSelectedItemsById((current) => current[updated.id] ? { ...current, [updated.id]: updated } : current);
       setConflictMessage(null);
-      await refreshList();
+      await refreshList({ quiet: true });
     } catch (err) {
       setConflictMessage(err instanceof Error ? err.message : 'That change could not be applied. It may be stale.');
     }
@@ -349,7 +361,7 @@ export default function TodoView({ originNavigation }: TodoViewProps) {
       }
       setPendingDeleteId((current) => current === todoId ? null : current);
       setDeleteError(null);
-      await refreshList();
+      await refreshList({ quiet: true });
       return true;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'That To-Do could not be deleted.';
@@ -366,7 +378,7 @@ export default function TodoView({ originNavigation }: TodoViewProps) {
   }
 
   const refreshAfterWorkspaceResult = useCallback(() => {
-    void refreshList();
+    void refreshList({ quiet: true });
   }, [refreshList]);
 
   return (

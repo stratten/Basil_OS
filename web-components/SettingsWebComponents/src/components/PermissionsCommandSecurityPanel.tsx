@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Switch } from '@shared/Switch'
+import PresenceRegion from '@shared/PresenceRegion'
 import type { ApprovalMode, ApprovalTimeoutBehavior, WhitelistPatternFields } from '../types'
 import {
   notifyPermissionsCommandSecurityReady,
@@ -27,6 +28,7 @@ type PendingAction = 'approval-setting' | 'add-pattern' | 'update-pattern' | 'de
 
 export function PermissionsCommandSecurityPanel() {
   const [isLoading, setIsLoading] = useState(true)
+  const [hasLoaded, setHasLoaded] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [approvalMode, setApprovalMode] = useState<ApprovalMode>('whitelist_only')
   const [safeExecutionMode, setSafeExecutionMode] = useState(false)
@@ -50,6 +52,7 @@ export function PermissionsCommandSecurityPanel() {
       }
       if (event.type === 'init' || event.type === 'snapshot') {
         setIsLoading(event.isLoading)
+        if (!event.isLoading) setHasLoaded(true)
         setLoadError(event.error)
         if (event.approvalSettings) {
           setApprovalMode(event.approvalSettings.approvalMode)
@@ -109,7 +112,7 @@ export function PermissionsCommandSecurityPanel() {
     }
   }
 
-  if (isLoading) {
+  if (isLoading && !hasLoaded) {
     return <div className="permissions-command-security-panel">Loading command approval settings…</div>
   }
 
@@ -233,9 +236,9 @@ export function PermissionsCommandSecurityPanel() {
           </button>
         </div>
 
-        {showPatternForm && editingPattern === null && (
-          <WhitelistPatternForm editingPattern={editingPattern} disabled={pendingRequestId !== null} onSubmit={handleSubmitPattern} onCancel={closePatternForm} />
-        )}
+        <PresenceRegion visible={showPatternForm && editingPattern === null} className="basil-presence" settleWithoutTransition>
+          <WhitelistPatternForm editingPattern={null} disabled={pendingRequestId !== null} onSubmit={handleSubmitPattern} onCancel={closePatternForm} />
+        </PresenceRegion>
 
         {whitelistPatterns.length === 0 ? (
           <p className="permissions-whitelist-empty">No whitelisted commands yet. Add patterns to allow commands without prompting.</p>
@@ -266,9 +269,11 @@ export function PermissionsCommandSecurityPanel() {
                     </button>
                   </div>
                 </article>
-                {showPatternForm && editingPattern?.id === pattern.id && (
-                  <WhitelistPatternForm editingPattern={editingPattern} disabled={pendingRequestId !== null} onSubmit={handleSubmitPattern} onCancel={closePatternForm} />
-                )}
+                <PresenceRegion visible={showPatternForm && editingPattern?.id === pattern.id} className="basil-presence" settleWithoutTransition>
+                  {showPatternForm && editingPattern?.id === pattern.id && (
+                    <WhitelistPatternForm editingPattern={editingPattern} disabled={pendingRequestId !== null} onSubmit={handleSubmitPattern} onCancel={closePatternForm} />
+                  )}
+                </PresenceRegion>
               </div>
             ))}
           </div>

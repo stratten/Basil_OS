@@ -39,87 +39,10 @@ body,
   --field-border: color-mix(in srgb, var(--secondary) 22%, var(--host-separator-color, rgba(0, 0, 0, 0.22)));
 }
 
-/* Shared button/focus-ring baseline (2026-09-02). Several leaves render
-   `.primary-button`/`.secondary-button` (Browser Automation, Invocation,
-   Memories, Proactive Suggestions, Reasoning API Models, Skills,
-   Transcription API Models, Meetings' Retry button, Activity Capture,
-   Appearance) with no matching CSS anywhere in the bundle at all -- every
-   leaf was expected to scope its own copy (see the precedent comment in
-   account-settings.css), and several never did, so those buttons rendered
-   as bare unstyled <button> elements with no hover/focus feedback. This is
-   a low-specificity base class selector, so any leaf that already scopes
-   its own version with a combinator (e.g.
-   `.account-auth-actions > .primary-button`) keeps winning via normal CSS
-   specificity -- this only fills the gap for leaves with no existing rule,
-   and adds hover/focus-visible everywhere uniformly. Do not delete this
-   block believing it's now unused just because most leaves also have their
-   own scoped rule; several genuinely depend on this as their only styling. */
-.primary-button {
-  background: var(--secondary, var(--primary));
-  border: 1px solid color-mix(in srgb, var(--secondary, var(--primary)) 70%, black);
-  border-radius: 6px;
-  color: #fff;
-  cursor: pointer;
-  font-family: var(--font-family-medium);
-  font-size: 13px;
-  padding: 8px 16px;
-}
-
-.secondary-button {
-  background: var(--background-primary);
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  cursor: pointer;
-  font-family: var(--font-family-medium);
-  font-size: 13px;
-  padding: 8px 16px;
-}
-
-.primary-button:hover:not(:disabled) {
-  filter: brightness(0.92);
-}
-
-.secondary-button:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--background-primary) 92%, var(--secondary, var(--primary)));
-}
-
-.primary-button:disabled,
-.secondary-button:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-
-.primary-button:focus-visible,
-.secondary-button:focus-visible {
-  outline: 2px solid var(--secondary, var(--primary));
-  outline-offset: 1px;
-}
-
-/* Generic focus-ring fallback for any text-entry control that doesn't
-   already scope its own (e.g. `.meetings-exclusions-textarea`, reused for
-   Meeting Automation's "Custom instructions" field, had none, so clicking
-   into it showed the browser's raw default blue ring instead of an on-brand
-   one). Tag+attribute specificity is low, so leaves with their own class-
-   scoped focus-visible rule (profile-settings-textarea, appearance-color-
-   field-trigger, hotkey-key-cap's edit button, etc.) are unaffected. */
-input[type='text']:focus-visible,
-input[type='number']:focus-visible,
-input[type='email']:focus-visible,
-input[type='password']:focus-visible,
-input[type='search']:focus-visible,
-textarea:focus-visible,
-select:focus-visible {
-  /* box-shadow (not outline) so the ring follows the field's own
-     border-radius instead of rendering as a hard rectangle. */
-  outline: none;
-  box-shadow: 0 0 0 2px var(--secondary, var(--primary));
-}
-
 .appearance-settings-shell {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--settings-card-gap);
   padding: 20px;
 }
 
@@ -140,11 +63,28 @@ select:focus-visible {
   padding: 8px 12px;
 }
 
-.appearance-settings-section h2 {
-  color: var(--text-primary);
-  font-family: var(--font-family-medium);
-  font-size: var(--font-size-callout);
-  margin: 0 0 8px;
+.appearance-settings-section {
+  display: block;
+}
+
+.appearance-settings-section > h2 {
+  margin-bottom: 8px;
+}
+
+.appearance-color-columns {
+  display: grid;
+  gap: 0 24px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.appearance-color-column {
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .appearance-color-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .appearance-color-field {
@@ -157,6 +97,9 @@ select:focus-visible {
 
 .appearance-color-field-label {
   color: var(--text-primary);
+  flex-shrink: 0;
+  font-size: 12px;
+  white-space: nowrap;
   width: 120px;
 }
 
@@ -177,25 +120,26 @@ select:focus-visible {
 .appearance-color-field-hex {
   color: var(--text-secondary);
   font-family: var(--font-family-light);
+  font-size: 12px;
 }
 
 .appearance-preset-swatches {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 4px 10px;
+  margin-bottom: 8px;
 }
 
 .appearance-preset-swatch {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   width: 64px;
   border: none;
   background: transparent;
   cursor: pointer;
-  padding: 4px;
+  padding: 2px 4px;
   border-radius: 6px;
 }
 
@@ -354,4 +298,94 @@ select:focus-visible {
 
 .appearance-save-bar-hint-saved {
   color: var(--success-base);
+}
+
+.appearance-preset-swatch-item {
+  position: relative;
+}
+
+.appearance-preset-swatch-delete {
+  align-items: center;
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 50%;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  font-size: 12px;
+  height: 18px;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  position: absolute;
+  right: 6px;
+  top: 0;
+  width: 18px;
+}
+
+.appearance-preset-swatch-delete:hover:not(:disabled),
+.appearance-preset-swatch-delete:focus-visible {
+  border-color: var(--error-base, #d9363e);
+  color: var(--error-base, #d9363e);
+  outline: none;
+}
+
+.appearance-preset-swatch-delete:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.appearance-save-theme {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.appearance-save-theme-label {
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.appearance-save-theme > input[type='text'] {
+  flex: 0 1 240px;
+  min-width: 0;
+}
+
+.appearance-save-theme-hint,
+.appearance-save-theme-error {
+  flex-basis: 100%;
+  font-size: 12px;
+  margin: 0;
+}
+
+.appearance-save-theme-hint {
+  color: var(--text-secondary);
+}
+
+.appearance-save-theme-error {
+  color: var(--error-base, #d9363e);
+}
+
+.appearance-delete-theme-confirm {
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--error-base, #d9363e) 55%, var(--field-border));
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+}
+
+.appearance-delete-theme-message {
+  color: var(--text-primary);
+  font-size: 12px;
+  margin: 0;
+}
+
+.appearance-delete-theme-actions {
+  display: flex;
+  gap: 8px;
 }

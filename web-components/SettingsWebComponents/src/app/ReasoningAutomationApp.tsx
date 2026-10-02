@@ -22,19 +22,30 @@ function panelId(id: ReasoningAutomationSubTab): string {
   return `reasoning-automation-panel-${id}`
 }
 
-export function ReasoningAutomationApp({ requestedSubTab }: { requestedSubTab?: ReasoningAutomationSubTab }) {
+export function ReasoningAutomationApp({
+  requestedSubTab,
+  onSubTabChange,
+}: {
+  requestedSubTab?: ReasoningAutomationSubTab
+  onSubTabChange?: (subTab: ReasoningAutomationSubTab) => void
+}) {
   const [selectedSubTab, setSelectedSubTab] = useState<ReasoningAutomationSubTab>(requestedSubTab ?? 'settings')
 
   useEffect(() => {
     if (requestedSubTab) setSelectedSubTab(requestedSubTab)
   }, [requestedSubTab])
 
+  function selectSubTab(subTab: ReasoningAutomationSubTab) {
+    setSelectedSubTab(subTab)
+    onSubTabChange?.(subTab)
+  }
+
   return (
     <div className="reasoning-automation-shell">
       <SettingsSubTabs
         tabs={REASONING_AUTOMATION_SUB_TABS}
         selected={selectedSubTab}
-        onSelect={setSelectedSubTab}
+        onSelect={selectSubTab}
         ariaLabel="Automation & Agents"
         getTabId={tabId}
         getPanelId={panelId}

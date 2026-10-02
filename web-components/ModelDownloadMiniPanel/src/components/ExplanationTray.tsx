@@ -34,7 +34,7 @@ export default function ExplanationTray({ onSizeChanged }: Props) {
         What are these? <span aria-hidden="true">{isOpen ? '⌃' : '⌄'}</span>
       </button>
       {isOpen && (
-        <div className="explanation-content">
+        <div className="explanation-content basil-presence-enter">
           {explanationItems.map(item => (
             <div className="explanation-item" key={item.title}>
               <span className="explanation-icon" aria-hidden="true">{item.icon}</span>

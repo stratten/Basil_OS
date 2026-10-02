@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import PresenceRegion from '@shared/PresenceRegion'
 import {
   notifyCustomModelsReady,
   onCustomModelsEvent,
@@ -210,17 +211,15 @@ export function CustomModelsPanel() {
         </ul>
       )}
 
-      {showWizard && (
-        <div className="custom-models-modal-overlay" role="presentation">
-          <CustomModelWizard latestEvent={latestEvent} onDismiss={() => setShowWizard(false)} />
-        </div>
-      )}
+      <PresenceRegion visible={showWizard} className="custom-models-modal-overlay basil-presence--modal" role="presentation" settleWithoutTransition>
+        <CustomModelWizard latestEvent={latestEvent} onDismiss={() => setShowWizard(false)} />
+      </PresenceRegion>
 
-      {editingModel && (
-        <div className="custom-models-modal-overlay" role="presentation">
+      <PresenceRegion visible={editingModel !== null} className="custom-models-modal-overlay basil-presence--modal" role="presentation" settleWithoutTransition>
+        {editingModel && (
           <CustomModelEditForm model={editingModel} latestEvent={latestEvent} onDismiss={() => setEditingModel(null)} />
-        </div>
-      )}
+        )}
+      </PresenceRegion>
     </div>
   )
 }

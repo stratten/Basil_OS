@@ -258,9 +258,16 @@ describe('WritingExamplesSettingsApp', () => {
     expect(copyButton.textContent).toBe('Copy')
   })
 
-  it('shows a loading row while isLoadingSamples is true without clearing prior samples visually as an error', () => {
+  it('keeps prior samples visible and marks the list busy while isLoadingSamples is true', () => {
     sendInit({ activeFilter: 'email_reply', samples: [SAMPLE] })
     sendInit({ activeFilter: 'document', samples: [SAMPLE], isLoadingSamples: true })
+    expect(container.querySelector('.writing-examples-status')).toBeNull()
+    expect(container.querySelector('.writing-examples-list')?.getAttribute('aria-busy')).toBe('true')
+    expect(container.querySelectorAll('.writing-examples-list-row')).toHaveLength(1)
+  })
+
+  it('shows the samples loading row only when no samples are visible', () => {
+    sendInit({ activeFilter: 'document', samples: [], isLoadingSamples: true })
     expect(container.querySelector('.writing-examples-status')?.textContent).toBe('Loading writing samples...')
   })
 

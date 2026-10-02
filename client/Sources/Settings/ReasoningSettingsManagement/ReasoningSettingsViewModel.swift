@@ -10,7 +10,7 @@ final class ReasoningSettingsViewModel: ObservableObject {
     @Published var isLoading: Bool = true
     @Published var error: String? = nil
     @Published var closeAssistantSessionOnInsert: Bool = false
-    @Published var autoPasteAssistantOutput: Bool = false
+    @Published var assistantOutputPasteMode: AssistantOutputPasteMode = .always
     @Published var useRegionSelection: Bool = false
     
     @Published var agentTaskPushToTalk: Bool = false
@@ -276,7 +276,7 @@ final class ReasoningSettingsViewModel: ObservableObject {
             // Load current model settings
             let modelSettings = try await loadModelSettings()
             self.closeAssistantSessionOnInsert = modelSettings.closeAssistantSessionOnInsert
-            self.autoPasteAssistantOutput = modelSettings.autoPasteAssistantOutput
+            self.assistantOutputPasteMode = modelSettings.assistantOutputPasteMode
             self.useRegionSelection = modelSettings.useRegionSelection
             
             // Update the view model
@@ -394,7 +394,7 @@ final class ReasoningSettingsViewModel: ObservableObject {
                 transcriptionModel: currentSettings.transcriptionModel,
                 useApiModels: currentSettings.useApiModels,
                 closeAssistantSessionOnInsert: currentSettings.closeAssistantSessionOnInsert,
-                autoPasteAssistantOutput: currentSettings.autoPasteAssistantOutput,
+                assistantOutputPasteMode: currentSettings.assistantOutputPasteMode,
                 useRegionSelection: currentSettings.useRegionSelection
             )
             
@@ -458,15 +458,14 @@ final class ReasoningSettingsViewModel: ObservableObject {
         }
     }
 
-    func updateAutoPasteAssistantOutput(_ value: Bool) async {
+    func updateAssistantOutputPasteMode(_ mode: AssistantOutputPasteMode) async {
         do {
             var modelSettings = try await loadModelSettings()
-            modelSettings.autoPasteAssistantOutput = value
+            modelSettings.assistantOutputPasteMode = mode
             try await saveModelSettings(modelSettings)
-            self.autoPasteAssistantOutput = value
+            self.assistantOutputPasteMode = mode
         } catch {
-            // Optionally handle error (e.g., revert UI, show error)
-            self.error = "Failed to update the auto-paste setting: \(error.localizedDescription)"
+            self.error = "Failed to update the paste setting: \(error.localizedDescription)"
         }
     }
     
@@ -886,7 +885,7 @@ struct ReasoningSettingsModel: Codable {
     let transcriptionModel: String
     var useApiModels: Bool
     var closeAssistantSessionOnInsert: Bool
-    var autoPasteAssistantOutput: Bool
+    var assistantOutputPasteMode: AssistantOutputPasteMode
     var useRegionSelection: Bool
     // Removing defaultApiVisionModel - using unified model approach
 } 

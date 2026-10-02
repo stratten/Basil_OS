@@ -17,7 +17,7 @@ const SETTINGS: ReasoningDefaultsSettingsSnapshot = {
   selectedModelId: 'local-1',
   useApiModels: true,
   closeAssistantSessionOnInsert: false,
-  autoPasteAssistantOutput: true,
+  assistantOutputPasteMode: 'always',
   useRegionSelection: false,
   agentTaskDefaultModality: 'voice',
   agentTaskAutoReopenOnCompletion: true,
@@ -67,7 +67,7 @@ describe('ReasoningDefaultsSettingsApp', () => {
     act(() => { modelSelect.click() })
     expect(document.querySelector('[role="listbox"]')?.textContent).toContain('Local Models')
     expect(document.querySelector('[role="listbox"]')?.textContent).toContain('GPT-5')
-    expect(container.querySelector<HTMLInputElement>('#reasoning-defaults-auto-paste')!.checked).toBe(true)
+    expect(container.querySelector<HTMLInputElement>('input[name="assistant-output-paste-mode"][value="always"]')!.checked).toBe(true)
     expect(container.querySelector<HTMLInputElement>('#reasoning-defaults-close-on-insert')!.checked).toBe(false)
   })
 
@@ -90,14 +90,41 @@ describe('ReasoningDefaultsSettingsApp', () => {
     expect(lastMessageOfType('reactReady')).toEqual({ type: 'reactReady', protocolVersion: 1 })
   })
 
-  it('sends a correlated update when the model select changes and disables every control while pending', () => {
+  it('sends a correlated update when the model select changes and keeps every other control interactive while pending', () => {
     sendInit()
     const select = container.querySelector<HTMLButtonElement>('[aria-label="Default reasoning model"]')!
     act(() => { select.click() })
     const gptOption = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="option"]')).find((option) => option.textContent === 'GPT-5')!
     act(() => { gptOption.click() })
     expect(lastMessageOfType('requestUpdateSelectedModel')).toEqual(expect.objectContaining({ modelId: 'gpt-5' }))
-    expect(container.querySelector<HTMLInputElement>('#reasoning-defaults-auto-paste')!.disabled).toBe(true)
+    expect(container.querySelector<HTMLButtonElement>('[aria-label="Default reasoning model"]')!.textContent).toContain('GPT-5')
+    expect(container.querySelector<HTMLInputElement>('input[name="assistant-output-paste-mode"][value="never"]')!.disabled).toBe(false)
+  })
+
+  it('keeps overlapping changes and reverts only the one native rejects', () => {
+    sendInit()
+    const pasteModeRadio = (mode: string) => container.querySelector<HTMLInputElement>(`input[name="assistant-output-paste-mode"][value="${mode}"]`)!
+    const regionSelection = container.querySelector<HTMLInputElement>('#reasoning-defaults-region-selection')!
+    act(() => { pasteModeRadio('never').click() })
+    const pasteModeRequestId = postMessage.mock.calls[postMessage.mock.calls.length - 1][0].requestId
+    act(() => { regionSelection.click() })
+    expect(pasteModeRadio('never').checked).toBe(true)
+    expect(regionSelection.checked).toBe(true)
+    expect(container.querySelector('.settings-visually-hidden')?.textContent).toBe('Saving setting...')
+    act(() => {
+      window.basilReasoningDefaultsSettings!.onEvent({ type: 'intentResult', requestId: pasteModeRequestId, status: 'error', message: 'Could not save the paste setting.' })
+    })
+    expect(pasteModeRadio('always').checked).toBe(true)
+    expect(regionSelection.checked).toBe(true)
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe('Could not save the paste setting.')
+  })
+
+  it('sends a correlated paste-mode update and shows the selected option description', () => {
+    sendInit()
+    act(() => { container.querySelector<HTMLInputElement>('input[name="assistant-output-paste-mode"][value="auto"]')!.click() })
+    expect(lastMessageOfType('requestUpdateAssistantOutputPasteMode')).toEqual(expect.objectContaining({ mode: 'auto' }))
+    expect(container.textContent).toContain('Paste drafts, replies, and rewrites')
+    expect(container.textContent).toContain('Let Basil decide')
   })
 
   it('clears pending state and surfaces an error only for the correlated failure', () => {

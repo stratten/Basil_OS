@@ -107,13 +107,6 @@
   margin-bottom: 12px;
 }
 
-.reasoning-api-models-key-explainer {
-  color: var(--text-secondary);
-  font-family: var(--font-family-light);
-  font-size: 12px;
-  margin: 0;
-}
-
 .reasoning-api-models-key-explainer a {
   color: var(--primary);
 }
@@ -138,21 +131,8 @@
 }
 
 .reasoning-api-models-key-remove-button {
-  background: transparent;
-  border: 1px solid color-mix(in srgb, var(--error-base, #d9363e) 55%, var(--field-border));
-  border-radius: 6px;
-  color: var(--error-base, #d9363e);
-  cursor: pointer;
   flex: 0 0 auto;
-  font-family: var(--font-family-medium);
-  font-size: 12px;
-  min-height: 30px;
-  padding: 5px 10px;
   white-space: nowrap;
-}
-
-.reasoning-api-models-key-remove-button:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--error-base, #d9363e) 10%, transparent);
 }
 
 .reasoning-api-models-key-remove-confirm {
@@ -182,48 +162,13 @@
   justify-content: flex-end;
 }
 
-.reasoning-api-models-key-remove-confirm-button {
-  background: var(--error-base, #d9363e);
-  border: 1px solid color-mix(in srgb, var(--error-base, #d9363e) 70%, black);
-  border-radius: 6px;
-  color: #fff;
-  cursor: pointer;
-  font-family: var(--font-family-medium);
-  font-size: 12px;
-  padding: 5px 10px;
-}
-
-.reasoning-api-models-key-remove-button:disabled,
-.reasoning-api-models-key-remove-confirm-button:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-
-.reasoning-api-models-key-required {
-  color: var(--text-secondary);
-  font-family: var(--font-family-light);
-  font-size: 12px;
-  margin: 0;
-}
-
 .reasoning-api-models-key-row {
   display: flex;
   gap: 8px;
 }
 
 .reasoning-api-models-key-input {
-  background: var(--background-primary);
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  color: var(--text-primary);
   flex: 1;
-  font-family: var(--font-family-light);
-  font-size: 13px;
-  padding: 6px 10px;
-}
-
-.reasoning-api-models-key-input:disabled {
-  opacity: 0.6;
 }
 
 .reasoning-api-models-list {

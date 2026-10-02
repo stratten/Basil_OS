@@ -76,13 +76,15 @@ describe('SkillsSettingsApp', () => {
     expect(document.querySelector('[role="listbox"]')?.textContent).toContain('Local Model')
   })
 
-  it('sends requestUpdateSkillDailyEnabled and locks settings until native confirms it', () => {
+  it('sends requestUpdateSkillDailyEnabled and keeps the other settings interactive while native confirms it', () => {
     sendInit()
     const dailySwitch = container.querySelector<HTMLInputElement>('#skills-daily-enabled')!
     act(() => { dailySwitch.click() })
     expect(lastMessageOfType('requestUpdateSkillDailyEnabled')).toEqual(expect.objectContaining({ enabled: true }))
+    expect(dailySwitch.checked).toBe(true)
     const dailyTime = container.querySelector<HTMLInputElement>('#skills-daily-time')!
-    expect(dailyTime.disabled).toBe(true)
+    expect(dailyTime.disabled).toBe(false)
+    expect(container.querySelector<HTMLInputElement>('#skills-after-task-enabled')!.disabled).toBe(false)
   })
 
   it('sends requestUpdateSkillProcessingModel with null when reset to the default option', () => {

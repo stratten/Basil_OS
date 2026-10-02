@@ -1,27 +1,9 @@
 .proactive-suggestions-shell {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--settings-card-gap);
   max-width: 920px;
   width: 100%;
-}
-
-.proactive-suggestions-section {
-  background: color-mix(in srgb, var(--background-primary) 92%, var(--primary));
-  border: 1px solid var(--field-border);
-  border-radius: 10px;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 10%), 0 8px 20px rgb(0 0 0 / 8%);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 18px;
-}
-
-.proactive-suggestions-section h2 {
-  color: var(--text-primary);
-  font-family: var(--font-family-medium);
-  font-size: 16px;
-  margin: 0;
 }
 
 .proactive-suggestions-section h3 {
@@ -51,17 +33,6 @@
   gap: 8px;
 }
 
-.proactive-suggestions-frequency input[type='number'] {
-  background: var(--background-primary);
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  font-family: var(--font-family-light);
-  font-size: 13px;
-  padding: 4px 6px;
-  width: 72px;
-}
-
 .proactive-suggestions-confidence {
   display: flex;
   flex-direction: column;
@@ -72,10 +43,6 @@
   color: var(--text-primary);
   font-family: var(--font-family-light);
   font-size: 13px;
-}
-
-.proactive-suggestions-confidence input[type='range'] {
-  accent-color: var(--primary);
 }
 
 .proactive-suggestions-exclusions {
@@ -92,22 +59,7 @@
 }
 
 .proactive-suggestions-exclusions textarea {
-  background: var(--background-primary);
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  font-family: var(--font-family-light);
-  font-size: 13px;
   min-height: 82px;
-  padding: 8px;
-  resize: vertical;
-}
-
-.proactive-suggestions-field-hint {
-  color: var(--text-secondary);
-  font-family: var(--font-family-light);
-  font-size: 12px;
-  margin: 0;
 }
 
 .proactive-suggestions-inline-warning {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import PresenceRegion from '@shared/PresenceRegion'
 import {
   requestChooseWorkspaceFolder,
   requestLoadProviderProfileConfiguration,
@@ -137,7 +138,7 @@ export function ProviderProfilesPanel({
       {statusMessage && <p className="connections-panel-status" role="status">{statusMessage}</p>}
       {errorMessage && <p className="provider-profile-validation-error" role="alert">{errorMessage}</p>}
 
-      {isLoading ? (
+      {isLoading && providerProfiles.length === 0 ? (
         <p className="connections-panel-status" role="status">Loading provider profiles...</p>
       ) : providerProfiles.length === 0 ? (
         <div className="connections-empty-state">
@@ -145,7 +146,7 @@ export function ProviderProfilesPanel({
           <p className="connections-empty-state-body">Add an installed ACP runtime to begin configuring future provider catalog eligibility.</p>
         </div>
       ) : (
-        <div className="connections-list">
+        <div className="connections-list basil-refresh-region" aria-busy={isLoading ? true : undefined}>
           {providerProfiles.map((profile) => (
             <ProviderProfileRow
               key={profile.id}
@@ -162,18 +163,16 @@ export function ProviderProfilesPanel({
         </div>
       )}
 
-      {showAddModal && (
-        <div className="connections-modal-overlay" role="presentation">
-          <AddProviderProfileModal configuration={null} disabled={disabled} onTrackRequest={trackAndWatch} onDismiss={() => setShowAddModal(false)} />
-        </div>
-      )}
-      {editingProfile && (
-        <div className="connections-modal-overlay" role="presentation">
+      <PresenceRegion visible={showAddModal} className="connections-modal-overlay basil-presence--modal" role="presentation" settleWithoutTransition>
+        <AddProviderProfileModal configuration={null} disabled={disabled} onTrackRequest={trackAndWatch} onDismiss={() => setShowAddModal(false)} />
+      </PresenceRegion>
+      <PresenceRegion visible={editingProfile !== null} className="connections-modal-overlay basil-presence--modal" role="presentation" settleWithoutTransition>
+        {editingProfile && (
           <AddProviderProfileModal configuration={editingProfile} disabled={disabled} onTrackRequest={trackAndWatch} onDismiss={() => setEditingProfile(null)} />
-        </div>
-      )}
-      {grantContext && (
-        <div className="connections-modal-overlay" role="presentation">
+        )}
+      </PresenceRegion>
+      <PresenceRegion visible={grantContext !== null} className="connections-modal-overlay basil-presence--modal" role="presentation" settleWithoutTransition>
+        {grantContext && (
           <WorkspaceGrantModal
             profile={grantContext.profile}
             existingGrant={grantContext.existingGrant}
@@ -182,8 +181,8 @@ export function ProviderProfilesPanel({
             onTrackRequest={trackAndWatch}
             onDismiss={() => setGrantContext(null)}
           />
-        </div>
-      )}
+        )}
+      </PresenceRegion>
     </section>
   )
 }

@@ -7,7 +7,7 @@ const TEXT_REPLACEMENT_REPLACEMENT_MAX_LENGTH = 500
 
 interface TranscriptionTextReplacementsPanelProps {
   rules: TranscriptionTextReplacementFields[]
-  disabled: boolean
+  disabled?: boolean
   onRulesChange: (rules: TranscriptionTextReplacementFields[]) => void
   onTrackRequest: (id: string) => void
 }
@@ -18,8 +18,8 @@ export function TranscriptionTextReplacementsPanel({ rules, disabled, onRulesCha
   const [formError, setFormError] = useState<string | null>(null)
 
   function submitRules(next: TranscriptionTextReplacementFields[]) {
-    onTrackRequest(requestUpdateTextReplacements(next))
     onRulesChange(next)
+    onTrackRequest(requestUpdateTextReplacements(next))
   }
 
   function addRule() {

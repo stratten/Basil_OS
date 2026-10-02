@@ -14,7 +14,7 @@ final class ReasoningDefaultsSettingsPayloadTests: XCTestCase {
             selectedModelId: "gpt-5",
             useApiModels: true,
             closeAssistantSessionOnInsert: true,
-            autoPasteAssistantOutput: false,
+            assistantOutputPasteMode: .auto,
             useRegionSelection: true,
             agentTaskDefaultModality: .text,
             agentTaskAutoReopenOnCompletion: false,
@@ -31,7 +31,7 @@ final class ReasoningDefaultsSettingsPayloadTests: XCTestCase {
         XCTAssertEqual(payload["selectedModelId"] as? String, "gpt-5")
         XCTAssertEqual(payload["useApiModels"] as? Bool, true)
         XCTAssertEqual(payload["closeAssistantSessionOnInsert"] as? Bool, true)
-        XCTAssertEqual(payload["autoPasteAssistantOutput"] as? Bool, false)
+        XCTAssertEqual(payload["assistantOutputPasteMode"] as? String, "auto")
         XCTAssertEqual(payload["useRegionSelection"] as? Bool, true)
         XCTAssertEqual(payload["agentTaskDefaultModality"] as? String, "text")
         XCTAssertEqual(payload["agentTaskAutoReopenOnCompletion"] as? Bool, false)
@@ -46,7 +46,7 @@ final class ReasoningDefaultsSettingsPayloadTests: XCTestCase {
         let payload = ReasoningDefaultsSettingsPayloadBuilder.makeSettingsPayload(
             localModels: [], apiModels: [], customModels: [],
             selectedModelId: "", useApiModels: false,
-            closeAssistantSessionOnInsert: false, autoPasteAssistantOutput: false, useRegionSelection: false,
+            closeAssistantSessionOnInsert: false, assistantOutputPasteMode: .always, useRegionSelection: false,
             agentTaskDefaultModality: .voice, agentTaskAutoReopenOnCompletion: true,
             agentTaskPushToTalk: false, agentTaskPushToTalkThreshold: 750,
             assistantSessionDefaultModality: .speak, assistantSessionPushToTalk: false,

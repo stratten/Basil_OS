@@ -65,6 +65,7 @@ def request_user_input(
     context_summary: Optional[str] = None,
     checkpoint_id: Optional[str] = None,
     metadata: Optional[Dict[str, Any]] = None,
+    allow_multiple: bool = False,
 ) -> str:
     """
     Request input or approval from the user before proceeding.
@@ -91,14 +92,17 @@ def request_user_input(
             structured options become cards.
         options: Concise, user-facing labels when input_type is "selection" (e.g. ["Option A",
             "Option B"]). Keep each a few words; put shared context in prompt, not in options.
+            Do not add an "Other" option; the UI always offers a typed Other answer.
         context_summary: Brief summary of what's been done so far to provide context
+        allow_multiple: Set True only with "selection" or "choice" when the user may reasonably pick several options at once (for example, which reports to include). Leave False when exactly one answer drives the next step.
         
     Returns:
-        User's response (will be provided after user responds via UI)
+        The user's reply. A single pick arrives as the bare option value. Several picks, or a pick plus typed text, arrive as "Selected: A; B" and/or "Other: <typed text>" on separate lines. Act on every selected option, and treat "Other:" text as the user's own answer or as an added instruction that refines the selection.
         
     Examples:
         - request_user_input("Should I send this draft email?", "yes_no")
         - request_user_input("Which client should I prioritize?", "selection", ["Client A", "Client B", "Client C"])
+        - request_user_input("Which reports should I include?", "selection", ["Sales", "Support", "Operations"], allow_multiple=True)
         - request_user_input("How many emails should I process?", "numeric")
         - request_user_input("Any changes to the draft before I save it?", "text")
     """
@@ -108,6 +112,7 @@ def request_user_input(
         "prompt": prompt,
         "input_type": input_type,
         "options": options or [],
+        "allow_multiple": bool(allow_multiple) and input_type in ("selection", "choice"),
         "context_summary": context_summary or "",
         "metadata": metadata or {},
         "step_type": "user_input_request",
@@ -135,6 +140,9 @@ SLIM_DESCRIPTION = (
     "Pause execution and wait for the user to respond via UI; use for approvals, "
     "multiple-choice, clarifications, numeric inputs, or pre-send confirmation; "
     "do not use for state that tools can inspect after loading the right family; "
+    "set allow_multiple=true with selection when several options may apply; "
+    "the UI always offers a typed Other answer, and replies may read "
+    "'Selected: A; B' and/or 'Other: <text>'; "
     "returns the user's reply (do NOT call to insert your own commentary)."
 )
 

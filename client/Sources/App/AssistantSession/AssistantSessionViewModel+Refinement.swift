@@ -168,6 +168,8 @@ extension AssistantSessionViewModel {
             
             // Initialize streaming state
             streamingState = StreamingState()
+            pasteDecision = nil
+            pasteOutcome = nil
             
             // Process streaming response
             var completedSuccessfully = false
@@ -205,6 +207,7 @@ extension AssistantSessionViewModel {
                         let stage: String?
                         let progress: RefinementTranscriptionProgress?
                         let error: String?
+                        let paste_decision: String?
                     }
                     
                     let data = line.data(using: .utf8) ?? Data()
@@ -248,6 +251,7 @@ extension AssistantSessionViewModel {
                             NotificationCenter.default.post(name: NSNotification.Name("AssistantOutputHistoryDidUpdate"), object: nil)
                             break
                         }
+                        pasteDecision = chunk.paste_decision
                         flushStreamingBuffer(isFinal: true)
                         assistantSessionStatus = .completed
                         completedSuccessfully = true
@@ -285,19 +289,7 @@ extension AssistantSessionViewModel {
                     struct ResponseWrapper: Codable { let status: String; let settings: ReasoningSettingsModel }
                     let responseWrapper = try settingsDecoder.decode(ResponseWrapper.self, from: settingsData)
 
-                    // Auto-paste refined AssistantSession output if enabled - use assistantOutput (with thinking already extracted)
-                    if responseWrapper.settings.autoPasteAssistantOutput && !self.assistantOutput.isEmpty {
-                        #if DEBUG
-                        DevLogger.shared.info("Auto-paste enabled, pasting refined AssistantSession output (thinking excluded) with formatting", context: "AssistantSessionViewModel")
-                        #endif
-
-                        // Use HTML formatting for pasting if markdown is detected
-                        if MarkdownUtils.containsMarkdown(self.assistantOutput) {
-                            self.pasteRichAssistantSession(self.assistantOutput)
-                        } else {
-                            self.pasteAssistantSession(self.assistantOutput)
-                        }
-                    }
+                    await self.performCompletionPaste(mode: responseWrapper.settings.assistantOutputPasteMode)
                 } catch {
                     #if DEBUG
                     DevLogger.shared.error("Failed to fetch model settings for refinement auto-paste: \(error)", context: "AssistantSessionViewModel")

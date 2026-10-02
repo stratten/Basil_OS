@@ -78,6 +78,11 @@ extension HotkeyService {
     }
     
     private func startNewAssistantSessionSession() async {
+        let basilProcessIdentifier = ProcessInfo.processInfo.processIdentifier
+        let pasteSourceApplication = NSWorkspace.shared.frontmostApplication.flatMap {
+            $0.processIdentifier == basilProcessIdentifier ? nil : $0
+        }
+
         // CRITICAL: Detect text selection BEFORE showing widget to avoid focus stealing issues
         // The widget may change focus, so we must capture selection while the source app is still focused
         #if DEBUG
@@ -214,6 +219,7 @@ extension HotkeyService {
         // first frame the typed-input UI renders.
         if let viewModel = AssistantSessionWindowController.sharedController?.viewModel {
             viewModel.detectedApplicationName = captureResult.appName
+            viewModel.pasteSourceApplication = pasteSourceApplication
             #if DEBUG
             DevLogger.shared.info(
                 "[ASSISTANT_SESSION] Seeded detectedApplicationName = '\(captureResult.appName)' from CaptureResult",

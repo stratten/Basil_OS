@@ -278,7 +278,7 @@ export function ReasoningApiModelsPanel() {
         label="Use API Models"
       />
       {useApiModels && (
-        isLoading ? (
+        isLoading && providers.length === 0 ? (
           <p className="reasoning-api-models-status" role="status">Loading reasoning API models...</p>
         ) : (
           providers.map((provider) => (

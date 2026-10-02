@@ -50,7 +50,7 @@ class ModelSettingsUpdate(BaseModel):
     # Special features
     api_extended_thinking: bool = False
     close_assistant_session_on_insert: bool = False
-    auto_paste_assistant_output: bool = True
+    assistant_output_paste_mode: Optional[Literal["always", "auto", "never"]] = None
     use_region_selection: bool = False
 
 

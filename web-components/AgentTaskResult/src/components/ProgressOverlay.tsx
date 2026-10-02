@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from 'react';
-import { usePresenceTransition } from '../app/usePresenceTransition';
-import CrossfadeStack from './CrossfadeStack';
+import { usePresenceTransition } from '@shared/usePresenceTransition';
+import CrossfadeStack from '@shared/CrossfadeStack';
 import { normalizeProgressStepText } from './result/progressStepText';
 
 interface Props {

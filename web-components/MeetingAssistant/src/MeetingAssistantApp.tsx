@@ -11,6 +11,7 @@ import TranscriptToolsCard from './components/TranscriptToolsCard';
 import AnalysisCard from './components/AnalysisCard';
 import { applyMeetingHostFonts, applyMeetingHostTheme } from './lib/hostAppearance';
 import { CollapsedHistoryRail } from '../../shared/HistorySidebarControls';
+import CollapsibleSidebar from '@shared/CollapsibleSidebar';
 import AnimatedBubble from '../../AgentTaskResult/src/components/AnimatedBubble';
 import { useMeetingMeter } from './bridge/meetingMeterStore';
 
@@ -45,7 +46,16 @@ export default function MeetingAssistantApp() {
     }
     return (
       <div className="meeting-body">
-        {!ui.isSidebarCollapsed && (
+        <CollapsibleSidebar
+          element="div"
+          expanded={!ui.isSidebarCollapsed}
+          className="meeting-history-collapsible"
+          collapsedContent={(
+            <aside className="meeting-history-sidebar meeting-history-sidebar--collapsed" aria-label="Meeting history">
+              <CollapsedHistoryRail ariaLabel="Show meeting history" title="Show meeting history" onExpand={() => setSidebarCollapsed(false)} />
+            </aside>
+          )}
+        >
           <MeetingHistorySidebar
             history={state.history}
             selectedMeetingId={ui.selectedMeetingId}
@@ -57,12 +67,7 @@ export default function MeetingAssistantApp() {
             loadMoreError={ui.meetingHistoryLoadMoreError}
             activeAnalysisMeetingId={ui.isAnalyzing ? ui.activeAnalysisMeetingId : null}
           />
-        )}
-        {!isCollapsed && ui.isSidebarCollapsed && (
-          <aside className="meeting-history-sidebar meeting-history-sidebar--collapsed" aria-label="Meeting history">
-            <CollapsedHistoryRail ariaLabel="Show meeting history" title="Show meeting history" onExpand={() => setSidebarCollapsed(false)} />
-          </aside>
-        )}
+        </CollapsibleSidebar>
         <div className="meeting-main-column">
           {state.lastValidationError && (
             <p className="meeting-audio-recovery-notice" role="alert">

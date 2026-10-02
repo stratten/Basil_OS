@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 import Foundation
+import AppKit
 
 // MARK: - Main ViewModel Declaration
 // Core AssistantSession functionality split across extensions:
@@ -68,6 +69,14 @@ final class AssistantSessionViewModel: ObservableObject {
     /// `applicationName = "Unknown"`) any time no text is highlighted -- the
     /// common case for the typed-input modality.
     @Published var detectedApplicationName: String?
+
+    // MARK: - Paste Target
+    /// App that was frontmost when the AssistantSession hotkey fired; the only app a completed output may be pasted into. Nil for setup-assistant and history-rehydrated sessions.
+    var pasteSourceApplication: NSRunningApplication?
+    /// The model's paste choice for the latest output ("insert" or "show"), or nil when it gave none.
+    var pasteDecision: String?
+    @Published var pasteOutcome: AssistantSessionPasteOutcome?
+    @Published var pasteTargetApplicationName: String?
 
     // MARK: - Refinement Mode Properties
     @Published var isRefinementMode: Bool = false

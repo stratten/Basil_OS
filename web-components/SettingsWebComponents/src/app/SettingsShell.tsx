@@ -143,9 +143,13 @@ export function SettingsShell() {
     })
   }
 
+  function recordSubTab(tabId: SettingsTabId, subTabId: string) {
+    setSubTabRequests((current) => ({ ...current, [tabId]: subTabId }))
+  }
+
   function selectSubTab(tabId: SettingsTabId, subTabId: string) {
     selectTab(tabId)
-    setSubTabRequests((current) => ({ ...current, [tabId]: subTabId }))
+    recordSubTab(tabId, subTabId)
   }
 
   useEffect(() => {
@@ -183,7 +187,7 @@ export function SettingsShell() {
               <h2 id={`settings-group-${group.id}`} className="settings-shell-navigation-heading">{group.label}</h2>
               {group.tabs.map((tab) => {
                 const isExpanded = expandedTabs.has(tab.id)
-                const selectedSubTabId = subTabRequests[tab.id] ?? (tab.id === 'models' ? 'reasoning' : undefined)
+                const selectedSubTabId = subTabRequests[tab.id] ?? tab.subTabs?.[0]?.id
                 return (
                   <div key={tab.id} className="settings-shell-nav-item-wrapper">
                     <div className="settings-shell-nav-item-row">
@@ -241,15 +245,45 @@ export function SettingsShell() {
           {selectedTab === 'profile' && <ProfileSettingsApp />}
           {selectedTab === 'memory-intelligence' && <MemoryIntelligenceSettingsApp />}
           {selectedTab === 'writing-examples' && <WritingExamplesSettingsApp />}
-          {selectedTab === 'models' && <ModelsSettingsApp requestedSubTab={subTabRequests.models as ModelsSubTab | undefined} />}
-          {selectedTab === 'reasoning' && <ReasoningAutomationApp requestedSubTab={subTabRequests.reasoning as ReasoningAutomationSubTab | undefined} />}
-          {selectedTab === 'capture' && <CaptureSettingsApp requestedSubTab={subTabRequests.capture as CaptureSubTab | undefined} />}
+          {selectedTab === 'models' && (
+            <ModelsSettingsApp
+              requestedSubTab={subTabRequests.models as ModelsSubTab | undefined}
+              onSubTabChange={(subTabId) => recordSubTab('models', subTabId)}
+            />
+          )}
+          {selectedTab === 'reasoning' && (
+            <ReasoningAutomationApp
+              requestedSubTab={subTabRequests.reasoning as ReasoningAutomationSubTab | undefined}
+              onSubTabChange={(subTabId) => recordSubTab('reasoning', subTabId)}
+            />
+          )}
+          {selectedTab === 'capture' && (
+            <CaptureSettingsApp
+              requestedSubTab={subTabRequests.capture as CaptureSubTab | undefined}
+              onSubTabChange={(subTabId) => recordSubTab('capture', subTabId)}
+            />
+          )}
           {selectedTab === 'appearance' && <AppearanceSettingsApp />}
           {selectedTab === 'meetings' && <MeetingsSettingsApp />}
           {selectedTab === 'account' && <AccountSettingsApp />}
-          {selectedTab === 'transcription' && <TranscriptionSettingsApp requestedSubTab={subTabRequests.transcription as TranscriptionSubTab | undefined} />}
-          {selectedTab === 'permissions' && <PermissionsSettingsApp requestedSubTab={subTabRequests.permissions as PermissionsSubTab | undefined} />}
-          {selectedTab === 'connections' && <ConnectionsSettingsApp requestedSubTab={subTabRequests.connections as ConnectionsSubTab | undefined} />}
+          {selectedTab === 'transcription' && (
+            <TranscriptionSettingsApp
+              requestedSubTab={subTabRequests.transcription as TranscriptionSubTab | undefined}
+              onSubTabChange={(subTabId) => recordSubTab('transcription', subTabId)}
+            />
+          )}
+          {selectedTab === 'permissions' && (
+            <PermissionsSettingsApp
+              requestedSubTab={subTabRequests.permissions as PermissionsSubTab | undefined}
+              onSubTabChange={(subTabId) => recordSubTab('permissions', subTabId)}
+            />
+          )}
+          {selectedTab === 'connections' && (
+            <ConnectionsSettingsApp
+              requestedSubTab={subTabRequests.connections as ConnectionsSubTab | undefined}
+              onSubTabChange={(subTabId) => recordSubTab('connections', subTabId)}
+            />
+          )}
           {selectedTab !== 'home' && selectedTab !== 'hotkeys' && selectedTab !== 'profile' && selectedTab !== 'memory-intelligence' && selectedTab !== 'writing-examples' && selectedTab !== 'models' && selectedTab !== 'reasoning' && selectedTab !== 'capture' && selectedTab !== 'appearance' && selectedTab !== 'meetings' && selectedTab !== 'account' && selectedTab !== 'transcription' && selectedTab !== 'permissions' && selectedTab !== 'connections' && (
             <div className="settings-shell-placeholder">{activeTab.label} settings have not been migrated to React yet.</div>
           )}

@@ -74,6 +74,10 @@ async def test_streaming_pipeline_sends_system_prompt_as_leading_message(monkeyp
     service = _FakeService(session_id, model, escape_hatch_text)
 
     monkeypatch.setattr(
+        "api.services.assistant_sessions.assistant_session_router_components.process_audio_pipeline.resolve_paste_mode",
+        lambda: "always",
+    )
+    monkeypatch.setattr(
         "api.services.assistant_sessions.assistant_session_router_components.process_audio_pipeline.get_assistant_output_history_service",
         lambda: AsyncMock(persist_assistant_output=AsyncMock(return_value="persisted-1")),
     )
@@ -104,6 +108,10 @@ async def test_streaming_pipeline_omits_system_message_when_no_system_prompt(mon
     model = _FakeModel()
     service = _FakeService(session_id, model, system_prompt=None)
 
+    monkeypatch.setattr(
+        "api.services.assistant_sessions.assistant_session_router_components.process_audio_pipeline.resolve_paste_mode",
+        lambda: "always",
+    )
     monkeypatch.setattr(
         "api.services.assistant_sessions.assistant_session_router_components.process_audio_pipeline.get_assistant_output_history_service",
         lambda: AsyncMock(persist_assistant_output=AsyncMock(return_value="persisted-2")),

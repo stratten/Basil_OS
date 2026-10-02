@@ -344,10 +344,13 @@ extension AssistantSessionViewModel {
             let progress: TranscriptionProgress?
             let estimated_duration: Double?
             let error: String?
+            let paste_decision: String?
         }
         
         // Initialize streaming state
         streamingState = StreamingState()
+        pasteDecision = nil
+        pasteOutcome = nil
         
         var completedSuccessfully = false
         for try await line in stream.lines {
@@ -405,6 +408,7 @@ extension AssistantSessionViewModel {
                     }
                     // Just flush remaining buffer - don't process final AssistantSession output again
                     // as we've already accumulated content from streaming tokens
+                    pasteDecision = chunk.paste_decision
                     flushStreamingBuffer(isFinal: true)
                     assistantSessionStatus = .completed
                     completedSuccessfully = true
@@ -438,8 +442,7 @@ extension AssistantSessionViewModel {
 
     // MARK: - Auto Actions
 
-    /// Handles automatic actions after AssistantSession completion based on user settings.
-    /// Includes auto-paste (with markdown detection) and auto-close functionality.
+    /// Handles automatic actions after AssistantSession completion based on user settings: the paste (subject to the paste mode and the source-app safeguard) and close-on-insert, which only fires when something was actually pasted.
     /// - Parameter finalAssistantOutput: The final AssistantSession output text (unused, kept for API compatibility).
     func handleAutoActions(finalAssistantOutput: String) async {
         Task { @MainActor in
@@ -450,37 +453,20 @@ extension AssistantSessionViewModel {
                 struct ResponseWrapper: Codable { let status: String; let settings: ReasoningSettingsModel }
                 let responseWrapper = try settingsDecoder.decode(ResponseWrapper.self, from: settingsData)
 
-                self.shouldPersistUI = !responseWrapper.settings.closeAssistantSessionOnInsert
-
-                // Auto-paste AssistantSession output if enabled - use assistantOutput (with thinking already extracted)
-                if responseWrapper.settings.autoPasteAssistantOutput && !self.assistantOutput.isEmpty {
+                let pasted = await self.performCompletionPaste(mode: responseWrapper.settings.assistantOutputPasteMode)
+                let closeAfterPaste = pasted && responseWrapper.settings.closeAssistantSessionOnInsert
+                self.shouldPersistUI = !closeAfterPaste
+                if closeAfterPaste {
                     #if DEBUG
-                    DevLogger.shared.info("Auto-paste enabled, pasting AssistantSession output (thinking excluded) with formatting", context: "AssistantSessionViewModel")
-                    #endif
-
-                    if MarkdownUtils.containsMarkdown(self.assistantOutput) {
-                        self.pasteRichAssistantSession(self.assistantOutput)
-                    } else {
-                        self.pasteAssistantSession(self.assistantOutput)
-                    }
-                }
-
-                // Auto-close widget if enabled
-                if responseWrapper.settings.closeAssistantSessionOnInsert {
-                    #if DEBUG
-                    DevLogger.shared.info("Auto-close-on-insert enabled, sending close request", context: "AssistantSessionViewModel")
+                    DevLogger.shared.info("Pasted with close-on-insert enabled, sending close request", context: "AssistantSessionViewModel")
                     #endif
                     NotificationCenter.default.post(name: NSNotification.Name("CloseAssistantSessionWidgetRequest"), object: nil)
-                } else {
-                    #if DEBUG
-                    DevLogger.shared.info("Auto-close-on-insert disabled, widget will persist with potentially adjusted UI.", context: "AssistantSessionViewModel")
-                    #endif
                 }
             } catch {
                 #if DEBUG
                 DevLogger.shared.error("Failed to fetch model settings for auto-paste/auto-close: \(error)", context: "AssistantSessionViewModel")
                 #endif
-                self.shouldPersistUI = false
+                self.shouldPersistUI = true
             }
         }
     }

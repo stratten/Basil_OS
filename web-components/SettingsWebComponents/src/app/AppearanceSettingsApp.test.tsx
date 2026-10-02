@@ -4,12 +4,68 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { AppearanceSettingsApp } from './AppearanceSettingsApp'
 import { APPEARANCE_FIXTURE_SETTINGS } from '../fixtures/appearanceFixture'
-import type { AppearanceNativeEvent } from '../types'
+import type { AppearanceNativeEvent, AppearanceThemesNativeEvent, CustomAppearanceTheme } from '../types'
 
 let container: HTMLElement
 let root: Root
 let postMessage: ReturnType<typeof vi.fn>
 let dateTimePostMessage: ReturnType<typeof vi.fn>
+let themesPostMessage: ReturnType<typeof vi.fn>
+
+const HARBOR_THEME: CustomAppearanceTheme = {
+  id: 'custom-0123456789abcdef0123456789abcdef',
+  name: 'Harbor',
+  backgroundColorRed: 0.1,
+  backgroundColorGreen: 0.2,
+  backgroundColorBlue: 0.3,
+  primaryColorRed: 0.4,
+  primaryColorGreen: 0.5,
+  primaryColorBlue: 0.6,
+  secondaryColorRed: 0.7,
+  secondaryColorGreen: 0.8,
+  secondaryColorBlue: 0.9,
+  textColorRed: 1,
+  textColorGreen: 0.95,
+  textColorBlue: 0.9,
+  surfaceFinish: 'metal',
+}
+
+function emitThemes(event: AppearanceThemesNativeEvent) {
+  act(() => {
+    window.basilAppearanceThemes!.onEvent(event)
+  })
+}
+
+function typeInto(input: HTMLInputElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), 'value')?.set
+  act(() => {
+    setter?.call(input, value)
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+}
+
+function buttonWithText(text: string) {
+  return Array.from(container.querySelectorAll<HTMLButtonElement>('button')).find((button) => button.textContent === text)
+}
+
+function openSaveThemeForm(name: string) {
+  act(() => {
+    buttonWithText('Save as Theme')!.click()
+  })
+  typeInto(container.querySelector<HTMLInputElement>('#appearance-save-theme-name')!, name)
+}
+
+function submitSaveThemeForm() {
+  act(() => {
+    container
+      .querySelector<HTMLFormElement>('form.appearance-save-theme')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+  })
+}
+
+function previewDraftCallCount() {
+  return postMessage.mock.calls.filter((call) => call[0].type === 'previewDraft').length
+}
 
 function emit(event: AppearanceNativeEvent) {
   act(() => {
@@ -45,10 +101,12 @@ function primaryColorTrigger() {
 beforeEach(() => {
   postMessage = vi.fn()
   dateTimePostMessage = vi.fn()
+  themesPostMessage = vi.fn()
   window.webkit = {
     messageHandlers: {
       basilAppearanceSettingsBridge: { postMessage },
       basilDateTimeSettingsBridge: { postMessage: dateTimePostMessage },
+      basilAppearanceThemesBridge: { postMessage: themesPostMessage },
     },
   }
   ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -179,7 +237,7 @@ describe('AppearanceSettingsApp', () => {
   it('restores the persisted draft immediately on Cancel and sends cancelDraft', () => {
     emit(initEvent())
     pickPrimaryColor()
-    const cancelButton = container.querySelector<HTMLButtonElement>('button.secondary-button')!
+    const cancelButton = container.querySelector<HTMLButtonElement>('.appearance-save-bar button.secondary-button')!
     act(() => {
       cancelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
@@ -280,5 +338,197 @@ describe('AppearanceSettingsApp', () => {
     expect(container.querySelector<HTMLButtonElement>('[aria-label="Date Display"]')!.disabled).toBe(false)
     expect(container.querySelector<HTMLButtonElement>('[aria-label="Date Display"]')?.textContent).toContain('Relative')
     expect(container.querySelector('[role="alert"]')?.textContent).toBe('Backend unavailable.')
+  })
+})
+
+describe('AppearanceSettingsApp custom themes', () => {
+  it('notifies the themes bridge ready on mount, before Appearance itself initializes', () => {
+    expect(themesPostMessage).toHaveBeenCalledWith({ type: 'reactReady', protocolVersion: 1 })
+  })
+
+  it('renders saved themes after the built-in presets with a delete control only on saved themes', () => {
+    emit(initEvent())
+    emitThemes({ type: 'init', protocolVersion: 1, themes: [HARBOR_THEME] })
+    const swatches = container.querySelectorAll('.appearance-preset-swatch')
+    expect(swatches[swatches.length - 1].getAttribute('aria-label')).toBe('Harbor')
+    expect(container.querySelectorAll('.appearance-preset-swatch-delete').length).toBe(1)
+    expect(container.querySelector('[aria-label="Delete theme Precursor"]')).toBeNull()
+  })
+
+  it('applies a saved theme’s four colors and finish while preserving every other field', async () => {
+    emit(initEvent())
+    emitThemes({ type: 'init', protocolVersion: 1, themes: [HARBOR_THEME] })
+    act(() => {
+      container.querySelector<HTMLButtonElement>('.appearance-preset-swatch[aria-label="Harbor"]')!.click()
+    })
+    await new Promise((resolve) => window.requestAnimationFrame(resolve))
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'previewDraft',
+        draft: expect.objectContaining({
+          backgroundColorRed: 0.1,
+          backgroundColorGreen: 0.2,
+          backgroundColorBlue: 0.3,
+          primaryColorRed: 0.4,
+          primaryColorGreen: 0.5,
+          primaryColorBlue: 0.6,
+          secondaryColorRed: 0.7,
+          secondaryColorGreen: 0.8,
+          secondaryColorBlue: 0.9,
+          textColorRed: 1,
+          textColorGreen: 0.95,
+          textColorBlue: 0.9,
+          surfaceFinish: 'metal',
+          processingColorRed: 0.486,
+          preferredFont: 'Helvetica-Light',
+        }),
+      }),
+    )
+    expect(container.querySelector<HTMLButtonElement>('.appearance-finish-option[aria-pressed="true"]')?.textContent).toBe('Metallic')
+  })
+
+  it('saves the on-screen draft, including unsaved edits, as a named theme without saving the active appearance', () => {
+    emit(initEvent())
+    emitThemes({ type: 'init', protocolVersion: 1, themes: [] })
+    pickPrimaryColor()
+    openSaveThemeForm('  Harbor  ')
+    submitSaveThemeForm()
+
+    const saveCall = themesPostMessage.mock.calls.find((call) => call[0].type === 'saveTheme')!
+    expect(saveCall[0].theme).toEqual({
+      name: 'Harbor',
+      backgroundColorRed: 1,
+      backgroundColorGreen: 1,
+      backgroundColorBlue: 1,
+      primaryColorRed: 1,
+      primaryColorGreen: 0,
+      primaryColorBlue: 0,
+      secondaryColorRed: 0.2,
+      secondaryColorGreen: 0.333,
+      secondaryColorBlue: 0.608,
+      textColorRed: 0,
+      textColorGreen: 0,
+      textColorBlue: 0,
+      surfaceFinish: 'flat',
+    })
+    expect(postMessage.mock.calls.some((call) => call[0].type === 'saveDraft')).toBe(false)
+    expect(buttonWithText('Saving…')?.disabled).toBe(true)
+
+    const savedTheme: CustomAppearanceTheme = { ...saveCall[0].theme, id: HARBOR_THEME.id }
+    emitThemes({ type: 'snapshot', themes: [savedTheme] })
+    emitThemes({ type: 'intentResult', requestId: saveCall[0].requestId, status: 'success' })
+
+    expect(container.querySelector('#appearance-save-theme-name')).toBeNull()
+    expect(container.querySelector('.appearance-preset-swatch[aria-label="Harbor"]')).not.toBeNull()
+    expect(buttonWithText('Save as Theme')?.disabled).toBe(false)
+    expect(container.querySelector<HTMLButtonElement>('button.primary-button')!.disabled).toBe(false)
+  })
+
+  it('rejects blank and duplicate names locally without contacting native', () => {
+    emit(initEvent())
+    emitThemes({ type: 'init', protocolVersion: 1, themes: [HARBOR_THEME] })
+    openSaveThemeForm('precursor')
+    submitSaveThemeForm()
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe('A theme with that name already exists.')
+
+    typeInto(container.querySelector<HTMLInputElement>('#appearance-save-theme-name')!, ' harbor ')
+    submitSaveThemeForm()
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe('A theme with that name already exists.')
+
+    typeInto(container.querySelector<HTMLInputElement>('#appearance-save-theme-name')!, '   ')
+    submitSaveThemeForm()
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe('Enter a theme name.')
+    expect(themesPostMessage.mock.calls.some((call) => call[0].type === 'saveTheme')).toBe(false)
+  })
+
+  it('keeps the form open with the typed name and shows the native error when saving fails', () => {
+    emit(initEvent())
+    emitThemes({ type: 'init', protocolVersion: 1, themes: [] })
+    openSaveThemeForm('Harbor')
+    submitSaveThemeForm()
+    const requestId = themesPostMessage.mock.calls.find((call) => call[0].type === 'saveTheme')![0].requestId as string
+    emitThemes({ type: 'intentResult', requestId, status: 'error', message: 'Failed to save the theme.' })
+
+    expect(container.querySelector<HTMLInputElement>('#appearance-save-theme-name')?.value).toBe('Harbor')
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe('Failed to save the theme.')
+    expect(buttonWithText('Save')?.disabled).toBe(false)
+  })
+
+  it('closes the save form on Cancel without contacting native', () => {
+    emit(initEvent())
+    openSaveThemeForm('Harbor')
+    act(() => {
+      buttonWithText('Cancel')!.click()
+    })
+    expect(container.querySelector('#appearance-save-theme-name')).toBeNull()
+    expect(themesPostMessage.mock.calls.some((call) => call[0].type === 'saveTheme')).toBe(false)
+  })
+
+  it('confirms before deleting and leaves the current colors untouched after deletion', async () => {
+    emit(initEvent())
+    emitThemes({ type: 'init', protocolVersion: 1, themes: [HARBOR_THEME] })
+    act(() => {
+      container.querySelector<HTMLButtonElement>('[aria-label="Delete theme Harbor"]')!.click()
+    })
+    expect(container.querySelector('[aria-label="Confirm deleting Harbor"]')).not.toBeNull()
+    expect(themesPostMessage.mock.calls.some((call) => call[0].type === 'deleteTheme')).toBe(false)
+
+    await new Promise((resolve) => window.requestAnimationFrame(resolve))
+    const previewCountBefore = previewDraftCallCount()
+    act(() => {
+      container.querySelector<HTMLButtonElement>('.appearance-theme-delete-confirm-button')!.click()
+    })
+    const deleteCall = themesPostMessage.mock.calls.find((call) => call[0].type === 'deleteTheme')!
+    expect(deleteCall[0].themeId).toBe(HARBOR_THEME.id)
+
+    emitThemes({ type: 'snapshot', themes: [] })
+    emitThemes({ type: 'intentResult', requestId: deleteCall[0].requestId, status: 'success' })
+    await new Promise((resolve) => window.requestAnimationFrame(resolve))
+
+    expect(container.querySelector('[aria-label="Confirm deleting Harbor"]')).toBeNull()
+    expect(container.querySelector('.appearance-preset-swatch[aria-label="Harbor"]')).toBeNull()
+    expect(previewDraftCallCount()).toBe(previewCountBefore)
+    expect(container.querySelector<HTMLButtonElement>('button.primary-button')!.disabled).toBe(true)
+  })
+
+  it('keeps the confirmation open with the native error when deletion fails, and Cancel dismisses it', () => {
+    emit(initEvent())
+    emitThemes({ type: 'init', protocolVersion: 1, themes: [HARBOR_THEME] })
+    act(() => {
+      container.querySelector<HTMLButtonElement>('[aria-label="Delete theme Harbor"]')!.click()
+    })
+    act(() => {
+      container.querySelector<HTMLButtonElement>('.appearance-theme-delete-confirm-button')!.click()
+    })
+    const requestId = themesPostMessage.mock.calls.find((call) => call[0].type === 'deleteTheme')![0].requestId as string
+    emitThemes({ type: 'intentResult', requestId, status: 'error', message: 'Failed to delete the theme.' })
+
+    expect(container.querySelector('[aria-label="Confirm deleting Harbor"] [role="alert"]')?.textContent).toBe('Failed to delete the theme.')
+    act(() => {
+      container.querySelector<HTMLButtonElement>('[aria-label="Confirm deleting Harbor"] .secondary-button')!.click()
+    })
+    expect(container.querySelector('[aria-label="Confirm deleting Harbor"]')).toBeNull()
+    expect(container.querySelector('.appearance-preset-swatch[aria-label="Harbor"]')).not.toBeNull()
+  })
+
+  it('shows a load error while keeping the built-in presets usable', () => {
+    emit(initEvent())
+    emitThemes({ type: 'loadError', message: 'Failed to load saved themes.' })
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe('Failed to load saved themes.')
+    expect(container.querySelector('[aria-label="Precursor"]')).not.toBeNull()
+  })
+
+  it('disables Save as Theme and explains why once 24 themes exist', () => {
+    emit(initEvent())
+    const themes = Array.from({ length: 24 }, (_, index) => ({
+      ...HARBOR_THEME,
+      id: `custom-${index.toString(16).padStart(32, '0')}`,
+      name: `Theme ${index}`,
+    }))
+    emitThemes({ type: 'init', protocolVersion: 1, themes })
+    expect(buttonWithText('Save as Theme')?.disabled).toBe(true)
+    expect(container.querySelector('.appearance-save-theme-hint')?.textContent).toBe(
+      'You can save up to 24 custom themes. Delete one to save another.',
+    )
   })
 })

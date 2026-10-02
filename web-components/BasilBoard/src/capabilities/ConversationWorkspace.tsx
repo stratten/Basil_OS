@@ -47,7 +47,7 @@ import {
 } from './conversationSessionState';
 import ConversationArtifactPreviewSidebar from './conversation-artifact-preview/ConversationArtifactPreviewSidebar';
 import { useConversationArtifactPreview } from './conversation-artifact-preview/useConversationArtifactPreview';
-import { usePresenceTransition } from '@agent-task/app/usePresenceTransition';
+import { usePresenceTransition } from '@shared/usePresenceTransition';
 import ConversationComposer from './ConversationComposer';
 import ConversationSidebar from './ConversationSidebar';
 import ConversationTranscript from './ConversationTranscript';

@@ -38,6 +38,6 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     globals: true,
-    include: ['src/**/*.{test,spec}.{ts,tsx}', '../shared/ExecutionDisclosureChevron.test.tsx'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}', '../shared/ExecutionDisclosureChevron.test.tsx', '../shared/CollapsibleSidebar.test.tsx'],
   },
 })

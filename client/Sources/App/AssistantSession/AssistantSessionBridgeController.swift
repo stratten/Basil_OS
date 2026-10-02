@@ -175,6 +175,8 @@ final class AssistantSessionBridgeController {
             "hasTextSelection": viewModel.hasTextSelection,
             "selectedText": viewModel.selectionContext?.selectedText as Any? ?? NSNull(),
             "detectedApplicationName": (viewModel.detectedApplicationName ?? viewModel.selectionContext?.applicationName) as Any? ?? NSNull(),
+            "pasteOutcome": viewModel.pasteOutcome?.rawValue as Any? ?? NSNull(),
+            "pasteTargetApplicationName": viewModel.pasteTargetApplicationName as Any? ?? NSNull(),
             "isRefinementMode": viewModel.isRefinementMode,
             "iterationCount": viewModel.iterationCount,
             "showRefinementIndicator": viewModel.showRefinementIndicator,

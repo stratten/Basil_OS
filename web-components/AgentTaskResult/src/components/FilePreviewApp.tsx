@@ -17,7 +17,7 @@ import {
   type FilePreviewPayload,
 } from '../services/bridge';
 import { setBaseUrl } from '../services/api';
-import CrossfadeStack from './CrossfadeStack';
+import CrossfadeStack from '@shared/CrossfadeStack';
 import { useManagedVersionHistory } from './artifacts/managedHistory/useManagedVersionHistory';
 import { ManagedVersionControls, ManagedVersionRestoreError } from './artifacts/managedHistory/ManagedVersionControls';
 import { diffLines, type DiffLine } from './artifacts/diffLines';

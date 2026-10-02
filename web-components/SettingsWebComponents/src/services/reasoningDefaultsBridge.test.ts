@@ -10,7 +10,7 @@ import {
   requestUpdateAssistantSessionDefaultModality,
   requestUpdateAssistantSessionPushToTalk,
   requestUpdateAssistantSessionPushToTalkThreshold,
-  requestUpdateAutoPasteAssistantOutput,
+  requestUpdateAssistantOutputPasteMode,
   requestUpdateCloseAssistantSessionOnInsert,
   requestUpdateSelectedModel,
   requestUpdateUseRegionSelection,
@@ -37,8 +37,8 @@ describe('reasoningDefaultsBridge', () => {
   it('sends the three behavior toggle requests', () => {
     const closeId = requestUpdateCloseAssistantSessionOnInsert(true)
     expect(postMessage).toHaveBeenCalledWith({ type: 'requestUpdateCloseAssistantSessionOnInsert', requestId: closeId, enabled: true })
-    const pasteId = requestUpdateAutoPasteAssistantOutput(false)
-    expect(postMessage).toHaveBeenCalledWith({ type: 'requestUpdateAutoPasteAssistantOutput', requestId: pasteId, enabled: false })
+    const pasteId = requestUpdateAssistantOutputPasteMode('auto')
+    expect(postMessage).toHaveBeenCalledWith({ type: 'requestUpdateAssistantOutputPasteMode', requestId: pasteId, mode: 'auto' })
     const regionId = requestUpdateUseRegionSelection(true)
     expect(postMessage).toHaveBeenCalledWith({ type: 'requestUpdateUseRegionSelection', requestId: regionId, enabled: true })
   })

@@ -264,7 +264,8 @@ _GROUP_EXPRESSIONS = {
     "event_type": "event_type",
     "outcome": "COALESCE(outcome, 'none')",
     "narrative_state": "narrative_state",
-    "day": "substr(occurred_at, 1, 10)",
+    # Local calendar day, matching how users name days and how relative tokens resolve.
+    "day": "date(occurred_at, 'localtime')",
 }
 
 
@@ -295,6 +296,22 @@ def _build_filters(
         clauses.append("outcome = ?")
         params.append(outcome)
     return (f"WHERE {' AND '.join(clauses)}" if clauses else "", params)
+
+
+KEYSET_BEFORE_CLAUSE = "(occurred_at, source_kind, source_id) < (?, ?, ?)"
+NEWEST_FIRST_ORDER = "ORDER BY occurred_at DESC, source_kind DESC, source_id DESC"
+
+
+def with_keyset_before(
+    where: str,
+    params: List[Any],
+    before: Optional[Tuple[str, str, str]],
+) -> Tuple[str, List[Any]]:
+    """Restrict a WHERE clause to rows strictly older than a browse cursor key."""
+    if before is None:
+        return where, list(params)
+    clause = f"{where} AND {KEYSET_BEFORE_CLAUSE}" if where else f"WHERE {KEYSET_BEFORE_CLAUSE}"
+    return clause, [*params, *before]
 
 
 def count_entries_by(
@@ -336,17 +353,19 @@ def query_entries(
     event_types: Optional[List[str]] = None,
     outcome: Optional[str] = None,
     limit: int = 200,
+    before: Optional[Tuple[str, str, str]] = None,
 ) -> List[Dict[str, Any]]:
     where, params = _build_filters(
         start=start, end=end, source_kinds=source_kinds,
         event_types=event_types, outcome=outcome,
     )
+    where, params = with_keyset_before(where, params, before)
     params.append(max(1, min(limit, 1000)))
     rows = conn.execute(
         "SELECT source_kind, source_id, event_type, occurred_at, ended_at, title, "
         "summary, outcome, source_status, narrative, narrative_state, is_open, "
         "open_note, payload_json "
-        f"FROM zettel_entries {where} ORDER BY occurred_at DESC LIMIT ?",
+        f"FROM zettel_entries {where} {NEWEST_FIRST_ORDER} LIMIT ?",
         params,
     ).fetchall()
     return [_row_to_dict(row) for row in rows]

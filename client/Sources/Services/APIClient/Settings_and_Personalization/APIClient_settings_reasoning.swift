@@ -18,7 +18,7 @@ extension APIClient {
         var transcriptionModel: String
         var useApiModels: Bool
         var closeAssistantSessionOnInsert: Bool
-        var autoPasteAssistantOutput: Bool
+        var assistantOutputPasteMode: String?
     }
     
     /// Fetches the current reasoning model from `/settings/models`.

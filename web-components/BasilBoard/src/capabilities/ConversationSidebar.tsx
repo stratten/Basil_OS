@@ -3,6 +3,7 @@ import type { ConversationListItem } from '../contracts';
 import { OpenInSeparateWindowIcon, StatusIcon, TrashIcon } from '@agent-task/components/sidebar/SidebarIcons';
 import { CollapsedHistoryRail, HistorySearchField, HistorySidebarHeader } from '../../../shared/HistorySidebarControls';
 import { useHistoryRowRevealDelete } from '../../../shared/useHistoryRowRevealDelete';
+import CollapsibleSidebar from '../../../shared/CollapsibleSidebar';
 import { openConversationThreadWindow } from '../services/bridge';
 import { formatConversationTimestamp } from './chatsPresentation';
 import { useConversationListMotion } from './useConversationListMotion';
@@ -60,20 +61,17 @@ function ConversationSidebarComponent({
 }: ConversationSidebarProps) {
   const listRef = useRef<HTMLUListElement>(null);
   useConversationListMotion(listRef, conversations);
-  if (isCollapsed) {
-    return (
-      <aside className="chats-sidebar chats-sidebar-collapsed" aria-label="Conversation history">
-        <CollapsedHistoryRail ariaLabel="Show conversation history" title="Show conversation history" onExpand={() => onCollapsedChange(false)} classNames={{ button: 'chats-sidebar-expand-button', symbol: 'chats-native-symbol chats-native-symbol-sidebar-expand' }} />
-      </aside>
-    );
-  }
-
   return (
-    <aside className="chats-sidebar" aria-label="Conversation history">
+    <CollapsibleSidebar
+      expanded={!isCollapsed}
+      className={isCollapsed ? 'chats-sidebar chats-sidebar-collapsed' : 'chats-sidebar'}
+      ariaLabel="Conversation history"
+      collapsedContent={<CollapsedHistoryRail ariaLabel="Show conversation history" title="Show conversation history" onExpand={() => onCollapsedChange(false)} classNames={{ button: 'chats-sidebar-expand-button', symbol: 'chats-native-symbol chats-native-symbol-sidebar-expand' }} />}
+    >
       <HistorySidebarHeader title="History" onStartNew={onStartNew} onCollapse={() => onCollapsedChange(true)} startLabel="Start new conversation" collapseLabel="Hide conversation history" classNames={{ root: 'chats-sidebar-header', actions: 'chats-sidebar-header-actions', button: 'chats-icon-button', symbol: 'chats-native-symbol chats-native-symbol-header' }} />
       <HistorySearchField value={query} onChange={onQueryChange} placeholder="Search conversations..." ariaLabel="Search conversations" classNames={{ root: 'chats-search', icon: 'chats-search-icon' }} />
 
-      {loading ? (
+      {loading && conversations.length === 0 ? (
         <div className="chats-sidebar-state" role="status">Loading conversations...</div>
       ) : loadError ? (
         <div className="chats-sidebar-state chats-error" role="alert">
@@ -84,7 +82,7 @@ function ConversationSidebarComponent({
         <div className="chats-sidebar-state">No conversations yet</div>
       ) : (
         <>
-          <ul className="chats-conversation-list" ref={listRef}>
+          <ul className="chats-conversation-list basil-refresh-region" ref={listRef} aria-busy={loading ? true : undefined}>
             {conversations.map((conversation) => (
               <ConversationHistoryRow
                 key={conversation.id}
@@ -120,7 +118,7 @@ function ConversationSidebarComponent({
         </>
       )}
       {deleteError ? <div className="chats-inline-error" role="alert">{deleteError}</div> : null}
-    </aside>
+    </CollapsibleSidebar>
   );
 }
 

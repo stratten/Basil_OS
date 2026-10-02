@@ -1,7 +1,7 @@
 .transcription-settings-shell {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--settings-card-gap);
   max-width: 700px;
   width: 100%;
 }
@@ -13,25 +13,7 @@
 .transcription-settings-panel {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-}
-
-.transcription-settings-section {
-  background: color-mix(in srgb, var(--background-primary) 92%, var(--primary));
-  border: 1px solid var(--field-border);
-  border-radius: 10px;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 10%), 0 8px 20px rgb(0 0 0 / 8%);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 18px;
-}
-
-.transcription-settings-section h2 {
-  color: var(--text-primary);
-  font-family: var(--font-family-medium);
-  font-size: 16px;
-  margin: 0;
+  gap: var(--settings-card-gap);
 }
 
 .transcription-settings-section h3 {
@@ -58,13 +40,6 @@
   color: var(--text-primary);
   font-family: var(--font-family-light);
   font-size: 13px;
-}
-
-.transcription-settings-hint {
-  color: var(--text-secondary);
-  font-family: var(--font-family-light);
-  font-size: 12px;
-  margin: 0;
 }
 
 .transcription-model-select,
@@ -96,16 +71,6 @@
   font-size: 13px;
 }
 
-.transcription-push-to-talk-threshold input {
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  font-family: var(--font-family-light);
-  font-size: 13px;
-  padding: 4px 6px;
-  text-align: right;
-  width: 72px;
-}
-
 .transcription-push-to-talk-threshold span {
   color: var(--text-secondary);
   font-family: var(--font-family-light);
@@ -125,17 +90,6 @@
 
 .transcription-settings-error {
   color: var(--warning-base, #b54708);
-}
-
-.transcription-history-panel {
-  background: color-mix(in srgb, var(--background-primary) 94%, var(--primary));
-  border: 1px solid var(--field-border);
-  border-radius: 10px;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 10%), 0 8px 20px rgb(0 0 0 / 8%);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 12px;
 }
 
 .transcription-history-time-frame {
@@ -204,6 +158,7 @@
 }
 
 .transcription-history-search:focus {
+  box-shadow: none;
   outline: none;
 }
 
@@ -378,7 +333,6 @@
 }
 
 .transcription-history-progress-bar {
-  accent-color: var(--secondary, var(--primary));
   width: 100%;
 }
 
@@ -615,12 +569,5 @@
 }
 
 .transcription-text-replacement-field input {
-  background: var(--background-primary);
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  font-family: var(--font-family-light);
-  font-size: 13px;
-  padding: 6px 10px;
   width: 100%;
 }

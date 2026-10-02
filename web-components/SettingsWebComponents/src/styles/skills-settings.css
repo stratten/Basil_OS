@@ -2,33 +2,9 @@
   display: flex;
   flex-direction: column;
   font-family: var(--font-family-light);
-  gap: 16px;
+  gap: var(--settings-card-gap);
   max-width: 920px;
   width: 100%;
-}
-
-.skills-settings-shell button,
-.skills-settings-shell input,
-.skills-settings-shell select {
-  font-family: inherit;
-}
-
-.skills-settings-section {
-  background: color-mix(in srgb, var(--background-primary) 92%, var(--primary));
-  border: 1px solid var(--field-border);
-  border-radius: 10px;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 10%), 0 8px 20px rgb(0 0 0 / 8%);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 18px;
-}
-
-.skills-settings-section h2 {
-  color: var(--text-primary);
-  font-family: var(--font-family-medium);
-  font-size: 16px;
-  margin: 0;
 }
 
 .skills-settings-header-row {
@@ -52,17 +28,6 @@
   gap: 10px;
 }
 
-.skills-settings-row select,
-.skills-settings-row input[type='time'] {
-  background: var(--background-primary);
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  font-family: var(--font-family-light);
-  font-size: 13px;
-  padding: 6px 8px;
-}
-
 .skills-settings-stepper {
   align-items: center;
   display: flex;
@@ -73,13 +38,6 @@
   min-width: 28px;
 }
 
-.skills-settings-field-hint {
-  color: var(--text-secondary);
-  font-family: var(--font-family-light);
-  font-size: 12px;
-  margin: 0;
-}
-
 .skills-settings-lists-wrapper {
   position: relative;
 }
@@ -87,7 +45,7 @@
 .skills-settings-lists {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--settings-card-gap);
 }
 
 .skills-settings-lists-locked {

@@ -1,0 +1,48 @@
+.basil-collapsible-sidebar {
+  position: relative;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  width: var(--basil-sidebar-expanded-width, 220px);
+  min-width: 0;
+  overflow: hidden;
+  transition: width 400ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.basil-collapsible-sidebar.is-collapsed {
+  width: var(--basil-sidebar-collapsed-width, 40px);
+}
+
+.basil-collapsible-sidebar__layer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease-in-out;
+}
+
+.basil-collapsible-sidebar__layer--collapsed {
+  width: var(--basil-sidebar-collapsed-width, 40px);
+}
+
+.basil-collapsible-sidebar__layer--expanded {
+  width: var(--basil-sidebar-expanded-width, 220px);
+}
+
+.basil-collapsible-sidebar.is-collapsed > .basil-collapsible-sidebar__layer--collapsed,
+.basil-collapsible-sidebar.is-expanded > .basil-collapsible-sidebar__layer--expanded {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .basil-collapsible-sidebar,
+  .basil-collapsible-sidebar__layer {
+    transition: none;
+  }
+}

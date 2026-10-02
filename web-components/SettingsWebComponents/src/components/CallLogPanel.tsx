@@ -1,8 +1,9 @@
 import { requestRefreshCallLog } from '../services/connectionsBridge'
-import type { MCPCallLogEntry } from '../types'
+import type { MCPCallLogEntry, MCPConnection } from '../types'
 
 interface CallLogPanelProps {
   entries: MCPCallLogEntry[]
+  connections: MCPConnection[]
   isLoading: boolean
   pendingId: string | null
   onTrackRequest: (id: string) => void
@@ -31,8 +32,19 @@ function statusClassName(entry: MCPCallLogEntry): string {
   return 'connections-call-log-status connections-call-log-status-error'
 }
 
-export function CallLogPanel({ entries, isLoading, pendingId, onTrackRequest }: CallLogPanelProps) {
+function connectionLabel(entry: MCPCallLogEntry, connectionNames: Map<string, string>): string {
+  const name = connectionNames.get(entry.connectionId)
+  if (name) return name
+  try {
+    return new URL(entry.serverUrl).host || entry.serverUrl
+  } catch {
+    return entry.serverUrl || 'Unknown connection'
+  }
+}
+
+export function CallLogPanel({ entries, connections, isLoading, pendingId, onTrackRequest }: CallLogPanelProps) {
   const disabled = pendingId !== null
+  const connectionNames = new Map(connections.map((connection) => [connection.id, connection.friendlyName]))
 
   return (
     <section className="connections-call-log" aria-labelledby="connections-call-log-heading">
@@ -48,29 +60,33 @@ export function CallLogPanel({ entries, isLoading, pendingId, onTrackRequest }: 
         </button>
       </div>
 
-      {isLoading ? (
+      {isLoading && entries.length === 0 ? (
         <p className="connections-call-log-status-message" role="status">Loading recent activity...</p>
       ) : entries.length === 0 ? (
         <p className="connections-call-log-empty">No external MCP calls have been made yet.</p>
       ) : (
-        <ul className="connections-call-log-list">
-          {entries.map((entry) => (
-            <li key={entry.id} className="connections-call-log-row">
-              <span className="connections-call-log-dot" data-status={entry.resultClassification} />
-              <div className="connections-call-log-body">
-                <span className="connections-call-log-tool-name">{entry.toolName}</span>
-                {entry.contentPreview ? (
-                  <span className="connections-call-log-preview">{entry.contentPreview}</span>
-                ) : entry.errorMessage ? (
-                  <span className="connections-call-log-error-message">{entry.errorMessage}</span>
-                ) : null}
-              </div>
-              <div className="connections-call-log-meta">
-                <span className={statusClassName(entry)}>{statusLabel(entry)}</span>
-                <span className="connections-call-log-timestamp">{entry.startedAt}</span>
-              </div>
-            </li>
-          ))}
+        <ul className="connections-call-log-list basil-refresh-region" aria-busy={isLoading ? true : undefined}>
+          {entries.map((entry) => {
+            const label = connectionLabel(entry, connectionNames)
+            return (
+              <li key={entry.id} className="connections-call-log-row">
+                <span className="connections-call-log-dot" data-status={entry.resultClassification} />
+                <span className="connections-call-log-connection" title={label}>{label}</span>
+                <div className="connections-call-log-body">
+                  <span className="connections-call-log-tool-name">{entry.toolName}</span>
+                  {entry.contentPreview ? (
+                    <span className="connections-call-log-preview">{entry.contentPreview}</span>
+                  ) : entry.errorMessage ? (
+                    <span className="connections-call-log-error-message">{entry.errorMessage}</span>
+                  ) : null}
+                </div>
+                <div className="connections-call-log-meta">
+                  <span className={statusClassName(entry)}>{statusLabel(entry)}</span>
+                  <span className="connections-call-log-timestamp">{entry.startedAt}</span>
+                </div>
+              </li>
+            )
+          })}
         </ul>
       )}
     </section>

@@ -1,0 +1,316 @@
+/* Shared Settings element primitives. Each rule below owns one element category for the whole Settings bundle: text-entry fields, choice controls, buttons, section cards, section titles, and hint text. Leaf stylesheets keep only the layout and geometry that differ per surface. When a new surface renders one of these categories, add its selector to the matching list in this file instead of re-declaring these values in a leaf stylesheet. */
+/* main.tsx imports this file before SettingsShell and every leaf stylesheet, so a leaf rule with equal specificity loads later and can still override layout. Element defaults are wrapped in :where() so they have zero specificity and any class-scoped leaf rule wins. */
+
+:root {
+  --settings-accent-contrast: white;
+  --font-size-callout: 13px;
+  --font-size-status-tiny: 10px;
+  --settings-card-gap: 12px;
+}
+
+/* Without this, anything that sets no size of its own (including menus portaled to body) falls back to WebKit's 16px default. */
+body {
+  font-size: var(--font-size-callout);
+}
+
+:where(button, input, select, textarea) {
+  font-family: inherit;
+}
+
+/* Text-entry fields */
+
+:where(input:is([type='text'], [type='number'], [type='time'], [type='search'], [type='email'], [type='password'], [type='url'], :not([type])), textarea) {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  min-height: 26px;
+  padding: 4px 8px;
+}
+
+:where(textarea) {
+  line-height: 1.4;
+  resize: vertical;
+}
+
+:where(input:is([type='text'], [type='number'], [type='time'], [type='search'], [type='email'], [type='password'], [type='url'], :not([type])), textarea)::placeholder {
+  color: var(--text-secondary);
+  opacity: 1;
+}
+
+:where(input:is([type='text'], [type='number'], [type='time'], [type='search'], [type='email'], [type='password'], [type='url'], :not([type])):focus-visible, textarea:focus-visible) {
+  box-shadow: 0 0 0 2px var(--secondary, var(--primary));
+  outline: none;
+}
+
+:where(input:is([type='text'], [type='number'], [type='time'], [type='search'], [type='email'], [type='password'], [type='url'], :not([type])):disabled, textarea:disabled) {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.meetings-numeric-field input,
+.transcription-push-to-talk-threshold input,
+.permissions-timeout-stepper input,
+.proactive-suggestions-frequency input[type='number'],
+.reasoning-defaults-threshold-row input[type='number'] {
+  text-align: right;
+  width: 72px;
+}
+
+/* Dropdowns. The child combinator outranks the shared tokenized-select.css trigger rule, which loads after this file. */
+
+.tokenized-select > .tokenized-select__trigger {
+  border-color: var(--field-border);
+  border-radius: 6px;
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  line-height: 16px;
+  min-height: 26px;
+  padding: 4px 8px;
+}
+
+/* Choice controls */
+
+:where(input[type='checkbox'], input[type='radio'], input[type='range'], progress) {
+  accent-color: var(--secondary, var(--primary));
+}
+
+.browser-automation-fieldset,
+.meetings-automation-modes {
+  border: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+
+.browser-automation-fieldset legend,
+.meetings-automation-modes legend {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+  margin-bottom: 4px;
+  padding: 0;
+}
+
+.browser-automation-radio-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.browser-automation-radio-option {
+  align-items: center;
+  color: var(--text-primary);
+  display: flex;
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  gap: 8px;
+}
+
+/* Buttons */
+
+:where(button:disabled) {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+:where(button:focus-visible) {
+  outline: 2px solid var(--secondary, var(--primary));
+  outline-offset: 2px;
+}
+
+.primary-button,
+.secondary-button,
+.permissions-application-refresh {
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: 12px;
+  line-height: 16px;
+  min-height: 30px;
+  padding: 6px 12px;
+}
+
+.primary-button {
+  background: var(--secondary, var(--primary));
+  border: 1px solid color-mix(in srgb, var(--secondary, var(--primary)) 70%, black);
+  color: var(--settings-accent-contrast);
+}
+
+.secondary-button,
+.permissions-application-refresh {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  color: var(--text-primary);
+}
+
+.primary-button:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+.secondary-button:hover:not(:disabled),
+.permissions-application-refresh:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--background-primary) 88%, var(--secondary, var(--primary)));
+  border-color: color-mix(in srgb, var(--secondary, var(--primary)) 45%, var(--field-border));
+}
+
+.models-settings-delete-button,
+.models-settings-cancel-button,
+.writing-examples-delete-button,
+.writing-examples-delete-all-button,
+.memory-intelligence-decline-button,
+.profile-settings-clear-button,
+.reasoning-api-models-key-remove-button,
+.account-delete-button,
+.connections-device-flow-cancel {
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--error-base, #d9363e) 55%, var(--field-border));
+  border-radius: 6px;
+  color: var(--error-base, #d9363e);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: 12px;
+  line-height: 16px;
+  min-height: 30px;
+  padding: 6px 12px;
+}
+
+.models-settings-delete-button:hover:not(:disabled),
+.models-settings-cancel-button:hover:not(:disabled),
+.writing-examples-delete-button:hover:not(:disabled),
+.writing-examples-delete-all-button:hover:not(:disabled),
+.memory-intelligence-decline-button:hover:not(:disabled),
+.profile-settings-clear-button:hover:not(:disabled),
+.reasoning-api-models-key-remove-button:hover:not(:disabled),
+.account-delete-button:hover:not(:disabled),
+.connections-device-flow-cancel:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--error-base, #d9363e) 10%, transparent);
+}
+
+.account-delete-confirm-button,
+.reasoning-api-models-key-remove-confirm-button,
+.appearance-theme-delete-confirm-button {
+  background: var(--error-base, #d9363e);
+  border: 1px solid color-mix(in srgb, var(--error-base, #d9363e) 70%, black);
+  border-radius: 6px;
+  color: var(--settings-accent-contrast);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: 12px;
+  line-height: 16px;
+  min-height: 30px;
+  padding: 6px 12px;
+}
+
+.account-delete-confirm-button:hover:not(:disabled),
+.reasoning-api-models-key-remove-confirm-button:hover:not(:disabled),
+.appearance-theme-delete-confirm-button:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+/* Section cards */
+
+.meetings-settings-section,
+.browser-automation-section,
+.reasoning-defaults-section,
+.proactive-suggestions-section,
+.skills-settings-section,
+.home-settings-section,
+.hotkey-settings-section,
+.appearance-settings-section,
+.profile-settings-section,
+.memory-intelligence-section,
+.models-settings-provider-group,
+.models-settings-vision-section,
+.writing-examples-style-section,
+.writing-examples-samples-section,
+.transcription-settings-section,
+.transcription-history-panel,
+.activity-capture-card,
+.memories-card,
+.account-settings-section,
+.permissions-command-security-section,
+.connections-panel,
+.connections-call-log {
+  background: color-mix(in srgb, var(--background-primary) 92%, var(--primary));
+  border: 1px solid var(--field-border);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 10%), 0 8px 20px rgb(0 0 0 / 8%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+/* Section titles */
+
+.meetings-settings-section h2,
+.browser-automation-section h2,
+.reasoning-defaults-section h2,
+.proactive-suggestions-section h2,
+.skills-settings-section h2,
+.home-settings-section h2,
+.hotkey-settings-section h2,
+.appearance-settings-section h2,
+.profile-settings-section h2,
+.memory-intelligence-section h2,
+.models-settings-provider-group h2,
+.models-settings-vision-section h2,
+.writing-examples-style-section h2,
+.writing-examples-samples-section h2,
+.transcription-settings-section h2,
+.activity-capture-card h3,
+.memories-card h3,
+.account-settings-section h3,
+.permissions-command-security-section-title,
+.connections-panel-header h3,
+.connections-call-log-header h3 {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: 15px;
+  margin: 0;
+}
+
+/* Hint and description text */
+
+.meetings-settings-hint,
+.app-exclusion-hint,
+.browser-automation-field-hint,
+.reasoning-defaults-field-hint,
+.proactive-suggestions-field-hint,
+.skills-settings-field-hint,
+.home-settings-hint,
+.transcription-settings-hint,
+.activity-capture-hint,
+.memories-hint,
+.account-settings-hint,
+.profile-settings-field-hint,
+.mac-contacts-settings-description,
+.memory-intelligence-cadence,
+.reasoning-api-models-key-explainer,
+.reasoning-api-models-key-required,
+.permissions-command-security-section-description,
+.connections-add-form-hint,
+.provider-profiles-subtitle,
+.custom-models-form-field-hint {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* A hint belongs to the element above it, so it cancels most of its container's gap and sits 2px below that element. Block-layout cards are excluded because they have no gap to cancel. */
+
+:is(.meetings-settings-section, .browser-automation-section, .reasoning-defaults-section, .proactive-suggestions-section, .skills-settings-section, .home-settings-section, .profile-settings-section, .memory-intelligence-section, .models-settings-provider-group, .models-settings-vision-section, .writing-examples-style-section, .writing-examples-samples-section, .transcription-settings-section, .transcription-history-panel, .activity-capture-card, .memories-card, .account-settings-section, .connections-panel) > p:is(.meetings-settings-hint, .app-exclusion-hint, .browser-automation-field-hint, .reasoning-defaults-field-hint, .proactive-suggestions-field-hint, .skills-settings-field-hint, .home-settings-hint, .transcription-settings-hint, .activity-capture-hint, .memories-hint, .account-settings-hint, .mac-contacts-settings-description, .reasoning-api-models-key-explainer, .reasoning-api-models-key-required, .connections-add-form-hint, .provider-profiles-subtitle, .custom-models-form-field-hint):not(:first-child) {
+  margin-top: -10px;
+}
+
+:is(.activity-capture-subcard, .memories-subcard, .activity-capture-status-column, .connections-add-form) > p:is(.activity-capture-hint, .memories-hint, .connections-add-form-hint):not(:first-child) {
+  margin-top: -8px;
+}

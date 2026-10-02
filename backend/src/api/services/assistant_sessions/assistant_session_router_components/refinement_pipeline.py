@@ -44,6 +44,7 @@ from ....services.transcription.backends.parakeet_components import (
     ParakeetTranscriptionProgress,
 )
 from api.core.preferences.preferences_io import load_preferences
+from .paste_directive import PasteDirectiveFilter, resolve_paste_mode, with_paste_instruction
 
 logger = logging.getLogger(__name__)
 
@@ -152,8 +153,12 @@ async def stream_refinement(
             return
 
         # Step 3: Stream LLM refinement response.
+        paste_mode = resolve_paste_mode()
+        if paste_mode == "auto":
+            refinement_prompt = with_paste_instruction(refinement_prompt)
         messages = [{"role": "user", "content": refinement_prompt}]
         suggestion_text = ""
+        paste_filter = PasteDirectiveFilter()
 
         yield json.dumps({
             "stage": "generating_refinement",
@@ -162,11 +167,23 @@ async def stream_refinement(
 
         try:
             async for token in model.chat_completion_streaming(messages):
-                suggestion_text += token
+                visible = paste_filter.feed(token)
+                if not visible:
+                    continue
+                suggestion_text += visible
                 yield json.dumps({
-                    "assistant_output_token": token,
+                    "assistant_output_token": visible,
                     "assistant_output_partial": suggestion_text
                 }) + "\n"
+            tail = paste_filter.finish()
+            if tail:
+                suggestion_text += tail
+                yield json.dumps({
+                    "assistant_output_token": tail,
+                    "assistant_output_partial": suggestion_text
+                }) + "\n"
+            if paste_filter.removed_directive:
+                suggestion_text = suggestion_text.rstrip()
         except Exception as streaming_error:
             error_message = str(streaming_error)
             logger.error(f"LLM streaming error for refinement session {session_id}: {error_message}")
@@ -206,6 +223,7 @@ async def stream_refinement(
             "transcription": new_transcription,
             "assistant_output": suggestion_text,
             "iteration_count": session["iteration_count"],
+            "paste_decision": paste_filter.decision if paste_mode == "auto" else None,
             "complete": True
         }) + "\n"
 

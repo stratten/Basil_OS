@@ -63,6 +63,18 @@ describe('BrowserAutomationSettingsApp', () => {
     expect(container.textContent).toContain('Used 2 times')
   })
 
+  it('groups related policies into paired columns and describes the selected sensitive-fill policy', () => {
+    sendInit({ sensitiveFillPolicy: 'approved_domains' })
+    const headings = Array.from(container.querySelectorAll('.browser-automation-section > h2')).map((heading) => heading.textContent)
+    expect(headings).toEqual(['Browser Automation', 'Browser Sessions', 'Control & Safety', 'Action Feedback & Fallback'])
+    const columnLegends = Array.from(container.querySelectorAll('.browser-automation-columns')).map((columns) =>
+      Array.from(columns.querySelectorAll(':scope > .browser-automation-column')).map((column) => column.querySelector('legend')?.textContent))
+    expect(columnLegends).toEqual([['Preferred User Browser', 'Default Browser Session'], ['Foreground Browser Control', 'Sensitive Fill Policy']])
+    const sensitiveColumn = container.querySelector('input[name="sensitive-fill-policy"]')!.closest('.browser-automation-column')!
+    expect(sensitiveColumn.textContent).toContain('without asking on the remembered domains below')
+    expect(sensitiveColumn.textContent).toContain('example.com')
+  })
+
   it('surfaces a load error with a retry action that re-sends reactReady', () => {
     act(() => { window.basilBrowserAutomationSettings!.onEvent({ type: 'loadError', message: 'Could not load browser automation settings.' }) })
     expect(container.querySelector('.browser-automation-error p')?.textContent).toBe('Could not load browser automation settings.')
@@ -71,12 +83,13 @@ describe('BrowserAutomationSettingsApp', () => {
     expect(lastMessageOfType('reactReady')).toEqual({ type: 'reactReady', protocolVersion: 1 })
   })
 
-  it('sends a correlated update when a radio option changes and disables every control while pending', () => {
+  it('sends a correlated update when a radio option changes and keeps every other control interactive while pending', () => {
     sendInit()
     const chromeRadio = container.querySelector<HTMLInputElement>('input[name="preferred-user-browser"][value="chrome"]')!
     act(() => { chromeRadio.click() })
     expect(lastMessageOfType('requestUpdatePreferredUserBrowser')).toEqual(expect.objectContaining({ browser: 'chrome' }))
-    expect(container.querySelector<HTMLInputElement>('#browser-automation-show-highlights')!.disabled).toBe(true)
+    expect(chromeRadio.checked).toBe(true)
+    expect(container.querySelector<HTMLInputElement>('#browser-automation-show-highlights')!.disabled).toBe(false)
   })
 
   it('clears pending state and surfaces an error only for the correlated failure', () => {

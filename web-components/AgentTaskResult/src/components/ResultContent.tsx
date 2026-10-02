@@ -22,7 +22,7 @@ import { getReasoningModels, saveAgentTaskAsSkill, submitAgentTaskFeedback, type
 import ReasoningModelPicker from '../../../shared/ReasoningModelPicker';
 import NativeSymbolIcon from '../../../shared/NativeSymbolIcon';
 import { DelegatedProviderReportCards } from './artifacts/DelegatedProviderReportCards';
-import PresenceRegion from './PresenceRegion';
+import PresenceRegion from '@shared/PresenceRegion';
 import { TurnLabel } from './result/TurnLabel';
 import { resolveTurnStatus } from './result/turnPresentation';
 import { agentTaskRunLabel } from './run/agentTaskRunFocus';

@@ -2,6 +2,10 @@
   background: var(--background-primary);
 }
 
+.basil-window-title {
+  font-size: 16px;
+}
+
 .settings-shell {
   display: grid;
   grid-template-columns: 192px minmax(0, 1fr);
@@ -25,7 +29,7 @@
 .settings-shell-navigation-heading {
   color: var(--text-tertiary);
   font-family: var(--font-family-medium);
-  font-size: 11px;
+  font-size: 14px;
   letter-spacing: 0.04em;
   margin: 0 0 6px;
   padding: 0 4px;
@@ -150,4 +154,16 @@
   font-family: var(--font-family-light);
   max-width: 650px;
   padding: 16px 0;
+}
+
+.settings-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }

@@ -371,6 +371,8 @@ export interface CheckpointData {
   prompt: string;
   input_type: 'confirmation' | 'data' | 'file' | 'review' | 'choice' | 'provider_form';
   options?: CheckpointOption[];
+  allow_multiple?: boolean;
+  value_kind?: 'numeric';
   fields?: CheckpointField[];
   default_value?: string;
   metadata?: Record<string, unknown> | BrowserPermissionRepairMetadata | ProviderUserInputMetadata | ProviderTargetAuthorizationMetadata;

@@ -8,6 +8,7 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 from api.core.appearance.token_contract import contrast_ratio, meets_minimum_contrast
 from api.core.logging.api_logger import api_logger
+from api.core.models.preference_models.model_settings import ASSISTANT_OUTPUT_PASTE_MODES
 from api.services.appearance_broadcast import broadcast_appearance_update
 from api.routes.setup_assistant.models import (
     SetupAction,
@@ -28,7 +29,7 @@ MODEL_SETTINGS_ALLOWLIST = {
     "vision_model",
     "use_api_models",
     "close_assistant_session_on_insert",
-    "auto_paste_assistant_output",
+    "assistant_output_paste_mode",
     "use_region_selection",
 }
 
@@ -65,6 +66,12 @@ UI_COLOR_SETTINGS_KEYS = {
 UI_AVAILABLE_FONTS = {"Helvetica-Light", "Arial", "Avenir-Light", "SF Pro Text", "Menlo"}
 
 UI_SETTINGS_ALLOWLIST = UI_COLOR_SETTINGS_KEYS | {"preferred_font"}
+
+
+def validate_model_settings_payload(updates: Dict[str, Any]) -> None:
+    """Reject setup-assistant model setting values that ``setattr`` would otherwise store unvalidated."""
+    if "assistant_output_paste_mode" in updates and updates["assistant_output_paste_mode"] not in ASSISTANT_OUTPUT_PASTE_MODES:
+        raise ValueError("models.assistant_output_paste_mode must be one of: always, auto, never.")
 
 
 def validate_ui_settings_payload(updates: Dict[str, Any]) -> None:
@@ -288,6 +295,7 @@ class SetupAssistantActionExecutionService:
             if not isinstance(updates, dict):
                 raise ValueError(f"Settings section '{section_name}' must be an object.")
             if section_name == "models":
+                validate_model_settings_payload(updates)
                 applied_paths.extend(
                     self._apply_allowed_settings(preferences.models, updates, MODEL_SETTINGS_ALLOWLIST, "models")
                 )

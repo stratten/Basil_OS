@@ -165,7 +165,8 @@ async def update_model_settings(settings: ModelSettingsUpdate) -> UpdateResponse
         # Update special features
         preferences.models.api_extended_thinking = settings.api_extended_thinking
         preferences.models.close_assistant_session_on_insert = settings.close_assistant_session_on_insert
-        preferences.models.auto_paste_assistant_output = settings.auto_paste_assistant_output
+        if settings.assistant_output_paste_mode is not None:
+            preferences.models.assistant_output_paste_mode = settings.assistant_output_paste_mode
         preferences.models.use_region_selection = settings.use_region_selection
         
         save_preferences(preferences)

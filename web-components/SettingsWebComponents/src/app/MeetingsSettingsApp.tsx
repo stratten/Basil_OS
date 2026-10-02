@@ -3,6 +3,7 @@ import { Switch } from '@shared/Switch'
 import { AppExclusionPicker } from '../components/AppExclusionPicker'
 import { MeetingAutomationPanel } from '../components/MeetingAutomationPanel'
 import { PolicyRadioGroup, type PolicyRadioOption } from '../components/PolicyRadioGroup'
+import { useOptimisticSettings } from './useOptimisticSettings'
 import {
   notifyMeetingDetectionSettingsReady,
   onMeetingDetectionEvent,
@@ -42,7 +43,7 @@ function NumericField({ id, label, suffix, value, min, max, step, disabled, onCo
   min: number
   max: number
   step: number
-  disabled: boolean
+  disabled?: boolean
   onCommit: (next: number) => void
 }) {
   const [draft, setDraft] = useState(String(value))
@@ -86,26 +87,22 @@ function rememberInto(
 }
 
 export function MeetingsSettingsApp() {
-  const [settings, setSettings] = useState<MeetingDetectionSettingsFields | null>(null)
+  const { settings, isSaving, setSettings, track, receiveSnapshot, resolveIntent } = useOptimisticSettings<MeetingDetectionSettingsFields>()
   const [requiredBundleIds, setRequiredBundleIds] = useState<string[]>([])
   const [availableApps, setAvailableApps] = useState<MeetingDetectionAppOption[]>([])
   const [searchResults, setSearchResults] = useState<MeetingDetectionAppOption[]>([])
   const [knownAppsByBundleId, setKnownAppsByBundleId] = useState<Record<string, MeetingDetectionAppOption>>({})
   const [excludedNamesDraft, setExcludedNamesDraft] = useState('')
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [pendingId, setPendingId] = useState<string | null>(null)
   const [requestError, setRequestError] = useState<string | null>(null)
-  const pendingRef = useRef<string | null>(null)
-  pendingRef.current = pendingId
   const searchRequestIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     const unsubscribe = onMeetingDetectionEvent((event) => {
       if (event.type === 'init' || event.type === 'snapshot') {
-        setSettings(event.settings)
+        receiveSnapshot(event.settings)
         setRequiredBundleIds(event.requiredBundleIds)
         setKnownAppsByBundleId((prev) => rememberInto(prev, event.excludedApps))
-        setExcludedNamesDraft(event.settings.excludedAppNames.join('\n'))
         setLoadError(null)
         if (event.type === 'init') {
           setAvailableApps(event.availableApps)
@@ -128,19 +125,23 @@ export function MeetingsSettingsApp() {
         setLoadError(event.message)
         return
       }
-      if (event.type === 'intentResult' && event.requestId === pendingRef.current) {
-        setPendingId(null)
-        setRequestError(event.status === 'error' ? event.message ?? 'Failed to update setting.' : null)
+      if (event.type === 'intentResult' && resolveIntent(event.requestId, event.status) === 'error') {
+        setRequestError(event.message ?? 'Failed to update setting.')
       }
     })
     notifyMeetingDetectionSettingsReady()
     return unsubscribe
   }, [])
 
+  const excludedNamesValue = settings?.excludedAppNames.join('\n')
+
+  useEffect(() => {
+    if (excludedNamesValue !== undefined) setExcludedNamesDraft(excludedNamesValue)
+  }, [excludedNamesValue])
+
   function submit(id: string) {
-    if (pendingRef.current) return
     setRequestError(null)
-    setPendingId(id)
+    track(id)
   }
 
   if (!settings && !loadError) {
@@ -156,7 +157,6 @@ export function MeetingsSettingsApp() {
     )
   }
 
-  const disabled = pendingId !== null
   const s = settings!
 
   return (
@@ -167,43 +167,45 @@ export function MeetingsSettingsApp() {
           id="meetings-detection-enabled"
           label="Enable Meeting Detection"
           checked={s.enabled}
-          disabled={disabled}
           onChange={(checked) => { setSettings({ ...s, enabled: checked }); submit(requestUpdateMeetingDetectionEnabled(checked)) }}
         />
         <p className="meetings-settings-hint">
           When enabled, Basil watches for processes using both microphone input and audio output, then offers to start transcription. You still start the monitor manually from the menu bar.
         </p>
-        <PolicyRadioGroup
-          legend="On detection"
-          name="meeting-detection-mode"
-          options={MODE_OPTIONS}
-          value={s.mode}
-          disabled={disabled}
-          onChange={(next) => { setSettings({ ...s, mode: next }); submit(requestUpdateMeetingDetectionMode(next)) }}
-        />
-        <NumericField
-          id="meetings-poll-seconds"
-          label="Check Every"
-          suffix="seconds"
-          value={s.pollSeconds}
-          min={1}
-          max={600}
-          step={1}
-          disabled={disabled}
-          onCommit={(next) => { setSettings({ ...s, pollSeconds: next }); submit(requestUpdateMeetingDetectionPollSeconds(next)) }}
-        />
-        <PolicyRadioGroup
-          legend="Cooldown"
-          name="meeting-detection-cooldown"
-          options={COOLDOWN_OPTIONS}
-          value={String(s.cooldownMinutes) as '5' | '10' | '30' | '60'}
-          disabled={disabled}
-          onChange={(next) => {
-            const nextMinutes = Number(next)
-            setSettings({ ...s, cooldownMinutes: nextMinutes })
-            submit(requestUpdateMeetingDetectionCooldownMinutes(nextMinutes))
-          }}
-        />
+        <div className="meetings-detection-columns">
+          <div className="meetings-detection-column">
+            <PolicyRadioGroup
+              legend="On detection"
+              name="meeting-detection-mode"
+              options={MODE_OPTIONS}
+              value={s.mode}
+              onChange={(next) => { setSettings({ ...s, mode: next }); submit(requestUpdateMeetingDetectionMode(next)) }}
+            />
+            <NumericField
+              id="meetings-poll-seconds"
+              label="Check Every"
+              suffix="seconds"
+              value={s.pollSeconds}
+              min={1}
+              max={600}
+              step={1}
+              onCommit={(next) => { setSettings({ ...s, pollSeconds: next }); submit(requestUpdateMeetingDetectionPollSeconds(next)) }}
+            />
+          </div>
+          <div className="meetings-detection-column">
+            <PolicyRadioGroup
+              legend="Cooldown"
+              name="meeting-detection-cooldown"
+              options={COOLDOWN_OPTIONS}
+              value={String(s.cooldownMinutes) as '5' | '10' | '30' | '60'}
+              onChange={(next) => {
+                const nextMinutes = Number(next)
+                setSettings({ ...s, cooldownMinutes: nextMinutes })
+                submit(requestUpdateMeetingDetectionCooldownMinutes(nextMinutes))
+              }}
+            />
+          </div>
+        </div>
       </section>
 
       <section className="meetings-settings-section" aria-labelledby="meetings-calendar-heading">
@@ -212,14 +214,12 @@ export function MeetingsSettingsApp() {
           id="meetings-use-calendar-enrichment"
           label="Enrich meetings with calendar events"
           checked={s.useCalendarEnrichment}
-          disabled={disabled}
           onChange={(checked) => { setSettings({ ...s, useCalendarEnrichment: checked }); submit(requestUpdateUseCalendarEnrichment(checked)) }}
         />
         <Switch
           id="meetings-require-calendar-match"
           label="Only detect when a calendar event is active"
           checked={s.requireCalendarMatch}
-          disabled={disabled}
           onChange={(checked) => { setSettings({ ...s, requireCalendarMatch: checked }); submit(requestUpdateRequireCalendarMatch(checked)) }}
         />
         <p className="meetings-settings-hint">
@@ -229,7 +229,6 @@ export function MeetingsSettingsApp() {
           id="meetings-auto-end"
           label="Offer to end recording when audio stops"
           checked={s.autoEnd}
-          disabled={disabled}
           onChange={(checked) => { setSettings({ ...s, autoEnd: checked }); submit(requestUpdateMeetingDetectionAutoEnd(checked)) }}
         />
         <NumericField
@@ -240,7 +239,7 @@ export function MeetingsSettingsApp() {
           min={0}
           max={120}
           step={0.5}
-          disabled={disabled || !s.autoEnd}
+          disabled={!s.autoEnd}
           onCommit={(next) => { setSettings({ ...s, inactivityTimeoutMinutes: next }); submit(requestUpdateInactivityTimeoutMinutes(next)) }}
         />
       </section>
@@ -253,7 +252,6 @@ export function MeetingsSettingsApp() {
           availableApps={availableApps}
           searchResults={searchResults}
           knownAppsByBundleId={knownAppsByBundleId}
-          disabled={disabled}
           onFocusSearch={() => requestMeetingDetectionAvailableApps()}
           onSearchQueryChange={(query) => { searchRequestIdRef.current = requestMeetingDetectionSearchApps(query) }}
           onAdd={(bundleId) => {
@@ -274,14 +272,12 @@ export function MeetingsSettingsApp() {
           className="meetings-exclusions-textarea"
           rows={4}
           value={excludedNamesDraft}
-          disabled={disabled}
           onChange={(event) => setExcludedNamesDraft(event.target.value)}
         />
         <p className="meetings-settings-hint">Excluded app names, one per line.</p>
         <button
           type="button"
           className="secondary-button"
-          disabled={disabled}
           onClick={() => submit(requestUpdateExcludedAppNames(excludedNamesDraft.split('\n').map((line) => line.trim()).filter((line) => line.length > 0)))}
         >
           Apply Exclusions
@@ -290,7 +286,7 @@ export function MeetingsSettingsApp() {
 
       <MeetingAutomationPanel />
 
-      {pendingId && <p className="meetings-settings-status" role="status">Saving setting...</p>}
+      <p className="settings-visually-hidden" role="status">{isSaving ? 'Saving setting...' : ''}</p>
       {requestError && <p className="meetings-settings-inline-error" role="alert">{requestError}</p>}
     </div>
   )

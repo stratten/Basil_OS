@@ -8,7 +8,7 @@ final class ReactReasoningDefaultsSettingsWebView: NSObject {
     var onReady: (() -> Void)?
     var onRequestUpdateSelectedModel: ((String, String) -> Void)?
     var onRequestUpdateCloseAssistantSessionOnInsert: ((String, Bool) -> Void)?
-    var onRequestUpdateAutoPasteAssistantOutput: ((String, Bool) -> Void)?
+    var onRequestUpdateAssistantOutputPasteMode: ((String, AssistantOutputPasteMode) -> Void)?
     var onRequestUpdateUseRegionSelection: ((String, Bool) -> Void)?
     var onRequestUpdateAgentTaskDefaultModality: ((String, AgentTaskInputModality) -> Void)?
     var onRequestUpdateAgentTaskAutoReopenOnCompletion: ((String, Bool) -> Void)?
@@ -78,12 +78,14 @@ final class ReactReasoningDefaultsSettingsWebView: NSObject {
                 return
             }
             onRequestUpdateCloseAssistantSessionOnInsert?(requestId, enabled)
-        case "requestUpdateAutoPasteAssistantOutput":
-            guard let requestId = body["requestId"] as? String, let enabled = body["enabled"] as? Bool else {
-                onMalformedIntent?("requestUpdateAutoPasteAssistantOutput")
+        case "requestUpdateAssistantOutputPasteMode":
+            guard let requestId = body["requestId"] as? String,
+                  let raw = body["mode"] as? String,
+                  let mode = AssistantOutputPasteMode(rawValue: raw) else {
+                onMalformedIntent?("requestUpdateAssistantOutputPasteMode")
                 return
             }
-            onRequestUpdateAutoPasteAssistantOutput?(requestId, enabled)
+            onRequestUpdateAssistantOutputPasteMode?(requestId, mode)
         case "requestUpdateUseRegionSelection":
             guard let requestId = body["requestId"] as? String, let enabled = body["enabled"] as? Bool else {
                 onMalformedIntent?("requestUpdateUseRegionSelection")

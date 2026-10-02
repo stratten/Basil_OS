@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import ExecutionDisclosureChevron from '@shared/ExecutionDisclosureChevron'
+import PresenceRegion from '@shared/PresenceRegion'
 import TokenizedSelect from '@shared/TokenizedSelect'
 import {
   requestCheckConnectionStatus,
@@ -16,6 +17,7 @@ interface ConnectionRowProps {
   connection: MCPConnection
   pendingId: string | null
   onTrackRequest: (id: string) => void
+  onTrackPolicyRequest?: (id: string) => void
 }
 
 const POLICY_OPTIONS: ReadonlyArray<{ id: string; label: string }> = [
@@ -51,14 +53,19 @@ function requiresReconnect(status: string | null): boolean {
   return status === 'needs_reconnect' || status === 'token_unavailable'
 }
 
-export function ConnectionRow({ connection, pendingId, onTrackRequest }: ConnectionRowProps) {
+export function ConnectionRow({ connection, pendingId, onTrackRequest, onTrackPolicyRequest }: ConnectionRowProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editedName, setEditedName] = useState(connection.friendlyName)
   const [editedDescription, setEditedDescription] = useState(connection.description ?? '')
   const [isReplacingToken, setIsReplacingToken] = useState(false)
   const [replacementToken, setReplacementToken] = useState('')
+  const [policyDrafts, setPolicyDrafts] = useState<Record<string, string>>({})
   const disabled = pendingId !== null
+
+  useEffect(() => {
+    setPolicyDrafts({})
+  }, [connection.tools])
   const needsReconnect = requiresReconnect(connection.lastConnectionStatus)
   const trimmedReplacementToken = replacementToken.trim()
 
@@ -216,7 +223,7 @@ export function ConnectionRow({ connection, pendingId, onTrackRequest }: Connect
         </div>
       </div>
 
-      {isExpanded && (
+      <PresenceRegion visible={isExpanded} className="basil-presence" settleWithoutTransition>
         <div className="connections-row-tools">
           {connection.tools.length === 0 ? (
             <p className="connections-row-tools-empty">No tools cached yet. Click "Refresh Tools" to fetch the live catalog from the server.</p>
@@ -232,17 +239,20 @@ export function ConnectionRow({ connection, pendingId, onTrackRequest }: Connect
                 </div>
                 <TokenizedSelect
                   className="connections-tool-row-policy"
-                  value={tool.policy}
-                  disabled={disabled}
+                  value={policyDrafts[tool.name] ?? tool.policy}
                   ariaLabel={`Policy for ${tool.name}`}
-                  onValueChange={(policy) => onTrackRequest(requestUpdatePolicy(connection.id, tool.name, policy))}
+                  onValueChange={(policy) => {
+                    setPolicyDrafts((drafts) => ({ ...drafts, [tool.name]: policy }))
+                    const trackPolicy = onTrackPolicyRequest ?? onTrackRequest
+                    trackPolicy(requestUpdatePolicy(connection.id, tool.name, policy))
+                  }}
                   options={POLICY_OPTIONS.map((option) => ({ value: option.id, label: option.label }))}
                 />
               </div>
             ))
           )}
         </div>
-      )}
+      </PresenceRegion>
     </div>
   )
 }

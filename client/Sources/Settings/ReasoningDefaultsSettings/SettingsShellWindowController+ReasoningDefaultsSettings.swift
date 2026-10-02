@@ -15,8 +15,8 @@ extension SettingsShellWindowController {
         webView.onRequestUpdateCloseAssistantSessionOnInsert = { [weak self] requestId, enabled in
             self?.performReasoningDefaultsUpdate(requestId: requestId, apply: { await $0.updateCloseAssistantSessionOnInsert(enabled) }, isSuccessful: { $0.closeAssistantSessionOnInsert == enabled }, failureMessage: "Failed to update the close-on-insert setting.")
         }
-        webView.onRequestUpdateAutoPasteAssistantOutput = { [weak self] requestId, enabled in
-            self?.performReasoningDefaultsUpdate(requestId: requestId, apply: { await $0.updateAutoPasteAssistantOutput(enabled) }, isSuccessful: { $0.autoPasteAssistantOutput == enabled }, failureMessage: "Failed to update the auto-paste setting.")
+        webView.onRequestUpdateAssistantOutputPasteMode = { [weak self] requestId, mode in
+            self?.performReasoningDefaultsUpdate(requestId: requestId, apply: { await $0.updateAssistantOutputPasteMode(mode) }, isSuccessful: { $0.assistantOutputPasteMode == mode }, failureMessage: "Failed to update the paste setting.")
         }
         webView.onRequestUpdateUseRegionSelection = { [weak self] requestId, enabled in
             self?.performReasoningDefaultsUpdate(requestId: requestId, apply: { await $0.updateUseRegionSelection(enabled) }, isSuccessful: { $0.useRegionSelection == enabled }, failureMessage: "Failed to update the region-selection setting.")

@@ -20,7 +20,7 @@ import {
   DETAIL_TRAY_KEYBOARD_STEP,
   DETAIL_TRAY_MIN_WIDTH,
 } from '../app/detailTraySizing';
-import type { PresencePhase } from '../app/usePresenceTransition';
+import type { PresencePhase } from '@shared/usePresenceTransition';
 
 const RESIZE_ACTIVATION_DISTANCE_PX = 4;
 

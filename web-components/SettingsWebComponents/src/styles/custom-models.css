@@ -5,23 +5,6 @@
   gap: 16px;
 }
 
-/*
- * Native form controls (button and input) do not inherit font-family
- * from an ancestor in WebKit's UA stylesheet, unlike plain text elements
- * (p, span, label). Every such control anywhere under the panel -- including
- * the wizard and edit-form modals, which render as descendants of
- * .custom-models-panel -- needs an explicit rule.
- */
-.custom-models-panel button,
-.custom-models-panel input {
-  font-family: inherit;
-}
-
-.custom-models-panel input[type='checkbox'],
-.custom-models-panel input[type='radio'] {
-  accent-color: var(--secondary, var(--primary));
-}
-
 .custom-models-header {
   display: flex;
   align-items: center;
@@ -771,12 +754,6 @@
   outline: 2px solid color-mix(in srgb, var(--primary) 48%, transparent);
   outline-offset: 1px;
   border-color: var(--primary);
-}
-
-.custom-models-form-field-hint {
-  font-size: 11px;
-  color: var(--text-secondary);
-  margin: 0;
 }
 
 .custom-models-hf-url-row {

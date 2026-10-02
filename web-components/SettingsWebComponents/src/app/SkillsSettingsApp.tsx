@@ -19,6 +19,7 @@ import {
   requestUpdateSkillReconciliationMinInstances,
 } from '../services/skillsSettingsBridge'
 import type { SkillCandidateSummary, SkillsInitEvent, SkillsSnapshotEvent } from '../types'
+import { useOptimisticSettings } from './useOptimisticSettings'
 
 type SkillsState = Omit<SkillsInitEvent, 'type' | 'protocolVersion'>
 type PendingAction = { kind: 'candidate' | 'skill' | 'run'; target?: string }
@@ -56,13 +57,6 @@ function formatTimestamp(iso: string): string {
   return Number.isNaN(date.getTime()) ? iso : date.toLocaleString()
 }
 
-function removeId(ids: Set<string>, id: string): Set<string> {
-  if (!ids.has(id)) return ids
-  const next = new Set(ids)
-  next.delete(id)
-  return next
-}
-
 function cadenceSummary(state: SkillsState): string {
   const parts: string[] = []
   if (state.skillAfterTaskEnabled) parts.push('after successful work')
@@ -72,8 +66,7 @@ function cadenceSummary(state: SkillsState): string {
 }
 
 export function SkillsSettingsApp() {
-  const [state, setState] = useState<SkillsState | null>(null)
-  const [settingsPendingIds, setSettingsPendingIds] = useState<Set<string>>(new Set())
+  const { settings: state, setSettings: setState, track: trackSetting, receiveSnapshot, resolveIntent } = useOptimisticSettings<SkillsState>()
   const [pendingActions, setPendingActions] = useState<Map<string, PendingAction>>(new Map())
   const [isOpeningReconciliation, setIsOpeningReconciliation] = useState(false)
   const [requestError, setRequestError] = useState<string | null>(null)
@@ -82,12 +75,12 @@ export function SkillsSettingsApp() {
   useEffect(() => {
     const unsubscribe = onSkillsEvent((event) => {
       if (event.type === 'init' || event.type === 'snapshot') {
-        setState(extractFields(event))
+        receiveSnapshot(extractFields(event))
         setIsOpeningReconciliation(false)
         return
       }
       if (event.type === 'intentResult') {
-        setSettingsPendingIds((prev) => removeId(prev, event.requestId))
+        resolveIntent(event.requestId, event.status)
         setPendingActions((prev) => {
           if (!prev.has(event.requestId)) return prev
           const next = new Map(prev)
@@ -103,7 +96,7 @@ export function SkillsSettingsApp() {
 
   function submitSetting(id: string) {
     setRequestError(null)
-    setSettingsPendingIds((prev) => new Set(prev).add(id))
+    trackSetting(id)
   }
 
   function submitAction(requestId: string, action: PendingAction) {
@@ -140,7 +133,6 @@ export function SkillsSettingsApp() {
     return <p className="skills-settings-status" role="status">Loading Skill Intelligence...</p>
   }
 
-  const settingsDisabled = settingsPendingIds.size > 0
   const isRunNowPending = hasPendingAction('run')
   const localPendingCandidateIds = new Set(
     Array.from(pendingActions.values())
@@ -187,14 +179,12 @@ export function SkillsSettingsApp() {
           id="skills-after-task-enabled"
           label="Evaluate completed work for reusable skills"
           checked={state.skillAfterTaskEnabled}
-          disabled={settingsDisabled}
           onChange={(checked) => { setState({ ...state, skillAfterTaskEnabled: checked }); submitSetting(requestUpdateSkillAfterTaskEnabled(checked)) }}
         />
         <Switch
           id="skills-daily-enabled"
           label="Run daily skill review"
           checked={state.skillDailyEnabled}
-          disabled={settingsDisabled}
           onChange={(checked) => { setState({ ...state, skillDailyEnabled: checked }); submitSetting(requestUpdateSkillDailyEnabled(checked)) }}
         />
 
@@ -204,13 +194,12 @@ export function SkillsSettingsApp() {
             id="skills-daily-time"
             type="time"
             value={state.skillDailyTimeLocal}
-            disabled={settingsDisabled || !state.skillDailyEnabled}
+            disabled={!state.skillDailyEnabled}
             onChange={(event) => { setState({ ...state, skillDailyTimeLocal: event.target.value }); submitSetting(requestUpdateSkillDailyTimeLocal(event.target.value)) }}
           />
           <label htmlFor="skills-evaluator-model">Evaluator model</label>
           <TokenizedSelect
             value={evaluatorModelValue}
-            disabled={settingsDisabled}
             ariaLabel="Evaluator model"
             onValueChange={(value) => {
               const next = value || null
@@ -230,7 +219,7 @@ export function SkillsSettingsApp() {
             <button
               type="button"
               className="secondary-button"
-              disabled={settingsDisabled || state.reconciliationActive || state.skillReconciliationMinInstances <= 1}
+              disabled={state.reconciliationActive || state.skillReconciliationMinInstances <= 1}
               onClick={() => {
                 const next = state.skillReconciliationMinInstances - 1
                 setState({ ...state, skillReconciliationMinInstances: next })
@@ -245,7 +234,7 @@ export function SkillsSettingsApp() {
             <button
               type="button"
               className="secondary-button"
-              disabled={settingsDisabled || state.reconciliationActive || state.skillReconciliationMinInstances >= 20}
+              disabled={state.reconciliationActive || state.skillReconciliationMinInstances >= 20}
               onClick={() => {
                 const next = state.skillReconciliationMinInstances + 1
                 setState({ ...state, skillReconciliationMinInstances: next })

@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { SettingsSubTabs, type SettingsSubTabDefinition } from '@shared/SettingsSubTabs'
 import { TranscriptionSettingsPanel } from '../components/TranscriptionSettingsPanel'
 import { TranscriptionTextReplacementsPanel } from '../components/TranscriptionTextReplacementsPanel'
 import { TranscriptionHistoryPanel } from '../components/TranscriptionHistoryPanel'
 import { notifyTranscriptionSettingsReady, onTranscriptionSettingsEvent } from '../services/transcriptionSettingsBridge'
 import type { TranscriptionSettingsFields, TranscriptionUnloadDelayOption } from '../types'
+import { useOptimisticSettings } from './useOptimisticSettings'
 import '../styles/transcription-settings.css'
 
 export type TranscriptionSubTab = 'settings' | 'history' | 'replacements'
@@ -23,24 +24,32 @@ function panelId(id: TranscriptionSubTab): string {
   return `transcription-sub-panel-${id}`
 }
 
-export function TranscriptionSettingsApp({ requestedSubTab }: { requestedSubTab?: TranscriptionSubTab }) {
+export function TranscriptionSettingsApp({
+  requestedSubTab,
+  onSubTabChange,
+}: {
+  requestedSubTab?: TranscriptionSubTab
+  onSubTabChange?: (subTab: TranscriptionSubTab) => void
+}) {
   const [subTab, setSubTab] = useState<TranscriptionSubTab>(requestedSubTab ?? 'settings')
-  const [settings, setSettings] = useState<TranscriptionSettingsFields | null>(null)
+  const { settings, isSaving, setSettings, track, receiveSnapshot, resolveIntent } = useOptimisticSettings<TranscriptionSettingsFields>()
   const [unloadDelayOptions, setUnloadDelayOptions] = useState<TranscriptionUnloadDelayOption[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [pendingId, setPendingId] = useState<string | null>(null)
   const [requestError, setRequestError] = useState<string | null>(null)
-  const pendingRef = useRef<string | null>(null)
-  pendingRef.current = pendingId
 
   useEffect(() => {
     if (requestedSubTab) setSubTab(requestedSubTab)
   }, [requestedSubTab])
 
+  function selectSubTab(next: TranscriptionSubTab) {
+    setSubTab(next)
+    onSubTabChange?.(next)
+  }
+
   useEffect(() => {
     const unsubscribe = onTranscriptionSettingsEvent((event) => {
       if (event.type === 'init' || event.type === 'snapshot') {
-        setSettings(event.settings)
+        receiveSnapshot(event.settings)
         setLoadError(null)
         if (event.type === 'init') setUnloadDelayOptions(event.unloadDelayOptions)
         return
@@ -49,9 +58,8 @@ export function TranscriptionSettingsApp({ requestedSubTab }: { requestedSubTab?
         setLoadError(event.message)
         return
       }
-      if (event.type === 'intentResult' && event.requestId === pendingRef.current) {
-        setPendingId(null)
-        setRequestError(event.status === 'error' ? event.message ?? 'Failed to update setting.' : null)
+      if (event.type === 'intentResult' && resolveIntent(event.requestId, event.status) === 'error') {
+        setRequestError(event.message ?? 'Failed to update setting.')
       }
     })
     notifyTranscriptionSettingsReady()
@@ -60,7 +68,7 @@ export function TranscriptionSettingsApp({ requestedSubTab }: { requestedSubTab?
 
   function trackRequest(id: string) {
     setRequestError(null)
-    setPendingId(id)
+    track(id)
   }
 
   // The Settings and Replacements sub-tabs both depend on the same
@@ -82,14 +90,12 @@ export function TranscriptionSettingsApp({ requestedSubTab }: { requestedSubTab?
     return content(settings)
   }
 
-  const disabled = pendingId !== null
-
   return (
     <div className="transcription-settings-shell">
       <SettingsSubTabs
         tabs={TRANSCRIPTION_SUB_TABS}
         selected={subTab}
-        onSelect={setSubTab}
+        onSelect={selectSubTab}
         ariaLabel="Transcription sections"
         getTabId={tabId}
         getPanelId={panelId}
@@ -100,7 +106,6 @@ export function TranscriptionSettingsApp({ requestedSubTab }: { requestedSubTab?
           <TranscriptionSettingsPanel
             settings={loadedSettings}
             unloadDelayOptions={unloadDelayOptions}
-            disabled={disabled}
             onSettingsChange={setSettings}
             onTrackRequest={trackRequest}
           />
@@ -113,14 +118,13 @@ export function TranscriptionSettingsApp({ requestedSubTab }: { requestedSubTab?
         {renderWhenLoaded((loadedSettings) => (
           <TranscriptionTextReplacementsPanel
             rules={loadedSettings.textReplacements}
-            disabled={disabled}
             onRulesChange={(rules) => setSettings({ ...loadedSettings, textReplacements: rules })}
             onTrackRequest={trackRequest}
           />
         ))}
       </div>
 
-      {pendingId && <p className="transcription-settings-status" role="status">Saving setting…</p>}
+      <p className="settings-visually-hidden" role="status">{isSaving ? 'Saving setting…' : ''}</p>
       {requestError && <p className="transcription-settings-error" role="alert">{requestError}</p>}
     </div>
   )

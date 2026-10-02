@@ -104,9 +104,13 @@ export default function TokenizedSelect<T extends string | number>({
     if (disabled || busy || enabledOptions.length === 0) return;
     const computedStyle = rootRef.current ? getComputedStyle(rootRef.current) : null;
     if (computedStyle) {
-      setMenuTheme(Object.fromEntries(
-        THEME_PROPERTIES.map((property) => [property, computedStyle.getPropertyValue(property)]),
-      ));
+      const triggerFontSize = triggerRef.current ? getComputedStyle(triggerRef.current).fontSize : '';
+      setMenuTheme({
+        ...Object.fromEntries(
+          THEME_PROPERTIES.map((property) => [property, computedStyle.getPropertyValue(property)]),
+        ),
+        ...(triggerFontSize ? { fontSize: triggerFontSize } : {}),
+      });
     }
     setIsOpen(true);
   }

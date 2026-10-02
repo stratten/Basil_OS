@@ -1,10 +1,13 @@
-import { useLayoutEffect, useRef, useState, type ReactNode, type TransitionEvent } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState, type ReactNode, type TransitionEvent } from 'react';
+import { settleWhenUntransitioned } from './presenceTransitionSettle';
 
 interface CrossfadeStackProps {
   contentKey: string;
   className: string;
   children: ReactNode;
   as?: 'div' | 'main';
+  layerClassName?: string;
+  settleWithoutTransition?: boolean;
   onOutgoingTransitionComplete?: () => void;
 }
 
@@ -13,11 +16,15 @@ export default function CrossfadeStack({
   className,
   children,
   as: Root = 'div',
+  layerClassName,
+  settleWithoutTransition = false,
   onOutgoingTransitionComplete,
 }: CrossfadeStackProps) {
   const previous = useRef({ key: contentKey, children });
+  const outgoingLayerRef = useRef<HTMLDivElement>(null);
   const [outgoing, setOutgoing] = useState<{ key: string; children: ReactNode } | null>(null);
   const [entering, setEntering] = useState(false);
+  const resolvedLayerClassName = layerClassName ?? `${className}-layer`;
 
   useLayoutEffect(() => {
     if (previous.current.key === contentKey) {
@@ -37,27 +44,39 @@ export default function CrossfadeStack({
     return () => cancelAnimationFrame(frame);
   }, [children, contentKey, onOutgoingTransitionComplete]);
 
-  const completeOutgoing = (event: TransitionEvent<HTMLDivElement>) => {
-    if (event.target !== event.currentTarget || event.propertyName !== 'opacity') return;
+  const finishOutgoing = useCallback(() => {
     setOutgoing(null);
     onOutgoingTransitionComplete?.();
+  }, [onOutgoingTransitionComplete]);
+
+  useLayoutEffect(() => {
+    if (!settleWithoutTransition || !outgoing || !outgoingLayerRef.current) return;
+    return settleWhenUntransitioned(outgoingLayerRef.current, finishOutgoing);
+  }, [finishOutgoing, outgoing, settleWithoutTransition]);
+
+  const completeOutgoing = (event: TransitionEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget || event.propertyName !== 'opacity') return;
+    finishOutgoing();
   };
 
   return (
     <Root className={className}>
       {outgoing && (
         <div
-          className={`${className}-layer`}
+          key={outgoing.key}
+          ref={outgoingLayerRef}
+          className={resolvedLayerClassName}
           data-presence-phase="exiting"
           aria-hidden="true"
-          inert=""
+          {...{ inert: '' }}
           onTransitionEnd={completeOutgoing}
         >
           {outgoing.children}
         </div>
       )}
       <div
-        className={`${className}-layer`}
+        key={contentKey}
+        className={resolvedLayerClassName}
         data-presence-phase={entering ? 'entering' : 'present'}
       >
         {children}

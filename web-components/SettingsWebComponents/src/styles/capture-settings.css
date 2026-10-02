@@ -1,7 +1,7 @@
 .capture-settings-shell {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--settings-card-gap);
   width: 100%;
 }
 

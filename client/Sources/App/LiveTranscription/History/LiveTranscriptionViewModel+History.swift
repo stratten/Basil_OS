@@ -20,7 +20,6 @@ extension LiveTranscriptionViewModel {
         let requestGeneration = meetingHistoryRequestGeneration
         isLoadingMeetings = true
         isLoadingMoreMeetings = false
-        hasMoreMeetings = false
         meetingHistoryLoadMoreError = nil
 
         // Branch on the sidebar search text: a non-empty query routes through the
@@ -47,6 +46,7 @@ extension LiveTranscriptionViewModel {
             
             guard requestGeneration == meetingHistoryRequestGeneration else { return }
             meetings = []
+            hasMoreMeetings = false
             isLoadingMeetings = false
         }
     }

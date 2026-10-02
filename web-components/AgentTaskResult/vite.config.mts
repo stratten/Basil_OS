@@ -27,6 +27,9 @@ export default defineConfig({
       '../shared/paletteFixtures.test.ts',
       '../shared/websocket/reconnectingWebSocket.test.ts',
       '../shared/vite/basilContentSecurityPolicy.test.ts',
+      '../shared/usePresenceTransition.test.tsx',
+      '../shared/PresenceRegion.test.tsx',
+      '../shared/CrossfadeStack.test.tsx',
     ],
   },
   server: {

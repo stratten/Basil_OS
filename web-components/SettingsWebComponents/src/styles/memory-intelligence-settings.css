@@ -1,27 +1,9 @@
 .memory-intelligence-shell {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: var(--settings-card-gap);
   max-width: 920px;
   width: 100%;
-}
-
-.memory-intelligence-section {
-  background: color-mix(in srgb, var(--background-primary) 92%, var(--primary));
-  border: 1px solid var(--field-border);
-  border-radius: 10px;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 10%), 0 8px 20px rgb(0 0 0 / 8%);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 16px;
-}
-
-.memory-intelligence-section h2 {
-  color: color-mix(in srgb, var(--text-primary) 78%, var(--text-secondary));
-  font-family: var(--font-family-light);
-  font-size: 15px;
-  margin: 0;
 }
 
 .memory-intelligence-section-header {
@@ -31,27 +13,11 @@
 }
 
 .memory-intelligence-cadence {
-  color: var(--text-secondary);
-  font-family: var(--font-family-light);
-  font-size: 12px;
-  margin: 2px 0 0;
+  margin-top: 2px;
 }
 
 .memory-intelligence-section-header > .secondary-button {
-  background: var(--background-primary);
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  cursor: pointer;
-  font-family: var(--font-family-medium);
-  font-size: 13px;
-  padding: 6px 12px;
   white-space: nowrap;
-}
-
-.memory-intelligence-section-header > .secondary-button:disabled {
-  cursor: default;
-  opacity: 0.6;
 }
 
 .memory-intelligence-row {
@@ -68,7 +34,6 @@
   gap: 4px;
 }
 
-.memory-intelligence-field input[type='time'],
 .memory-intelligence-select {
   background: var(--background-primary);
   border: 1px solid var(--field-border);
@@ -79,14 +44,8 @@
   padding: 6px 8px;
 }
 
-.memory-intelligence-field input:disabled,
 .memory-intelligence-select:disabled {
   opacity: 0.6;
-}
-
-.memory-intelligence-field input:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--primary);
 }
 
 .memory-intelligence-select:focus-visible,
@@ -171,29 +130,7 @@
 
 .memory-intelligence-list-actions > .secondary-button {
   background: transparent;
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
   color: var(--primary);
-  cursor: pointer;
-  font-family: var(--font-family-medium);
-  font-size: 12px;
-  padding: 5px 10px;
-}
-
-.memory-intelligence-decline-button {
-  background: transparent;
-  border: 1px solid color-mix(in srgb, var(--error-base, #d9363e) 55%, var(--field-border));
-  border-radius: 6px;
-  color: var(--error-base, #d9363e);
-  cursor: pointer;
-  font-family: var(--font-family-medium);
-  font-size: 12px;
-  padding: 5px 10px;
-}
-
-.memory-intelligence-decline-button:disabled {
-  cursor: default;
-  opacity: 0.6;
 }
 
 .memory-intelligence-error {
@@ -209,15 +146,4 @@
   font-family: var(--font-family-light);
   font-size: 13px;
   margin: 0;
-}
-
-.memory-intelligence-error > .secondary-button {
-  background: var(--background-primary);
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  cursor: pointer;
-  font-family: var(--font-family-medium);
-  font-size: 13px;
-  padding: 8px 16px;
 }

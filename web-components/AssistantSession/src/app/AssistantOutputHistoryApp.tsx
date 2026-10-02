@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import CrossfadeStack from '@shared/CrossfadeStack';
+import PresenceRegion from '@shared/PresenceRegion';
 import { closeWindow, minimizeWindow, onHistoryEvent, reportHistoryReady, toggleChromeCollapse } from '../bridge/historyBridge';
 import { deleteHistoryEntry, fetchHistory, fetchHistoryDetail, type AssistantOutputHistoryDetail, type AssistantOutputHistoryEntry } from '../services/historyApi';
 import { HistorySidebar, type HistoryModalityFilter } from '../components/history/HistorySidebar';
@@ -15,6 +17,10 @@ export function AssistantOutputHistoryApp() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const loadStateRef = useRef(loadState);
+  loadStateRef.current = loadState;
   const [filter, setFilter] = useState<HistoryModalityFilter>('all');
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -39,10 +45,11 @@ export function AssistantOutputHistoryApp() {
     return () => window.clearTimeout(timer);
   }, [query]);
 
-  const reload = useCallback((url: string, nextFilter: HistoryModalityFilter, nextQuery: string) => {
+  const reload = useCallback((url: string, nextFilter: HistoryModalityFilter, nextQuery: string, options: { quiet?: boolean } = {}) => {
     const generation = requestGeneration.current + 1;
     requestGeneration.current = generation;
-    setLoadState('loading');
+    setRefreshing(true);
+    setLoadState((current) => (current === 'error' ? 'loading' : current));
     setErrorMessage(null);
     fetchHistory(url, {
       inputModality: nextFilter === 'all' ? null : nextFilter,
@@ -52,6 +59,7 @@ export function AssistantOutputHistoryApp() {
         if (requestGeneration.current !== generation) return;
         setEntries(fetched);
         setLoadState('ready');
+        setRefreshing(false);
         setSelectedId((current) => (
           current != null && fetched.some((entry) => entry.id === current)
             ? current
@@ -60,6 +68,8 @@ export function AssistantOutputHistoryApp() {
       })
       .catch((error: unknown) => {
         if (requestGeneration.current !== generation) return;
+        setRefreshing(false);
+        if (options.quiet && loadStateRef.current === 'ready') return;
         setErrorMessage(error instanceof Error ? error.message : 'Failed to load history');
         setLoadState('error');
       });
@@ -75,7 +85,7 @@ export function AssistantOutputHistoryApp() {
         void type;
         setTheme(rest);
       } else if (event.type === 'historyUpdated' && baseUrlRef.current) {
-        reload(baseUrlRef.current, filterRef.current, debouncedQueryRef.current);
+        reload(baseUrlRef.current, filterRef.current, debouncedQueryRef.current, { quiet: true });
       } else if (event.type === 'historyActionError') {
         setNativeActionError(event.message);
       }
@@ -117,14 +127,15 @@ export function AssistantOutputHistoryApp() {
 
   const removeEntry = async (id: number) => {
     if (!baseUrl) return;
+    setActionError(null);
     try {
       await deleteHistoryEntry(baseUrl, id);
       setEntries((prev) => prev.filter((entry) => entry.id !== id));
       setSelectedId((current) => (current === id ? null : current));
       setPendingDelete(null);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to delete history entry');
-      setLoadState('error');
+      setActionError(error instanceof Error ? error.message : 'Failed to delete history entry');
+      setPendingDelete(null);
     }
   };
 
@@ -209,25 +220,37 @@ export function AssistantOutputHistoryApp() {
               loadState={loadState}
               errorMessage={errorMessage}
               onRetry={() => baseUrl && reload(baseUrl, filter, debouncedQuery)}
+              refreshing={refreshing}
+              actionError={actionError}
+              onDismissActionError={() => setActionError(null)}
             />
             {baseUrl && (
-              <HistoryDetail
-                entry={detail}
-                baseUrl={baseUrl}
-                loading={detailLoading}
-                nativeActionError={nativeActionError}
-                onClearNativeActionError={() => setNativeActionError(null)}
-              />
+              <CrossfadeStack
+                contentKey={detail ? `detail-${detail.id}` : detailLoading ? 'loading' : 'empty'}
+                className="assistant-output-history-detail-stack basil-crossfade"
+                layerClassName="basil-crossfade-layer"
+                settleWithoutTransition
+              >
+                <HistoryDetail
+                  entry={detail}
+                  baseUrl={baseUrl}
+                  loading={detailLoading && detail === null}
+                  nativeActionError={nativeActionError}
+                  onClearNativeActionError={() => setNativeActionError(null)}
+                />
+              </CrossfadeStack>
             )}
           </div>
         )}
-        {pendingDelete && (
-          <div className="assistant-output-history-shell__confirm">
-            <p>Are you sure you want to delete &quot;{pendingDelete.title || 'Untitled AssistantSession Output'}&quot;?</p>
-            <button type="button" onClick={() => setPendingDelete(null)}>Cancel</button>
-            <button type="button" onClick={() => { void removeEntry(pendingDelete.id); }}>Delete</button>
-          </div>
-        )}
+        <PresenceRegion visible={pendingDelete !== null} className="assistant-output-history-shell__confirm basil-presence--modal" settleWithoutTransition>
+          {pendingDelete && (
+            <>
+              <p>Are you sure you want to delete &quot;{pendingDelete.title || 'Untitled AssistantSession Output'}&quot;?</p>
+              <button type="button" onClick={() => setPendingDelete(null)}>Cancel</button>
+              <button type="button" onClick={() => { void removeEntry(pendingDelete.id); }}>Delete</button>
+            </>
+          )}
+        </PresenceRegion>
       </div>
         </div>
   );

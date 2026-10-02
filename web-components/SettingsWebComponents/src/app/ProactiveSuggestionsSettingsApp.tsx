@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Switch } from '@shared/Switch'
 import TokenizedSelect from '@shared/TokenizedSelect'
 import { PolicyRadioGroup, type PolicyRadioOption } from '../components/PolicyRadioGroup'
+import { useOptimisticSettings } from './useOptimisticSettings'
 import {
   notifyProactiveSuggestionsSettingsReady,
   onProactiveSuggestionsEvent,
@@ -45,7 +46,7 @@ function FrequencySecondsField({
   onCommit,
 }: {
   valueSeconds: number
-  disabled: boolean
+  disabled?: boolean
   onCommit: (seconds: number) => void
 }) {
   const [draftValue, setDraftValue] = useState(String(valueSeconds))
@@ -83,17 +84,14 @@ function FrequencySecondsField({
 }
 
 export function ProactiveSuggestionsSettingsApp() {
-  const [settings, setSettings] = useState<ProactiveSuggestionsSettingsSnapshot | null>(null)
+  const { settings, isSaving, setSettings, track, receiveSnapshot, resolveIntent } = useOptimisticSettings<ProactiveSuggestionsSettingsSnapshot>()
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [pendingId, setPendingId] = useState<string | null>(null)
   const [requestError, setRequestError] = useState<string | null>(null)
-  const pendingRef = useRef<string | null>(null)
-  pendingRef.current = pendingId
 
   useEffect(() => {
     const unsubscribe = onProactiveSuggestionsEvent((event) => {
       if (event.type === 'init' || event.type === 'snapshot') {
-        setSettings(event.settings)
+        receiveSnapshot(event.settings)
         setLoadError(null)
         return
       }
@@ -101,9 +99,8 @@ export function ProactiveSuggestionsSettingsApp() {
         setLoadError(event.message)
         return
       }
-      if (event.type === 'intentResult' && event.requestId === pendingRef.current) {
-        setPendingId(null)
-        setRequestError(event.status === 'error' ? event.message ?? 'Failed to update the setting.' : null)
+      if (event.type === 'intentResult' && resolveIntent(event.requestId, event.status) === 'error') {
+        setRequestError(event.message ?? 'Failed to update the setting.')
       }
     })
     notifyProactiveSuggestionsSettingsReady()
@@ -111,9 +108,8 @@ export function ProactiveSuggestionsSettingsApp() {
   }, [])
 
   function submit(id: string) {
-    if (pendingRef.current) return
     setRequestError(null)
-    setPendingId(id)
+    track(id)
   }
 
   if (!settings && !loadError) {
@@ -129,7 +125,6 @@ export function ProactiveSuggestionsSettingsApp() {
     )
   }
 
-  const disabled = pendingId !== null
   const s = settings!
   const hasNoModels = s.localModels.length === 0 && s.apiModels.length === 0
 
@@ -141,7 +136,6 @@ export function ProactiveSuggestionsSettingsApp() {
           id="proactive-suggestions-enabled"
           label="Enable Proactive Suggestions"
           checked={s.enabled}
-          disabled={disabled}
           onChange={(checked) => { setSettings({ ...s, enabled: checked }); submit(requestUpdateProactiveSuggestionsEnabled(checked)) }}
         />
         <PolicyRadioGroup
@@ -149,12 +143,10 @@ export function ProactiveSuggestionsSettingsApp() {
           name="proactive-suggestions-mode"
           options={MODE_OPTIONS}
           value={s.mode}
-          disabled={disabled}
           onChange={(next) => { setSettings({ ...s, mode: next }); submit(requestUpdateProactiveSuggestionMode(next)) }}
         />
         <FrequencySecondsField
           valueSeconds={s.frequencySeconds}
-          disabled={disabled}
           onCommit={(seconds) => { setSettings({ ...s, frequencySeconds: seconds }); submit(requestUpdateProactiveSuggestionFrequencySeconds(seconds)) }}
         />
       </section>
@@ -163,7 +155,7 @@ export function ProactiveSuggestionsSettingsApp() {
         <h2 id="proactive-suggestions-evaluation-heading">Evaluation</h2>
         <TokenizedSelect
           value={s.evaluationModel}
-          disabled={disabled || (hasNoModels && !s.evaluationModel)}
+          disabled={hasNoModels && !s.evaluationModel}
           ariaLabel="Evaluator model"
           onValueChange={(evaluationModel) => {
             setSettings({ ...s, evaluationModel })
@@ -189,7 +181,6 @@ export function ProactiveSuggestionsSettingsApp() {
             max={1}
             step={0.05}
             defaultValue={s.minimumConfidence}
-            disabled={disabled}
             onBlur={(event) => { const next = Number(event.currentTarget.value); setSettings({ ...s, minimumConfidence: next }); submit(requestUpdateProactiveSuggestionMinimumConfidence(next)) }}
             onKeyUp={(event) => { const next = Number(event.currentTarget.value); setSettings({ ...s, minimumConfidence: next }); submit(requestUpdateProactiveSuggestionMinimumConfidence(next)) }}
             onPointerUp={(event) => { const next = Number(event.currentTarget.value); setSettings({ ...s, minimumConfidence: next }); submit(requestUpdateProactiveSuggestionMinimumConfidence(next)) }}
@@ -199,7 +190,6 @@ export function ProactiveSuggestionsSettingsApp() {
         <label>Cooldown</label>
         <TokenizedSelect
           value={s.cooldownMinutes}
-          disabled={disabled}
           ariaLabel="Cooldown"
           onValueChange={(cooldownMinutes) => {
             setSettings({ ...s, cooldownMinutes })
@@ -218,7 +208,6 @@ export function ProactiveSuggestionsSettingsApp() {
             id={`proactive-suggestions-enabled-${capability.id}`}
             label={capability.label}
             checked={s.enabledCapabilities.includes(capability.id)}
-            disabled={disabled}
             onChange={(checked) => {
               const nextEnabled = checked
                 ? [...s.enabledCapabilities, capability.id]
@@ -236,7 +225,7 @@ export function ProactiveSuggestionsSettingsApp() {
             id={`proactive-suggestions-auto-execute-${capability.id}`}
             label={capability.label}
             checked={s.autoExecuteCapabilities.includes(capability.id)}
-            disabled={disabled || s.mode !== 'auto_execute'}
+            disabled={s.mode !== 'auto_execute'}
             onChange={(checked) => {
               const nextAutoExecute = checked
                 ? [...s.autoExecuteCapabilities, capability.id]
@@ -254,12 +243,11 @@ export function ProactiveSuggestionsSettingsApp() {
         <h2 id="proactive-suggestions-exclusions-heading">Exclusions</h2>
         <ExcludedAppNamesField
           excludedAppNames={s.excludedAppNames}
-          disabled={disabled}
           onApply={(names) => { setSettings({ ...s, excludedAppNames: names }); submit(requestUpdateProactiveSuggestionExcludedAppNames(names)) }}
         />
       </section>
 
-      {pendingId && <p className="proactive-suggestions-status" role="status">Saving setting...</p>}
+      <p className="settings-visually-hidden" role="status">{isSaving ? 'Saving setting...' : ''}</p>
       {requestError && <p className="proactive-suggestions-inline-error" role="alert">{requestError}</p>}
     </div>
   )
@@ -271,14 +259,15 @@ function ExcludedAppNamesField({
   onApply,
 }: {
   excludedAppNames: string[]
-  disabled: boolean
+  disabled?: boolean
   onApply: (names: string[]) => void
 }) {
-  const [draftText, setDraftText] = useState(excludedAppNames.join('\n'))
+  const excludedAppNamesText = excludedAppNames.join('\n')
+  const [draftText, setDraftText] = useState(excludedAppNamesText)
 
   useEffect(() => {
-    setDraftText(excludedAppNames.join('\n'))
-  }, [excludedAppNames])
+    setDraftText(excludedAppNamesText)
+  }, [excludedAppNamesText])
 
   return (
     <div className="proactive-suggestions-exclusions">

@@ -19,19 +19,30 @@ function panelId(id: CaptureSubTab): string {
   return `capture-panel-${id}`
 }
 
-export function CaptureSettingsApp({ requestedSubTab }: { requestedSubTab?: CaptureSubTab }) {
+export function CaptureSettingsApp({
+  requestedSubTab,
+  onSubTabChange,
+}: {
+  requestedSubTab?: CaptureSubTab
+  onSubTabChange?: (subTab: CaptureSubTab) => void
+}) {
   const [selectedSubTab, setSelectedSubTab] = useState<CaptureSubTab>(requestedSubTab ?? 'activity-capture')
 
   useEffect(() => {
     if (requestedSubTab) setSelectedSubTab(requestedSubTab)
   }, [requestedSubTab])
 
+  function selectSubTab(subTab: CaptureSubTab) {
+    setSelectedSubTab(subTab)
+    onSubTabChange?.(subTab)
+  }
+
   return (
     <div className="capture-settings-shell">
       <SettingsSubTabs
         tabs={CAPTURE_SUB_TABS}
         selected={selectedSubTab}
-        onSelect={setSelectedSubTab}
+        onSelect={selectSubTab}
         ariaLabel="Capture"
         getTabId={tabId}
         getPanelId={panelId}

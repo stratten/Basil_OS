@@ -1,4 +1,6 @@
 @import '../../../shared/webkit-window-chrome.css';
+@import '../../../shared/presence-motion.css';
+@import '../../../shared/reduced-motion.css';
 
 :root {
   --background-primary: #ffffff;

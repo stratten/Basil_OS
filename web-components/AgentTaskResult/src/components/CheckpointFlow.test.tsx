@@ -31,6 +31,9 @@ describe('CheckpointFlow presentation', () => {
     expect(markup).toContain('checkpoint-response-controls');
     expect(markup).toContain('result-section--checkpoint');
     expect(markup).toContain('Review Output');
+    expect(markup).toContain('for="checkpoint-clarification-input"');
+    expect(markup).toContain('checkpoint-submit-actions');
+    expect(markup).toContain('Skip');
   });
 
   it('keeps inline checkpoints out of overlay layout and review mode', () => {
@@ -186,16 +189,18 @@ const choiceCheckpoint: CheckpointData = {
 };
 
 describe('CheckpointFlow generic choice presentation', () => {
-  it('renders cards, an accessible clarification field, and Continue', () => {
+  it('renders radio cards, an accessible Other field, and Continue', () => {
     const markup = renderToStaticMarkup(
       <CheckpointFlow agentTaskId="task-1" checkpoint={choiceCheckpoint} mode="inline" />
     );
 
     expect(markup).toContain('Provider A');
     expect(markup).toContain('Provider B');
+    expect(markup).toContain('checkpoint-choice-indicator--radio');
     expect(markup).toContain('for="checkpoint-clarification-input"');
-    expect(markup).toContain('checkpoint-clarification-help');
-    expect(markup).toContain('Describe a different target or the clarification needed.');
+    expect(markup).toContain('>Other</label>');
+    expect(markup).toContain('Type a different answer or add a note for Basil.');
+    expect(markup).not.toContain('checkpoint-clarification-help');
     expect(markup).toContain('Continue');
   });
 
@@ -213,7 +218,8 @@ describe('CheckpointFlow generic choice presentation', () => {
       />
     );
 
-    expect(markup).toContain('Different target or clarification');
+    expect(markup).toContain('for="checkpoint-clarification-input"');
+    expect(markup).toContain('>Other</label>');
     expect(markup).toContain('Continue');
   });
 });
@@ -245,6 +251,8 @@ describe('CheckpointFlow provider target authorization presentation', () => {
 
     expect(markup).toContain('Cancel delegation');
     expect(markup).toContain('Different target or clarification');
+    expect(markup).toContain('checkpoint-clarification-help');
+    expect(markup).toContain('checkpoint-choice-indicator--radio');
     expect(markup).toContain('Fixture Provider — Workspace grant-a');
     expect(markup).not.toContain('checkpoint-provider-form');
   });

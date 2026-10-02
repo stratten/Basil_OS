@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { CallLogPanel } from './CallLogPanel'
-import type { MCPCallLogEntry } from '../types'
+import type { MCPCallLogEntry, MCPConnection } from '../types'
 
 let container: HTMLElement
 let root: Root
@@ -33,8 +33,25 @@ const ERROR_ENTRY: MCPCallLogEntry = {
   contentPreview: null,
 }
 
-function render(entries: MCPCallLogEntry[], isLoading = false, pendingId: string | null = null) {
-  act(() => { root.render(<CallLogPanel entries={entries} isLoading={isLoading} pendingId={pendingId} onTrackRequest={onTrackRequest} />) })
+const CONNECTION: MCPConnection = {
+  id: 'conn-1',
+  friendlyName: 'GitHub',
+  description: null,
+  serverUrl: 'https://api.githubcopilot.com/mcp',
+  enabled: true,
+  registeredAt: '2026-01-01T00:00:00Z',
+  lastToolRefreshAt: null,
+  lastConnectionCheckAt: null,
+  lastConnectionStatus: null,
+  lastConnectionStatusMessage: null,
+  serverName: null,
+  serverInstructions: null,
+  authKind: 'github_device',
+  tools: [],
+}
+
+function render(entries: MCPCallLogEntry[], isLoading = false, pendingId: string | null = null, connections: MCPConnection[] = [CONNECTION]) {
+  act(() => { root.render(<CallLogPanel entries={entries} connections={connections} isLoading={isLoading} pendingId={pendingId} onTrackRequest={onTrackRequest} />) })
 }
 
 beforeEach(() => {
@@ -63,6 +80,25 @@ describe('CallLogPanel', () => {
     expect(container.querySelector('.connections-call-log-tool-name')?.textContent).toBe('list_issues')
     expect(container.querySelector('.connections-call-log-preview')?.textContent).toBe('Returned 4 issues.')
     expect(container.querySelector('.connections-call-log-status-success')?.textContent).toBe('Success')
+  })
+
+  it('labels each entry with the connection it used, left of the tool name', () => {
+    render([ENTRY])
+    const row = container.querySelector('.connections-call-log-row')!
+    const label = row.querySelector('.connections-call-log-connection')!
+    expect(label.textContent).toBe('GitHub')
+    expect(label.getAttribute('title')).toBe('GitHub')
+    expect(label.compareDocumentPosition(row.querySelector('.connections-call-log-tool-name')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('falls back to the server host when the connection has been removed', () => {
+    render([ENTRY], false, null, [])
+    expect(container.querySelector('.connections-call-log-connection')?.textContent).toBe('api.githubcopilot.com')
+  })
+
+  it('falls back to the raw server URL when it cannot be parsed', () => {
+    render([{ ...ENTRY, serverUrl: 'not a url' }], false, null, [])
+    expect(container.querySelector('.connections-call-log-connection')?.textContent).toBe('not a url')
   })
 
   it('renders an error entry with its error message instead of a preview', () => {

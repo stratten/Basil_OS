@@ -5,12 +5,9 @@
 }
 
 .chats-sidebar {
-  position: relative;
-  flex: 0 0 220px;
-  min-width: 220px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  --basil-sidebar-expanded-width: 220px;
+  --basil-sidebar-collapsed-width: 40px;
+  flex: 0 0 auto;
   border-right: 1px solid var(--separator-color, rgba(0, 32, 77, 0.14));
   background: var(--background-primary, #ffffff);
 }
@@ -20,13 +17,14 @@
 }
 
 .chats-tab > .chats-sidebar.chats-sidebar-collapsed {
-  flex: 0 0 40px;
-  width: 40px;
-  min-width: 40px;
-  align-items: center;
+  flex: 0 0 auto;
   border-right: 1px solid var(--separator-color, rgba(0, 32, 77, 0.14));
   border-bottom: 0;
   background: var(--background-primary, #ffffff);
+}
+
+.chats-sidebar > .basil-collapsible-sidebar__layer--collapsed {
+  align-items: center;
 }
 
 .chats-sidebar-header,

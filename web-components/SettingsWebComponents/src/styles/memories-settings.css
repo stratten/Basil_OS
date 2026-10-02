@@ -1,41 +1,16 @@
 .memories-shell {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--settings-card-gap);
   max-width: 700px;
   width: 100%;
   font-family: var(--font-family-light);
-}
-
-.memories-shell button,
-.memories-shell input,
-.memories-shell select {
-  font-family: inherit;
-}
-
-.memories-shell input[type='checkbox'] {
-  accent-color: var(--secondary, var(--primary));
 }
 
 .memories-intro {
   color: var(--text-secondary);
   font-size: 13px;
   margin: 0;
-}
-
-.memories-card {
-  background: color-mix(in srgb, var(--background-primary) 92%, var(--primary));
-  border: 1px solid var(--field-border);
-  border-radius: 8px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.memories-card h3 {
-  margin: 0;
-  font-size: 14px;
 }
 
 .memories-subcard {
@@ -50,12 +25,6 @@
 .memories-card > button.secondary-button,
 .memories-subcard > button.secondary-button {
   align-self: flex-start;
-}
-
-.memories-hint {
-  color: var(--text-secondary);
-  font-size: 12px;
-  margin: 0;
 }
 
 .memories-toggle-row {
@@ -205,7 +174,6 @@
 
 .memories-progress progress {
   width: 100%;
-  accent-color: var(--primary);
 }
 
 .memories-cancel-button {

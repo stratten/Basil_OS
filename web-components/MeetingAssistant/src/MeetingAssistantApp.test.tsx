@@ -22,6 +22,11 @@ vi.mock('./bridge/meetingBridge', () => ({
   resumeRecording: vi.fn(),
   cancelRecording: vi.fn(),
   setLiveTranscription: vi.fn(),
+  deleteMeeting: vi.fn(),
+  selectMeeting: vi.fn(),
+  setMeetingSearch: vi.fn(),
+  setMeetingSearchFilters: vi.fn(),
+  viewAnalysis: vi.fn(),
 }));
 
 vi.mock('./lib/hostAppearance', () => ({
@@ -191,6 +196,35 @@ describe('MeetingAssistantApp meter render isolation', () => {
 
     expect(screen.getByTestId('bubble-audio-level')).toHaveTextContent('0.8');
     expect(screen.getByTestId('transcript-render-count')).toHaveTextContent('1');
+  });
+});
+
+describe('MeetingAssistantApp history sidebar animation', () => {
+  it('keeps both history sidebar states mounted so collapsing and expanding animate', () => {
+    capturedEventHandler = null;
+    render(<MeetingAssistantApp />);
+    const snapshot = (revision: number, isSidebarCollapsed: boolean): MeetingBridgeEvent => ({
+      type: 'snapshot',
+      revision,
+      selectionGeneration: 0,
+      protocolVersion: 4,
+      ui: { ...minimalUI, isSidebarCollapsed },
+      transcript: [],
+      history: [],
+      analysisHistory: [],
+      proposals: [],
+    });
+
+    act(() => { capturedEventHandler!(snapshot(0, true)); });
+    const sidebar = document.querySelector<HTMLElement>('.meeting-history-collapsible')!;
+    expect(sidebar).toHaveClass('basil-collapsible-sidebar', 'is-collapsed');
+    expect(screen.getByRole('button', { name: 'Show meeting history' })).toBeTruthy();
+    expect(sidebar.querySelector('.basil-collapsible-sidebar__layer--expanded')).toHaveAttribute('inert');
+
+    act(() => { capturedEventHandler!(snapshot(1, false)); });
+    expect(document.querySelector('.meeting-history-collapsible')).toBe(sidebar);
+    expect(sidebar).toHaveClass('is-expanded');
+    expect(sidebar.querySelector('.basil-collapsible-sidebar__layer--collapsed')).toHaveAttribute('inert');
   });
 });
 

@@ -1,7 +1,7 @@
 .writing-examples-shell {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--settings-card-gap);
   max-width: 920px;
   width: 100%;
 }
@@ -36,31 +36,11 @@
   color: #ffffff;
 }
 
-.writing-examples-style-section,
-.writing-examples-samples-section {
-  background: color-mix(in srgb, var(--background-primary) 92%, var(--primary));
-  border: 1px solid var(--field-border);
-  border-radius: 10px;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 10%), 0 8px 20px rgb(0 0 0 / 8%);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 16px;
-}
-
 .writing-examples-style-header,
 .writing-examples-samples-header {
   align-items: center;
   display: flex;
   justify-content: space-between;
-}
-
-.writing-examples-style-section h2,
-.writing-examples-samples-section h2 {
-  color: color-mix(in srgb, var(--text-primary) 78%, var(--text-secondary));
-  font-family: var(--font-family-light);
-  font-size: 15px;
-  margin: 0;
 }
 
 .writing-examples-style-metrics {
@@ -177,63 +157,10 @@
   gap: 8px;
 }
 
-.writing-examples-list-actions > .secondary-button {
-  background: transparent;
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  color: var(--primary);
-  cursor: pointer;
-  font-family: var(--font-family-medium);
-  font-size: 12px;
-  padding: 5px 10px;
-}
-
-.writing-examples-samples-actions > .secondary-button,
-.writing-examples-actions > .primary-button,
-.writing-examples-list-actions > .primary-button {
-  border-radius: 6px;
-  cursor: pointer;
-  font-family: var(--font-family-medium);
-  font-size: 12px;
-  padding: 5px 10px;
-}
-
+.writing-examples-list-actions > .secondary-button,
 .writing-examples-samples-actions > .secondary-button {
   background: transparent;
-  border: 1px solid var(--field-border);
   color: var(--primary);
-}
-
-.writing-examples-actions > .primary-button,
-.writing-examples-list-actions > .primary-button {
-  background: var(--primary);
-  border: 1px solid color-mix(in srgb, var(--primary) 70%, black);
-  color: #ffffff;
-}
-
-.writing-examples-samples-actions > .secondary-button:disabled,
-.writing-examples-actions > .primary-button:disabled,
-.writing-examples-list-actions > .primary-button:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-
-.writing-examples-delete-button,
-.writing-examples-delete-all-button {
-  background: transparent;
-  border: 1px solid color-mix(in srgb, var(--error-base, #d9363e) 55%, var(--field-border));
-  border-radius: 6px;
-  color: var(--error-base, #d9363e);
-  cursor: pointer;
-  font-family: var(--font-family-medium);
-  font-size: 12px;
-  padding: 5px 10px;
-}
-
-.writing-examples-delete-button:disabled,
-.writing-examples-delete-all-button:disabled {
-  cursor: default;
-  opacity: 0.6;
 }
 
 .writing-examples-add-form {
@@ -255,28 +182,8 @@
   gap: 4px;
 }
 
-.writing-examples-field select,
-.writing-examples-field input[type='text'],
 .writing-examples-textarea {
-  background: var(--background-primary);
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  font-family: var(--font-family-light);
-  font-size: 13px;
-  padding: 6px 8px;
-}
-
-.writing-examples-textarea {
-  resize: vertical;
   width: 100%;
-}
-
-.writing-examples-field select:focus-visible,
-.writing-examples-field input[type='text']:focus-visible,
-.writing-examples-textarea:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--primary);
 }
 
 .writing-examples-status,
@@ -311,23 +218,6 @@
   font-family: var(--font-family-light);
   font-size: 13px;
   margin: 0;
-}
-
-.writing-examples-style-header > .secondary-button,
-.writing-examples-error > .secondary-button {
-  background: var(--background-primary);
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  cursor: pointer;
-  font-family: var(--font-family-medium);
-  font-size: 13px;
-  padding: 6px 12px;
-}
-
-.writing-examples-style-header > .secondary-button:disabled {
-  cursor: default;
-  opacity: 0.6;
 }
 
 .writing-examples-filter-tab:focus-visible,
@@ -556,6 +446,7 @@
   border: 0;
   box-shadow: none;
   flex: 1;
+  min-height: 0;
   min-width: 120px;
   outline: none;
   padding: 3px 2px;

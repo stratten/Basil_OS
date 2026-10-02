@@ -7,7 +7,7 @@ interface AppExclusionPickerProps {
   availableApps: MeetingDetectionAppOption[]
   searchResults: MeetingDetectionAppOption[]
   knownAppsByBundleId: Record<string, MeetingDetectionAppOption>
-  disabled: boolean
+  disabled?: boolean
   onFocusSearch: () => void
   onSearchQueryChange: (query: string) => void
   onAdd: (bundleId: string) => void

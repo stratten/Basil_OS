@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Switch } from '@shared/Switch'
 import { PolicyRadioGroup, type PolicyRadioOption } from '../components/PolicyRadioGroup'
+import { useOptimisticSettings } from './useOptimisticSettings'
 import {
   notifyBrowserAutomationSettingsReady,
   onBrowserAutomationEvent,
@@ -41,23 +42,20 @@ const FOREGROUND_CONTROL_OPTIONS: readonly PolicyRadioOption<BrowserForegroundCo
 ]
 
 const SENSITIVE_FILL_OPTIONS: readonly PolicyRadioOption<BrowserSensitiveFillPolicy>[] = [
-  { id: 'never', label: 'Never fill sensitive fields' },
-  { id: 'ask_every_time', label: 'Ask every time' },
-  { id: 'approved_domains', label: 'Allow for approved domains' },
+  { id: 'never', label: 'Never fill sensitive fields', description: 'Basil never fills passwords or other sensitive fields; it stops and leaves them for you.' },
+  { id: 'ask_every_time', label: 'Ask every time', description: 'Basil asks for your approval each time it needs to fill a sensitive field.' },
+  { id: 'approved_domains', label: 'Allow for approved domains', description: 'Basil fills sensitive fields without asking on the remembered domains below, and asks everywhere else.' },
 ]
 
 export function BrowserAutomationSettingsApp() {
-  const [settings, setSettings] = useState<BrowserAutomationSettingsSnapshot | null>(null)
+  const { settings, isSaving, setSettings, track, receiveSnapshot, resolveIntent } = useOptimisticSettings<BrowserAutomationSettingsSnapshot>()
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [pendingId, setPendingId] = useState<string | null>(null)
   const [requestError, setRequestError] = useState<string | null>(null)
-  const pendingRef = useRef<string | null>(null)
-  pendingRef.current = pendingId
 
   useEffect(() => {
     const unsubscribe = onBrowserAutomationEvent((event) => {
       if (event.type === 'init' || event.type === 'snapshot') {
-        setSettings(event.settings)
+        receiveSnapshot(event.settings)
         setLoadError(null)
         return
       }
@@ -65,9 +63,8 @@ export function BrowserAutomationSettingsApp() {
         setLoadError(event.message)
         return
       }
-      if (event.type === 'intentResult' && event.requestId === pendingRef.current) {
-        setPendingId(null)
-        setRequestError(event.status === 'error' ? event.message ?? 'Failed to update the setting.' : null)
+      if (event.type === 'intentResult' && resolveIntent(event.requestId, event.status) === 'error') {
+        setRequestError(event.message ?? 'Failed to update the setting.')
       }
     })
     notifyBrowserAutomationSettingsReady()
@@ -75,9 +72,8 @@ export function BrowserAutomationSettingsApp() {
   }, [])
 
   function submit(id: string) {
-    if (pendingRef.current) return
     setRequestError(null)
-    setPendingId(id)
+    track(id)
   }
 
   if (!settings && !loadError) {
@@ -93,7 +89,6 @@ export function BrowserAutomationSettingsApp() {
     )
   }
 
-  const disabled = pendingId !== null
   const s = settings!
 
   return (
@@ -114,111 +109,120 @@ export function BrowserAutomationSettingsApp() {
           </ul>
         </div>
 
-        <PolicyRadioGroup
-          legend="Preferred User Browser"
-          name="preferred-user-browser"
-          options={PREFERRED_BROWSER_OPTIONS}
-          value={s.preferredUserBrowser}
-          disabled={disabled}
-          onChange={(next) => { setSettings({ ...s, preferredUserBrowser: next }); submit(requestUpdatePreferredUserBrowser(next)) }}
-        />
+      </section>
 
-        <PolicyRadioGroup
-          legend="Default Browser Session"
-          name="default-session-mode"
-          options={SESSION_MODE_OPTIONS}
-          value={s.defaultSessionMode}
-          disabled={disabled}
-          onChange={(next) => { setSettings({ ...s, defaultSessionMode: next }); submit(requestUpdateDefaultSessionMode(next)) }}
-        />
-
-        <div className="browser-automation-fieldset">
-          <h3>Basil Automation Browser Profile</h3>
-          <p className="browser-automation-field-hint">Clears only Basil's app-owned automation browser profile. This does not clear Safari, Chrome, or Edge data.</p>
-          <button
-            type="button"
-            className="secondary-button"
-            disabled={disabled}
-            onClick={() => submit(requestClearAutomationBrowserProfile())}
-          >
-            Clear Basil Automation Browser Profile
-          </button>
+      <section className="browser-automation-section" aria-labelledby="browser-automation-sessions-heading">
+        <h2 id="browser-automation-sessions-heading">Browser Sessions</h2>
+        <div className="browser-automation-columns">
+          <div className="browser-automation-column">
+            <PolicyRadioGroup
+              legend="Preferred User Browser"
+              name="preferred-user-browser"
+              options={PREFERRED_BROWSER_OPTIONS}
+              value={s.preferredUserBrowser}
+              onChange={(next) => { setSettings({ ...s, preferredUserBrowser: next }); submit(requestUpdatePreferredUserBrowser(next)) }}
+            />
+          </div>
+          <div className="browser-automation-column">
+            <PolicyRadioGroup
+              legend="Default Browser Session"
+              name="default-session-mode"
+              options={SESSION_MODE_OPTIONS}
+              value={s.defaultSessionMode}
+              onChange={(next) => { setSettings({ ...s, defaultSessionMode: next }); submit(requestUpdateDefaultSessionMode(next)) }}
+            />
+            <div className="browser-automation-subgroup">
+              <h3>Basil Automation Browser Profile</h3>
+              <p className="browser-automation-field-hint">Clears only Basil's app-owned automation browser profile. This does not clear Safari, Chrome, or Edge data.</p>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => submit(requestClearAutomationBrowserProfile())}
+              >
+                Clear Basil Automation Browser Profile
+              </button>
+            </div>
+          </div>
         </div>
+      </section>
 
-        <PolicyRadioGroup
-          legend="Foreground Browser Control"
-          name="foreground-control-policy"
-          options={FOREGROUND_CONTROL_OPTIONS}
-          value={s.foregroundControlPolicy}
-          disabled={disabled}
-          onChange={(next) => { setSettings({ ...s, foregroundControlPolicy: next }); submit(requestUpdateForegroundControlPolicy(next)) }}
-        />
+      <section className="browser-automation-section" aria-labelledby="browser-automation-safety-heading">
+        <h2 id="browser-automation-safety-heading">Control & Safety</h2>
+        <div className="browser-automation-columns">
+          <div className="browser-automation-column">
+            <PolicyRadioGroup
+              legend="Foreground Browser Control"
+              name="foreground-control-policy"
+              options={FOREGROUND_CONTROL_OPTIONS}
+              value={s.foregroundControlPolicy}
+              onChange={(next) => { setSettings({ ...s, foregroundControlPolicy: next }); submit(requestUpdateForegroundControlPolicy(next)) }}
+            />
+          </div>
+          <div className="browser-automation-column">
+            <PolicyRadioGroup
+              legend="Sensitive Fill Policy"
+              name="sensitive-fill-policy"
+              options={SENSITIVE_FILL_OPTIONS}
+              value={s.sensitiveFillPolicy}
+              onChange={(next) => { setSettings({ ...s, sensitiveFillPolicy: next }); submit(requestUpdateSensitiveFillPolicy(next)) }}
+            />
+            <div className="browser-automation-subgroup">
+              <h3>Remembered Sensitive-Fill Domains</h3>
+              {s.approvedSensitiveFillDomains.length === 0 ? (
+                <p className="browser-automation-field-hint">No domains have been approved for sensitive browser fills.</p>
+              ) : (
+                <ul className="browser-automation-domain-list">
+                  {s.approvedSensitiveFillDomains.map((approval) => (
+                    <li key={approval.domain} className="browser-automation-domain-row">
+                      <div className="browser-automation-domain-text">
+                        <span className="browser-automation-domain-name">{approval.domain}</span>
+                        <span className="browser-automation-domain-usage">Used {approval.useCount} time{approval.useCount === 1 ? '' : 's'}</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => {
+                          setSettings({ ...s, approvedSensitiveFillDomains: s.approvedSensitiveFillDomains.filter((item) => item.domain !== approval.domain) })
+                          submit(requestRemoveRememberedDomain(approval.domain))
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
 
-        <PolicyRadioGroup
-          legend="Sensitive Fill Policy"
-          name="sensitive-fill-policy"
-          options={SENSITIVE_FILL_OPTIONS}
-          value={s.sensitiveFillPolicy}
-          disabled={disabled}
-          onChange={(next) => { setSettings({ ...s, sensitiveFillPolicy: next }); submit(requestUpdateSensitiveFillPolicy(next)) }}
-        />
-
+      <section className="browser-automation-section" aria-labelledby="browser-automation-feedback-heading">
+        <h2 id="browser-automation-feedback-heading">Action Feedback & Fallback</h2>
         <div className="browser-automation-toggles">
           <Switch
             id="browser-automation-show-highlights"
             label="Show browser action highlights"
             checked={s.showActionHighlights}
-            disabled={disabled}
             onChange={(checked) => { setSettings({ ...s, showActionHighlights: checked }); submit(requestUpdateShowActionHighlights(checked)) }}
           />
           <Switch
             id="browser-automation-record-trace"
             label="Record browser action trace"
             checked={s.recordBrowserActionTrace}
-            disabled={disabled}
             onChange={(checked) => { setSettings({ ...s, recordBrowserActionTrace: checked }); submit(requestUpdateRecordBrowserActionTrace(checked)) }}
           />
           <Switch
             id="browser-automation-visual-fallback"
             label="Allow screenshot and vision fallback"
             checked={s.allowVisualFallback}
-            disabled={disabled}
             onChange={(checked) => { setSettings({ ...s, allowVisualFallback: checked }); submit(requestUpdateAllowVisualFallback(checked)) }}
           />
         </div>
-
-        <div className="browser-automation-fieldset">
-          <h3>Remembered Sensitive-Fill Domains</h3>
-          {s.approvedSensitiveFillDomains.length === 0 ? (
-            <p className="browser-automation-field-hint">No domains have been approved for sensitive browser fills.</p>
-          ) : (
-            <ul className="browser-automation-domain-list">
-              {s.approvedSensitiveFillDomains.map((approval) => (
-                <li key={approval.domain} className="browser-automation-domain-row">
-                  <div>
-                    <span className="browser-automation-domain-name">{approval.domain}</span>
-                    <span className="browser-automation-domain-usage">Used {approval.useCount} time{approval.useCount === 1 ? '' : 's'}</span>
-                  </div>
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    disabled={disabled}
-                    onClick={() => {
-                      setSettings({ ...s, approvedSensitiveFillDomains: s.approvedSensitiveFillDomains.filter((item) => item.domain !== approval.domain) })
-                      submit(requestRemoveRememberedDomain(approval.domain))
-                    }}
-                  >
-                    Remove
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {pendingId && <p className="browser-automation-status" role="status">Saving setting...</p>}
-        {requestError && <p className="browser-automation-inline-error" role="alert">{requestError}</p>}
       </section>
+
+      <p className="settings-visually-hidden" role="status">{isSaving ? 'Saving setting...' : ''}</p>
+      {requestError && <p className="browser-automation-inline-error" role="alert">{requestError}</p>}
     </div>
   )
 }

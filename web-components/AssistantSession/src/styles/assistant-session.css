@@ -1,3 +1,5 @@
+@import '../../../shared/presence-motion.css';
+@import '../../../shared/reduced-motion.css';
 @import './assistant-session/shell.css';
 @import './assistant-session/header.css';
 @import './assistant-session/recording.css';

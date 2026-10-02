@@ -50,7 +50,10 @@ def register_optional_tools(
     # event enumeration and scoped search/detail hydration.
     try:
         from ....tools.internal_basil_tools.retrieval_tool import create_retrieval_tool
-        retrieval_tool = create_retrieval_tool(profile=profile)
+        retrieval_tool = create_retrieval_tool(
+            profile=profile,
+            max_output_chars=getattr(factory, "max_tool_output_chars", None),
+        )
         tools.append(retrieval_tool)
         tool_map["retrieval.basil_history"] = retrieval_tool
         factory.logger.info("   ✅ Added retrieve_basil_history tool")
@@ -61,7 +64,10 @@ def register_optional_tools(
 
     try:
         from ....tools.internal_basil_tools.unified_history_tool import create_unified_history_tool
-        unified_history_tool = create_unified_history_tool(profile=profile)
+        unified_history_tool = create_unified_history_tool(
+            profile=profile,
+            max_output_chars=getattr(factory, "max_tool_output_chars", None),
+        )
         tools.append(unified_history_tool)
         tool_map["retrieval.unified_history"] = unified_history_tool
         factory.logger.info("   ✅ Added query_unified_history tool")

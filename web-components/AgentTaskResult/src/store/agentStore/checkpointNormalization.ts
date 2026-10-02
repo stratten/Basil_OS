@@ -142,12 +142,18 @@ export function normalizeCheckpointData(
     Object.assign(metadata, checkpointRecord.metadata as Record<string, unknown>);
   }
 
+  const allowMultiple = inputType === 'choice' && checkpointRecord.allow_multiple === true;
+  const valueKind: CheckpointData['value_kind'] =
+    inputType === 'data' && rawInputType === 'numeric' ? 'numeric' : undefined;
+
   return {
     checkpoint_id: checkpointId,
     session_agent_task_id: agentTaskId,
     prompt,
     input_type: inputType,
     options,
+    ...(allowMultiple ? { allow_multiple: true } : {}),
+    ...(valueKind ? { value_kind: valueKind } : {}),
     fields,
     default_value: defaultValue,
     metadata: Object.keys(metadata).length > 0 ? metadata : undefined,

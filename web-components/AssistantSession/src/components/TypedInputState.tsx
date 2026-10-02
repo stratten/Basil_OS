@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import ExecutionDisclosureChevron from '@shared/ExecutionDisclosureChevron';
+import PresenceRegion from '@shared/PresenceRegion';
 import { cancelOperation, submitTypedInstruction } from '../bridge/assistantSessionBridge';
 import type { AssistantSessionState } from '../state/assistantSessionReducer';
 import { ModelPickerMenu } from './ModelPickerMenu';
@@ -52,7 +53,7 @@ export function TypedInputState({
           {state.hasTextSelection && <span className="assistant-session-typed-input__selection-badge">+ Selection</span>}
           {state.ocrText ? <span className="assistant-session-typed-input__char-count">({state.ocrText.length} chars)</span> : null}
         </button>
-        {extractedOpen && (
+        <PresenceRegion visible={extractedOpen} className="basil-presence" settleWithoutTransition>
           <div className="assistant-session-typed-input__extracted-body">
             {state.ocrStatus === 'running' ? (
               <div className="assistant-session-typed-input__ocr-loading">Processing image...</div>
@@ -71,7 +72,7 @@ export function TypedInputState({
               </>
             )}
           </div>
-        )}
+        </PresenceRegion>
       </div>
       <label className="assistant-session-typed-input__instructions">
         <span>Custom Instructions (Optional):</span>

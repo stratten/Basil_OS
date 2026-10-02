@@ -1,15 +1,14 @@
 .assistant-output-history-sidebar {
-  width: 220px;
-  flex-shrink: 0;
-  overflow: hidden;
+  --basil-sidebar-expanded-width: 220px;
+  --basil-sidebar-collapsed-width: 40px;
   border-right: 1px solid color-mix(in srgb, var(--secondary, #4c7bf0) 18%, transparent);
   background: var(--background-primary, #ffffff);
-  display: flex;
-  flex-direction: column;
 }
 
-.assistant-output-history-sidebar--collapsed {
-  width: 40px;
+.assistant-output-history-sidebar__rail {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
   align-items: center;
   justify-content: flex-start;
   padding-top: 5px;
@@ -29,7 +28,7 @@
 }
 
 .assistant-output-history-sidebar__header button,
-.assistant-output-history-sidebar--collapsed > button {
+.assistant-output-history-sidebar__rail > button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -113,6 +112,7 @@
 .assistant-output-history-sidebar__list {
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
   padding: 4px 0;
 }
 
@@ -127,22 +127,66 @@
   background: transparent;
 }
 
+.assistant-output-history-sidebar__row-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  transition: transform 0.15s ease;
+}
+
 .assistant-output-history-sidebar__row-main {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   text-align: left;
   border: none;
   background: transparent;
-  padding: 8px 12px;
+  padding: 8px 30px 8px 12px;
   color: var(--text-primary, #111318);
   cursor: pointer;
 }
 
 .assistant-output-history-sidebar__delete {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: none;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  padding: 0;
   border: none;
-  background: transparent;
+  border-radius: 5px;
+  background: var(--background-primary, #ffffff);
   color: var(--error-base, #d33b3b);
   cursor: pointer;
-  padding: 0 8px;
+}
+
+.assistant-output-history-sidebar__row:hover .assistant-output-history-sidebar__delete,
+.assistant-output-history-sidebar__row:focus-within .assistant-output-history-sidebar__delete {
+  display: grid;
+}
+
+.assistant-output-history-sidebar__row--active .assistant-output-history-sidebar__delete {
+  background: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.assistant-output-history-sidebar__swipe-delete {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 60px;
+  border: 0;
+  border-radius: 0 6px 6px 0;
+  background: var(--error-base, #d33b3b);
+  color: rgba(255, 255, 255, 0.95);
+  font-family: var(--font-family-medium, inherit);
+  font-size: 11px;
+  cursor: pointer;
 }
 
 .assistant-output-history-sidebar__row--active {

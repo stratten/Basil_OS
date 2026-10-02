@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import PresenceRegion from '@shared/PresenceRegion';
 import NativeSymbolIcon, { type NativeSymbolName } from '../../../shared/NativeSymbolIcon';
 import ReasoningModelPicker, { type SharedReasoningModel } from '../../../shared/ReasoningModelPicker';
 import type { AnalysisMetadataEntryDTO, MeetingUIStateDTO } from '../bridge/types';
@@ -49,7 +50,7 @@ export default function AnalysisCard({ ui, analysisHistory }: { ui: MeetingUISta
         {!ui.isAnalysisSectionExpanded && analysisHistory.length > 0 && <span className="meeting-analysis-count">{analysisHistory.length}</span>}
         {!ui.isAnalysisSectionExpanded && isViewingActiveAnalysis && ui.analysisStartedAutomatically && <span className="meeting-analysis-running">Automatic analysis running</span>}
       </button>
-      {ui.isAnalysisSectionExpanded && (
+      <PresenceRegion visible={ui.isAnalysisSectionExpanded} className="basil-presence" settleWithoutTransition>
         <>
       <div className="meeting-analysis-configuration">
       <div className="meeting-analysis-intro">
@@ -114,7 +115,7 @@ export default function AnalysisCard({ ui, analysisHistory }: { ui: MeetingUISta
       </div>
       </div>
       <h4 className="meeting-analysis-history-heading">Previous Analyses</h4>
-      {ui.isLoadingAnalysisHistory && <p className="meeting-analysis-history-loading">Loading…</p>}
+      {ui.isLoadingAnalysisHistory && analysisHistory.length === 0 && <p className="meeting-analysis-history-loading">Loading…</p>}
       {!ui.isLoadingAnalysisHistory && analysisHistory.length === 0 && (
         <p className="meeting-analysis-history-empty">No analyses yet for this meeting.</p>
       )}
@@ -141,7 +142,7 @@ export default function AnalysisCard({ ui, analysisHistory }: { ui: MeetingUISta
       </div>}
       {ui.analysisResultLoadError && <p className="meeting-analysis-history-error" role="alert">{ui.analysisResultLoadError}</p>}
         </>
-      )}
+      </PresenceRegion>
     </section>
   );
 }

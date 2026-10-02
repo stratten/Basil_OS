@@ -17,7 +17,7 @@ const SETTINGS: ReasoningDefaultsSettingsSnapshot = {
   selectedModelId: 'local-1',
   useApiModels: false,
   closeAssistantSessionOnInsert: false,
-  autoPasteAssistantOutput: true,
+  assistantOutputPasteMode: 'always',
   useRegionSelection: false,
   agentTaskDefaultModality: 'voice',
   agentTaskAutoReopenOnCompletion: true,
@@ -80,7 +80,7 @@ describe('ReasoningDefaultsSettingsApp Conversation section', () => {
     expect(message).toMatchObject({ type: 'requestUpdateConversationDefaultConversationOnly', enabled: true })
     expect(typeof message.requestId).toBe('string')
     expect(conversationSwitch().checked).toBe(true)
-    expect(conversationSwitch().disabled).toBe(true)
+    expect(conversationSwitch().disabled).toBe(false)
 
     act(() => {
       window.basilReasoningDefaultsSettings!.onEvent({ type: 'intentResult', requestId: message.requestId, status: 'error', message: 'Failed to update the Conversation only default.' })
@@ -103,7 +103,7 @@ describe('ReasoningDefaultsSettingsApp Conversation section', () => {
     expect(columns[0].querySelector('#reasoning-defaults-assistant-session-ptt')).not.toBeNull()
     expect(columns[0].querySelector('#assistant-session-threshold-input')).not.toBeNull()
     expect(columns[1].querySelector('#reasoning-defaults-close-on-insert')).not.toBeNull()
-    expect(columns[1].querySelector('#reasoning-defaults-auto-paste')).not.toBeNull()
+    expect(columns[1].querySelector('input[name="assistant-output-paste-mode"]')).not.toBeNull()
     expect(columns[1].querySelector('#reasoning-defaults-region-selection')).not.toBeNull()
     expect(container.querySelectorAll('h2')).toHaveLength(4)
   })

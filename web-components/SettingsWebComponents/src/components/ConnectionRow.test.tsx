@@ -74,6 +74,31 @@ describe('ConnectionRow', () => {
     expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'requestUpdatePolicy', connectionId: 'conn-1', toolName: 'create_issue', policy: 'never_allow' }))
   })
 
+  it('keeps tool policies interactive and shows the chosen policy while another request is pending', () => {
+    render(CONNECTION, 'other-request')
+    act(() => { container.querySelector<HTMLButtonElement>('.connections-row-expand')!.click() })
+    const select = container.querySelector<HTMLButtonElement>('.connections-tool-row-policy')!
+    expect(select.disabled).toBe(false)
+    act(() => { select.click() })
+    const neverAllowOption = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="option"]')).find((option) => option.textContent === 'Never allow')!
+    act(() => { neverAllowOption.click() })
+    expect(container.querySelector<HTMLButtonElement>('.connections-tool-row-policy')!.textContent).toContain('Never allow')
+    expect(onTrackRequest).toHaveBeenCalledTimes(1)
+  })
+
+  it('routes policy requests through the non-blocking tracker and returns to the snapshot value', () => {
+    const onTrackPolicyRequest = vi.fn<(id: string) => void>()
+    act(() => { root.render(<ConnectionRow connection={CONNECTION} pendingId={null} onTrackRequest={onTrackRequest} onTrackPolicyRequest={onTrackPolicyRequest} />) })
+    act(() => { container.querySelector<HTMLButtonElement>('.connections-row-expand')!.click() })
+    act(() => { container.querySelector<HTMLButtonElement>('.connections-tool-row-policy')!.click() })
+    const neverAllowOption = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="option"]')).find((option) => option.textContent === 'Never allow')!
+    act(() => { neverAllowOption.click() })
+    expect(onTrackPolicyRequest).toHaveBeenCalledTimes(1)
+    expect(onTrackRequest).not.toHaveBeenCalled()
+    act(() => { root.render(<ConnectionRow connection={{ ...CONNECTION, tools: [...CONNECTION.tools] }} pendingId={null} onTrackRequest={onTrackRequest} onTrackPolicyRequest={onTrackPolicyRequest} />) })
+    expect(container.querySelector<HTMLButtonElement>('.connections-tool-row-policy')!.textContent).toContain('Always ask')
+  })
+
   it('dispatches requestDeleteConnection when Remove is clicked (native confirms)', () => {
     render(CONNECTION)
     act(() => { container.querySelector<HTMLButtonElement>('.connections-row-action-danger')!.click() })

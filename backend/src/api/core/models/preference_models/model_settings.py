@@ -1,6 +1,6 @@
 """Runtime model preference settings."""
 
-from typing import Dict, Optional
+from typing import Dict, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -11,6 +11,9 @@ from .defaults import (
     _get_openai_transcription_model_defaults,
 )
 from .transcription import ModelPersistenceDuration
+
+AssistantOutputPasteMode = Literal["always", "auto", "never"]
+ASSISTANT_OUTPUT_PASTE_MODES = ("always", "auto", "never")
 
 
 class ModelSettings(BaseModel):
@@ -127,9 +130,9 @@ class ModelSettings(BaseModel):
         default=False,
         description="Close assistant-session widget after inserting"
     )
-    auto_paste_assistant_output: bool = Field(
-        default=True,
-        description="Automatically paste assistant output when complete"
+    assistant_output_paste_mode: AssistantOutputPasteMode = Field(
+        default="always",
+        description="When completed assistant output is pasted: always, auto (the model decides per reply), or never"
     )
     use_region_selection: bool = Field(
         default=False,

@@ -49,7 +49,13 @@ function extractFields(event: ConnectionsInitEvent | ConnectionsSnapshotEvent): 
   }
 }
 
-export function ConnectionsSettingsApp({ requestedSubTab }: { requestedSubTab?: ConnectionsSubTab } = {}) {
+export function ConnectionsSettingsApp({
+  requestedSubTab,
+  onSubTabChange,
+}: {
+  requestedSubTab?: ConnectionsSubTab
+  onSubTabChange?: (subTab: ConnectionsSubTab) => void
+} = {}) {
   const [fields, setFields] = useState<ConnectionsSettingsFields | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [pendingId, setPendingId] = useState<string | null>(null)
@@ -59,10 +65,16 @@ export function ConnectionsSettingsApp({ requestedSubTab }: { requestedSubTab?: 
   const [folderEvent, setFolderEvent] = useState<ConnectionsWorkspaceFolderChosenEvent | null>(null)
   const pendingRef = useRef<string | null>(null)
   pendingRef.current = pendingId
+  const policyRequestIdsRef = useRef(new Set<string>())
 
   useEffect(() => {
     if (requestedSubTab) setSubTab(requestedSubTab)
   }, [requestedSubTab])
+
+  function selectSubTab(next: ConnectionsSubTab) {
+    setSubTab(next)
+    onSubTabChange?.(next)
+  }
 
   useEffect(() => {
     const unsubscribe = onConnectionsEvent((event) => {
@@ -73,6 +85,10 @@ export function ConnectionsSettingsApp({ requestedSubTab }: { requestedSubTab?: 
       }
       if (event.type === 'loadError') {
         setLoadError(event.message)
+        return
+      }
+      if (event.type === 'intentResult' && policyRequestIdsRef.current.delete(event.requestId)) {
+        if (event.status === 'error') setRequestError(event.message ?? 'Something went wrong.')
         return
       }
       if (event.type === 'intentResult' && event.requestId === pendingRef.current) {
@@ -101,6 +117,11 @@ export function ConnectionsSettingsApp({ requestedSubTab }: { requestedSubTab?: 
     setPendingId(id)
   }
 
+  function trackPolicyRequest(id: string) {
+    setRequestError(null)
+    policyRequestIdsRef.current.add(id)
+  }
+
   if (!fields && !loadError) {
     return <p className="connections-settings-status" role="status">Loading connections...</p>
   }
@@ -126,7 +147,7 @@ export function ConnectionsSettingsApp({ requestedSubTab }: { requestedSubTab?: 
       <SettingsSubTabs
         tabs={CONNECTIONS_SUB_TABS}
         selected={subTab}
-        onSelect={setSubTab}
+        onSelect={selectSubTab}
         ariaLabel="Connections sections"
         getTabId={connectionsTabId}
         getPanelId={connectionsPanelId}
@@ -144,8 +165,8 @@ export function ConnectionsSettingsApp({ requestedSubTab }: { requestedSubTab?: 
 
       {subTab === 'servers' ? (
         <div id={connectionsPanelId('servers')} role="tabpanel" aria-labelledby={connectionsTabId('servers')}>
-          <ConnectionsPanel fields={f} pendingId={pendingId} onTrackRequest={trackRequest} />
-          <CallLogPanel entries={f.callLogEntries} isLoading={f.isLoadingCallLog} pendingId={pendingId} onTrackRequest={trackRequest} />
+          <ConnectionsPanel fields={f} pendingId={pendingId} onTrackRequest={trackRequest} onTrackPolicyRequest={trackPolicyRequest} />
+          <CallLogPanel entries={f.callLogEntries} connections={f.connections} isLoading={f.isLoadingCallLog} pendingId={pendingId} onTrackRequest={trackRequest} />
         </div>
       ) : (
         <div id={connectionsPanelId('providerProfiles')} role="tabpanel" aria-labelledby={connectionsTabId('providerProfiles')}>

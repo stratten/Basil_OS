@@ -1,39 +1,28 @@
 .meetings-settings-shell {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--settings-card-gap);
   max-width: 700px;
   width: 100%;
 }
 
-.meetings-settings-section {
-  background: color-mix(in srgb, var(--background-primary) 92%, var(--primary));
-  border: 1px solid var(--field-border);
-  border-radius: 10px;
-  /* Spot-test (2026-09-02): the shared 0 3px 10px @ 8% shadow used across
-     every other migrated tab reads as almost nothing next to a 1px border.
-     Layering a tight low-opacity shadow with a softer, wider one gives real
-     card separation from the background without looking glossy. If this
-     feels right, roll the same two-layer value out to the other tabs. */
-  box-shadow: 0 1px 3px rgb(0 0 0 / 10%), 0 8px 20px rgb(0 0 0 / 8%);
+.meetings-detection-columns {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.meetings-detection-column {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 18px;
+  min-width: 0;
 }
 
-.meetings-settings-section h2 {
-  color: var(--text-primary);
-  font-family: var(--font-family-medium);
-  font-size: 16px;
-  margin: 0;
-}
-
-.meetings-settings-hint {
-  color: var(--text-secondary);
-  font-family: var(--font-family-light);
-  font-size: 12px;
-  margin: 0;
+@media (max-width: 640px) {
+  .meetings-detection-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .meetings-numeric-field {
@@ -48,16 +37,6 @@
   font-size: 13px;
 }
 
-.meetings-numeric-field input {
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  font-family: var(--font-family-light);
-  font-size: 13px;
-  padding: 4px 6px;
-  text-align: right;
-  width: 64px;
-}
-
 .meetings-numeric-field span {
   color: var(--text-secondary);
   font-family: var(--font-family-light);
@@ -65,13 +44,7 @@
 }
 
 .meetings-exclusions-textarea {
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  font-family: var(--font-family-light);
-  font-size: 13px;
   min-height: 70px;
-  padding: 8px;
-  resize: vertical;
   width: 100%;
 }
 
@@ -117,11 +90,8 @@
 }
 
 .app-exclusion-search-input {
-  border: 1px solid var(--field-border);
   border-radius: 8px;
-  font-family: var(--font-family-light);
-  font-size: 13px;
-  padding: 8px 10px;
+  padding: 4px 10px;
   width: 100%;
 }
 
@@ -204,31 +174,20 @@
   padding: 0;
 }
 
-.app-exclusion-hint {
-  color: var(--text-secondary);
-  font-family: var(--font-family-light);
-  font-size: 12px;
-  margin: 0;
-}
-
-.meetings-automation-modes {
-  border: none;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-}
-
-.meetings-automation-modes legend {
-  color: var(--text-secondary);
-  font-family: var(--font-family-light);
-  font-size: 12px;
-  margin-bottom: 4px;
-  padding: 0;
+.meetings-automation-mode-grid {
+  display: grid;
+  gap: 8px 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .meetings-automation-mode-toggle {
   align-items: center;
   display: flex;
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .meetings-automation-mode-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

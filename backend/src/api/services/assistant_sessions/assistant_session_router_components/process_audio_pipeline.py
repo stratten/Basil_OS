@@ -57,6 +57,7 @@ from ....services.transcription.backends.parakeet_components import (
 )
 from api.core.preferences.preferences_io import load_preferences
 from api.core.knowledge.personalization.session_sample_context import resolve_session_recipient
+from .paste_directive import PasteDirectiveFilter, resolve_paste_mode, with_paste_instruction
 
 logger = logging.getLogger(__name__)
 
@@ -250,11 +251,18 @@ async def stream_process_audio(
         # and OpenAI's chat completions API both pull role="system" out of this
         # list. Previously only enhanced_prompt was sent here, so the model never
         # received permission to discard a misclassified specialized prompt.
+        paste_mode = resolve_paste_mode()
+        if paste_mode == "auto":
+            if system_prompt:
+                system_prompt = with_paste_instruction(system_prompt)
+            else:
+                enhanced_prompt = with_paste_instruction(enhanced_prompt)
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": enhanced_prompt})
         suggestion_text = ""
+        paste_filter = PasteDirectiveFilter()
 
         print(f"🎤 [STREAM] Sending 'generating_suggestion' stage for session {session_id}", flush=True)
         yield json.dumps({"stage": "generating_suggestion"}) + "\n"
@@ -262,11 +270,23 @@ async def stream_process_audio(
 
         try:
             async for token in model.chat_completion_streaming(messages):
-                suggestion_text += token
+                visible = paste_filter.feed(token)
+                if not visible:
+                    continue
+                suggestion_text += visible
                 yield json.dumps({
-                    "assistant_output_token": token,
+                    "assistant_output_token": visible,
                     "assistant_output_partial": suggestion_text
                 }) + "\n"
+            tail = paste_filter.finish()
+            if tail:
+                suggestion_text += tail
+                yield json.dumps({
+                    "assistant_output_token": tail,
+                    "assistant_output_partial": suggestion_text
+                }) + "\n"
+            if paste_filter.removed_directive:
+                suggestion_text = suggestion_text.rstrip()
         except Exception as streaming_error:
             error_message = str(streaming_error)
             print(f"🎤 [STREAM] LLM streaming error for session {session_id}: {error_message}", flush=True)
@@ -329,6 +349,7 @@ async def stream_process_audio(
         yield json.dumps({
             "transcription": transcription_for_response,
             "assistant_output": suggestion_text,
+            "paste_decision": paste_filter.decision if paste_mode == "auto" else None,
             "complete": True
         }) + "\n"
 

@@ -87,15 +87,18 @@ describe('HomeSettingsApp', () => {
       .toContain('Enable Automatic Capture in Activity Capture settings before choosing a startup schedule.')
   })
 
-  it('posts an updateToggle intent and clears it on a successful intentResult', () => {
+  it('posts an updateToggle intent, applies it immediately, and keeps other controls interactive until native confirms', () => {
     act(() => { window.basilHomeSettings!.onEvent({ type: 'init', protocolVersion: 1, fields: FIXTURE_FIELDS }) })
     const toggle = container.querySelector<HTMLInputElement>('#home-meeting-detection-enabled')!
     act(() => { toggle.click() })
     const call = postMessage.mock.calls.find(([message]) => message.type === 'updateToggle')!
     expect(call[0]).toEqual({ type: 'updateToggle', requestId: call[0].requestId, field: 'meetingDetectionEnabled', value: true })
-    expect(container.querySelector('.home-settings-status')?.textContent).toBe('Saving setting...')
+    expect(toggle.checked).toBe(true)
+    expect(container.querySelector<HTMLInputElement>('#home-enable-monitoring')!.disabled).toBe(false)
+    expect(container.querySelector('.settings-visually-hidden')?.textContent).toBe('Saving setting...')
     act(() => { window.basilHomeSettings!.onEvent({ type: 'intentResult', requestId: call[0].requestId, status: 'success' }) })
-    expect(container.querySelector('.home-settings-status')).toBeNull()
+    expect(container.querySelector('.settings-visually-hidden')?.textContent).toBe('')
+    expect(toggle.checked).toBe(true)
   })
 
   it('surfaces a load error with a retry action', () => {
@@ -105,13 +108,14 @@ describe('HomeSettingsApp', () => {
     expect(postMessage.mock.calls.filter(([message]) => message.type === 'reactReady')).toHaveLength(2)
   })
 
-  it('shows an inline error and restores the pending state to null after a failed intent', () => {
+  it('shows an inline error and reverts the toggle after a failed intent', () => {
     act(() => { window.basilHomeSettings!.onEvent({ type: 'init', protocolVersion: 1, fields: FIXTURE_FIELDS }) })
     const toggle = container.querySelector<HTMLInputElement>('#home-enable-voice-listener')!
     act(() => { toggle.click() })
     const call = postMessage.mock.calls.find(([message]) => message.type === 'updateToggle')!
     act(() => { window.basilHomeSettings!.onEvent({ type: 'intentResult', requestId: call[0].requestId, status: 'error', message: 'Failed to update startup behavior.' }) })
     expect(container.querySelector('.home-settings-inline-error')?.textContent).toBe('Failed to update startup behavior.')
+    expect(toggle.checked).toBe(false)
   })
 
   it('calls onNavigate for the permissions and Models links', () => {

@@ -1,23 +1,16 @@
 .hotkey-settings-shell {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--settings-card-gap);
   padding: 24px;
 }
 
 .hotkey-settings-section {
-  background: color-mix(in srgb, var(--background-primary) 92%, var(--primary));
-  border: 1px solid var(--field-border);
-  border-radius: 10px;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 10%), 0 8px 20px rgb(0 0 0 / 8%);
-  padding: 18px;
+  display: block;
 }
 
-.hotkey-settings-section h2 {
-  color: var(--text-primary);
-  font-family: var(--font-family-medium);
-  font-size: 16px;
-  margin: 0 0 12px;
+.hotkey-settings-section > h2 {
+  margin-bottom: 12px;
 }
 
 .hotkey-row {
@@ -91,6 +84,7 @@
   font-family: var(--font-family-light);
   font-size: 11px;
   line-height: 16px;
+  min-height: 0;
   padding: 3px 8px;
 }
 

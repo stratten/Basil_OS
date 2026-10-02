@@ -43,6 +43,15 @@ describe('ConversationSidebar', () => {
     expect(onCollapsedChange).toHaveBeenCalledWith(true);
   });
 
+  it('keeps both sidebar layers mounted so collapsing and expanding animate', () => {
+    renderSidebar(true);
+    const sidebar = screen.getByLabelText('Conversation history');
+    expect(sidebar).toHaveClass('basil-collapsible-sidebar', 'is-collapsed', 'chats-sidebar', 'chats-sidebar-collapsed');
+    expect(sidebar.querySelector('.basil-collapsible-sidebar__layer--expanded')).toHaveAttribute('inert');
+    expect(sidebar.querySelector('.basil-collapsible-sidebar__layer--expanded .chats-search')).not.toBeNull();
+    expect(sidebar.querySelector('.basil-collapsible-sidebar__layer--collapsed')).not.toHaveAttribute('inert');
+  });
+
   it('renders an expand control while the sidebar is collapsed', async () => {
     const onCollapsedChange = vi.fn();
     renderSidebar(true, onCollapsedChange);
@@ -58,7 +67,8 @@ describe('ConversationSidebar', () => {
 
   it('keeps the collapsed rail narrow and reveals a compact hover-action rail without idle whitespace', () => {
     expect(chatsCss).toMatch(/\.chats-tab:has\(> \.chats-sidebar-collapsed\)\s*\{[\s\S]*flex-direction: row;/);
-    expect(chatsCss).toMatch(/\.chats-tab > \.chats-sidebar\.chats-sidebar-collapsed\s*\{[\s\S]*flex: 0 0 40px;[\s\S]*width: 40px;[\s\S]*min-width: 40px;/);
+    expect(chatsCss).toMatch(/\.chats-sidebar\s*\{[\s\S]*--basil-sidebar-expanded-width: 220px;[\s\S]*--basil-sidebar-collapsed-width: 40px;/);
+    expect(chatsCss).toMatch(/\.chats-tab > \.chats-sidebar\.chats-sidebar-collapsed\s*\{[\s\S]*flex: 0 0 auto;/);
     expect(chatsCss).toMatch(/\.chats-native-symbol-header\s*\{[\s\S]*width: 12px;[\s\S]*height: 12px;/);
     expect(chatsCss).toMatch(/\.chats-native-symbol-sidebar-expand\s*\{[\s\S]*width: 20px;[\s\S]*height: 20px;/);
     expect(chatsCss).toMatch(/\.chats-sidebar-expand-button\s*\{[\s\S]*width: 32px;[\s\S]*height: 32px;/);

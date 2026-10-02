@@ -3,21 +3,13 @@
   container-type: inline-size;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--settings-card-gap);
   max-width: 650px;
   width: 100%;
 }
 
 .home-settings-section {
   align-items: flex-start;
-  background: color-mix(in srgb, var(--background-primary) 92%, var(--primary));
-  border: 1px solid var(--field-border);
-  border-radius: 10px;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 10%), 0 8px 20px rgb(0 0 0 / 8%);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 18px;
 }
 
 .home-settings-shell > .home-settings-section {
@@ -28,7 +20,7 @@
 .home-settings-overview-grid {
   align-items: stretch;
   display: grid;
-  gap: 16px;
+  gap: var(--settings-card-gap);
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   width: 100%;
 }
@@ -49,20 +41,13 @@
 
 .home-settings-compact-grid {
   display: grid;
-  gap: 16px;
+  gap: var(--settings-card-gap);
   grid-template-columns: repeat(2, minmax(0, 1fr));
   width: 100%;
 }
 
 .home-settings-compact-grid > .home-settings-section {
   min-width: 0;
-}
-
-.home-settings-section h2 {
-  color: var(--text-primary);
-  font-family: var(--font-family-medium);
-  font-size: 16px;
-  margin: 0 0 2px;
 }
 
 .home-settings-readiness-row {
@@ -106,7 +91,9 @@
   color: var(--text-primary);
   font-family: var(--font-family-light);
   font-size: 13px;
-  padding: 6px 10px;
+  line-height: 16px;
+  min-height: 26px;
+  padding: 4px 10px;
 }
 
 .home-settings-model-controls {
@@ -133,9 +120,11 @@
   width: 100%;
 }
 
+/* The negative block margin keeps the 30px button from making the heading row taller than the title, so "Default Models" lines up with "Setup & Readiness". */
 .home-settings-model-defaults-heading .home-settings-inline-action {
   align-self: auto;
   flex: 0 0 auto;
+  margin-block: -6px;
 }
 
 .home-settings-model-default-group {
@@ -173,6 +162,8 @@
 
 .home-settings-model-default-group .home-settings-select {
   flex: initial;
+  min-height: 26px;
+  padding: 4px 10px;
 }
 
 .home-settings-model-default-group .home-settings-inline-action {
@@ -200,13 +191,6 @@
   font-family: var(--font-family-light);
   font-size: 13px;
   margin: 0;
-}
-
-.home-settings-hint {
-  color: var(--text-secondary);
-  font-family: var(--font-family-light);
-  font-size: 13px;
-  margin: -4px 0 0;
 }
 
 .home-settings-status,

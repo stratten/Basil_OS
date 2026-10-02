@@ -88,6 +88,8 @@ export function AssistantSessionApp() {
     state.isEditMode,
     state.isResultChromeCollapsed,
     state.ocrText,
+    state.pasteOutcome,
+    state.pasteTargetApplicationName,
     state.shouldPersistUI,
     state.thinkingContent,
     state.transcriptionText,

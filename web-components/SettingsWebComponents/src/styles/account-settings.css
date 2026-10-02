@@ -1,7 +1,7 @@
 .account-settings {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--settings-card-gap);
   max-width: 920px;
   padding: 24px;
   width: 100%;
@@ -24,58 +24,10 @@
   max-width: 720px;
 }
 
-.account-settings button,
-.account-settings input,
-.account-settings select {
-  font-family: inherit;
-}
-
-.account-settings input:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--secondary, var(--primary));
-}
-
-.account-settings button:focus-visible,
-.account-settings select:focus-visible {
-  outline: 2px solid var(--secondary, var(--primary));
-  outline-offset: 2px;
-}
-
-.account-settings button:disabled,
-.account-settings input:disabled,
-.account-settings select:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-.account-settings-section {
-  background: color-mix(in srgb, var(--background-primary) 91%, var(--secondary, var(--primary)));
-  border: 1px solid color-mix(in srgb, var(--field-border) 78%, var(--secondary, var(--primary)));
-  border-radius: 12px;
-  box-shadow: 0 2px 6px rgb(0 0 0 / 8%), 0 12px 28px rgb(0 0 0 / 6%);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 16px;
-}
-
-.account-settings-section h3 {
-  font-size: 15px;
-  font-family: var(--font-family-medium);
-  color: var(--text-primary);
-  margin: 0;
-}
-
 .account-settings-status,
 .account-settings-error {
   padding: 24px;
   color: var(--text-secondary);
-}
-
-.account-settings-hint {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin: 0;
 }
 
 .account-settings-inline-error {
@@ -150,76 +102,10 @@
   color: var(--text-secondary);
 }
 
-.account-auth-field input {
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  padding: 7px 10px;
-  font-size: 13px;
-  color: var(--text-primary);
-  background: var(--background-primary);
-}
-
 .account-auth-actions {
   display: flex;
   gap: 8px;
   align-items: center;
-}
-
-/*
- * `.primary-button`/`.secondary-button` are plain global classes shared
- * across every settings leaf's bundled CSS (see `profile-settings.css`'s
- * `.profile-settings-actions > .primary-button` precedent), so every
- * container that uses them here must scope its own styling the same way
- * -- an unscoped rule would leak into (or be overridden by) another
- * leaf's unrelated buttons.
- */
-.account-auth-actions > .primary-button,
-.account-status-row > .primary-button {
-  background: var(--secondary, var(--primary));
-  border: 1px solid color-mix(in srgb, var(--secondary, var(--primary)) 70%, black);
-  border-radius: 6px;
-  color: #fff;
-  cursor: pointer;
-  font-family: var(--font-family-medium);
-  font-size: 13px;
-  padding: 8px 16px;
-}
-
-.account-auth-actions > .primary-button:hover:not(:disabled),
-.account-status-row > .primary-button:hover:not(:disabled) {
-  filter: brightness(0.92);
-}
-
-.account-auth-actions > .primary-button:disabled,
-.account-auth-actions > .secondary-button:disabled,
-.account-status-row > .primary-button:disabled,
-.account-status-row > .secondary-button:disabled,
-.account-settings-error > .secondary-button:disabled,
-.account-delete-confirm-actions > .secondary-button:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-
-.account-auth-actions > .secondary-button,
-.account-status-row > .secondary-button,
-.account-settings-error > .secondary-button,
-.account-delete-confirm-actions > .secondary-button {
-  background: var(--background-primary);
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  cursor: pointer;
-  font-family: var(--font-family-medium);
-  font-size: 13px;
-  padding: 8px 16px;
-}
-
-.account-auth-actions > .secondary-button:hover:not(:disabled),
-.account-status-row > .secondary-button:hover:not(:disabled),
-.account-settings-error > .secondary-button:hover:not(:disabled),
-.account-delete-confirm-actions > .secondary-button:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--background-primary) 88%, var(--secondary, var(--primary)));
-  border-color: color-mix(in srgb, var(--secondary, var(--primary)) 45%, var(--field-border));
 }
 
 .account-preference-list {
@@ -245,7 +131,6 @@
 }
 
 .account-preference-row input[type='radio'] {
-  accent-color: var(--secondary, var(--primary));
   margin-top: 3px;
 }
 
@@ -330,25 +215,6 @@
   padding-top: 16px;
 }
 
-.account-delete-button {
-  background: transparent;
-  border: 1px solid color-mix(in srgb, var(--error-base, #d9363e) 55%, var(--field-border));
-  border-radius: 6px;
-  color: var(--error-base, #d9363e);
-  cursor: pointer;
-  font-size: 12px;
-  padding: 6px 12px;
-}
-
-.account-delete-button:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--error-base, #d9363e) 10%, transparent);
-}
-
-.account-delete-button:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-
 .account-delete-confirm {
   margin-top: 8px;
   padding: 12px;
@@ -374,24 +240,4 @@
   display: flex;
   gap: 8px;
   justify-content: flex-end;
-}
-
-.account-delete-confirm-button {
-  background: var(--error-base, #d9363e);
-  border: 1px solid color-mix(in srgb, var(--error-base, #d9363e) 70%, black);
-  border-radius: 6px;
-  color: #fff;
-  cursor: pointer;
-  font-family: var(--font-family-medium);
-  font-size: 12px;
-  padding: 6px 14px;
-}
-
-.account-delete-confirm-button:hover:not(:disabled) {
-  filter: brightness(0.92);
-}
-
-.account-delete-confirm-button:disabled {
-  cursor: default;
-  opacity: 0.6;
 }

@@ -1,3 +1,13 @@
+.assistant-output-history-detail-stack {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.assistant-output-history-detail-stack > .basil-crossfade-layer {
+  display: flex;
+}
+
 .assistant-output-history-detail {
   flex: 1;
   overflow-y: auto;

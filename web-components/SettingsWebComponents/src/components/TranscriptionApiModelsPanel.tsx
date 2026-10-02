@@ -159,7 +159,7 @@ export function TranscriptionApiModelsPanel() {
       />
 
       {useApiTranscriptionModels && (
-        isLoading ? (
+        isLoading && models.length === 0 ? (
           <p className="transcription-api-models-status" role="status">Loading transcription API models...</p>
         ) : (
           <div className="transcription-api-models-provider">

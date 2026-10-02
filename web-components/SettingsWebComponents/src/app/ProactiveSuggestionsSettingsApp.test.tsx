@@ -82,12 +82,13 @@ describe('ProactiveSuggestionsSettingsApp', () => {
     expect(lastMessageOfType('reactReady')).toEqual({ type: 'reactReady', protocolVersion: 1 })
   })
 
-  it('sends a correlated update when the enable toggle changes and disables every control while pending', () => {
+  it('sends a correlated update when the enable toggle changes and keeps every other control interactive while pending', () => {
     sendInit()
     const enabledToggle = container.querySelector<HTMLInputElement>('#proactive-suggestions-enabled')!
     act(() => { enabledToggle.click() })
     expect(lastMessageOfType('requestUpdateEnabled')).toEqual(expect.objectContaining({ enabled: false }))
-    expect(container.querySelector<HTMLButtonElement>('[aria-label="Evaluator model"]')!.disabled).toBe(true)
+    expect(enabledToggle.checked).toBe(false)
+    expect(container.querySelector<HTMLButtonElement>('[aria-label="Evaluator model"]')!.disabled).toBe(false)
   })
 
   it('clears pending state and surfaces an error only for the correlated failure', () => {

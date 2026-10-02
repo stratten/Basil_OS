@@ -220,6 +220,24 @@
         "value": "var(--background-primary, #ffffff)"
       },
       {
+        "property": "background",
+        "reason": "Assistant Session history sidebar delete affordances: white glyph and text on the blue active row and on the solid red swipe action, plus the theme background fallback; same fixed-white pattern as the file's existing active-row text entry, and no on-accent token exists.",
+        "selector": ".assistant-output-history-sidebar__delete",
+        "value": "var(--background-primary, #ffffff)"
+      },
+      {
+        "property": "background",
+        "reason": "Assistant Session history sidebar delete affordances: white glyph and text on the blue active row and on the solid red swipe action, plus the theme background fallback; same fixed-white pattern as the file's existing active-row text entry, and no on-accent token exists.",
+        "selector": ".assistant-output-history-sidebar__row--active .assistant-output-history-sidebar__delete",
+        "value": "rgba(255, 255, 255, 0.16)"
+      },
+      {
+        "property": "color",
+        "reason": "Assistant Session history sidebar delete affordances: white glyph and text on the blue active row and on the solid red swipe action, plus the theme background fallback; same fixed-white pattern as the file's existing active-row text entry, and no on-accent token exists.",
+        "selector": ".assistant-output-history-sidebar__row--active .assistant-output-history-sidebar__delete",
+        "value": "rgba(255, 255, 255, 0.95)"
+      },
+      {
         "property": "color",
         "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
         "selector": ".assistant-output-history-sidebar__row--active :is(.assistant-output-history-sidebar__row-title, .assistant-output-history-sidebar__row-preview, .assistant-output-history-sidebar__row-date)",
@@ -230,6 +248,12 @@
         "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
         "selector": ".assistant-output-history-sidebar__search-wrap",
         "value": "var(--background-primary, #ffffff)"
+      },
+      {
+        "property": "color",
+        "reason": "Assistant Session history sidebar delete affordances: white glyph and text on the blue active row and on the solid red swipe action, plus the theme background fallback; same fixed-white pattern as the file's existing active-row text entry, and no on-accent token exists.",
+        "selector": ".assistant-output-history-sidebar__swipe-delete",
+        "value": "rgba(255, 255, 255, 0.95)"
       }
     ],
     "web-components/AssistantSession/src/styles/assistant-session/recording.css": [
@@ -622,20 +646,6 @@
         "value": "rgba(0, 0, 0, 0.04)"
       }
     ],
-    "web-components/SettingsWebComponents/src/styles/account-settings.css": [
-      {
-        "property": "color",
-        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
-        "selector": ".account-auth-actions > .primary-button, .account-status-row > .primary-button",
-        "value": "#fff"
-      },
-      {
-        "property": "color",
-        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
-        "selector": ".account-delete-confirm-button",
-        "value": "#fff"
-      }
-    ],
     "web-components/SettingsWebComponents/src/styles/appearance-settings.css": [
       {
         "property": "color",
@@ -648,21 +658,9 @@
         "reason": "Fixed light ring that separates the small primary and secondary preset dots from the preset color behind them.",
         "selector": ".appearance-preset-swatch-primary, .appearance-preset-swatch-secondary",
         "value": "1px solid rgba(255, 255, 255, 0.6)"
-      },
-      {
-        "property": "color",
-        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
-        "selector": ".primary-button",
-        "value": "#fff"
       }
     ],
     "web-components/SettingsWebComponents/src/styles/connections-settings.css": [
-      {
-        "property": "color",
-        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
-        "selector": ".connections-add-form-actions > .primary-button",
-        "value": "#fff"
-      },
       {
         "property": "color",
         "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
@@ -704,30 +702,6 @@
         "value": "#ffffff"
       }
     ],
-    "web-components/SettingsWebComponents/src/styles/permissions-settings.css": [
-      {
-        "property": "color",
-        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
-        "selector": ".permissions-whitelist-form-actions > .primary-button",
-        "value": "#fff"
-      }
-    ],
-    "web-components/SettingsWebComponents/src/styles/profile-settings.css": [
-      {
-        "property": "color",
-        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
-        "selector": ".profile-settings-actions > .primary-button",
-        "value": "#fff"
-      }
-    ],
-    "web-components/SettingsWebComponents/src/styles/reasoning-api-models.css": [
-      {
-        "property": "color",
-        "reason": "White text on the solid red remove-key confirmation button, like the white text on the other filled error buttons in Settings.",
-        "selector": ".reasoning-api-models-key-remove-confirm-button",
-        "value": "#fff"
-      }
-    ],
     "web-components/SettingsWebComponents/src/styles/transcription-settings.css": [
       {
         "property": "color",
@@ -749,12 +723,6 @@
       }
     ],
     "web-components/SettingsWebComponents/src/styles/writing-examples-settings.css": [
-      {
-        "property": "color",
-        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
-        "selector": ".writing-examples-actions > .primary-button, .writing-examples-list-actions > .primary-button",
-        "value": "#ffffff"
-      },
       {
         "property": "color",
         "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",

@@ -40,7 +40,13 @@ function formatBytes(bytes: number | null | undefined): string {
   return `${bytes} B`
 }
 
-export function ModelsSettingsApp({ requestedSubTab }: { requestedSubTab?: ModelsSubTab } = {}) {
+export function ModelsSettingsApp({
+  requestedSubTab,
+  onSubTabChange,
+}: {
+  requestedSubTab?: ModelsSubTab
+  onSubTabChange?: (subTab: ModelsSubTab) => void
+} = {}) {
   const [hasLoaded, setHasLoaded] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [capabilityFilter, setCapabilityFilter] = useState<ModelsSubTab>(requestedSubTab ?? 'reasoning')
@@ -69,6 +75,11 @@ export function ModelsSettingsApp({ requestedSubTab }: { requestedSubTab?: Model
   useEffect(() => {
     if (requestedSubTab) setCapabilityFilter(requestedSubTab)
   }, [requestedSubTab])
+
+  function selectCapabilityFilter(subTab: ModelsSubTab) {
+    setCapabilityFilter(subTab)
+    onSubTabChange?.(subTab)
+  }
 
   useEffect(() => {
     const unsubscribe = onModelsEvent((event) => {
@@ -207,7 +218,7 @@ export function ModelsSettingsApp({ requestedSubTab }: { requestedSubTab?: Model
           role="tab"
           aria-selected={capabilityFilter === 'reasoning'}
           className={capabilityFilter === 'reasoning' ? 'models-settings-filter-tab models-settings-filter-tab-selected' : 'models-settings-filter-tab'}
-          onClick={() => setCapabilityFilter('reasoning')}
+          onClick={() => selectCapabilityFilter('reasoning')}
         >
           Reasoning
         </button>
@@ -216,7 +227,7 @@ export function ModelsSettingsApp({ requestedSubTab }: { requestedSubTab?: Model
           role="tab"
           aria-selected={capabilityFilter === 'transcription'}
           className={capabilityFilter === 'transcription' ? 'models-settings-filter-tab models-settings-filter-tab-selected' : 'models-settings-filter-tab'}
-          onClick={() => setCapabilityFilter('transcription')}
+          onClick={() => selectCapabilityFilter('transcription')}
         >
           Transcription
         </button>
@@ -283,7 +294,7 @@ export function ModelsSettingsApp({ requestedSubTab }: { requestedSubTab?: Model
         <CustomModelsPanel />
       ) : capabilityFilter === 'transcription' && transcriptionSource === 'api' ? (
         <TranscriptionApiModelsPanel />
-      ) : isLoadingModels ? (
+      ) : isLoadingModels && activeGroups.length === 0 ? (
         <p className="models-settings-status" role="status">Loading models...</p>
       ) : activeGroups.length === 0 ? (
         <p className="models-settings-empty">No local models are available for this capability.</p>

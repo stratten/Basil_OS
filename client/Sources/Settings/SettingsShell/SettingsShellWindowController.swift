@@ -27,6 +27,8 @@ final class SettingsShellWindowController: NSWindowController, NSWindowDelegate,
     var macContactsSettingsWebView: ReactMacContactsSettingsWebView?
     var dateTimeWebView: ReactDateTimeSettingsWebView?
     var dateTimeLoadGeneration: Int = 0
+    var appearanceThemesWebView: ReactAppearanceThemesWebView?
+    var appearanceThemesLoadGeneration: Int = 0
     var memoryWebView: ReactMemoryIntelligenceSettingsWebView?
     var memorySettingsCache: MemoryIntelligenceSettingsDTO?
     var memoryProposalsCache: [MemoryProposalDTO] = []
@@ -170,6 +172,9 @@ final class SettingsShellWindowController: NSWindowController, NSWindowDelegate,
         let dateTimeWebView = ReactDateTimeSettingsWebView(webView: appearanceWebView.webView)
         self.dateTimeWebView = dateTimeWebView
 
+        let appearanceThemesWebView = ReactAppearanceThemesWebView(webView: appearanceWebView.webView)
+        self.appearanceThemesWebView = appearanceThemesWebView
+
         let memoryWebView = ReactMemoryIntelligenceSettingsWebView(webView: appearanceWebView.webView)
         self.memoryWebView = memoryWebView
 
@@ -312,6 +317,7 @@ final class SettingsShellWindowController: NSWindowController, NSWindowDelegate,
         wireProfileSettingsWebView(profileWebView)
         wireMacContactsSettingsWebView(macContactsSettingsWebView)
         wireDateTimeSettingsWebView(dateTimeWebView)
+        wireAppearanceThemesWebView(appearanceThemesWebView)
         wireMemoryIntelligenceSettingsWebView(memoryWebView)
         wireWritingExamplesSettingsWebView(writingExamplesWebView)
         wireModelsSettingsWebView(modelsWebView)
@@ -430,6 +436,7 @@ final class SettingsShellWindowController: NSWindowController, NSWindowDelegate,
         profileWebView?.tearDown()
         macContactsSettingsWebView?.tearDown()
         dateTimeWebView?.tearDown()
+        appearanceThemesWebView?.tearDown()
         memoryWebView?.tearDown()
         writingExamplesWebView?.tearDown()
         modelsWebView?.tearDown()
@@ -464,6 +471,7 @@ final class SettingsShellWindowController: NSWindowController, NSWindowDelegate,
         profileWebView = nil
         macContactsSettingsWebView = nil
         dateTimeWebView = nil
+        appearanceThemesWebView = nil
         memoryWebView = nil
         writingExamplesWebView = nil
         modelsWebView = nil

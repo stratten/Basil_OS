@@ -11,10 +11,11 @@ import {
   updateMemorySetting,
 } from '../services/memoryIntelligenceBridge'
 import type { MemoryDocument, MemoryIntelligenceSettings, MemoryProposal, MemoryReasoningModelOption, MemorySettingField } from '../types'
+import { useOptimisticSettings } from './useOptimisticSettings'
 
 interface PendingRequest {
   id: string
-  kind: 'settings' | 'runNow' | 'decline'
+  kind: 'runNow' | 'decline'
 }
 
 interface StatusMessage {
@@ -38,7 +39,7 @@ function formatDocumentSize(document: MemoryDocument): string {
 }
 
 export function MemoryIntelligenceSettingsApp() {
-  const [settings, setSettings] = useState<MemoryIntelligenceSettings | null>(null)
+  const { settings, setSettings, track, receiveSnapshot, resolveIntent } = useOptimisticSettings<MemoryIntelligenceSettings>()
   const [proposals, setProposals] = useState<MemoryProposal[]>([])
   const [documents, setDocuments] = useState<MemoryDocument[]>([])
   const [availableModels, setAvailableModels] = useState<MemoryReasoningModelOption[]>([])
@@ -51,7 +52,7 @@ export function MemoryIntelligenceSettingsApp() {
   useEffect(() => {
     const unsubscribe = onMemoryIntelligenceEvent((event) => {
       if (event.type === 'init' || event.type === 'snapshot') {
-        setSettings(event.settings)
+        receiveSnapshot(event.settings)
         setProposals(event.proposals)
         setDocuments(event.documents)
         setAvailableModels(event.availableModels)
@@ -62,9 +63,14 @@ export function MemoryIntelligenceSettingsApp() {
         setLoadError(event.message)
         return
       }
-      if (event.type === 'intentResult' && event.requestId === pendingRef.current?.id) {
-        pendingRef.current = null
-        setPending(null)
+      if (event.type === 'intentResult') {
+        const settingsOutcome = resolveIntent(event.requestId, event.status)
+        const matchesAction = event.requestId === pendingRef.current?.id
+        if (matchesAction) {
+          pendingRef.current = null
+          setPending(null)
+        }
+        if (settingsOutcome === 'unmatched' && !matchesAction) return
         setStatusMessage(event.message ? { text: event.message, isError: event.status === 'error' } : event.status === 'error' ? { text: 'Failed to update memory settings.', isError: true } : null)
       }
     })
@@ -73,11 +79,10 @@ export function MemoryIntelligenceSettingsApp() {
   }, [])
 
   function updateSetting(field: MemorySettingField, value: boolean | string | null) {
-    if (pendingRef.current) return
+    if (!settings) return
     setStatusMessage(null)
-    const nextPending: PendingRequest = { id: updateMemorySetting(field, value), kind: 'settings' }
-    pendingRef.current = nextPending
-    setPending(nextPending)
+    setSettings({ ...settings, [field]: value } as MemoryIntelligenceSettings)
+    track(updateMemorySetting(field, value))
   }
 
   function handleRunNow() {
@@ -131,14 +136,12 @@ export function MemoryIntelligenceSettingsApp() {
           id="memory-after-task-enabled"
           label="Evaluate completed work for memory proposals"
           checked={settings!.memoryAfterTaskEnabled}
-          disabled={busy}
           onChange={(checked) => updateSetting('memoryAfterTaskEnabled', checked)}
         />
         <Switch
           id="memory-daily-enabled"
           label="Run daily memory review"
           checked={settings!.memoryDailyEnabled}
-          disabled={busy}
           onChange={(checked) => updateSetting('memoryDailyEnabled', checked)}
         />
 
@@ -148,7 +151,7 @@ export function MemoryIntelligenceSettingsApp() {
             <input
               type="time"
               value={settings!.memoryDailyTimeLocal}
-              disabled={busy || !settings!.memoryDailyEnabled}
+              disabled={!settings!.memoryDailyEnabled}
               onChange={(e) => updateSetting('memoryDailyTimeLocal', e.target.value)}
             />
           </label>
@@ -157,7 +160,6 @@ export function MemoryIntelligenceSettingsApp() {
             <TokenizedSelect
               className="memory-intelligence-select"
               value={settings!.memoryProcessingModel ?? ''}
-              disabled={busy}
               ariaLabel="Evaluator model"
               onValueChange={(value) => updateSetting('memoryProcessingModel', value || null)}
               options={[

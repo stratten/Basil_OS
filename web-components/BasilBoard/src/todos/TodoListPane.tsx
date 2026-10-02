@@ -124,7 +124,7 @@ export default function TodoListPane({
         />
       </label>
       <TodoSortMenu value={sortBy} onChange={onSortChange} />
-      {loading && <p className="todo-list-status">Loading To-Dos...</p>}
+      {loading && items.length === 0 && <p className="todo-list-status">Loading To-Dos...</p>}
       {!loading && error && (
         <div className="todo-list-status todo-list-status--error" role="alert">
           <span>{error}</span>
@@ -134,7 +134,7 @@ export default function TodoListPane({
       {!loading && !error && items.length === 0 && (
         <p className="todo-list-status">{query.trim() ? 'No To-Do titles match your search.' : 'No To-Dos in this view yet.'}</p>
       )}
-      <ul className="todo-list-items">
+      <ul className="todo-list-items basil-refresh-region" aria-busy={loading && items.length > 0 ? true : undefined}>
         {items.map((item) => (
           <TodoListRow
             key={item.id}

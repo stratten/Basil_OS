@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { AppearanceColorField } from '../components/AppearanceColorField'
 import { AppearancePresetSwatches } from '../components/AppearancePresetSwatches'
+import { AppearanceDeleteThemeConfirm } from '../components/AppearanceDeleteThemeConfirm'
+import { AppearanceSaveThemeControl } from '../components/AppearanceSaveThemeControl'
 import { AppearancePreviewCard } from '../components/AppearancePreviewCard'
 import type { AppearancePreset } from '../data/appearancePresets'
 import { AppearanceSaveBar } from '../components/AppearanceSaveBar'
@@ -16,7 +18,14 @@ import {
 } from '../services/bridge'
 import { notifyDateTimeSettingsReady, onDateTimeEvent, updateDateDisplayStyle } from '../services/dateTimeBridge'
 import { applyHostTheme } from '../services/hostTheme'
-import type { AppearanceColorFieldId, AppearanceSettings, DateDisplayStyle } from '../types'
+import type {
+  AppearanceColorFieldId,
+  AppearanceSettings,
+  CustomAppearanceTheme,
+  CustomAppearanceThemeInput,
+  DateDisplayStyle,
+} from '../types'
+import { useAppearanceThemes } from './useAppearanceThemes'
 
 const DEFAULT_SETTINGS: AppearanceSettings = {
   backgroundColorRed: 0.0709251779736389,
@@ -79,6 +88,44 @@ function applyingPreset(settings: AppearanceSettings, preset: AppearancePreset):
     textColorRed: preset.text.red,
     textColorGreen: preset.text.green,
     textColorBlue: preset.text.blue,
+  }
+}
+
+function applyingCustomTheme(settings: AppearanceSettings, theme: CustomAppearanceTheme): AppearanceSettings {
+  return {
+    ...settings,
+    backgroundColorRed: theme.backgroundColorRed,
+    backgroundColorGreen: theme.backgroundColorGreen,
+    backgroundColorBlue: theme.backgroundColorBlue,
+    primaryColorRed: theme.primaryColorRed,
+    primaryColorGreen: theme.primaryColorGreen,
+    primaryColorBlue: theme.primaryColorBlue,
+    secondaryColorRed: theme.secondaryColorRed,
+    secondaryColorGreen: theme.secondaryColorGreen,
+    secondaryColorBlue: theme.secondaryColorBlue,
+    textColorRed: theme.textColorRed,
+    textColorGreen: theme.textColorGreen,
+    textColorBlue: theme.textColorBlue,
+    surfaceFinish: theme.surfaceFinish,
+  }
+}
+
+function customThemeInput(name: string, settings: AppearanceSettings): CustomAppearanceThemeInput {
+  return {
+    name,
+    backgroundColorRed: settings.backgroundColorRed,
+    backgroundColorGreen: settings.backgroundColorGreen,
+    backgroundColorBlue: settings.backgroundColorBlue,
+    primaryColorRed: settings.primaryColorRed,
+    primaryColorGreen: settings.primaryColorGreen,
+    primaryColorBlue: settings.primaryColorBlue,
+    secondaryColorRed: settings.secondaryColorRed,
+    secondaryColorGreen: settings.secondaryColorGreen,
+    secondaryColorBlue: settings.secondaryColorBlue,
+    textColorRed: settings.textColorRed,
+    textColorGreen: settings.textColorGreen,
+    textColorBlue: settings.textColorBlue,
+    surfaceFinish: settings.surfaceFinish,
   }
 }
 
@@ -167,6 +214,8 @@ export function AppearanceSettingsApp() {
   const [pendingExternalSnapshot, setPendingExternalSnapshot] = useState<AppearanceSettings | null>(null)
   const persistedRef = useRef<AppearanceSettings | null>(persisted)
   const pendingRequestIdRef = useRef(pendingRequestId)
+  const appearanceThemes = useAppearanceThemes()
+  const [themePendingDeletion, setThemePendingDeletion] = useState<CustomAppearanceTheme | null>(null)
 
   persistedRef.current = persisted
   pendingRequestIdRef.current = pendingRequestId
@@ -285,7 +334,31 @@ export function AppearanceSettingsApp() {
 
       <section className="appearance-settings-section">
         <h2>Color Theme</h2>
-        <AppearancePresetSwatches onSelect={(preset) => updateDraft(applyingPreset(draft, preset))} />
+        <AppearancePresetSwatches
+          onSelect={(preset) => updateDraft(applyingPreset(draft, preset))}
+          customThemes={appearanceThemes.themes}
+          onSelectCustom={(theme) => updateDraft(applyingCustomTheme(draft, theme))}
+          onRequestDeleteCustom={(theme) => {
+            appearanceThemes.clearError()
+            setThemePendingDeletion(theme)
+          }}
+          deleteDisabled={appearanceThemes.pendingOperation !== null}
+        />
+        {appearanceThemes.loadError && (
+          <p className="appearance-settings-status" role="alert">{appearanceThemes.loadError}</p>
+        )}
+        {themePendingDeletion && (
+          <AppearanceDeleteThemeConfirm
+            theme={themePendingDeletion}
+            isDeleting={appearanceThemes.pendingOperation === 'delete'}
+            errorMessage={appearanceThemes.errorOperation === 'delete' ? appearanceThemes.errorMessage : null}
+            onConfirm={() => appearanceThemes.deleteTheme(themePendingDeletion.id, () => setThemePendingDeletion(null))}
+            onCancel={() => {
+              appearanceThemes.clearError()
+              setThemePendingDeletion(null)
+            }}
+          />
+        )}
         <div className="appearance-finish-toggle" role="group" aria-label="Surface finish">
           <span className="appearance-finish-label">Finish:</span>
           <button
@@ -305,41 +378,55 @@ export function AppearanceSettingsApp() {
             Metallic
           </button>
         </div>
-        <AppearanceColorField
-          id="appearance-background-color"
-          label="Background Color:"
-          fieldId="background"
-          red={draft.backgroundColorRed}
-          green={draft.backgroundColorGreen}
-          blue={draft.backgroundColorBlue}
-          onRequestPicker={openAppearanceColorPicker}
-        />
-        <AppearanceColorField
-          id="appearance-primary-color"
-          label="Primary Color:"
-          fieldId="primary"
-          red={draft.primaryColorRed}
-          green={draft.primaryColorGreen}
-          blue={draft.primaryColorBlue}
-          onRequestPicker={openAppearanceColorPicker}
-        />
-        <AppearanceColorField
-          id="appearance-secondary-color"
-          label="Secondary Color:"
-          fieldId="secondary"
-          red={draft.secondaryColorRed}
-          green={draft.secondaryColorGreen}
-          blue={draft.secondaryColorBlue}
-          onRequestPicker={openAppearanceColorPicker}
-        />
-        <AppearanceColorField
-          id="appearance-text-color"
-          label="Text Color:"
-          fieldId="text"
-          red={draft.textColorRed}
-          green={draft.textColorGreen}
-          blue={draft.textColorBlue}
-          onRequestPicker={openAppearanceColorPicker}
+        <div className="appearance-color-columns">
+          <div className="appearance-color-column">
+            <AppearanceColorField
+              id="appearance-background-color"
+              label="Background Color:"
+              fieldId="background"
+              red={draft.backgroundColorRed}
+              green={draft.backgroundColorGreen}
+              blue={draft.backgroundColorBlue}
+              onRequestPicker={openAppearanceColorPicker}
+            />
+            <AppearanceColorField
+              id="appearance-text-color"
+              label="Text Color:"
+              fieldId="text"
+              red={draft.textColorRed}
+              green={draft.textColorGreen}
+              blue={draft.textColorBlue}
+              onRequestPicker={openAppearanceColorPicker}
+            />
+          </div>
+          <div className="appearance-color-column">
+            <AppearanceColorField
+              id="appearance-primary-color"
+              label="Primary Color:"
+              fieldId="primary"
+              red={draft.primaryColorRed}
+              green={draft.primaryColorGreen}
+              blue={draft.primaryColorBlue}
+              onRequestPicker={openAppearanceColorPicker}
+            />
+            <AppearanceColorField
+              id="appearance-secondary-color"
+              label="Secondary Color:"
+              fieldId="secondary"
+              red={draft.secondaryColorRed}
+              green={draft.secondaryColorGreen}
+              blue={draft.secondaryColorBlue}
+              onRequestPicker={openAppearanceColorPicker}
+            />
+          </div>
+        </div>
+        <AppearanceSaveThemeControl
+          customThemes={appearanceThemes.themes}
+          isSaving={appearanceThemes.pendingOperation === 'save'}
+          isBusy={appearanceThemes.pendingOperation !== null}
+          errorMessage={appearanceThemes.errorOperation === 'save' ? appearanceThemes.errorMessage : null}
+          onSave={(name, onSaved) => appearanceThemes.saveTheme(customThemeInput(name, draft), onSaved)}
+          onDismissError={appearanceThemes.clearError}
         />
       </section>
 

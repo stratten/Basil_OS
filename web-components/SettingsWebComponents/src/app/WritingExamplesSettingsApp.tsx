@@ -391,12 +391,12 @@ export function WritingExamplesSettingsApp() {
           </div>
         )}
 
-        {isLoadingSamples ? (
+        {isLoadingSamples && samples.length === 0 ? (
           <p className="writing-examples-status" role="status">Loading writing samples...</p>
         ) : samples.length === 0 ? (
           <p className="writing-examples-empty">No writing samples found. Writing samples will appear here after you accept AssistantSessions, or you can add one with Add Sample.</p>
         ) : (
-          <ul className="writing-examples-list">
+          <ul className="writing-examples-list basil-refresh-region" aria-busy={isLoadingSamples ? true : undefined}>
             {samples.map((sample) => (
               <li key={sample.id} className="writing-examples-list-row">
                 <div className="writing-examples-list-header">

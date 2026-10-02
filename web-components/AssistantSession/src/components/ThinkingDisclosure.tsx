@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import ExecutionDisclosureChevron from '@shared/ExecutionDisclosureChevron';
+import PresenceRegion from '@shared/PresenceRegion';
 import { normalizedThinkingMarkdown } from '../lib/thinkingMarkdown';
 import { MarkdownView } from './MarkdownView';
 
@@ -42,11 +43,11 @@ export function ThinkingDisclosure({
         </span>
         <span className="assistant-session-thinking__label">{headerLabel}</span>
       </button>
-      {expanded && (
+      <PresenceRegion visible={expanded} className="basil-presence" settleWithoutTransition>
         <div className="assistant-session-thinking__body">
           <MarkdownView content={normalized} />
         </div>
-      )}
+      </PresenceRegion>
     </div>
   );
 }

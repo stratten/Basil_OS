@@ -1,5 +1,7 @@
 @import '../../../AgentTaskResult/src/styles/theme.css';
 @import '../../../shared/webkit-window-chrome.css';
+@import '../../../shared/presence-motion.css';
+@import '../../../shared/collapsible-sidebar.css';
 @import './meeting-assistant/foundation.css';
 @import './meeting-assistant/base-content.css';
 @import './meeting-assistant/parity-shell.css';

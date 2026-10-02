@@ -7,6 +7,7 @@ export interface PresenceTransition {
   shouldRender: boolean;
   phase: PresencePhase;
   completeTransition: (event: TransitionEvent<HTMLElement>) => void;
+  settle: () => void;
 }
 
 function prefersReducedMotion(): boolean {
@@ -50,15 +51,20 @@ export function usePresenceTransition(visible: boolean): PresenceTransition {
 
   useEffect(() => cancelPendingFrame, [cancelPendingFrame]);
 
+  const settle = useCallback(() => {
+    setPhase(current => current === 'exiting' ? 'exited' : current === 'entering' ? 'present' : current);
+  }, []);
+
   const completeTransition = useCallback((event: TransitionEvent<HTMLElement>) => {
     if (event.target !== event.currentTarget) return;
     if (event.propertyName !== 'opacity' && event.propertyName !== 'width' && event.propertyName !== 'flex-basis') return;
-    setPhase(current => current === 'exiting' ? 'exited' : current === 'entering' ? 'present' : current);
-  }, []);
+    settle();
+  }, [settle]);
 
   return {
     shouldRender: phase !== 'exited',
     phase,
     completeTransition,
+    settle,
   };
 }

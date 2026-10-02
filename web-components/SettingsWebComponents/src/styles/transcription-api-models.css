@@ -45,18 +45,7 @@
 }
 
 .transcription-api-models-key-input {
-  background: var(--background-primary);
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  color: var(--text-primary);
   flex: 1;
-  font-family: var(--font-family-light);
-  font-size: 13px;
-  padding: 6px 10px;
-}
-
-.transcription-api-models-key-input:disabled {
-  opacity: 0.6;
 }
 
 .transcription-api-models-list {

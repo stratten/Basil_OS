@@ -1,3 +1,6 @@
+@import '../../../shared/presence-motion.css';
+@import '../../../shared/reduced-motion.css';
+@import '../../../shared/collapsible-sidebar.css';
 @import './assistant-output-history/shell.css';
 @import './assistant-output-history/sidebar.css';
 @import './assistant-output-history/detail.css';

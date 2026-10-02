@@ -309,6 +309,29 @@ class MeetingDetectionSettings(BaseModel):
     )
 
 
+class CustomAppearanceThemeFields(BaseModel):
+    """Palette and finish captured by a user-saved Appearance theme."""
+    background_color_red: float = Field(ge=0.0, le=1.0)
+    background_color_green: float = Field(ge=0.0, le=1.0)
+    background_color_blue: float = Field(ge=0.0, le=1.0)
+    primary_color_red: float = Field(ge=0.0, le=1.0)
+    primary_color_green: float = Field(ge=0.0, le=1.0)
+    primary_color_blue: float = Field(ge=0.0, le=1.0)
+    secondary_color_red: float = Field(ge=0.0, le=1.0)
+    secondary_color_green: float = Field(ge=0.0, le=1.0)
+    secondary_color_blue: float = Field(ge=0.0, le=1.0)
+    text_color_red: float = Field(ge=0.0, le=1.0)
+    text_color_green: float = Field(ge=0.0, le=1.0)
+    text_color_blue: float = Field(ge=0.0, le=1.0)
+    surface_finish: Literal["flat", "metal"]
+
+
+class CustomAppearanceTheme(CustomAppearanceThemeFields):
+    """A named, deletable Appearance theme saved by the user."""
+    id: str = Field(description="Server-generated identifier of the form 'custom-<32 lowercase hex characters>'.")
+    name: str = Field(description="User-visible theme name, unique case-insensitively among custom themes.")
+
+
 class UIPreferences(BaseModel):
     """User interface preferences."""
     assistant_session_widget_position: str = Field(default="top-right")
@@ -347,6 +370,10 @@ class UIPreferences(BaseModel):
     processing_accent_color_blue: float = Field(default=DEFAULT_PROCESSING_ACCENT[2], description="Processing bubble accent blue component (0.0-1.0)")
 
     preferred_font: str = Field(default="Helvetica-Light", description="Preferred font family")
+    custom_appearance_themes: List[CustomAppearanceTheme] = Field(
+        default_factory=list,
+        description="User-saved Appearance themes shown after the built-in presets; only these can be deleted.",
+    )
 
 
 class GeneralSettings(BaseModel):

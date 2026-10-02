@@ -19,19 +19,30 @@ function panelId(id: PermissionsSubTab): string {
   return `permissions-sub-panel-${id}`
 }
 
-export function PermissionsSettingsApp({ requestedSubTab }: { requestedSubTab?: PermissionsSubTab }) {
+export function PermissionsSettingsApp({
+  requestedSubTab,
+  onSubTabChange,
+}: {
+  requestedSubTab?: PermissionsSubTab
+  onSubTabChange?: (subTab: PermissionsSubTab) => void
+}) {
   const [subTab, setSubTab] = useState<PermissionsSubTab>(requestedSubTab ?? 'application')
 
   useEffect(() => {
     if (requestedSubTab) setSubTab(requestedSubTab)
   }, [requestedSubTab])
 
+  function selectSubTab(next: PermissionsSubTab) {
+    setSubTab(next)
+    onSubTabChange?.(next)
+  }
+
   return (
     <div className="permissions-settings-shell">
       <SettingsSubTabs
         tabs={PERMISSIONS_SUB_TABS}
         selected={subTab}
-        onSelect={setSubTab}
+        onSelect={selectSubTab}
         ariaLabel="Permissions sections"
         getTabId={tabId}
         getPanelId={panelId}

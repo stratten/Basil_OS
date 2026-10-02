@@ -18,7 +18,7 @@ const PUSH_TO_TALK_MAX_MS = 5000
 interface TranscriptionSettingsPanelProps {
   settings: TranscriptionSettingsFields
   unloadDelayOptions: TranscriptionUnloadDelayOption[]
-  disabled: boolean
+  disabled?: boolean
   onSettingsChange: (settings: TranscriptionSettingsFields) => void
   onTrackRequest: (id: string) => void
 }
@@ -43,8 +43,8 @@ export function TranscriptionSettingsPanel({
       : settings.pushToTalkThresholdMs
     setThresholdDraft(String(next))
     if (next !== settings.pushToTalkThresholdMs) {
-      onTrackRequest(requestUpdatePushToTalkThreshold(next))
       onSettingsChange({ ...settings, pushToTalkThresholdMs: next })
+      onTrackRequest(requestUpdatePushToTalkThreshold(next))
     }
   }
 
@@ -63,8 +63,8 @@ export function TranscriptionSettingsPanel({
               disabled={disabled || !hasModels}
               ariaLabel="Default model"
               onValueChange={(modelId) => {
-                onTrackRequest(requestUpdateSelectedModel(modelId))
                 onSettingsChange({ ...settings, selectedModel: modelId })
+                onTrackRequest(requestUpdateSelectedModel(modelId))
               }}
               options={[
                 ...settings.localModels.map((model) => ({ value: model.id, label: model.displayName, group: 'Local Models' })),
@@ -81,8 +81,8 @@ export function TranscriptionSettingsPanel({
               disabled={disabled}
               ariaLabel="Unload model after closing widget"
               onValueChange={(seconds) => {
-                onTrackRequest(requestUpdateUnloadDelay(seconds))
                 onSettingsChange({ ...settings, unloadDelaySeconds: seconds })
+                onTrackRequest(requestUpdateUnloadDelay(seconds))
               }}
               options={unloadDelayOptions.map((option) => ({ value: option.seconds, label: option.label }))}
             />
@@ -99,8 +99,8 @@ export function TranscriptionSettingsPanel({
           checked={settings.autoPasteTranscription}
           disabled={disabled}
           onChange={(checked) => {
-            onTrackRequest(requestUpdateAutoPaste(checked))
             onSettingsChange({ ...settings, autoPasteTranscription: checked })
+            onTrackRequest(requestUpdateAutoPaste(checked))
           }}
         />
         <p className="transcription-settings-hint">Automatically paste transcribed text when transcription is complete.</p>
@@ -112,8 +112,8 @@ export function TranscriptionSettingsPanel({
               checked={settings.autoCloseOnPaste}
               disabled={disabled}
               onChange={(checked) => {
-                onTrackRequest(requestUpdateAutoCloseOnPaste(checked))
                 onSettingsChange({ ...settings, autoCloseOnPaste: checked })
+                onTrackRequest(requestUpdateAutoCloseOnPaste(checked))
               }}
             />
             <p className="transcription-settings-hint">The transcription widget will automatically close after transcription is complete and text is pasted.</p>
@@ -125,8 +125,8 @@ export function TranscriptionSettingsPanel({
           checked={settings.startMeetingDetectionAtStartup}
           disabled={disabled}
           onChange={(checked) => {
-            onTrackRequest(requestUpdateMeetingDetectionStartup(checked))
             onSettingsChange({ ...settings, startMeetingDetectionAtStartup: checked })
+            onTrackRequest(requestUpdateMeetingDetectionStartup(checked))
           }}
         />
         <p className="transcription-settings-hint">Automatically begin watching for meetings each time Basil launches. Turning this on also enables Meeting Detection; it will not start the monitor until the next launch.</p>
@@ -140,8 +140,8 @@ export function TranscriptionSettingsPanel({
           checked={settings.enablePushToTalk}
           disabled={disabled}
           onChange={(checked) => {
-            onTrackRequest(requestUpdatePushToTalk(checked))
             onSettingsChange({ ...settings, enablePushToTalk: checked })
+            onTrackRequest(requestUpdatePushToTalk(checked))
           }}
         />
         <p className="transcription-settings-hint">When enabled, holding the hotkey for longer than the threshold will automatically process when released.</p>

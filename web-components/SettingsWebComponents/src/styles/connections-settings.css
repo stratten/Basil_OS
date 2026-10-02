@@ -3,9 +3,15 @@
   container-type: inline-size;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--settings-card-gap);
   max-width: 920px;
   width: 100%;
+}
+
+.connections-settings-shell > [role='tabpanel'] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--settings-card-gap);
 }
 
 .connections-settings-status,
@@ -65,52 +71,10 @@
   color: var(--error-base, #d9363e);
 }
 
-.connections-settings-shell button,
-.connections-settings-shell input,
-.connections-settings-shell select {
-  font-family: inherit;
-}
-
-.connections-settings-shell input:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--secondary, var(--primary));
-}
-
-.connections-settings-shell button:focus-visible,
-.connections-settings-shell select:focus-visible {
-  outline: 2px solid var(--secondary, var(--primary));
-  outline-offset: 2px;
-}
-
-.connections-settings-shell button:disabled,
-.connections-settings-shell input:disabled,
-.connections-settings-shell select:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-.connections-panel {
-  background: color-mix(in srgb, var(--background-primary) 91%, var(--secondary, var(--primary)));
-  border: 1px solid color-mix(in srgb, var(--field-border) 78%, var(--secondary, var(--primary)));
-  border-radius: 12px;
-  box-shadow: 0 2px 6px rgb(0 0 0 / 8%), 0 12px 28px rgb(0 0 0 / 6%);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px;
-}
-
 .connections-panel-header {
   align-items: center;
   display: flex;
   justify-content: space-between;
-}
-
-.connections-panel-header h3 {
-  color: var(--text-primary);
-  font-family: var(--font-family-medium);
-  font-size: 15px;
-  margin: 0;
 }
 
 .connections-add-toggle {
@@ -134,14 +98,6 @@
   flex-direction: column;
   font-size: 12px;
   gap: 6px;
-}
-
-.connections-context-field input {
-  background: var(--background-primary);
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  padding: 7px 9px;
 }
 
 .connections-device-flow {
@@ -181,33 +137,8 @@
   padding: 6px 10px;
 }
 
-.connections-device-flow-code-row > .secondary-button {
-  background: var(--background-primary);
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  cursor: pointer;
-  font-size: 12px;
-  padding: 6px 10px;
-}
-
-.connections-device-flow-code-row > .secondary-button:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--background-primary) 88%, var(--secondary, var(--primary)));
-}
-
 .connections-device-flow-cancel {
-  background: transparent;
-  border: 1px solid color-mix(in srgb, var(--error-base, #d9363e) 55%, transparent);
-  border-radius: 6px;
-  color: var(--error-base, #d9363e);
-  cursor: pointer;
-  font-size: 12px;
   margin-left: auto;
-  padding: 6px 10px;
-}
-
-.connections-device-flow-cancel:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--error-base, #d9363e) 10%, transparent);
 }
 
 .connections-device-flow-waiting {
@@ -361,20 +292,6 @@
   gap: 6px;
 }
 
-.connections-add-form-field input {
-  background: var(--background-primary);
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  padding: 7px 9px;
-}
-
-.connections-add-form-hint {
-  color: var(--text-secondary);
-  font-size: 11px;
-  margin: 0;
-}
-
 .connections-add-form-actions {
   display: flex;
   gap: 8px;
@@ -386,45 +303,7 @@
   min-width: 92px;
 }
 
-.connections-add-form-actions > .primary-button {
-  background: var(--secondary, var(--primary));
-  border: 1px solid color-mix(in srgb, var(--secondary, var(--primary)) 70%, black);
-  border-radius: 6px;
-  color: #fff;
-  cursor: pointer;
-  font-family: var(--font-family-medium);
-  font-size: 12px;
-  padding: 7px 12px;
-}
-
-.connections-add-form-actions > .secondary-button {
-  background: var(--background-primary);
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  cursor: pointer;
-  font-family: var(--font-family-medium);
-  font-size: 12px;
-  padding: 7px 12px;
-}
-
-.connections-add-form-actions > .primary-button:hover:not(:disabled) {
-  filter: brightness(0.92);
-}
-
-.connections-add-form-actions > .secondary-button:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--background-primary) 88%, var(--secondary, var(--primary)));
-  border-color: color-mix(in srgb, var(--secondary, var(--primary)) 45%, var(--field-border));
-}
-
 .connections-settings-error > .secondary-button {
-  background: var(--background-primary);
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  cursor: pointer;
-  font-size: 12px;
-  padding: 6px 12px;
   width: fit-content;
 }
 
@@ -560,17 +439,6 @@
   width: 100%;
 }
 
-.connections-row-edit-name,
-.connections-row-edit-description,
-.connections-row-edit-token {
-  background: var(--background-primary);
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  font-size: 12px;
-  padding: 6px 8px;
-}
-
 .connections-row-actions {
   display: flex;
   flex-shrink: 0;
@@ -695,11 +563,7 @@
 }
 
 .connections-call-log {
-  background: color-mix(in srgb, var(--background-primary) 91%, var(--secondary, var(--primary)));
-  border: 1px solid color-mix(in srgb, var(--field-border) 78%, var(--secondary, var(--primary)));
-  border-radius: 12px;
-  box-shadow: 0 2px 6px rgb(0 0 0 / 8%), 0 12px 28px rgb(0 0 0 / 6%);
-  padding: 16px;
+  display: block;
 }
 
 .connections-call-log-header {
@@ -707,27 +571,6 @@
   display: flex;
   justify-content: space-between;
   margin-bottom: 10px;
-}
-
-.connections-call-log-header h3 {
-  color: var(--text-primary);
-  font-family: var(--font-family-medium);
-  font-size: 15px;
-  margin: 0;
-}
-
-.connections-call-log-header > .secondary-button {
-  background: var(--background-primary);
-  border: 1px solid var(--field-border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  cursor: pointer;
-  font-size: 12px;
-  padding: 5px 10px;
-}
-
-.connections-call-log-header > .secondary-button:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--background-primary) 88%, var(--secondary, var(--primary)));
 }
 
 .connections-call-log-empty {
@@ -775,6 +618,23 @@
 
 .connections-call-log-dot[data-status='error'] {
   background: var(--error-base, #d9363e);
+}
+
+.connections-call-log-connection {
+  background: color-mix(in srgb, var(--secondary, var(--primary)) 16%, var(--background-primary));
+  border: 1px solid color-mix(in srgb, var(--secondary, var(--primary)) 40%, var(--field-border));
+  border-radius: 6px;
+  box-sizing: border-box;
+  color: var(--text-primary);
+  flex-shrink: 0;
+  font-family: var(--font-family-medium);
+  font-size: 11px;
+  overflow: hidden;
+  padding: 3px 8px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 132px;
 }
 
 .connections-call-log-body {
@@ -858,6 +718,10 @@
     align-items: flex-start;
   }
 
+  .connections-call-log-connection {
+    width: 96px;
+  }
+
   .connections-call-log-meta {
     align-items: flex-start;
   }
@@ -870,9 +734,7 @@
 }
 
 .provider-profiles-subtitle {
-  color: var(--text-secondary);
-  font-size: 12px;
-  margin: 2px 0 0;
+  margin-top: 2px;
 }
 
 .provider-profile-row {

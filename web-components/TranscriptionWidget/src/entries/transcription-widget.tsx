@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { TranscriptionWidgetApp } from '../app/TranscriptionWidgetApp';
+import '@shared/reduced-motion.css';
 import '../styles/transcription-widget.css';
 
 const container = document.getElementById('root');

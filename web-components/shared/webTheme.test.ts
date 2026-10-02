@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyHostFonts, applyHostTheme } from './webTheme';
+import { enableBackdropSurfaceFinish } from './surfaceFinish';
 
 describe('webTheme', () => {
   it('applies every supplied theme token and resolves a light color scheme', () => {
@@ -96,6 +97,34 @@ describe('webTheme', () => {
 
     applyHostTheme({ backgroundPrimary: '#101820', surfaceFinish: 'flat' });
     expect(document.querySelector('.basil-surface-finish-overlay')).toBeNull();
+  });
+
+  it('renders the backdrop finish as metal in windows that have not opted in', () => {
+    enableBackdropSurfaceFinish(false);
+    document.body.innerHTML = '<div id="root"><section class="basil-webkit-window-frame"><main class="basil-webkit-window-surface"></main></section></div>';
+
+    applyHostTheme({ backgroundPrimary: '#101820', surfaceFinish: 'metal_backdrop' });
+
+    expect(document.documentElement.dataset.surfaceFinish).toBe('metal');
+    expect(document.querySelector('.basil-webkit-window-frame > .basil-surface-finish-overlay')).not.toBeNull();
+  });
+
+  it('places the backdrop finish behind window content once the window opts in', () => {
+    enableBackdropSurfaceFinish();
+    document.body.innerHTML = '<div id="root"><section class="basil-webkit-window-frame"><main class="basil-webkit-window-surface"></main></section></div>';
+
+    applyHostTheme({ backgroundPrimary: '#101820', surfaceFinish: 'metal_backdrop' });
+
+    expect(document.documentElement.dataset.surfaceFinish).toBe('metal_backdrop');
+    expect(document.querySelector('.basil-webkit-window-frame > .basil-surface-finish-overlay')).not.toBeNull();
+    const css = document.getElementById('basil-surface-finish-style')?.textContent ?? '';
+    expect(css).toContain('html[data-surface-finish="metal_backdrop"] .basil-webkit-window-frame > .basil-surface-finish-overlay {\n  z-index: 1;');
+    expect(css).toContain('html[data-surface-finish="metal_backdrop"] .basil-webkit-window-frame > .basil-webkit-window-surface {\n  z-index: 2;');
+    expect(css).toContain('html[data-surface-finish="metal_backdrop"] .basil-webkit-window-frame::before {\n  z-index: 3;');
+
+    applyHostTheme({ backgroundPrimary: '#101820', surfaceFinish: 'metal' });
+    expect(document.documentElement.dataset.surfaceFinish).toBe('metal');
+    enableBackdropSurfaceFinish(false);
   });
 
   it('retargets the finish when the rounded window surface mounts after initialization', async () => {

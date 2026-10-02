@@ -55,6 +55,8 @@ export const initialAssistantSessionState: AssistantSessionState = {
   hasTextSelection: false,
   selectedText: null,
   detectedApplicationName: null,
+  pasteOutcome: null,
+  pasteTargetApplicationName: null,
   isRefinementMode: false,
   iterationCount: 0,
   showRefinementIndicator: false,

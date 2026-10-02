@@ -7,6 +7,7 @@ export const PROTOCOL_VERSION = 1;
 export type AssistantSessionStatus = 'idle' | 'running' | 'completed' | 'failed';
 export type AssistantSessionInputMode = 'speak' | 'type';
 export type AssistantSessionBubbleMode = 'audioResponsive' | 'processing' | 'ambient';
+export type AssistantSessionPasteOutcome = 'pasted' | 'shown' | 'switchedApps' | 'targetUnavailable';
 
 export interface AssistantSessionModelInfo {
   id: string;
@@ -76,6 +77,9 @@ export interface AssistantSessionSnapshotPayload {
   hasTextSelection: boolean;
   selectedText: string | null;
   detectedApplicationName: string | null;
+  /** Result of the automatic paste for the latest completed output; null when no paste was attempted (Never mode or no output). */
+  pasteOutcome: AssistantSessionPasteOutcome | null;
+  pasteTargetApplicationName: string | null;
   isRefinementMode: boolean;
   iterationCount: number;
   showRefinementIndicator: boolean;

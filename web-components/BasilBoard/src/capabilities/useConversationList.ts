@@ -35,7 +35,6 @@ export function useConversationList() {
     nextCursorRef.current = undefined;
     loadingMoreRef.current = false;
     loadingRef.current = true;
-    setConversations([]);
     setHasMore(false);
     setLoading(true);
     setLoadingMore(false);
@@ -66,7 +65,6 @@ export function useConversationList() {
     nextCursorRef.current = undefined;
     loadingMoreRef.current = false;
     setQuery(nextQuery);
-    setConversations([]);
     setHasMore(false);
     setLoadingMore(false);
     setLoadError(undefined);

@@ -15,8 +15,8 @@ import { getConversationAgentTaskDetail } from '../../services/api';
 import NativeSymbolIcon from '../../components/NativeSymbolIcon';
 import type { ConversationArtifactPreviewSelection } from './conversationArtifactPreviewState';
 import { useConversationArtifactSidebarResize } from './useConversationArtifactSidebarResize';
-import type { PresencePhase } from '@agent-task/app/usePresenceTransition';
-import CrossfadeStack from '@agent-task/components/CrossfadeStack';
+import type { PresencePhase } from '@shared/usePresenceTransition';
+import CrossfadeStack from '@shared/CrossfadeStack';
 import type { WSEvent as AgentTaskWSEvent } from '@agent-task/types';
 import { basilBoardWebSocket } from '../../services/websocket';
 

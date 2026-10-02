@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Switch } from '@shared/Switch'
 import TokenizedSelect from '@shared/TokenizedSelect'
 import { PolicyRadioGroup, type PolicyRadioOption } from '../components/PolicyRadioGroup'
+import { useOptimisticSettings } from './useOptimisticSettings'
 import {
   notifyReasoningDefaultsSettingsReady,
   onReasoningDefaultsEvent,
@@ -12,7 +13,7 @@ import {
   requestUpdateAssistantSessionDefaultModality,
   requestUpdateAssistantSessionPushToTalk,
   requestUpdateAssistantSessionPushToTalkThreshold,
-  requestUpdateAutoPasteAssistantOutput,
+  requestUpdateAssistantOutputPasteMode,
   requestUpdateCloseAssistantSessionOnInsert,
   requestUpdateConversationDefaultConversationOnly,
   requestUpdateSelectedModel,
@@ -20,6 +21,7 @@ import {
 } from '../services/reasoningDefaultsBridge'
 import type {
   AgentTaskInputModality,
+  AssistantOutputPasteMode,
   AssistantSessionInputMode,
   ReasoningDefaultsSettingsSnapshot,
 } from '../types'
@@ -45,6 +47,12 @@ const ASSISTANT_SESSION_MODALITY_OPTIONS: readonly PolicyRadioOption<AssistantSe
   { id: 'type', label: 'Type' },
 ]
 
+const ASSISTANT_OUTPUT_PASTE_MODE_OPTIONS: readonly PolicyRadioOption<AssistantOutputPasteMode>[] = [
+  { id: 'always', label: 'Always', description: 'Paste every finished response into the app you started from.' },
+  { id: 'auto', label: 'Let Basil decide', description: 'Paste drafts, replies, and rewrites; keep explanations, answers, and research in the widget. If the model does not say, the response stays in the widget.' },
+  { id: 'never', label: 'Never', description: 'Keep every response in the widget; copy it from there.' },
+]
+
 function clampThreshold(value: number): number {
   return Math.min(5000, Math.max(500, value))
 }
@@ -57,7 +65,7 @@ function PushToTalkThreshold({
 }: {
   idPrefix: string
   valueMs: number
-  disabled: boolean
+  disabled?: boolean
   onCommit: (thresholdMs: number) => void
 }) {
   const [draftValue, setDraftValue] = useState(String(valueMs))
@@ -111,12 +119,9 @@ function PushToTalkThreshold({
 }
 
 export function ReasoningDefaultsSettingsApp() {
-  const [settings, setSettings] = useState<ReasoningDefaultsSettingsSnapshot | null>(null)
+  const { settings, isSaving, setSettings, track, receiveSnapshot, resolveIntent } = useOptimisticSettings<ReasoningDefaultsSettingsSnapshot>()
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [pendingId, setPendingId] = useState<string | null>(null)
   const [requestError, setRequestError] = useState<string | null>(null)
-  const pendingRef = useRef<string | null>(null)
-  pendingRef.current = pendingId
 
   useEffect(() => {
     debugLog('mount: subscribing to native events')
@@ -124,7 +129,7 @@ export function ReasoningDefaultsSettingsApp() {
       debugLog(`event received: ${event.type}`, event)
       if (event.type === 'init' || event.type === 'snapshot') {
         debugLog(`applying ${event.type} -> agentTaskDefaultModality=${event.settings?.agentTaskDefaultModality}, assistantSessionDefaultModality=${event.settings?.assistantSessionDefaultModality}`)
-        setSettings(event.settings)
+        receiveSnapshot(event.settings)
         setLoadError(null)
         return
       }
@@ -134,12 +139,9 @@ export function ReasoningDefaultsSettingsApp() {
         return
       }
       if (event.type === 'intentResult') {
-        const matchesPending = event.requestId === pendingRef.current
-        debugLog(`intentResult requestId=${event.requestId} status=${event.status} matchesPending=${matchesPending} (pendingRef=${pendingRef.current})`)
-        if (matchesPending) {
-          setPendingId(null)
-          setRequestError(event.status === 'error' ? event.message ?? 'Failed to update the setting.' : null)
-        }
+        const outcome = resolveIntent(event.requestId, event.status)
+        debugLog(`intentResult requestId=${event.requestId} status=${event.status} outcome=${outcome}`)
+        if (outcome === 'error') setRequestError(event.message ?? 'Failed to update the setting.')
       }
     })
     debugLog('mount: notifying native side ready')
@@ -151,13 +153,9 @@ export function ReasoningDefaultsSettingsApp() {
   }, [])
 
   function submit(id: string) {
-    if (pendingRef.current) {
-      debugLog(`submit blocked: request ${id} ignored because ${pendingRef.current} is still pending`)
-      return
-    }
     debugLog(`submit: request ${id} now pending`)
     setRequestError(null)
-    setPendingId(id)
+    track(id)
   }
 
   if (!settings && !loadError) {
@@ -173,7 +171,6 @@ export function ReasoningDefaultsSettingsApp() {
     )
   }
 
-  const disabled = pendingId !== null
   const s = settings!
   const hasNoModels =
     s.localModels.length === 0 &&
@@ -186,7 +183,7 @@ export function ReasoningDefaultsSettingsApp() {
         <h2 id="reasoning-defaults-model-heading">Default Model</h2>
         <TokenizedSelect
           value={s.selectedModelId}
-          disabled={disabled || hasNoModels}
+          disabled={hasNoModels}
           ariaLabel="Default reasoning model"
           onValueChange={(next) => {
             setSettings({ ...s, selectedModelId: next })
@@ -208,7 +205,6 @@ export function ReasoningDefaultsSettingsApp() {
           name="agent-task-default-modality"
           options={AGENT_TASK_MODALITY_OPTIONS}
           value={s.agentTaskDefaultModality}
-          disabled={disabled}
           onChange={(next) => {
             debugLog(`AgentTask radio clicked: ${s.agentTaskDefaultModality} -> ${next} (optimistic setSettings)`)
             setSettings({ ...s, agentTaskDefaultModality: next })
@@ -222,7 +218,6 @@ export function ReasoningDefaultsSettingsApp() {
           id="reasoning-defaults-agent-task-auto-reopen"
           label="Automatically reopen collapsed agent tasks when they finish"
           checked={s.agentTaskAutoReopenOnCompletion}
-          disabled={disabled}
           onChange={(checked) => { setSettings({ ...s, agentTaskAutoReopenOnCompletion: checked }); submit(requestUpdateAgentTaskAutoReopenOnCompletion(checked)) }}
         />
         <p className="reasoning-defaults-field-hint">When a focused agent task completes or fails while its result window is collapsed, reopen the window to show the final update.</p>
@@ -230,7 +225,6 @@ export function ReasoningDefaultsSettingsApp() {
           id="reasoning-defaults-agent-task-ptt"
           label="Enable push-to-talk mode"
           checked={s.agentTaskPushToTalk}
-          disabled={disabled}
           onChange={(checked) => { setSettings({ ...s, agentTaskPushToTalk: checked }); submit(requestUpdateAgentTaskPushToTalk(checked)) }}
         />
         <p className="reasoning-defaults-field-hint">When enabled, holding the agentTask hotkey for longer than the threshold will automatically process when released.</p>
@@ -238,7 +232,6 @@ export function ReasoningDefaultsSettingsApp() {
           <PushToTalkThreshold
             idPrefix="agent-task"
             valueMs={s.agentTaskPushToTalkThreshold}
-            disabled={disabled}
             onCommit={(thresholdMs) => { setSettings({ ...s, agentTaskPushToTalkThreshold: thresholdMs }); submit(requestUpdateAgentTaskPushToTalkThreshold(thresholdMs)) }}
           />
         )}
@@ -254,7 +247,6 @@ export function ReasoningDefaultsSettingsApp() {
           name="assistant-session-default-modality"
           options={ASSISTANT_SESSION_MODALITY_OPTIONS}
           value={s.assistantSessionDefaultModality}
-          disabled={disabled}
           onChange={(next) => {
             debugLog(`AssistantSession radio clicked: ${s.assistantSessionDefaultModality} -> ${next} (optimistic setSettings)`)
             setSettings({ ...s, assistantSessionDefaultModality: next })
@@ -268,7 +260,6 @@ export function ReasoningDefaultsSettingsApp() {
           id="reasoning-defaults-assistant-session-ptt"
           label="Enable push-to-talk mode"
           checked={s.assistantSessionPushToTalk}
-          disabled={disabled}
           onChange={(checked) => { setSettings({ ...s, assistantSessionPushToTalk: checked }); submit(requestUpdateAssistantSessionPushToTalk(checked)) }}
         />
         <p className="reasoning-defaults-field-hint">When enabled, holding the AssistantSession hotkey for longer than the threshold will automatically process when released.</p>
@@ -276,7 +267,6 @@ export function ReasoningDefaultsSettingsApp() {
           <PushToTalkThreshold
             idPrefix="assistant-session"
             valueMs={s.assistantSessionPushToTalkThreshold}
-            disabled={disabled}
             onCommit={(thresholdMs) => { setSettings({ ...s, assistantSessionPushToTalkThreshold: thresholdMs }); submit(requestUpdateAssistantSessionPushToTalkThreshold(thresholdMs)) }}
           />
         )}
@@ -287,22 +277,20 @@ export function ReasoningDefaultsSettingsApp() {
           id="reasoning-defaults-close-on-insert"
           label="Close AssistantSession after inserting"
           checked={s.closeAssistantSessionOnInsert}
-          disabled={disabled}
           onChange={(checked) => { setSettings({ ...s, closeAssistantSessionOnInsert: checked }); submit(requestUpdateCloseAssistantSessionOnInsert(checked)) }}
         />
-        <Switch
-          id="reasoning-defaults-auto-paste"
-          label="Auto paste AssistantSession output"
-          checked={s.autoPasteAssistantOutput}
-          disabled={disabled}
-          onChange={(checked) => { setSettings({ ...s, autoPasteAssistantOutput: checked }); submit(requestUpdateAutoPasteAssistantOutput(checked)) }}
+        <PolicyRadioGroup
+          legend="Paste output"
+          name="assistant-output-paste-mode"
+          options={ASSISTANT_OUTPUT_PASTE_MODE_OPTIONS}
+          value={s.assistantOutputPasteMode}
+          onChange={(next) => { setSettings({ ...s, assistantOutputPasteMode: next }); submit(requestUpdateAssistantOutputPasteMode(next)) }}
         />
-        <p className="reasoning-defaults-field-hint">Automatically paste AssistantSession output when generation is complete.</p>
+        <p className="reasoning-defaults-field-hint">Output is only pasted into the app that was in front when you started the session. If you switch to another app before it finishes, the response stays in the widget.</p>
         <Switch
           id="reasoning-defaults-region-selection"
           label="Use region selection for capture"
           checked={s.useRegionSelection}
-          disabled={disabled}
           onChange={(checked) => { setSettings({ ...s, useRegionSelection: checked }); submit(requestUpdateUseRegionSelection(checked)) }}
         />
         <p className="reasoning-defaults-field-hint">When enabled, allows manual screen region selection instead of automatic window capture for Enhanced and AssistantSession.</p>
@@ -316,13 +304,12 @@ export function ReasoningDefaultsSettingsApp() {
           id="reasoning-defaults-conversation-only-default"
           label="Start new conversations in Conversation only"
           checked={s.conversationDefaultConversationOnly === true}
-          disabled={disabled}
           onChange={(checked) => { setSettings({ ...s, conversationDefaultConversationOnly: checked }); submit(requestUpdateConversationDefaultConversationOnly(checked)) }}
         />
         <p className="reasoning-defaults-field-hint">New conversations keep replies in the conversation instead of starting agent tasks. Each conversation remembers its own Conversation only choice, so changing this default does not change existing conversations.</p>
       </section>
 
-      {pendingId && <p className="reasoning-defaults-status" role="status">Saving setting...</p>}
+      <p className="settings-visually-hidden" role="status">{isSaving ? 'Saving setting...' : ''}</p>
       {requestError && <p className="reasoning-defaults-inline-error" role="alert">{requestError}</p>}
     </div>
   )

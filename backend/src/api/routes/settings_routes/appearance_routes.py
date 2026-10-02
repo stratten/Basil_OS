@@ -1,11 +1,16 @@
 """Appearance routes for managing appearance and theming settings."""
 
-from typing import Literal
+from typing import List, Literal
+from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from ...core.models.preferences import Preferences
+from ...core.models.preference_models.ui_and_capture import (
+    CustomAppearanceTheme,
+    CustomAppearanceThemeFields,
+)
 from ...core.models.responses import SettingsResponse, UpdateResponse
 from ...core.logging.api_logger import api_logger
 # Royal Purple processing-bubble defaults are sourced from the same generated
@@ -141,5 +146,75 @@ async def update_appearance_settings(settings: AppearanceSettings) -> UpdateResp
         )
     except Exception as e:
         api_logger.error(f"❌ Error updating appearance settings: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+MAX_CUSTOM_APPEARANCE_THEMES = 24
+MAX_CUSTOM_APPEARANCE_THEME_NAME_LENGTH = 40
+
+
+class CustomAppearanceThemeCreate(CustomAppearanceThemeFields):
+    """Request body for saving the on-screen palette and finish as a named theme."""
+    name: str = Field(min_length=1, max_length=MAX_CUSTOM_APPEARANCE_THEME_NAME_LENGTH)
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def strip_name(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+
+class CustomAppearanceThemesResponse(BaseModel):
+    """Every saved custom theme, in creation order."""
+    themes: List[CustomAppearanceTheme]
+
+
+@router.get("/themes", response_model=CustomAppearanceThemesResponse)
+async def list_custom_appearance_themes() -> CustomAppearanceThemesResponse:
+    """List the user's saved custom Appearance themes."""
+    try:
+        preferences = load_preferences()
+        return CustomAppearanceThemesResponse(themes=preferences.ui.custom_appearance_themes)
+    except Exception as e:
+        api_logger.error(f"❌ Error listing custom appearance themes: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/themes", response_model=CustomAppearanceThemesResponse)
+async def create_custom_appearance_theme(theme: CustomAppearanceThemeCreate) -> CustomAppearanceThemesResponse:
+    """Save a named custom theme without changing the active appearance. Responds 409 for a duplicate name and 400 when the theme limit is reached."""
+    try:
+        preferences = load_preferences()
+        themes = list(preferences.ui.custom_appearance_themes)
+        if any(existing.name.casefold() == theme.name.casefold() for existing in themes):
+            raise HTTPException(status_code=409, detail="A custom theme with that name already exists.")
+        if len(themes) >= MAX_CUSTOM_APPEARANCE_THEMES:
+            raise HTTPException(status_code=400, detail=f"You can save up to {MAX_CUSTOM_APPEARANCE_THEMES} custom themes.")
+        themes.append(CustomAppearanceTheme(id=f"custom-{uuid4().hex}", **theme.model_dump()))
+        preferences.ui.custom_appearance_themes = themes
+        save_preferences(preferences)
+        return CustomAppearanceThemesResponse(themes=themes)
+    except HTTPException:
+        raise
+    except Exception as e:
+        api_logger.error(f"❌ Error saving custom appearance theme: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/themes/{theme_id}", response_model=CustomAppearanceThemesResponse)
+async def delete_custom_appearance_theme(theme_id: str) -> CustomAppearanceThemesResponse:
+    """Delete one custom theme without changing the active appearance. Responds 404 when the theme does not exist."""
+    try:
+        preferences = load_preferences()
+        existing_themes = preferences.ui.custom_appearance_themes
+        themes = [theme for theme in existing_themes if theme.id != theme_id]
+        if len(themes) == len(existing_themes):
+            raise HTTPException(status_code=404, detail="Custom theme not found.")
+        preferences.ui.custom_appearance_themes = themes
+        save_preferences(preferences)
+        return CustomAppearanceThemesResponse(themes=themes)
+    except HTTPException:
+        raise
+    except Exception as e:
+        api_logger.error(f"❌ Error deleting custom appearance theme: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Switch } from '@shared/Switch'
 import TokenizedSelect from '@shared/TokenizedSelect'
 import {
@@ -11,6 +11,7 @@ import {
   updateHomeToggle,
 } from '../services/homeBridge'
 import type { HomeQuickToggleField, HomeSettingsFields } from '../types'
+import { useOptimisticSettings } from './useOptimisticSettings'
 
 export type HomeNavigationTarget = 'permissions' | 'models' | 'account'
 
@@ -18,22 +19,15 @@ interface HomeSettingsAppProps {
   onNavigate: (tab: HomeNavigationTarget) => void
 }
 
-interface PendingRequest {
-  id: string
-}
-
 export function HomeSettingsApp({ onNavigate }: HomeSettingsAppProps) {
-  const [fields, setFields] = useState<HomeSettingsFields | null>(null)
+  const { settings: fields, isSaving, setSettings: setFields, track, receiveSnapshot, resolveIntent } = useOptimisticSettings<HomeSettingsFields>()
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [pending, setPending] = useState<PendingRequest | null>(null)
   const [requestError, setRequestError] = useState<string | null>(null)
-  const pendingRef = useRef<PendingRequest | null>(null)
-  pendingRef.current = pending
 
   useEffect(() => {
     const unsubscribe = onHomeEvent((event) => {
       if (event.type === 'init' || event.type === 'snapshot') {
-        setFields(event.fields)
+        receiveSnapshot(event.fields)
         setLoadError(null)
         return
       }
@@ -41,9 +35,8 @@ export function HomeSettingsApp({ onNavigate }: HomeSettingsAppProps) {
         setLoadError(event.message)
         return
       }
-      if (event.type === 'intentResult' && event.requestId === pendingRef.current?.id) {
-        setPending(null)
-        setRequestError(event.status === 'error' ? event.message ?? 'Failed to update setting.' : null)
+      if (event.type === 'intentResult' && resolveIntent(event.requestId, event.status) === 'error') {
+        setRequestError(event.message ?? 'Failed to update setting.')
       }
     })
     notifyHomeSettingsReady()
@@ -51,33 +44,34 @@ export function HomeSettingsApp({ onNavigate }: HomeSettingsAppProps) {
   }, [])
 
   function handleToggle(field: HomeQuickToggleField, value: boolean) {
-    if (!fields || pending) return
+    if (!fields) return
     setRequestError(null)
-    setPending({ id: updateHomeToggle(field, value) })
+    setFields({ ...fields, [field]: value } as HomeSettingsFields)
+    track(updateHomeToggle(field, value))
   }
 
   function handleModelChange(modelId: string) {
-    if (!fields || pending) return
+    if (!fields) return
     setRequestError(null)
-    setPending({ id: updateHomeSelectedModel(modelId) })
+    setFields({ ...fields, selectedModelId: modelId })
+    track(updateHomeSelectedModel(modelId))
   }
 
   function handleTranscriptionModelChange(modelId: string) {
-    if (!fields || pending) return
+    if (!fields) return
     setRequestError(null)
-    setPending({ id: updateHomeSelectedTranscriptionModel(modelId) })
+    setFields({ ...fields, selectedTranscriptionModelId: modelId })
+    track(updateHomeSelectedTranscriptionModel(modelId))
   }
 
   function handleOpenSetupAssistant() {
-    if (pending) return
     setRequestError(null)
-    setPending({ id: openHomeSetupAssistant() })
+    track(openHomeSetupAssistant())
   }
 
   function handleOpenPowerUserGuide() {
-    if (pending) return
     setRequestError(null)
-    setPending({ id: openHomePowerUserGuide() })
+    track(openHomePowerUserGuide())
   }
 
   if (!fields && !loadError) {
@@ -117,10 +111,10 @@ export function HomeSettingsApp({ onNavigate }: HomeSettingsAppProps) {
               <span>You stepped out of setup before finishing. Pick up where you left off any time.</span>
             </div>
           )}
-          <button type="button" className="secondary-button home-settings-inline-action" disabled={pending !== null} onClick={handleOpenSetupAssistant}>
+          <button type="button" className="secondary-button home-settings-inline-action" onClick={handleOpenSetupAssistant}>
             {f.setupAssistantPending ? 'Resume Setup' : 'Open Setup Assistant'}
           </button>
-          <button type="button" className="secondary-button home-settings-inline-action" disabled={pending !== null} onClick={handleOpenPowerUserGuide}>
+          <button type="button" className="secondary-button home-settings-inline-action" onClick={handleOpenPowerUserGuide}>
             Explore Basil's Capabilities
           </button>
           <p className="home-settings-hint">Learn about all of Basil's features in detail.</p>
@@ -139,7 +133,7 @@ export function HomeSettingsApp({ onNavigate }: HomeSettingsAppProps) {
                 <TokenizedSelect
                   className="home-settings-select"
                   value={f.selectedModelId}
-                  disabled={pending !== null || !f.reasoningModelsAvailable || hasNoModels}
+                  disabled={!f.reasoningModelsAvailable || hasNoModels}
                   ariaLabel="Default reasoning model"
                   onValueChange={handleModelChange}
                   options={[
@@ -163,7 +157,7 @@ export function HomeSettingsApp({ onNavigate }: HomeSettingsAppProps) {
                 <TokenizedSelect
                   className="home-settings-select"
                   value={f.selectedTranscriptionModelId}
-                  disabled={pending !== null || !f.transcriptionModelsAvailable || hasNoTranscriptionModels}
+                  disabled={!f.transcriptionModelsAvailable || hasNoTranscriptionModels}
                   ariaLabel="Default transcription model"
                   onValueChange={handleTranscriptionModelChange}
                   options={[
@@ -186,15 +180,15 @@ export function HomeSettingsApp({ onNavigate }: HomeSettingsAppProps) {
         <section className="home-settings-section" aria-labelledby="home-launch-heading">
           <h2 id="home-launch-heading">Launch Preferences</h2>
           {!f.backgroundBehaviorAvailable && <p className="home-settings-section-warning">Hotkey and Voice Listener preferences are temporarily unavailable.</p>}
-          <Switch id="home-enable-monitoring" label="Enable hotkey monitoring at startup" checked={f.enableMonitoringAtStartup} disabled={pending !== null || !f.backgroundBehaviorAvailable} onChange={(checked) => handleToggle('enableMonitoringAtStartup', checked)} />
-          <Switch id="home-enable-voice-listener" label="Enable Voice Listener at startup" checked={f.enableVoiceListenerAtStartup} disabled={pending !== null || !f.backgroundBehaviorAvailable} onChange={(checked) => handleToggle('enableVoiceListenerAtStartup', checked)} />
-          <Switch id="home-start-activity-capture" label="Start Activity Capture on launch" checked={f.startActivityCaptureAtLaunch} disabled={pending !== null || !f.activityCaptureAvailable || !f.activityCaptureEnabled} onChange={(checked) => handleToggle('startActivityCaptureAtLaunch', checked)} />
+          <Switch id="home-enable-monitoring" label="Enable hotkey monitoring at startup" checked={f.enableMonitoringAtStartup} disabled={!f.backgroundBehaviorAvailable} onChange={(checked) => handleToggle('enableMonitoringAtStartup', checked)} />
+          <Switch id="home-enable-voice-listener" label="Enable Voice Listener at startup" checked={f.enableVoiceListenerAtStartup} disabled={!f.backgroundBehaviorAvailable} onChange={(checked) => handleToggle('enableVoiceListenerAtStartup', checked)} />
+          <Switch id="home-start-activity-capture" label="Start Activity Capture on launch" checked={f.startActivityCaptureAtLaunch} disabled={!f.activityCaptureAvailable || !f.activityCaptureEnabled} onChange={(checked) => handleToggle('startActivityCaptureAtLaunch', checked)} />
           <p className="home-settings-hint">
             {f.activityCaptureEnabled
               ? 'Starts the capture scheduler after Basil reconnects to its backend on your next launch.'
               : 'Enable Automatic Capture in Activity Capture settings before choosing a startup schedule.'}
           </p>
-          <Switch id="home-start-meeting-detection" label="Start Meeting Detection on launch" checked={f.startMeetingDetectionAtLaunch} disabled={pending !== null || !f.meetingDetectionAvailable} onChange={(checked) => handleToggle('startMeetingDetectionAtLaunch', checked)} />
+          <Switch id="home-start-meeting-detection" label="Start Meeting Detection on launch" checked={f.startMeetingDetectionAtLaunch} disabled={!f.meetingDetectionAvailable} onChange={(checked) => handleToggle('startMeetingDetectionAtLaunch', checked)} />
           <p className="home-settings-hint">
             Turning this on also enables Meeting Detection; it won't start the monitor until the next launch.
           </p>
@@ -203,15 +197,15 @@ export function HomeSettingsApp({ onNavigate }: HomeSettingsAppProps) {
         <section className="home-settings-section" aria-labelledby="home-features-heading">
           <h2 id="home-features-heading">Active Features</h2>
           {!f.activityCaptureAvailable && <p className="home-settings-section-warning">Activity Capture status is temporarily unavailable.</p>}
-          <Switch id="home-activity-capture-enabled" label="Activity Capture" checked={f.activityCaptureEnabled} disabled={pending !== null || !f.activityCaptureAvailable} onChange={(checked) => handleToggle('activityCaptureEnabled', checked)} />
+          <Switch id="home-activity-capture-enabled" label="Activity Capture" checked={f.activityCaptureEnabled} disabled={!f.activityCaptureAvailable} onChange={(checked) => handleToggle('activityCaptureEnabled', checked)} />
           {!f.meetingDetectionAvailable && <p className="home-settings-section-warning">Meeting Detection status is temporarily unavailable.</p>}
-          <Switch id="home-meeting-detection-enabled" label="Meeting Detection" checked={f.meetingDetectionEnabled} disabled={pending !== null || !f.meetingDetectionAvailable} onChange={(checked) => handleToggle('meetingDetectionEnabled', checked)} />
+          <Switch id="home-meeting-detection-enabled" label="Meeting Detection" checked={f.meetingDetectionEnabled} disabled={!f.meetingDetectionAvailable} onChange={(checked) => handleToggle('meetingDetectionEnabled', checked)} />
           {!f.proactiveSuggestionsAvailable && <p className="home-settings-section-warning">Proactive Suggestions status is temporarily unavailable.</p>}
-          <Switch id="home-proactive-suggestions-enabled" label="Proactive Suggestions" checked={f.proactiveSuggestionsEnabled} disabled={pending !== null || !f.proactiveSuggestionsAvailable} onChange={(checked) => handleToggle('proactiveSuggestionsEnabled', checked)} />
+          <Switch id="home-proactive-suggestions-enabled" label="Proactive Suggestions" checked={f.proactiveSuggestionsEnabled} disabled={!f.proactiveSuggestionsAvailable} onChange={(checked) => handleToggle('proactiveSuggestionsEnabled', checked)} />
         </section>
       </div>
 
-      {pending && <p className="home-settings-status" role="status">Saving setting...</p>}
+      <p className="settings-visually-hidden" role="status">{isSaving ? 'Saving setting...' : ''}</p>
       {requestError && <p className="home-settings-inline-error" role="alert">{requestError}</p>}
     </div>
   )

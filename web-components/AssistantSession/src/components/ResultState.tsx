@@ -4,6 +4,7 @@ import { ThinkingDisclosure } from './ThinkingDisclosure';
 import { ActionButtons } from './result/ActionButtons';
 import { ContextSection } from './result/ContextSection';
 import { OutputCard } from './result/OutputCard';
+import { PasteStatusLine } from './result/PasteStatusLine';
 import { RefinementPanel } from './result/RefinementPanel';
 import { RequestSection } from './result/RequestSection';
 import type { AssistantSessionState } from '../state/assistantSessionReducer';
@@ -60,6 +61,9 @@ export function ResultState({
         onEditedContentChange={setEditedContent}
         fallbackModelUsed={state.fallbackModelUsed}
       />
+      {state.assistantSessionStatus === 'completed' && (
+        <PasteStatusLine outcome={state.pasteOutcome} applicationName={state.pasteTargetApplicationName} />
+      )}
       <ActionButtons
         state={state}
         sampleContent={state.isEditMode ? editedContent : lastAppliedContent ?? state.assistantOutput}

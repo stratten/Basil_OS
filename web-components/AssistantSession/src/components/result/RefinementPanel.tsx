@@ -17,14 +17,14 @@ export function RefinementPanel({
   return (
     <>
       {state.isRefinementMode && state.isRecording && (
-        <div className="assistant-session-refinement assistant-session-refinement--recording">
+        <div className="assistant-session-refinement assistant-session-refinement--recording basil-presence-enter">
           <button type="button" className="assistant-session-actions__btn assistant-session-actions__btn--recording" title="Stop refinement recording and process" onClick={stopRefinementRecording}>
             Stop Recording
           </button>
         </div>
       )}
       {isTypedRefinementMode && state.assistantSessionStatus !== 'running' && (
-        <div className="assistant-session-refinement__typed">
+        <div className="assistant-session-refinement__typed basil-presence-enter">
           <div className="assistant-session-refinement__typed-label">Refinement instruction:</div>
           <textarea
             className="assistant-session-refinement__textarea"
@@ -62,13 +62,13 @@ export function RefinementPanel({
         </div>
       )}
       {state.isRefinementMode && (
-        <div className="assistant-session-refinement__indicator">
+        <div className="assistant-session-refinement__indicator basil-presence-enter">
           <span>Refinement Mode</span>
           {state.iterationCount > 0 && <span className="assistant-session-refinement__iteration">(Iteration {state.iterationCount})</span>}
         </div>
       )}
       {state.isRefinementMode && state.transcriptionStatus === 'idle' && !state.isRecording && (
-        <div className="assistant-session-refinement__hint">
+        <div className="assistant-session-refinement__hint basil-presence-enter">
           Press {state.hotkeyDisplayString ?? 'the assistant hotkey'} or click Refine to continue
         </div>
       )}

@@ -57,6 +57,24 @@ def _migrate_legacy_keys_for_team_identity_rename(data: dict) -> None:
         )
 
 
+def migrate_assistant_output_paste_mode_in_data(data: dict) -> None:
+    """Replace the legacy ``models.auto_paste_assistant_output`` boolean with ``models.assistant_output_paste_mode``.
+
+    False maps to "never"; True (and any other legacy value) maps to "always". When the new key is already present the legacy key is dropped without overwriting it. Must run after ``_migrate_legacy_keys_for_team_identity_rename`` so the older ``auto_paste_suggestion`` name has already been renamed.
+    """
+    models = data.get("models")
+    if not isinstance(models, dict) or "auto_paste_assistant_output" not in models:
+        return
+    legacy_value = models.pop("auto_paste_assistant_output")
+    if "assistant_output_paste_mode" in models:
+        return
+    models["assistant_output_paste_mode"] = "never" if legacy_value is False else "always"
+    logger.info(
+        f"📦 Migrated models.auto_paste_assistant_output={legacy_value!r} -> "
+        f"assistant_output_paste_mode={models['assistant_output_paste_mode']}"
+    )
+
+
 def normalize_auth_preference_in_data(data: dict) -> None:
     """Normalize legacy auth api-key preference aliases in raw preference data."""
     from .execution_and_connections import APIKeyPreference

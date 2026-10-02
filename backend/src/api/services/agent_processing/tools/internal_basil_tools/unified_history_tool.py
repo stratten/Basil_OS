@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Literal, Optional
 
@@ -18,6 +19,8 @@ _SOURCE_KINDS = (
     "agent_task", "transcription", "assistant_output", "scheduled_run",
     "conversation", "screen_block", "meeting",
 )
+
+_DATE_ONLY = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 
 class UnifiedHistoryInput(BaseModel):
@@ -52,7 +55,18 @@ class UnifiedHistoryInput(BaseModel):
             "Use for 'what did I do yesterday' style aggregation."
         ),
     )
-    limit: int = Field(default=200, description="Maximum events to return (max 1000).")
+    limit: int = Field(
+        default=200,
+        description="Maximum events per page (max 500); the page is trimmed further to fit the tool output budget.",
+    )
+    cursor: Optional[str] = Field(
+        default=None,
+        description="next_cursor from the previous page. Keep every other filter unchanged.",
+    )
+    view: Literal["compact", "full"] = Field(
+        default="compact",
+        description="compact (default) returns title, one bounded summary, outcome, and back-reference; full adds narrative, raw_summary, and payload.",
+    )
 
 
 def _relative(token: str) -> Optional[datetime]:
@@ -77,14 +91,20 @@ def _relative(token: str) -> Optional[datetime]:
 
 
 def _parse_time(value: Optional[str], default: datetime) -> str:
-    """Normalize to a UTC ISO string; stored occurred_at is compared as text."""
+    """Normalize to a UTC ISO string; stored occurred_at is compared as text.
+
+    A date-only value names the user's local calendar day, so it resolves to local midnight like the relative tokens; a timestamp without an offset is still read as UTC.
+    """
     if not value:
         return default.astimezone(timezone.utc).isoformat()
     relative = _relative(value)
     if relative is not None:
         return relative.astimezone(timezone.utc).isoformat()
+    text = value.strip()
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if _DATE_ONLY.fullmatch(text):
+            return datetime.fromisoformat(text).astimezone().astimezone(timezone.utc).isoformat()
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
     except ValueError:
         return default.isoformat()
     if parsed.tzinfo is None:
@@ -99,23 +119,43 @@ async def _query_unified_history_impl(
     outcome: Optional[str] = None,
     group_by: Optional[str] = None,
     limit: int = 200,
+    cursor: Optional[str] = None,
+    view: str = "compact",
+    max_output_chars: Optional[int] = None,
 ) -> str:
     try:
         from api.core.knowledge.sqlite.sqlite_knowledge_service_component_services.infrastructure.connection import (
             get_sync_connection,
         )
         from api.dependencies import get_sqlite_knowledge_service
+        from api.services.retrieval.browse_paging import (
+            build_page,
+            clamp_page_limit,
+            decode_cursor,
+            resolve_output_budget,
+        )
         from api.services.zettel import store
 
         now = datetime.now(timezone.utc)
         start = _parse_time(start_time, now - timedelta(days=1))
         end = _parse_time(end_time, now)
         kinds = [kind for kind in (source_kinds or []) if kind in _SOURCE_KINDS] or None
+        page_limit = clamp_page_limit(limit)
+        try:
+            before = decode_cursor(cursor) if cursor else None
+        except ValueError as exc:
+            return json.dumps({"success": False, "error": str(exc), "events": []}, ensure_ascii=False)
 
         with get_sync_connection(get_sqlite_knowledge_service().db_path) as conn:
-            events = store.query_entries(
+            fetched = store.query_entries(
                 conn, start=start, end=end, source_kinds=kinds,
-                outcome=outcome, limit=limit,
+                outcome=outcome, limit=page_limit + 1, before=before,
+            )
+            total_in_range = sum(
+                store.count_entries_by(
+                    conn, dimension="source_kind", start=start, end=end,
+                    source_kinds=kinds, outcome=outcome,
+                ).values()
             )
             grouped = (
                 store.count_entries_by(
@@ -126,20 +166,27 @@ async def _query_unified_history_impl(
                 else None
             )
 
+        page = build_page(
+            fetched,
+            page_limit=page_limit,
+            max_output_chars=resolve_output_budget(max_output_chars),
+            view="full" if view == "full" else "compact",
+        )
         response: Dict[str, Any] = {
             "success": True,
-            "count": len(events),
+            "count": len(page["events"]),
             "range": {"start": start, "end": end},
-            "events": events,
+            "events": page["events"],
+            "total_in_range": total_in_range,
+            "next_cursor": page["next_cursor"],
+            "truncated": page["next_cursor"] is not None,
         }
         if grouped is not None:
             # Counted in SQL over the whole range, so these stay accurate even
             # when the event list below was cut off by the limit.
             response["grouped_counts"] = grouped
             response["grouped_counts_cover"] = "entire range, not just returned events"
-        if len(events) >= max(1, min(limit, 1000)):
-            response["truncated"] = True
-        return json.dumps(response, ensure_ascii=False, indent=2)
+        return json.dumps(response, ensure_ascii=False, default=str)
     except Exception as exc:
         logger.error(f"Error querying unified history: {exc}", exc_info=True)
         return json.dumps({"success": False, "error": str(exc), "events": []}, ensure_ascii=False)
@@ -154,8 +201,11 @@ SLIM_DESCRIPTION = (
     "Each event carries a title, a short summary, an outcome, and a "
     "back-reference (source_kind + source_id) for fetching full detail from "
     "the owning service (for meetings: the full transcript and every valid "
-    "associated analysis). Use group_by='day' or 'source_kind' to aggregate. For "
-    "screen-only questions about OCR'd text, prefer query_activities."
+    "associated analysis). Use group_by='day' or 'source_kind' to aggregate. "
+    "Results are newest-first pages; when next_cursor is not null, call again "
+    "with the same filters and cursor=next_cursor, and compare count with "
+    "total_in_range before claiming full coverage. Date-only values mean local "
+    "midnight. For screen-only questions about OCR'd text, prefer query_activities."
 )
 
 _FULL_DESCRIPTION = """Query the unified event stream spanning every Basil subsystem.
@@ -195,21 +245,28 @@ the events, so you can answer summary questions without post-processing. Those
 counts are computed over the entire requested range, so they remain correct
 even when `truncated` is true and the event list itself was cut off by `limit`.
 
+**PAGING:**
+Events arrive newest-first, at most 500 per page and fewer when the page would exceed the tool output budget. `total_in_range` counts every matching event. When `next_cursor` is not null, call again with the same filters and `cursor=next_cursor` for the next older page. For a multi-day review, aggregate with group_by='day' first, then page through one day at a time. `view='compact'` (default) omits narrative, raw_summary, and payload; request `view='full'` only for the few events you need in depth.
+
 Relative tokens resolve against the user's local day, so 'yesterday' is their
-yesterday rather than a UTC calendar day.
+yesterday rather than a UTC calendar day. Date-only values such as '2026-07-27'
+also mean local midnight at the start of that day.
 """
 
 
-def create_unified_history_tool(profile=None) -> StructuredTool:
+def create_unified_history_tool(profile=None, max_output_chars: Optional[int] = None) -> StructuredTool:
     """Factory for the ``query_unified_history`` tool."""
     tool_description = select_description_for_profile(
         profile, _FULL_DESCRIPTION, SLIM_DESCRIPTION
     )
 
+    async def _invoke(**kwargs) -> str:
+        return await _query_unified_history_impl(**kwargs, max_output_chars=max_output_chars)
+
     return StructuredTool.from_function(
-        func=_query_unified_history_impl,
+        func=_invoke,
         name="query_unified_history",
         description=tool_description,
         args_schema=UnifiedHistoryInput,
-        coroutine=_query_unified_history_impl,
+        coroutine=_invoke,
     )

@@ -22,6 +22,13 @@ from .contracts import (
     RetrievalHit,
     RetrievalSearchRequest,
 )
+from .browse_paging import (
+    build_page,
+    clamp_page_limit,
+    decode_cursor,
+    resolve_output_budget,
+    sort_newest_first,
+)
 from .indexer import DEFAULT_EMBEDDING_MODEL
 from .numpy_vector_sidecar import NumpyVectorSidecar
 
@@ -34,6 +41,18 @@ CANDIDATE_MULTIPLIER = 3
 def _parse_time(value: str | None, default: datetime) -> str:
     from api.services.agent_processing.tools.internal_basil_tools.unified_history_tool import _parse_time as legacy_parse
     return legacy_parse(value, default)
+
+
+def _local_day(value: Any) -> str:
+    """Local calendar day of a stored timestamp; offset-less values are UTC, as SQLite assumes."""
+    text = str(value or "")
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return text[:10] or "none"
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone().date().isoformat()
 
 
 def _fuse_ranked_candidates(
@@ -202,7 +221,12 @@ class UnifiedRetrievalService:
         start = _parse_time(request.start, now - timedelta(days=1))
         end = _parse_time(request.end, now)
         kinds = request.source_kinds
-        limit = max(1, min(request.limit, 1000))
+        page_limit = clamp_page_limit(request.limit)
+        fetch_limit = page_limit + 1
+        try:
+            before = decode_cursor(request.cursor) if request.cursor else None
+        except ValueError as exc:
+            return {"success": False, "action": "browse", "error": str(exc)}
         with get_sync_connection(self.db_path) as conn:
             zettel_events = store.query_entries(
                 conn,
@@ -210,44 +234,54 @@ class UnifiedRetrievalService:
                 end=end,
                 source_kinds=kinds,
                 outcome=request.outcome,
-                limit=1000,
+                limit=fetch_limit,
+                before=before,
             )
             for event in zettel_events:
                 event["representation"] = "zettel"
             where, params = _raw_filters(start, end, kinds, request.outcome)
-            raw_rows = conn.execute(
-                f"SELECT * FROM zettel_raw_search_fts {where} ORDER BY occurred_at DESC",
+            raw_total = conn.execute(
+                f"SELECT COUNT(*) FROM zettel_raw_search_fts {where}",
                 params,
+            ).fetchone()[0]
+            page_where, page_params = store.with_keyset_before(where, params, before)
+            raw_rows = conn.execute(
+                f"SELECT * FROM zettel_raw_search_fts {page_where} "
+                f"{store.NEWEST_FIRST_ORDER} LIMIT ?",
+                [*page_params, fetch_limit],
             ).fetchall()
             raw_events = [_raw_event(row) for row in raw_rows]
-            merged = sorted(
-                zettel_events + raw_events,
-                key=lambda event: str(event["occurred_at"]),
-                reverse=True,
+            zettel_total = sum(
+                store.count_entries_by(
+                    conn,
+                    dimension="source_kind",
+                    start=start,
+                    end=end,
+                    source_kinds=kinds,
+                    outcome=request.outcome,
+                ).values()
             )
-            representation_counts = {
-                "zettel": sum(
-                    store.count_entries_by(
-                        conn,
-                        dimension="source_kind",
-                        start=start,
-                        end=end,
-                        source_kinds=kinds,
-                        outcome=request.outcome,
-                    ).values()
-                ),
-                "raw": len(raw_events),
-            }
-            truncated = len(merged) > limit
-            events = merged[:limit]
+        candidates = sort_newest_first(zettel_events + raw_events)[:fetch_limit]
+        page = build_page(
+            candidates,
+            page_limit=page_limit,
+            max_output_chars=resolve_output_budget(request.max_output_chars),
+            view=request.view,
+        )
+        next_cursor = page["next_cursor"]
         return {
             "success": True,
             "action": "browse",
-            "count": len(events),
+            "count": len(page["events"]),
             "range": {"start": start, "end": end},
-            "events": events,
-            "representation_counts": representation_counts,
-            "truncated": truncated,
+            "events": page["events"],
+            "representation_counts": {"zettel": zettel_total, "raw": raw_total},
+            "total_in_range": zettel_total + raw_total,
+            "truncated": next_cursor is not None,
+            "next_cursor": next_cursor,
+            "page_limit": page_limit,
+            "view": request.view,
+            "budget_trimmed": page["budget_trimmed"],
         }
 
     def aggregate(self, request: RetrievalAggregateRequest) -> dict[str, Any]:
@@ -273,7 +307,7 @@ class UnifiedRetrievalService:
                 if request.group_by == "source_kind":
                     bucket = str(row["source_kind"])
                 elif request.group_by == "day":
-                    bucket = str(row["occurred_at"])[:10]
+                    bucket = _local_day(row["occurred_at"])
                 else:
                     bucket = str(row["outcome"] or "none")
                 raw_counts[bucket] = raw_counts.get(bucket, 0) + 1

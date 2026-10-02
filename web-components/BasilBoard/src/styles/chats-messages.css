@@ -617,8 +617,7 @@
 
 @media (max-width: 760px) {
   .chats-sidebar {
-    flex-basis: 200px;
-    min-width: 200px;
+    --basil-sidebar-expanded-width: 200px;
   }
 
   .chats-message-list {
@@ -642,11 +641,16 @@
   }
 
   .chats-sidebar {
+    --basil-sidebar-expanded-width: 100%;
     flex: 0 0 200px;
-    width: 100%;
     min-width: 0;
     border-right: 0;
     border-bottom: 1px solid var(--separator-color, rgba(0, 32, 77, 0.14));
+  }
+
+  .chats-tab > .chats-sidebar.is-expanded {
+    width: 100%;
+    transition: none;
   }
 
   .chats-main {
