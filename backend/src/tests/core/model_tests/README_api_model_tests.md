@@ -29,7 +29,7 @@ To run the test script, follow these steps:
 
 2. From the Basil project root directory, run:
    ```bash
-   cd Basil/tests/core/model_tests
+   cd backend/src/tests/core/model_tests
    python test_api_models.py
    ```
 

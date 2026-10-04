@@ -40,7 +40,7 @@ This directory contains comprehensive tests for the automated capture file clean
 
 ### Run All Tests
 ```bash
-cd Basil/tests/services/capture_management_tests
+cd backend/src/tests/services/capture_management_tests
 python run_tests.py
 ```
 
@@ -141,5 +141,5 @@ Add `--debug` flag or set logging level to DEBUG for more verbose output.
 These tests can be integrated into automated testing pipelines:
 ```bash
 # Example CI instruction
-cd Basil/tests/services/capture_management_tests && python run_tests.py
+cd backend/src/tests/services/capture_management_tests && python run_tests.py
 ``` 

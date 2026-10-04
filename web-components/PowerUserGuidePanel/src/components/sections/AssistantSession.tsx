@@ -4,7 +4,7 @@ export default function AssistantSession() {
   return (
     <div className="pug-section">
       <SectionHeader
-        icon="✨"
+        icon="dill"
         title="Dill"
         subtitle="The smartest way to draft replies, summaries, and content — just tell Basil what you want"
       />

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import AnimatedBubble from '@agent-task/components/AnimatedBubble';
+import AnimatedBubble from '@shared/bubble/AnimatedBubble';
 import type { BasilBoardTab, BasilBoardTabDetachBehavior } from '../contracts';
 import { useHomeRuntime } from '../home/HomeRuntimeContext';
 import {

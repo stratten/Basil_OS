@@ -71,6 +71,7 @@ describe('SettingsShell', () => {
         protocolVersion: 1,
         fields: {
           setupAssistantPending: false,
+          setupAssistantCompleted: true,
           setupAssistantStateAvailable: true,
           permissionsGrantedCount: 5,
           permissionsTotalCount: 5,

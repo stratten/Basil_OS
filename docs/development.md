@@ -107,6 +107,8 @@ The `release.sh` wrapper delegates to `build/scripts/build_app.sh`. Signing, not
 
 An ad-hoc community package is useful for local packaging validation. It is not a substitute for an official signed or notarized build, and it does not authorize publication. Do not use a release command with notarization or upload options unless the release owner has explicitly authorized that specific external action.
 
+The `release-build` job in `.github/workflows/validate.yml` runs only on pushes to `main`, after the backend, web-component, and client jobs pass. It reads its signing and notarization credentials from the protected `release-build` GitHub environment, which is restricted to `main`, so pull requests never receive them. The job stamps the commit into the app's `BasilSourceCommit` Info.plist key, checks that every bundled binary resolves its libraries inside the app with `build/scripts/verify_bundle_self_contained.sh`, checks the signed DMG with `build/scripts/verify_release_artifact.sh`, attests the DMG, and replaces the `main-latest` pre-release. Repository builds never include a Sparkle update feed. [Verifying repository builds](verifying-builds.md) is the user-facing description.
+
 Do not add signing identities, provider credentials, tokens, local release exports, model weights, recordings, or generated artifacts to version control.
 
 ## Contribution, support, and security

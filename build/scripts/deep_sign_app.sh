@@ -64,17 +64,25 @@ if [[ ! -d "$APP_PATH" ]]; then
 fi
 
 if [[ -z "$SIGNING_IDENTITY" ]]; then
-    echo "Error: Set BASIL_DEVELOPER_ID_CERT to the Developer ID signing identity."
+    echo "Error: Set BASIL_DEVELOPER_ID_CERT to the Developer ID signing identity, or to - for ad-hoc signing."
     exit 1
+fi
+
+# Ad-hoc signatures have no team, so hardened runtime library validation would reject the bundled libraries; match build_app.sh's ad-hoc options.
+if [[ "$SIGNING_IDENTITY" == "-" ]]; then
+    SIGN_OPTIONS=""
+    log "Ad-hoc signing: no secure timestamp or hardened runtime"
+else
+    SIGN_OPTIONS="--timestamp --options runtime"
 fi
 
 # Build signing instruction with universal binary support
 if [[ -n "$ENTITLEMENTS_PATH" && -f "$ENTITLEMENTS_PATH" ]]; then
-    SIGN_CMD="codesign --force --timestamp --options runtime --entitlements \"$ENTITLEMENTS_PATH\" --sign \"$SIGNING_IDENTITY\""
+    SIGN_CMD="codesign --force $SIGN_OPTIONS --entitlements \"$ENTITLEMENTS_PATH\" --sign \"$SIGNING_IDENTITY\""
     log "Using entitlements: $ENTITLEMENTS_PATH"
 else
     # For executables without entitlements, still need hardened runtime for notarization
-    SIGN_CMD="codesign --force --timestamp --options runtime --sign \"$SIGNING_IDENTITY\""
+    SIGN_CMD="codesign --force $SIGN_OPTIONS --sign \"$SIGNING_IDENTITY\""
     log "No entitlements file specified - using hardened runtime for all binaries"
 fi
 

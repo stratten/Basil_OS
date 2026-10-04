@@ -7,6 +7,10 @@ set -e
 # Configuration
 DEVELOPER_ID="${BASIL_APPLE_TEAM_ID:-}"
 NOTARY_KEYCHAIN_PROFILE="${BASIL_NOTARY_KEYCHAIN_PROFILE:-notarytool-profile}"
+NOTARY_AUTH_ARGS=(--keychain-profile "$NOTARY_KEYCHAIN_PROFILE")
+if [[ -n "${BASIL_NOTARY_KEYCHAIN:-}" ]]; then
+    NOTARY_AUTH_ARGS+=(--keychain "$BASIL_NOTARY_KEYCHAIN")
+fi
 
 # Function for logging with timestamp
 log() {
@@ -123,7 +127,7 @@ else
 
     # Submit for notarization
     SUBMISSION_ID=$(xcrun notarytool submit "$ZIP_PATH" \
-        --keychain-profile "$NOTARY_KEYCHAIN_PROFILE" \
+        "${NOTARY_AUTH_ARGS[@]}" \
         --wait \
         --output-format plist | \
         plutil -extract id raw -)
@@ -138,11 +142,11 @@ else
 
     # Check notarization status
     log "⏳ Waiting for notarization to complete..."
-    xcrun notarytool wait "$SUBMISSION_ID" --keychain-profile "$NOTARY_KEYCHAIN_PROFILE"
+    xcrun notarytool wait "$SUBMISSION_ID" "${NOTARY_AUTH_ARGS[@]}"
 
     # Get notarization info
     log "📄 Getting notarization results..."
-    NOTARIZATION_INFO=$(xcrun notarytool info "$SUBMISSION_ID" --keychain-profile "$NOTARY_KEYCHAIN_PROFILE" --output-format plist)
+    NOTARIZATION_INFO=$(xcrun notarytool info "$SUBMISSION_ID" "${NOTARY_AUTH_ARGS[@]}" --output-format plist)
 
     # Check if notarization succeeded
     STATUS=$(echo "$NOTARIZATION_INFO" | plutil -extract status raw -)
@@ -150,7 +154,7 @@ else
     if [[ "$STATUS" != "Accepted" ]]; then
         echo "❌ Notarization failed with status: $STATUS"
         echo "📄 Getting detailed log..."
-        xcrun notarytool log "$SUBMISSION_ID" --keychain-profile "$NOTARY_KEYCHAIN_PROFILE"
+        xcrun notarytool log "$SUBMISSION_ID" "${NOTARY_AUTH_ARGS[@]}"
         rm -rf "$TEMP_DIR"
         exit 1
     fi
@@ -176,34 +180,43 @@ fi
 # Notarize DMG if provided
 if [[ -n "$DMG_PATH" ]]; then
     if [[ ! -f "$DMG_PATH" ]]; then
-        echo "⚠️ Warning: DMG not found at $DMG_PATH, skipping DMG notarization"
+        echo "❌ Error: DMG not found at $DMG_PATH"
+        rm -rf "$TEMP_DIR"
+        exit 1
     else
         log "📦 Notarizing DMG..."
         
         DMG_SUBMISSION_ID=$(xcrun notarytool submit "$DMG_PATH" \
-            --keychain-profile "$NOTARY_KEYCHAIN_PROFILE" \
+            "${NOTARY_AUTH_ARGS[@]}" \
             --wait \
             --output-format plist | \
             plutil -extract id raw -)
         
         if [[ -n "$DMG_SUBMISSION_ID" ]]; then
             log "📋 DMG Submission ID: $DMG_SUBMISSION_ID"
-            xcrun notarytool wait "$DMG_SUBMISSION_ID" --keychain-profile "$NOTARY_KEYCHAIN_PROFILE"
+            xcrun notarytool wait "$DMG_SUBMISSION_ID" "${NOTARY_AUTH_ARGS[@]}"
             
-            DMG_STATUS=$(xcrun notarytool info "$DMG_SUBMISSION_ID" --keychain-profile "$NOTARY_KEYCHAIN_PROFILE" --output-format plist | plutil -extract status raw -)
+            DMG_STATUS=$(xcrun notarytool info "$DMG_SUBMISSION_ID" "${NOTARY_AUTH_ARGS[@]}" --output-format plist | plutil -extract status raw -)
             
             if [[ "$DMG_STATUS" == "Accepted" ]]; then
                 log "📎 Stapling notarization ticket to DMG..."
                 if xcrun stapler staple "$DMG_PATH"; then
                     log "✅ Successfully stapled ticket to DMG"
                 else
-                    log "⚠️ Warning: Failed to staple ticket to DMG"
+                    echo "❌ Error: Failed to staple the notarization ticket to the DMG"
+                    rm -rf "$TEMP_DIR"
+                    exit 1
                 fi
             else
                 echo "❌ DMG notarization failed with status: $DMG_STATUS"
+                xcrun notarytool log "$DMG_SUBMISSION_ID" "${NOTARY_AUTH_ARGS[@]}" || true
+                rm -rf "$TEMP_DIR"
+                exit 1
             fi
         else
             echo "❌ Failed to submit DMG for notarization"
+            rm -rf "$TEMP_DIR"
+            exit 1
         fi
     fi
 fi

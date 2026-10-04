@@ -4,7 +4,10 @@ set -euo pipefail
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 readonly REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd -P)"
 readonly PYTHON_VERSION="3.11.13"
-readonly ARCHIVE="${BASIL_RELOCATABLE_PYTHON_ARCHIVE:-$REPO_ROOT/local/python/python-${PYTHON_VERSION}-relocatable.tar.gz}"
+readonly DEFAULT_ARCHIVE="$REPO_ROOT/local/python/python-${PYTHON_VERSION}-relocatable.tar.gz"
+readonly DOWNLOADED_ARCHIVE="$REPO_ROOT/build/cache/python-${PYTHON_VERSION}-relocatable.tar.gz"
+readonly UPSTREAM_ARCHIVE_URL="https://github.com/astral-sh/python-build-standalone/releases/download/20250807/cpython-3.11.13%2B20250807-aarch64-apple-darwin-install_only.tar.gz"
+ARCHIVE="${BASIL_RELOCATABLE_PYTHON_ARCHIVE:-$DEFAULT_ARCHIVE}"
 readonly EXPECTED_SHA256="${BASIL_RELOCATABLE_PYTHON_SHA256:-d97de34acef2eeaf64cfddab978a894977732704d4b9f0ce78cf09ee7497d9c5}"
 readonly DESTINATION="$REPO_ROOT/build/python/python"
 
@@ -20,6 +23,19 @@ if [[ -x "$DESTINATION/bin/python3" ]]; then
     exit 0
 fi
 
+if [[ ! -f "$ARCHIVE" && -z "${BASIL_RELOCATABLE_PYTHON_ARCHIVE:-}" ]]; then
+    ARCHIVE="$DOWNLOADED_ARCHIVE"
+    if [[ ! -f "$ARCHIVE" ]]; then
+        command -v curl >/dev/null || {
+            echo "Required command is unavailable: curl" >&2
+            exit 1
+        }
+        mkdir -p "$(dirname "$ARCHIVE")"
+        curl --fail --location --proto '=https' --tlsv1.2 "$UPSTREAM_ARCHIVE_URL" --output "$ARCHIVE.partial"
+        mv "$ARCHIVE.partial" "$ARCHIVE"
+    fi
+fi
+
 [[ -f "$ARCHIVE" ]] || {
     echo "Relocatable Python archive is unavailable: $ARCHIVE" >&2
     exit 1
@@ -27,7 +43,10 @@ fi
 
 actual_sha256="$(shasum -a 256 "$ARCHIVE" | awk '{print $1}')"
 [[ "$actual_sha256" == "$EXPECTED_SHA256" ]] || {
-    echo "Relocatable Python archive checksum mismatch." >&2
+    echo "Relocatable Python archive checksum mismatch: $ARCHIVE" >&2
+    if [[ "$ARCHIVE" == "$DOWNLOADED_ARCHIVE" ]]; then
+        echo "Delete that file to download it again." >&2
+    fi
     exit 1
 }
 

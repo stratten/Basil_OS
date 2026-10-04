@@ -91,6 +91,13 @@ if { [ -n "$SPARKLE_FEED_URL" ] && [ -z "$SPARKLE_PUBLIC_ED_KEY" ]; } || { [ -z 
     exit 1
 fi
 
+SOURCE_COMMIT="${BASIL_SOURCE_COMMIT:-}"
+SOURCE_REPOSITORY="${BASIL_SOURCE_REPOSITORY:-}"
+if [ -n "$SOURCE_COMMIT" ] && [[ ! "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+    echo "Error: BASIL_SOURCE_COMMIT must be a full 40-character lowercase Git commit SHA."
+    exit 1
+fi
+
 # Get the directory where this script is located.
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd -P )"
 COMMON_DIR="$( cd "$SCRIPT_DIR/.." && pwd )"
@@ -294,19 +301,6 @@ else
     log "⚠️ Warning: Frameworks directory not found at $FRAMEWORKS_SRC_DIR - app may not be self-contained"
 fi
 
-log "Copying common dependencies (ffmpeg, sox, etc.) into $MASTER_APP_NAME Resources/dependencies/libs..."
-COMMON_DEPS_SRC_DIR="$ROOT_DIR/build/dependencies/libs"
-MASTER_APP_DEPS_LIBS_PATH="$MASTER_APP_RESOURCES_PATH/dependencies/libs"
-
-mkdir -p "$MASTER_APP_DEPS_LIBS_PATH"
-
-if [ -d "$COMMON_DEPS_SRC_DIR" ] && [ -n "$(find "$COMMON_DEPS_SRC_DIR" -maxdepth 1 -type f -print -quit)" ]; then
-    cp -R "$COMMON_DEPS_SRC_DIR/"* "$MASTER_APP_DEPS_LIBS_PATH/"
-    log "✅ Common dependencies copied to $MASTER_APP_DEPS_LIBS_PATH"
-else
-    log "⚠️ Warning: Common dependencies source directory $COMMON_DEPS_SRC_DIR is empty or not found. App may be missing critical libraries like ffmpeg."
-fi
-
 # Update bundle identifier and app name
 log "Updating bundle identifier for master app..."
 MASTER_BUNDLE_ID="com.stratten.basil"
@@ -359,6 +353,16 @@ else
     log "ℹ️  No --version specified. CFBundleShortVersionString remains as-is from Info.plist."
 fi
 
+# --- Source provenance stamping (set by the repository build workflow) ---
+if [ -n "$SOURCE_COMMIT" ]; then
+    plutil -replace BasilSourceCommit -string "$SOURCE_COMMIT" "$MASTER_APP_CONTENTS_PATH/Info.plist"
+    log "🔧 Stamped BasilSourceCommit $SOURCE_COMMIT in master Info.plist"
+    if [ -n "$SOURCE_REPOSITORY" ]; then
+        plutil -replace BasilSourceRepository -string "$SOURCE_REPOSITORY" "$MASTER_APP_CONTENTS_PATH/Info.plist"
+        log "🔧 Stamped BasilSourceRepository $SOURCE_REPOSITORY in master Info.plist"
+    fi
+fi
+
 log "✅ Master application $MASTER_APP_NAME created at $MASTER_APP_PATH"
 
 # Deep sign all binaries FIRST for notarization compatibility
@@ -367,7 +371,7 @@ DEEP_SIGN_SCRIPT="$SCRIPT_DIR/deep_sign_app.sh"
 ENTITLEMENTS_PATH="$ROOT_DIR/client/Sources/Support/Basil.entitlements"
 
 if [ -x "$DEEP_SIGN_SCRIPT" ]; then
-    if "$DEEP_SIGN_SCRIPT" "$MASTER_APP_PATH" --entitlements "$ENTITLEMENTS_PATH"; then
+    if BASIL_DEVELOPER_ID_CERT="$SIGNING_IDENTITY" "$DEEP_SIGN_SCRIPT" "$MASTER_APP_PATH" --entitlements "$ENTITLEMENTS_PATH"; then
         log "✅ Deep signing completed successfully"
     else
         log "❌ ERROR: Deep signing failed"

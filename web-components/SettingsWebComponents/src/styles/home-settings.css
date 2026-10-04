@@ -78,6 +78,67 @@
   font-size: 13px;
 }
 
+.home-settings-setup-notice {
+  background: color-mix(in srgb, var(--warning-base, #b54708) 14%, var(--background-primary));
+  border: 1px solid var(--warning-base, #b54708);
+  border-left-width: 4px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+}
+
+.home-settings-setup-notice strong {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+}
+
+.home-settings-setup-notice span {
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+}
+
+.home-settings-setup-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.home-settings-setup-badge {
+  align-items: center;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  display: inline-flex;
+  font-family: var(--font-family-medium);
+  font-size: 12px;
+  gap: 6px;
+  line-height: 1;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+
+.home-settings-setup-badge::before {
+  background: currentColor;
+  border-radius: 50%;
+  content: '';
+  height: 7px;
+  width: 7px;
+}
+
+.home-settings-setup-badge.is-complete {
+  background: color-mix(in srgb, var(--success-base) 18%, transparent);
+  color: var(--success-base);
+}
+
+.home-settings-setup-badge.is-incomplete {
+  background: color-mix(in srgb, var(--warning-base) 18%, transparent);
+  color: var(--warning-base);
+}
+
 .home-settings-label {
   color: var(--text-primary);
   font-family: var(--font-family-medium);

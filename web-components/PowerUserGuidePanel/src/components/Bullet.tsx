@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { GuideIcon, type GuideIconName } from './GuideIcon'
 
 export function Bullet({ children }: { children: ReactNode }) {
   return (
@@ -21,11 +22,11 @@ export function SectionGroup({ title, badge, children }: { title: string; badge?
   )
 }
 
-export function SectionHeader({ icon, title, subtitle }: { icon: string; title: string; subtitle: string }) {
+export function SectionHeader({ icon, title, subtitle }: { icon: GuideIconName; title: string; subtitle: string }) {
   return (
     <header className="pug-section-header">
       <div className="pug-section-header-row">
-        <span className="pug-section-icon" aria-hidden="true">{icon}</span>
+        <GuideIcon name={icon} size={26} className="pug-section-icon" />
         <h1>{title}</h1>
       </div>
       <p className="pug-section-subtitle">{subtitle}</p>

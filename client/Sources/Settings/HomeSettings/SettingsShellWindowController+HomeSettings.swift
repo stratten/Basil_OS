@@ -253,6 +253,7 @@ extension SettingsShellWindowController {
 
         return HomeSettingsFields(
             setupAssistantPending: homeSetupAssistantPendingStateModel.shouldShowSettingsResumeCard,
+            setupAssistantCompleted: homeSetupAssistantPendingStateModel.hasCompletedSetupAssistant,
             setupAssistantStateAvailable: setupAssistantStateAvailable,
             permissionsGrantedCount: permissionsGrantedCount,
             permissionsTotalCount: 5,

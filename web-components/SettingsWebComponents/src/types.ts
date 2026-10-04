@@ -963,6 +963,7 @@ export type HomeQuickToggleField =
 
 export interface HomeSettingsFields {
   setupAssistantPending: boolean
+  setupAssistantCompleted: boolean
   setupAssistantStateAvailable: boolean
   permissionsGrantedCount: number
   permissionsTotalCount: number

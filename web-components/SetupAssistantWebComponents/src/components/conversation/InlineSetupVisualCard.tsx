@@ -1,5 +1,5 @@
 import type { SetupInlineVisual } from '@/types'
-import AnimatedBubble from '../../../../AgentTaskResult/src/components/AnimatedBubble'
+import AnimatedBubble from '../../../../shared/bubble/AnimatedBubble'
 
 /*
  * Inline conversation card that renders one curated setup visual the

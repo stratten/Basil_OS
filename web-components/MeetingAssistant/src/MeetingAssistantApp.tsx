@@ -12,7 +12,7 @@ import AnalysisCard from './components/AnalysisCard';
 import { applyMeetingHostFonts, applyMeetingHostTheme } from './lib/hostAppearance';
 import { CollapsedHistoryRail } from '../../shared/HistorySidebarControls';
 import CollapsibleSidebar from '@shared/CollapsibleSidebar';
-import AnimatedBubble from '../../AgentTaskResult/src/components/AnimatedBubble';
+import AnimatedBubble from '../../shared/bubble/AnimatedBubble';
 import { useMeetingMeter } from './bridge/meetingMeterStore';
 
 export default function MeetingAssistantApp() {

@@ -9,7 +9,7 @@ Install Xcode or the Swift toolchain, Python 3.11, [Poetry](https://python-poetr
 The backend and packaged app also require the following Homebrew packages:
 
 ```bash
-brew install llvm tesseract tbb libsndfile portaudio coreutils
+brew install bash cmake llvm tesseract tbb libsndfile portaudio coreutils
 ```
 
 `dev.sh` builds the pinned LGPL FFmpeg dependency from source when it is missing. Do not substitute a Homebrew FFmpeg for the packaged build path.

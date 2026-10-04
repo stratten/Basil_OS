@@ -23,7 +23,7 @@ export type SectionId =
   | 'transcription'
   | 'assistantSession'
   | 'agentTasks'
-  | 'voiceComparison'
+  | 'dillOrPaprika'
   | 'conversation'
   | 'activityCapture'
   | 'models'

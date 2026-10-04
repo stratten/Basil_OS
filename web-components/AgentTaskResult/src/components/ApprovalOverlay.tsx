@@ -315,7 +315,7 @@ export default function ApprovalOverlay({ agentTaskId, approval, rememberChoice,
               fontSize: 'var(--font-size-status-small)',
               color: 'var(--error-base)',
             }}>
-              ⚠️ This command may cause permanent changes
+              This command may cause permanent changes
             </div>
           )}
 

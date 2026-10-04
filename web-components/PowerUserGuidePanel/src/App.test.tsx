@@ -76,6 +76,43 @@ describe('PowerUserGuidePanel App', () => {
     expect(subtitle).toContain('nickname')
   })
 
+  it('renders capability icons instead of emoji in every section', () => {
+    act(() => state.initHandler!(config))
+    const emoji = /\p{Extended_Pictographic}/u
+    const rows = [...container.querySelectorAll<HTMLButtonElement>('.pug-sidebar-row')]
+    expect(rows).toHaveLength(7)
+
+    for (const row of rows) {
+      expect(row.querySelector('.pug-guide-icon')).not.toBeNull()
+      act(() => row.click())
+      expect(container.querySelector('.pug-section-header .pug-guide-icon')).not.toBeNull()
+      expect(emoji.test(container.textContent ?? '')).toBe(false)
+    }
+  })
+
+  it('presents the Dill or Paprika guide as a sub-item comparing the two helpers', () => {
+    act(() => state.initHandler!(config))
+    const rows = [...container.querySelectorAll<HTMLButtonElement>('.pug-sidebar-row')]
+    const labels = rows.map(row => row.textContent)
+    expect(labels).not.toContain('Voice Comparison')
+    const comparisonIndex = labels.indexOf('Dill or Paprika?')
+    expect(labels[comparisonIndex - 1]).toBe('Paprika')
+    expect(rows[comparisonIndex].classList.contains('pug-sidebar-row--sub')).toBe(true)
+    expect(rows[comparisonIndex].querySelectorAll('.pug-guide-icon--pair img')).toHaveLength(2)
+
+    act(() => rows[comparisonIndex].click())
+
+    expect(container.querySelector('.pug-section-header h1')!.textContent).toBe('Dill or Paprika?')
+    expect([...container.querySelectorAll('.pug-helper-card h3')].map(el => el.textContent)).toEqual(['Dill', 'Paprika'])
+    const tableRows = [...container.querySelectorAll('.pug-table--comparison [role="row"]')].slice(1).map(row =>
+      [...row.children].map(cell => cell.textContent),
+    )
+    expect(tableRows).toContainEqual(['Hotkey', '⌥⌥', '⌥Space'])
+    expect(tableRows).toContainEqual(['Extra context', 'Your screen, plus any text you highlight', 'Your screen, plus files and folders you drag in'])
+    expect(container.textContent).not.toContain('Manual if needed')
+    expect(container.querySelector('.pug-helper-tip')!.textContent).toContain('Not sure?')
+  })
+
   it('dismisses via the footer Done button', () => {
     act(() => state.initHandler!(config))
     const doneButton = [...container.querySelectorAll('button')].find(el => el.textContent === 'Done')!

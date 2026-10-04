@@ -1,6 +1,6 @@
 import { StrictMode, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import AnimatedBubble from '../components/AnimatedBubble';
+import AnimatedBubble from '../../../shared/bubble/AnimatedBubble';
 import type { BubbleMode } from '../types';
 
 // Mirror the state-color CSS variables the Swift host injects so the harness passes the exact values used by Header.tsx.

@@ -15,6 +15,7 @@ final class HomeSettingsPayloadTests: XCTestCase {
     ) -> HomeSettingsFields {
         HomeSettingsFields(
             setupAssistantPending: true,
+            setupAssistantCompleted: false,
             setupAssistantStateAvailable: true,
             permissionsGrantedCount: 3,
             permissionsTotalCount: 5,
@@ -48,6 +49,7 @@ final class HomeSettingsPayloadTests: XCTestCase {
         ))
 
         XCTAssertEqual(payload["setupAssistantPending"] as? Bool, true)
+        XCTAssertEqual(payload["setupAssistantCompleted"] as? Bool, false)
         XCTAssertEqual(payload["setupAssistantStateAvailable"] as? Bool, true)
         XCTAssertEqual(payload["permissionsGrantedCount"] as? Int, 3)
         XCTAssertEqual(payload["permissionsTotalCount"] as? Int, 5)

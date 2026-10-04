@@ -4,7 +4,7 @@ export default function AgentTasks() {
   return (
     <div className="pug-section">
       <SectionHeader
-        icon="✅"
+        icon="paprika"
         title="Paprika"
         subtitle="Your personal assistant that actually gets things done — just speak and watch it happen"
       />

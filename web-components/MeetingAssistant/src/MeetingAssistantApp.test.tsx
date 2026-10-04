@@ -46,7 +46,7 @@ vi.mock('./components/WindowChrome', () => ({
   ),
 }));
 
-vi.mock('../../AgentTaskResult/src/components/AnimatedBubble', () => ({
+vi.mock('../../shared/bubble/AnimatedBubble', () => ({
   default: ({ audioLevel }: { audioLevel: number }) => <output data-testid="bubble-audio-level">{audioLevel}</output>,
 }));
 

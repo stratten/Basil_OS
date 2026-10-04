@@ -7,7 +7,7 @@ Demonstrates detection of Google Drive and other cloud storage integrations.
 This shows how to extend file system operations to include cloud storage.
 
 Usage:
-    cd Basil/tests/services/agent_processing_tests  
+    cd backend/src/tests/services/agent_processing_tests
     poetry run python test_cloud_storage_detection.py
 """
 

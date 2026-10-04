@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { BasilBoardTab } from '../contracts';
 import BoardChrome from './BoardChrome';
 
-vi.mock('@agent-task/components/AnimatedBubble', () => ({
+vi.mock('@shared/bubble/AnimatedBubble', () => ({
   default: () => <div data-testid="animated-bubble" />,
 }));
 

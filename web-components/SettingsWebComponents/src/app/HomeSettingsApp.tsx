@@ -93,6 +93,7 @@ export function HomeSettingsApp({ onNavigate }: HomeSettingsAppProps) {
   const availableTranscriptionModels = [...f.localTranscriptionModels, ...f.apiTranscriptionModels]
   const hasNoTranscriptionModels = availableTranscriptionModels.length === 0
   const permissionsComplete = f.permissionsGrantedCount >= f.permissionsTotalCount
+  const setupNeverFinished = f.setupAssistantStateAvailable && !f.setupAssistantCompleted && !f.setupAssistantPending
 
   return (
     <div className="home-settings-shell">
@@ -111,9 +112,22 @@ export function HomeSettingsApp({ onNavigate }: HomeSettingsAppProps) {
               <span>You stepped out of setup before finishing. Pick up where you left off any time.</span>
             </div>
           )}
-          <button type="button" className="secondary-button home-settings-inline-action" onClick={handleOpenSetupAssistant}>
-            {f.setupAssistantPending ? 'Resume Setup' : 'Open Setup Assistant'}
-          </button>
+          {setupNeverFinished && (
+            <div className="home-settings-setup-notice" role="status">
+              <strong>Basil isn't fully set up yet.</strong>
+              <span>Run the Setup Assistant to finish getting Basil ready to work for you.</span>
+            </div>
+          )}
+          <div className="home-settings-setup-row">
+            <button type="button" className="secondary-button home-settings-inline-action" onClick={handleOpenSetupAssistant}>
+              {f.setupAssistantPending ? 'Resume Setup' : setupNeverFinished ? 'Start Setup' : 'Open Setup Assistant'}
+            </button>
+            {f.setupAssistantStateAvailable && (
+              <span className={`home-settings-setup-badge ${f.setupAssistantCompleted ? 'is-complete' : 'is-incomplete'}`}>
+                {f.setupAssistantCompleted ? 'Setup complete' : 'Setup incomplete'}
+              </span>
+            )}
+          </div>
           <button type="button" className="secondary-button home-settings-inline-action" onClick={handleOpenPowerUserGuide}>
             Explore Basil's Capabilities
           </button>

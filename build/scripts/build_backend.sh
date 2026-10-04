@@ -106,9 +106,6 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 # This might be useful if any script operations needed to reference that parent.
 OUTPUT_DIR="$(dirname "$BACKEND_DEST")"
 
-# Directory for libraries (relative to the script's location or root)
-LIBS_DIR="$BUILD_DIR/dependencies/libs"
-
 # Diagnostic environment check
 if ! diagnostic_build_check; then
     echo "❌ ERROR: Environment check failed. Cannot proceed with build."
@@ -127,9 +124,6 @@ if ! ( [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -eq 11 ] ); then
     echo "❌ ERROR: Incorrect Python version. Found $PYTHON_VERSION, but project requires Python 3.11."
     exit 1
 fi
-
-# Ensure output directories exist
-mkdir -p "$LIBS_DIR"
 
 # Generate requirements.txt from Poetry (we still use Poetry for development dependency management)
 PROJECT_ROOT_FOR_POETRY="$ROOT_DIR"
@@ -200,6 +194,9 @@ if [ -d "$SITE_PACKAGES_DIR" ]; then
 else
     echo "⚠️ site-packages not found at $SITE_PACKAGES_DIR, skipping test directory cleanup"
 fi
+
+# llama-cpp-python's source build also installs llama.cpp's C++ libraries into site-packages/lib. llama_cpp loads its own copies from llama_cpp/lib, and libllama-common links Homebrew OpenSSL by absolute path, so it cannot load on a Mac without Homebrew.
+rm -f "$SITE_PACKAGES_DIR"/lib/libllama-common*.dylib
 
 # Copy backend source code
 cd "$SRC_DIR"
@@ -297,28 +294,6 @@ if [ -f "$BACKEND_STARTUP_SCRIPT" ]; then
     echo "✅ Backend startup script copied to $BACKEND_DEST/start_backend.sh"
 else
     echo "⚠️ Warning: Backend startup script not found at $BACKEND_STARTUP_SCRIPT"
-fi
-
-# Copy required libraries (e.g., sox) directly to backend destination
-echo "📦 Copying required libraries directly to backend destination..."
-SOX_PREFIX="$(brew_prefix sox)"
-if [ -n "$SOX_PREFIX" ] && [ -f "$SOX_PREFIX/lib/libsox.dylib" ]; then
-    # Homebrew's Cellar files are read-only; remove any stale copy first so
-    # re-running the build doesn't fail trying to overwrite a read-only destination.
-    rm -f "$BACKEND_DEST/libsox.dylib" "$BACKEND_DEST/libsox.3.dylib"
-    cp "$SOX_PREFIX/lib/libsox.dylib" "$BACKEND_DEST/libsox.dylib"
-    cp "$SOX_PREFIX/lib/libsox.3.dylib" "$BACKEND_DEST/libsox.3.dylib" 2>/dev/null || :
-
-    # Also copy to common libs directory for reference
-    mkdir -p "$LIBS_DIR"
-    rm -f "$LIBS_DIR/libsox.dylib" "$LIBS_DIR/libsox.3.dylib"
-    cp "$SOX_PREFIX/lib/libsox.dylib" "$LIBS_DIR/"
-    cp "$SOX_PREFIX/lib/libsox.3.dylib" "$LIBS_DIR/" 2>/dev/null || :
-
-    echo "✅ libsox copied as actual files (not symlinks) to $BACKEND_DEST"
-else
-    echo "❌ ERROR: libsox not found via 'brew --prefix sox'. Install SoX (brew install sox) before building." >&2
-    exit 1
 fi
 
 # Copy tesseract executable and dependencies
@@ -597,7 +572,7 @@ echo "📦 Checking/Copying additional audio libraries (PortAudio)..."
 PORTAUDIO_PREFIX="$(brew_prefix portaudio)"
 PORTAUDIO_COPIED_FLAG=false
 if [ -n "$PORTAUDIO_PREFIX" ]; then
-    for portaudio_lib_name in "libportaudio.dylib" "libportaudio.2.dylib" "libportaudiocpp.dylib" "libportaudiocpp.0.dylib"; do
+    for portaudio_lib_name in "libportaudio.dylib" "libportaudio.2.dylib"; do
         # Use find to handle cases where the exact symlink/file might not exist but a version does
         found_portaudio_lib=$(find "$PORTAUDIO_PREFIX/lib" -maxdepth 1 -name "$portaudio_lib_name" -print -quit)
         if [ -n "$found_portaudio_lib" ] && [ -f "$found_portaudio_lib" ]; then

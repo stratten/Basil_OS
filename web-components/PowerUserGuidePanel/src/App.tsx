@@ -3,7 +3,7 @@ import Sidebar from './components/Sidebar'
 import Transcription from './components/sections/Transcription'
 import AssistantSession from './components/sections/AssistantSession'
 import AgentTasks from './components/sections/AgentTasks'
-import VoiceComparison from './components/sections/VoiceComparison'
+import DillOrPaprika from './components/sections/DillOrPaprika'
 import Conversation from './components/sections/Conversation'
 import ActivityCapture from './components/sections/ActivityCapture'
 import Models from './components/sections/Models'
@@ -30,7 +30,7 @@ const sectionComponents: Record<SectionId, () => JSX.Element> = {
   transcription: Transcription,
   assistantSession: AssistantSession,
   agentTasks: AgentTasks,
-  voiceComparison: VoiceComparison,
+  dillOrPaprika: DillOrPaprika,
   conversation: Conversation,
   activityCapture: ActivityCapture,
   models: Models,

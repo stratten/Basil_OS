@@ -30,6 +30,7 @@ export default defineConfig({
       '../shared/usePresenceTransition.test.tsx',
       '../shared/PresenceRegion.test.tsx',
       '../shared/CrossfadeStack.test.tsx',
+      '../shared/bubble/*.test.ts',
     ],
   },
   server: {

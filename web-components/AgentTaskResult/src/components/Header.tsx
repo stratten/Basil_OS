@@ -1,4 +1,4 @@
-import AnimatedBubble from './AnimatedBubble';
+import AnimatedBubble from '../../../shared/bubble/AnimatedBubble';
 import paprikaIcon from '../assets/paprika-icon.png';
 import { BASIL_TEAM } from '../copy/teamIdentity';
 import { closeWidget, minimizeWidget } from '../services/bridge';

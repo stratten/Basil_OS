@@ -71,6 +71,7 @@ build/outputs/
 build/dmg_staging/
 build/environment_backups/
 build/test_ffmpeg_output/
+build/cmake/*/test_install/
 build/appcast.xml
 build/certs/
 build/dependencies/

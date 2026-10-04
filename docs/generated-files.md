@@ -38,3 +38,7 @@ The project’s prior `scripts/generate_swift_models.sh` produced an unconsumed 
 ## Packaged FFmpeg input
 
 `build/scripts/build_ffmpeg_lgpl.sh` is the only supported FFmpeg packaging input. It downloads pinned FFmpeg 7.1.1 source, verifies its SHA-256, compiles with `--disable-gpl` and `--disable-nonfree`, then verifies the resulting binary before `FFmpegBundler` accepts it. The generated FFmpeg tree and packaging output remain ignored.
+
+## Packaged Python runtime
+
+`build/scripts/prepare_relocatable_python.sh` provides the Python 3.11.13 runtime embedded in the app. It uses `local/python/python-3.11.13-relocatable.tar.gz` or `BASIL_RELOCATABLE_PYTHON_ARCHIVE` when present; otherwise it downloads the python-build-standalone `20250807` Apple Silicon archive into `build/cache/`. Every path is checked against the same pinned SHA-256 before extraction into the ignored `build/python/` directory.

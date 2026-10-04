@@ -793,64 +793,29 @@ def authenticate_user(username, password):
 
 ---
 
+## Change Impact Checklist
 
-Miscellaneous Considerations - 
+**Context**: Many Basil defects come from a change that is correct in one layer but breaks a consumer in another: a backend model field renamed without its Swift `CodingKeys`, an endpoint whose web-component caller was missed, or a hotkey path that behaves differently on its first and later invocations.
 
-* Before making any changes, first map out all the data flows for the affected feature."
+**Pattern to Follow**: Before changing a feature, model, or endpoint, work through this checklist:
 
-* When a feature stops working after a model change, immediately trace the complete path of the affected data."
+1. Map the data flow for the affected feature from its entry point (hotkey, menu item, WebSocket message, or route) to its persisted or rendered result.
+2. For a model change, find every producer and consumer of that model in the backend, the Swift client, and `web-components/`, and plan the change for each before editing any of them.
+3. For an API or WebSocket change, list every client surface that calls it or handles its events.
+4. When a property access fails, search for every usage of that property path across the whole repository, not only the file where it failed.
+5. When debugging a data issue, verify the data's shape at each layer instead of assuming the failing layer is the cause.
+6. For stateful flows such as recording or task launch, compare the first invocation with later ones and identify which code paths differ.
 
-* For any model changes, explicitly check all consumers of that model in both frontend and backend."
+**What Not to Do**:
+- Don't change one side of a cross-language contract and leave the other for later
+- Don't assume a search of one component found every consumer
+- Don't debug only the layer where the symptom appeared
 
-* When a property access fails, search for ALL usages of that property path across the ENTIRE codebase.
+**When to Apply**:
+- Before any model, settings, API, or WebSocket contract change
+- When a feature regresses after a nearby change
+- When behavior differs between the first and subsequent uses of a feature
 
-* Before implementing model changes, generate a diff-style preview showing all required changes across files.
-
-* When debugging data model-related issues, first verify the data structure at each layer
-
-* For any API endpoint changes, list all frontend components that call that endpoint.
-
-* Trace the call chain for starting a recording from hotkey press to audio capture"
-
-*Compare the behavior between first recording and subsequent recordings, focusing on which code paths are taken
-
-
-
-"trace the call chain"
-"show all implementations"
-"compare behavior between first and subsequent actions"
-"list all entry points"
-
-
-Consistent Prompting Strategies
-Scope Definition Statement
-Begin requests with: "Please limit your work strictly to [specific task] without modifying anything else."
-Example: "Please limit your work strictly to adding the settings window resize capability without modifying any other functionality."
-"Read-Only First" Approach
-Start with: "First, just analyze without making changes, then propose a minimal solution."
-This forces me to understand before acting.
-Define a Change Budget
-Specify limits: "Make no more than [X] line changes in [Y] files."
-This creates clear boundaries for modifications.
-"Safety Mode" Activation
-Include: "Operate in safety mode: prefer minimal changes and explicit caution."
-This keyword phrase could trigger a more conservative approach.
-Reference Card
-Create a shorthand: "Ref:MF" (Minimal Focus)
-This would be a quick way to remind me of our agreement to stay narrowly focused.
-
-
-
-Principles Check:
-✓ Reviewed DEVELOPMENT_PRINCIPLES.md
-✓ Following "Strict Adherence to Requested Changes" principle
-✓ Maintaining existing method names and signatures
-✓ Preserving existing comments
-✓ Limiting changes to specifically requested functionality
-
-
-@PRINCIPLES_CHECK: Review DEVELOPMENT_PRINCIPLES.md before making any changes.
-
-
+---
 
 _Note: This document should be updated with new principles as they are established. Each principle should include context, pattern to follow, example implementation, what not to do, benefits, and when to apply._ 

@@ -10,7 +10,7 @@ Tests the core file system integration functionality:
 4. End-to-end "find and prepare" workflow
 
 Usage:
-    cd Basil/tests/services/agent_processing_tests
+    cd backend/src/tests/services/agent_processing_tests
     poetry run python test_file_retrieval_service.py
 """
 

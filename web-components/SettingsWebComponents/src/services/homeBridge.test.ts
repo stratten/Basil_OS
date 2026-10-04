@@ -41,6 +41,7 @@ describe('homeBridge', () => {
       protocolVersion: 1,
       fields: {
         setupAssistantPending: true,
+        setupAssistantCompleted: false,
         setupAssistantStateAvailable: true,
         permissionsGrantedCount: 3,
         permissionsTotalCount: 5,

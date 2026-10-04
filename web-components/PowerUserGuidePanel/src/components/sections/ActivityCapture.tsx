@@ -4,7 +4,7 @@ export default function ActivityCapture() {
   return (
     <div className="pug-section">
       <SectionHeader
-        icon="📈"
+        icon="activityCapture"
         title="Activity Capture"
         subtitle="Automatic productivity monitoring that builds a searchable timeline of your work — never lose track of what you were doing"
       />

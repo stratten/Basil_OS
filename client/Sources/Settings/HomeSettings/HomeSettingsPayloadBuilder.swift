@@ -2,6 +2,7 @@ import Foundation
 
 struct HomeSettingsFields {
     let setupAssistantPending: Bool
+    let setupAssistantCompleted: Bool
     let setupAssistantStateAvailable: Bool
     let permissionsGrantedCount: Int
     let permissionsTotalCount: Int
@@ -29,6 +30,7 @@ struct HomeSettingsFields {
 
     init(
         setupAssistantPending: Bool,
+        setupAssistantCompleted: Bool,
         setupAssistantStateAvailable: Bool,
         permissionsGrantedCount: Int,
         permissionsTotalCount: Int,
@@ -55,6 +57,7 @@ struct HomeSettingsFields {
         transcriptionModelsAvailable: Bool = false
     ) {
         self.setupAssistantPending = setupAssistantPending
+        self.setupAssistantCompleted = setupAssistantCompleted
         self.setupAssistantStateAvailable = setupAssistantStateAvailable
         self.permissionsGrantedCount = permissionsGrantedCount
         self.permissionsTotalCount = permissionsTotalCount
@@ -86,6 +89,7 @@ enum HomeSettingsPayloadBuilder {
     static func makeFieldsPayload(_ fields: HomeSettingsFields) -> [String: Any] {
         [
             "setupAssistantPending": fields.setupAssistantPending,
+            "setupAssistantCompleted": fields.setupAssistantCompleted,
             "setupAssistantStateAvailable": fields.setupAssistantStateAvailable,
             "permissionsGrantedCount": fields.permissionsGrantedCount,
             "permissionsTotalCount": fields.permissionsTotalCount,

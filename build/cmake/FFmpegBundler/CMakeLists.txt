@@ -95,13 +95,26 @@ install(
 )
 message(STATUS "Installing actual ffmpeg executable from ${REAL_FFMPEG_EXECUTABLE_PATH} to: ${FFMPEG_DEST_BIN}/ffmpeg")
 
-# Install primary FFmpeg dylibs (using their actual resolved paths)
+# Install each primary FFmpeg dylib under its install-name basename (e.g. libavcodec.61.dylib), because that is the name ffmpeg and the other FFmpeg dylibs reference.
 foreach(ACTUAL_DYLIB_FULL_PATH ${FFMPEG_PRIMARY_DYLIBS_PATHS})
-    get_filename_component(DYLIB_BASENAME "${ACTUAL_DYLIB_FULL_PATH}" NAME) # Gets the actual versioned name
+    execute_process(
+        COMMAND otool -D "${ACTUAL_DYLIB_FULL_PATH}"
+        OUTPUT_VARIABLE DYLIB_ID_OUTPUT
+        RESULT_VARIABLE DYLIB_ID_RESULT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    if(NOT DYLIB_ID_RESULT EQUAL 0)
+        message(FATAL_ERROR "Could not read the install name of ${ACTUAL_DYLIB_FULL_PATH}")
+    endif()
+    string(REGEX REPLACE "^.*\n" "" DYLIB_INSTALL_NAME "${DYLIB_ID_OUTPUT}")
+    get_filename_component(DYLIB_BASENAME "${DYLIB_INSTALL_NAME}" NAME)
+    if(NOT DYLIB_BASENAME MATCHES "^lib.+\\.dylib$")
+        message(FATAL_ERROR "Unexpected install name '${DYLIB_INSTALL_NAME}' for ${ACTUAL_DYLIB_FULL_PATH}")
+    endif()
     install(
         FILES "${ACTUAL_DYLIB_FULL_PATH}"
         DESTINATION "${FFMPEG_DEST_LIBS}"
-        RENAME "${DYLIB_BASENAME}" # Install with its true name e.g. libavcodec.61.dylib
+        RENAME "${DYLIB_BASENAME}"
     )
     message(STATUS "Installing primary FFmpeg dylib ${DYLIB_BASENAME} from ${ACTUAL_DYLIB_FULL_PATH} to: ${FFMPEG_DEST_LIBS}/")
 endforeach()

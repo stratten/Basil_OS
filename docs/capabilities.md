@@ -24,15 +24,15 @@ Open or create a conversation from the Board when you want a durable thread arou
 
 Conversation messages and associated records can be stored locally for later retrieval. A local reasoning model keeps inference on the Mac; direct-provider, custom-endpoint, and Cloud selections can receive the request content needed to answer. Deleting local data can make previously saved threads unavailable.
 
-### Assistant Session
+### Assistant Session (Dill)
 
-Open Assistant Session when you want a focused text-or-voice assistant instead of a Board workspace. It provides saved output history plus controls to copy, refine, edit, or save the response as your workflow requires.
+In the app, Assistant Session appears as **Dill**, and its default hotkey is a double press of Option (⌥⌥). Open it when you want a focused text-or-voice assistant instead of a Board workspace. It provides saved output history plus controls to copy, refine, edit, or save the response as your workflow requires.
 
 Assistant Session requires a usable reasoning model. Its saved outputs are local application history, subject to the local-data lifecycle described in [Privacy and data flow](privacy-and-data-flow.md). A provider-backed model path changes the data boundary for the content used to produce the output, but it does not grant automation or connected-service permission.
 
-### Agent Tasks
+### Agent Tasks (Paprika)
 
-Start an Agent Task from a Board or task-oriented workflow when the request needs an explicit goal, progress visibility, revisions, tool use, or a result that may include a local artifact. A task can accept typed text, captured audio, files, images, and screen context. It can show intermediate activity, status, results, local artifact previews, and approval-controlled actions.
+In the app, Agent Tasks appear as **Paprika**, and the default capture hotkey is Option-Space (⌥Space). Start an Agent Task from that hotkey, the Board, or another task-oriented workflow when the request needs an explicit goal, progress visibility, revisions, tool use, or a result that may include a local artifact. A task can accept typed text, captured audio, files, images, and screen context. It can show intermediate activity, status, results, local artifact previews, and approval-controlled actions.
 
 Tasks can be associated with Board or conversation context, scheduled for later work, reviewed after completion, and paused or canceled when their state supports those operations. The task record and its local artifacts can be retained so you can reopen the result.
 

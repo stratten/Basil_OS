@@ -12,6 +12,7 @@ let onNavigate: ReturnType<typeof vi.fn<(tab: HomeNavigationTarget) => void>>
 
 const FIXTURE_FIELDS: HomeSettingsFields = {
   setupAssistantPending: true,
+  setupAssistantCompleted: false,
   setupAssistantStateAvailable: true,
   permissionsGrantedCount: 3,
   permissionsTotalCount: 5,
@@ -137,12 +138,48 @@ describe('HomeSettingsApp', () => {
       window.basilHomeSettings!.onEvent({
         type: 'init',
         protocolVersion: 1,
-        fields: { ...FIXTURE_FIELDS, setupAssistantPending: false },
+        fields: { ...FIXTURE_FIELDS, setupAssistantPending: false, setupAssistantCompleted: true },
       })
     })
     expect(container.querySelector('.home-settings-resume-card')).toBeNull()
+    expect(container.querySelector('.home-settings-setup-notice')).toBeNull()
+    expect(container.querySelector('.home-settings-setup-badge.is-complete')?.textContent).toBe('Setup complete')
     act(() => { Array.from(container.querySelectorAll('button')).find((b) => b.textContent === 'Open Setup Assistant')!.click() })
     expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'openSetupAssistant' }))
+  })
+
+  it('draws attention to setup that was never finished', () => {
+    act(() => {
+      window.basilHomeSettings!.onEvent({
+        type: 'init',
+        protocolVersion: 1,
+        fields: { ...FIXTURE_FIELDS, setupAssistantPending: false, setupAssistantCompleted: false },
+      })
+    })
+    expect(container.querySelector('.home-settings-setup-notice')?.textContent).toContain("Basil isn't fully set up yet.")
+    expect(container.querySelector('.home-settings-setup-badge.is-incomplete')?.textContent).toBe('Setup incomplete')
+    act(() => { Array.from(container.querySelectorAll('button')).find((b) => b.textContent === 'Start Setup')!.click() })
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'openSetupAssistant' }))
+  })
+
+  it('marks skipped setup incomplete alongside the resume card without duplicating the notice', () => {
+    act(() => { window.basilHomeSettings!.onEvent({ type: 'init', protocolVersion: 1, fields: FIXTURE_FIELDS }) })
+    expect(container.querySelector('.home-settings-resume-card')).not.toBeNull()
+    expect(container.querySelector('.home-settings-setup-notice')).toBeNull()
+    expect(container.querySelector('.home-settings-setup-badge.is-incomplete')?.textContent).toBe('Setup incomplete')
+  })
+
+  it('shows no setup badge or notice when setup status is unavailable', () => {
+    act(() => {
+      window.basilHomeSettings!.onEvent({
+        type: 'init',
+        protocolVersion: 1,
+        fields: { ...FIXTURE_FIELDS, setupAssistantPending: false, setupAssistantCompleted: false, setupAssistantStateAvailable: false },
+      })
+    })
+    expect(container.querySelector('.home-settings-setup-badge')).toBeNull()
+    expect(container.querySelector('.home-settings-setup-notice')).toBeNull()
+    expect(Array.from(container.querySelectorAll('button')).some((b) => b.textContent === 'Open Setup Assistant')).toBe(true)
   })
 
   it('opens the Capabilities Guide from the setup card', () => {

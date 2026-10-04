@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
+import { GuideIcon, type GuideIconName } from '../GuideIcon'
+import { SectionHeader } from '../Bullet'
 
 interface ModelCardProps {
-  icon: string
+  icon: GuideIconName
   title: string
   bullets: string[]
   isSecondary?: boolean
@@ -11,7 +13,7 @@ function ModelCard({ icon, title, bullets, isSecondary = false }: ModelCardProps
   return (
     <div className={`pug-model-card${isSecondary ? ' pug-model-card--secondary' : ''}`}>
       <div className="pug-model-card-header">
-        <span className="pug-model-card-icon" aria-hidden="true">{icon}</span>
+        <GuideIcon name={icon} size={18} className="pug-model-card-icon" />
         <h3>{title}</h3>
       </div>
       <div className="pug-model-card-bullets">
@@ -29,7 +31,7 @@ function ModelCard({ icon, title, bullets, isSecondary = false }: ModelCardProps
 function PrivacyNote({ children }: { children: ReactNode }) {
   return (
     <div className="pug-privacy-note">
-      <span className="pug-privacy-note-icon" aria-hidden="true">🔒</span>
+      <GuideIcon name="privacy" size={16} className="pug-privacy-note-icon" />
       <span>{children}</span>
     </div>
   )
@@ -38,20 +40,15 @@ function PrivacyNote({ children }: { children: ReactNode }) {
 export default function Models() {
   return (
     <div className="pug-section">
-      <header className="pug-section-header">
-        <div className="pug-section-header-row">
-          <span className="pug-section-icon" aria-hidden="true">💻</span>
-          <h1>Models</h1>
-        </div>
-        <p className="pug-section-subtitle">
-          Basil can think locally on your Mac or use faster cloud models. The choice mostly comes down to privacy,
-          speed, and cost.
-        </p>
-      </header>
+      <SectionHeader
+        icon="models"
+        title="Models"
+        subtitle="Basil can think locally on your Mac or use faster cloud models. The choice mostly comes down to privacy, speed, and cost."
+      />
 
       <div className="pug-model-grid">
         <ModelCard
-          icon="🎙️"
+          icon="speechToText"
           title="Speech-to-text"
           bullets={[
             'Small local models start quickly and work well for casual dictation.',
@@ -60,7 +57,7 @@ export default function Models() {
           ]}
         />
         <ModelCard
-          icon="🧠"
+          icon="thinkingModels"
           title="Thinking models"
           bullets={[
             'Local models are free, private, offline, and run on your Mac.',
@@ -72,7 +69,7 @@ export default function Models() {
 
       <div className="pug-model-grid">
         <ModelCard
-          icon="💳"
+          icon="cloudPricing"
           title="Cloud pricing"
           bullets={[
             'Basil Cloud requires a Basil account with a payment method before usage.',
@@ -81,7 +78,7 @@ export default function Models() {
           ]}
         />
         <ModelCard
-          icon="⚙️"
+          icon="advancedOptions"
           title="Advanced options"
           isSecondary
           bullets={[

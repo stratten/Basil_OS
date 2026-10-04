@@ -5,19 +5,16 @@ import SwiftUI
 /// custom-chrome `CustomBorderlessWindow` (matching the pattern used by
 /// `BasilBoardWindowController`/`SettingsShellWindowController`) instead of a
 /// plain titled `NSWindow`: a WKWebView-rendered React guide, with
-/// `AppearanceRefreshCoordinator` registration for live theme updates, Cmd-W/
-/// Cmd-M hotkeys, and a native SwiftUI fallback (the existing
-/// `PowerUserGuideView`) shown if the bundle fails to load or the renderer
-/// doesn't report ready within a few seconds.
+/// `AppearanceRefreshCoordinator` registration for live theme updates and Cmd-W/
+/// Cmd-M hotkeys. The window closes if the bundle fails to load rather than
+/// remaining open and blank.
 @MainActor
 final class PowerUserGuideWindowController: NSObject, NSWindowDelegate, AppearanceRefreshable {
     static let shared = PowerUserGuideWindowController()
 
     private var window: NSWindow?
-    private var hostingView: NSHostingView<AnyView>?
     private var webViewHost: PowerUserGuidePanelWebView?
     private var keyboardShortcuts: WindowKeyboardShortcuts?
-    private var rendererReadyTimeoutTask: Task<Void, Never>?
 
     private static let windowSize = NSSize(width: 900, height: 700)
     private static let minimumWindowSize = NSSize(width: 760, height: 520)
@@ -58,15 +55,14 @@ final class PowerUserGuideWindowController: NSObject, NSWindowDelegate, Appearan
 
         let webViewHost = PowerUserGuidePanelWebView()
         self.webViewHost = webViewHost
-        webViewHost.onRendererReady = { [weak self] in
-            self?.rendererReadyTimeoutTask?.cancel()
-            self?.rendererReadyTimeoutTask = nil
-        }
         webViewHost.onDismiss = { [weak self] in
             self?.dismiss()
         }
         webViewHost.onNavigationFailed = { [weak self] in
-            self?.showNativeFallback()
+            #if DEBUG
+            DevLogger.shared.error("PowerUserGuidePanelWebView navigation failed; closing guide window", context: "PowerUserGuide")
+            #endif
+            self?.dismiss()
         }
         window.contentView = webViewHost.webView
         WebKitWindowChromeAppearance.apply(to: window)
@@ -88,12 +84,6 @@ final class PowerUserGuideWindowController: NSObject, NSWindowDelegate, Appearan
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         AppearanceRefreshCoordinator.shared.register(self)
-
-        rendererReadyTimeoutTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
-            guard !Task.isCancelled, let self, self.webViewHost != nil else { return }
-            self.showNativeFallback()
-        }
 
         #if DEBUG
         DevLogger.shared.info("PowerUserGuideWindowController shown", context: "PowerUserGuide")
@@ -117,9 +107,6 @@ final class PowerUserGuideWindowController: NSObject, NSWindowDelegate, Appearan
     // MARK: - Private
 
     private func cleanup() {
-        rendererReadyTimeoutTask?.cancel()
-        rendererReadyTimeoutTask = nil
-        hostingView = nil
         webViewHost?.tearDown()
         webViewHost = nil
         keyboardShortcuts?.cleanup()
@@ -127,29 +114,6 @@ final class PowerUserGuideWindowController: NSObject, NSWindowDelegate, Appearan
         window?.delegate = nil
         window = nil
         AppearanceRefreshCoordinator.shared.unregister(self)
-    }
-
-    private func showNativeFallback() {
-        guard let window else { return }
-        rendererReadyTimeoutTask?.cancel()
-        rendererReadyTimeoutTask = nil
-        webViewHost?.tearDown()
-        webViewHost = nil
-
-        let isPresentedBinding = Binding<Bool>(
-            get: { true },
-            set: { [weak self] isPresented in
-                if !isPresented {
-                    self?.dismiss()
-                }
-            }
-        )
-        let hostingView = NSHostingView(rootView: AnyView(
-            PowerUserGuideView(isPresented: isPresentedBinding)
-                .preferredColorScheme(AestheticSystem.effectiveColorScheme)
-        ))
-        self.hostingView = hostingView
-        window.contentView = hostingView
     }
 
     // MARK: - NSWindowDelegate

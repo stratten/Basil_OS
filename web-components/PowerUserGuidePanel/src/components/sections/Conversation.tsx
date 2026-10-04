@@ -4,7 +4,7 @@ export default function Conversation() {
   return (
     <div className="pug-section">
       <SectionHeader
-        icon="💬"
+        icon="conversation"
         title="Conversation"
         subtitle="An open-ended AI chat where you iterate, refine, and explore ideas over multiple turns — powered by the same writing partner Basil calls “Dill” elsewhere. Basil gives each capability a herb or spice nickname (like Dill and Paprika) so they're easy to talk about."
       />

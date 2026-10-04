@@ -87,7 +87,7 @@ extension AgentTaskResultWidgetController {
         // previous words-only sink hardcoded audioLevel: 0, which is why the web
         // recording bubble never reacted to speech. $audioLevel is already
         // throttled to ~10 Hz at the source (AudioCaptureService
-        // .audioLevelUpdateInterval), matching the native AudioLevelViewModel.
+        // .audioLevelUpdateInterval).
         Publishers.CombineLatest(captureVM.$wordsDetected, captureVM.$audioLevel)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] words, level in

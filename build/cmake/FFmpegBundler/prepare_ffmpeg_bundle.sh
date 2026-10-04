@@ -101,8 +101,8 @@ process_item() {
         # ENHANCED: Process ALL Homebrew dependencies AND any @rpath dependencies we can find in system
         should_process_dependency=false
         
-        # Always process Homebrew libraries
-        if [[ "${original_dep_path_to_copy}" == "/opt/homebrew/"* || "${original_dep_path_to_copy}" == "/usr/local/"* ]]; then
+        # Every absolute dependency outside macOS must be bundled, including the project-built LGPL FFmpeg prefix.
+        if [[ "${original_dep_path_to_copy}" == /* && "${original_dep_path_to_copy}" != /usr/lib/* && "${original_dep_path_to_copy}" != /System/Library/* ]]; then
             should_process_dependency=true
         # For any @rpath dependency, try to find it in the system (comprehensive search)
         elif [[ "${dep_path}" == "@rpath/"* ]]; then

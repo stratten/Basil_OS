@@ -6,9 +6,9 @@ Basil is a local-first macOS AI assistant. It combines a native Swift client, a 
 
 ### Workspaces, conversations, and agent work
 
-The Basil Board is the main workspace for beginning an inquiry, reopening work, viewing meeting state, and moving among conversations, Agent Tasks, and todos. Conversations retain threaded work around an ongoing subject. Assistant Session provides a focused text-or-voice assistant surface with saved outputs, refinement, and copy controls.
+The Basil Board is the main workspace for beginning an inquiry, reopening work, viewing meeting state, and moving among conversations, Agent Tasks, and todos. Conversations retain threaded work around an ongoing subject. Assistant Session, which appears in the app as **Dill** (default hotkey ⌥⌥), provides a focused text-or-voice assistant surface with saved outputs, refinement, and copy controls.
 
-Agent Tasks are goal-oriented workflows that can start from text, files, images, captured audio, or screen context. A task can show progress and intermediate activity, present results and local artifact previews, accept revisions, and request approval before taking an action. Tasks can be scheduled, reviewed, paused, or canceled when their state supports it. The todo workspace tracks work through inbox, open, in-progress, review, and completed views, with details, ordering, dates, and status for agent-backed work.
+Agent Tasks, which appear in the app as **Paprika** (default hotkey ⌥Space), are goal-oriented workflows that can start from text, files, images, captured audio, or screen context. A task can show progress and intermediate activity, present results and local artifact previews, accept revisions, and request approval before taking an action. Tasks can be scheduled, reviewed, paused, or canceled when their state supports it. The todo workspace tracks work through inbox, open, in-progress, review, and completed views, with details, ordering, dates, and status for agent-backed work.
 
 ### Capture, OCR, and transcription
 
@@ -42,12 +42,12 @@ Choose model paths independently for supported reasoning and transcription work:
 
 ## Quick start for development
 
-Basil currently supports macOS. Install Xcode or the Swift toolchain, Python 3.11, [Poetry](https://python-poetry.org/), Node.js with npm, and Homebrew. The backend and packaged application require LLVM, Tesseract, TBB, libsndfile, PortAudio, and coreutils.
+Basil currently supports macOS. Install Xcode or the Swift toolchain, Python 3.11, [Poetry](https://python-poetry.org/), Node.js with npm, and Homebrew. The backend and packaged application require LLVM, Tesseract, TBB, libsndfile, PortAudio, and coreutils; packaging also requires CMake and Homebrew's Bash.
 
 ```bash
 git clone git@github.com:stratten/Basil_OS.git basil
 cd basil
-brew install llvm tesseract tbb libsndfile portaudio coreutils
+brew install bash cmake llvm tesseract tbb libsndfile portaudio coreutils
 export LLVM_CONFIG=/opt/homebrew/opt/llvm/bin/llvm-config
 poetry install
 ./dev.sh
@@ -69,6 +69,7 @@ Capabilities that record microphone audio, inspect screen or window content, use
 - [Privacy and data flow](docs/privacy-and-data-flow.md) describes local storage, permission boundaries, provider data handling, connected services, and meeting data.
 - [Development](docs/development.md) documents the architecture, canonical web-asset builders, validation commands, and release boundaries.
 - [Repository layout](docs/repository-layout.md) and [generated files](docs/generated-files.md) explain source roots, generated artifacts, and resource staging.
+- [Verifying repository builds](docs/verifying-builds.md) explains how to download the latest signed build of `main` and confirm which commit it was built from.
 
 ## Development and release
 
@@ -77,6 +78,8 @@ The canonical source surfaces are `client/` for the native macOS application, `b
 Run the narrowest relevant validation for a change, such as `poetry run pytest`, `swift test --package-path client`, `swift build --package-path client`, or a package-local `npm test` and `npm run build`. Use [Development](docs/development.md) for the source boundaries, builders, and validation workflow.
 
 Community builds use `build/scripts/build_app.sh --ad-hoc`. Signing, notarization, update feeds, artifact upload, and DMG publication require release-owner credentials and can change external systems; they are not routine contributor operations.
+
+Every push to `main` also produces a signed, notarized build with a GitHub build-provenance attestation, published as the `main-latest` pre-release. [Verifying repository builds](docs/verifying-builds.md) explains how to confirm that a download matches the code in this repository.
 
 ## Contributing and support
 

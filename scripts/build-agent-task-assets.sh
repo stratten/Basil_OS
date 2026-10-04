@@ -108,6 +108,13 @@ REQUIRED_WEB_SYMBOL_ASSETS=(
     transcription-upload-doc.png
     transcription-upload-drop.png
     transcription-waveform.png
+    guide-conversation.png
+    guide-activity-capture.png
+    guide-models.png
+    guide-thinking-models.png
+    guide-cloud-pricing.png
+    guide-advanced-options.png
+    guide-privacy.png
 )
 for symbol_asset in "${REQUIRED_WEB_SYMBOL_ASSETS[@]}"; do
     if [ ! -f "$WEB_SYMBOL_ASSET_DIR/$symbol_asset" ]; then

@@ -12,6 +12,7 @@ import Foundation
 final class SetupAssistantPendingStateModel: ObservableObject {
     @Published private(set) var pendingSetupAssistant: Bool = false
     @Published private(set) var reminderDismissed: Bool = false
+    @Published private(set) var setupCompleted: Bool = false
     @Published private(set) var isLoading: Bool = false
     @Published private(set) var lastLoadError: String? = nil
 
@@ -19,6 +20,7 @@ final class SetupAssistantPendingStateModel: ObservableObject {
         struct State: Decodable {
             let pending_setup_assistant: Bool?
             let reminder_dismissed: Bool?
+            let completed: Bool?
         }
         let state: State
     }
@@ -47,6 +49,7 @@ final class SetupAssistantPendingStateModel: ObservableObject {
             let decoded = try JSONDecoder().decode(StateResponse.self, from: data)
             pendingSetupAssistant = decoded.state.pending_setup_assistant ?? false
             reminderDismissed = decoded.state.reminder_dismissed ?? false
+            setupCompleted = decoded.state.completed ?? false
         } catch {
             lastLoadError = error.localizedDescription
         }
@@ -79,6 +82,9 @@ final class SetupAssistantPendingStateModel: ObservableObject {
     }
 
     var shouldShowSettingsResumeCard: Bool { pendingSetupAssistant }
+
+    /// A skip always records `completed=false`, so a pending resume never reads as complete.
+    var hasCompletedSetupAssistant: Bool { setupCompleted && !pendingSetupAssistant }
 
     var shouldShowLaunchResumeToast: Bool { pendingSetupAssistant && !reminderDismissed }
 }

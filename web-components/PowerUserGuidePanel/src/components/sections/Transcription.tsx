@@ -4,7 +4,7 @@ export default function Transcription() {
   return (
     <div className="pug-section">
       <SectionHeader
-        icon="🎙️"
+        icon="transcription"
         title="Voice Transcription"
         subtitle="Transform your voice into text instantly, anywhere on your Mac"
       />

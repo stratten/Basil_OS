@@ -7,7 +7,7 @@ Tests the complete file system service integration with agent workflows.
 Validates the primary use case: "Take this document and draft a reply to this email"
 
 Usage:
-    cd Basil/tests/services/agent_processing_tests
+    cd backend/src/tests/services/agent_processing_tests
     poetry run python test_file_system_integration.py
 """
 
