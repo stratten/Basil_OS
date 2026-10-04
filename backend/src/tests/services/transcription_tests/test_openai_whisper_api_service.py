@@ -2,6 +2,7 @@ import asyncio
 import io
 import logging
 import struct
+import threading
 import time
 import wave
 from pathlib import Path
@@ -158,6 +159,27 @@ class _SlowFakeAudio:
 
 class _SlowFakeOpenAIClient:
     audio = _SlowFakeAudio()
+
+    def with_options(self, **kwargs):
+        return self
+
+
+class _GatedFakeTranscriptions:
+    def __init__(self) -> None:
+        self.release = threading.Event()
+        self.calling_thread_ids: list[int] = []
+
+    def create(self, **kwargs):
+        self.calling_thread_ids.append(threading.get_ident())
+        if not self.release.wait(timeout=5):
+            raise RuntimeError("gated fake transcription was never released")
+        return _FakeOpenAITextResponse()
+
+
+class _GatedFakeOpenAIClient:
+    def __init__(self) -> None:
+        self.transcriptions = _GatedFakeTranscriptions()
+        self.audio = SimpleNamespace(transcriptions=self.transcriptions)
 
     def with_options(self, **kwargs):
         return self
@@ -390,18 +412,23 @@ async def test_direct_openai_text_request_does_not_block_event_loop(caplog) -> N
         logger="api.services.transcription.backends.openai_whisper_api.direct_client",
     )
     client = DirectOpenAITranscriptionClient(api_model_name="whisper-1")
-    client._client = _SlowFakeOpenAIClient()
+    fake_client = _GatedFakeOpenAIClient()
+    client._client = fake_client
+    event_loop_thread_id = threading.get_ident()
 
-    started_at = time.perf_counter()
     transcription_task = asyncio.create_task(
         client.transcribe_text(_wav_bytes(seconds=1.0), ".wav")
     )
 
-    await asyncio.sleep(0.01)
-    probe_elapsed = time.perf_counter() - started_at
+    for _ in range(200):
+        if fake_client.transcriptions.calling_thread_ids:
+            break
+        await asyncio.sleep(0.01)
 
-    assert probe_elapsed < 0.04
+    assert fake_client.transcriptions.calling_thread_ids
+    assert event_loop_thread_id not in fake_client.transcriptions.calling_thread_ids
     assert not transcription_task.done()
+    fake_client.transcriptions.release.set()
     assert await transcription_task == "background transcription"
     assert "request_id=" in caplog.text
     assert "OpenAI transcription request queued" in caplog.text
