@@ -1,0 +1,14 @@
+/* Metallic (background only): the window's layout containers and header chrome become transparent so the sheen behind content shows on the window background, while messages, cards, menus, and inputs keep their solid fills. */
+html[data-surface-finish="metal_backdrop"] :is(
+  .basil-board-detached-header,
+  .chats-tab,
+  .chats-sidebar,
+  .chats-tab > .chats-sidebar.chats-sidebar-collapsed,
+  .chats-sidebar-header,
+  .chats-main-header,
+  .chats-main,
+  .chats-message-viewport,
+  .chats-composer-region
+) {
+  background: transparent;
+}

@@ -13,7 +13,7 @@ struct AestheticSystem {
     private static var userSecondaryColor = Color(red: 0.21100852777444695, green: 0.4699344845863317, blue: 0.8893695758678611)  // Medium blue (default) - Duke Blue theme
     private static var userTextColor = Color(red: 0.9699399998499855, green: 0.9902393003857255, blue: 1.0)  // Near-white (default) - Duke Blue theme
     private static var userPreferredFont = "Helvetica-Light" // Default font
-    private static var userSurfaceFinish = "flat"
+    private static var userSurfaceFinish = AppearanceSettings.defaultSurfaceFinish
 
     // Processing bubble colors. Royal Purple defaults (#7C3AED base /
     // #DDD6FE accent) are intentionally distinct from idle blue and from

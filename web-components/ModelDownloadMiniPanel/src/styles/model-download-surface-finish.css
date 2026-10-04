@@ -1,0 +1,4 @@
+/* Metallic (background only): the panel body becomes transparent so the sheen shows on the window background, while its progress rows and buttons keep their own fills. */
+html[data-surface-finish="metal_backdrop"] .model-download-panel {
+  background: transparent;
+}

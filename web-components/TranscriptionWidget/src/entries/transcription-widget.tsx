@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client';
 import { TranscriptionWidgetApp } from '../app/TranscriptionWidgetApp';
 import '@shared/reduced-motion.css';
 import '../styles/transcription-widget.css';
+import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish';
+
+enableBackdropSurfaceFinish();
 
 const container = document.getElementById('root');
 if (!container) {

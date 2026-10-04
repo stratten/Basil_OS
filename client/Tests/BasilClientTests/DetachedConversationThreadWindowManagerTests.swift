@@ -86,4 +86,19 @@ final class DetachedConversationThreadWindowManagerTests: XCTestCase {
         XCTAssertTrue(manager.detachedConversationIds.isEmpty)
         XCTAssertTrue(observer.updates.isEmpty)
     }
+
+    func testOpenedThreadWindowReceivesLiveAppearanceUpdates() {
+        let manager = DetachedConversationThreadWindowManager()
+        let hostCountBeforeOpen = AppearanceRefreshCoordinator.shared.registeredHostCount
+
+        manager.open(conversationId: "conversation-appearance")
+
+        XCTAssertEqual(AppearanceRefreshCoordinator.shared.registeredHostCount, hostCountBeforeOpen + 1)
+    }
+
+    func testGlobalConversationWindowRefreshesAppearanceSafelyBeforeItIsShown() {
+        let controller: AppearanceRefreshable = ConversationWindowController()
+
+        controller.refreshAppearance()
+    }
 }

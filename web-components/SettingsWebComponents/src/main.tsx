@@ -22,6 +22,10 @@ import './styles/proactive-suggestions-settings.css'
 import './styles/meetings-settings.css'
 import './styles/settings-shell.css'
 import './styles/home-settings.css'
+import './styles/settings-surface-finish.css'
+import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish'
+
+enableBackdropSurfaceFinish()
 
 const container = document.getElementById('root')
 if (container) {

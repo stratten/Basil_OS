@@ -29,6 +29,12 @@ struct AppearanceSettings: Codable {
     var processingAccentColorBlue: Double
     var preferredFont: String
 
+    /// Surface finishes accepted by the backend `surface_finish` field.
+    static let supportedSurfaceFinishes: Set<String> = ["flat", "metal", "metal_backdrop"]
+
+    /// Surface finish of the shipped default theme; mirrors the backend `surface_finish` default.
+    static let defaultSurfaceFinish = "metal_backdrop"
+
     // Materialize the canonical processing-color components once and reuse
     // them everywhere in this file (init defaults, decoder fallbacks, the
     // `@Published` initial values on the view-model, and resetToDefaults).
@@ -78,7 +84,7 @@ struct AppearanceSettings: Codable {
          textColorRed: Double = 0.0,
          textColorGreen: Double = 0.0,
          textColorBlue: Double = 0.0,
-         surfaceFinish: String = "flat",
+         surfaceFinish: String = AppearanceSettings.defaultSurfaceFinish,
          processingColorRed: Double = AppearanceSettings.defaultProcessingBaseComponents.red,
          processingColorGreen: Double = AppearanceSettings.defaultProcessingBaseComponents.green,
          processingColorBlue: Double = AppearanceSettings.defaultProcessingBaseComponents.blue,
@@ -128,8 +134,8 @@ struct AppearanceSettings: Codable {
         textColorRed = try container.decodeIfPresent(Double.self, forKey: .textColorRed) ?? 0.0
         textColorGreen = try container.decodeIfPresent(Double.self, forKey: .textColorGreen) ?? 0.0
         textColorBlue = try container.decodeIfPresent(Double.self, forKey: .textColorBlue) ?? 0.0
-        let decodedSurfaceFinish = try container.decodeIfPresent(String.self, forKey: .surfaceFinish) ?? "flat"
-        surfaceFinish = ["flat", "metal"].contains(decodedSurfaceFinish) ? decodedSurfaceFinish : "flat"
+        let decodedSurfaceFinish = try container.decodeIfPresent(String.self, forKey: .surfaceFinish) ?? AppearanceSettings.defaultSurfaceFinish
+        surfaceFinish = AppearanceSettings.supportedSurfaceFinishes.contains(decodedSurfaceFinish) ? decodedSurfaceFinish : AppearanceSettings.defaultSurfaceFinish
         let baseDefaults = AppearanceSettings.defaultProcessingBaseComponents
         let accentDefaults = AppearanceSettings.defaultProcessingAccentComponents
         processingColorRed = try container.decodeIfPresent(Double.self, forKey: .processingColorRed) ?? baseDefaults.red

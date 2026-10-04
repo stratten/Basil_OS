@@ -4,6 +4,10 @@ import App from './App';
 import './styles/theme.css';
 import '@shared/reduced-motion.css';
 import './styles/capture-widget.css';
+import './styles/capture-surface-finish.css';
+import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish';
+
+enableBackdropSurfaceFinish();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

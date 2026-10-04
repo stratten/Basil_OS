@@ -11,7 +11,7 @@ export interface AppearanceSettings {
   textColorRed: number
   textColorGreen: number
   textColorBlue: number
-  surfaceFinish: 'flat' | 'metal'
+  surfaceFinish: 'flat' | 'metal' | 'metal_backdrop'
   processingColorRed: number
   processingColorGreen: number
   processingColorBlue: number
@@ -114,7 +114,7 @@ export interface CustomAppearanceTheme {
   textColorRed: number
   textColorGreen: number
   textColorBlue: number
-  surfaceFinish: 'flat' | 'metal'
+  surfaceFinish: 'flat' | 'metal' | 'metal_backdrop'
 }
 
 export type CustomAppearanceThemeInput = Omit<CustomAppearanceTheme, 'id'>

@@ -71,6 +71,26 @@ describe('bridge initialization queue', () => {
     expect(onInit).toHaveBeenCalledWith(initPayload);
   });
 
+  it('applies a live theme change without replaying init and resetting the window identity', async () => {
+    const bridge = await import('./bridge');
+    const onInit = vi.fn();
+    bridge.registerBridgeHandlers({
+      onInit,
+      onVoiceCaptureState: vi.fn(),
+      onVoiceCaptureFinished: vi.fn(),
+      onStatusIconChanged: vi.fn(),
+    });
+
+    window.basilBoardBridge?.onThemeChanged?.({
+      theme: { ...initPayload.theme, primary: '#3678e3', surfaceFinish: 'metal' },
+      fonts: initPayload.fonts,
+    });
+
+    expect(onInit).not.toHaveBeenCalled();
+    expect(document.documentElement.style.getPropertyValue('--primary')).toBe('#3678e3');
+    expect(document.documentElement.dataset.surfaceFinish).toBe('metal');
+  });
+
   it('queues valid Board Conversation availability, rejects malformed state, and delivers later updates', async () => {
     const bridge = await import('./bridge');
     const handler = vi.fn();

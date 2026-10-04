@@ -1,0 +1,12 @@
+/* Metallic (background only): the window header, content wrapper, and upload root become transparent so the sheen shows on the window background. The transcription result reads inside its bordered card, so that card takes the solid theme fill, while fields and buttons keep their own fills. */
+html[data-surface-finish="metal_backdrop"] :is(
+  .basil-window-header,
+  .basil-window-content,
+  .audio-upload-root
+) {
+  background: transparent;
+}
+
+html[data-surface-finish="metal_backdrop"] .audio-upload-result {
+  background: var(--background-primary);
+}

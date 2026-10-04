@@ -2,7 +2,11 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { ProfileEditorApp } from '../app/ProfileEditorApp';
 import '../styles/profile-editor.css';
+import '../styles/profile-editor-surface-finish.css';
+import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish';
 import type { ProfileEditorConfig } from '../types';
+
+enableBackdropSurfaceFinish();
 
 const fallbackConfig: ProfileEditorConfig = {
   mode: 'memory_file',

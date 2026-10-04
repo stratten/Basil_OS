@@ -14,7 +14,11 @@ import './styles/chats-messages.css';
 import './styles/chats-output-strip.css';
 import './styles/chats-artifact-sidebar.css';
 import '@agent-task/styles/components/artifact-review-workspace.css';
+import './styles/conversation-surface-finish.css';
+import './styles/basil-board-surface-finish.css';
+import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish';
 
+enableBackdropSurfaceFinish();
 applyProcessingDefaults();
 
 createRoot(document.getElementById('root')!).render(

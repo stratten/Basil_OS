@@ -93,7 +93,7 @@ enum AestheticWebPayload {
             Object.entries(tokenMap).forEach(([themeKey, cssToken]) => {
                 if (theme[themeKey]) root.style.setProperty(cssToken, theme[themeKey]);
             });
-            root.dataset.surfaceFinish = theme.surfaceFinish === 'metal' ? 'metal' : 'flat';
+            root.dataset.surfaceFinish = theme.surfaceFinish === 'metal' || theme.surfaceFinish === 'metal_backdrop' ? 'metal' : 'flat';
         })(\(themeJSON));
         """
     }

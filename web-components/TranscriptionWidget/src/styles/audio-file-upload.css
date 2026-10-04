@@ -154,6 +154,8 @@ body,
   padding: 6px 8px;
   border-radius: 6px;
   border: 1px solid var(--field-border);
+  color: var(--text-primary);
+  background: var(--background-primary);
 }
 
 .audio-upload-actions {

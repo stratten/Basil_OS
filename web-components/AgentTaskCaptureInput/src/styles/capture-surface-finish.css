@@ -1,0 +1,7 @@
+/* Metallic (background only): the capture widget shell becomes transparent so the sheen shows on the window background, while the composer, reference list, and controls keep their solid fills. */
+html[data-surface-finish="metal_backdrop"] :is(
+  .capture-widget,
+  .capture-widget--loading
+) {
+  background: transparent;
+}

@@ -53,9 +53,9 @@ class AppearanceSettings(BaseModel):
     text_color_red: float = Field(default=0.9699399998499855, description="Text color red component (0.0-1.0)")
     text_color_green: float = Field(default=0.9902393003857255, description="Text color green component (0.0-1.0)")
     text_color_blue: float = Field(default=1.0, description="Text color blue component (0.0-1.0)")
-    surface_finish: Literal["flat", "metal"] = Field(
-        default="flat",
-        description="Surface finish rendered by web-hosted panels: 'flat' (solid colors) or 'metal' (brushed-metal gradient and texture sheen layered over the active palette).",
+    surface_finish: Literal["flat", "metal", "metal_backdrop"] = Field(
+        default="metal_backdrop",
+        description="Surface finish rendered by web-hosted panels: 'flat' (solid colors), 'metal' (brushed-metal gradient and texture sheen layered over the active palette), or 'metal_backdrop' (the same sheen behind content, so opaque elements such as messages and inputs stay untextured).",
     )
 
     # Processing bubble colors. Mirror UIPreferences so the API contract

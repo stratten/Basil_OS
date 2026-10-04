@@ -1,0 +1,4 @@
+/* Metallic (background only): the preview window header becomes transparent so the sheen shows on the window background, while the file body, rendered frame, path and version strips, and controls keep their solid fills. */
+html[data-surface-finish="metal_backdrop"] .file-preview-window-header {
+  background: transparent;
+}

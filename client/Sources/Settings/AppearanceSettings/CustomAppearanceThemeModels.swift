@@ -52,7 +52,7 @@ enum CustomAppearanceThemeLimits {
 struct ReactAppearanceThemeSavePayload {
     let request: CustomAppearanceThemeCreateRequest
 
-    /// Returns nil when the name is blank or longer than the limit after trimming, any color component is missing or outside 0...1, or the finish is not "flat" or "metal".
+    /// Returns nil when the name is blank or longer than the limit after trimming, any color component is missing or outside 0...1, or the finish is not one of `AppearanceSettings.supportedSurfaceFinishes`.
     init?(raw: [String: Any]) {
         func component(_ key: String) -> Double? {
             guard let value = (raw[key] as? NSNumber)?.doubleValue, value.isFinite else { return nil }
@@ -76,7 +76,7 @@ struct ReactAppearanceThemeSavePayload {
             let textColorGreen = component("textColorGreen"),
             let textColorBlue = component("textColorBlue"),
             let surfaceFinish = raw["surfaceFinish"] as? String,
-            ["flat", "metal"].contains(surfaceFinish)
+            AppearanceSettings.supportedSurfaceFinishes.contains(surfaceFinish)
         else { return nil }
         request = CustomAppearanceThemeCreateRequest(
             name: name,

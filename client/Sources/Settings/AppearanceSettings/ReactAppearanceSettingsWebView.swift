@@ -56,8 +56,8 @@ struct ReactAppearanceSettingsDraftPayload {
             let preferredFont = raw["preferredFont"] as? String,
             !preferredFont.isEmpty
         else { return nil }
-        let surfaceFinish = raw["surfaceFinish"] as? String ?? "flat"
-        guard ["flat", "metal"].contains(surfaceFinish) else { return nil }
+        let surfaceFinish = raw["surfaceFinish"] as? String ?? AppearanceSettings.defaultSurfaceFinish
+        guard AppearanceSettings.supportedSurfaceFinishes.contains(surfaceFinish) else { return nil }
         self.backgroundColorRed = backgroundColorRed
         self.backgroundColorGreen = backgroundColorGreen
         self.backgroundColorBlue = backgroundColorBlue

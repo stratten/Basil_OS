@@ -49,6 +49,11 @@ final class CustomAppearanceThemeModelsTests: XCTestCase {
         XCTAssertNil(ReactAppearanceThemeSavePayload(raw: missing))
     }
 
+    func testAcceptsMetalBackdropFinish() throws {
+        let payload = try XCTUnwrap(ReactAppearanceThemeSavePayload(raw: validRawTheme(overrides: ["surfaceFinish": "metal_backdrop"])))
+        XCTAssertEqual(payload.request.surfaceFinish, "metal_backdrop")
+    }
+
     func testRejectsMissingOrUnknownFinish() {
         XCTAssertNil(ReactAppearanceThemeSavePayload(raw: validRawTheme(overrides: ["surfaceFinish": "chrome"])))
         var missing = validRawTheme()

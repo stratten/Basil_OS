@@ -1,0 +1,11 @@
+/* Metallic (background only): the window surface and title chrome become transparent so the sheen shows on the window background. The analysis results read directly on the window surface, so the content area takes the solid theme fill instead. */
+html[data-surface-finish="metal_backdrop"] :is(
+  .meeting-analysis-surface,
+  .meeting-analysis-surface .meeting-window-chrome
+) {
+  background: transparent;
+}
+
+html[data-surface-finish="metal_backdrop"] .meeting-analysis-content {
+  background: var(--background-primary);
+}

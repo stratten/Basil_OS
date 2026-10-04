@@ -3,6 +3,10 @@ import { createRoot } from 'react-dom/client';
 import { AudioFileUploadApp } from '../app/AudioFileUploadApp';
 import '@shared/reduced-motion.css';
 import '../styles/audio-file-upload.css';
+import '../styles/audio-file-upload-surface-finish.css';
+import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish';
+
+enableBackdropSurfaceFinish();
 
 const container = document.getElementById('root');
 if (!container) {

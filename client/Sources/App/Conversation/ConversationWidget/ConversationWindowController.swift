@@ -2,7 +2,7 @@ import AppKit
 
 // MARK: - Window Controller
 @MainActor
-final class ConversationWindowController: NSObject, NSWindowDelegate {
+final class ConversationWindowController: NSObject, NSWindowDelegate, AppearanceRefreshable {
     private var panel: NSWindow?
     private var webViewHost: BasilBoardWebView?
     private var keyboardShortcuts: WindowKeyboardShortcuts?
@@ -97,6 +97,7 @@ final class ConversationWindowController: NSObject, NSWindowDelegate {
 
         self.panel = window
         self.webViewHost = host
+        AppearanceRefreshCoordinator.shared.register(self)
 
         // Restore saved position or center
         var positioned = false
@@ -217,6 +218,11 @@ final class ConversationWindowController: NSObject, NSWindowDelegate {
         webViewHost = nil
         panel = nil
         collapseController = nil
+        AppearanceRefreshCoordinator.shared.unregister(self)
+    }
+
+    func refreshAppearance() {
+        webViewHost?.emitThemeChanged()
     }
 
     func windowDidMiniaturize(_ notification: Notification) {

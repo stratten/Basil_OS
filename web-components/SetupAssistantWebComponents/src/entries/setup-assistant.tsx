@@ -3,6 +3,10 @@ import { createRoot } from 'react-dom/client'
 
 import { SetupAssistantApp } from '@/app/SetupAssistantApp'
 import '@/styles/setup-assistant.css'
+import '@/styles/setup-assistant-surface-finish.css'
+import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish'
+
+enableBackdropSurfaceFinish()
 
 const root = document.getElementById('root')
 

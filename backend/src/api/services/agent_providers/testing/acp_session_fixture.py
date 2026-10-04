@@ -463,7 +463,8 @@ def _run_invalid_incoming_request_id_mode() -> int:
 
 
 def _run_unsupported_incoming_request_mode() -> int:
-    _read_and_respond_session_new("fixture-session-1")
+    # The unsupported request is sent while session/new is still pending, so the client cannot send its next request before answering it.
+    session_request = _read_message()
 
     _write_message(
         {
@@ -479,6 +480,9 @@ def _run_unsupported_incoming_request_mode() -> int:
     if error_response["error"].get("code") != -32601:
         return 4
 
+    _write_message(
+        {"jsonrpc": "2.0", "id": session_request.get("id"), "result": {"sessionId": "fixture-session-1"}}
+    )
     _read_and_respond_session_new("fixture-session-2")
     return 0
 

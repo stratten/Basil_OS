@@ -15,6 +15,7 @@ import type {
 } from '../contracts';
 import type { SwiftMessage } from '@agent-task/types';
 import type { FilePreviewPayload } from '@agent-task/components/artifacts/transport/artifactPreviewTransport';
+import { applyHostFonts, applyHostTheme } from '../theme/agentTaskTheme';
 
 type InitHandler = (payload: BasilBoardInitPayload) => void;
 type VoiceStateHandler = (payload: HomeVoiceCaptureStatePayload) => void;
@@ -804,12 +805,11 @@ export function registerBridgeHandlers(handlers: {
   window.basilBoardBridge = {
     ...window.basilBoardBridge,
     onInit: (payload) => handleInit(payload),
+    // Theme changes must not replay init: init also carries the window's conversation identity and presentation, which an empty replay would reset.
     onThemeChanged: (payload) => {
-      handleInit({
-        apiBaseUrl: '',
-        theme: payload.theme,
-        fonts: payload.fonts,
-      });
+      applyHostTheme(payload.theme);
+      applyHostFonts(payload.fonts);
+      window.requestAnimationFrame(() => postBridgeMessage('basilBoardThemeApplied'));
     },
     onVoiceCaptureState: (payload) => handlers.onVoiceCaptureState(payload),
     onVoiceCaptureFinished: (payload) => handlers.onVoiceCaptureFinished(payload),

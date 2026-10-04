@@ -4,6 +4,10 @@ import { createRoot } from 'react-dom/client'
 import { SetupWindowChrome } from '@/components/layout/SetupWindowChrome'
 import { PermissionPreflight } from '@/components/permissions/PermissionPreflight'
 import '@/styles/setup-assistant.css'
+import '@/styles/setup-assistant-surface-finish.css'
+import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish'
+
+enableBackdropSurfaceFinish()
 
 const root = document.getElementById('root')
 

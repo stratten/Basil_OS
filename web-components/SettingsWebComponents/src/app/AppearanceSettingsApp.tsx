@@ -40,7 +40,7 @@ const DEFAULT_SETTINGS: AppearanceSettings = {
   textColorRed: 0.9699399998499855,
   textColorGreen: 0.9902393003857255,
   textColorBlue: 1.0,
-  surfaceFinish: 'flat',
+  surfaceFinish: 'metal_backdrop',
   processingColorRed: 0.486,
   processingColorGreen: 0.227,
   processingColorBlue: 0.929,
@@ -376,6 +376,15 @@ export function AppearanceSettingsApp() {
             onClick={() => updateDraft({ ...draft, surfaceFinish: 'metal' })}
           >
             Metallic
+          </button>
+          <button
+            type="button"
+            className={`appearance-finish-option${draft.surfaceFinish === 'metal_backdrop' ? ' is-selected' : ''}`}
+            aria-pressed={draft.surfaceFinish === 'metal_backdrop'}
+            title="Brushed-metal sheen on window backgrounds only; messages, cards, and inputs stay solid. Windows not yet updated show standard Metallic."
+            onClick={() => updateDraft({ ...draft, surfaceFinish: 'metal_backdrop' })}
+          >
+            Metallic (background only)
           </button>
         </div>
         <div className="appearance-color-columns">

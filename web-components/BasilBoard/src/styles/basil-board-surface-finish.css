@@ -1,0 +1,10 @@
+/* Metallic (background only): the Home and Todos layout containers become transparent so the sheen shows on the window background. Assistant messages, the composer, todo items, the todo detail pane, and the workspace pane keep their solid fills, so longer text stays on solid color. */
+html[data-surface-finish="metal_backdrop"] :is(
+  .home-view,
+  .home-transcript,
+  .home-composer,
+  .todo-view,
+  .todo-list-pane
+) {
+  background: transparent;
+}

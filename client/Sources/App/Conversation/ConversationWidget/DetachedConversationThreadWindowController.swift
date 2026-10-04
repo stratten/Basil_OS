@@ -1,7 +1,7 @@
 import AppKit
 
 @MainActor
-final class DetachedConversationThreadWindowController: NSObject, NSWindowDelegate {
+final class DetachedConversationThreadWindowController: NSObject, NSWindowDelegate, AppearanceRefreshable {
     private let conversationId: String
     private let initialFrame: NSRect
     private let onDismiss: (String) -> Void
@@ -59,6 +59,7 @@ final class DetachedConversationThreadWindowController: NSObject, NSWindowDelega
             fallbackExpandedSize: initialFrame.size
         )
         host.loadContent()
+        AppearanceRefreshCoordinator.shared.register(self)
         // Deliberately does NOT acquire a `ConversationPresentationCoordinator`
         // standalone lease: that coarse lease hides the Board's entire Chats
         // tab, which is the right behavior for the legacy single global
@@ -92,6 +93,11 @@ final class DetachedConversationThreadWindowController: NSObject, NSWindowDelega
         host?.tearDown()
         host = nil
         collapseController = nil
+        AppearanceRefreshCoordinator.shared.unregister(self)
         onDismiss(conversationId)
+    }
+
+    func refreshAppearance() {
+        host?.emitThemeChanged()
     }
 }

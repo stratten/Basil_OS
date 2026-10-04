@@ -103,11 +103,21 @@ final class ReactAppearanceSettingsDraftPayloadTests: XCTestCase {
         XCTAssertNil(ReactAppearanceColorPickerRequest(raw: validRawColorPickerRequest(overrides: ["red": 1.1])))
     }
 
-    func testDraftWithoutSurfaceFinishDefaultsToFlat() throws {
+    func testDraftWithoutSurfaceFinishDefaultsToBackgroundOnlyMetallic() throws {
         let payload = try XCTUnwrap(ReactAppearanceSettingsDraftPayload(raw: validRawDraft()))
 
-        XCTAssertEqual(payload.surfaceFinish, "flat")
-        XCTAssertEqual(payload.toAppearanceSettings().surfaceFinish, "flat")
+        XCTAssertEqual(payload.surfaceFinish, "metal_backdrop")
+        XCTAssertEqual(payload.toAppearanceSettings().surfaceFinish, "metal_backdrop")
+    }
+
+    func testShippedDefaultAndResetUseBackgroundOnlyMetallic() throws {
+        XCTAssertEqual(AppearanceSettings().surfaceFinish, "metal_backdrop")
+
+        let decodedWithoutFinish = try JSONDecoder().decode(AppearanceSettings.self, from: Data(#"{"preferred_font":"Helvetica-Light"}"#.utf8))
+        XCTAssertEqual(decodedWithoutFinish.surfaceFinish, "metal_backdrop")
+
+        let decodedFlat = try JSONDecoder().decode(AppearanceSettings.self, from: Data(#"{"preferred_font":"Helvetica-Light","surface_finish":"flat"}"#.utf8))
+        XCTAssertEqual(decodedFlat.surfaceFinish, "flat")
     }
 
     func testDraftAcceptsMetalSurfaceFinish() throws {
@@ -117,6 +127,15 @@ final class ReactAppearanceSettingsDraftPayloadTests: XCTestCase {
 
         XCTAssertEqual(payload.surfaceFinish, "metal")
         XCTAssertEqual(payload.toAppearanceSettings().surfaceFinish, "metal")
+    }
+
+    func testDraftAcceptsMetalBackdropSurfaceFinish() throws {
+        let payload = try XCTUnwrap(
+            ReactAppearanceSettingsDraftPayload(raw: validRawDraft(overrides: ["surfaceFinish": "metal_backdrop"]))
+        )
+
+        XCTAssertEqual(payload.surfaceFinish, "metal_backdrop")
+        XCTAssertEqual(payload.toAppearanceSettings().surfaceFinish, "metal_backdrop")
     }
 
     func testDraftRejectsUnknownSurfaceFinish() {

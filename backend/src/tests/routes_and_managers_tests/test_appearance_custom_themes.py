@@ -70,6 +70,12 @@ class TestAppearanceCustomThemes(unittest.TestCase):
         self.assertEqual(themes[0]["text_color_blue"], 0.9)
         self.assertEqual(client.get(THEMES_PATH).json()["themes"], themes)
 
+    def test_create_accepts_metal_backdrop_finish(self) -> None:
+        response = client.post(THEMES_PATH, json=theme_body(surface_finish="metal_backdrop"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["themes"][0]["surface_finish"], "metal_backdrop")
+
     def test_create_does_not_change_active_appearance(self) -> None:
         before = client.get("/settings/appearance").json()["settings"]
 

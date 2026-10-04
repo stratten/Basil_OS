@@ -198,6 +198,21 @@ describe('AppearanceSettingsApp', () => {
     expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'previewDraft' }))
   })
 
+  it('offers a background-only metallic finish and previews it like the other finishes', async () => {
+    emit(initEvent())
+    await new Promise((resolve) => window.requestAnimationFrame(resolve))
+    const options = Array.from(container.querySelectorAll<HTMLButtonElement>('.appearance-finish-option')).map((button) => button.textContent)
+    expect(options).toEqual(['Flat', 'Metallic', 'Metallic (background only)'])
+
+    act(() => { buttonWithText('Metallic (background only)')!.click() })
+    await new Promise((resolve) => window.requestAnimationFrame(resolve))
+
+    expect(container.querySelector<HTMLButtonElement>('.appearance-finish-option[aria-pressed="true"]')?.textContent).toBe('Metallic (background only)')
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'previewDraft', draft: expect.objectContaining({ surfaceFinish: 'metal_backdrop' }) }),
+    )
+  })
+
   it('disables Save/Cancel while a save is pending and clears dirty state on save success', () => {
     emit(initEvent())
     pickPrimaryColor()

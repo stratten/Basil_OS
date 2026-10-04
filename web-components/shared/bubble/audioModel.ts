@@ -1,6 +1,10 @@
 export type AudioEventType = 'none' | 'transient' | 'sustained' | 'decay' | 'attack';
 export type BubbleAnimationMode = 'ambient' | 'audioResponsive' | 'processing';
 
+const ADAPTATION_REFERENCE_STEP_SECONDS = 0.03;
+// Keeps the stiffness term well inside its stability bound (sqrt(stiffness / mass) * dt < 2) at the adapted extremes of 800 stiffness and 0.1 mass.
+const MAX_PHYSICS_STEP_SECONDS = 1 / 240;
+
 function nowSeconds(): number {
   return (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000;
 }
@@ -16,10 +20,9 @@ export class AudioSpring {
   update(target: number, deltaTime: number): void {
     this.targetValue = target;
     const displacement = this.currentValue - this.targetValue;
-    const springForce = -this.stiffness * displacement;
-    const dampingForce = -this.damping * this.velocity;
-    const acceleration = (springForce + dampingForce) / this.mass;
-    this.velocity += acceleration * deltaTime;
+    // Damping is integrated implicitly: the explicit form diverges once damping * dt / mass exceeds 2, which adapted coefficients reach during speech.
+    const springImpulse = (-this.stiffness * displacement / this.mass) * deltaTime;
+    this.velocity = (this.velocity + springImpulse) / (1 + (this.damping / this.mass) * deltaTime);
     this.currentValue += this.velocity * deltaTime;
     if (Math.abs(displacement) < 0.001 && Math.abs(this.velocity) < 0.001) {
       this.currentValue = this.targetValue;
@@ -32,6 +35,7 @@ export class AudioSpring {
     trebleLevel: number,
     audioEvent: AudioEventType,
     audioVelocity: number,
+    deltaTime: number = ADAPTATION_REFERENCE_STEP_SECONDS,
   ): void {
     let newStiffness = 200;
     let newDamping = 25;
@@ -48,9 +52,13 @@ export class AudioSpring {
       case 'none': newDamping += 15; break;
     }
     newStiffness += Math.abs(audioVelocity) * 100.0;
-    this.stiffness = this.stiffness * 0.6 + newStiffness * 0.4;
-    this.damping = this.damping * 0.6 + newDamping * 0.4;
-    this.mass = this.mass * 0.7 + newMass * 0.3;
+    // The native retention factors are defined per 30 ms step; scaling them by elapsed time keeps the same adaptation speed at any step size.
+    const steps = deltaTime / ADAPTATION_REFERENCE_STEP_SECONDS;
+    const coefficientRetention = Math.pow(0.6, steps);
+    const massRetention = Math.pow(0.7, steps);
+    this.stiffness = this.stiffness * coefficientRetention + newStiffness * (1 - coefficientRetention);
+    this.damping = this.damping * coefficientRetention + newDamping * (1 - coefficientRetention);
+    this.mass = this.mass * massRetention + newMass * (1 - massRetention);
     this.stiffness = Math.max(50, Math.min(800, this.stiffness));
     this.damping = Math.max(5, Math.min(100, this.damping));
     this.mass = Math.max(0.1, Math.min(5, this.mass));
@@ -79,7 +87,6 @@ export class BubbleAudioModel {
   private previousRawLevel = 0;
   private levelHistory: number[] = [];
   private previousEventDetectionTime = 0;
-  private stepAccumulator = 0;
 
   private readonly historySize = 5;
   private readonly eventCooldown = 0.1;
@@ -112,12 +119,14 @@ export class BubbleAudioModel {
     this.currentLevel = this.smoothedLevel;
   }
 
+  /** Advances physics by the real frame time in short sub-steps so motion updates every rendered frame instead of in 30 ms jumps. */
   advance(realDeltaSeconds: number): void {
-    this.stepAccumulator += realDeltaSeconds;
-    while (this.stepAccumulator >= 0.03) {
-      this.updateModeTransition(0.03);
-      this.updateSpringPhysics(0.03);
-      this.stepAccumulator -= 0.03;
+    let remaining = Math.max(0, realDeltaSeconds);
+    while (remaining > 0) {
+      const step = Math.min(remaining, MAX_PHYSICS_STEP_SECONDS);
+      this.updateModeTransition(step);
+      this.updateSpringPhysics(step);
+      remaining -= step;
     }
   }
 
@@ -206,7 +215,7 @@ export class BubbleAudioModel {
   private updateSpringPhysics(deltaTime: number): void {
     for (const spring of [this.levelSpring, this.opacitySpring, this.sizeSpring, this.blurSpring]) {
       spring.adaptToAudioCharacteristics(
-        this.bassLevel, this.trebleLevel, this.audioEventType, this.audioVelocity,
+        this.bassLevel, this.trebleLevel, this.audioEventType, this.audioVelocity, deltaTime,
       );
     }
     this.levelSpring.update(this.smoothedLevel, deltaTime);
