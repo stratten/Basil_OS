@@ -39,7 +39,8 @@ __pycache__/
 *.sqlite
 *.sqlite3
 *.faiss
-backend/src/api/vendor/models/
+backend/src/api/vendor/models/*
+!backend/src/api/vendor/models/wake_word/
 
 # Swift/Xcode build and user state
 .build/

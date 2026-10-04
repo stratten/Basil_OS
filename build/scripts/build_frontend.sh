@@ -457,7 +457,8 @@ log "🔐 Signing application bundle..."
 
 # Strip extended attributes that interfere with code signing (resource forks, Finder metadata, etc.)
 log "🧹 Stripping extended attributes from app bundle..."
-xattr -cr "$APP_BUNDLE_PATH"
+# Absolute path: the PyPI xattr package installs an `xattr` command without -r that can shadow Apple's on PATH.
+/usr/bin/xattr -cr "$APP_BUNDLE_PATH"
 
 ENTITLEMENTS_PATH="$CLIENT_SRC_DIR/Sources/Support/Basil.entitlements"
 
