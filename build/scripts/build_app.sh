@@ -107,7 +107,24 @@ if ! POETRY_CMD="$(command -v poetry)"; then
     echo "Error: Poetry is required for release diagnostics and backend dependency resolution." >&2
     exit 1
 fi
-RELEASE_NOTES_FILE="${BASIL_RELEASE_NOTES_FILE:-$ROOT_DIR/local/release_notes.txt}"
+RELEASE_NOTES_FILE="${BASIL_RELEASE_NOTES_FILE:-}"
+RELEASE_NOTES_CONTENT=""
+RELEASE_NOTES_SOURCE=""
+if [ "$CREATE_DMG" = true ] && [ -n "$APP_VERSION" ] && [ -n "${BASIL_RELEASE_DOWNLOAD_BASE_URL:-}" ]; then
+    if [ -n "$RELEASE_NOTES_FILE" ]; then
+        if [ ! -s "$RELEASE_NOTES_FILE" ]; then
+            echo "Error: BASIL_RELEASE_NOTES_FILE points to a missing or empty file: $RELEASE_NOTES_FILE" >&2
+            exit 1
+        fi
+        RELEASE_NOTES_CONTENT="$(cat "$RELEASE_NOTES_FILE")"
+        RELEASE_NOTES_SOURCE="$RELEASE_NOTES_FILE"
+    elif ! RELEASE_NOTES_CONTENT="$("$SCRIPT_DIR/changelog_section.sh" "$APP_VERSION")"; then
+        echo "Error: a website release build needs a '## $APP_VERSION' section with release-note bullets in CHANGELOG.md." >&2
+        exit 1
+    else
+        RELEASE_NOTES_SOURCE="CHANGELOG.md section $APP_VERSION"
+    fi
+fi
 
 # Build hardening functions
 diagnostic_build_check() {
@@ -556,18 +573,16 @@ DO_SPACES_BUCKET="${BASIL_DO_SPACES_BUCKET:-}"
 if [ "$CREATE_DMG" = true ] && [ -f "$DMG_FILE" ] && [ -n "$APP_VERSION" ] && [ -n "$RELEASE_DOWNLOAD_BASE_URL" ]; then
     log "📡 PHASE 7: Generating Sparkle appcast entry..."
     
-    # Read release notes from the known location
     RELEASE_NOTES_ARG=""
-    if [ -f "$RELEASE_NOTES_FILE" ] && [ -s "$RELEASE_NOTES_FILE" ]; then
-        RELEASE_NOTES_CONTENT=$(cat "$RELEASE_NOTES_FILE")
+    if [ -n "$RELEASE_NOTES_CONTENT" ]; then
         RELEASE_NOTES_ARG="--release-notes"
-        log "📝 Using release notes from: $RELEASE_NOTES_FILE"
+        log "📝 Using release notes from: $RELEASE_NOTES_SOURCE"
         
         # Archive a copy in the build output folder for version history
-        cp "$RELEASE_NOTES_FILE" "$MAIN_OUTPUT_DIR/release_notes_$APP_VERSION.txt"
+        printf '%s\n' "$RELEASE_NOTES_CONTENT" > "$MAIN_OUTPUT_DIR/release_notes_$APP_VERSION.txt"
         log "📋 Release notes archived to: $MAIN_OUTPUT_DIR/release_notes_$APP_VERSION.txt"
     else
-        log "❌ ERROR: No readable release notes found at $RELEASE_NOTES_FILE."
+        log "❌ ERROR: No release notes were resolved for version $APP_VERSION."
         log "   BASIL_RELEASE_DOWNLOAD_BASE_URL is set, so appcast generation requires release notes."
         exit 1
     fi

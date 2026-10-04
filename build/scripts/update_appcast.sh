@@ -137,24 +137,20 @@ if [ ! -f "$DMG_PATH" ]; then
     exit 1
 fi
 
-# If no release notes provided via --release-notes, read from the standard file
+# Without --release-notes, use BASIL_RELEASE_NOTES_FILE when set, otherwise this version's CHANGELOG.md section
 if [ -z "$RELEASE_NOTES" ]; then
-    RELEASE_NOTES_FILE="${BASIL_RELEASE_NOTES_FILE:-$ROOT_DIR/local/release_notes.txt}"
-    if [ -f "$RELEASE_NOTES_FILE" ]; then
-        RELEASE_NOTES=$(cat "$RELEASE_NOTES_FILE")
-        if [ -z "$(echo "$RELEASE_NOTES" | tr -d '[:space:]')" ]; then
-            print_error "Release notes file is empty: $RELEASE_NOTES_FILE"
-            print_error "Please add release notes before building. One bullet point per line, e.g.:"
-            print_error "  - Fixed a crash when opening settings"
-            print_error "  - Added dark mode support"
+    RELEASE_NOTES_FILE="${BASIL_RELEASE_NOTES_FILE:-}"
+    if [ -n "$RELEASE_NOTES_FILE" ]; then
+        if [ ! -f "$RELEASE_NOTES_FILE" ] || [ -z "$(tr -d '[:space:]' < "$RELEASE_NOTES_FILE")" ]; then
+            print_error "BASIL_RELEASE_NOTES_FILE points to a missing or empty file: $RELEASE_NOTES_FILE"
             exit 1
         fi
+        RELEASE_NOTES=$(cat "$RELEASE_NOTES_FILE")
         print_status "Using release notes from: $RELEASE_NOTES_FILE"
+    elif RELEASE_NOTES=$("$SCRIPT_DIR/changelog_section.sh" "$VERSION"); then
+        print_status "Using release notes from CHANGELOG.md section $VERSION"
     else
-        print_error "No release notes provided and no release notes file found."
-        print_error "Either:"
-        print_error "  1. Create build/release_notes.txt with your release notes, or"
-        print_error "  2. Pass --release-notes \"Your notes here\""
+        print_error "Add a '## $VERSION' section with '- ' bullets to CHANGELOG.md, or pass --release-notes \"Your notes here\"."
         exit 1
     fi
 fi

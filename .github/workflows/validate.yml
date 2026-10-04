@@ -18,6 +18,7 @@ jobs:
           python-version: "3.11"
       - run: python scripts/spelling/check_american_spelling.py
       - run: python scripts/check_literal_structural_colors.py
+      - run: build/scripts/changelog_section.sh Unreleased > /dev/null
       - uses: snok/install-poetry@v1
       - run: poetry install --no-interaction
       - run: PYTHONPATH=.:backend/src poetry run pytest backend/src/tests -q
@@ -182,7 +183,17 @@ jobs:
           \`\`\`
 
           Full steps and what this does and does not prove: [Verifying repository builds](${DOCS_URL}).
+
+          ## Changes since the last website release
+
           EOF
+          unreleased="$(build/scripts/changelog_section.sh Unreleased)"
+          if [ -n "$unreleased" ]; then
+            printf '%s\n' "$unreleased" >> "$notes_path"
+          else
+            echo "No user-facing changes are recorded yet." >> "$notes_path"
+          fi
+          printf '\nFull history: [CHANGELOG.md](%s/%s/blob/%s/CHANGELOG.md)\n' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_SHA" >> "$notes_path"
           gh release delete "$RELEASE_TAG" --cleanup-tag --yes || true
           gh release create "$RELEASE_TAG" "$DMG_PATH" "$SUMS_PATH" \
             --target "$GITHUB_SHA" \

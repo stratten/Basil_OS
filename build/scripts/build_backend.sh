@@ -188,6 +188,8 @@ if [ -d "$SITE_PACKAGES_DIR" ]; then
         ! -path "*/keras/*/testing*" \
         ! -path "*/lightning/*/testing*" \
         -exec rm -rf {} + 2>/dev/null || true
+    # PyObjC ships its own test suite as a top-level package that the name match above does not catch.
+    rm -rf "$SITE_PACKAGES_DIR/PyObjCTest"
     AFTER_SIZE=$(du -sm "$SITE_PACKAGES_DIR" | cut -f1)
     SAVED=$((BEFORE_SIZE - AFTER_SIZE))
     echo "✅ Stripped test directories. Saved ${SAVED}MB (${BEFORE_SIZE}MB → ${AFTER_SIZE}MB)"
@@ -214,6 +216,7 @@ rsync -av --progress \
     --exclude='*.log' \
     --exclude='server_port' \
     --exclude='.server_port' \
+    --exclude='tests/' \
     ./ "$BACKEND_DEST/src/"
 
 echo "✅ Backend source code copied successfully"
