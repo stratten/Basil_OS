@@ -117,12 +117,10 @@ create_dmg_image() {
     
     print_status "Creating disk image..." >&2
     
-    # Calculate size needed (app bundle size + generous buffer for large bundles)
+    # APFS usage from du can understate the HFS+ footprint, and HFS+ metadata consumes part of the image. Unused space compresses away in the final UDZO image, so oversize generously.
     local app_size
     app_size=$(du -sm "$DMG_DIR/Basil.app" | cut -f1)
-    # For large bundles, add more buffer space (minimum 200MB buffer)
-    local buffer_size=$((app_size > 1000 ? app_size / 5 : 200))
-    local dmg_size=$((app_size + buffer_size))
+    local dmg_size=$((app_size * 3 / 2 + 200))
     
     print_status "App bundle size: ${app_size}MB, DMG size: ${dmg_size}MB" >&2
     
@@ -141,10 +139,13 @@ create_dmg_image() {
     
     # Copy contents to mounted DMG
     print_status "Copying files to disk image..." >&2
-    cp -R "$DMG_DIR/Basil.app" "$mount_point/" 2>/dev/null || {
-        print_warning "Some files couldn't be copied due to space constraints" >&2
-        print_status "Continuing with available content..." >&2
-    }
+    if ! cp -R "$DMG_DIR/Basil.app" "$mount_point/" >&2; then
+        print_error "Copying Basil.app into the disk image failed; refusing to build a DMG with an incomplete app." >&2
+        df -m "$mount_point" >&2 || true
+        hdiutil detach "$mount_point" -force >/dev/null 2>&1 || true
+        rm -f "$temp_dmg"
+        exit 1
+    fi
     
     # Copy other files if space allows
     if cp -R "$DMG_DIR/Applications" "$mount_point/" 2>/dev/null; then

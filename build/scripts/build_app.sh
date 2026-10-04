@@ -462,11 +462,13 @@ if [ "$CREATE_DMG" = true ]; then
                 log "📊 DMG Size: $DMG_SIZE"
             fi
         else
-            log "⚠️ Warning: DMG creation failed, but application bundle is still available"
+            log "❌ Error: DMG creation failed. The application bundle is still available at $MASTER_APP_PATH"
+            exit 1
         fi
     else
         log "❌ Error: DMG creation script not found or not executable at $DMG_SCRIPT_PATH"
         log "   Application bundle is still available at $MASTER_APP_PATH"
+        exit 1
     fi
 else
     log "ℹ️  DMG creation skipped. Use --create-dmg flag to create distribution package."
