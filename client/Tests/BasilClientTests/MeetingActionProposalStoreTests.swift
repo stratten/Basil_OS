@@ -230,7 +230,9 @@ final class MeetingActionProposalStoreTests: XCTestCase {
         await store.submit(proposal)
 
         XCTAssertNil(store.statuses[proposal.id])
-        XCTAssertTrue(TodoFixtureURLProtocol.capturedRequests.isEmpty)
+        // The fixture captures every request in the process, so a best-effort update left over from an earlier test can land here.
+        XCTAssertTrue(capturedRequests(pathSuffix: "/api/v1/todos/meeting-proposals/promote").isEmpty)
+        XCTAssertTrue(capturedRequests(pathSuffix: "/workers").isEmpty)
     }
 
     func test_submit_onlyChangesThePromotedProposalsCardWhenMultiplePresent() async {
