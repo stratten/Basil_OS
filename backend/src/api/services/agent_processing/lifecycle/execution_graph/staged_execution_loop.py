@@ -10,12 +10,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from dataclasses import dataclass
 from typing import Any
 
 from api.core.logging.api_logger import api_logger
 
 from ...shared.agent_runtime_context import (
+    AGENT_RUN_STARTED_AT_KEY,
     reset_current_agent_context,
     set_current_agent_context,
 )
@@ -134,6 +136,8 @@ async def run_staged_tool_loading(request: StagedExecutionRequest) -> StagedExec
     """Run bounded staged executor passes and return the aggregate outcome."""
     state = request.state
     deadline = deadline_from_context(state.context)
+    if isinstance(state.context, dict):
+        state.context.setdefault(AGENT_RUN_STARTED_AT_KEY, time.time())
 
     all_tools = list(state.available_tools.tools)
 

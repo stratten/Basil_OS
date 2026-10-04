@@ -1,5 +1,7 @@
 import { memo } from 'react'
 
+import { plainMarkdownText } from '@shared/plainMarkdownText'
+
 import type { SetupPendingProposal } from '@/state/setupAssistantStore'
 import type { SetupArtifact, SetupArtifactRow, SetupToolApprovalState } from '@/types'
 
@@ -27,7 +29,7 @@ function BasilArtifactPanelComponent({
       <div className="artifact-panel-header">
         <div>
           <p className="eyebrow">{artifact.kind.replace(/_/g, ' ')}</p>
-          <h2>{artifact.title}</h2>
+          <h2>{plainMarkdownText(artifact.title)}</h2>
         </div>
         <button type="button" className="secondary-button" onClick={() => onClose(artifact.id)}>
           Close
@@ -85,7 +87,7 @@ function ArtifactRowCard({
   const approvalState = pendingProposal?.approvalState ?? receipt?.approval_state
   const isBusy = approvalState === 'approving' || approvalState === 'executing'
   const canAct = approvalState === 'proposed' || approvalState === 'failed'
-  const title = stringValue(row.payload.title) || stringValue(row.payload.display_name) || 'Setup option'
+  const title = plainMarkdownText(stringValue(row.payload.title) || stringValue(row.payload.display_name)) || 'Setup option'
   const whyThisMightMatter = stringValue(row.payload.why_this_might_matter)
   const recommendedNextStep = stringValue(row.payload.recommended_next_step)
   const deferMessage = stringValue(row.payload.defer_message)
@@ -100,7 +102,7 @@ function ArtifactRowCard({
   return (
     <article className="info-card artifact-row-card">
       <h3>{title}</h3>
-      <p>{detail}</p>
+      <p>{plainMarkdownText(detail)}</p>
       {exampleUseCases.length > 0 && (
         <div className="artifact-row-examples">
           <span className="eyebrow">Examples</span>

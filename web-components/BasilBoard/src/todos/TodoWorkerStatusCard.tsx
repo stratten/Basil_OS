@@ -3,6 +3,7 @@ import { marked } from 'marked';
 import { openExistingAgentTaskWidget, openExternalUrl } from '../services/bridge';
 import type { TodoWorkAttempt } from '../contracts';
 import type { TodoWorkerLiveState } from './useTodoWorkerProgress';
+import { plainMarkdownText } from '@shared/plainMarkdownText';
 
 interface TodoWorkerStatusCardProps {
   attempt: TodoWorkAttempt;
@@ -124,7 +125,7 @@ export default function TodoWorkerStatusCard({ attempt, liveState }: TodoWorkerS
   const severity = severityForStatus(status, liveState, attempt);
   const isTerminal = TERMINAL_STATUSES.has(status);
   const outcome = isTerminal ? resultMessage(liveState, attempt) : undefined;
-  const title = liveState?.detail?.title ?? attempt.title ?? attempt.agent_task_id;
+  const title = plainMarkdownText(liveState?.detail?.title ?? attempt.title) || attempt.agent_task_id;
   const statusClassSuffix = isTerminal ? severity : status;
   const label = needsAttention ? 'Agent task needs your input' : isTerminal ? labelForSeverity(severity) : labelForActiveStatus(status);
   const [isOutcomeExpanded, setIsOutcomeExpanded] = useState(false);

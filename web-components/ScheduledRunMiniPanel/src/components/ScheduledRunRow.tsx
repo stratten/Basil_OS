@@ -1,5 +1,6 @@
 import { memo, type MouseEvent } from 'react';
 import type { MiniPanelRow } from '../types';
+import { plainMarkdownText } from '@shared/plainMarkdownText';
 
 interface ScheduledRunRowProps {
   row: MiniPanelRow;
@@ -33,7 +34,7 @@ function ScheduledRunRowComponent({ row, onOpen, onDismiss }: ScheduledRunRowPro
     >
       <div className={`mini-panel-row-status ${row.status}`} aria-label={row.status} />
       <div className="mini-panel-row-body">
-        <div className="mini-panel-row-title">{row.title}</div>
+        <div className="mini-panel-row-title">{plainMarkdownText(row.title)}</div>
         <div className="mini-panel-row-step">{row.currentStep}</div>
       </div>
       <button

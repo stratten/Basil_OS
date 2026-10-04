@@ -38,6 +38,12 @@ describe('TodoWorkerStatusCard', () => {
     expect(bridgeMocks.openExistingAgentTaskWidget).toHaveBeenCalledWith('worker-1');
   });
 
+  it('renders the Agent Task title as plain text without markdown syntax', () => {
+    render(<TodoWorkerStatusCard attempt={attempt({ title: '**Encryption** options for `key_store`' })} />);
+
+    expect(screen.getByText('Encryption options for key_store')).toHaveClass('todo-worker-status-card-title');
+  });
+
   it('renders a terminal success outcome', () => {
     render(<TodoWorkerStatusCard attempt={attempt({ status: 'completed', result_summary: 'Completed research.' })} />);
 

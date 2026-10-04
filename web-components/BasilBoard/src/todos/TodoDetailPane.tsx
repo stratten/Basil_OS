@@ -10,6 +10,7 @@ import { isTodoDueDateOverdue } from './todoDates';
 import TodoDeleteConfirmation from './TodoDeleteConfirmation';
 import TodoWorkerStatusCard from './TodoWorkerStatusCard';
 import type { TodoWorkerLiveState } from './useTodoWorkerProgress';
+import { plainMarkdownText } from '@shared/plainMarkdownText';
 
 const todoEditPencilURL = new URL('../../../shared/assets/native-symbols/assistant-pencil.png', import.meta.url).href;
 const todoEditPencilStyle: CSSProperties = {
@@ -184,7 +185,7 @@ export default function TodoDetailPane({
               aria-label="To-Do title"
             />
           ) : (
-            <h2 className="todo-detail-title">{item.title}</h2>
+            <h2 className="todo-detail-title">{plainMarkdownText(item.title)}</h2>
           )}
           <span className="todo-detail-status">{formatTodoStatus(item.status)}</span>
         </div>

@@ -7,6 +7,7 @@ import type {
 import { normalizePersistedThinkingSegments } from '../../types';
 import { parseAgentTaskPresentationSummaryForTask } from '../../artifacts/artifactContract';
 import { detailsFromTimeline } from '../../store/agentStore';
+import { plainMarkdownText } from '../../../../shared/plainMarkdownText';
 
 export function mapBackendStatus(status: string): AgentStatus {
   switch (status) {
@@ -159,17 +160,7 @@ export function truncateTitle(text: string, max = 40): string {
 }
 
 export function plainSidebarText(markdown: string): string {
-  return markdown
-    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/^\s{0,3}(?:#{1,6}\s+|>\s?|[-+*]\s+|\d+\.\s+|\[[ xX]\]\s+)/gm, '')
-    .replace(/(`{1,3})([\s\S]*?)\1/g, '$2')
-    .replace(/(\*\*|__)([\s\S]*?)\1/g, '$2')
-    .replace(/~~([\s\S]*?)~~/g, '$1')
-    .replace(/(^|[^\\])([*_])([^*_]+)\2/g, '$1$3')
-    .replace(/\\([\\`*_{}[\]()#+\-.!])/g, '$1')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return plainMarkdownText(markdown);
 }
 
 export function stripStepMarkers(preview: string): string {

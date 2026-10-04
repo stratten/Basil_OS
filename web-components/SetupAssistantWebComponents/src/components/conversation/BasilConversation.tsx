@@ -17,6 +17,7 @@ import type {
 
 import { SetupConversationMarkdown } from './SetupConversationMarkdown'
 import { SetupConversationMessageRow } from './SetupConversationMessageRow'
+import { plainMarkdownText } from '@shared/plainMarkdownText'
 
 interface Props {
   messages: SetupConversationMessage[]
@@ -165,7 +166,7 @@ export function BasilConversation({
                   {observations.map(observation => (
                     <article key={observation.id} className="info-card conversation-observation-card">
                       <span className="eyebrow">{observation.label}</span>
-                      <h3>{observation.title}</h3>
+                      <h3>{plainMarkdownText(observation.title)}</h3>
                       <SetupConversationMarkdown content={observation.detail} />
                     </article>
                   ))}

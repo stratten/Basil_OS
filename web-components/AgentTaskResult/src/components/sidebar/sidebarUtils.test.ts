@@ -295,4 +295,8 @@ describe('plainSidebarText', () => {
       plainSidebarText('## **Inbox Metadata**\n- [Review details](https://example.com) with `ready` status')
     ).toBe('Inbox Metadata Review details with ready status');
   });
+
+  it('keeps underscores inside file and identifier names', () => {
+    expect(plainSidebarText('Clean up notes_v2.md and baz_qux')).toBe('Clean up notes_v2.md and baz_qux');
+  });
 });

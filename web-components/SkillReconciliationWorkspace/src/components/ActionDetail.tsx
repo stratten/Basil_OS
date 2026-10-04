@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { ActionDecision, ActionEditFields, ProposedAction, SessionSnapshot } from '../types';
 import { KIND_LABELS, KINDS_WITH_BODY } from '../app/actionMeta';
 import { DiffView } from './DiffView';
+import { plainMarkdownText } from '@shared/plainMarkdownText';
 
 interface ActionDetailProps {
   action: ProposedAction;
@@ -50,7 +51,7 @@ export function ActionDetail({ action, snapshot, locked, onDecide }: ActionDetai
     <div className="action-detail-pane">
       <span className={`risk-badge kind-${action.kind}`}>{KIND_LABELS[action.kind]}</span>
 
-      <p className="detail-rationale">{action.rationale}</p>
+      <p className="detail-rationale">{plainMarkdownText(action.rationale)}</p>
 
       {hasBody ? (
         <div className="agent-task-card">

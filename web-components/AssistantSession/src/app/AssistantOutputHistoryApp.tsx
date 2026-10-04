@@ -6,6 +6,7 @@ import { deleteHistoryEntry, fetchHistory, fetchHistoryDetail, type AssistantOut
 import { HistorySidebar, type HistoryModalityFilter } from '../components/history/HistorySidebar';
 import { HistoryDetail } from '../components/history/HistoryDetail';
 import { applyAssistantSessionTheme } from './themeCssVars';
+import { plainMarkdownText } from '@shared/plainMarkdownText';
 import type { AssistantSessionThemePayload } from '../bridge/types';
 
 export function AssistantOutputHistoryApp() {
@@ -245,7 +246,7 @@ export function AssistantOutputHistoryApp() {
         <PresenceRegion visible={pendingDelete !== null} className="assistant-output-history-shell__confirm basil-presence--modal" settleWithoutTransition>
           {pendingDelete && (
             <>
-              <p>Are you sure you want to delete &quot;{pendingDelete.title || 'Untitled AssistantSession Output'}&quot;?</p>
+              <p>Are you sure you want to delete &quot;{plainMarkdownText(pendingDelete.title) || 'Untitled AssistantSession Output'}&quot;?</p>
               <button type="button" onClick={() => setPendingDelete(null)}>Cancel</button>
               <button type="button" onClick={() => { void removeEntry(pendingDelete.id); }}>Delete</button>
             </>

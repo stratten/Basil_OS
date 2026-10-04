@@ -5,6 +5,7 @@ import AttachedFilesDisplay from './scheduled/AttachedFilesDisplay';
 import AttachedFilesEditor from './scheduled/AttachedFilesEditor';
 import ScheduleControls from './scheduled/ScheduleControls';
 import ScheduledRunHistoryList from './scheduled/ScheduledRunHistoryList';
+import { plainMarkdownText } from '../../../shared/plainMarkdownText';
 import SmartPromptPanel, {
   type SmartPromptPanelHandle,
   type SmartScheduleFields,
@@ -385,7 +386,7 @@ export default function ScheduledAgentTaskDetail({
           className="result-header"
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}
         >
-          <span className="result-label">{item.title}</span>
+          <span className="result-label">{plainMarkdownText(item.title)}</span>
           {/* Active indicator pinned to the header's top-right. Uses
               --success-base (the app's success token) rather than the system
               default green so it stays in lockstep with the rest of the

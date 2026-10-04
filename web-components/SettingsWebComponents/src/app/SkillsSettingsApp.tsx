@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Switch } from '@shared/Switch'
 import { SettingsSubTabs } from '@shared/SettingsSubTabs'
 import TokenizedSelect from '@shared/TokenizedSelect'
+import { plainMarkdownText } from '@shared/plainMarkdownText'
 import {
   focusReconciliationWorkspace,
   notifySkillsSettingsReady,
@@ -321,7 +322,7 @@ export function SkillsSettingsApp() {
                   const isDeleting = state.pendingSkillDeletionSlugs.includes(skill.slug) || hasPendingAction('skill', skill.slug)
                   return (
                     <tr key={skill.slug}>
-                      <td>{skill.title}</td>
+                      <td>{plainMarkdownText(skill.title)}</td>
                       <td>{skill.whenToUse}</td>
                       <td>v{skill.version} / {skill.observationCount}x</td>
                       <td>{skill.lastUsed ? formatTimestamp(skill.lastUsed) : '-'}</td>
@@ -407,7 +408,7 @@ function CandidateGroup({
               return (
                 <tr key={candidate.id}>
                   <td>{formatTimestamp(candidate.createdAt)}</td>
-                  <td>{candidate.title}</td>
+                  <td>{plainMarkdownText(candidate.title)}</td>
                   <td>{candidate.whenToUse}</td>
                   <td>{candidate.observationCount}x</td>
                   <td className="skills-settings-actions">

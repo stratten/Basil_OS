@@ -14,6 +14,7 @@ import { activityStatusSnapshot } from '../components/result/activityPresentatio
 import type { MissedRunToast } from './useHostBridge';
 import { AgentTaskDetailSurface } from './AgentTaskDetailSurface';
 import DetachedTaskPlaceholder from '../components/DetachedTaskPlaceholder';
+import { plainMarkdownText } from '../../../shared/plainMarkdownText';
 
 export function SurfaceStack({ surfaceKey, children }: { surfaceKey: string; children: ReactNode }) {
   const previous = useRef({ key: surfaceKey, children });
@@ -125,7 +126,7 @@ function RetainedMissedRunToasts({ toasts }: { toasts: MissedRunToast[] }) {
           }}
         >
           <div className="missed-run-toast-title">Missed scheduled run</div>
-          <div className="missed-run-toast-task">{toast.title}</div>
+          <div className="missed-run-toast-task">{plainMarkdownText(toast.title)}</div>
           <div className="missed-run-toast-reason">{toast.reason || 'Basil was not running when this run was due.'}</div>
         </div>
       ))}

@@ -1,3 +1,4 @@
+import { plainMarkdownText } from '@shared/plainMarkdownText';
 import type { SkillCandidateSnapshot } from '../types';
 
 interface SingleSightingsListProps {
@@ -24,7 +25,7 @@ export function SingleSightingsList({ candidates, minObservations }: SingleSight
       </div>
       {candidates.map((candidate) => (
         <div key={candidate.id} className="single-sighting-row">
-          <span className="single-sighting-title">{candidate.title}</span>
+          <span className="single-sighting-title">{plainMarkdownText(candidate.title)}</span>
           <span className="single-sighting-when">{candidate.when_to_use}</span>
           <span className="seen-badge">seen {candidate.observation_count}x</span>
         </div>

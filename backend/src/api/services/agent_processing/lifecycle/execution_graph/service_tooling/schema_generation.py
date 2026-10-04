@@ -45,7 +45,9 @@ if LANGCHAIN_AVAILABLE:
     class ShellFileOperationArgs(BaseModel):
         """One exact filesystem transition expected from a shell command."""
 
-        operation: Literal["create", "modify", "copy", "move", "rename", "delete"]
+        operation: Literal["create", "modify", "copy", "move", "rename", "delete", "record"] = Field(
+            description="record registers an existing regular file that an earlier command in this task already created or modified without a declaration; it is accepted only if the file changed after this task started."
+        )
         path: str
         source_path: Optional[str] = None
 

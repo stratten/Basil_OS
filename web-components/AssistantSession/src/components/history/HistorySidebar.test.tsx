@@ -70,6 +70,15 @@ describe('HistorySidebar', () => {
     expect(props.onSelect).toHaveBeenCalledWith(7);
   });
 
+  it('renders the row title and truncated output preview as plain text', () => {
+    const { container } = renderSidebar({
+      entries: [{ ...ENTRY, title: '**Reply** to `q3_report`', outputPreview: '## Summary\n- **Revenue** grew 4%; see the [deck](https://example.com) and the **appen...' }],
+    });
+
+    expect(container.querySelector('.assistant-output-history-sidebar__row-title')!.textContent).toBe('Reply to q3_report');
+    expect(container.querySelector('.assistant-output-history-sidebar__row-preview')!.textContent).toBe('Summary Revenue grew 4%; see the deck and the appen...');
+  });
+
   it('keeps both sidebar states mounted so collapsing and expanding animate', () => {
     const { container, rerender, props } = renderSidebar();
     const sidebar = container.querySelector<HTMLElement>('.assistant-output-history-sidebar')!;

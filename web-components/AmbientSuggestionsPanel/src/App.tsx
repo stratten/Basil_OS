@@ -27,6 +27,7 @@ import {
 } from './services/bridge';
 import { measureCollapsedPanelSize } from './collapsedPanelSizing';
 import { applyHostTheme } from './app/themeBootstrap';
+import { plainMarkdownText } from '@shared/plainMarkdownText';
 
 const PANEL_WIDTH = 360;
 const HEADER_HEIGHT = 116;
@@ -535,7 +536,7 @@ export default function App() {
           suggestions.map((suggestion) => (
             <article className="ambient-card" key={suggestion.suggestion_id}>
               <div className="ambient-card-title">
-                <h3>{suggestion.title}</h3>
+                <h3>{plainMarkdownText(suggestion.title)}</h3>
                 <div className="ambient-card-tags">
                   <span className="ambient-meta">
                     {suggestion.suggestion_type.replace(/_/g, ' ')} - {confidenceLabel(suggestion.confidence)}
@@ -548,7 +549,7 @@ export default function App() {
                   <div className="ambient-provenance">
                     {compactProvenance(suggestion.app_name, suggestion.window_title)}
                   </div>
-                  <p className="ambient-card-summary">{suggestion.summary}</p>
+                  <p className="ambient-card-summary">{plainMarkdownText(suggestion.summary)}</p>
                   {suggestion.proposed_request ? (
                     <p className="ambient-proposed-request">
                       <span>Will ask:</span> {suggestion.proposed_request}
@@ -567,7 +568,7 @@ export default function App() {
               {suggestion.details ? (
                 <details className="ambient-details">
                   <summary>Details</summary>
-                  <p>{suggestion.details}</p>
+                  <p>{plainMarkdownText(suggestion.details)}</p>
                 </details>
               ) : null}
             </article>

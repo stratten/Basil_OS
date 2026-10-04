@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from types import SimpleNamespace
 from typing import Any, Callable, Dict, Mapping, Optional, Sequence
 
@@ -11,6 +12,16 @@ from api.services.agent_processing.lifecycle.delegation.delegated_agent_evidence
     DelegatedAgentEvidenceService,
 )
 from ...runtime.agent_timeline_contract import normalize_timeline_entry
+
+
+def plain_agent_task_title(response: str) -> str:
+    """Reduce a model's title reply to its first line of plain text, without markdown or a "Title:" prefix."""
+    first_line = next((line for line in response.splitlines() if line.strip()), "")
+    title = re.sub(r"^\s{0,3}(?:#{1,6}\s+|[-+*]\s+|\d+[.)]\s+|>\s?)", "", first_line)
+    title = re.sub(r"(\*\*|__|~~|`+)", "", title)
+    title = re.sub(r"(^|[^\w])[*_](\S(?:.*?\S)?)[*_](?!\w)", r"\1\2", title)
+    title = re.sub(r"^\s*title\s*:\s*", "", title, flags=re.IGNORECASE)
+    return title.strip().strip('"').strip("'").strip()
 
 class AgentTaskRoutingService:
     """Routes AgentTasks into the canonical workflow and emits progress."""
@@ -608,7 +619,7 @@ class AgentTaskRoutingService:
             )
 
             if response:
-                title = response.strip().strip('"').strip("'").strip()
+                title = plain_agent_task_title(response)
                 if title and 2 < len(title) < 80:
                     await self.db_service.agent_task_service._mutations.update_agent_task_title(agent_task_id, title)
                     self.logger.info("📝 Generated title for %s: %r", agent_task_id, title)

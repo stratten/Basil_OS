@@ -9,6 +9,7 @@ import type { SetupProgressNarration } from '@/state/setupAssistantStore'
 import type { SetupOrientationObservation } from '@/types'
 
 import { deriveOrientationProgress } from './orientationProgressSteps'
+import { plainMarkdownText } from '@shared/plainMarkdownText'
 
 interface Props {
   observations: SetupOrientationObservation[]
@@ -103,8 +104,8 @@ export function OrientationInterstitial({
                 <div className="discovery-observation-marker" aria-hidden="true" />
                 <div>
                   <span className="discovery-observation-label">{observation.label}</span>
-                  <h3>{observation.title}</h3>
-                  <p>{observation.detail}</p>
+                  <h3>{plainMarkdownText(observation.title)}</h3>
+                  <p>{plainMarkdownText(observation.detail)}</p>
                 </div>
               </article>
             </SmoothReveal>

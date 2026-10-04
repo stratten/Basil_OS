@@ -17,6 +17,7 @@ import { InlineEmailContextCard } from './InlineEmailContextCard'
 import { InlineSetupVisualCard } from './InlineSetupVisualCard'
 import { SetupConversationMarkdown } from './SetupConversationMarkdown'
 import { usePacedText } from './usePacedText'
+import { plainMarkdownText } from '@shared/plainMarkdownText'
 
 interface SetupConversationMessageRowProps {
   message: SetupConversationMessage
@@ -158,7 +159,7 @@ function ConsentReceiptCard({
 
   return (
     <article className={`info-card consent-receipt state-${approvalState}`}>
-      <h3>{displayReceipt.title}</h3>
+      <h3>{plainMarkdownText(displayReceipt.title)}</h3>
       <SetupConversationMarkdown content={displayReceipt.rationale} />
       <span className="status-chip">{formatApprovalState(approvalState)}</span>
       {displayReceipt.ui_status_message && (

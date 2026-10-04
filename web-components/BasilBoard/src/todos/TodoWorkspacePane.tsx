@@ -25,6 +25,7 @@ import {
   type WorkspaceState,
 } from './todoState';
 import { useTodoWorkspacePaneResize } from './useTodoWorkspacePaneResize';
+import { plainMarkdownText } from '@shared/plainMarkdownText';
 
 interface TodoWorkspacePaneProps {
   selectedItems: TodoItemSummary[];
@@ -215,7 +216,7 @@ export default function TodoWorkspacePane({
             <ul className="todo-workspace-selection-chips" aria-label="Selected To-Dos">
               {selectedItems.map((item) => (
                 <li key={item.id} className="todo-workspace-selection-chip" title={item.title}>
-                  <span className="todo-workspace-selection-chip-title">{item.title}</span>
+                  <span className="todo-workspace-selection-chip-title">{plainMarkdownText(item.title)}</span>
                   <span className="todo-workspace-selection-chip-status">{item.status.replace(/_/g, ' ')}</span>
                   {item.attention.needs_attention && (
                     <span className="todo-workspace-selection-chip-attention" title={item.attention.reason ?? 'Needs attention'}>!</span>

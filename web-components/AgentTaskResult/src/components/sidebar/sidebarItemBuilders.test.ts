@@ -1,9 +1,32 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentState } from '../../types';
+import type { AgentState, ScheduledAgentTask } from '../../types';
 import { createAgentState } from '../../store/agentStore/stateFactory';
-import { buildHistoryItems } from './sidebarItemBuilders';
+import { buildHistoryItems, buildScheduledItems } from './sidebarItemBuilders';
 
 function noop() {}
+
+describe('buildScheduledItems titles', () => {
+  it('renders scheduled task titles without markdown syntax', () => {
+    const scheduled: ScheduledAgentTask = {
+      id: 'scheduled-1',
+      title: '**Weekly** `inbox_triage` summary',
+      agent_task_text: 'Summarize my inbox',
+      schedule_type: 'recurring',
+      schedule_config: {},
+      timezone: 'UTC',
+      is_active: true,
+      source_type: 'manual',
+      reference_paths: [],
+      created_at: '2026-10-01T00:00:00Z',
+      updated_at: '2026-10-01T00:00:00Z',
+      run_count: 0,
+    };
+
+    const rows = buildScheduledItems({ scheduled: [scheduled], onViewScheduledAgentTask: noop, deleteScheduledAgentTask: noop });
+
+    expect(rows[0].title).toBe('Weekly inbox_triage summary');
+  });
+});
 
 function buildArgs(allAgents: AgentState[]) {
   return {

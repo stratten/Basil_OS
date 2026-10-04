@@ -7,6 +7,7 @@ import CollapsibleSidebar from '../../../shared/CollapsibleSidebar';
 import { openConversationThreadWindow } from '../services/bridge';
 import { formatConversationTimestamp } from './chatsPresentation';
 import { useConversationListMotion } from './useConversationListMotion';
+import { plainMarkdownText } from '@shared/plainMarkdownText';
 
 interface ConversationSidebarProps {
   conversations: ConversationListItem[];
@@ -145,7 +146,7 @@ function ConversationHistoryRowComponent({
   onCancelDelete,
   onConfirmDelete,
 }: ConversationHistoryRowProps) {
-  const displayTitle = conversation.title || 'New Conversation';
+  const displayTitle = plainMarkdownText(conversation.title) || 'New Conversation';
   const revealDelete = useHistoryRowRevealDelete({ enabled: !isDeleteDisabled });
   const requestDelete = () => {
     if (isDeleteDisabled) return;

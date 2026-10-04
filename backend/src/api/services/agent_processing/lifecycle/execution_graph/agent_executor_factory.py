@@ -35,6 +35,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 
 from .execution_limits import AGENT_EXECUTOR_MAX_EXECUTION_TIME_SECONDS
+from .staged_agent_executor import StagedAgentExecutor
 from .model_errors import LLM_RETRY_EXCEPTION_TYPES
 from .service_tooling.tool_input_normalization import normalize_structured_tool_args_schemas
 from .service_tooling.tool_call_repetition_guard import wrap_tools_with_repetition_guard
@@ -901,7 +902,7 @@ def create_agent_executor(
     
     # Create agent executor with enhanced configuration
     # handle_parsing_errors as callable gives agent actionable feedback instead of crashing
-    agent_executor = AgentExecutor(
+    agent_executor = StagedAgentExecutor(
         agent=agent,
         tools=tools,
         verbose=True,

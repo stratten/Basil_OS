@@ -40,6 +40,21 @@ describe('Header collapsed status', () => {
     expect(markup).toContain('data-agent-task-header-bubble="true"');
   });
 
+  it('renders the collapsed title as plain text without markdown syntax', () => {
+    const markup = renderHeader({
+      isCollapsed: true,
+      collapsedTaskTitle: '## **Summarize** _this_ [report](https://example.com) and `notes_v2.md` for baz_qux',
+    });
+
+    expect(markup).toContain('<span class="header-collapsed-task-title">Summarize this report and notes_v2.md for baz_qux</span>');
+  });
+
+  it('omits the collapsed title when it contains only markdown syntax', () => {
+    const markup = renderHeader({ isCollapsed: true, collapsedTaskTitle: '## ' });
+
+    expect(markup).not.toContain('header-collapsed-task-title');
+  });
+
   it('keeps the title without a subordinate status when no status exists', () => {
     const markup = renderHeader({ isCollapsed: true });
 

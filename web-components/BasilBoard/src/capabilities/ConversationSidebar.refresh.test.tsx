@@ -31,6 +31,13 @@ function renderSidebar(conversations: ConversationListItem[], loading: boolean) 
   );
 }
 
+describe('ConversationSidebar titles', () => {
+  it('renders conversation titles as plain text without markdown syntax', () => {
+    const { container } = renderSidebar([{ ...alpha, title: '## **Alpha** plan for `notes_v2`' }], false);
+    expect(container.querySelector('.chats-conversation-title-text')?.textContent).toBe('Alpha plan for notes_v2');
+  });
+});
+
 describe('ConversationSidebar refresh continuity', () => {
   it('keeps visible conversations and marks the list busy while a reload is in flight', () => {
     const { container } = renderSidebar([alpha], true);

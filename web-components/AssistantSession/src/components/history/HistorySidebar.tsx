@@ -1,5 +1,6 @@
 import CollapsibleSidebar from '@shared/CollapsibleSidebar';
 import { useHistoryRowRevealDelete } from '@shared/useHistoryRowRevealDelete';
+import { plainMarkdownText } from '@shared/plainMarkdownText';
 import type { AssistantOutputHistoryEntry } from '../../services/historyApi';
 import { formatSidebarTimestamp } from '../../lib/historyTimestamps';
 import { NativeSymbol } from '../NativeSymbol';
@@ -129,7 +130,8 @@ function HistorySidebarRow({
   onSelect: (id: number) => void;
   onDelete: (entry: AssistantOutputHistoryEntry) => void;
 }) {
-  const title = entry.title || 'Untitled AssistantSession Output';
+  const title = plainMarkdownText(entry.title) || 'Untitled AssistantSession Output';
+  const outputPreview = plainMarkdownText(entry.outputPreview);
   const revealDelete = useHistoryRowRevealDelete({ enabled: true });
 
   const requestDelete = () => {
@@ -161,7 +163,7 @@ function HistorySidebarRow({
       >
         <button type="button" className="assistant-output-history-sidebar__row-main" onClick={select}>
           <div className="assistant-output-history-sidebar__row-title">{title}</div>
-          <div className="assistant-output-history-sidebar__row-preview">{entry.outputPreview}</div>
+          <div className="assistant-output-history-sidebar__row-preview">{outputPreview}</div>
           <div className="assistant-output-history-sidebar__row-date">{formatSidebarTimestamp(entry.timestamp)}</div>
         </button>
         <button

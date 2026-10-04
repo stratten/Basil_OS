@@ -5,6 +5,7 @@ import { closeWidget, minimizeWidget } from '../services/bridge';
 import type { BubbleMode } from '../types';
 import { normalizeProgressStepText } from './result/progressStepText';
 import { StopAction } from '../../../shared/StopAction';
+import { plainMarkdownText } from '../../../shared/plainMarkdownText';
 import { useCaptureMeter } from '../store/captureMeterStore';
 
 interface Props {
@@ -25,19 +26,6 @@ interface Props {
   collapsedTaskTitle?: string;
   collapsedStatusText?: string;
   isAwaitingInput?: boolean;
-}
-
-function plainEmbeddedTaskTitle(markdown: string | undefined): string {
-  return (markdown || '')
-    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/(`{1,3})([\s\S]*?)\1/g, '$2')
-    .replace(/(\*\*|__|~~)([\s\S]*?)\1/g, '$2')
-    .replace(/(^|[^\\])([*_])([^*_]+)\2/g, '$1$3')
-    .replace(/^\s{0,3}(?:#{1,6}\s+|>\s?|[-+*]\s+|\d+\.\s+|\[[ xX]\]\s+)/gm, '')
-    .replace(/\\([\\`*_{}[\]()#+\-.!])/g, '$1')
-    .replace(/\s+/g, ' ')
-    .trim();
 }
 
 export default function Header({
@@ -106,10 +94,10 @@ export default function Header({
   const normalizedCollapsedStatus = isCollapsed && collapsedStatusText?.trim()
     ? normalizeProgressStepText(collapsedStatusText).trim()
     : null;
-  const normalizedCollapsedTaskTitle = isCollapsed && collapsedTaskTitle?.trim()
-    ? collapsedTaskTitle.trim()
+  const normalizedCollapsedTaskTitle = isCollapsed
+    ? plainMarkdownText(collapsedTaskTitle) || null
     : null;
-  const embeddedTaskTitle = plainEmbeddedTaskTitle(taskTitle);
+  const embeddedTaskTitle = plainMarkdownText(taskTitle);
 
   if (embedded) {
     return (

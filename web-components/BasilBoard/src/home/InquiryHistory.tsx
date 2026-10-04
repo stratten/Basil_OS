@@ -1,4 +1,5 @@
 import type { BoardInquirySummary } from '../contracts';
+import { plainMarkdownText } from '@shared/plainMarkdownText';
 
 function formatTimestamp(value?: string | null): string {
   if (!value) return '';
@@ -48,7 +49,7 @@ export default function InquiryHistory({ inquiries, selectedInquiryId, onSelect 
             }`}
             onClick={() => onSelect(inquiry.id)}
           >
-            <span className="home-inquiry-history-prompt">{inquiry.promptText}</span>
+            <span className="home-inquiry-history-prompt">{plainMarkdownText(inquiry.promptText)}</span>
             <span className="home-inquiry-history-meta">
               {stateLabel(inquiry.state)} · {formatTimestamp(inquiry.updatedAt ?? inquiry.createdAt)}
             </span>

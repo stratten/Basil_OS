@@ -7,6 +7,7 @@ import TodoDeleteConfirmation from './TodoDeleteConfirmation';
 import type { TodoListFilter } from './todoState';
 import { formatTodoDateOnly, isTodoDueDateOverdue } from './todoDates';
 import TodoSortMenu from './TodoSortMenu';
+import { plainMarkdownText } from '@shared/plainMarkdownText';
 
 const FILTERS: { id: TodoListFilter; label: string }[] = [
   { id: 'all', label: 'All' },
@@ -249,7 +250,7 @@ function TodoListRow({
           }}
         >
           <span className="todo-list-item-title" title={item.title}>
-            <span className="todo-list-item-title-text">{item.title}</span>
+            <span className="todo-list-item-title-text">{plainMarkdownText(item.title)}</span>
             {item.agent_status && (
               <span
                 className="todo-list-item-agent-status"

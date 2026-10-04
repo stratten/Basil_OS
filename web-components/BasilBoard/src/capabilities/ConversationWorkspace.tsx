@@ -59,6 +59,7 @@ import { useConversationAutoScroll } from './useConversationAutoScroll';
 import { useConversationPreferences } from './useConversationPreferences';
 import { resolveThreadDelegationOptOut, withHistoryDelegationOptOut } from './conversationDelegationPreference';
 import { focusEditableAtEnd } from './focusEditableAtEnd';
+import { plainMarkdownText } from '@shared/plainMarkdownText';
 
 interface ConversationWorkspaceProps {
   onConversationSubtitleChange?: (subtitle?: string) => void;
@@ -615,7 +616,7 @@ export default function ConversationWorkspace({
     () => new Map(models.map((model) => [model.id, model.display_name || model.name])),
     [models],
   );
-  const selectedConversationSubtitle = activeConversation?.title?.trim() || undefined;
+  const selectedConversationSubtitle = plainMarkdownText(activeConversation?.title) || undefined;
   const canCompose = true;
   const isSelectedConversationDetachedElsewhere = Boolean(
     selectedConversationId && detachedConversationIds?.has(selectedConversationId),
@@ -693,7 +694,7 @@ export default function ConversationWorkspace({
           <header className="chats-main-header">
             <div>
               <strong>Conversation</strong>
-              <span>{activeConversation?.title || (!selectedConversationId ? 'New Conversation' : 'Select a conversation')}</span>
+              <span>{selectedConversationSubtitle || (!selectedConversationId ? 'New Conversation' : 'Select a conversation')}</span>
             </div>
             <span className={`chats-connection-state is-${connectionState}`}>
               {connectionState === 'open' ? 'Connected' : connectionState}

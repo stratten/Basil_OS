@@ -9,7 +9,10 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from api.services.agent_processing.shared.agent_runtime_context import get_current_agent_context
+from api.services.agent_processing.shared.agent_runtime_context import (
+    AGENT_RUN_STARTED_AT_KEY,
+    get_current_agent_context,
+)
 from api.services.agent_processing.lifecycle.execution_graph.tool_run_watchdog import record_tool_progress
 from api.core.security.protected_runtime_paths import (
     PROTECTED_RUNTIME_REFUSAL,
@@ -113,7 +116,7 @@ class ShellService:
                         "file_operations": {
                             "type": "list",
                             "required": False,
-                            "description": "Declared filesystem changes. Each item requires operation and absolute path; copy, move, and rename also require source_path.",
+                            "description": "Declared filesystem changes. Each item requires operation and absolute path; copy, move, and rename also require source_path. Use record for a file an earlier command in this task already wrote without a declaration.",
                         },
                     },
                     "returns": "Dict {success, stdout, stderr, exit_code, duration_ms, cwd, command_echo, approval_required?, approval_blocked?, approval_decision?}",
@@ -149,6 +152,7 @@ class ShellService:
             declared_file_operations = prepare_file_operations(
                 file_operations,
                 (self._home_root, self._repo_root),
+                recorded_after=self._agent_run_started_at(),
             )
         except ValueError as exc:
             return build_shell_result(
@@ -313,6 +317,7 @@ class ShellService:
             declared_file_operations = prepare_file_operations(
                 file_operations,
                 (self._home_root, self._repo_root),
+                recorded_after=self._agent_run_started_at(),
             )
         except ValueError as exc:
             return build_shell_result(
@@ -578,6 +583,10 @@ class ShellService:
                 return default_workspace, None
             return None, None
         return resolve_and_validate_cwd(cwd, allowed_roots=(self._home_root, self._repo_root))
+
+    def _agent_run_started_at(self) -> Optional[float]:
+        started_at = get_current_agent_context().get(AGENT_RUN_STARTED_AT_KEY)
+        return float(started_at) if isinstance(started_at, (int, float)) else None
 
     def _default_task_workspace(self) -> Optional[Path]:
         """Return the current agent task's scratch workspace, if one is running.

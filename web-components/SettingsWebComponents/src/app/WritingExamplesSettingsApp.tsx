@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import TokenizedSelect from '@shared/TokenizedSelect'
+import { plainMarkdownText } from '@shared/plainMarkdownText'
 import { RecipientChipList, RecipientChipsInput } from '../components/RecipientChips'
 import { WritingSampleMarkdown } from '../components/WritingSampleMarkdown'
 import {
@@ -331,7 +332,7 @@ export function WritingExamplesSettingsApp() {
                   {styleProfile.styleAttributes.toneMarkers.map((tone) => <span key={tone} className="writing-examples-tone-chip">{tone}</span>)}
                 </div>
               )}
-              {styleProfile.styleAttributes.styleSummary && <p className="writing-examples-style-summary">{styleProfile.styleAttributes.styleSummary}</p>}
+              {styleProfile.styleAttributes.styleSummary && <p className="writing-examples-style-summary">{plainMarkdownText(styleProfile.styleAttributes.styleSummary)}</p>}
             </div>
           ) : (
             <p className="writing-examples-empty">No style analysis yet. Save more samples and click Analyze.</p>

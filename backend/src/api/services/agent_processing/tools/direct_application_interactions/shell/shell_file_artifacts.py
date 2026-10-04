@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Optional, Sequence
 
 
-_SUPPORTED_OPERATIONS = frozenset({"create", "modify", "copy", "move", "rename", "delete"})
+_SUPPORTED_OPERATIONS = frozenset({"create", "modify", "copy", "move", "rename", "delete", "record"})
 _SOURCE_OPERATIONS = frozenset({"copy", "move", "rename"})
 
 
@@ -26,13 +26,19 @@ class DeclaredFileOperation:
     source_path: Optional[Path]
     path_before: FileSystemState
     source_before: Optional[FileSystemState]
+    recorded_operation: Optional[str] = None
 
 
 def prepare_file_operations(
     declarations: Optional[Sequence[Mapping[str, Any]]],
     allowed_roots: Iterable[Path],
+    *,
+    recorded_after: Optional[float] = None,
 ) -> list[DeclaredFileOperation]:
-    """Validate declarations and capture their state immediately before execution."""
+    """Validate declarations and capture their state immediately before execution.
+
+    ``record`` registers a file an earlier command already produced; it requires ``recorded_after`` (the run's wall-clock start) and a regular file changed since then.
+    """
     normalized_roots = tuple(_normalize_allowed_root(root) for root in allowed_roots)
     prepared: list[DeclaredFileOperation] = []
     seen: set[tuple[str, str, str]] = set()
@@ -64,6 +70,9 @@ def prepare_file_operations(
         path_before = _capture_state(path)
         source_before = _capture_state(source_path) if source_path else None
         _validate_preconditions(operation, path_before, source_before, path, source_path)
+        recorded_operation = (
+            _recorded_operation(path, path_before, recorded_after) if operation == "record" else None
+        )
         prepared.append(
             DeclaredFileOperation(
                 operation=operation,
@@ -71,6 +80,7 @@ def prepare_file_operations(
                 source_path=source_path,
                 path_before=path_before,
                 source_before=source_before,
+                recorded_operation=recorded_operation,
             )
         )
 
@@ -96,7 +106,7 @@ def verify_file_operations(
             {
                 "name": declaration.path.name,
                 "full_path": str(declaration.path),
-                "operation": declaration.operation,
+                "operation": declaration.recorded_operation or declaration.operation,
                 "kind": path_after.kind or declaration.path_before.kind or "",
                 **(
                     {"sha256": path_after.fingerprint}
@@ -212,6 +222,8 @@ def _validate_preconditions(
         raise ValueError(f"Create destination already exists: {path}")
     if operation in {"modify", "delete"} and not path_before.exists:
         raise ValueError(f"{operation.title()} target does not exist: {path}")
+    if operation == "record" and path_before.kind != "file":
+        raise ValueError(f"Record target is not an existing regular file: {path}")
     if operation in _SOURCE_OPERATIONS:
         if source_before is None or not source_before.exists:
             raise ValueError(f"{operation.title()} source does not exist: {source_path}")
@@ -219,6 +231,20 @@ def _validate_preconditions(
             raise ValueError(f"{operation.title()} destination already exists: {path}")
         if source_path == path:
             raise ValueError(f"{operation.title()} source and destination must differ.")
+
+
+def _recorded_operation(
+    path: Path,
+    path_before: FileSystemState,
+    recorded_after: Optional[float],
+) -> str:
+    if recorded_after is None:
+        raise ValueError(f"Record requires an active agent task run: {path}")
+    stat = path.stat()
+    if stat.st_mtime < recorded_after:
+        raise ValueError(f"Record target was not created or modified during this task: {path}")
+    birth_time = getattr(stat, "st_birthtime", None)
+    return "create" if birth_time is not None and birth_time >= recorded_after else "modify"
 
 
 def _verify_transition(
@@ -239,6 +265,8 @@ def _verify_transition(
         return None
     if operation == "delete":
         return None if not path_after.exists else f"Deleted file still exists: {declaration.path}"
+    if operation == "record":
+        return None if path_after.kind == "file" else f"Recorded file is missing: {declaration.path}"
 
     if source_after is None or source_after.exists:
         return f"{operation.title()} source still exists: {declaration.source_path}"
