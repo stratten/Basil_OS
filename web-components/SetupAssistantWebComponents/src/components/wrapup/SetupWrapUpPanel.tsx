@@ -1,5 +1,7 @@
 import { useState } from 'react'
 
+import { plainMarkdownText } from '@shared/plainMarkdownText'
+import { SetupConversationMarkdown } from '@/components/conversation/SetupConversationMarkdown'
 import { SetupWorkingIndicator } from '@/components/motion/SetupWorkingIndicator'
 import type { SetupWrapUpProposal } from '@/types'
 
@@ -77,7 +79,9 @@ export function SetupWrapUpPanel({
       <section key="ready" className="setup-complete-panel setup-complete-panel--agent setup-motion-enter">
         <p className="setup-complete-eyebrow">Here's where we landed</p>
         <h1>I'm ready to help.</h1>
-        <p className="setup-wrapup-recap">{wrapUpProposal.recap}</p>
+        <div className="setup-wrapup-recap">
+          <SetupConversationMarkdown content={wrapUpProposal.recap} />
+        </div>
 
         {wrapUpProposal.recommended_next_steps.length > 0 && (
           <div className="setup-wrapup-next-steps">
@@ -85,8 +89,8 @@ export function SetupWrapUpPanel({
             <ul>
               {wrapUpProposal.recommended_next_steps.map(step => (
                 <li key={step.id}>
-                  <strong>{step.label}</strong>
-                  <span>{step.message}</span>
+                  <strong>{plainMarkdownText(step.label)}</strong>
+                  <span>{plainMarkdownText(step.message)}</span>
                 </li>
               ))}
             </ul>
@@ -96,7 +100,7 @@ export function SetupWrapUpPanel({
         {wrapUpProposal.optional_breadth && wrapUpProposal.optional_breadth.trim().length > 0 && (
           <div className="setup-wrapup-breadth">
             <h2>You can come back to</h2>
-            <p>{wrapUpProposal.optional_breadth}</p>
+            <SetupConversationMarkdown content={wrapUpProposal.optional_breadth} />
           </div>
         )}
 

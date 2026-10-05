@@ -147,6 +147,7 @@ function ConversationHistoryRowComponent({
   onConfirmDelete,
 }: ConversationHistoryRowProps) {
   const displayTitle = plainMarkdownText(conversation.title) || 'New Conversation';
+  const displayPreview = plainMarkdownText(conversation.last_message_preview);
   const revealDelete = useHistoryRowRevealDelete({ enabled: !isDeleteDisabled });
   const requestDelete = () => {
     if (isDeleteDisabled) return;
@@ -185,7 +186,7 @@ function ConversationHistoryRowComponent({
           {conversation.agent_status && (
             <span
               className="chats-conversation-agent-status"
-              title={`Agent Task ${conversation.agent_status.is_active ? 'in progress' : conversation.agent_status.status}`}
+              title={`Paprika task ${conversation.agent_status.is_active ? 'in progress' : conversation.agent_status.status}`}
             >
               <StatusIcon
                 status={conversation.agent_status.status}
@@ -195,9 +196,9 @@ function ConversationHistoryRowComponent({
             </span>
           )}
         </span>
-        {conversation.last_message_preview ? (
+        {displayPreview ? (
           <span className="chats-conversation-preview">
-            {conversation.last_message_preview}
+            {displayPreview}
           </span>
         ) : null}
         <span className="chats-conversation-meta">

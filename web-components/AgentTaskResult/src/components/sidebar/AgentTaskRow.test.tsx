@@ -118,7 +118,7 @@ describe('AgentTaskRow inline delete confirmation', () => {
       />
     );
     expect(markup).toContain('sidebar-row--confirm-delete');
-    expect(markup).toContain('Delete this AgentTask?');
+    expect(markup).toContain('Delete this task?');
     expect(markup).not.toContain('Review the launch behavior');
     expect(markup).not.toContain('overlay-backdrop');
   });

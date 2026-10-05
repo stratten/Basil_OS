@@ -620,7 +620,7 @@ class WorkflowStatusNotifier:
                 "agent_task_id": agent_task_id,
                 "has_recent_context": True,
                 "context_count": context_count,
-                "message": f"Using context from {context_count} recent agent task{'s' if context_count > 1 else ''}"
+                "message": f"Using context from {context_count} recent task{'s' if context_count > 1 else ''}"
             }
             
             self._send_frontend_notification(context_info_message)

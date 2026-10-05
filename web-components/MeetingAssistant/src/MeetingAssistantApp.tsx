@@ -42,7 +42,7 @@ export default function MeetingAssistantApp() {
 
   const content = useMemo<ReactElement<HTMLAttributes<HTMLDivElement>>>(() => {
     if (!state.connected || !ui) {
-      return <div className="meeting-loading-state">Connecting to Meeting Assistant…</div>;
+      return <div className="meeting-loading-state">Connecting to Notetaker…</div>;
     }
     return (
       <div className="meeting-body">
@@ -103,13 +103,13 @@ export default function MeetingAssistantApp() {
       <div className={`basil-webkit-window-surface meeting-assistant-surface${embedded ? ' meeting-assistant-surface--embedded' : ''}`}>
         {!embedded && (
           <WindowChrome
-            title="Meeting Assistant"
-            subtitle={ui?.isRecording ? `Recording · ${ui.recordingTimeString}` : undefined}
+            title="Notetaker"
+            subtitle={ui?.isRecording ? `${ui.isCapturePaused ? 'Paused' : 'Recording'} · ${ui.recordingTimeString}` : undefined}
             titleVariant="callout"
             featureIcon="microphone"
             isCollapsed={isCollapsed}
             onToggleCollapse={handleToggleCollapse}
-            isRecording={ui?.isRecording ?? false}
+            isRecording={Boolean(ui?.isRecording && !ui.isCapturePaused)}
             bubble={<MeetingAudioBubble ui={ui} />}
             canCollapse
           />
@@ -135,6 +135,15 @@ function meetingBubblePresentation(ui: typeof initialMeetingState.ui, audioLevel
     && ui.activePostProcessingMeetingId === ui.displayedMeetingWorkOwnerId;
   const isViewingActiveAnalysisMeeting = ui?.isAnalyzing
     && ui.activeAnalysisMeetingId === ui.displayedMeetingWorkOwnerId;
+  // Recording red is reserved for a hot microphone; a paused capture is not listening.
+  if (ui?.isRecording && ui.isCapturePaused) {
+    return {
+      mode: 'ambient' as const,
+      baseColor: 'var(--warning-base)',
+      accentColor: 'color-mix(in srgb, var(--warning-base) 45%, var(--background-primary))',
+      audioLevel: 0,
+    };
+  }
   if (ui?.isRecording) {
     return {
       mode: 'audioResponsive' as const,

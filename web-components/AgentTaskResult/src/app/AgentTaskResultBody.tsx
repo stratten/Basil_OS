@@ -394,7 +394,7 @@ export function AgentTaskResultBody({
                     <line x1="8" y1="11.5" x2="8" y2="14" />
                     <line x1="5.5" y1="14" x2="10.5" y2="14" />
                   </svg>
-                  <span>No active agent tasks</span>
+                  <span>No active tasks</span>
                 </>
               )}
             </div>

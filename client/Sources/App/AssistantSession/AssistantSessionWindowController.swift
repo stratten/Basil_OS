@@ -425,7 +425,7 @@ final class AssistantSessionWindowController: NSWindowController, NSWindowDelega
                 // No-op or set a custom property if needed
                 break
             case .error:
-                self.viewModel.errorMessage = "An error occurred during AssistantSession."
+                self.viewModel.errorMessage = "Something went wrong while generating the output."
             }
         }
     }

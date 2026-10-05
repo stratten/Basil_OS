@@ -4,8 +4,10 @@ import App from '../App'
 import '../styles/panel.css'
 import '../styles/model-download-surface-finish.css'
 import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish'
+import { installBasilTooltips } from '@shared/tooltip/basilTooltip'
 
 enableBackdropSurfaceFinish()
+installBasilTooltips()
 
 const root = document.getElementById('root')
 

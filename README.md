@@ -6,9 +6,9 @@ Basil is a local-first macOS AI assistant. It combines a native Swift client, a 
 
 ### Workspaces, conversations, and agent work
 
-The Basil Board is the main workspace for beginning an inquiry, reopening work, viewing meeting state, and moving among conversations, Agent Tasks, and todos. Conversations retain threaded work around an ongoing subject. Assistant Session, which appears in the app as **Dill** (default hotkey ⌥⌥), provides a focused text-or-voice assistant surface with saved outputs, refinement, and copy controls.
+The Basil Board is the main workspace for beginning an inquiry, reopening work, viewing meeting state, and moving among conversations, Paprika tasks, and todos. Conversations retain threaded work around an ongoing subject. **Dill (Quick Assist)** (default hotkey ⌥⌥) answers each request in a single model turn and provides a focused text-or-voice surface with saved outputs, refinement, and copy controls.
 
-Agent Tasks, which appear in the app as **Paprika** (default hotkey ⌥Space), are goal-oriented workflows that can start from text, files, images, captured audio, or screen context. A task can show progress and intermediate activity, present results and local artifact previews, accept revisions, and request approval before taking an action. Tasks can be scheduled, reviewed, paused, or canceled when their state supports it. The todo workspace tracks work through inbox, open, in-progress, review, and completed views, with details, ordering, dates, and status for agent-backed work.
+**Paprika (Agent)** (default hotkey ⌥Space) runs goal-oriented, multi-step tasks that can start from text, files, images, captured audio, or screen context. A task can show progress and intermediate activity, present results and local artifact previews, accept revisions, and request approval before taking an action. Tasks can be scheduled, reviewed, paused, or canceled when their state supports it. The todo workspace tracks work through inbox, open, in-progress, review, and completed views, with details, ordering, dates, and status for agent-backed work.
 
 ### Capture, OCR, and transcription
 
@@ -16,11 +16,11 @@ Use the menu bar, the Board, or a configurable hotkey to capture screen or windo
 
 The transcription widget records live microphone audio, and the menu also offers transcription of a user-selected local audio file. Transcription history supports retrieval, review, copying, playback when recorded audio exists, and retranscription with an available model. Settings control the model, paste behavior, post-completion behavior, history, and text-replacement rules applied before insertion. Hotkeys are configurable; examples in this documentation are not promises of a fixed binding.
 
-### Meeting Assistant and Meeting Detection
+### Notetaker and Meeting/Call Detection
 
-Open **Meeting / Call Transcription** from the Basil menu to create a manual recording. Before recording, you can set the meeting name, purpose, participants, and available microphone or system-audio source. During a meeting, the assistant exposes source meters, recording state, and a live transcript. Afterward, it retains meeting metadata and history, supports searching and reopening stored meetings, and can improve a transcript, add speaker labels, or run analysis such as summaries, action items, decisions, questions and answers, sentiment, or a custom instruction.
+Open **Notetaker** from the Basil menu to create a manual recording of a meeting or call. Before recording, you can set the meeting name, purpose, participants, and available microphone or system-audio source. During a meeting, the Notetaker exposes source meters, recording state, and a live transcript. Afterward, it retains meeting metadata and history, supports searching and reopening stored meetings, and can improve a transcript, add speaker labels, or run analysis such as summaries, action items, decisions, questions and answers, sentiment, or a custom instruction.
 
-Meeting Detection is a separate opt-in monitor. It observes non-excluded macOS processes that are concurrently using input and output audio, then either prompts or starts the configured detected-meeting flow. Passive detection does not create an audio tap or record audio. Calendar access can enrich a detection, require an active calendar match, or present a join prompt for a joinable event. Only one detected-meeting launch or recording can be active: after Basil begins preparing or recording a meeting, additional detections cannot open another panel.
+Meeting/Call Detection is a separate opt-in monitor. It observes non-excluded macOS processes that are concurrently using input and output audio, then either prompts or starts the configured detected-meeting flow. Passive detection does not create an audio tap or record audio. Calendar access can enrich a detection, require an active calendar match, or present a join prompt for a joinable event. Only one detected-meeting launch or recording can be active: after Basil begins preparing or recording a meeting, additional detections cannot open another panel.
 
 ### Personal context and proactive assistance
 
@@ -36,9 +36,9 @@ Automation can affect local and external systems. A request to an agent is not a
 
 ### Models, settings, and account choices
 
-Settings are grouped into General, Personalization, Capabilities, and System. They cover Home, Hotkeys, Profile, Personal Context, Writing Examples, Models, Automation & Agents, Transcription, Meetings, Capture, Connections, Permissions, Account, and Appearance & Format.
+Settings are grouped into General, Personalization, Capabilities, and System. They cover Home, Hotkeys, Profile, Personal Context, Writing Examples, Models, Automation & Agents, Transcription, Notetaker, Capture, Connections, Permissions, Account, and Appearance & Format.
 
-Choose model paths independently for supported reasoning and transcription work: downloaded local models, direct provider/API models using your key, custom models, or Basil Cloud. Provider enablement is distinct from choosing to use your own API key. Some settings make a capability available without starting its background runtime; Meeting Detection, for example, must be started from its dedicated control unless its separate start-at-launch preference applies.
+Choose model paths independently for supported reasoning and transcription work: downloaded local models, direct provider/API models using your key, custom models, or Basil Cloud. Provider enablement is distinct from choosing to use your own API key. Some settings make a capability available without starting its background runtime; Meeting/Call Detection, for example, must be started from its dedicated control unless its separate start-at-launch preference applies.
 
 ## Quick start for development
 

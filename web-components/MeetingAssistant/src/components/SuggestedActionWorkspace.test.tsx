@@ -146,24 +146,28 @@ describe('SuggestedActionWorkspace', () => {
     );
 
     expect(screen.getByText('To-Do: Ready for review')).toBeInTheDocument();
-    expect(screen.getByText('Agent task: Completed')).toBeInTheDocument();
+    expect(screen.getByText('Paprika task: Completed')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Open To-Do' }));
-    await user.click(screen.getByRole('button', { name: 'Open Agent Task' }));
+    await user.click(screen.getByRole('button', { name: 'Open in Paprika' }));
     expect(openProposalTodo).toHaveBeenCalledWith('todo-1');
     expect(openProposalAgentTask).toHaveBeenCalledWith('agent-1');
   });
 
-  it('preserves line breaks in a non-editing proposed task', () => {
+  it('renders markdown steps in a non-editing proposed task', () => {
     render(
       <SuggestedActionWorkspace
         proposals={[makeProposal({
-          draftPrompt: '1. Research provider options.\n2. Summarize trade-offs.\n3. Review with Avraham.',
+          sourceTask: '**Provider** review',
+          draftPrompt: '1. Research **provider** options.\n2. Summarize trade-offs.\n3. Review with Avraham.',
         })]}
       />,
     );
 
     const proposedTask = document.querySelector('.meeting-proposal-draft-preview');
-    expect(proposedTask?.textContent).toBe('1. Research provider options.\n2. Summarize trade-offs.\n3. Review with Avraham.');
+    const steps = Array.from(proposedTask?.querySelectorAll('ol > li') ?? []).map((item) => item.textContent);
+    expect(steps).toEqual(['Research provider options.', 'Summarize trade-offs.', 'Review with Avraham.']);
+    expect(proposedTask?.querySelector('strong')?.textContent).toBe('provider');
+    expect(document.querySelector('.meeting-proposal-source-task')?.textContent).toBe('Provider review');
   });
 
   it('uses a cohesive card hierarchy with capability and agent-task subsections', () => {

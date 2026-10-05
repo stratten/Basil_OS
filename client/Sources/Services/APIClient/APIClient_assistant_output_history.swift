@@ -35,7 +35,7 @@ struct AssistantOutputHistoryListItem: Codable, Identifiable {
     }
 
     var displayTitle: String {
-        title.isEmpty ? "Untitled AssistantSession Output" : title
+        title.isEmpty ? "Untitled output" : title
     }
 
     var parsedDate: Date? {

@@ -32,7 +32,6 @@ export function ProfileEditorApp({ initialConfig }: Props) {
             type="button"
             className="profile-editor-window-control header-btn"
             aria-label="Close profile editor"
-            title="Close"
             onClick={closeEditor}
           >
             <svg width="20" height="20" viewBox="0 0 22 22">
@@ -45,7 +44,6 @@ export function ProfileEditorApp({ initialConfig }: Props) {
             type="button"
             className="profile-editor-window-control header-btn"
             aria-label="Minimize profile editor"
-            title="Minimize"
             onClick={minimizeEditor}
           >
             <svg width="20" height="20" viewBox="0 0 22 22">

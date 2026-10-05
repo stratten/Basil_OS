@@ -352,7 +352,6 @@
    `calculatedHeight(forReferenceCount:)` (12 + 3*18 + 2*2 = 70px interior,
    plus this element's own padding). */
 .reference-paths-list {
-  position: relative;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -411,46 +410,6 @@
   text-align: left;
   text-decoration: underline;
   cursor: pointer;
-}
-
-/* Snappy hover tooltip for the full path, replacing the native `title`
-   attribute's slow OS delay — same visual language as
-   `.artifact-review-tab-tooltip` in AgentTaskResult's
-   `artifact-review-workspace.css` (80ms opacity/transform fade). Anchored to
-   `.reference-paths-list` (positioned, unclipped) rather than to the
-   individual row — `.reference-paths-list__rows` below scrolls past 3 rows
-   and would clip a tooltip anchored inside it. Opens *upward*
-   (`bottom: 100%`) because the list sits near the widget's bottom edge, where
-   a downward-opening tooltip would get clipped by `.capture-widget`'s own
-   `overflow: hidden` instead. Visibility is toggled via the `.is-visible`
-   modifier (driven by React state in `ReferencePathsList.tsx`), not `:hover`
-   — see that component's comment for why. */
-.reference-paths-list__tooltip {
-  position: absolute;
-  bottom: calc(100% + 4px);
-  left: 4px;
-  right: 4px;
-  z-index: 3;
-  padding: 5px 8px;
-  border: 1px solid var(--separator-color);
-  border-radius: var(--corner-radius-small);
-  background: var(--background-primary);
-  box-shadow: 0 6px 18px rgb(0 0 0 / 18%);
-  color: var(--text-primary);
-  font-family: var(--font-family-medium);
-  font-size: var(--font-size-status-tiny);
-  line-height: 1.25;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(4px);
-  transition: opacity 80ms ease-out, transform 80ms ease-out;
-}
-
-.reference-paths-list__tooltip.is-visible {
-  opacity: 1;
-  transform: translateY(0);
 }
 
 .reference-paths-list__row-remove {

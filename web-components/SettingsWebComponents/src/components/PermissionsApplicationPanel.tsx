@@ -32,7 +32,7 @@ const INITIAL_STATUSES: PermissionsApplicationStatusMap = {
 }
 
 const PERMISSION_ROWS: readonly { key: keyof PermissionsApplicationStatusMap; kind: PermissionKind; title: string; description: string }[] = [
-  { key: 'microphone', kind: 'microphone', title: 'Microphone Access', description: 'Basil needs microphone access for audio transcription and agent tasks.' },
+  { key: 'microphone', kind: 'microphone', title: 'Microphone Access', description: 'Basil needs microphone access for audio transcription and Paprika tasks.' },
   { key: 'accessibility', kind: 'accessibility', title: 'Accessibility', description: 'Basil needs Accessibility access to simulate keystrokes for pasting text and to understand on-screen context for some features.' },
   { key: 'inputMonitoring', kind: 'input_monitoring', title: 'Input Monitoring', description: 'Basil needs Input Monitoring so global hotkeys and double-tap modifier gestures work even when another app is focused.' },
   { key: 'appleEvents', kind: 'apple_events', title: 'Apple Events', description: 'Basil needs to control other applications for certain automation tasks and screen capture.' },

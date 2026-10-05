@@ -712,7 +712,7 @@ class WakeWordService:
                 "operation": "error", 
                 "confidence": 0.0,
                 "reasoning": f"Error during agent-task processing: {str(e)}",
-                "message": "AgentTask processing failed",
+                "message": "Task processing failed",
                 "error": str(e)
             }
     

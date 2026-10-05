@@ -211,7 +211,7 @@ export default function App() {
           runId,
           scheduledAgentTaskId,
           agentTaskId: (event.agent_task_id as string | undefined) ?? undefined,
-          title: (event.title as string | undefined) ?? 'Scheduled agent task',
+          title: (event.title as string | undefined) ?? 'Scheduled Paprika task',
           currentStep: 'Starting…',
           status: 'running',
           startedAt: Date.now(),
@@ -442,7 +442,7 @@ export default function App() {
 
   return (
     <div className="basil-webkit-window-frame">
-      <div className="mini-panel basil-webkit-window-surface" role="region" aria-label="Scheduled agent task runs">
+      <div className="mini-panel basil-webkit-window-surface" role="region" aria-label="Scheduled Paprika task runs">
       <div className="mini-panel-header">
         <div className="mini-panel-header-title">
           <span>Scheduled runs</span>
@@ -464,7 +464,6 @@ export default function App() {
             className="mini-panel-dismiss"
             onClick={() => bridgeMinimizePanel()}
             aria-label="Minimize panel"
-            title="Minimize"
           >
             −
           </button>
@@ -473,7 +472,6 @@ export default function App() {
             className="mini-panel-dismiss"
             onClick={() => bridgeDismissPanel()}
             aria-label="Dismiss panel"
-            title="Hide"
           >
             ×
           </button>

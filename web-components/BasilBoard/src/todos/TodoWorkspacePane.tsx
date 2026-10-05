@@ -26,6 +26,7 @@ import {
 } from './todoState';
 import { useTodoWorkspacePaneResize } from './useTodoWorkspacePaneResize';
 import { plainMarkdownText } from '@shared/plainMarkdownText';
+import HomeMarkdown from '../home/HomeMarkdown';
 
 interface TodoWorkspacePaneProps {
   selectedItems: TodoItemSummary[];
@@ -244,7 +245,9 @@ export default function TodoWorkspacePane({
             {state.transcript.length === 0 && <p className="todo-workspace-empty">No messages yet this session.</p>}
             {state.transcript.map((message) => (
               <div key={message.id} className={`todo-workspace-message todo-workspace-message--${message.role}`}>
-                {message.content}
+                {message.role === 'assistant'
+                  ? <HomeMarkdown content={message.content} variant="assistant" />
+                  : message.content}
               </div>
             ))}
             {isBusy && (

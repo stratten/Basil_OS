@@ -37,7 +37,6 @@ export default function DetachedCapabilityShell({
             type="button"
             className="basil-board-window-control"
             onClick={requestWindowClose}
-            title="Close"
             aria-label="Close"
           >
             <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
@@ -50,7 +49,6 @@ export default function DetachedCapabilityShell({
             type="button"
             className="basil-board-window-control"
             onClick={requestWindowMinimize}
-            title="Minimize"
             aria-label="Minimize"
           >
             <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
@@ -62,7 +60,6 @@ export default function DetachedCapabilityShell({
             type="button"
             className="basil-board-window-control"
             onClick={toggleCollapsed}
-            title={isCollapsed ? 'Expand' : 'Collapse'}
             aria-label={isCollapsed ? 'Expand' : 'Collapse'}
             aria-pressed={isCollapsed}
           >

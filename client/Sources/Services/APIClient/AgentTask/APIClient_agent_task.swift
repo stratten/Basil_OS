@@ -115,7 +115,7 @@ extension APIClient {
                         operation: "streaming",
                         confidence: 1.0,
                         reasoning: "Response streamed successfully",
-                        message: "AgentTask processed with streaming",
+                        message: "Task processed with streaming",
                         processingTime: 0.0,
                         agentTaskId: agentTaskId ?? "",
                         data: nil,

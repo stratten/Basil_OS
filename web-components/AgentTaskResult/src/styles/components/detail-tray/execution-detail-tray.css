@@ -102,6 +102,7 @@
   background: var(--background-primary);
   box-shadow: 0 8px 22px color-mix(in srgb, var(--secondary) 12%, transparent);
   color: var(--text-primary);
+  container: run-card / inline-size;
 }
 
 .run-card-stage-glyph {
@@ -152,6 +153,31 @@
   color: var(--text-tertiary);
 }
 
+.run-card-stage--interaction .run-card-stage-glyph,
+.run-card-stage--interaction.is-completed .run-card-stage-glyph {
+  border-color: var(--secondary);
+  border-radius: 8px;
+  background: var(--secondary);
+  color: #fff;
+}
+
+.run-card-stage--interaction.is-waiting .run-card-stage-glyph {
+  border-color: var(--warning-base);
+  background: var(--warning-base);
+  color: var(--text-primary);
+}
+
+.run-card-stage--interaction.is-recorded .run-card-stage-glyph {
+  border-color: var(--secondary);
+  background: var(--background-primary);
+  color: var(--secondary);
+}
+
+.run-card-stage--interaction .run-card-stage-evidence {
+  color: var(--secondary);
+  font-family: var(--font-family-medium);
+}
+
 .run-card-stages {
   display: flex;
   flex-direction: column;
@@ -164,24 +190,76 @@
 .run-card-stage {
   display: grid;
   min-width: 0;
-  grid-template-columns: 28px minmax(0, 1fr) auto;
+  grid-template-columns: 28px minmax(min-content, 1fr) auto;
   align-items: center;
   gap: var(--padding-s);
   padding: var(--padding-xs) 0;
   color: var(--text-primary);
   font-size: var(--font-size-status-small);
-  overflow-wrap: anywhere;
 }
 
 .run-card-stage-label {
-  min-width: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
 }
 
 .run-card-stage-evidence {
   color: var(--text-tertiary);
   font-size: var(--font-size-status-tiny);
-  white-space: nowrap;
+  overflow-wrap: normal;
+  text-align: right;
+}
+
+.run-card-stage-item {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.run-card-stage--navigable {
+  width: 100%;
+  padding: var(--padding-xs);
+  border: 0;
+  border-radius: var(--corner-radius-small);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-status-small);
+  text-align: left;
+}
+
+.run-card-stage--navigable:hover,
+.run-card-stage--navigable:focus-visible {
+  background: color-mix(in srgb, var(--secondary) 9%, var(--background-primary));
+  outline: none;
+}
+
+.run-card-stage--navigable:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--secondary);
+}
+
+@container run-card (max-width: 320px) {
+  .run-card-stage:has(> .run-card-stage-evidence) {
+    grid-template-columns: 28px minmax(min-content, 1fr);
+    grid-template-areas:
+      "glyph label"
+      "glyph evidence";
+    row-gap: 2px;
+  }
+
+  .run-card-stage:has(> .run-card-stage-evidence) > .run-card-stage-glyph {
+    grid-area: glyph;
+  }
+
+  .run-card-stage:has(> .run-card-stage-evidence) > .run-card-stage-label {
+    grid-area: label;
+    align-self: end;
+  }
+
+  .run-card-stage:has(> .run-card-stage-evidence) > .run-card-stage-evidence {
+    grid-area: evidence;
+    align-self: start;
+    text-align: left;
+  }
 }
 
 .run-card-artifacts {

@@ -275,7 +275,7 @@ extension AssistantSessionViewModel {
             if assistantSessionStatus == .failed { return }
             guard completedSuccessfully else {
                 assistantSessionStatus = .failed
-                errorMessage = "AssistantSession refinement ended before completion."
+                errorMessage = "The refinement ended before completion."
                 NotificationCenter.default.post(name: NSNotification.Name("AssistantOutputHistoryDidUpdate"), object: nil)
                 return
             }

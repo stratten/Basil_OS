@@ -11,19 +11,33 @@ from .root_summary import recompute_root_summary, root_task_id_for_agent_task
 logger = logging.getLogger(__name__)
 
 
+AWAITING_USER_INPUT_RESTART_RETENTION_DAYS = 7
+EXPIRED_AWAITING_USER_INPUT_ERROR = (
+    "Task expired: Basil restarted after this question had waited more than "
+    f"{AWAITING_USER_INPUT_RESTART_RETENTION_DAYS} days for an answer"
+)
+
+
 async def mark_interrupted_active_agent_tasks(db_path: str) -> int:
-    """Mark active task rows as failed after a backend restart."""
-    active_statuses = ("routing", "processing", "awaiting_user_input", "capturing")
+    """Mark active task rows as failed after a backend restart.
+
+    A task paused on a question for the user resumes from its durable checkpoint, so it survives a restart unless it has waited longer than the retention window.
+    """
+    interrupted_statuses = ("routing", "processing", "capturing")
 
     def _body(conn: sqlite3.Connection) -> int:
-        placeholders = ",".join("?" * len(active_statuses))
+        placeholders = ",".join("?" * len(interrupted_statuses))
         cursor = conn.execute(
             f"""
             SELECT id, status, result_data
             FROM agent_tasks
             WHERE status IN ({placeholders})
+               OR (
+                   status = 'awaiting_user_input'
+                   AND (updated_at IS NULL OR julianday(updated_at) < julianday('now', ?))
+               )
             """,
-            active_statuses,
+            (*interrupted_statuses, f"-{AWAITING_USER_INPUT_RESTART_RETENTION_DAYS} days"),
         )
         rows = cursor.fetchall()
         interrupted_at = datetime.now().isoformat()
@@ -39,7 +53,11 @@ async def mark_interrupted_active_agent_tasks(db_path: str) -> int:
 
             result_data["failure_info"] = {
                 "success": False,
-                "error": "Task interrupted by application restart",
+                "error": (
+                    EXPIRED_AWAITING_USER_INPUT_ERROR
+                    if row["status"] == "awaiting_user_input"
+                    else "Task interrupted by application restart"
+                ),
                 "previous_status": row["status"],
                 "interrupted_at": interrupted_at,
             }
@@ -72,7 +90,7 @@ async def mark_interrupted_active_agent_tasks(db_path: str) -> int:
                 (interrupted_at, interrupted_at, *interrupted_task_ids),
             )
 
-        # Pending approvals only have live waiters inside the process that created them, so after a restart any approval owned by a terminal task can never be answered.
+        # Pending approvals only have live waiters inside the process that created them, so after a restart any approval owned by a terminal or paused task can never be answered.
         orphan_cursor = conn.execute(
             """
             UPDATE execution_approvals
@@ -82,7 +100,7 @@ async def mark_interrupted_active_agent_tasks(db_path: str) -> int:
                 revision = revision + 1
             WHERE status = 'pending'
               AND agent_task_id IN (
-                  SELECT id FROM agent_tasks WHERE status IN ('completed', 'failed', 'canceled')
+                  SELECT id FROM agent_tasks WHERE status IN ('completed', 'failed', 'canceled', 'awaiting_user_input')
               )
             """,
             (interrupted_at, interrupted_at),

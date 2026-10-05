@@ -46,6 +46,22 @@ if TYPE_CHECKING:
 
 logger = api_logger.getChild("agent_executor_factory")
 
+# Anthropic caches the longest reusable request prefix for five minutes, so later agent-loop calls read it at a tenth of the input price.
+ANTHROPIC_PROMPT_CACHE_CONTROL: Dict[str, str] = {"type": "ephemeral"}
+
+
+def _llm_output_log_fields(output: Any) -> str:
+    tool_calls = getattr(output, "tool_calls", None) or []
+    content_len = len(getattr(output, "content", "") or "")
+    usage = getattr(output, "usage_metadata", None) or {}
+    input_details = usage.get("input_token_details") or {}
+    cache_write = input_details.get("ephemeral_5m_input_tokens") or input_details.get("cache_creation")
+    return (
+        f"type={type(output).__name__}, content_len={content_len}, "
+        f"tool_calls={len(tool_calls)}, input_tokens={usage.get('input_tokens')}, "
+        f"cache_read={input_details.get('cache_read')}, cache_write={cache_write}"
+    )
+
 
 # =============================================================================
 # FINALIZER TOOL INPUT SCHEMA
@@ -344,6 +360,7 @@ def create_langchain_llm_from_model(
             "max_tokens": max_out_tokens,
             "streaming": True,
             "max_retries": 4,
+            "model_kwargs": {"cache_control": dict(ANTHROPIC_PROMPT_CACHE_CONTROL)},
         }
         if thinking_cfg:
             anthropic_kwargs["thinking"] = thinking_cfg["thinking"]
@@ -363,7 +380,7 @@ def create_langchain_llm_from_model(
 
     else:
         raise RuntimeError(
-            f"AgentTasks require a model that supports tool calling. "
+            f"Paprika requires a model that supports tool calling. "
             f"The current model ({model_name}, engine: {engine_source}) is not supported. "
             f"Please switch to a supported model in Settings."
         )
@@ -866,13 +883,7 @@ def create_agent_executor(
 
     def _log_llm_output(output):
         try:
-            tc = getattr(output, "tool_calls", None) or []
-            content_len = len(getattr(output, "content", "") or "")
-            logger.info(
-                f"🔬 PIPELINE: LLM returned to chain — "
-                f"type={type(output).__name__}, content_len={content_len}, "
-                f"tool_calls={len(tc)}"
-            )
+            logger.info(f"🔬 PIPELINE: LLM returned to chain — {_llm_output_log_fields(output)}")
         except Exception as _e:
             logger.info(f"🔬 PIPELINE: LLM returned (logging failed: {_e})")
         return output
@@ -965,7 +976,7 @@ def create_unsupported_llm_result(state: "PlanningState", provider: str, model_n
             "execution_method": "dynamic_langchain_agent",
             "user_agent_task": state.user_agent_task,
             "status": "failed",
-            "error": f"AgentTasks require a model that supports tool calling. The current model ({model_name}, provider: {provider}) does not support this. Please switch to a supported model in Settings.",
+            "error": f"Paprika requires a model that supports tool calling. The current model ({model_name}, provider: {provider}) does not support this. Please switch to a supported model in Settings.",
             "tools_available": [tool.name for tool in state.available_tools.tools] if state.available_tools else []
         }]
     }

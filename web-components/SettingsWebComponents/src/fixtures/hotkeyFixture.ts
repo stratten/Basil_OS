@@ -16,13 +16,13 @@ export const HOTKEY_FIXTURE_ROWS: HotkeyRowSnapshot[] = [
   {
     id: 'assistant_session',
     title: 'Dill',
-    subtitle: 'Writing partner',
+    subtitle: 'Quick Assist',
     binding: { key: '', modifiers: [], enabled: true, isDoublePress: true, doublePressKey: 'option' },
   },
   {
     id: 'agent_task',
     title: 'Paprika',
-    subtitle: 'Side-quest helper',
+    subtitle: 'Agent',
     binding: { key: 'Space', modifiers: ['option'], enabled: true, isDoublePress: false, doublePressKey: null },
   },
 ]

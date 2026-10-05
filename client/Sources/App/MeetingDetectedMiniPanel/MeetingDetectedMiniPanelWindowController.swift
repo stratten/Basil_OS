@@ -157,7 +157,7 @@ final class MeetingDetectedMiniPanelWindowController: NSObject, NSWindowDelegate
             backing: .buffered,
             defer: false
         )
-        panel.title = "Meeting Detected"
+        panel.title = "Meeting/Call Detected"
         panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         panel.isFloatingPanel = true

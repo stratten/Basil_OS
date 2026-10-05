@@ -37,23 +37,43 @@ describe('RecordingControls', () => {
     Object.values(bridge).forEach((mock) => mock.mockClear());
   });
 
-  it('places idle readiness above Start Meeting and omits literal idle state', () => {
+  it('places idle readiness above Start and omits literal idle state', () => {
     const { container } = render(<RecordingControls ui={ui} />);
     const status = screen.getByText('Ready to start transcription');
-    const start = screen.getByRole('button', { name: 'Start Meeting' });
+    const start = screen.getByRole('button', { name: 'Start' });
     expect(status.compareDocumentPosition(start) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(container).not.toHaveTextContent(/\bidle\b/i);
   });
 
   it('renders icon-bearing past-meeting actions', () => {
     render(<RecordingControls ui={{ ...ui, isViewingPastMeeting: true }} />);
-    expect(screen.getByRole('button', { name: 'Resume Meeting' }).querySelector('svg')).not.toBeNull();
-    expect(screen.getByRole('button', { name: 'Start New Meeting' }).querySelector('svg')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Resume' }).querySelector('svg')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Start New' }).querySelector('svg')).not.toBeNull();
+  });
+
+  it('labels actions without the word Meeting', () => {
+    const idle = render(<RecordingControls ui={ui} />);
+    expect(idle.container.querySelectorAll('button')).not.toHaveLength(0);
+    idle.container.querySelectorAll('button').forEach((button) => expect(button).not.toHaveTextContent(/meeting/i));
+    idle.unmount();
+    const past = render(<RecordingControls ui={{ ...ui, isViewingPastMeeting: true }} />);
+    past.container.querySelectorAll('button').forEach((button) => expect(button).not.toHaveTextContent(/meeting/i));
+    past.unmount();
+    const recording = render(<RecordingControls ui={recordingUi} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    recording.container.querySelectorAll('button').forEach((button) => expect(button).not.toHaveTextContent(/meeting/i));
+    expect(screen.getByRole('alertdialog')).not.toHaveTextContent(/meeting/i);
+  });
+
+  it('shows the paused status dot instead of the recording red', () => {
+    const { container } = render(<RecordingControls ui={{ ...recordingUi, isCapturePaused: true }} />);
+    expect(container.querySelector('.meeting-connection-indicator--paused')).not.toBeNull();
+    expect(container.querySelector('.meeting-connection-indicator--recording')).toBeNull();
   });
 
   it('renders active recording timer and source meters', () => {
     render(<RecordingControls ui={{ ...ui, isRecording: true, transcriptionState: 'listening', recordingTimeString: '3:21' }} />);
-    expect(screen.getByRole('button', { name: 'End Meeting' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'End' })).toBeInTheDocument();
     expect(screen.getByText('3:21')).toBeInTheDocument();
     expect(screen.getByRole('meter', { name: 'Microphone level' })).toBeInTheDocument();
     expect(screen.getByRole('meter', { name: 'System Audio level' })).toBeInTheDocument();
@@ -71,10 +91,10 @@ describe('RecordingControls', () => {
     expect(screen.getByRole('button', { name: 'Pause' })).toBeDisabled();
   });
 
-  it('offers Resume, End Meeting, and Cancel while paused', () => {
+  it('offers Resume, End, and Cancel while paused', () => {
     render(<RecordingControls ui={{ ...recordingUi, isCapturePaused: true }} />);
     expect(screen.queryByRole('button', { name: 'Pause' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'End Meeting' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'End' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
     fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
     expect(bridge.resumeRecording).toHaveBeenCalledTimes(1);

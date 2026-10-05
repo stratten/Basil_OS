@@ -91,8 +91,8 @@ export default function CaptureHeader({ snapshot, displayName }: Props) {
           type="button"
           className="capture-header__icon-button"
           onClick={() => cancelCapture()}
-          title="Cancel agent task"
-          aria-label="Cancel agent task"
+          title="Cancel task"
+          aria-label="Cancel task"
         >
           <CancelGlyph />
         </button>
@@ -117,8 +117,8 @@ export default function CaptureHeader({ snapshot, displayName }: Props) {
           type="button"
           className="capture-header__icon-button capture-header__icon-button--secondary"
           onClick={() => showHistory()}
-          title="Show agent task history"
-          aria-label="Show agent task history"
+          title="Show task history"
+          aria-label="Show task history"
         >
           <HistoryGlyph />
         </button>

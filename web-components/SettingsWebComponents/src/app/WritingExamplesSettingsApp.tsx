@@ -269,7 +269,7 @@ export function WritingExamplesSettingsApp() {
 
   return (
     <div className="writing-examples-shell">
-      <p className="writing-examples-intro">Your accepted AssistantSessions are saved as writing samples to personalize future suggestions.</p>
+      <p className="writing-examples-intro">Your accepted Dill outputs are saved as writing samples to personalize future suggestions.</p>
 
       <div className="writing-examples-filter-row" role="tablist" aria-label="Context Type">
         {FILTER_OPTIONS.map((option) => (
@@ -395,7 +395,7 @@ export function WritingExamplesSettingsApp() {
         {isLoadingSamples && samples.length === 0 ? (
           <p className="writing-examples-status" role="status">Loading writing samples...</p>
         ) : samples.length === 0 ? (
-          <p className="writing-examples-empty">No writing samples found. Writing samples will appear here after you accept AssistantSessions, or you can add one with Add Sample.</p>
+          <p className="writing-examples-empty">No writing samples found. Writing samples will appear here after you accept Dill outputs, or you can add one with Add Sample.</p>
         ) : (
           <ul className="writing-examples-list basil-refresh-region" aria-busy={isLoadingSamples ? true : undefined}>
             {samples.map((sample) => (

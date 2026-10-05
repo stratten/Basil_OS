@@ -31,7 +31,7 @@ export interface AgentTaskRowProps {
   onRequestDelete?: (id: string) => void;
   onContextMenu?: (e: MouseEvent, id: string) => void;
   // When true, this row is mid-delete-confirmation: instead of its normal
-  // content, it renders a compact inline "Delete this AgentTask?" prompt
+  // content, it renders a compact inline "Delete this task?" prompt
   // with Cancel/Delete buttons in the same row box (no modal/backdrop).
   isPendingDelete?: boolean;
   onConfirmDelete?: (id: string) => void;
@@ -104,7 +104,7 @@ function AgentTaskRowImpl({
   if (isPendingDelete) {
     return (
       <div className="sidebar-row sidebar-row--confirm-delete">
-        <span className="sidebar-row-confirm__label">Delete this AgentTask?</span>
+        <span className="sidebar-row-confirm__label">Delete this task?</span>
         <div className="sidebar-row-confirm__actions">
           <button
             type="button"
@@ -171,7 +171,7 @@ function AgentTaskRowImpl({
                 color: 'var(--error-base)', padding: '0 2px',
                 display: 'flex', alignItems: 'center', zIndex: 1,
               }}
-              title="Delete AgentTask"
+              title="Delete task"
             >
               <TrashIcon size={10} />
             </button>
@@ -241,7 +241,7 @@ function AgentTaskRowImpl({
               <button
                 className="agent-cancel-btn"
                 onClick={(e) => { e.stopPropagation(); setShowCancelConfirm(true); }}
-                title="Cancel this AgentTask"
+                title="Cancel this task"
               >
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="var(--error-base)" opacity="0.8">
                   <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm2.12 4.88a.75.75 0 0 0-1.06 0L8 5.94 6.94 4.88a.75.75 0 1 0-1.06 1.06L6.94 7 5.88 8.06a.75.75 0 1 0 1.06 1.06L8 8.06l1.06 1.06a.75.75 0 1 0 1.06-1.06L9.06 7l1.06-1.06a.75.75 0 0 0 0-1.06z"/>
@@ -280,9 +280,9 @@ function AgentTaskRowImpl({
       {showCancelConfirm && onCancel && (
         <div className="overlay-backdrop" onClick={() => setShowCancelConfirm(false)}>
           <div className="overlay-card" onClick={e => e.stopPropagation()} style={{ maxWidth: 320 }}>
-            <div className="overlay-title">Cancel AgentTask?</div>
+            <div className="overlay-title">Cancel this task?</div>
             <div className="overlay-body">
-              This will stop the AgentTask and remove it from the active list. Any progress will be lost.
+              This will stop the task and remove it from the active list. Any progress will be lost.
             </div>
             <div className="overlay-actions">
               <button
@@ -293,7 +293,7 @@ function AgentTaskRowImpl({
                 Keep
               </button>
               <button className="action-btn danger" onClick={() => { setShowCancelConfirm(false); onCancel(id); }}>
-                Cancel AgentTask
+                Cancel task
               </button>
             </div>
           </div>

@@ -30,7 +30,7 @@ function ScheduledRunRowComponent({ row, onOpen, onDismiss }: ScheduledRunRowPro
       role="button"
       tabIndex={0}
       aria-disabled={awaitingAgentTask}
-      title={awaitingAgentTask ? 'Waiting for agent task to start...' : 'Open in result widget'}
+      title={awaitingAgentTask ? 'Waiting for the Paprika task to start...' : undefined}
     >
       <div className={`mini-panel-row-status ${row.status}`} aria-label={row.status} />
       <div className="mini-panel-row-body">

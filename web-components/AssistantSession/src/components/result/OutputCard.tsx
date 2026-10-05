@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { copyMarkdown, copyRichText } from '../../bridge/assistantSessionBridge';
+import type { AssistantSessionPasteOutcome } from '../../bridge/types';
 import { MarkdownView } from '../MarkdownView';
 import { NativeSymbol } from '../NativeSymbol';
+import { PasteStatusLine } from './PasteStatusLine';
 
 export function OutputCard({
   output,
@@ -9,12 +11,16 @@ export function OutputCard({
   editedContent,
   onEditedContentChange,
   fallbackModelUsed,
+  pasteOutcome = null,
+  pasteTargetApplicationName = null,
 }: {
   output: string;
   isEditMode: boolean;
   editedContent: string;
   onEditedContentChange: (value: string) => void;
   fallbackModelUsed?: string | null;
+  pasteOutcome?: AssistantSessionPasteOutcome | null;
+  pasteTargetApplicationName?: string | null;
 }) {
   const [hovering, setHovering] = useState(false);
   const [copiedKind, setCopiedKind] = useState<'richText' | 'markdown' | null>(null);
@@ -29,7 +35,7 @@ export function OutputCard({
   return (
     <div className="assistant-session-result__output-wrap">
       <div className="assistant-session-result__output-label">
-        AssistantSession Output:
+        Output:
         {fallbackModelUsed && (
           <span
             className="assistant-session-result__fallback-badge"
@@ -38,6 +44,7 @@ export function OutputCard({
             Answered with local fallback
           </span>
         )}
+        <PasteStatusLine outcome={pasteOutcome} applicationName={pasteTargetApplicationName} />
       </div>
       <div
         className="assistant-session-result__output-card"

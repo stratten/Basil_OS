@@ -211,7 +211,7 @@ class AssistantSessionService:
         
         if not model:
             logger.warning("No suitable model found for AssistantSession")
-            suggestion = "[Error: No suitable model found for AssistantSession.]"
+            suggestion = "[Error: No suitable reasoning model is available. Choose one in Settings.]"
         else:
             # Always enable web search and let the model decide when to use it intelligently
             logger.info(f"Web search available for instruction: '{transcription[:50]}...'")

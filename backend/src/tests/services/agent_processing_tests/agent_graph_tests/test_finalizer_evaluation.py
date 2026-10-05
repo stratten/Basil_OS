@@ -86,3 +86,18 @@ def test_prompt_contains_ground_truth_directive():
     assert "model_plausibility_doubt" in prompt
     assert '"outcome": "success" | "partial" | "failure"' in prompt
     assert "outcome=completed_with_warnings" not in prompt
+
+
+def test_prompt_treats_established_nonexistence_in_research_as_success():
+    prompt = build_evaluation_prompt(
+        original_prompt="Find cat t-shirt shops near my hotel in Paris.",
+        self_assessment="No dedicated cat t-shirt shop exists nearby; offered alternatives.",
+        full_agent_output="A nearby cat cafe gift shop, streetwear stores, and online cat-tee retailers.",
+        max_output_chars=50000,
+        steps=[{"service": "web", "method": "search", "success": True}],
+        tool_error_history=None,
+        evaluation_context=None,
+    )
+    assert "RESEARCH THAT ESTABLISHES THE EXACT THING DOES NOT EXIST IS SUCCESS" in prompt
+    assert "a finding about the world, not a residual gap" in prompt
+    assert "This does not apply when the agent stopped early" in prompt

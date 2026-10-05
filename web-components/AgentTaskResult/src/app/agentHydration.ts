@@ -362,7 +362,7 @@ export function hydrateAgentFromBackend(agentTaskId: string): Promise<HydrationO
         const finalStatus = turn.status === 'failed' ? 'failed' : 'completed';
         agentStore.updateStatus(agentTaskId, finalStatus);
         if (finalStatus === 'failed') {
-          agentStore.setError(agentTaskId, turn.error_message || turn.result_message || 'Agent task failed');
+          agentStore.setError(agentTaskId, turn.error_message || turn.result_message || 'Task failed');
         }
         agentStore.setResultOutcome(agentTaskId, turn.outcome, turn.result_severity);
         agentStore.setThinkingSegments(
@@ -376,7 +376,7 @@ export function hydrateAgentFromBackend(agentTaskId: string): Promise<HydrationO
         if (turn.execution_timeline && turn.execution_timeline.length > 0) {
           agentStore.setExecutionTimeline(agentTaskId, turn.execution_timeline);
         }
-        agentStore.setError(agentTaskId, 'Agent task was canceled.');
+        agentStore.setError(agentTaskId, 'Task was canceled.');
         agentStore.updateStatus(agentTaskId, 'failed');
       }
       return 'hydrated';
@@ -412,7 +412,7 @@ export function hydrateAgentFromBackend(agentTaskId: string): Promise<HydrationO
         return 'unavailable';
       }
 
-      agentStore.setError(agentTaskId, 'Agent task is no longer available.');
+      agentStore.setError(agentTaskId, 'Task is no longer available.');
       agentStore.updateStatus(agentTaskId, 'failed');
       return 'unavailable';
     });
@@ -483,7 +483,7 @@ export function hydrateActiveFollowUpChild(rootTaskId: string, childId: string):
       const finalStatus = detail.status === 'failed' ? 'failed' : 'completed';
       agentStore.updateStatus(rootTaskId, finalStatus);
       if (finalStatus === 'failed') {
-        agentStore.setError(rootTaskId, detail.error_message || detail.result_message || 'Agent task failed');
+        agentStore.setError(rootTaskId, detail.error_message || detail.result_message || 'Task failed');
       }
       agentStore.setResultOutcome(rootTaskId, detail.outcome, detail.result_severity);
       agentStore.setThinkingSegments(

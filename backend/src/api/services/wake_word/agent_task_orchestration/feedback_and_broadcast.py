@@ -49,7 +49,7 @@ async def notify_agent_task_started(service) -> None:
     try:
         notification = {
             "event_type": "agent_task_capture_started",
-            "message": "AgentTask capture started",
+            "message": "Task capture started",
             "timestamp": 0  # Simple timestamp
         }
 
@@ -108,7 +108,7 @@ async def provide_feedback_from_result(service, result: Dict[str, Any]) -> None:
         result: Result dictionary from agent-task orchestrator
     """
     try:
-        message = result.get('message', 'AgentTask processed.')
+        message = result.get('message', 'Task processed.')
         success = result.get('success', False)
         operation = result.get('operation', 'unknown')
 
@@ -148,7 +148,7 @@ async def provide_feedback_from_result(service, result: Dict[str, Any]) -> None:
 
     except Exception as e:
         logger.error(f"Error providing feedback from result: {e}")
-        await service._provide_feedback("AgentTask completed, but I couldn't provide detailed feedback.")
+        await service._provide_feedback("I finished the task, but I couldn't provide detailed feedback.")
 
 
 async def broadcast(service, message_data: Dict[str, Any]) -> None:

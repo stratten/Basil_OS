@@ -65,7 +65,7 @@ final class BasilBoardWindowController: NSObject, NSWindowDelegate, AppearanceRe
     private static func windowTitle(forDetachedTabId detachedTabId: String?) -> String {
         switch detachedTabId {
         case "chats": return "Basil — Chats"
-        case "meetings": return "Basil — Meetings"
+        case "meetings": return "Basil — Notetaker"
         case "todos": return "Basil — To-Dos"
         default: return "Basil"
         }

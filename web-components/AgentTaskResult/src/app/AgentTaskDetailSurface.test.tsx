@@ -175,7 +175,7 @@ describe('AgentTaskDetailSurface artifact route', () => {
       act(() => {
         root.render(surface(null, undefined, false, undefined, undefined, mutableSource));
       });
-      expect(markup.querySelector('.agent-run-rail-stage-tooltip')?.textContent).toBe('Partial result: completed');
+      expect(markup.querySelector('.agent-run-rail-flow-stage[data-tooltip]')?.getAttribute('data-tooltip')).toBe('Partial result: completed');
 
       mutableSource.status = 'completed';
       mutableSource.outcome = 'success';
@@ -183,7 +183,7 @@ describe('AgentTaskDetailSurface artifact route', () => {
         root.render(surface(null, undefined, false, undefined, undefined, mutableSource));
       });
 
-      expect(markup.querySelector('.agent-run-rail-stage-tooltip')?.textContent).toBe('Run completed: completed');
+      expect(markup.querySelector('.agent-run-rail-flow-stage[data-tooltip]')?.getAttribute('data-tooltip')).toBe('Run completed: completed');
     } finally {
       act(() => {
         root.unmount();
@@ -349,21 +349,113 @@ describe('AgentTaskDetailSurface artifact route', () => {
       expect(container.querySelector('.run-card-artifacts')?.textContent).toContain('follow-up.md');
       expect(container.querySelector('.run-card-artifacts')?.textContent).not.toContain('initial.md');
 
-      const historyToggle = container.querySelector<HTMLButtonElement>('.agent-run-history-toggle');
-      act(() => {
-        historyToggle?.click();
-      });
-      const initialRun = Array.from(container.querySelectorAll<HTMLButtonElement>('.agent-run-history-row'))
+      const initialRun = Array.from(container.querySelectorAll<HTMLButtonElement>('.agent-run-map-turn-link'))
         .find(button => button.textContent?.includes('Initial request'));
       act(() => {
         initialRun?.click();
       });
       await flushPreviewAvailability();
 
-      expect(initialRun?.getAttribute('aria-pressed')).toBe('true');
+      expect(initialRun?.getAttribute('aria-current')).toBe('location');
       expect(checkFilePreviewAvailability).toHaveBeenLastCalledWith(['/tmp/initial.md']);
       expect(container.querySelector('.run-card-artifacts')?.textContent).toContain('initial.md');
       expect(container.querySelector('.run-card-artifacts')?.textContent).not.toContain('follow-up.md');
+    } finally {
+      act(() => {
+        root.unmount();
+      });
+      container.remove();
+    }
+  });
+
+  it('opens a turn’s only document from its document count in the run map', async () => {
+    const onDetailTrayModeChange = vi.fn();
+    const historicalSource: DisplayableAgentTask = {
+      ...displaySource,
+      agentTaskId: 'follow-up-task',
+      timestamp: '2026-08-10T12:01:00Z',
+      structuredFiles: [{ name: 'follow-up.md', path: '/tmp/follow-up.md', operation: 'create' }],
+      agentTaskHistory: [{
+        id: 'root-task',
+        agentTaskText: 'Investigate the integration workflow',
+        result: 'Created initial.md.',
+        files: [{ name: 'initial.md', path: '/tmp/initial.md', operation: 'create' }],
+        reference_paths: [],
+        timestamp: '2026-08-10T12:00:00Z',
+      }],
+    };
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    try {
+      act(() => {
+        root.render(surface(null, undefined, true, () => {}, onDetailTrayModeChange, historicalSource));
+      });
+      await flushPreviewAvailability();
+      const chip = container.querySelector<HTMLButtonElement>('.agent-run-map-documents');
+      expect(chip?.textContent).toBe('1 doc');
+      expect(chip?.getAttribute('aria-label')).toBe('Open 1 doc from Initial request');
+
+      act(() => {
+        chip?.click();
+      });
+      await flushPreviewAvailability();
+
+      expect(checkFilePreviewAvailability).toHaveBeenLastCalledWith(['/tmp/initial.md']);
+      expect(onDetailTrayModeChange).toHaveBeenLastCalledWith('preview');
+    } finally {
+      act(() => {
+        root.unmount();
+      });
+      container.remove();
+    }
+  });
+
+  it('moves the run-map focus with scrolling while the tray shows the overview without a selected detail', async () => {
+    const historicalSource: DisplayableAgentTask = {
+      ...displaySource,
+      agentTaskId: 'follow-up-task',
+      timestamp: '2026-08-10T12:01:00Z',
+      structuredFiles: [],
+      agentTaskHistory: [{
+        id: 'root-task',
+        agentTaskText: 'Investigate the integration workflow',
+        result: 'Investigated.',
+        files: [],
+        reference_paths: [],
+        timestamp: '2026-08-10T12:00:00Z',
+      }],
+    };
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const mockTop = (element: Element, top: number) => {
+      (element as HTMLElement).getBoundingClientRect = () => ({ top, bottom: top, left: 0, right: 0, width: 0, height: 0, x: 0, y: top, toJSON: () => ({}) }) as DOMRect;
+    };
+    const expandedTurnLabels = () => Array.from(container.querySelectorAll('.agent-run-map-turn.is-expanded .agent-run-map-label'))
+      .map(label => label.textContent);
+
+    try {
+      act(() => {
+        root.render(surface(null, undefined, true, () => {}, () => {}, historicalSource));
+      });
+      await flushPreviewAvailability();
+      expect(expandedTurnLabels()).toEqual(['Follow-up 1']);
+
+      const main = container.querySelector<HTMLElement>('.main-content');
+      if (!main) throw new Error('Expected the main content scroller.');
+      Object.defineProperty(main, 'clientHeight', { configurable: true, value: 400 });
+      Object.defineProperty(main, 'scrollHeight', { configurable: true, value: 2000 });
+      Object.defineProperty(main, 'scrollTop', { configurable: true, writable: true, value: 0 });
+      mockTop(main, 0);
+      Array.from(container.querySelectorAll('[data-run-anchor]')).forEach((anchor, index) => mockTop(anchor, index * 100));
+      act(() => {
+        main.dispatchEvent(new Event('scroll'));
+      });
+
+      expect(container.querySelector('.agent-run-map-turn.is-location .agent-run-map-label')?.textContent).toBe('Initial request');
+      expect(expandedTurnLabels()).toEqual(['Initial request']);
     } finally {
       act(() => {
         root.unmount();
@@ -416,10 +508,7 @@ describe('AgentTaskDetailSurface artifact route', () => {
       expectFocusedArtifacts('newest.md', ['root.md', 'middle.md']);
       expect(checkFilePreviewAvailability).toHaveBeenLastCalledWith(['/tmp/newest.md']);
 
-      act(() => {
-        container.querySelector<HTMLButtonElement>('.agent-run-history-toggle')?.click();
-      });
-      const historyRows = Array.from(container.querySelectorAll<HTMLButtonElement>('.agent-run-history-row'));
+      const historyRows = Array.from(container.querySelectorAll<HTMLButtonElement>('.agent-run-map-turn-link'));
       const rootRun = historyRows.find(button => button.textContent?.includes('Initial request'));
       const middleRun = historyRows.find(button => button.textContent?.includes('Follow-up 1'));
       const newestRun = historyRows.find(button => button.textContent?.includes('Follow-up 2'));
@@ -432,7 +521,7 @@ describe('AgentTaskDetailSurface artifact route', () => {
         rootRun?.click();
       });
       await flushPreviewAvailability();
-      expect(rootRun?.getAttribute('aria-pressed')).toBe('true');
+      expect(rootRun?.getAttribute('aria-current')).toBe('location');
       expectFocusedArtifacts('root.md', ['middle.md', 'newest.md']);
       expect(checkFilePreviewAvailability).toHaveBeenLastCalledWith(['/tmp/root.md']);
 
@@ -440,7 +529,7 @@ describe('AgentTaskDetailSurface artifact route', () => {
         middleRun?.click();
       });
       await flushPreviewAvailability();
-      expect(middleRun?.getAttribute('aria-pressed')).toBe('true');
+      expect(middleRun?.getAttribute('aria-current')).toBe('location');
       expectFocusedArtifacts('middle.md', ['root.md', 'newest.md']);
       expect(checkFilePreviewAvailability).toHaveBeenLastCalledWith(['/tmp/middle.md']);
 
@@ -448,7 +537,7 @@ describe('AgentTaskDetailSurface artifact route', () => {
         newestRun?.click();
       });
       await flushPreviewAvailability();
-      expect(newestRun?.getAttribute('aria-pressed')).toBe('true');
+      expect(newestRun?.getAttribute('aria-current')).toBe('location');
       expectFocusedArtifacts('newest.md', ['root.md', 'middle.md']);
       expect(checkFilePreviewAvailability).toHaveBeenLastCalledWith(['/tmp/newest.md']);
 

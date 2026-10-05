@@ -121,7 +121,7 @@ export function TranscriptionSettingsPanel({
         )}
         <Switch
           id="transcription-start-meeting-detection"
-          label="Start Meeting Detection at launch"
+          label="Start Meeting/Call Detection at launch"
           checked={settings.startMeetingDetectionAtStartup}
           disabled={disabled}
           onChange={(checked) => {
@@ -129,7 +129,7 @@ export function TranscriptionSettingsPanel({
             onTrackRequest(requestUpdateMeetingDetectionStartup(checked))
           }}
         />
-        <p className="transcription-settings-hint">Automatically begin watching for meetings each time Basil launches. Turning this on also enables Meeting Detection; it will not start the monitor until the next launch.</p>
+        <p className="transcription-settings-hint">Automatically begin watching for meetings each time Basil launches. Turning this on also enables Meeting/Call Detection; it will not start the monitor until the next launch.</p>
       </section>
 
       <section className="transcription-settings-section">

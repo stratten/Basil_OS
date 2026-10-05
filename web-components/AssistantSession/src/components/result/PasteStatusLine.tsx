@@ -22,9 +22,10 @@ export function PasteStatusLine({
 }) {
   if (!outcome) return null;
   const variant = outcome === 'pasted' ? 'pasted' : 'skipped';
+  const text = pasteStatusText(outcome, applicationName);
   return (
-    <p className={`assistant-session-result__paste-status assistant-session-result__paste-status--${variant}`} role="status">
-      {pasteStatusText(outcome, applicationName)}
+    <p className={`assistant-session-result__paste-status assistant-session-result__paste-status--${variant}`} role="status" title={text}>
+      {text}
     </p>
   );
 }

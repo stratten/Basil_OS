@@ -18,6 +18,7 @@ from api.core.models.models_registry import (
 )
 from api.core.models.base_model import ModelState
 from api.core.models.model_types import ModelCapability
+from api.core.models.models_registry.cloud_reasoning_registry import CLOUD_REASONING_MODELS
 from api.core.models.models_registry.local_vision_registry import local_vision_files_present
 from api.core.models.reasoning.auth_proxy_model import AuthProxyModel
 from api.core.models.reasoning.claude_model import ClaudeModel
@@ -186,6 +187,25 @@ def test_latest_cloud_model_entries_resolve_with_openrouter_ids() -> None:
         "gpt-6-astra": (PROVIDER_OPENAI, "openai/gpt-6-astra", 1050000, 128000),
         "gpt-6-sol": (PROVIDER_OPENAI, "openai/gpt-6-sol", 1050000, 128000),
         "gpt-6-luna": (PROVIDER_OPENAI, "openai/gpt-6-luna", 1050000, 128000),
+        "gpt-6.1-sol": (PROVIDER_OPENAI, "openai/gpt-6.1-sol", 1050000, 128000),
+        "claude-sonnet-5-5": (
+            PROVIDER_ANTHROPIC,
+            "anthropic/claude-sonnet-5.5",
+            1000000,
+            128000,
+        ),
+        "claude-opus-4-6": (
+            PROVIDER_ANTHROPIC,
+            "anthropic/claude-opus-4.6",
+            1000000,
+            128000,
+        ),
+        "gemini-3.1-pro-preview": (
+            PROVIDER_GOOGLE,
+            "google/gemini-3.1-pro-preview",
+            1048576,
+            65536,
+        ),
         "claude-opus-5-5": (
             PROVIDER_ANTHROPIC,
             "anthropic/claude-opus-5.5",
@@ -262,13 +282,13 @@ def test_latest_cloud_model_entries_resolve_with_openrouter_ids() -> None:
             PROVIDER_ANTHROPIC,
             "anthropic/claude-sonnet-4.6",
             1000000,
-            64000,
+            128000,
         ),
         "claude-haiku-4-5-20251001": (
             PROVIDER_ANTHROPIC,
             "anthropic/claude-haiku-4.5",
             200000,
-            65536,
+            64000,
         ),
         "gemini-3.5-flash": (
             PROVIDER_GOOGLE,
@@ -311,10 +331,26 @@ def test_cloud_preference_defaults_absorb_new_model_ids() -> None:
     for model_id in ("gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"):
         assert get_default_enabled_for_provider(PROVIDER_GOOGLE)[model_id] is False
     assert get_model("claude-opus-4-5-20260115") is None
+    assert get_default_enabled_for_provider(PROVIDER_OPENAI)["gpt-6.1-sol"] is False
+    assert get_default_enabled_for_provider(PROVIDER_ANTHROPIC)["claude-sonnet-5-5"] is True
+
+
+def test_sonnet_5_5_is_the_recommended_claude_default_and_retired_claude_4_models_are_gone() -> None:
+    anthropic_models = [
+        (model_id, cfg)
+        for model_id, cfg in CLOUD_REASONING_MODELS.items()
+        if cfg.get("provider") == PROVIDER_ANTHROPIC
+    ]
+    assert [model_id for model_id, cfg in anthropic_models if cfg.get("recommended_for_onboarding")] == ["claude-sonnet-5-5"]
+    assert [model_id for model_id, cfg in anthropic_models if cfg.get("recommended")] == ["claude-sonnet-5-5"]
+    assert [model_id for model_id, cfg in CLOUD_REASONING_MODELS.items() if cfg.get("used_by_setup_agent")] == ["claude-sonnet-5-5"]
+    assert get_model("claude-opus-4-20250514") is None
+    assert get_model("claude-sonnet-4-20250514") is None
 
 
 def test_latest_anthropic_registry_entries_drive_request_parameter_omissions() -> None:
     for model_id in (
+        "claude-sonnet-5-5",
         "claude-opus-5-5",
         "claude-fable-5-1",
         "claude-opus-5",
@@ -332,12 +368,13 @@ def test_latest_anthropic_registry_entries_drive_request_parameter_omissions() -
             "top_p",
             "top_k",
         ]
-    for model_id in ("gpt-6-astra", "gpt-6-sol", "gpt-6-luna"):
+    for model_id in ("gpt-6-astra", "gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna"):
         assert get_omitted_request_parameters(model_id) == ["temperature", "top_p"]
 
 
 def test_always_thinking_anthropic_models_request_adaptive_thinking_only() -> None:
     expected_default_effort = {
+        "claude-sonnet-5-5": "high",
         "claude-opus-5-5": "medium",
         "claude-fable-5-1": "high",
         "claude-opus-5": "high",
@@ -356,12 +393,12 @@ def test_always_thinking_anthropic_models_request_adaptive_thinking_only() -> No
 
 
 def test_gpt_6_reasoning_levels_match_provider_contract() -> None:
-    for model_id in ("gpt-6-astra", "gpt-6-sol", "gpt-6-luna"):
+    for model_id in ("gpt-6-astra", "gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna"):
         assert get_api_endpoint(model_id) == "responses"
         assert requires_responses_api(model_id) is True
         assert get_reasoning_effort_default(model_id) == "medium"
-    astra_levels = get_model("gpt-6-astra")["feature_config"]["reasoning_effort"]["levels"]
-    assert "none" not in astra_levels
+    for model_id in ("gpt-6-astra", "gpt-6.1-sol"):
+        assert "none" not in get_model(model_id)["feature_config"]["reasoning_effort"]["levels"]
     for model_id in ("gpt-6-sol", "gpt-6-luna"):
         assert "none" in get_model(model_id)["feature_config"]["reasoning_effort"]["levels"]
 

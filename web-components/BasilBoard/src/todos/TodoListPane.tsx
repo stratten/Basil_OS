@@ -254,7 +254,7 @@ function TodoListRow({
             {item.agent_status && (
               <span
                 className="todo-list-item-agent-status"
-                title={`Agent Task ${item.agent_status.is_active ? 'in progress' : item.agent_status.status}`}
+                title={`Paprika task ${item.agent_status.is_active ? 'in progress' : item.agent_status.status}`}
               >
                 <StatusIcon
                   status={item.agent_status.status}

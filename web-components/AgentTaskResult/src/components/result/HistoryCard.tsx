@@ -4,13 +4,15 @@ import MarkdownRenderer from '../MarkdownRenderer';
 import { CopyButtonGroup } from './CopyButtons';
 import ExecutionDisclosureChevron from '@shared/ExecutionDisclosureChevron';
 import { ProgressStepsSection } from './ExecutionTimeline';
-import { ThinkingSegments } from './ThinkingSections';
+import { ReasoningWithInteractions } from '../interaction/InteractionExchange';
+import { userInteractionsFromTimeline } from '../interaction/userInteractions';
 import { FilesDisplay, ReferencePathsList } from './ResultAttachments';
 import { formatBulletPoints, normalizeResultForPresentation, parseResult, splitRunDetails } from './resultContentUtils';
 import { RunDetailsDisclosure } from './RunDetailsDisclosure';
 import { formatHistoryTimestamp, useDateDisplayStyle } from '../../app/dateDisplay';
 import AgentTaskOriginChip from '../request/AgentTaskOriginChip';
 import RequestDisplay from '../request/RequestDisplay';
+import { plainMarkdownText } from '../../../../shared/plainMarkdownText';
 
 export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSelectDetail }: {
   item: AgentTaskHistoryItem;
@@ -30,7 +32,16 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
     [item.outcome, item.result],
   );
   const histParsed = useMemo(() => parseResult(presentationResult), [presentationResult]);
+  const userInteractions = useMemo(
+    () => userInteractionsFromTimeline(item.executionTimeline),
+    [item.executionTimeline],
+  );
   const histRunDetails = useMemo(() => splitRunDetails(histParsed.userSummary), [histParsed.userSummary]);
+  const plainRequest = useMemo(() => plainMarkdownText(item.agentTaskText), [item.agentTaskText]);
+  const collapsedPreview = useMemo(
+    () => plainMarkdownText(histRunDetails.narrative).substring(0, 200),
+    [histRunDetails.narrative],
+  );
   const alertColor = item.resultSeverity === 'warning' ? 'var(--warning-base)' : 'var(--error-base)';
   const alertBorder = item.resultSeverity === 'warning'
     ? '1px solid rgba(198, 121, 0, 0.28)'
@@ -44,6 +55,7 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
   return (
     <div
       className="agent-task-card"
+      data-run-content={item.id}
       style={{
         background: isExpanded ? 'var(--background-primary)' : 'rgba(var(--background-secondary-rgb, 246,246,246), 0.5)',
         borderWidth: 1,
@@ -59,7 +71,7 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
               fontFamily: 'var(--font-family-medium)', fontSize: 'var(--font-size-status-small)',
               color: 'var(--text-secondary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>
-              {item.agentTaskText}
+              {plainRequest}
             </span>
             <span style={{
               fontFamily: 'var(--font-family-medium)', fontSize: 'var(--font-size-status-tiny)',
@@ -75,7 +87,7 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
             display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
             wordBreak: 'break-word', userSelect: 'text',
           }}>
-            {histRunDetails.narrative.substring(0, 200)}
+            {collapsedPreview}
           </div>
           {item.files.length > 0 && (
             <div style={{
@@ -101,7 +113,7 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
           }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: 'var(--font-family-light)', fontSize: 10, color: 'var(--text-primary)', wordBreak: 'break-word' }}>
-                {item.agentTaskText}
+                {plainRequest}
               </div>
               <div style={{ fontFamily: 'var(--font-family-medium)', fontSize: 'var(--font-size-status-tiny)', color: 'var(--text-secondary)', marginTop: 2 }}>
                 {timeStr}
@@ -126,9 +138,10 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
               originType={item.originType}
               originId={item.originId}
             />
-            {item.thinkingSegments?.length ? (
-              <ThinkingSegments
-                segments={item.thinkingSegments}
+            {item.thinkingSegments?.length || userInteractions.length ? (
+              <ReasoningWithInteractions
+                segments={item.thinkingSegments || []}
+                interactions={userInteractions}
                 isLive={false}
                 collapseForResponse={false}
               />
@@ -136,14 +149,16 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
             {/* Execution timeline from history (interleaved thinking + steps) */}
             {((item.executionTimeline && item.executionTimeline.length > 0) ||
               (item.executionSteps && item.executionSteps.length > 0)) && (
-              <ProgressStepsSection
-                steps={item.executionSteps || []}
-                timeline={item.executionTimeline || []}
-                stepDetails={item.stepDetails}
-                selectedDetailId={selectedDetailId}
-                onSelectDetail={onSelectDetail}
-                isProcessing={false}
-              />
+              <div data-run-section="activity">
+                <ProgressStepsSection
+                  steps={item.executionSteps || []}
+                  timeline={item.executionTimeline || []}
+                  stepDetails={item.stepDetails}
+                  selectedDetailId={selectedDetailId}
+                  onSelectDetail={onSelectDetail}
+                  isProcessing={false}
+                />
+              </div>
             )}
             {/* Error banner for failed history items */}
             {hasError && (
@@ -177,7 +192,7 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
                 </div>
               </div>
             )}
-            <div style={{ marginBottom: 6 }}>
+            <div style={{ marginBottom: 6 }} data-run-section="result">
               <span style={{ fontFamily: 'var(--font-family-light)', fontSize: 'var(--font-size-body)', color: 'var(--text-primary)' }}>
                 {hasError ? 'Partial Result:' : 'Result:'}
               </span>

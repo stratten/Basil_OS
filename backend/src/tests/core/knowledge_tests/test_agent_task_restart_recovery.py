@@ -2,17 +2,29 @@
 
 from __future__ import annotations
 
+import sqlite3
+from contextlib import closing
+
 import pytest
 
 from api.core.knowledge.sqlite.sqlite_knowledge_service import SQLiteKnowledgeService
 
-_ACTIVE_STATUSES = ("routing", "processing", "awaiting_user_input", "capturing")
+_INTERRUPTED_STATUSES = ("routing", "processing", "capturing")
+
+
+def _set_days_since_update(service: SQLiteKnowledgeService, task_id: str, days: int) -> None:
+    with closing(sqlite3.connect(service.db_path)) as conn:
+        conn.execute(
+            "UPDATE agent_tasks SET updated_at = datetime('now', ?) WHERE id = ?",
+            (f"-{days} days", task_id),
+        )
+        conn.commit()
 
 
 @pytest.mark.asyncio
 async def test_each_active_status_is_marked_failed_with_recorded_previous_status(tmp_path) -> None:
     service = SQLiteKnowledgeService(tmp_path / "db.sqlite3")
-    for status in _ACTIVE_STATUSES:
+    for status in _INTERRUPTED_STATUSES:
         await service.store_agent_task(
             agent_task_id=f"task-{status}",
             original_prompt="Prompt",
@@ -22,8 +34,8 @@ async def test_each_active_status_is_marked_failed_with_recorded_previous_status
 
     interrupted_count = await service.agent_task_service.mark_interrupted_active_agent_tasks()
 
-    assert interrupted_count == len(_ACTIVE_STATUSES)
-    for status in _ACTIVE_STATUSES:
+    assert interrupted_count == len(_INTERRUPTED_STATUSES)
+    for status in _INTERRUPTED_STATUSES:
         refreshed = await service.get_agent_task(f"task-{status}")
         assert refreshed.status == "failed"
         failure_info = (refreshed.result_data or {}).get("failure_info")
@@ -122,3 +134,71 @@ async def test_restart_cancels_pending_approvals_owned_by_terminal_tasks(tmp_pat
     waiting_record = await service.execution_approval_repository.get_approval(str(approvals["task-waiting"]["id"]))
     assert done_record["status"] == "canceled"
     assert waiting_record["status"] == "pending"
+
+
+@pytest.mark.asyncio
+async def test_recent_task_waiting_for_the_user_survives_restart(tmp_path) -> None:
+    service = SQLiteKnowledgeService(tmp_path / "waiting-user.db")
+    await service.store_agent_task(
+        agent_task_id="waiting-user",
+        original_prompt="Prompt",
+        transcribed_prompt="Prompt",
+        status="awaiting_user_input",
+    )
+    _set_days_since_update(service, "waiting-user", 6)
+
+    interrupted_count = await service.agent_task_service.mark_interrupted_active_agent_tasks()
+
+    assert interrupted_count == 0
+    refreshed = await service.get_agent_task("waiting-user")
+    assert refreshed.status == "awaiting_user_input"
+
+
+@pytest.mark.asyncio
+async def test_task_waiting_for_the_user_past_retention_expires_on_restart(tmp_path) -> None:
+    service = SQLiteKnowledgeService(tmp_path / "stale-user.db")
+    await service.store_agent_task(
+        agent_task_id="stale-user",
+        original_prompt="Prompt",
+        transcribed_prompt="Prompt",
+        status="awaiting_user_input",
+    )
+    _set_days_since_update(service, "stale-user", 8)
+
+    interrupted_count = await service.agent_task_service.mark_interrupted_active_agent_tasks()
+
+    assert interrupted_count == 1
+    refreshed = await service.get_agent_task("stale-user")
+    assert refreshed.status == "failed"
+    failure_info = (refreshed.result_data or {}).get("failure_info")
+    assert failure_info["previous_status"] == "awaiting_user_input"
+    assert failure_info["error"].startswith("Task expired: Basil restarted")
+
+
+@pytest.mark.asyncio
+async def test_restart_cancels_pending_approvals_of_a_preserved_waiting_task(tmp_path) -> None:
+    service = SQLiteKnowledgeService(tmp_path / "waiting-approval.db")
+    await service.store_agent_task(
+        agent_task_id="waiting-approval",
+        original_prompt="Prompt",
+        transcribed_prompt="Prompt",
+        status="processing",
+    )
+    approval = await service.execution_approval_repository.create_pending_approval(
+        agent_task_id="waiting-approval",
+        root_task_id="waiting-approval",
+        execution_type="shell",
+        command="pwd",
+        reason="Not whitelisted",
+        risk_level="low",
+        generalized_pattern="pwd",
+        render_context={},
+    )
+    await service.update_agent_task_status(agent_task_id="waiting-approval", status="awaiting_user_input")
+
+    await service.agent_task_service.mark_interrupted_active_agent_tasks()
+
+    refreshed = await service.get_agent_task("waiting-approval")
+    approval_record = await service.execution_approval_repository.get_approval(str(approval["id"]))
+    assert refreshed.status == "awaiting_user_input"
+    assert approval_record["status"] == "canceled"

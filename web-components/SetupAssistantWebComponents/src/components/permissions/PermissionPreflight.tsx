@@ -70,7 +70,7 @@ const permissionCards = [
   {
     kind: 'microphone' as const,
     title: 'Microphone Access',
-    description: 'Basil needs microphone access for audio transcription and agentTasks.',
+    description: 'Basil needs microphone access for audio transcription and Paprika tasks.',
     icon: <MicrophoneIcon />,
   },
   {

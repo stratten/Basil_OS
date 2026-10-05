@@ -13,7 +13,7 @@ export default function TodoDeleteConfirmation({
 }: TodoDeleteConfirmationProps) {
   return (
     <section className={`todo-delete-confirmation${className ? ` ${className}` : ''}`} role="alert">
-      <p>Delete this To-Do permanently? Its provenance, attachments, and work history will be removed. Existing Agent Tasks will remain available.</p>
+      <p>Delete this To-Do permanently? Its provenance, attachments, and work history will be removed. Existing Paprika tasks will remain available.</p>
       <div>
         <button type="button" className="todo-detail-action-delete" disabled={isDeleting} onClick={onConfirm}>
           {isDeleting ? 'Deleting…' : 'Delete permanently'}

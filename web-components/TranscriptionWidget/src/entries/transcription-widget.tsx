@@ -4,8 +4,10 @@ import { TranscriptionWidgetApp } from '../app/TranscriptionWidgetApp';
 import '@shared/reduced-motion.css';
 import '../styles/transcription-widget.css';
 import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish';
+import { installBasilTooltips } from '@shared/tooltip/basilTooltip';
 
 enableBackdropSurfaceFinish();
+installBasilTooltips();
 
 const container = document.getElementById('root');
 if (!container) {

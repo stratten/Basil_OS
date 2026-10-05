@@ -101,7 +101,7 @@ const SETTINGS_NAVIGATION: readonly SettingsNavigationGroup[] = [
       { id: 'models', label: 'Models', migrated: true, subTabs: MODELS_SUB_TABS },
       { id: 'reasoning', label: 'Automation & Agents', migrated: true, subTabs: REASONING_AUTOMATION_SUB_TABS },
       { id: 'transcription', label: 'Transcription', migrated: true, subTabs: TRANSCRIPTION_SUB_TABS },
-      { id: 'meetings', label: 'Meetings', migrated: true },
+      { id: 'meetings', label: 'Notetaker', migrated: true },
       { id: 'capture', label: 'Capture', migrated: true, subTabs: CAPTURE_SUB_TABS },
     ],
   },

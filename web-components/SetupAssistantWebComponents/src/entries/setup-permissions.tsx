@@ -6,8 +6,10 @@ import { PermissionPreflight } from '@/components/permissions/PermissionPrefligh
 import '@/styles/setup-assistant.css'
 import '@/styles/setup-assistant-surface-finish.css'
 import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish'
+import { installBasilTooltips } from '@shared/tooltip/basilTooltip'
 
 enableBackdropSurfaceFinish()
+installBasilTooltips()
 
 const root = document.getElementById('root')
 

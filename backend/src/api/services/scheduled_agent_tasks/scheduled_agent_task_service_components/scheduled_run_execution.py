@@ -364,18 +364,18 @@ async def execute_scheduled_run(
             run_id,
             status="failed",
             completed_at=utc_now().isoformat(),
-            error_message="Scheduled agent task not found",
+            error_message="Scheduled task not found",
         )
-        return {"success": False, "error": "Scheduled agent task not found"}
+        return {"success": False, "error": "Scheduled task not found"}
 
     if not scheduled_agent_task["is_active"]:
         await repo.update_scheduled_run(
             run_id,
             status="skipped",
             completed_at=utc_now().isoformat(),
-            error_message="Scheduled agent task is inactive",
+            error_message="Scheduled task is inactive",
         )
-        return {"success": False, "error": "Scheduled agent task inactive"}
+        return {"success": False, "error": "Scheduled task is inactive"}
 
     started_at = utc_now().isoformat()
     agent_task_id = str(uuid.uuid4())
@@ -436,7 +436,7 @@ async def execute_scheduled_run(
 
         try:
             if not agent_task_submission_service:
-                raise RuntimeError("Agent task submission service unavailable")
+                raise RuntimeError("Task submission service unavailable")
 
             # Submission. ``process_agent_task_direct`` returns once the
             # agent tasks row has been inserted and the event-driven
@@ -474,7 +474,7 @@ async def execute_scheduled_run(
                     (submission_result or {}).get("error")
                     or (submission_result or {}).get("message")
                     or (submission_result or {}).get("reasoning")
-                    or "AgentTask submission failed"
+                    or "Task submission failed"
                 )
                 logger.warning(
                     "execute_scheduled_run: synchronous submission failure for "
@@ -532,13 +532,13 @@ async def execute_scheduled_run(
                             candidate_msg = result_data.get("error") or result_data.get("message")
                         error_message = (
                             candidate_msg
-                            or f"AgentTask terminated with status '{completion_status}'"
+                            or f"Task ended with status '{completion_status}'"
                         )
                 except asyncio.TimeoutError:
                     success = False
                     error_message = (
-                        f"Scheduled agent task timed out waiting for agent_task "
-                        f"completion after {_SCHEDULED_RUN_COMPLETION_TIMEOUT_SECONDS}s"
+                        f"Scheduled task timed out waiting for the task to finish "
+                        f"after {_SCHEDULED_RUN_COMPLETION_TIMEOUT_SECONDS}s"
                     )
                     logger.warning(
                         "execute_scheduled_run: timeout waiting for agent_task %s "

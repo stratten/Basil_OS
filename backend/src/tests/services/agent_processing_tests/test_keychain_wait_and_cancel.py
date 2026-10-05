@@ -435,7 +435,7 @@ async def test_durable_cancellation_preserves_completed_root_and_cancels_active_
         "event_type": "agent_task_canceled",
         "agent_task_id": child.id,
         "root_task_id": root.id,
-        "message": "AgentTask canceled",
+        "message": "Task canceled",
     }]
 
 
@@ -521,7 +521,7 @@ async def test_submission_persists_preemptively_canceled_task_as_terminal():
         "success": False,
         "agent_task_id": "provisional-1",
         "status": "canceled",
-        "message": "AgentTask canceled",
+        "message": "Task canceled",
     }
 
 

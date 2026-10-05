@@ -69,7 +69,7 @@ export async function hydrateDetachedChain(rootTaskId: string): Promise<void> {
       const finalStatus: 'completed' | 'failed' = displayable.status === 'failed' ? 'failed' : 'completed';
       agentStore.updateStatus(rootTaskId, finalStatus);
       if (finalStatus === 'failed') {
-        agentStore.setError(rootTaskId, displayable.errorMessage || displayable.result || 'Agent task failed');
+        agentStore.setError(rootTaskId, displayable.errorMessage || displayable.result || 'Task failed');
       }
       return;
     }
@@ -368,7 +368,7 @@ export function useHostBridge({
 
       if (event.event_type === 'scheduled_agent_task_missed') {
         const runId = (event.run_id as string) || crypto.randomUUID();
-        const title = (event.title as string) || 'Scheduled agent task';
+        const title = (event.title as string) || 'Scheduled task';
         const scheduledFor = (event.scheduled_for as string | undefined);
         const reason = (event.reason as string | undefined);
         setMissedRunToasts(prev => [

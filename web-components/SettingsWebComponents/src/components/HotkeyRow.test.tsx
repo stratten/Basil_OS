@@ -11,7 +11,7 @@ let root: Root
 const ROW: HotkeyRowSnapshot = {
   id: 'agent_task',
   title: 'Paprika',
-  subtitle: 'Side-quest helper',
+  subtitle: 'Agent',
   binding: { key: 'Space', modifiers: ['option'], enabled: true, isDoublePress: false, doublePressKey: null },
 }
 
@@ -33,7 +33,7 @@ describe('HotkeyRow', () => {
       root.render(<HotkeyRow row={ROW} isEditing={false} isSaving={false} isDisabled={false} errorMessage={null} onEdit={vi.fn()} onCancel={vi.fn()} />)
     })
     expect(container.querySelector('.hotkey-row-title')?.textContent).toBe('Paprika')
-    expect(container.querySelector('.hotkey-row-subtitle')?.textContent).toBe('Side-quest helper')
+    expect(container.querySelector('.hotkey-row-subtitle')?.textContent).toBe('Agent')
     expect(container.querySelectorAll('.hotkey-key-cap').length).toBe(2)
   })
 

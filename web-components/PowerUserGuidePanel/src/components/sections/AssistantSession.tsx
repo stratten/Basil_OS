@@ -1,3 +1,4 @@
+import { BASIL_TEAM } from '@shared/teamIdentity'
 import { Bullet, SectionGroup, SectionHeader } from '../Bullet'
 
 export default function AssistantSession() {
@@ -5,7 +6,7 @@ export default function AssistantSession() {
     <div className="pug-section">
       <SectionHeader
         icon="dill"
-        title="Dill"
+        title={BASIL_TEAM.assistantSession.pairedName}
         subtitle="The smartest way to draft replies, summaries, and content — just tell Basil what you want"
       />
 

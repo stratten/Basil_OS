@@ -32,7 +32,7 @@ final class MeetingDetectionSettingsViewModel: ObservableObject {
     }
 
     func load() async {
-        DevLogger.shared.info("Loading Meeting Detection settings", context: logContext)
+        DevLogger.shared.info("Loading Meeting/Call Detection settings", context: logContext)
         isLoading = true
         defer { isLoading = false }
 
@@ -40,11 +40,11 @@ final class MeetingDetectionSettingsViewModel: ObservableObject {
             let settings = try await apiClient.getMeetingDetectionSettings()
             apply(settings)
             DevLogger.shared.info(
-                "Loaded Meeting Detection settings: enabled=\(settings.enabled), mode=\(settings.mode), poll=\(settings.pollSeconds)",
+                "Loaded Meeting/Call Detection settings: enabled=\(settings.enabled), mode=\(settings.mode), poll=\(settings.pollSeconds)",
                 context: logContext
             )
         } catch {
-            statusMessage = "Error loading Meeting Detection settings: \(error.localizedDescription)"
+            statusMessage = "Error loading Meeting/Call Detection settings: \(error.localizedDescription)"
             DevLogger.shared.error(statusMessage ?? "", context: logContext)
         }
     }
@@ -53,8 +53,8 @@ final class MeetingDetectionSettingsViewModel: ObservableObject {
         let previousValue = loadedSettings?.enabled ?? !isEnabled
         await update(
             MeetingDetectionSettingsUpdate(enabled: isEnabled),
-            successMessage: isEnabled ? "Meeting Detection enabled." : "Meeting Detection disabled.",
-            failureMessage: "Error updating Meeting Detection enabled state"
+            successMessage: isEnabled ? "Meeting/Call Detection enabled." : "Meeting/Call Detection disabled.",
+            failureMessage: "Error updating Meeting/Call Detection enabled state"
         ) {
             self.enabled = previousValue
         }
@@ -63,8 +63,8 @@ final class MeetingDetectionSettingsViewModel: ObservableObject {
     func updateMode(_ mode: String) async {
         await update(
             MeetingDetectionSettingsUpdate(mode: mode),
-            successMessage: "Meeting Detection mode updated.",
-            failureMessage: "Error updating Meeting Detection mode"
+            successMessage: "Meeting/Call Detection mode updated.",
+            failureMessage: "Error updating Meeting/Call Detection mode"
         )
     }
 
@@ -73,16 +73,16 @@ final class MeetingDetectionSettingsViewModel: ObservableObject {
         pollSeconds = clamped
         await update(
             MeetingDetectionSettingsUpdate(pollSeconds: clamped),
-            successMessage: "Meeting Detection poll interval updated.",
-            failureMessage: "Error updating Meeting Detection poll interval"
+            successMessage: "Meeting/Call Detection poll interval updated.",
+            failureMessage: "Error updating Meeting/Call Detection poll interval"
         )
     }
 
     func updateCooldownMinutes(_ minutes: Double) async {
         await update(
             MeetingDetectionSettingsUpdate(cooldownMinutes: minutes),
-            successMessage: "Meeting Detection cooldown updated.",
-            failureMessage: "Error updating Meeting Detection cooldown"
+            successMessage: "Meeting/Call Detection cooldown updated.",
+            failureMessage: "Error updating Meeting/Call Detection cooldown"
         )
     }
 
@@ -114,8 +114,8 @@ final class MeetingDetectionSettingsViewModel: ObservableObject {
     func updateExcludedAppNames() async {
         await update(
             MeetingDetectionSettingsUpdate(excludedAppNames: excludedAppNames),
-            successMessage: "Meeting Detection exclusions updated.",
-            failureMessage: "Error updating Meeting Detection exclusions"
+            successMessage: "Meeting/Call Detection exclusions updated.",
+            failureMessage: "Error updating Meeting/Call Detection exclusions"
         )
     }
 

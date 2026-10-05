@@ -479,7 +479,7 @@ extension AssistantSessionViewModel {
         guard let sessionId = sessionId else {
             if !isCanceled {
                 assistantSessionStatus = .failed
-                errorMessage = "No session ID available for AssistantSession upload"
+                errorMessage = "No session ID available for this upload."
             }
             return
         }
@@ -491,7 +491,7 @@ extension AssistantSessionViewModel {
             guard let audioData = audioCaptureService.lastRecordingData, !audioData.isEmpty else {
                 if !isCanceled {
                     assistantSessionStatus = .failed
-                    errorMessage = "No audio data recorded for AssistantSession"
+                    errorMessage = "No audio was recorded."
                 }
                 return
             }

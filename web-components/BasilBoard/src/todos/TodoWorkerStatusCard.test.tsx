@@ -32,9 +32,9 @@ describe('TodoWorkerStatusCard', () => {
   it('renders live active progress and opens the exact Agent Task only on request', async () => {
     render(<TodoWorkerStatusCard attempt={attempt()} liveState={{ latestActivity: 'Reviewing key-rotation guidance' }} />);
 
-    expect(screen.getByText('Agent task in progress')).toBeInTheDocument();
+    expect(screen.getByText('Paprika task in progress')).toBeInTheDocument();
     expect(screen.getByText('Reviewing key-rotation guidance')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Open Agent Task' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Open in Paprika' }));
     expect(bridgeMocks.openExistingAgentTaskWidget).toHaveBeenCalledWith('worker-1');
   });
 
@@ -47,7 +47,7 @@ describe('TodoWorkerStatusCard', () => {
   it('renders a terminal success outcome', () => {
     render(<TodoWorkerStatusCard attempt={attempt({ status: 'completed', result_summary: 'Completed research.' })} />);
 
-    expect(screen.getByText('Agent task completed')).toBeInTheDocument();
+    expect(screen.getByText('Paprika task completed')).toBeInTheDocument();
     expect(screen.getByText('Completed research.')).toBeInTheDocument();
   });
 
@@ -64,7 +64,7 @@ describe('TodoWorkerStatusCard', () => {
     );
 
     expect(screen.getByText('Partial result')).toBeInTheDocument();
-    expect(screen.queryByText('Agent task failed')).not.toBeInTheDocument();
+    expect(screen.queryByText('Paprika task failed')).not.toBeInTheDocument();
     expect(
       screen.getByText('Drafted 3 of 5 requested emails; two recipients had no address on file.'),
     ).toBeInTheDocument();
@@ -78,7 +78,7 @@ describe('TodoWorkerStatusCard', () => {
       />,
     );
 
-    expect(screen.getByText('Agent task failed')).toBeInTheDocument();
+    expect(screen.getByText('Paprika task failed')).toBeInTheDocument();
     expect(screen.queryByText('Partial result')).not.toBeInTheDocument();
   });
 
@@ -131,14 +131,14 @@ describe('TodoWorkerStatusCard', () => {
   it('uses American-English copy for canceled Agent Tasks', () => {
     render(<TodoWorkerStatusCard attempt={attempt({ status: 'canceled' })} />);
 
-    expect(screen.getByText('Agent task canceled')).toBeInTheDocument();
+    expect(screen.getByText('Paprika task canceled')).toBeInTheDocument();
   });
 
   it('presents needs-attention worker tasks as an alert', () => {
     render(<TodoWorkerStatusCard attempt={attempt({ status: 'awaiting_user_input', attention: true })} />);
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Agent task needs your input');
-    expect(screen.getByRole('button', { name: 'Respond in Agent Task' })).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Paprika task needs your input');
+    expect(screen.getByRole('button', { name: 'Respond in Paprika' })).toBeInTheDocument();
   });
 
   it('keeps long and empty activity states usable', () => {
@@ -150,6 +150,6 @@ describe('TodoWorkerStatusCard', () => {
 
     rerender(<TodoWorkerStatusCard attempt={attempt()} liveState={{}} />);
     expect(screen.queryByText(longActivity)).not.toBeInTheDocument();
-    expect(screen.getByText('Agent task in progress')).toBeInTheDocument();
+    expect(screen.getByText('Paprika task in progress')).toBeInTheDocument();
   });
 });

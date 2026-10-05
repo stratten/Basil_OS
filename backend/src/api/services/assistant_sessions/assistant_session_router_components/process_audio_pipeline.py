@@ -238,7 +238,7 @@ async def stream_process_audio(
         if not model:
             print(f"🎤 [STREAM] ERROR: No suitable model found for session {session_id}", flush=True)
             yield json.dumps({
-                "assistant_output": "[Error: No suitable model found for AssistantSession.]",
+                "assistant_output": "[Error: No suitable reasoning model is available. Choose one in Settings.]",
                 "complete": True
             }) + "\n"
             return
@@ -299,7 +299,7 @@ async def stream_process_audio(
             elif "authentication" in error_message.lower() or "401" in error_message:
                 user_error = "API authentication error. Please check your API key configuration."
             else:
-                user_error = f"Error generating AssistantSession output: {error_message}"
+                user_error = f"Error generating output: {error_message}"
 
             yield json.dumps({
                 "error": user_error,

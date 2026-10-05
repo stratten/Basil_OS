@@ -60,8 +60,10 @@ from .workflow_deadline import deadline_evidence, deadline_from_context
 from ..finalization.execution_result_processing import handle_execution_error, process_agent_result
 from ..finalization.recovery import attempt_finalization_recovery
 from ..finalization.task_state_persistence import (
+    PRIOR_THINKING_HISTORY_CONTEXT_KEY,
     handle_checkpoint_request,
     handle_provider_delegation_wait_request,
+    merge_thinking_histories,
 )
 from api.services.agent_providers.targeting.delegation_service import ProviderDelegationWaitRequest
 from ...tools.internal_basil_tools.checkpoint_tool import CheckpointRequest
@@ -92,6 +94,20 @@ def _collect_emitted_thinking_history(
     if isinstance(synthesis_thinking_history, list):
         segments.extend(synthesis_thinking_history)
     return segments
+
+
+def _task_thinking_history(
+    state: PlanningState,
+    live_callbacks: Any,
+    langchain_llm: Any,
+    synthesis_thinking_history: Any = None,
+) -> List[Dict[str, Any]]:
+    """Return this run's reasoning appended to any reasoning saved before a checkpoint pause."""
+    prior = state.context.get(PRIOR_THINKING_HISTORY_CONTEXT_KEY) if state.context else None
+    return merge_thinking_histories(
+        prior,
+        _collect_emitted_thinking_history(live_callbacks, langchain_llm, synthesis_thinking_history),
+    )
 
 
 def _get_run_coordinator(state: PlanningState):
@@ -841,7 +857,8 @@ async def _node_execute_todos_with_tools(state: PlanningState) -> Dict[str, Any]
             if recovered_envelope:
                 final_envelope = recovered_envelope
         
-        thinking_history = _collect_emitted_thinking_history(
+        thinking_history = _task_thinking_history(
+            state,
             live_callbacks,
             langchain_llm,
             synthesis_thinking_history,
@@ -884,11 +901,22 @@ async def _node_execute_todos_with_tools(state: PlanningState) -> Dict[str, Any]
         )
     except CheckpointRequest as checkpoint_err:
         # Agent explicitly requested user input - collaborative flow, NOT an error
-        return await handle_checkpoint_request(checkpoint_err, state, coordinator)
+        return await handle_checkpoint_request(
+            checkpoint_err,
+            state,
+            coordinator,
+            thinking_history=_task_thinking_history(
+                state,
+                locals().get("live_callbacks"),
+                locals().get("langchain_llm"),
+                locals().get("synthesis_thinking_history"),
+            ),
+        )
         
     except Exception as e:
         # Execution error with possible recovery from every emitted reasoning source.
-        error_thinking_history = _collect_emitted_thinking_history(
+        error_thinking_history = _task_thinking_history(
+            state,
             locals().get("live_callbacks"),
             locals().get("langchain_llm"),
             locals().get("synthesis_thinking_history"),

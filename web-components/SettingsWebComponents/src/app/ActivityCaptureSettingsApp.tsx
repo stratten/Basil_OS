@@ -396,7 +396,7 @@ export function ActivityCaptureSettingsApp() {
 
       <section className="activity-capture-card" aria-labelledby="activity-capture-exclusions-heading">
         <h3 id="activity-capture-exclusions-heading">Exclusions</h3>
-        <p className="activity-capture-hint">Selected apps are skipped before a screenshot is created. This applies only to automatic capture; manual, Agent Task, and Assistant Session captures are unaffected.</p>
+        <p className="activity-capture-hint">Selected apps are skipped before a screenshot is created. This applies only to automatic capture; manual, Paprika, and Dill captures are unaffected.</p>
         <div className="activity-capture-exclusions-picker">
           <div className="activity-capture-exclusions-search">
             <input

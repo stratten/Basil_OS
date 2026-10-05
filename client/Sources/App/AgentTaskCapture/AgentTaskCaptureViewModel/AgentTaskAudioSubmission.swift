@@ -97,10 +97,10 @@ extension AgentTaskCaptureViewModel {
                 // polling an ID the backend doesn't know about.
                 postProvisionalFailureNotification(
                     reason: "http_error",
-                    message: "AgentTask processing API error: HTTP \(httpResponse.statusCode)"
+                    message: "Task processing API error: HTTP \(httpResponse.statusCode)"
                 )
                 throw NSError(domain: BasilTeamIdentity.agentTask.displayName, code: httpResponse.statusCode,
-                              userInfo: [NSLocalizedDescriptionKey: "AgentTask processing API error: HTTP \(httpResponse.statusCode)"])
+                              userInfo: [NSLocalizedDescriptionKey: "Task processing API error: HTTP \(httpResponse.statusCode)"])
             }
 
             // Parse response for both logging and provisional-failure handling.

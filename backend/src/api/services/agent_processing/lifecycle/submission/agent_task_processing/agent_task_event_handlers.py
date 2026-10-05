@@ -146,7 +146,7 @@ class AgentTaskEventHandlers:
             "event_type": "agent_task_result",
             "success": False,
             "result": "",
-            "error": "Unable to understand the agent task. Please try again.",
+            "error": "Unable to understand the task. Please try again.",
             "agent_task_id": event.agent_task_id
         })
 

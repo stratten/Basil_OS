@@ -451,7 +451,7 @@ export default function TodoDetailPane({
       <section className="todo-detail-work-history">
         <h3>Work history</h3>
         {item.worker_attempts.length === 0 ? (
-          <p>No worker Agent Tasks yet.</p>
+          <p>No Paprika tasks yet.</p>
         ) : (
           <div className="todo-worker-status-card-list">
             {item.worker_attempts.map((attempt) => (

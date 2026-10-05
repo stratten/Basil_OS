@@ -53,9 +53,9 @@ final class StatusBarMenuBuilder {
         activityCaptureItem.isHidden = true // Hidden by default, shown only if enabled in settings
         menu.addItem(activityCaptureItem)
 
-        // Meeting Detection start/stop. Hidden unless enabled in Settings; the
+        // Meeting/Call Detection start/stop. Hidden unless enabled in Settings; the
         // user manually starts/stops the mechanical monitor from here.
-        let meetingDetectionItem = NSMenuItem(title: "Meeting Detection", action: #selector(StatusBarManager.toggleMeetingDetection), keyEquivalent: "")
+        let meetingDetectionItem = NSMenuItem(title: "Meeting/Call Detection", action: #selector(StatusBarManager.toggleMeetingDetection), keyEquivalent: "")
         meetingDetectionItem.target = target
         meetingDetectionItem.tag = MenuItemTag.meetingDetection.rawValue
         meetingDetectionItem.isHidden = true
@@ -110,7 +110,7 @@ final class StatusBarMenuBuilder {
         // an in-widget speak/type toggle.
 
         // Open AssistantSession
-        let assistantSessionItem = NSMenuItem(title: "Open \(BasilTeamIdentity.assistantSession.displayName)", action: #selector(StatusBarManager.openAssistantSession), keyEquivalent: "")
+        let assistantSessionItem = NSMenuItem(title: "Open \(BasilTeamIdentity.assistantSession.pairedName)", action: #selector(StatusBarManager.openAssistantSession), keyEquivalent: "")
         assistantSessionItem.target = target
         menu.addItem(assistantSessionItem)
         if let assistantSessionBinding = hotkeyService.hotkeyBindings["assistantSession"] {
@@ -118,7 +118,7 @@ final class StatusBarMenuBuilder {
         }
 
         // Open AgentTask
-        let agentTaskItem = NSMenuItem(title: "Open \(BasilTeamIdentity.agentTask.displayName)", action: #selector(StatusBarManager.openAgentTask), keyEquivalent: "")
+        let agentTaskItem = NSMenuItem(title: "Open \(BasilTeamIdentity.agentTask.pairedName)", action: #selector(StatusBarManager.openAgentTask), keyEquivalent: "")
         agentTaskItem.target = target
         agentTaskItem.tag = MenuItemTag.agentTask.rawValue
         menu.addItem(agentTaskItem)
@@ -135,8 +135,8 @@ final class StatusBarMenuBuilder {
         ambientSuggestionsItem.isHidden = true
         menu.addItem(ambientSuggestionsItem)
 
-        // Meeting / Call Transcription (formerly "Open Live Transcription").
-        let liveTranscriptionItem = NSMenuItem(title: "Meeting / Call Transcription", action: #selector(StatusBarManager.openLiveTranscription), keyEquivalent: "")
+        // Notetaker (formerly "Meeting / Call Transcription").
+        let liveTranscriptionItem = NSMenuItem(title: "Notetaker", action: #selector(StatusBarManager.openLiveTranscription), keyEquivalent: "")
         liveTranscriptionItem.target = target
         menu.addItem(liveTranscriptionItem)
 

@@ -477,6 +477,14 @@
   margin: 0;
 }
 
+.agenda-confirmation-prompt p {
+  margin: 0 0 6px;
+}
+
+.agenda-confirmation-prompt > :last-child {
+  margin-bottom: 0;
+}
+
 .agenda-confirmation-actions {
   display: flex;
   flex-wrap: wrap;

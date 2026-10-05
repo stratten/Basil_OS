@@ -35,13 +35,13 @@ export function ActionButtons({
           <button type="button" className="assistant-session-actions__btn assistant-session-actions__btn--muted" title="Cancel editing and revert changes" onClick={cancelEditMode}>
             <NativeSymbol name="cancel" size={14} /> Cancel
           </button>
-          <button type="button" className="assistant-session-actions__btn assistant-session-actions__btn--success" title="Apply your edits to the AssistantSession output" onClick={onApplyEdits}>
+          <button type="button" className="assistant-session-actions__btn assistant-session-actions__btn--success" title="Apply your edits to this output" onClick={onApplyEdits}>
             <NativeSymbol name="check" size={14} /> Apply Edits
           </button>
         </>
       ) : (
         <>
-          <button type="button" className="assistant-session-actions__btn assistant-session-actions__btn--primary" title="Edit this AssistantSession output before saving" onClick={enterEditMode}>
+          <button type="button" className="assistant-session-actions__btn assistant-session-actions__btn--primary" title="Edit this output before saving" onClick={enterEditMode}>
             <NativeSymbol name="edit" size={14} /> Edit
           </button>
         </>
@@ -50,7 +50,7 @@ export function ActionButtons({
         type="button"
         className={`assistant-session-actions__btn${state.sampleSaved ? ' assistant-session-actions__btn--success' : ' assistant-session-actions__btn--primary'}`}
         disabled={state.sampleSaved || state.savingSample}
-        title={state.isEditMode ? 'Save this edited version as a writing sample' : 'Save this AssistantSession output as a writing sample to improve personalization'}
+        title={state.isEditMode ? 'Save this edited version as a writing sample' : 'Save this output as a writing sample to improve personalization'}
         onClick={handleSaveAsSample}
       >
         {!state.savingSample && (

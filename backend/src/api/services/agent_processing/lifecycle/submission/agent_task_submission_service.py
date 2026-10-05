@@ -180,7 +180,7 @@ class AgentTaskSubmissionService:
                 "operation": "error",
                 "confidence": 0.0,
                 "reasoning": f"Error during agent-task processing: {str(exc)}",
-                "message": "AgentTask processing failed",
+                "message": "Task processing failed",
                 "error": str(exc),
             }
 
@@ -624,7 +624,7 @@ class AgentTaskSubmissionService:
                         "event_type": "agent_task_canceled",
                         "agent_task_id": canceled_task_id,
                         "root_task_id": root_task_id,
-                        "message": "AgentTask canceled",
+                        "message": "Task canceled",
                     }
                 )
 

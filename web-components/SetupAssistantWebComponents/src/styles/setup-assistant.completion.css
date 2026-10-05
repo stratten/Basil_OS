@@ -104,6 +104,16 @@
   text-align: left;
 }
 
+.setup-wrapup-recap p,
+.setup-wrapup-breadth p {
+  margin: 0 0 var(--padding-s);
+}
+
+.setup-wrapup-recap > :last-child,
+.setup-wrapup-breadth > :last-child {
+  margin-bottom: 0;
+}
+
 .setup-wrapup-export-actions {
   align-items: center;
   border-top: 0.5px solid color-mix(in srgb, var(--primary) 14%, var(--separator-color));

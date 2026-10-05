@@ -68,7 +68,7 @@ final class AssistantOutputHistoryWindowController: NSWindowController, NSWindow
         window.hasShadow = false
         window.alphaValue = 1.0
         window.isOpaque = false
-        window.title = "Dill - Assistant History"
+        window.title = "\(BasilTeamIdentity.assistantSession.pairedName) History"
         window.backgroundColor = NSColor.clear
         window.isMovableByWindowBackground = true
         window.contentView = webView.webView

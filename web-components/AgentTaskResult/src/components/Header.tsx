@@ -121,14 +121,14 @@ export default function Header({
         <div className="header-controls" data-agent-task-header-controls>
           {!hideWindowControls && (
             <>
-              <button className="header-btn" onClick={closeWidget} title="Close">
+              <button className="header-btn" onClick={closeWidget} aria-label="Close">
           <svg width="20" height="20" viewBox="0 0 22 22">
             <circle cx="11" cy="11" r="10" fill="rgba(51,85,155,0.15)" />
             <line x1="7.5" y1="7.5" x2="14.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
             <line x1="14.5" y1="7.5" x2="7.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
           </svg>
           </button>
-          <button className="header-btn" onClick={minimizeWidget} title="Minimize">
+          <button className="header-btn" onClick={minimizeWidget} aria-label="Minimize">
           <svg width="20" height="20" viewBox="0 0 22 22">
             <circle cx="11" cy="11" r="10" fill="rgba(51,85,155,0.15)" />
             <line x1="6.5" y1="11" x2="15.5" y2="11" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
@@ -140,7 +140,6 @@ export default function Header({
             <button
             className="header-btn"
             onClick={onToggleCollapse}
-            title={isCollapsed ? 'Expand results' : 'Collapse results'}
             aria-label={isCollapsed ? 'Expand results' : 'Collapse results'}
             >
             <svg width="20" height="20" viewBox="0 0 22 22">

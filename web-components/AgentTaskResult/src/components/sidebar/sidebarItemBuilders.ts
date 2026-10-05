@@ -126,7 +126,7 @@ export function buildHistoryItems({
         // generic label when the API didn't fill in scheduled_agent_task_title
         // (older rows, or scheduled agent tasks that have since been deleted).
         scheduledRunSourceTitle: item.is_scheduled_run
-          ? (plainSidebarText(item.scheduled_agent_task_title || '') || 'Scheduled agent task')
+          ? (plainSidebarText(item.scheduled_agent_task_title || '') || 'Scheduled task')
           : undefined,
         originSourceLabel: item.origin_type === 'conversation'
           ? 'From Conversation'
@@ -178,7 +178,7 @@ export function buildScheduledItems({
     const rowStatus = item.last_status === 'failed' ? 'failed' : 'completed';
     return {
       id: item.id,
-      title: plainSidebarText(item.title || '') || 'Scheduled agent task',
+      title: plainSidebarText(item.title || '') || 'Scheduled task',
       status: rowStatus,
       preview: scheduleText,
       timestamp: item.updated_at,

@@ -27,14 +27,14 @@ export function BasilWindowChrome({ title, children, onClose, onMinimize, onColl
       <div className="basil-window-surface basil-webkit-window-surface">
         <header className="basil-window-header">
           <div className="basil-window-controls">
-            <button type="button" className="basil-window-control" onClick={() => onClose()} title="Close" aria-label="Close window">
+            <button type="button" className="basil-window-control" onClick={() => onClose()} aria-label="Close window">
               <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
                 <circle cx="11" cy="11" r="10" fill="rgba(51, 85, 155, 0.15)" />
                 <line x1="7.5" y1="7.5" x2="14.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
                 <line x1="14.5" y1="7.5" x2="7.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
               </svg>
             </button>
-            <button type="button" className="basil-window-control" onClick={() => onMinimize()} title="Minimize" aria-label="Minimize window">
+            <button type="button" className="basil-window-control" onClick={() => onMinimize()} aria-label="Minimize window">
               <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
                 <circle cx="11" cy="11" r="10" fill="rgba(51, 85, 155, 0.15)" />
                 <line x1="6.5" y1="11" x2="15.5" y2="11" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
@@ -44,7 +44,6 @@ export function BasilWindowChrome({ title, children, onClose, onMinimize, onColl
               type="button"
               className="basil-window-control"
               onClick={toggleCollapsed}
-              title={isCollapsed ? 'Expand' : 'Collapse'}
               aria-label={isCollapsed ? 'Expand window' : 'Collapse window'}
               aria-pressed={isCollapsed}
             >

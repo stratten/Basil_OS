@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import type { ReferencePathEntry } from '../types';
 import { openReferencePath, removeReferencePath } from '../services/bridge';
 
@@ -29,15 +28,6 @@ function DocGlyph() {
 }
 
 export default function ReferencePathsList({ paths }: Props) {
-  // Tracked here (list level), not via a per-row CSS `:hover` tooltip, because
-  // `.reference-paths-list__rows` below scrolls (`overflow-y: auto` past 3
-  // rows) and would silently clip any tooltip anchored *inside* it — the same
-  // way `.reference-paths-list__row-name`'s own `overflow: hidden` (for the
-  // filename ellipsis) would. Anchoring one shared tooltip to
-  // `.reference-paths-list` instead (which clips nothing) sidesteps both.
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const hoveredEntry = hoveredIndex !== null ? paths[hoveredIndex] : undefined;
-
   return (
     <div className="reference-paths-list">
       <div className="reference-paths-list__header">
@@ -56,10 +46,7 @@ export default function ReferencePathsList({ paths }: Props) {
               type="button"
               className="reference-paths-list__row-name"
               onClick={() => openReferencePath(entry.path)}
-              onMouseEnter={() => setHoveredIndex(index)}
-              onMouseLeave={() => setHoveredIndex((current) => (current === index ? null : current))}
-              onFocus={() => setHoveredIndex(index)}
-              onBlur={() => setHoveredIndex((current) => (current === index ? null : current))}
+              data-tooltip={entry.path}
             >
               {basename(entry.path)}
             </button>
@@ -74,18 +61,6 @@ export default function ReferencePathsList({ paths }: Props) {
             </button>
           </div>
         ))}
-      </div>
-      {/* Snappy hover tooltip for the full path, replacing the native `title`
-          attribute's slow OS delay — same visual language as
-          `.artifact-review-tab-tooltip` in AgentTaskResult's
-          `artifact-review-workspace.css` (80ms opacity/transform fade). A
-          single shared node driven by `hoveredIndex` rather than a per-row
-          CSS `:hover` tooltip — see the state comment above for why. */}
-      <div
-        className={`reference-paths-list__tooltip${hoveredEntry ? ' is-visible' : ''}`}
-        aria-hidden="true"
-      >
-        {hoveredEntry?.path}
       </div>
     </div>
   );

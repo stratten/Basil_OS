@@ -12,7 +12,7 @@ Local records remain on the Mac unless you select a model or service path that s
 
 ### Basil Board
 
-Start in the Basil Board when you want a single workspace for an inquiry. The Board brings together inquiry history, conversations, Agent Tasks, meeting state, and the todo workspace. It accepts text, voice, files, and images when the selected model and the relevant permission support that input.
+Start in the Basil Board when you want a single workspace for an inquiry. The Board brings together inquiry history, conversations, Paprika (Agent) tasks, meeting state, and the todo workspace. It accepts text, voice, files, and images when the selected model and the relevant permission support that input.
 
 The immediate result is an inquiry or workspace item you can continue, revisit, or hand off to another Basil surface. Conversations may stay inside the Board or open in their own window. Board-related inquiry, conversation, task, and todo data can be retained locally so work can be reopened.
 
@@ -24,19 +24,19 @@ Open or create a conversation from the Board when you want a durable thread arou
 
 Conversation messages and associated records can be stored locally for later retrieval. A local reasoning model keeps inference on the Mac; direct-provider, custom-endpoint, and Cloud selections can receive the request content needed to answer. Deleting local data can make previously saved threads unavailable.
 
-### Assistant Session (Dill)
+### Dill (Quick Assist)
 
-In the app, Assistant Session appears as **Dill**, and its default hotkey is a double press of Option (⌥⌥). Open it when you want a focused text-or-voice assistant instead of a Board workspace. It provides saved output history plus controls to copy, refine, edit, or save the response as your workflow requires.
+Dill is Basil's Quick Assist. Each request, including each refinement, is answered in a single model turn, even when that turn does research. Its default hotkey is a double press of Option (⌥⌥). Open it when you want a focused text-or-voice assistant instead of a Board workspace. It provides saved output history plus controls to copy, refine, edit, or save the response as your workflow requires.
 
-Assistant Session requires a usable reasoning model. Its saved outputs are local application history, subject to the local-data lifecycle described in [Privacy and data flow](privacy-and-data-flow.md). A provider-backed model path changes the data boundary for the content used to produce the output, but it does not grant automation or connected-service permission.
+Dill requires a usable reasoning model. Its saved outputs are local application history, subject to the local-data lifecycle described in [Privacy and data flow](privacy-and-data-flow.md). A provider-backed model path changes the data boundary for the content used to produce the output, but it does not grant automation or connected-service permission.
 
-### Agent Tasks (Paprika)
+### Paprika (Agent)
 
-In the app, Agent Tasks appear as **Paprika**, and the default capture hotkey is Option-Space (⌥Space). Start an Agent Task from that hotkey, the Board, or another task-oriented workflow when the request needs an explicit goal, progress visibility, revisions, tool use, or a result that may include a local artifact. A task can accept typed text, captured audio, files, images, and screen context. It can show intermediate activity, status, results, local artifact previews, and approval-controlled actions.
+Paprika is Basil's agent. Unlike Dill, Paprika works through a multi-step loop with tools, progress, and approvals, and can run many tasks at once. The default capture hotkey is Option-Space (⌥Space). Start a Paprika task from that hotkey, the Board, or another task-oriented workflow when the request needs an explicit goal, progress visibility, revisions, tool use, or a result that may include a local artifact. A task can accept typed text, captured audio, files, images, and screen context. It can show intermediate activity, status, results, local artifact previews, and approval-controlled actions.
 
 Tasks can be associated with Board or conversation context, scheduled for later work, reviewed after completion, and paused or canceled when their state supports those operations. The task record and its local artifacts can be retained so you can reopen the result.
 
-An Agent Task may use local or provider-backed models and connected tools, but the task request does not itself permit an external action. Basil continues to require the relevant connection, account, permission, and explicit approval before sending a message, modifying a third-party record, running a command, or taking another consequential step.
+A Paprika task may use local or provider-backed models and connected tools, but the task request does not itself permit an external action. Basil continues to require the relevant connection, account, permission, and explicit approval before sending a message, modifying a third-party record, running a command, or taking another consequential step.
 
 ### Todo workspace
 
@@ -74,19 +74,19 @@ Manage text replacements in Settings → Transcription → Replacements. The ent
 
 Replacements apply before Basil inserts newly transcribed text. Editing a rule affects future insertions; it does not rewrite an already stored transcript or silently modify historical data.
 
-## Meetings
+## Meetings and calls
 
-### Meeting Assistant
+### Notetaker
 
-Open **Meeting / Call Transcription** from the Basil menu to create a manual recording. Before recording, set a meeting name, purpose, participants, and the available microphone or system-audio source. During recording, the Meeting Assistant shows source meters, recording state, and the live transcript.
+Open **Notetaker** from the Basil menu to create a manual recording of a meeting or call. Before recording, set a meeting name, purpose, participants, and the available microphone or system-audio source. During recording, the Notetaker shows source meters, recording state, and the live transcript.
 
 After recording, meeting history lets you reopen, resume, search, filter, and delete stored meeting records. You can search the transcript, copy all transcript text, improve a transcript with a selected post-processing model, add speaker labels, and run analysis. Available analysis modes include summaries, action items, to-do candidates, key decisions, questions and answers, sentiment, and custom instructions. Analysis output can be reopened, copied, and exported as Markdown.
 
 Meeting recordings, transcripts, and analysis are local material under `~/.basil/meetings/`. Only one meeting recording can be active at a time. A selected provider-backed post-processing or analysis model can receive the relevant meeting content, so choose that path carefully.
 
-### Meeting Detection
+### Meeting/Call Detection
 
-Configure Meeting Detection in Settings → Meetings, then start or stop the current monitor from the Basil menu unless the separate start-at-launch preference is enabled. Detection looks for non-excluded macOS processes that are concurrently using audio input and output. It can operate in `prompt` mode, which opens a confirmation panel, or `auto_start` mode, which begins the configured detected-meeting flow.
+Configure Meeting/Call Detection in Settings → Notetaker, then start or stop the current monitor from the Basil menu unless the separate start-at-launch preference is enabled. Detection looks for non-excluded macOS processes that are concurrently using audio input and output. It can operate in `prompt` mode, which opens a confirmation panel, or `auto_start` mode, which begins the configured detected-meeting flow.
 
 Passive detection is not recording: the CoreAudio probe identifies process activity but does not create an audio tap or write audio. Recording starts only after you choose the prompt action or configure the detected-meeting flow to auto-start.
 

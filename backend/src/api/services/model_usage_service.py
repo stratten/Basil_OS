@@ -450,7 +450,7 @@ class ModelUsageService:
             if not has_feature(registry_model_id, feature):
                 raise ValueError(
                     f"The model '{display_name}' does not support {feat_value}. "
-                    f"AgentTasks require function calling support. "
+                    f"Paprika requires function calling support. "
                     f"Please switch to a supported model in Settings."
                 )
 

@@ -48,7 +48,7 @@ final class DetachedAgentTaskWindowController: NSObject, NSWindowDelegate {
             backing: .buffered,
             defer: false
         )
-        panel.title = "AgentTask"
+        panel.title = BasilTeamIdentity.agentTask.pairedName
         panel.isReleasedWhenClosed = false
         panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
@@ -207,7 +207,7 @@ final class DetachedAgentTaskWindowController: NSObject, NSWindowDelegate {
             webView?.sendCaptureStateChanged(
                 type: "followUp",
                 isCapturing: false,
-                wordsDetected: "Another AgentTask window is recording.",
+                wordsDetected: "Another task window is recording.",
                 audioLevel: 0,
                 silenceProgress: 0
             )

@@ -1,3 +1,4 @@
+import { BASIL_TEAM } from '@shared/teamIdentity'
 import { Bullet, SectionGroup, SectionHeader } from '../Bullet'
 
 export default function AgentTasks() {
@@ -5,12 +6,12 @@ export default function AgentTasks() {
     <div className="pug-section">
       <SectionHeader
         icon="paprika"
-        title="Paprika"
+        title={BASIL_TEAM.agentTask.pairedName}
         subtitle="Your personal assistant that actually gets things done — just speak and watch it happen"
       />
 
       <SectionGroup title="It's like having a super-smart assistant">
-        <Bullet>Press your agent task hotkey (default: ⌥+Space)</Bullet>
+        <Bullet>Press your Paprika hotkey (default: ⌥+Space)</Bullet>
         <Bullet>Tell it what to do: "Summarize this page" or "Write a polite decline email"</Bullet>
         <Bullet>Basil reads what's on your screen and gets to work</Bullet>
         <Bullet>Watch the results appear live in a handy little panel</Bullet>
@@ -18,7 +19,7 @@ export default function AgentTasks() {
       </SectionGroup>
 
       <SectionGroup title="About those permissions">
-        <Bullet>Microphone: So you can give agent tasks naturally with your voice</Bullet>
+        <Bullet>Microphone: So you can give Paprika tasks naturally with your voice</Bullet>
         <Bullet>Accessibility: Lets Basil paste results and do helpful automations</Bullet>
       </SectionGroup>
 
@@ -42,10 +43,10 @@ export default function AgentTasks() {
       </SectionGroup>
 
       <SectionGroup title="Add context with files and folders">
-        <Bullet>Drag files or folders onto the agent task widget while speaking</Bullet>
+        <Bullet>Drag files or folders onto the Paprika window while speaking</Bullet>
         <Bullet>Dropped items appear as clickable "References" below your request</Bullet>
         <Bullet>Say things like "using these files" or "in this folder" — Basil will know what you mean</Bullet>
-        <Bullet>Works for initial agent tasks and follow-up requests</Bullet>
+        <Bullet>Works for new tasks and follow-up requests</Bullet>
       </SectionGroup>
 
       <SectionGroup title="About the hotkey">

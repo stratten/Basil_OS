@@ -56,11 +56,11 @@ function RecordingControls({ ui }: RecordingControlsProps) {
         <div className="meeting-recording-button-row">
           <button type="button" className="meeting-resume-button" onClick={resumeMeeting} disabled={loadingModels}>
             <PlayCircleIcon />
-            Resume Meeting
+            Resume
           </button>
           <button type="button" className="meeting-start-new-button" onClick={startNewMeeting}>
             <PlusCircleIcon />
-            Start New Meeting
+            Start New
           </button>
           <LiveTranscriptionSwitch enabled={ui.isLiveTranscriptionEnabled} />
         </div>
@@ -70,7 +70,7 @@ function RecordingControls({ ui }: RecordingControlsProps) {
             <div className="meeting-recording-actions">
               <button type="button" className="meeting-record-button meeting-record-button--stop" onClick={toggleRecording} disabled={loadingModels}>
                 <StopCircleIcon />
-                End Meeting
+                End
               </button>
               {ui.isCapturePaused ? (
                 <button type="button" className="meeting-record-button" onClick={resumeRecording}>
@@ -100,7 +100,7 @@ function RecordingControls({ ui }: RecordingControlsProps) {
           <LiveTranscriptionSwitch enabled={ui.isLiveTranscriptionEnabled} />
           {isConfirmingCancel && (
             <div className="meeting-cancel-confirmation" role="alertdialog" aria-labelledby="meeting-cancel-confirmation-message">
-              <p id="meeting-cancel-confirmation-message">Discard this recording? The audio and transcript captured since you pressed Start Meeting or Resume Meeting will be deleted.</p>
+              <p id="meeting-cancel-confirmation-message">Discard this recording? The audio and transcript captured since you pressed Start or Resume will be deleted.</p>
               <div className="meeting-cancel-confirmation-actions">
                 <button type="button" className="meeting-record-button meeting-record-button--stop" onClick={confirmCancel}>
                   Discard Recording
@@ -116,7 +116,7 @@ function RecordingControls({ ui }: RecordingControlsProps) {
         <div className="meeting-recording-button-row">
           <button type="button" className="meeting-record-button" onClick={toggleRecording} disabled={loadingModels}>
             <RecordCircleIcon />
-            Start Meeting
+            Start
           </button>
           <LiveTranscriptionSwitch enabled={ui.isLiveTranscriptionEnabled} />
         </div>
@@ -138,7 +138,7 @@ function LiveTranscriptionSwitch({ enabled }: { enabled: boolean }) {
 function StatusRow({ ui }: { ui: MeetingUIStateDTO }) {
   return (
     <div className="meeting-status-row">
-      <span className={`meeting-connection-indicator meeting-connection-indicator--${ui.connectionState}`} aria-hidden="true" />
+      <span className={`meeting-connection-indicator meeting-connection-indicator--${ui.isRecording && ui.isCapturePaused ? 'paused' : ui.connectionState}`} aria-hidden="true" />
       <span className="meeting-status-message">{ui.statusMessage}</span>
       {ui.transcriptionState !== 'idle' && <span className="meeting-transcription-state">{formatTranscriptionState(ui.transcriptionState)}</span>}
     </div>

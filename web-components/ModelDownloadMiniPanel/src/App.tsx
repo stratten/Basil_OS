@@ -85,7 +85,7 @@ export default function App() {
       <div className="model-download-panel basil-webkit-window-surface" ref={panelRef} role="region" aria-label="Model download progress">
       <header className="model-download-header">
         <span>Model Downloads</span>
-        <button type="button" className="model-download-dismiss" onClick={dismissPanel} aria-label="Dismiss model download panel" title="Dismiss">
+        <button type="button" className="model-download-dismiss" onClick={dismissPanel} aria-label="Dismiss model download panel">
           ×
         </button>
       </header>

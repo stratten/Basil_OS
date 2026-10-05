@@ -433,6 +433,10 @@
   background: var(--recording-base);
 }
 
+.meeting-connection-indicator--paused {
+  background: var(--warning-base);
+}
+
 .meeting-connection-indicator--error {
   background: var(--error-base);
 }

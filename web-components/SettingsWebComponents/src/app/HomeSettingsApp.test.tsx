@@ -75,11 +75,11 @@ describe('HomeSettingsApp', () => {
     expect(container.querySelector('.home-settings-account-row')).toBeNull()
   })
 
-  it('shows the Activity Capture and Meeting Detection launch hints ported from the deleted Background Behavior leaf', () => {
+  it('shows the Activity Capture and Meeting/Call Detection launch hints ported from the deleted Background Behavior leaf', () => {
     act(() => { window.basilHomeSettings!.onEvent({ type: 'init', protocolVersion: 1, fields: FIXTURE_FIELDS }) })
     const hints = Array.from(container.querySelectorAll('.home-settings-hint')).map((hint) => hint.textContent)
     expect(hints).toContain('Starts the capture scheduler after Basil reconnects to its backend on your next launch.')
-    expect(hints).toContain("Turning this on also enables Meeting Detection; it won't start the monitor until the next launch.")
+    expect(hints).toContain("Turning this on also enables Meeting/Call Detection; it won't start the monitor until the next launch.")
   })
 
   it('switches the Activity Capture hint to its disabled-feature wording when Activity Capture is off', () => {

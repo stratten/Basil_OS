@@ -74,7 +74,7 @@ export default function App() {
     requestResize(PANEL_WIDTH, contentHeight);
   }, [initialized, meeting]);
 
-  const title = meeting?.displayTitle || 'Meeting detected';
+  const title = meeting?.displayTitle || 'Meeting/call detected';
   const actionLabel = meeting ? 'Join call' : 'Loading...';
   // `displayTitle` falls back to `appName` when there's no calendar-derived
   // title (e.g. an ad-hoc call with no calendar match), so the badge would
@@ -84,11 +84,11 @@ export default function App() {
 
   return (
     <div className="basil-webkit-window-frame">
-      <div className="mini-panel basil-webkit-window-surface" role="region" aria-label="Meeting detected" ref={panelRef}>
+      <div className="mini-panel basil-webkit-window-surface" role="region" aria-label="Meeting/call detected" ref={panelRef}>
       <div className="mini-panel-header">
         <div className="mini-panel-header-title">
           <span className="meeting-status-dot" aria-hidden="true" />
-          <span>Meeting detected</span>
+          <span>Meeting/call detected</span>
         </div>
         {detectionBadgeLabel && (
           <span className="meeting-detection-badge" title={`Detected via ${detectionBadgeLabel}`}>

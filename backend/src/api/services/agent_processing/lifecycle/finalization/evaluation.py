@@ -234,6 +234,11 @@ EVALUATION GUIDELINES:
 - Red flags of tool failure vs genuine absence: "error", "failed", "truncated", "exception", agent offering to "try again" or "search other folders".
 - If TOOL ERROR HISTORY includes timeout, truncation, coverage_uncertain, or empty_unverified for the retrieval that supports a "none found" answer, treat the answer as partial/failure unless the later output explicitly verifies equivalent coverage through another strategy.
 
+RESEARCH THAT ESTABLISHES THE EXACT THING DOES NOT EXIST IS SUCCESS (scope: web search, research, and external lookups):
+- If the agent searched thoroughly with tools that ran cleanly, transparently reported that the exact item the user described does not exist or could not be found in the real world (for example no dedicated shop of that kind in that area), and delivered the closest useful alternatives, classify the outcome as success with failure_basis "none".
+- The non-existence of the exact item is a finding about the world, not a residual gap in the agent's work. Do not classify it as partial merely because the literal ask could not be satisfied as phrased.
+- This does not apply when the agent stopped early, when tools errored or truncated, when alternatives are missing or unrelated, or when part of the request the agent could have completed was left undone.
+
 DECISION:
 - If the agent clearly delivered what was requested → outcome=success, success=true (this INCLUDES cases where the agent delivered a complete, verified result after an internal retry or fallback — a recovered failure is still a clean success)
 - If the agent delivered useful work BUT there is a genuine residual gap the user should act on or know about (missing coverage, partial scope, an unverified side effect, or a required follow-up step) → outcome=partial, success=false.

@@ -164,6 +164,20 @@ class AgentContextAssembler:
             )
             sections.append(ContextSection("REFERENCE MATERIALS", body, priority=10))
 
+        from ..runtime.paused_work_digest import (
+            PRIOR_PAUSED_WORK_CONTEXT_KEY,
+            format_paused_work_section,
+            normalize_paused_work_digest,
+        )
+
+        prior_paused_work = normalize_paused_work_digest(context.get(PRIOR_PAUSED_WORK_CONTEXT_KEY))
+        if prior_paused_work:
+            sections.append(ContextSection(
+                "WORK BEFORE PAUSE",
+                format_paused_work_section(prior_paused_work),
+                priority=12,
+            ))
+
         retry_context = context.get("retry_context")
         if isinstance(retry_context, dict) and retry_context:
             sections.append(ContextSection(

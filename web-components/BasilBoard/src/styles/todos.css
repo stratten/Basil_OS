@@ -1278,6 +1278,12 @@
   font-size: var(--font-size-footnote, 12px);
 }
 
+.todo-workspace-message .home-markdown {
+  color: inherit;
+  font-size: inherit;
+  line-height: 1.45;
+}
+
 .todo-workspace-message--user {
   align-self: flex-end;
   background: color-mix(in srgb, var(--primary) 88%, transparent);

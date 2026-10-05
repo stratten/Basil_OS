@@ -11,7 +11,7 @@ import Foundation
 /// `WindowChromeCollapse`.
 @MainActor
 final class MeetingAssistantWindowController: NSObject, NSWindowDelegate, AppearanceRefreshable {
-    static let windowTitle = "Meeting Assistant"
+    static let windowTitle = "Notetaker"
 
     private let coordinator: MeetingSessionCoordinator
     private var panel: NSPanel?

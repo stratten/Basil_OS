@@ -23,6 +23,10 @@ from .browser_safety import (
 )
 from .browser_sensitive_value_store import get_browser_sensitive_value_store
 from api.services.agent_processing.shared.workflow_budget_pause import pause_workflow_budget
+from api.services.agent_processing.lifecycle.runtime.user_interaction_timeline import (
+    record_user_interaction_asked,
+    record_user_interaction_resolved,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -168,6 +172,14 @@ class BrowserSensitiveApprovalManager:
                 approval_event["agent_task_id"] = request.agent_task_id
 
             await request.websocket_manager.broadcast(approval_event)
+            await record_user_interaction_asked(
+                request.agent_task_id,
+                interaction_id=approval_id,
+                kind="approval",
+                prompt=approval_event["command"],
+                input_type="browser_sensitive_fill",
+                broadcast=request.websocket_manager.broadcast,
+            )
 
             from api.core.preferences.preferences_io import load_preferences as _load_preferences
             approval_timeout = _load_preferences().tool_execution.approval_timeout_seconds
@@ -179,9 +191,22 @@ class BrowserSensitiveApprovalManager:
                 time.time() - wait_start,
                 domain,
             )
-            return result if isinstance(result, dict) else {}
+            result = result if isinstance(result, dict) else {}
+            await record_user_interaction_resolved(
+                request.agent_task_id,
+                interaction_id=approval_id,
+                status="approved" if result.get("approved") else "denied",
+                broadcast=request.websocket_manager.broadcast,
+            )
+            return result
         except asyncio.TimeoutError:
             logger.warning("Browser sensitive-fill approval timed out for domain=%s", domain)
+            await record_user_interaction_resolved(
+                request.agent_task_id,
+                interaction_id=approval_id,
+                status="timed_out",
+                broadcast=request.websocket_manager.broadcast,
+            )
             return {"approved": False, "timeout": True}
         finally:
             BrowserSensitiveApprovalManager._pending_approvals.pop(approval_id, None)

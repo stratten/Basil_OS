@@ -60,6 +60,8 @@ Each builder produces Vite output and stages it under `client/Sources/Resources/
 
 The main development launcher invokes all canonical builders. A focused builder is appropriate only when you know the affected renderer and need to update its staged resource without replacing the entire development session.
 
+Hover help in every embedded renderer comes from `installBasilTooltips()` in `web-components/shared/tooltip/basilTooltip.ts`, which each entry calls next to `enableBackdropSurfaceFinish()`. It replaces native `title` tooltips with one styled tooltip that appears after a half-second hover or keyboard focus. Use `title` for a short hint that adds information the control does not already show; a `title` that repeats fully visible text appears only when that text is truncated. Use `data-tooltip` for multi-line text, `data-tooltip-when="truncated"` for text that should appear only when clipped, and `data-tooltip-placement` (`above`, `below`, `left`, or `right`) when the default placement below the target would cover related content. Window controls (close, minimize, collapse, expand, dismiss) carry an `aria-label` and no tooltip.
+
 ## Validation
 
 Run the narrowest relevant checks before broad checks. These commands are repository-supported validation entry points:

@@ -49,7 +49,7 @@ export function HistorySidebar({
       className="assistant-output-history-sidebar"
       collapsedContent={(
         <div className="assistant-output-history-sidebar__rail">
-          <button type="button" title="Show AssistantSession history" aria-label="Show AssistantSession history" onClick={onToggleCollapsed}>
+          <button type="button" title="Show history" aria-label="Show history" onClick={onToggleCollapsed}>
             <NativeSymbol name="sidebar" size={14} />
           </button>
         </div>
@@ -77,7 +77,7 @@ export function HistorySidebar({
         <NativeSymbol name="search" size={11} />
         <input
           className="assistant-output-history-sidebar__search"
-          placeholder="Search AssistantSession history..."
+          placeholder="Search history..."
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
         />
@@ -102,7 +102,7 @@ export function HistorySidebar({
           </div>
         )}
         {loadState === 'ready' && entries.length === 0 && (
-          <div className="assistant-output-history-sidebar__status">No AssistantSession outputs yet</div>
+          <div className="assistant-output-history-sidebar__status">No outputs yet</div>
         )}
         {loadState === 'ready' &&
           entries.map((entry) => (
@@ -130,7 +130,7 @@ function HistorySidebarRow({
   onSelect: (id: number) => void;
   onDelete: (entry: AssistantOutputHistoryEntry) => void;
 }) {
-  const title = plainMarkdownText(entry.title) || 'Untitled AssistantSession Output';
+  const title = plainMarkdownText(entry.title) || 'Untitled output';
   const outputPreview = plainMarkdownText(entry.outputPreview);
   const revealDelete = useHistoryRowRevealDelete({ enabled: true });
 

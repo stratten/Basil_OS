@@ -4,8 +4,10 @@ import { AssistantOutputHistoryApp } from '../app/AssistantOutputHistoryApp';
 import '../styles/assistant-output-history.css';
 import '../styles/assistant-output-history-surface-finish.css';
 import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish';
+import { installBasilTooltips } from '@shared/tooltip/basilTooltip';
 
 enableBackdropSurfaceFinish();
+installBasilTooltips();
 
 const container = document.getElementById('root');
 if (!container) {

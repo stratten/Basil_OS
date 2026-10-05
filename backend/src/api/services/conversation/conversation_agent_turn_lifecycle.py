@@ -45,22 +45,22 @@ class ConversationAgentTurnLink:
 
 
 _STATUS_TEXT_BY_AGENT_TASK_STATUS = {
-    "capturing": "Agent task is gathering context.",
-    "routing": "Agent task is selecting an approach.",
-    "routed": "Agent task is ready to begin.",
-    "processing": "Agent task is working.",
-    "awaiting_user_input": "Agent task needs your input.",
-    "needs_clarification": "Agent task needs clarification.",
-    "clarification_added": "Agent task received your clarification.",
-    "completed": "Agent task completed. Preparing a conversation response.",
-    "failed": "Agent task failed. Preparing a conversation response.",
-    "canceled": "Agent task was canceled. Preparing a conversation response.",
+    "capturing": "Paprika is gathering context.",
+    "routing": "Paprika is selecting an approach.",
+    "routed": "Paprika is ready to begin.",
+    "processing": "Paprika is working.",
+    "awaiting_user_input": "Paprika needs your input.",
+    "needs_clarification": "Paprika needs clarification.",
+    "clarification_added": "Paprika received your clarification.",
+    "completed": "Paprika finished the task. Preparing a conversation response.",
+    "failed": "Paprika's task failed. Preparing a conversation response.",
+    "canceled": "Paprika's task was canceled. Preparing a conversation response.",
 }
 
 
 def _status_text_for_agent_task_status(raw_status: str | None) -> str:
     normalized = raw_status.strip().lower() if isinstance(raw_status, str) else ""
-    return _STATUS_TEXT_BY_AGENT_TASK_STATUS.get(normalized, "Agent task is in progress.")
+    return _STATUS_TEXT_BY_AGENT_TASK_STATUS.get(normalized, "Paprika is working on the task.")
 
 
 async def broadcast_conversation_agent_status(payload: dict[str, Any]) -> None:
@@ -121,7 +121,7 @@ class ConversationAgentTurnLifecycle:
                 placeholder_message_id=link.assistant_message_id,
                 agent_task_id=link.agent_task_id,
                 lifecycle=ConversationTurnLifecycle.PENDING,
-                status_text="Preparing agent task",
+                status_text="Preparing Paprika task",
                 terminal_outcome=None,
                 agent_status="pending",
                 narration_state="pending",
@@ -168,7 +168,7 @@ class ConversationAgentTurnLifecycle:
         terminal_outcome: str | None = None
         narration_lifecycle: ConversationTurnNarrationLifecycle | None = None
         if lifecycle is ConversationTurnLifecycle.COMPLETED:
-            terminal_outcome = "Agent task completed."
+            terminal_outcome = "Paprika finished the task."
             narration_lifecycle = ConversationTurnNarrationLifecycle.READY
         elif lifecycle in {ConversationTurnLifecycle.FAILED, ConversationTurnLifecycle.CANCELED}:
             terminal_outcome = _status_text_for_agent_task_status(raw_status)
@@ -240,7 +240,7 @@ class ConversationAgentTurnLifecycle:
             terminal_outcome=None,
             raw_status="awaiting_user_input",
             narration_lifecycle=None,
-            status_text_override="Agent task needs your input.",
+            status_text_override="Paprika needs your input.",
             requires_user_attention=True,
             attention_id=attention_id,
             attention_action="append",

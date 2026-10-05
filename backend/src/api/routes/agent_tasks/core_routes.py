@@ -189,7 +189,7 @@ async def process_agent_task(
                 operation="discussion",
                 confidence=1.0,
                 reasoning="Fast-lane follow-up accepted; answer streams over the WebSocket",
-                message="AgentTask received and being processed...",
+                message="Task received and being processed...",
                 processing_time=0.0,
                 agent_task_id=fast_lane_agent_task_id,
             )
@@ -212,7 +212,7 @@ async def process_agent_task(
         success = result.get("success", False)
         operation = result.get("operation")
         confidence = result.get("confidence")
-        message = result.get("message", "AgentTask processed")
+        message = result.get("message", "Task processed")
         processing_time = result.get("processing_time")
 
         return AgentTaskProcessingResponse(
@@ -642,7 +642,7 @@ async def delete_agent_task(
 
         return DeleteAgentTaskResponse(
             success=True,
-            message="AgentTask deleted successfully"
+            message="Task deleted successfully"
         )
 
     except HTTPException:

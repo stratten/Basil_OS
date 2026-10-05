@@ -24,8 +24,10 @@ import './styles/settings-shell.css'
 import './styles/home-settings.css'
 import './styles/settings-surface-finish.css'
 import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish'
+import { installBasilTooltips } from '@shared/tooltip/basilTooltip'
 
 enableBackdropSurfaceFinish()
+installBasilTooltips()
 
 const container = document.getElementById('root')
 if (container) {

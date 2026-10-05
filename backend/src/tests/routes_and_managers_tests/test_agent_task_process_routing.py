@@ -42,7 +42,7 @@ class _FakeAgentTaskService:
             "operation": "multi_step_workflow",
             "confidence": 1.0,
             "reasoning": "Direct event-driven processing",
-            "message": "AgentTask received and being processed...",
+            "message": "Task received and being processed...",
             "processing_time": 0.0,
             "agent_task_id": "agent-task-123",
         }
@@ -279,7 +279,7 @@ class _FakeDirectService:
             "operation": "multi_step_workflow",
             "confidence": 1.0,
             "reasoning": "Direct event-driven processing",
-            "message": "AgentTask received and being processed...",
+            "message": "Task received and being processed...",
             "processing_time": 0.0,
             "agent_task_id": "feedback-task-1",
         }

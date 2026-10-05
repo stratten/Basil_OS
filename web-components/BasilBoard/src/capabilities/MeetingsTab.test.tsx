@@ -41,7 +41,7 @@ describe('MeetingsTab', () => {
       enqueueBoardMeetingsAvailabilityChanged({ availability: 'separate_window' });
     });
 
-    expect(screen.getByText('Meeting Assistant is open in a separate window.')).toBeTruthy();
+    expect(screen.getByText('Notetaker is open in a separate window.')).toBeTruthy();
   });
 
   it('returns to the embedded spacer when availability changes back to embedded', () => {

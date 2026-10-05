@@ -19,6 +19,6 @@ struct WindowCollapseToggleButton: View {
                 .font(.title2)
         }
         .buttonStyle(.plain)
-        .help(isCollapsed ? "Expand" : "Collapse")
+        .accessibilityLabel(isCollapsed ? "Expand window" : "Collapse window")
     }
 }

@@ -96,7 +96,7 @@ export function BrowserAutomationSettingsApp() {
       <section className="browser-automation-section" aria-labelledby="browser-automation-heading">
         <h2 id="browser-automation-heading">Browser Automation</h2>
         <p className="browser-automation-intro">
-          Control how Basil uses browser sessions for agent tasks, including preferred browser, dedicated-session behavior, action previews, sensitive browser fields, and foreground control.
+          Control how Basil uses browser sessions for Paprika tasks, including preferred browser, dedicated-session behavior, action previews, sensitive browser fields, and foreground control.
         </p>
 
         <div className="browser-automation-guidance">

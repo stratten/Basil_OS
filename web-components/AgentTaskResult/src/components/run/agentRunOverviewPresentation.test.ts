@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { TimelineEntry } from '../../types';
 import type { AgentRunPresentation, AgentRunStage } from './agentRunPresentation';
 import { deriveAgentRunOverviewPresentation, deriveAgentRunPresentation } from './agentRunPresentation';
 
@@ -104,6 +105,52 @@ describe('deriveAgentRunOverviewPresentation', () => {
     expect(overview.stages.filter(item => item.kind === 'phase')).toEqual([
       expect.objectContaining({ label: 'Preparing request', state: 'completed' }),
       expect.objectContaining({ label: 'Completing task', state: 'completed' }),
+    ]);
+  });
+
+  it('keeps an exchange with the user as its own chronological stage instead of merging it into a phase', () => {
+    const timeline: TimelineEntry[] = [
+      { id: 'exec-1', type: 'step', timestamp: '2026-10-04T23:39:00Z', content: 'Searching', metadata: { progress_phase: 'execution' } },
+      {
+        id: 'user_interaction_cp',
+        type: 'step',
+        timestamp: '2026-10-04T23:40:02Z',
+        content: 'Which hotel?',
+        detail_kind: 'user_interaction',
+        metadata: {
+          progress_step: 'You answered',
+          user_interaction: { interaction_id: 'cp', kind: 'clarification', status: 'answered', prompt: 'Which hotel?', asked_at: '2026-10-04T23:40:02Z', response: 'La Fantaisie' },
+        },
+      },
+      { id: 'exec-2', type: 'step', timestamp: '2026-10-04T23:45:00Z', content: 'Searching shops', metadata: { progress_phase: 'execution' } },
+    ];
+
+    const presentation = deriveAgentRunPresentation(timeline, 'processing', true);
+    const overview = deriveAgentRunOverviewPresentation(presentation);
+
+    expect(presentation.stages.map(item => item.kind)).toEqual(['phase', 'interaction', 'phase']);
+    expect(overview.stages.map(item => [item.kind, item.label])).toEqual([
+      ['phase', 'Completing task'],
+      ['interaction', 'Basil asked'],
+    ]);
+    expect(overview.stages[1]).toMatchObject({ state: 'completed', interaction: { response: 'La Fantaisie' } });
+  });
+
+  it('marks a pending exchange as waiting even after the run completes', () => {
+    const presentation = deriveAgentRunPresentation([
+      {
+        id: 'user_interaction_ap',
+        type: 'step',
+        timestamp: '2026-10-04T23:40:02Z',
+        content: 'rm -rf build',
+        detail_kind: 'user_interaction',
+        metadata: { user_interaction: { interaction_id: 'ap', kind: 'approval', status: 'waiting', prompt: 'rm -rf build' } },
+      },
+    ], 'completed', false);
+
+    expect(deriveAgentRunOverviewPresentation(presentation).stages).toEqual([
+      expect.objectContaining({ kind: 'interaction', label: 'Basil asked to run', state: 'waiting' }),
+      expect.objectContaining({ kind: 'outcome', state: 'completed' }),
     ]);
   });
 

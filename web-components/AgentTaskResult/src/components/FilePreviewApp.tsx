@@ -178,7 +178,6 @@ export default function FilePreviewApp() {
             type="button"
             className="file-preview-window-control header-btn"
             aria-label="Close preview window"
-            title="Close"
             onClick={closeWidget}
           >
             <svg width="20" height="20" viewBox="0 0 22 22">
@@ -191,7 +190,6 @@ export default function FilePreviewApp() {
             type="button"
             className="file-preview-window-control header-btn"
             aria-label="Minimize preview window"
-            title="Minimize"
             onClick={minimizeWidget}
           >
             <svg width="20" height="20" viewBox="0 0 22 22">

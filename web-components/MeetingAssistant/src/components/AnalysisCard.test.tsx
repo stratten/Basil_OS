@@ -50,7 +50,7 @@ describe('AnalysisCard', () => {
       expect(modeLabel?.closest('label')?.querySelector('.meeting-analysis-mode-icon')).not.toBeNull();
     }
     expect(screen.getByLabelText('Custom Instructions (optional):')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Analyze Meeting' }).querySelector('svg')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Analyze' }).querySelector('svg')).not.toBeNull();
     expect(screen.getByText('Date & Time')).toBeInTheDocument();
     expect(screen.getByText('Analysis Types')).toBeInTheDocument();
     expect(screen.getByText('Model')).toBeInTheDocument();
@@ -98,7 +98,7 @@ describe('AnalysisCard', () => {
 
     expect(screen.queryByText('Analyzing: Summary…')).not.toBeInTheDocument();
     expect(screen.queryByText('Analysis complete')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Analyze Meeting' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Analyze' })).toBeDisabled();
 
     rerender(<AnalysisCard ui={{
       ...ui,

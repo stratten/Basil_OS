@@ -131,7 +131,7 @@ final class ReasoningSettingsViewModel: ObservableObject {
             #if DEBUG
             DevLogger.shared.error("❌ Failed to load AssistantSession settings: \(error)", context: "ReasoningSettings")
             #endif
-            self.error = "Failed to load AssistantSession settings: \(error.localizedDescription)"
+            self.error = "Failed to load Dill settings: \(error.localizedDescription)"
         }
     }
 
@@ -151,7 +151,7 @@ final class ReasoningSettingsViewModel: ObservableObject {
             #if DEBUG
             DevLogger.shared.error("❌ Failed to load AgentTask settings: \(error)", context: "ReasoningSettings")
             #endif
-            self.error = "Failed to load AgentTask settings: \(error.localizedDescription)"
+            self.error = "Failed to load Paprika settings: \(error.localizedDescription)"
         }
     }
 
@@ -567,7 +567,7 @@ final class ReasoningSettingsViewModel: ObservableObject {
             #if DEBUG
             DevLogger.shared.error("❌ Failed to update agentTask push-to-talk: \(error)", context: "ReasoningSettings")
             #endif
-            self.error = "Failed to update AgentTask push-to-talk: \(error.localizedDescription)"
+            self.error = "Failed to update Paprika push-to-talk: \(error.localizedDescription)"
         }
     }
     
@@ -590,7 +590,7 @@ final class ReasoningSettingsViewModel: ObservableObject {
             #if DEBUG
             DevLogger.shared.error("❌ Failed to update agentTask default input modality: \(error)", context: "ReasoningSettings")
             #endif
-            self.error = "Failed to update the AgentTask default input mode: \(error.localizedDescription)"
+            self.error = "Failed to update the Paprika default input mode: \(error.localizedDescription)"
         }
     }
 
@@ -632,7 +632,7 @@ final class ReasoningSettingsViewModel: ObservableObject {
             #if DEBUG
             DevLogger.shared.error("❌ Failed to update agentTask push-to-talk threshold: \(error)", context: "ReasoningSettings")
             #endif
-            self.error = "Failed to update the AgentTask push-to-talk threshold: \(error.localizedDescription)"
+            self.error = "Failed to update the Paprika push-to-talk threshold: \(error.localizedDescription)"
         }
     }
     
@@ -651,7 +651,7 @@ final class ReasoningSettingsViewModel: ObservableObject {
             #if DEBUG
             DevLogger.shared.error("❌ Failed to update AssistantSession push-to-talk: \(error)", context: "ReasoningSettings")
             #endif
-            self.error = "Failed to update AssistantSession push-to-talk: \(error.localizedDescription)"
+            self.error = "Failed to update Dill push-to-talk: \(error.localizedDescription)"
         }
     }
     
@@ -670,7 +670,7 @@ final class ReasoningSettingsViewModel: ObservableObject {
             #if DEBUG
             DevLogger.shared.error("❌ Failed to update AssistantSession push-to-talk threshold: \(error)", context: "ReasoningSettings")
             #endif
-            self.error = "Failed to update the AssistantSession push-to-talk threshold: \(error.localizedDescription)"
+            self.error = "Failed to update the Dill push-to-talk threshold: \(error.localizedDescription)"
         }
     }
 
@@ -693,7 +693,7 @@ final class ReasoningSettingsViewModel: ObservableObject {
             #if DEBUG
             DevLogger.shared.error("❌ Failed to update AssistantSession default input modality: \(error)", context: "ReasoningSettings")
             #endif
-            self.error = "Failed to update the AssistantSession default input mode: \(error.localizedDescription)"
+            self.error = "Failed to update the Dill default input mode: \(error.localizedDescription)"
         }
     }
 

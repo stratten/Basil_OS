@@ -30,11 +30,11 @@ Custom model configurations are a separate model path. When you select one, the 
 
 ## Capability data flows
 
-### Workspaces, conversations, and Agent Tasks
+### Workspaces, conversations, and Paprika tasks
 
-Basil Board inquiries, conversations, Assistant Session outputs, Agent Task inputs, task status, and todo records can be stored locally so the corresponding workspace can be reopened. Agent Task requests can include text, selected files, pasted images, screen captures, audio, and context the user explicitly supplies. A local model keeps that material on the Mac for inference; a selected direct-provider, custom endpoint, or Basil Cloud path receives the content needed to perform that request.
+Basil Board inquiries, conversations, Dill outputs, Paprika task inputs, task status, and todo records can be stored locally so the corresponding workspace can be reopened. Paprika task requests can include text, selected files, pasted images, screen captures, audio, and context the user explicitly supplies. A local model keeps that material on the Mac for inference; a selected direct-provider, custom endpoint, or Basil Cloud path receives the content needed to perform that request.
 
-Agent Tasks can prepare actions involving local files, browser automation, desktop automation, commands, and connected services. The request alone does not authorize an external side effect: Basil's approval and authorization controls remain the boundary. Review the action target and requested capability before approving it.
+Paprika tasks can prepare actions involving local files, browser automation, desktop automation, commands, and connected services. The request alone does not authorize an external side effect: Basil's approval and authorization controls remain the boundary. Review the action target and requested capability before approving it.
 
 Local artifact previews are previews of task-produced local material. Treat an artifact's source, contents, and destination as part of the task's privacy boundary, especially when a later action proposes opening it in another application or sending it to a connected service.
 
@@ -42,7 +42,7 @@ Local artifact previews are previews of task-produced local material. Treat an a
 
 Screen/window capture and OCR process the captured visual content locally unless you submit it to a non-local model path. Live transcription records microphone audio only after you start the recording flow; audio-file transcription reads only the local file you select. Stored transcription and audio history can contain private content.
 
-Meeting Detection is different from meeting recording. Its passive CoreAudio probe only identifies non-excluded processes that currently have both input and output audio activity; it does not create an audio tap or record audio. A meeting recording starts only after you choose the prompt action or configure the detected-meeting flow to auto-start. Calendar access can provide meeting title, attendees, calendar matching, and join prompts when a joinable event is available.
+Meeting/Call Detection is different from meeting recording. Its passive CoreAudio probe only identifies non-excluded processes that currently have both input and output audio activity; it does not create an audio tap or record audio. A meeting recording starts only after you choose the prompt action or configure the detected-meeting flow to auto-start. Calendar access can provide meeting title, attendees, calendar matching, and join prompts when a joinable event is available.
 
 Activity Capture can create local capture records on its configured schedule. Its source, exclusions, retention, cleanup, and processing model are user-configurable. If its selected processing path uses a provider-backed model, the capture content needed for processing follows that model path's data boundary.
 
@@ -98,7 +98,7 @@ The setup flow presents microphone, Accessibility, Input Monitoring, Screen Reco
 - Stop using a provider or Basil Cloud by selecting a local model or another configured provider, then remove the relevant provider key or Cloud authorization from local settings.
 - Disconnect optional connected services from Basil and revoke their authorization at the provider when appropriate.
 - Revoke macOS permissions in System Settings → Privacy & Security.
-- Stop Meeting Detection or Activity Capture from its dedicated control before changing its data or runtime configuration.
+- Stop Meeting/Call Detection or Activity Capture from its dedicated control before changing its data or runtime configuration.
 - Remove local data or models only after deciding which of the storage roots above you want to delete. Close Basil before manual deletion so the backend does not recreate or write to the path during the operation.
 
 This document describes Basil's application data paths and explicit request flows. It does not replace the privacy, retention, security, or account policies of an AI provider, a connected service, Apple, or a repository host.

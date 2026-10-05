@@ -88,6 +88,27 @@ describe('DelegatedProviderReportCards', () => {
     }
   });
 
+  it('flattens markdown in the per-run summary', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    try {
+      act(() => {
+        root.render(<DelegatedProviderReportCards cards={[{ ...cards[0], latestSummary: 'Updated **README** in `docs/`' }]} />);
+      });
+      act(() => {
+        container.querySelector<HTMLButtonElement>('.delegated-provider-work-chip-toggle')?.click();
+      });
+      expect(container.querySelector('.delegated-provider-work-details-summary')?.textContent).toBe('Updated README in docs/');
+    } finally {
+      act(() => {
+        root.unmount();
+      });
+      container.remove();
+    }
+  });
+
   it('summarizes fully verified work as verified', () => {
     const markup = renderToStaticMarkup(
       <DelegatedProviderReportCards cards={[{

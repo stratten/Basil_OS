@@ -78,7 +78,7 @@ async def capture_and_process_agent_task(service, wake_phrase: str) -> None:
 
         if not agent_task:
             logger.warning("No agent_task captured or request was empty")
-            await service._provide_feedback("I didn't hear an agent task. Please try again.")
+            await service._provide_feedback("I didn't hear a task. Please try again.")
             # Capture produced nothing actionable - release the wake-capture
             # key so the gate can become idle and the listener can resume.
             service._release_local_capture_key_if_owned(
@@ -116,7 +116,7 @@ async def capture_and_process_agent_task(service, wake_phrase: str) -> None:
         was_canceled = True
     except Exception as e:
         logger.error(f"Error during agent-task capture and processing: {e}", exc_info=True)
-        await service._provide_feedback("I encountered an error processing your agent task. Please try again.")
+        await service._provide_feedback("I encountered an error processing your task. Please try again.")
     finally:
         service._agent_task_canceled = False  # Clear cancellation flag
 

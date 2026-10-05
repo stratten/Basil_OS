@@ -228,7 +228,7 @@ function ConversationComposerComponent({
               type="button"
               className="chats-delegation-help"
               aria-label="About Conversation only"
-              title="Keeps this turn in Conversation. Agent Task tools, approvals, and progress are unavailable."
+              title="Keeps this turn in Conversation. Paprika tools, approvals, and progress are unavailable."
             >
               ?
             </button>

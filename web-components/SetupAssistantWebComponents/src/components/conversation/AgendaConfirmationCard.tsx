@@ -3,6 +3,8 @@ import type {
   SetupAgendaConfirmationResolution,
 } from '@/state/setupAssistantStore'
 
+import { SetupConversationMarkdown } from './SetupConversationMarkdown'
+
 // Inline conversation card the agent surfaces after a literacy
 // walkthrough or capability demo where completion isn't observable
 // from any side-effect. Three structured affordances:
@@ -51,7 +53,9 @@ export function AgendaConfirmationCard({ confirmation, onResolve }: Props) {
         <span className="agenda-confirmation-eyebrow">Quick check</span>
       </header>
 
-      <p className="agenda-confirmation-prompt">{confirmation.prompt}</p>
+      <div className="agenda-confirmation-prompt">
+        <SetupConversationMarkdown content={confirmation.prompt} />
+      </div>
 
       {!isResolved && (
         <footer className="agenda-confirmation-actions">

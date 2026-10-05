@@ -15,6 +15,10 @@ from api.core.knowledge.sqlite.sqlite_knowledge_service_component_services.execu
 )
 from api.core.models.preferences import ApprovalTimeoutBehavior
 from api.services.agent_processing.lifecycle.runtime.timeline_persistence import persist_timeline_entry
+from api.services.agent_processing.lifecycle.runtime.user_interaction_timeline import (
+    record_user_interaction_asked,
+    record_user_interaction_resolved,
+)
 from api.services.agent_processing.shared.workflow_budget_pause import pause_workflow_budget
 from api.services.conversation.conversation_agent_turn_lifecycle import (
     clear_conversation_agent_attention,
@@ -136,6 +140,15 @@ class InteractiveApprovalManager:
                     )
                 return (False, False, "approval_unavailable")
 
+            await record_user_interaction_asked(
+                agent_task_id,
+                interaction_id=approval_id,
+                kind="approval",
+                prompt=command,
+                input_type=execution_type,
+                broadcast=self.websocket_manager.broadcast,
+            )
+
             try:
                 await publish_conversation_agent_attention(agent_task_id, approval_id)
             except Exception:
@@ -234,6 +247,12 @@ class InteractiveApprovalManager:
                     )
                 except ExecutionApprovalConflictError:
                     logger.info("Approval %s was resolved while its timeout was expiring", approval_id)
+                await record_user_interaction_resolved(
+                    agent_task_id,
+                    interaction_id=approval_id,
+                    status="timed_out",
+                    broadcast=self.websocket_manager.broadcast,
+                )
                 try:
                     await clear_conversation_agent_attention(agent_task_id, approval_id)
                 except Exception:
@@ -268,6 +287,12 @@ class InteractiveApprovalManager:
                     )
                 if task_is_canceling:
                     raise
+                await record_user_interaction_resolved(
+                    agent_task_id,
+                    interaction_id=approval_id,
+                    status="cancelled",
+                    broadcast=self.websocket_manager.broadcast,
+                )
                 logger.info("Approval %s was retired while waiting; reporting it as unavailable", approval_id)
                 return (False, False, "approval_unavailable")
 
@@ -356,6 +381,12 @@ class InteractiveApprovalManager:
                     "state": "completed" if approved else "failed",
                     "timestamp": time.time(),
                 },
+            )
+            await record_user_interaction_resolved(
+                task_id,
+                interaction_id=approval_id,
+                status="approved" if approved else "denied",
+                broadcast=self.websocket_manager.broadcast,
             )
             if not future.done():
                 future.set_result((approved, remember, pattern_type))

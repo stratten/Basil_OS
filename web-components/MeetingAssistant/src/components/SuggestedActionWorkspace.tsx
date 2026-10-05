@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { plainMarkdownText } from '@shared/plainMarkdownText';
 import type { MeetingActionProposalDTO } from '../bridge/types';
+import { MeetingMarkdown } from '../lib/markdown';
 import { dismissProposal, openProposalAgentTask, openProposalTodo, promoteAllProposalsToTodos, promoteProposalToTodo, restoreProposal, startProposalNow, updateProposal } from '../bridge/meetingBridge';
 
 const HANDLED_STATUSES = new Set(['submitted', 'completed', 'added_to_todos']);
@@ -123,7 +125,7 @@ function ProposalCard({ proposal }: { proposal: MeetingActionProposalDTO }) {
           <path d="M7 9l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         <CapabilityIcon capabilityType={proposal.capabilityType} />
-        <span className="meeting-proposal-source-task">{proposal.sourceTask}</span>
+        <span className="meeting-proposal-source-task">{plainMarkdownText(proposal.sourceTask)}</span>
         {compactStatus(proposal) && <span className="meeting-proposal-card-status">{compactStatus(proposal)}</span>}
       </button>
       {(hasTodo || proposal.submittedAgentTaskId) && (
@@ -136,8 +138,8 @@ function ProposalCard({ proposal }: { proposal: MeetingActionProposalDTO }) {
           )}
           {proposal.submittedAgentTaskId && (
             <div className="meeting-proposal-linked-work-row">
-              <span>Agent task{proposal.liveAgentStatus ? `: ${formatAgentStatus(proposal.liveAgentStatus)}` : ''}</span>
-              <button type="button" className="meeting-proposal-linked-work-link" onClick={() => openProposalAgentTask(proposal.submittedAgentTaskId!)}>Open Agent Task</button>
+              <span>Paprika task{proposal.liveAgentStatus ? `: ${formatAgentStatus(proposal.liveAgentStatus)}` : ''}</span>
+              <button type="button" className="meeting-proposal-linked-work-link" onClick={() => openProposalAgentTask(proposal.submittedAgentTaskId!)}>Open in Paprika</button>
             </div>
           )}
         </div>
@@ -177,9 +179,9 @@ function ProposalCard({ proposal }: { proposal: MeetingActionProposalDTO }) {
                 }}
               />
             ) : (
-              <p className="meeting-proposal-draft-preview" onClick={() => updateProposal(proposal.id, { isEditingDraft: true })}>
-                {proposal.draftPrompt}
-              </p>
+              <div className="meeting-proposal-draft-preview" onClick={() => updateProposal(proposal.id, { isEditingDraft: true })}>
+                <MeetingMarkdown content={proposal.draftPrompt} />
+              </div>
             )}
           </section>
           {proposal.lastError && <p className="meeting-proposal-error" role="alert">{proposal.lastError}</p>}

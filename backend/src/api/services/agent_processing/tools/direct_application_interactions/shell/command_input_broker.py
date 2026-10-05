@@ -14,6 +14,11 @@ from api.services.conversation.conversation_agent_turn_lifecycle import (
     publish_conversation_agent_attention,
 )
 
+from api.services.agent_processing.lifecycle.runtime.user_interaction_timeline import (
+    record_user_interaction_asked,
+    record_user_interaction_resolved,
+)
+
 from .shell_process_runner import CommandInputReply
 
 logger = logging.getLogger(__name__)
@@ -113,15 +118,32 @@ class CommandInputBroker:
             except Exception as exc:
                 logger.error("Failed to broadcast command input request %s: %s", pending.request_id, exc)
                 return CommandInputReply(status="unavailable")
+            await record_user_interaction_asked(
+                pending.agent_task_id,
+                interaction_id=pending.request_id,
+                kind="command_input",
+                prompt=prompt,
+                input_type="secret" if pending.secret else "text",
+                broadcast=websocket_manager.broadcast,
+            )
             try:
                 await publish_conversation_agent_attention(pending.agent_task_id, pending.request_id)
             except Exception:
                 logger.exception("Failed to project command input attention for %s", pending.request_id)
             try:
-                return await asyncio.wait_for(pending.future, timeout=float(timeout_seconds))
+                reply = await asyncio.wait_for(pending.future, timeout=float(timeout_seconds))
             except asyncio.TimeoutError:
                 logger.info("Command input request %s timed out", pending.request_id)
-                return CommandInputReply(status="timeout")
+                reply = CommandInputReply(status="timeout")
+            await record_user_interaction_resolved(
+                pending.agent_task_id,
+                interaction_id=pending.request_id,
+                status={"answered": "answered", "canceled": "cancelled"}.get(reply.status, "timed_out"),
+                response=reply.text if reply.status == "answered" else None,
+                response_hidden=pending.secret and reply.status == "answered",
+                broadcast=websocket_manager.broadcast,
+            )
+            return reply
         finally:
             cls._pending.pop(pending.request_id, None)
             if not pending.future.done():

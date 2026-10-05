@@ -289,7 +289,7 @@ final class BasilBoardWebView: NSObject, WKScriptMessageHandler, WKNavigationDel
             if let agentTaskId = dict["agentTaskId"] as? String {
                 AgentTaskResultPresentationRouter.showExistingAgentTask(agentTaskId: agentTaskId)
             } else {
-                emitWidgetLaunchFailed(reason: "missing_agent_task_id", message: "No agent task id provided.")
+                emitWidgetLaunchFailed(reason: "missing_agent_task_id", message: "No Paprika task ID was provided.")
             }
         case "openConversationThreadWindow":
             guard let conversationId = dict["conversationId"] as? String,

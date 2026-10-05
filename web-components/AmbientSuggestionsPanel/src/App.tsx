@@ -433,14 +433,14 @@ export default function App() {
       <section className={`${isCollapsed ? 'ambient-panel collapsed' : 'ambient-panel'} basil-webkit-window-surface`}>
       <header className="ambient-header" ref={headerRef}>
         <div className="ambient-header-left" data-ambient-header-left>
-          <button className="ambient-header-btn" onClick={dismissPanel} title="Close" aria-label="Close Proactive Suggestions">
+          <button className="ambient-header-btn" onClick={dismissPanel} aria-label="Close Proactive Suggestions">
             <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
               <circle cx="11" cy="11" r="10" fill="rgba(51,85,155,0.15)" />
               <line x1="7.5" y1="7.5" x2="14.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
               <line x1="14.5" y1="7.5" x2="7.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
             </svg>
           </button>
-          <button className="ambient-header-btn" onClick={minimizePanel} title="Minimize" aria-label="Minimize Proactive Suggestions">
+          <button className="ambient-header-btn" onClick={minimizePanel} aria-label="Minimize Proactive Suggestions">
             <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
               <circle cx="11" cy="11" r="10" fill="rgba(51,85,155,0.15)" />
               <line x1="7" y1="12.5" x2="15" y2="12.5" stroke="var(--secondary)" strokeWidth="1.8" strokeLinecap="round" />
@@ -449,7 +449,6 @@ export default function App() {
           <button
             className="ambient-header-btn"
             onClick={toggleCollapsed}
-            title={isCollapsed ? 'Expand' : 'Collapse'}
             aria-label={isCollapsed ? 'Expand Proactive Suggestions' : 'Collapse Proactive Suggestions'}
           >
             <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">

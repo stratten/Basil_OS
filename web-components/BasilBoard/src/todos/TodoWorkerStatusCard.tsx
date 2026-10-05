@@ -49,26 +49,26 @@ function severityForStatus(
 
 function labelForSeverity(severity: CardSeverity): string {
   switch (severity) {
-    case 'success': return 'Agent task completed';
+    case 'success': return 'Paprika task completed';
     case 'warning': return 'Partial result';
-    case 'error': return 'Agent task failed';
-    case 'canceled': return 'Agent task canceled';
-    default: return 'Agent task status unavailable';
+    case 'error': return 'Paprika task failed';
+    case 'canceled': return 'Paprika task canceled';
+    default: return 'Paprika task status unavailable';
   }
 }
 
 function labelForActiveStatus(status: string): string {
   switch (status) {
-    case 'capturing': return 'Preparing agent task';
-    case 'routing': return 'Planning agent task';
-    case 'processing': return 'Agent task in progress';
+    case 'capturing': return 'Preparing Paprika task';
+    case 'routing': return 'Planning Paprika task';
+    case 'processing': return 'Paprika task in progress';
     case 'awaiting_provider_delegation': return 'Waiting for provider delegation';
     case 'awaiting_delegated_agents': return 'Waiting for delegated agents';
     case 'awaiting_user_input':
     case 'waiting_user_input':
     case 'needs_clarification':
-      return 'Agent task needs your input';
-    default: return 'Agent task status unavailable';
+      return 'Paprika task needs your input';
+    default: return 'Paprika task status unavailable';
   }
 }
 
@@ -127,7 +127,7 @@ export default function TodoWorkerStatusCard({ attempt, liveState }: TodoWorkerS
   const outcome = isTerminal ? resultMessage(liveState, attempt) : undefined;
   const title = plainMarkdownText(liveState?.detail?.title ?? attempt.title) || attempt.agent_task_id;
   const statusClassSuffix = isTerminal ? severity : status;
-  const label = needsAttention ? 'Agent task needs your input' : isTerminal ? labelForSeverity(severity) : labelForActiveStatus(status);
+  const label = needsAttention ? 'Paprika task needs your input' : isTerminal ? labelForSeverity(severity) : labelForActiveStatus(status);
   const [isOutcomeExpanded, setIsOutcomeExpanded] = useState(false);
   const outcomeHtml = useMemo(() => outcome ? renderResultMarkdown(outcome) : '', [outcome]);
   const isOutcomeLong = (outcome?.length ?? 0) > RESULT_PREVIEW_EXPAND_THRESHOLD;
@@ -163,7 +163,7 @@ export default function TodoWorkerStatusCard({ attempt, liveState }: TodoWorkerS
         className="todo-worker-status-card-open"
         onClick={() => openExistingAgentTaskWidget(attempt.agent_task_id)}
       >
-        {needsAttention ? 'Respond in Agent Task' : 'Open Agent Task'}
+        {needsAttention ? 'Respond in Paprika' : 'Open in Paprika'}
       </button>
       {outcome ? (
         <div className="todo-worker-status-card-outcome-row">

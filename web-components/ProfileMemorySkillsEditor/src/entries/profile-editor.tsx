@@ -4,9 +4,11 @@ import { ProfileEditorApp } from '../app/ProfileEditorApp';
 import '../styles/profile-editor.css';
 import '../styles/profile-editor-surface-finish.css';
 import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish';
+import { installBasilTooltips } from '@shared/tooltip/basilTooltip';
 import type { ProfileEditorConfig } from '../types';
 
 enableBackdropSurfaceFinish();
+installBasilTooltips();
 
 const fallbackConfig: ProfileEditorConfig = {
   mode: 'memory_file',

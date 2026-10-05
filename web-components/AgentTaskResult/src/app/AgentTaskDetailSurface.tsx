@@ -28,6 +28,7 @@ import {
 import { deriveAgentRunOverviewPresentation, deriveAgentRunPresentation } from '../components/run/agentRunPresentation';
 import { deriveAgentTaskRunFocusSummaries, resolveFocusedRun } from '../components/run/agentTaskRunFocus';
 import { AgentRunRail } from '../components/run/AgentRunRail';
+import type { RunNavigationRequest, RunNavigationTarget } from '../components/run/runNavigation';
 import { checkFilePreviewAvailability, reportValidationRunFocused } from '../services/bridge';
 import { usePresenceTransition } from '@shared/usePresenceTransition';
 
@@ -89,6 +90,11 @@ export function AgentTaskDetailSurface({
   const [artifactPreviewId, setArtifactPreviewId] = useState<string>();
   const [focusedRunId, setFocusedRunId] = useState<string>();
   const [showRunOverview, setShowRunOverview] = useState(false);
+  const [locationRunId, setLocationRunId] = useState<string>();
+  const [peekedRunIds, setPeekedRunIds] = useState<string[]>([]);
+  const [navigationRequest, setNavigationRequest] = useState<RunNavigationRequest | null>(null);
+  const [pendingDocumentRunId, setPendingDocumentRunId] = useState<string>();
+  const navigationNonceRef = useRef(0);
   const [availablePreviewPaths, setAvailablePreviewPaths] = useState<Set<string>>(new Set());
   const [isPreviewAvailabilityResolved, setIsPreviewAvailabilityResolved] = useState(false);
   const [previewAvailabilityRunId, setPreviewAvailabilityRunId] = useState<string>();
@@ -276,6 +282,10 @@ export function AgentTaskDetailSurface({
 
   useEffect(() => {
     setFocusedRunId(undefined);
+    setLocationRunId(undefined);
+    setPeekedRunIds([]);
+    setNavigationRequest(null);
+    setPendingDocumentRunId(undefined);
     setArtifactPreviewId(undefined);
     setShowRunOverview(true);
     seenReviewFingerprints.current = new Map();
@@ -287,6 +297,8 @@ export function AgentTaskDetailSurface({
   const currentTurnRunId = displaySource.currentTurnTaskId || displaySource.agentTaskId;
   useEffect(() => {
     setFocusedRunId(undefined);
+    setLocationRunId(undefined);
+    setPeekedRunIds([]);
   }, [currentTurnRunId]);
 
   useEffect(() => {
@@ -346,6 +358,22 @@ export function AgentTaskDetailSurface({
   ]);
 
   useEffect(() => {
+    if (!pendingDocumentRunId || focusedRun.id !== pendingDocumentRunId) return;
+    if (!isPreviewAvailabilityResolved || previewAvailabilityRunId !== focusedRun.id) return;
+    setPendingDocumentRunId(undefined);
+    if (previewArtifactGroups.produced.length === 1) {
+      openTray('preview', previewArtifactGroups.produced[0].artifactId);
+    }
+  }, [
+    focusedRun.id,
+    isPreviewAvailabilityResolved,
+    openTray,
+    pendingDocumentRunId,
+    previewArtifactGroups.produced,
+    previewAvailabilityRunId,
+  ]);
+
+  useEffect(() => {
     setShowRunOverview(false);
   }, [selectedDetail?.id, selectedDetailOwnerId]);
 
@@ -362,11 +390,40 @@ export function AgentTaskDetailSurface({
     openTray('preview', artifactId);
   };
 
-  const handleFocusRun = (runId: string) => {
-    setFocusedRunId(runId);
+  const isRunOverviewVisible = detailTrayOpen && showRunOverview;
+  const mapLocationRunId = locationRunId && runs.some(run => run.id === locationRunId)
+    ? locationRunId
+    : focusedRun.id;
+
+  const handleLocationChange = (runId: string) => {
+    setLocationRunId(runId);
+    // Preview and step-detail modes are tied to the focused run, so scrolling must not swap them out.
+    const isTrayShowingOverview = !previewArtifact && (showRunOverview || !selectedDetail);
+    if (!detailTrayOpen || isTrayShowingOverview) setFocusedRunId(runId);
   };
 
-  const isRunOverviewVisible = detailTrayOpen && showRunOverview;
+  const navigateToRun = (runId: string, target: RunNavigationTarget) => {
+    navigationNonceRef.current += 1;
+    setNavigationRequest({ nonce: navigationNonceRef.current, runId, target });
+    setLocationRunId(runId);
+    setFocusedRunId(runId);
+    setPeekedRunIds([]);
+  };
+
+  const handleTogglePeekRun = (runId: string) => {
+    setPeekedRunIds(current => (current.includes(runId)
+      ? current.filter(id => id !== runId)
+      : [...current, runId]));
+  };
+
+  const handleOpenRunDocuments = (runId: string) => {
+    navigateToRun(runId, { kind: 'run' });
+    setPendingDocumentRunId(runId);
+  };
+
+  const handleJumpToLatestRun = () => {
+    navigateToRun(currentTurnRunId, { kind: 'latest' });
+  };
 
   const handleFocusRunFromContent = (runId: string) => {
     if (isRunOverviewVisible && focusedRun.id === runId) {
@@ -374,6 +431,7 @@ export function AgentTaskDetailSurface({
       return;
     }
     setFocusedRunId(runId);
+    setLocationRunId(runId);
     openTray('overview');
   };
 
@@ -397,6 +455,8 @@ export function AgentTaskDetailSurface({
           onSelectDetail={onSelectDetail}
           focusedRunId={isRunOverviewVisible ? focusedRun.id : null}
           onFocusRun={handleFocusRunFromContent}
+          navigationRequest={navigationRequest}
+          onLocationChange={handleLocationChange}
         />
         {inlineCheckpointPresence.shouldRender && retainedInlineCheckpoint.current && retainedInteractiveAgentId.current && (
           <div
@@ -481,6 +541,9 @@ export function AgentTaskDetailSurface({
             runId={focusedRun.id}
             isProcessing={focusedRun.isProcessing}
             onExpand={handleOpenRunOverview}
+            runs={runs}
+            locationRunId={mapLocationRunId}
+            onNavigateRun={runId => navigateToRun(runId, { kind: 'run' })}
           />
         </div>
       )}
@@ -509,7 +572,13 @@ export function AgentTaskDetailSurface({
         isPreviewArtifactFileAvailable={isPreviewArtifactFileAvailable}
         onPreviewArtifact={handlePreviewArtifact}
         runs={runs}
-        onFocusRun={handleFocusRun}
+        currentRunId={currentTurnRunId}
+        locationRunId={mapLocationRunId}
+        peekedRunIds={peekedRunIds}
+        onNavigateRun={navigateToRun}
+        onTogglePeekRun={handleTogglePeekRun}
+        onOpenRunDocuments={handleOpenRunDocuments}
+        onJumpToLatestRun={handleJumpToLatestRun}
         onClosePreview={() => {
           if (previewArtifact) {
             dismissedReviewFingerprints.current.set(

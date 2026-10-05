@@ -4,8 +4,10 @@ import { AssistantSessionApp } from '../app/AssistantSessionApp';
 import '../styles/assistant-session.css';
 import '../styles/assistant-session-surface-finish.css';
 import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish';
+import { installBasilTooltips } from '@shared/tooltip/basilTooltip';
 
 enableBackdropSurfaceFinish();
+installBasilTooltips();
 
 const container = document.getElementById('root');
 if (!container) {

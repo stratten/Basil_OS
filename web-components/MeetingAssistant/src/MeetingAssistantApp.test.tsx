@@ -35,9 +35,10 @@ vi.mock('./lib/hostAppearance', () => ({
 }));
 
 vi.mock('./components/WindowChrome', () => ({
-  default: ({ isCollapsed, onToggleCollapse, bubble, hideWindowControls, canCollapse }: { isCollapsed: boolean; onToggleCollapse: () => void; bubble?: ReactNode; hideWindowControls?: boolean; canCollapse?: boolean }) => (
+  default: ({ isCollapsed, onToggleCollapse, bubble, hideWindowControls, canCollapse, subtitle, isRecording }: { isCollapsed: boolean; onToggleCollapse: () => void; bubble?: ReactNode; hideWindowControls?: boolean; canCollapse?: boolean; subtitle?: string; isRecording?: boolean }) => (
     <>
       <output data-testid="window-chrome-props">{JSON.stringify({ hideWindowControls: hideWindowControls ?? false, canCollapse: canCollapse ?? true })}</output>
+      <output data-testid="window-chrome-subtitle" data-recording={String(isRecording ?? false)}>{subtitle ?? ''}</output>
       {canCollapse !== false && (
         <button type="button" onClick={onToggleCollapse}>{isCollapsed ? 'Expand' : 'Collapse'}</button>
       )}
@@ -47,7 +48,9 @@ vi.mock('./components/WindowChrome', () => ({
 }));
 
 vi.mock('../../shared/bubble/AnimatedBubble', () => ({
-  default: ({ audioLevel }: { audioLevel: number }) => <output data-testid="bubble-audio-level">{audioLevel}</output>,
+  default: ({ audioLevel, mode, baseColor }: { audioLevel: number; mode: string; baseColor: string }) => (
+    <output data-testid="bubble-audio-level" data-mode={mode} data-base-color={baseColor}>{audioLevel}</output>
+  ),
 }));
 
 let transcriptRenderCount = 0;
@@ -150,7 +153,7 @@ const minimalUI: MeetingBridgeEvent['ui'] = {
 describe('MeetingAssistantApp collapse retention', () => {
   it('keeps the content subtree mounted and inert while collapsed', () => {
     render(<MeetingAssistantApp />);
-    const content = screen.getByText('Connecting to Meeting Assistant…');
+    const content = screen.getByText('Connecting to Notetaker…');
 
     fireEvent.click(screen.getByRole('button', { name: 'Collapse' }));
 
@@ -161,7 +164,7 @@ describe('MeetingAssistantApp collapse retention', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Expand' }));
 
-    expect(screen.getByText('Connecting to Meeting Assistant…')).toBe(content);
+    expect(screen.getByText('Connecting to Notetaker…')).toBe(content);
     expect(content).not.toHaveAttribute('hidden');
     expect(content).not.toHaveAttribute('inert');
   });
@@ -196,6 +199,43 @@ describe('MeetingAssistantApp meter render isolation', () => {
 
     expect(screen.getByTestId('bubble-audio-level')).toHaveTextContent('0.8');
     expect(screen.getByTestId('transcript-render-count')).toHaveTextContent('1');
+  });
+});
+
+describe('MeetingAssistantApp paused capture presentation', () => {
+  const snapshotWith = (ui: MeetingBridgeEvent['ui'], revision: number): MeetingBridgeEvent => ({
+    type: 'snapshot',
+    revision,
+    selectionGeneration: 0,
+    protocolVersion: 4,
+    ui,
+    transcript: [],
+    history: [],
+    analysisHistory: [],
+    proposals: [],
+  });
+
+  it('reserves recording red for a hot microphone and shows a paused capture in amber', () => {
+    capturedEventHandler = null;
+    render(<MeetingAssistantApp />);
+
+    act(() => { capturedEventHandler!(snapshotWith(minimalUI, 0)); });
+    const bubble = screen.getByTestId('bubble-audio-level');
+    expect(bubble).toHaveAttribute('data-base-color', 'var(--recording-base)');
+    expect(bubble).toHaveAttribute('data-mode', 'audioResponsive');
+    expect(screen.getByTestId('window-chrome-subtitle')).toHaveTextContent('Recording · 00:05');
+    expect(screen.getByTestId('window-chrome-subtitle')).toHaveAttribute('data-recording', 'true');
+
+    act(() => {
+      capturedEventHandler!(snapshotWith({ ...minimalUI, isCapturePaused: true }, 1));
+      publishMeetingMeter({ microphoneAudioLevel: 0.8, systemAudioLevel: 0.3 });
+    });
+    const pausedBubble = screen.getByTestId('bubble-audio-level');
+    expect(pausedBubble).toHaveAttribute('data-base-color', 'var(--warning-base)');
+    expect(pausedBubble).toHaveAttribute('data-mode', 'ambient');
+    expect(pausedBubble).toHaveTextContent('0');
+    expect(screen.getByTestId('window-chrome-subtitle')).toHaveTextContent('Paused · 00:05');
+    expect(screen.getByTestId('window-chrome-subtitle')).toHaveAttribute('data-recording', 'false');
   });
 });
 

@@ -220,6 +220,14 @@
   word-break: break-word;
 }
 
+.inline-dill-draft-body p {
+  margin: 0 0 8px;
+}
+
+.inline-dill-draft-body > :last-child {
+  margin-bottom: 0;
+}
+
 .inline-dill-draft-body.is-collapsed {
   max-height: 140px;
 }

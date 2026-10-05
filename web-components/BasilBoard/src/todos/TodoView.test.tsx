@@ -447,7 +447,7 @@ describe('TodoView launch-worker action', () => {
 
     await waitFor(() => expect(apiMocks.launchTodoWorker).toHaveBeenCalledWith('t1', 1));
     expect(bridgeMocks.openExistingAgentTaskWidget).not.toHaveBeenCalled();
-    await userEvent.click(screen.getByRole('button', { name: 'Open Agent Task' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Open in Paprika' }));
     expect(bridgeMocks.openExistingAgentTaskWidget).toHaveBeenCalledWith('worker-1');
   });
 });

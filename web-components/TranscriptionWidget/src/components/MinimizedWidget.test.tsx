@@ -47,7 +47,7 @@ describe('MinimizedWidget', () => {
 
   it('toggles minimized state via the expand button', async () => {
     render(<MinimizedWidget state={initialTranscriptionState} />);
-    await userEvent.click(screen.getByTitle('Expand widget'));
+    await userEvent.click(screen.getByRole('button', { name: 'Expand widget' }));
     expect(bridge.toggleMinimizedState).toHaveBeenCalledOnce();
   });
 

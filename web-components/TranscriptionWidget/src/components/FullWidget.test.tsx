@@ -56,7 +56,7 @@ describe('FullWidget', () => {
 
   it('delegates recording cancellation and closing to the single native close intent', async () => {
     render(<FullWidget state={{ ...initialTranscriptionState, isRecording: true }} />);
-    await userEvent.click(screen.getByTitle('Close'));
+    await userEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(bridge.closeWidget).toHaveBeenCalledOnce();
   });
 

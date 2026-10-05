@@ -31,7 +31,7 @@ _BASIL_BOARD_SEED_TABS = (
     ),
     (
         "meetings",
-        "Meetings",
+        "Notetaker",
         "meetings",
         3,
         "capability",
@@ -39,7 +39,7 @@ _BASIL_BOARD_SEED_TABS = (
     ),
     (
         "agent_tasks",
-        "Agent Tasks",
+        "Agents",
         "agent_tasks",
         4,
         "capability",
@@ -108,7 +108,7 @@ def _migrate_basil_board_tabs_capability_kind(conn: sqlite3.Connection) -> None:
 
 
 def _seed_basil_board_tabs(conn: sqlite3.Connection) -> None:
-    """Idempotently create/refresh the default Home, To-Dos, Chats, Meetings, and Agent Tasks tabs."""
+    """Idempotently create/refresh the default Home, To-Dos, Chats, Notetaker, and Agent Tasks tabs."""
     for tab_id, title, icon_key, position, tab_kind, configuration_json in _BASIL_BOARD_SEED_TABS:
         conn.execute(
             """

@@ -231,6 +231,28 @@ describe('TodoWorkspacePane sending a turn', () => {
     expect(screen.queryByText('Working')).not.toBeInTheDocument();
   });
 
+  it('renders markdown in assistant replies', async () => {
+    wsMocks.basilBoardWebSocket.sendTodoWorkspaceMessage.mockReturnValue(true);
+    render(<TodoWorkspacePane selectedItems={[summary({ id: 't1' })]} onWorkerOrManagerResultSettled={vi.fn()} onDeselectItem={vi.fn()} />);
+
+    await userEvent.type(screen.getByRole('textbox', { name: 'Message' }), 'Status?');
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+    const sentMessage = wsMocks.basilBoardWebSocket.sendTodoWorkspaceMessage.mock.calls[0][0] as {
+      requestId: string; workspaceId: string;
+    };
+
+    latestHandler?.({
+      event_type: 'todo_workspace_result', workspace_id: sentMessage.workspaceId,
+      request_id: sentMessage.requestId, agent_task_id: 'task-1', status: 'completed',
+      summary: 'Updated:\n- **Due:** Friday', selected_todo_ids: ['t1'],
+    } as unknown as WSEvent);
+
+    const due = await screen.findByText('Due:');
+    expect(due.tagName).toBe('STRONG');
+    expect(due.closest('.todo-workspace-message--assistant')?.querySelector('li')).not.toBeNull();
+    expect(document.querySelector('.todo-workspace-transcript')?.textContent).not.toContain('**');
+  });
+
   it('renders an error transcript entry on a todo_workspace_error event and does not call onWorkerOrManagerResultSettled', async () => {
     wsMocks.basilBoardWebSocket.sendTodoWorkspaceMessage.mockReturnValue(true);
     const onSettled = vi.fn();

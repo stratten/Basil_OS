@@ -41,8 +41,8 @@ def test_claude_46_budget_uses_registry_output_not_initialized_sample_cap():
     )
 
     assert budget.model_id == "claude-sonnet-4-6"
-    assert budget.model_max_output_tokens == 64000
-    assert budget.effective_output_tokens == 64000
+    assert budget.model_max_output_tokens == 128000
+    assert budget.effective_output_tokens == 128000
     assert budget.effective_output_tokens != model.max_tokens_to_sample
 
 
@@ -91,7 +91,7 @@ async def test_final_synthesis_preserves_max_token_terminal_state():
     assert result.text == "partial final answer"
     assert result.terminal.reason == "max_tokens"
     assert result.terminal.truncated is True
-    assert model.received_budget.effective_output_tokens == 64000
+    assert model.received_budget.effective_output_tokens == 128000
 
 
 @pytest.mark.asyncio

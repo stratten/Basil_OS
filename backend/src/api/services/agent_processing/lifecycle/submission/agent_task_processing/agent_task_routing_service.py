@@ -12,6 +12,10 @@ from api.services.agent_processing.lifecycle.delegation.delegated_agent_evidence
     DelegatedAgentEvidenceService,
 )
 from ...runtime.agent_timeline_contract import normalize_timeline_entry
+from ...runtime.user_interaction_timeline import (
+    record_user_interaction_asked,
+    record_user_interaction_resolved,
+)
 
 
 def plain_agent_task_title(response: str) -> str:
@@ -417,6 +421,14 @@ class AgentTaskRoutingService:
             )
 
             await publish_conversation_agent_attention(agent_task_id, interaction_id)
+            await record_user_interaction_asked(
+                agent_task_id,
+                interaction_id=interaction_id,
+                kind="provider_input",
+                prompt=message,
+                input_type="provider_form",
+                broadcast=self._interaction_broadcast(agent_task_id),
+            )
             if not self.websocket_manager:
                 return True
 
@@ -449,6 +461,15 @@ class AgentTaskRoutingService:
             )
             return False
 
+    def _interaction_broadcast(self, agent_task_id: str):
+        if not self.websocket_manager:
+            return None
+
+        async def broadcast(event: Dict[str, Any]) -> None:
+            await self.broadcast_agent_task_message(agent_task_id, event)
+
+        return broadcast
+
     async def publish_provider_interaction_resolved(
         self,
         *,
@@ -456,6 +477,8 @@ class AgentTaskRoutingService:
         root_task_id: str | None,
         previous_task_id: str | None,
         interaction_id: str,
+        status: str = "resolved",
+        response: str | None = None,
     ) -> bool:
         """Clear delegated attention and broadcast a provider-form continuation."""
         try:
@@ -464,6 +487,13 @@ class AgentTaskRoutingService:
             )
 
             await clear_conversation_agent_attention(agent_task_id, interaction_id)
+            await record_user_interaction_resolved(
+                agent_task_id,
+                interaction_id=interaction_id,
+                status=status,
+                response=response,
+                broadcast=self._interaction_broadcast(agent_task_id),
+            )
             if not self.websocket_manager:
                 return True
             message_payload: Dict[str, Any] = {
@@ -492,6 +522,8 @@ class AgentTaskRoutingService:
         root_task_id: str | None,
         previous_task_id: str | None,
         interaction_id: str,
+        status: str = "resolved",
+        response: str | None = None,
     ) -> bool:
         """Clear delegated attention after a provider permission decision."""
         try:
@@ -500,6 +532,13 @@ class AgentTaskRoutingService:
             )
 
             await clear_conversation_agent_attention(agent_task_id, interaction_id)
+            await record_user_interaction_resolved(
+                agent_task_id,
+                interaction_id=interaction_id,
+                status=status,
+                response=response,
+                broadcast=self._interaction_broadcast(agent_task_id),
+            )
             if not self.websocket_manager:
                 return True
             message_payload: Dict[str, Any] = {
@@ -550,6 +589,14 @@ class AgentTaskRoutingService:
             )
 
             await publish_conversation_agent_attention(agent_task_id, interaction_id)
+            await record_user_interaction_asked(
+                agent_task_id,
+                interaction_id=interaction_id,
+                kind="provider_permission",
+                prompt=title if not description else f"{title}\n\n{description}",
+                input_type="provider_permission",
+                broadcast=self._interaction_broadcast(agent_task_id),
+            )
             if not self.websocket_manager:
                 return True
 

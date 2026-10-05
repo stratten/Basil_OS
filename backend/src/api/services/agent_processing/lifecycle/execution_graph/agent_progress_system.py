@@ -21,6 +21,7 @@ from typing import Any, Dict, Optional, List
 # Existing modules for state types
 from ..planning.request_analyzer import RequestAnalysis
 from ...service_capabilities.service_method_planner import ServiceCapabilityCache
+from ..runtime.agent_timeline_contract import timeline_timestamp
 from ..runtime.workflow_results import WorkflowExecutionResult
 
 # Tool integration
@@ -218,9 +219,11 @@ class LiveProgressCallbackHandler(BaseCallbackHandler):
             "iteration": iteration,
             "text": text,
             "is_complete": is_complete,
+            "recorded_at": timeline_timestamp(),
         }
         for index, existing in enumerate(self._thinking_history):
             if existing["iteration"] == iteration:
+                segment["recorded_at"] = existing.get("recorded_at") or segment["recorded_at"]
                 self._thinking_history[index] = segment
                 return
         self._thinking_history.append(segment)

@@ -42,7 +42,7 @@ describe('CaptureHeader', () => {
   it('dispatches cancellation from its leading control', () => {
     render(baseVoiceSnapshot());
 
-    click('Cancel agent task');
+    click('Cancel task');
 
     expect(postMessage).toHaveBeenCalledWith({ type: 'cancelCapture' });
   });
@@ -71,7 +71,7 @@ describe('CaptureHeader', () => {
   it('dispatches the history action from its trailing control', () => {
     render(baseVoiceSnapshot());
 
-    click('Show agent task history');
+    click('Show task history');
 
     expect(postMessage).toHaveBeenCalledWith({ type: 'showHistory' });
   });

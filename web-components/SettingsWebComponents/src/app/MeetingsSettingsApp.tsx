@@ -145,7 +145,7 @@ export function MeetingsSettingsApp() {
   }
 
   if (!settings && !loadError) {
-    return <p className="meetings-settings-status" role="status">Loading Meeting Detection settings...</p>
+    return <p className="meetings-settings-status" role="status">Loading Meeting/Call Detection settings...</p>
   }
 
   if (loadError) {
@@ -162,10 +162,10 @@ export function MeetingsSettingsApp() {
   return (
     <div className="meetings-settings-shell">
       <section className="meetings-settings-section" aria-labelledby="meetings-detection-heading">
-        <h2 id="meetings-detection-heading">Meeting Detection</h2>
+        <h2 id="meetings-detection-heading">Meeting/Call Detection</h2>
         <Switch
           id="meetings-detection-enabled"
-          label="Enable Meeting Detection"
+          label="Enable Meeting/Call Detection"
           checked={s.enabled}
           onChange={(checked) => { setSettings({ ...s, enabled: checked }); submit(requestUpdateMeetingDetectionEnabled(checked)) }}
         />

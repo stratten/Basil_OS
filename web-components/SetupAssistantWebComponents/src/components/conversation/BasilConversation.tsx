@@ -227,7 +227,7 @@ export function BasilConversation({
                 onClick={() => submitChipMessage(chip.message, chip.preliminaryStatusMessage)}
                 disabled={isStreaming}
               >
-                {chip.label}
+                {plainMarkdownText(chip.label)}
               </button>
             ))}
           </div>

@@ -180,7 +180,31 @@ async def test_handle_request_permission_returns_allow_when_user_selects_allow()
         "root_task_id": "task-1",
         "previous_task_id": None,
         "interaction_id": "permission-1",
+        "status": "approved",
+        "response": "Allow",
     }]
+
+
+@pytest.mark.asyncio
+async def test_handle_request_permission_records_a_user_rejection_with_the_chosen_option() -> None:
+    repository = _FakePermissionRepository()
+    routing = _FakeRoutingService(websocket_manager=object())
+    coordinator = _make_coordinator(repository, routing)
+
+    async def publish_and_reject(**kwargs):
+        ProviderInteractionDeliveryRegistry.resolve(
+            kwargs["interaction_id"], "selected", {"optionId": "reject-once"}
+        )
+        return True
+
+    routing.publish_provider_permission_request = publish_and_reject
+
+    result = await coordinator.handle_request_permission(_permission_params())
+
+    assert result == {"outcome": {"outcome": "selected", "optionId": "reject-once"}}
+    assert repository.canceled == []
+    assert routing.resolutions[0]["status"] == "denied"
+    assert routing.resolutions[0]["response"] == "Reject"
 
 
 @pytest.mark.asyncio
@@ -206,6 +230,8 @@ async def test_handle_request_permission_cancels_pending_row_when_resolution_is_
         "root_task_id": "task-1",
         "previous_task_id": None,
         "interaction_id": "permission-1",
+        "status": "cancelled",
+        "response": None,
     }]
 
 

@@ -395,9 +395,10 @@ class TestAPISettings(unittest.TestCase):
         # Verify model was disabled
         self.assertEqual(data["model"]["enabled"], False)
         
-        # Verify a new default was selected
+        # Verify a new, enabled default was selected
         prefs = Preferences.load()
-        self.assertEqual(prefs.models.reasoning_model, ANTHROPIC_FALLBACK_MODEL)
+        self.assertNotEqual(prefs.models.reasoning_model, ANTHROPIC_PRIMARY_MODEL)
+        self.assertIs(prefs.models.anthropic_models.get(prefs.models.reasoning_model), True)
 
     def test_update_api_model_disable_default_without_enabled_provider_uses_local_default(self):
         """Disabling the selected API model should not leave a disabled model as default."""

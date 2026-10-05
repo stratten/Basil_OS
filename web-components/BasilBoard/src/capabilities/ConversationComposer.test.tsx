@@ -62,7 +62,7 @@ describe('ConversationComposer', () => {
     renderComposer(vi.fn(), { processing: true });
 
     expect(screen.getByRole('checkbox', { name: 'Conversation only' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'About Conversation only' }).getAttribute('title')).toContain('Agent Task tools');
+    expect(screen.getByRole('button', { name: 'About Conversation only' }).getAttribute('title')).toContain('Paprika tools');
     expect(screen.getByRole('button', { name: 'Stop' }).className).toContain('basil-stop-action');
   });
 });

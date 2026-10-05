@@ -8,7 +8,7 @@ This guide distinguishes three kinds of choice that often appear together in Set
 
 - **General:** Home and Hotkeys.
 - **Personalization:** Profile, Personal Context, and Writing Examples.
-- **Capabilities:** Models, Automation & Agents, Transcription, Meetings, and Capture.
+- **Capabilities:** Models, Automation & Agents, Transcription, Notetaker, and Capture.
 - **System:** Connections, Permissions, Account, and Appearance & Format.
 
 Several sections expose a second navigation level:
@@ -24,7 +24,7 @@ Several sections expose a second navigation level:
 
 ### Home
 
-Home collects high-level launch and capability controls, including background behavior when supported. It can expose start-at-launch preferences for Activity Capture and Meeting Detection. A start-at-launch preference applies on a future Basil launch; it does not retroactively create a monitor in an already-running process.
+Home collects high-level launch and capability controls, including background behavior when supported. It can expose start-at-launch preferences for Activity Capture and Meeting/Call Detection. A start-at-launch preference applies on a future Basil launch; it does not retroactively create a monitor in an already-running process.
 
 Use Home to review the broad application state, then use the capability-specific section to change detailed behavior. If a monitor is already running, changing a future-launch preference does not silently replace the active runtime.
 
@@ -76,9 +76,9 @@ Transcription includes settings, history, and text replacements. Configure the t
 
 Manage a replacement rule in the stable entry area above the saved-rule list. Adding, changing, or removing a replacement affects newly inserted transcription text; it does not rewrite an existing history record.
 
-### Meetings
+### Notetaker
 
-Meetings configures Meeting Detection:
+Notetaker configures Meeting/Call Detection:
 
 - Enable or disable detection.
 - Choose `prompt` or `auto_start` behavior.
@@ -87,7 +87,7 @@ Meetings configures Meeting Detection:
 - Configure automatic ending after inactive audio when enabled.
 - Exclude applications by bundle identifier or application name.
 
-Enabling Meeting Detection makes the monitor available. Start or stop the current monitor from the Basil menu unless the separate start-at-launch preference is enabled. Calendar matching reduces false positives, particularly for browsers, but can omit calls that have no active calendar event.
+Enabling Meeting/Call Detection makes the monitor available. Start or stop the current monitor from the Basil menu unless the separate start-at-launch preference is enabled. Calendar matching reduces false positives, particularly for browsers, but can omit calls that have no active calendar event.
 
 The setting does not start recording. In `prompt` mode, you decide whether a detected call should create a meeting. In `auto_start` mode, Basil follows the detected-meeting configuration. While a meeting is preparing or recording, the detection flow suppresses later launch panels so that only one meeting can be active.
 

@@ -17,8 +17,10 @@ import '@agent-task/styles/components/artifact-review-workspace.css';
 import './styles/conversation-surface-finish.css';
 import './styles/basil-board-surface-finish.css';
 import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish';
+import { installBasilTooltips } from '@shared/tooltip/basilTooltip';
 
 enableBackdropSurfaceFinish();
+installBasilTooltips();
 applyProcessingDefaults();
 
 createRoot(document.getElementById('root')!).render(

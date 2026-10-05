@@ -1,0 +1,272 @@
+.agent-run-map {
+  max-height: calc(100vh - 7rem);
+  margin: 0 var(--padding-m) var(--padding-m);
+  overflow-y: auto;
+  box-sizing: border-box;
+  border: var(--border-thin) solid color-mix(in srgb, var(--secondary) 28%, var(--separator-color));
+  border-radius: var(--corner-radius-medium);
+  background: var(--background-primary);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--secondary) 12%, transparent);
+  color: var(--text-primary);
+}
+
+.agent-run-map-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--padding-s);
+  min-height: 32px;
+  padding: var(--padding-xs) var(--padding-m);
+  border-bottom: var(--border-thin) solid var(--separator-color);
+  background: var(--background-primary);
+}
+
+.agent-run-map-title {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  white-space: nowrap;
+}
+
+.agent-run-map-jump {
+  flex-shrink: 0;
+  padding: 2px var(--padding-s);
+  border: var(--border-thin) solid var(--secondary);
+  border-radius: 999px;
+  background: var(--secondary);
+  color: var(--background-primary);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-tiny);
+  white-space: nowrap;
+}
+
+.agent-run-map-jump:hover,
+.agent-run-map-jump:focus-visible {
+  background: color-mix(in srgb, var(--secondary) 82%, var(--text-primary));
+  outline: none;
+}
+
+.agent-run-map-jump:focus-visible {
+  box-shadow: 0 0 0 2px var(--background-primary), 0 0 0 4px var(--secondary);
+}
+
+.agent-run-map-turns {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agent-run-map-turn {
+  margin: 0;
+  padding: var(--padding-xs) var(--padding-s);
+}
+
+.agent-run-map-turn + .agent-run-map-turn {
+  border-top: var(--border-thin) solid var(--separator-color);
+}
+
+.agent-run-map-turn.is-location {
+  background: color-mix(in srgb, var(--secondary) 7%, var(--background-primary));
+  box-shadow: inset 3px 0 0 var(--secondary);
+}
+
+.agent-run-map-turn-header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 2px;
+}
+
+.agent-run-map-turn-toggle {
+  display: grid;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--corner-radius-small);
+  background: transparent;
+  color: var(--secondary);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.agent-run-map-turn-toggle--static {
+  cursor: default;
+}
+
+button.agent-run-map-turn-toggle:hover,
+button.agent-run-map-turn-toggle:focus-visible {
+  background: color-mix(in srgb, var(--secondary) 12%, var(--background-primary));
+  outline: none;
+}
+
+button.agent-run-map-turn-toggle:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--secondary);
+}
+
+.agent-run-map-turn-link {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 34px;
+  grid-template-columns: 22px minmax(0, 1fr) 10px;
+  align-items: center;
+  gap: var(--padding-xs);
+  padding: 4px var(--padding-xs);
+  border: 0;
+  border-radius: var(--corner-radius-small);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.agent-run-map-turn-link:hover,
+.agent-run-map-turn-link:focus-visible {
+  background: color-mix(in srgb, var(--secondary) 10%, var(--background-primary));
+  outline: none;
+}
+
+.agent-run-map-turn-link:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--secondary);
+}
+
+.agent-run-map-ordinal {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border: var(--border-thin) solid var(--secondary);
+  border-radius: 50%;
+  background: var(--background-primary);
+  color: var(--secondary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-tiny);
+}
+
+.agent-run-map-turn.is-location .agent-run-map-ordinal {
+  background: var(--secondary);
+  color: var(--background-primary);
+}
+
+.agent-run-map-summary {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.agent-run-map-label,
+.agent-run-map-request {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-run-map-label {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+}
+
+.agent-run-map-turn.is-location .agent-run-map-label {
+  color: var(--secondary);
+}
+
+.agent-run-map-request {
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-tiny);
+}
+
+.agent-run-map-status {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--success-base);
+}
+
+.agent-run-map-status.is-failed {
+  background: var(--error-base);
+}
+
+.agent-run-map-status.is-processing {
+  background: var(--processing-base);
+}
+
+.agent-run-map-status.is-awaitingInput,
+.agent-run-map-status.is-partial {
+  background: var(--warning-base);
+}
+
+.agent-run-map-turn-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--padding-xs);
+  padding: 2px 0 2px 52px;
+}
+
+.agent-run-map-attention {
+  padding: 1px 6px;
+  border-radius: var(--corner-radius-small);
+  font-family: var(--font-family-medium);
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.agent-run-map-attention.is-failed {
+  background: var(--error-base);
+  color: var(--background-primary);
+}
+
+.agent-run-map-attention.is-waiting {
+  background: var(--warning-base);
+  color: var(--text-primary);
+}
+
+.agent-run-map-attention.is-note {
+  background: color-mix(in srgb, var(--warning-base) 18%, transparent);
+  color: var(--warning-base);
+}
+
+.agent-run-map-documents {
+  padding: 1px 8px;
+  border: var(--border-thin) solid var(--secondary);
+  border-radius: 999px;
+  background: var(--background-primary);
+  color: var(--secondary);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-tiny);
+}
+
+.agent-run-map-documents:hover,
+.agent-run-map-documents:focus-visible {
+  background: var(--secondary);
+  color: var(--background-primary);
+  outline: none;
+}
+
+.agent-run-map-turn-body {
+  padding: 0 0 var(--padding-xs) 24px;
+}
+
+.agent-run-map .run-card {
+  max-height: none;
+  margin: 0;
+  padding: var(--padding-xs) 0 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}

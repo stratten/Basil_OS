@@ -18,7 +18,7 @@ extension AgentTaskResultEmbeddedHost {
             webView.sendCaptureStateChanged(
                 type: "followUp",
                 isCapturing: false,
-                wordsDetected: "Another AgentTask window is recording.",
+                wordsDetected: "Another task window is recording.",
                 audioLevel: 0,
                 silenceProgress: 0
             )

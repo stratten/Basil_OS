@@ -81,7 +81,7 @@ describe('AgentTaskStatusCard', () => {
   it('renders a running card with a spinner and no outcome', () => {
     render(<AgentTaskStatusCard {...baseProps()} message={message('running', { status_text: 'Agent task is working.' })} />);
 
-    expect(screen.getByRole('status', { name: 'Agent task in progress' })).toBeTruthy();
+    expect(screen.getByRole('status', { name: 'Paprika task in progress' })).toBeTruthy();
     expect(screen.getByText('Agent task is working.')).toBeTruthy();
     expect(document.querySelector('.chats-agent-task-icon.is-spinning')).toBeTruthy();
   });
@@ -157,7 +157,7 @@ describe('AgentTaskStatusCard', () => {
   it('renders no Files row for zero artifacts', () => {
     render(<AgentTaskStatusCard {...baseProps()} message={message('running', { activity_summary: activitySummary() })} />);
 
-    expect(screen.queryByLabelText('Agent task files')).toBeNull();
+    expect(screen.queryByLabelText('Paprika task files')).toBeNull();
   });
 
   it('suppresses a malformed raw activity summary while retaining the status card', () => {
@@ -166,7 +166,7 @@ describe('AgentTaskStatusCard', () => {
     })}
     />);
 
-    expect(screen.getByRole('status', { name: 'Agent task in progress' })).toBeTruthy();
+    expect(screen.getByRole('status', { name: 'Paprika task in progress' })).toBeTruthy();
     expect(screen.queryByText('Writing the requested report.')).toBeNull();
   });
 
@@ -174,7 +174,7 @@ describe('AgentTaskStatusCard', () => {
     const user = userEvent.setup();
     render(<AgentTaskStatusCard {...baseProps()} message={message('failed', { terminal_outcome: 'Agent task failed.' })} />);
 
-    await user.click(screen.getByRole('button', { name: 'Open Agent Task' }));
+    await user.click(screen.getByRole('button', { name: 'Open in Paprika' }));
 
     expect(bridgeMocks.openExistingAgentTaskWidget).toHaveBeenCalledWith('task-1');
   });
@@ -191,8 +191,8 @@ describe('AgentTaskStatusCard', () => {
       />,
     );
 
-    expect(screen.getByRole('alert', { name: 'Agent task needs your input' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Respond in Agent Task' })).toBeTruthy();
+    expect(screen.getByRole('alert', { name: 'Paprika task needs your input' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Respond in Paprika' })).toBeTruthy();
     expect(bridgeMocks.openExistingAgentTaskWidget).toHaveBeenCalledTimes(1);
     expect(bridgeMocks.openExistingAgentTaskWidget).toHaveBeenLastCalledWith('task-1');
 

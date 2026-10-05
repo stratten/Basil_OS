@@ -25,10 +25,10 @@ export const FullWidget = memo(function FullWidget({ state }: { state: Transcrip
     <div className="transcription-widget transcription-widget--full">
       <div className="transcription-widget__header">
         <div className="transcription-widget__header-left">
-          <button type="button" className="transcription-widget__icon-button transcription-widget__icon-button--close" title="Close" onClick={handleCloseClick}>
+          <button type="button" className="transcription-widget__icon-button transcription-widget__icon-button--close" aria-label="Close" onClick={handleCloseClick}>
             <TranscriptionSymbol name="close" size={18} />
           </button>
-          <button type="button" className="transcription-widget__icon-button" title="Minimize widget" onClick={() => toggleMinimizedState()}>
+          <button type="button" className="transcription-widget__icon-button" aria-label="Minimize widget" onClick={() => toggleMinimizedState()}>
             <TranscriptionSymbol name="minimize" size={13} />
           </button>
           <span className="transcription-widget__mic-icon"><TranscriptionSymbol name="micFill" size={16} /></span>

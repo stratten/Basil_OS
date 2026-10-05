@@ -1080,9 +1080,9 @@ describe('ChatsTab', () => {
       status_text: 'Agent task is working.',
     });
 
-    expect(await screen.findByRole('status', { name: 'Agent task in progress' })).toBeTruthy();
+    expect(await screen.findByRole('status', { name: 'Paprika task in progress' })).toBeTruthy();
     expect(screen.getByText('Agent task is working.')).toBeTruthy();
-    await userEvent.click(screen.getByRole('button', { name: 'Open Agent Task' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Open in Paprika' }));
     expect(mocks.openExistingAgentTaskWidget).toHaveBeenCalledWith('task-1');
 
     emit({
@@ -1095,7 +1095,7 @@ describe('ChatsTab', () => {
     });
 
     expect(await screen.findByText('Here is your plan.')).toBeTruthy();
-    expect(screen.getByRole('status', { name: 'Agent task in progress' })).toBeTruthy();
+    expect(screen.getByRole('status', { name: 'Paprika task in progress' })).toBeTruthy();
 
     emit({
       event_type: 'conversation_agent_status',
@@ -1133,7 +1133,7 @@ describe('ChatsTab', () => {
     render(<ChatsTab />);
     await selectConversation();
 
-    expect(await screen.findByRole('status', { name: 'Agent task in progress' })).toBeTruthy();
+    expect(await screen.findByRole('status', { name: 'Paprika task in progress' })).toBeTruthy();
 
     emit({
       event_type: 'conversation_agent_status',
@@ -1153,7 +1153,7 @@ describe('ChatsTab', () => {
       lifecycle: 'completed',
       terminal_outcome: 'Agent task completed.',
     });
-    expect(await screen.findByRole('status', { name: 'Agent task completed' })).toBeTruthy();
+    expect(await screen.findByRole('status', { name: 'Paprika task completed' })).toBeTruthy();
 
     emit({
       event_type: 'conversation_agent_status',
@@ -1164,7 +1164,7 @@ describe('ChatsTab', () => {
       status_text: 'Stale regression attempt.',
     });
     expect(screen.queryByText('Stale regression attempt.')).toBeNull();
-    expect(await screen.findByRole('status', { name: 'Agent task completed' })).toBeTruthy();
+    expect(await screen.findByRole('status', { name: 'Paprika task completed' })).toBeTruthy();
   });
 
   it('keeps an in-flight Agent Task card visible after navigating away and back through stale history', async () => {
@@ -1197,7 +1197,7 @@ describe('ChatsTab', () => {
     await selectConversation('Beta');
     await selectConversation('Alpha');
 
-    expect(await screen.findByRole('status', { name: 'Agent task in progress' })).toBeTruthy();
+    expect(await screen.findByRole('status', { name: 'Paprika task in progress' })).toBeTruthy();
     expect(screen.getByText('Agent task is working.')).toBeTruthy();
   });
 

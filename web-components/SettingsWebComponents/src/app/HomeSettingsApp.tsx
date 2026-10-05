@@ -202,9 +202,9 @@ export function HomeSettingsApp({ onNavigate }: HomeSettingsAppProps) {
               ? 'Starts the capture scheduler after Basil reconnects to its backend on your next launch.'
               : 'Enable Automatic Capture in Activity Capture settings before choosing a startup schedule.'}
           </p>
-          <Switch id="home-start-meeting-detection" label="Start Meeting Detection on launch" checked={f.startMeetingDetectionAtLaunch} disabled={!f.meetingDetectionAvailable} onChange={(checked) => handleToggle('startMeetingDetectionAtLaunch', checked)} />
+          <Switch id="home-start-meeting-detection" label="Start Meeting/Call Detection on launch" checked={f.startMeetingDetectionAtLaunch} disabled={!f.meetingDetectionAvailable} onChange={(checked) => handleToggle('startMeetingDetectionAtLaunch', checked)} />
           <p className="home-settings-hint">
-            Turning this on also enables Meeting Detection; it won't start the monitor until the next launch.
+            Turning this on also enables Meeting/Call Detection; it won't start the monitor until the next launch.
           </p>
         </section>
 
@@ -212,8 +212,8 @@ export function HomeSettingsApp({ onNavigate }: HomeSettingsAppProps) {
           <h2 id="home-features-heading">Active Features</h2>
           {!f.activityCaptureAvailable && <p className="home-settings-section-warning">Activity Capture status is temporarily unavailable.</p>}
           <Switch id="home-activity-capture-enabled" label="Activity Capture" checked={f.activityCaptureEnabled} disabled={!f.activityCaptureAvailable} onChange={(checked) => handleToggle('activityCaptureEnabled', checked)} />
-          {!f.meetingDetectionAvailable && <p className="home-settings-section-warning">Meeting Detection status is temporarily unavailable.</p>}
-          <Switch id="home-meeting-detection-enabled" label="Meeting Detection" checked={f.meetingDetectionEnabled} disabled={!f.meetingDetectionAvailable} onChange={(checked) => handleToggle('meetingDetectionEnabled', checked)} />
+          {!f.meetingDetectionAvailable && <p className="home-settings-section-warning">Meeting/Call Detection status is temporarily unavailable.</p>}
+          <Switch id="home-meeting-detection-enabled" label="Meeting/Call Detection" checked={f.meetingDetectionEnabled} disabled={!f.meetingDetectionAvailable} onChange={(checked) => handleToggle('meetingDetectionEnabled', checked)} />
           {!f.proactiveSuggestionsAvailable && <p className="home-settings-section-warning">Proactive Suggestions status is temporarily unavailable.</p>}
           <Switch id="home-proactive-suggestions-enabled" label="Proactive Suggestions" checked={f.proactiveSuggestionsEnabled} disabled={!f.proactiveSuggestionsAvailable} onChange={(checked) => handleToggle('proactiveSuggestionsEnabled', checked)} />
         </section>

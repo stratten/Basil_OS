@@ -263,7 +263,7 @@ async def handle_conversation_message(
                     placeholder_message_id=link.assistant_message_id,
                     agent_task_id=link.agent_task_id,
                     lifecycle=ConversationTurnLifecycle.PENDING,
-                    status_text="Preparing agent task",
+                    status_text="Preparing Paprika task",
                     terminal_outcome=None,
                     agent_status="pending",
                     narration_state="pending",

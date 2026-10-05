@@ -96,12 +96,12 @@ describe('InlineCapture', () => {
     );
   });
 
-  it('renders the follow-up/new-AgentTask/refinement labels unchanged (regression check)', () => {
+  it('renders the follow-up/new-task/refinement labels unchanged (regression check)', () => {
     render({ type: 'followUp', isCapturing: true, wordsDetected: '', audioLevel: 0, silenceProgress: 0 });
-    expect(container.textContent).toContain('Listening for follow-up AgentTask...');
+    expect(container.textContent).toContain('Listening for follow-up...');
 
     render({ type: 'newAgentTask', isCapturing: true, wordsDetected: '', audioLevel: 0, silenceProgress: 0 });
-    expect(container.textContent).toContain('Recording new AgentTask...');
+    expect(container.textContent).toContain('Recording new task...');
 
     render({ type: 'refinement', isCapturing: true, wordsDetected: '', audioLevel: 0, silenceProgress: 0 });
     expect(container.textContent).toContain('Recording refinement...');

@@ -185,11 +185,11 @@ extension SettingsShellWindowController {
         case .startActivityCaptureAtLaunch:
             return "Failed to update Activity Capture startup preference."
         case .startMeetingDetectionAtLaunch:
-            return "Failed to update Meeting Detection startup preference."
+            return "Failed to update Meeting/Call Detection startup preference."
         case .activityCaptureEnabled:
             return "Failed to update Activity Capture."
         case .meetingDetectionEnabled:
-            return "Failed to update Meeting Detection."
+            return "Failed to update Meeting/Call Detection."
         case .proactiveSuggestionsEnabled:
             return "Failed to update Proactive Suggestions."
         }

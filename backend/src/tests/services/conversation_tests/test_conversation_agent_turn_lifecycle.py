@@ -124,8 +124,8 @@ async def test_agent_task_completion_keeps_placeholder_empty_and_emits_status(
     lifecycle._get_agent_task.assert_awaited_once_with("task-1")
     assert repository.merge_message_metadata.await_args.args[1]["conversation_turn"] == {
         "lifecycle": "completed",
-        "status_text": "Agent task completed. Preparing a conversation response.",
-        "terminal_outcome": "Agent task completed.",
+        "status_text": "Paprika finished the task. Preparing a conversation response.",
+        "terminal_outcome": "Paprika finished the task.",
         "requires_user_attention": False,
         "attention_id": None,
         "narration": {"lifecycle": ConversationTurnNarrationLifecycle.READY.value},
@@ -136,8 +136,8 @@ async def test_agent_task_completion_keeps_placeholder_empty_and_emits_status(
         "placeholder_message_id": "assistant-1",
         "agent_task_id": "task-1",
         "lifecycle": "completed",
-        "status_text": "Agent task completed. Preparing a conversation response.",
-        "terminal_outcome": "Agent task completed.",
+        "status_text": "Paprika finished the task. Preparing a conversation response.",
+        "terminal_outcome": "Paprika finished the task.",
         "deep_link_id": "task-1",
         "requires_user_attention": False,
         "agent_status": "completed",
@@ -165,8 +165,8 @@ async def test_agent_task_completion_keeps_placeholder_content_empty(
     lifecycle._get_agent_task.assert_awaited_once_with("task-1")
     assert repository.merge_message_metadata.await_args.args[1]["conversation_turn"] == {
         "lifecycle": "completed",
-        "status_text": "Agent task completed. Preparing a conversation response.",
-        "terminal_outcome": "Agent task completed.",
+        "status_text": "Paprika finished the task. Preparing a conversation response.",
+        "terminal_outcome": "Paprika finished the task.",
         "requires_user_attention": False,
         "attention_id": None,
         "narration": {"lifecycle": ConversationTurnNarrationLifecycle.READY.value},
@@ -177,14 +177,14 @@ async def test_agent_task_completion_keeps_placeholder_content_empty(
 @pytest.mark.parametrize(
     ("status", "expected_lifecycle", "expected_outcome", "expected_status_text"),
     [
-        ("failed", "failed", "Agent task failed. Preparing a conversation response.", "Agent task failed. Preparing a conversation response."),
-        ("canceled", "canceled", "Agent task was canceled. Preparing a conversation response.", "Agent task was canceled. Preparing a conversation response."),
-        ("capturing", "running", None, "Agent task is gathering context."),
-        ("routing", "running", None, "Agent task is selecting an approach."),
-        ("routed", "running", None, "Agent task is ready to begin."),
-        ("processing", "running", None, "Agent task is working."),
-        ("awaiting_user_input", "running", None, "Agent task needs your input."),
-        ("needs_clarification", "running", None, "Agent task needs clarification."),
+        ("failed", "failed", "Paprika's task failed. Preparing a conversation response.", "Paprika's task failed. Preparing a conversation response."),
+        ("canceled", "canceled", "Paprika's task was canceled. Preparing a conversation response.", "Paprika's task was canceled. Preparing a conversation response."),
+        ("capturing", "running", None, "Paprika is gathering context."),
+        ("routing", "running", None, "Paprika is selecting an approach."),
+        ("routed", "running", None, "Paprika is ready to begin."),
+        ("processing", "running", None, "Paprika is working."),
+        ("awaiting_user_input", "running", None, "Paprika needs your input."),
+        ("needs_clarification", "running", None, "Paprika needs clarification."),
     ],
 )
 async def test_status_projection_maps_terminal_and_running_states(
@@ -255,13 +255,13 @@ async def test_clarification_event_projects_specific_running_status(
 
     assert repository.merge_message_metadata.await_args.args[1]["conversation_turn"] == {
         "lifecycle": "running",
-        "status_text": "Agent task received your clarification.",
+        "status_text": "Paprika received your clarification.",
         "terminal_outcome": None,
         "requires_user_attention": False,
         "attention_id": None,
     }
     assert broadcast.await_args.args[0]["agent_status"] == "clarification_added"
-    assert broadcast.await_args.args[0]["status_text"] == "Agent task received your clarification."
+    assert broadcast.await_args.args[0]["status_text"] == "Paprika received your clarification."
 
 
 @pytest.mark.asyncio
@@ -286,13 +286,13 @@ async def test_updated_event_projects_current_agent_status(
 
     assert repository.merge_message_metadata.await_args.args[1]["conversation_turn"] == {
         "lifecycle": "running",
-        "status_text": "Agent task is working.",
+        "status_text": "Paprika is working.",
         "terminal_outcome": None,
         "requires_user_attention": False,
         "attention_id": None,
     }
     assert broadcast.await_args.args[0]["agent_status"] == "processing"
-    assert broadcast.await_args.args[0]["status_text"] == "Agent task is working."
+    assert broadcast.await_args.args[0]["status_text"] == "Paprika is working."
 
 
 @pytest.mark.asyncio
@@ -310,7 +310,7 @@ async def test_submission_failure_marks_narration_ready(
 
     assert repository.merge_message_metadata.await_args.args[1]["conversation_turn"] == {
         "lifecycle": "failed",
-        "status_text": "Agent task failed. Preparing a conversation response.",
+        "status_text": "Paprika's task failed. Preparing a conversation response.",
         "terminal_outcome": "Submission unavailable.",
         "requires_user_attention": False,
         "attention_id": None,
@@ -363,7 +363,7 @@ async def test_duplicate_terminal_event_does_not_call_start_narration_again(
 ) -> None:
     repository.find_conversation_turn_by_agent_task_id.return_value["metadata"] = routed_metadata(
         lifecycle="completed",
-        terminal_outcome="Agent task completed.",
+        terminal_outcome="Paprika finished the task.",
         narration_lifecycle="ready",
     )
     started: list[str] = []
@@ -388,7 +388,7 @@ async def test_stale_terminal_event_does_not_call_start_narration(
 ) -> None:
     repository.find_conversation_turn_by_agent_task_id.return_value["metadata"] = routed_metadata(
         lifecycle="completed",
-        terminal_outcome="Agent task completed.",
+        terminal_outcome="Paprika finished the task.",
         narration_lifecycle="ready",
     )
     started: list[str] = []
@@ -785,7 +785,7 @@ async def test_activity_projection_ignores_malformed_task_source_after_status_pr
 async def test_activity_projection_rejects_a_terminal_regression() -> None:
     metadata = routed_metadata(
         lifecycle="completed",
-        terminal_outcome="Agent task completed.",
+        terminal_outcome="Paprika finished the task.",
         narration_lifecycle="ready",
     )
     repository = SimpleNamespace(
@@ -860,7 +860,7 @@ async def test_duplicate_projection_is_ignored_from_durable_metadata(
 ) -> None:
     repository.find_conversation_turn_by_agent_task_id.return_value["metadata"] = routed_metadata(
         lifecycle="completed",
-        terminal_outcome="Agent task completed.",
+        terminal_outcome="Paprika finished the task.",
         narration_lifecycle="ready",
     )
     broadcast = AsyncMock()
@@ -911,7 +911,7 @@ async def test_terminal_projection_does_not_regress_and_attempts_activity_repair
 ) -> None:
     repository.find_conversation_turn_by_agent_task_id.return_value["metadata"] = routed_metadata(
         lifecycle="completed",
-        terminal_outcome="Agent task completed.",
+        terminal_outcome="Paprika finished the task.",
     )
     lifecycle = ConversationAgentTurnLifecycle(
         repository=repository,
@@ -997,7 +997,7 @@ async def test_duplicate_terminal_event_retains_runtime_agent_task_mapping(
 ) -> None:
     repository.find_conversation_turn_by_agent_task_id.return_value["metadata"] = routed_metadata(
         lifecycle="completed",
-        terminal_outcome="Agent task completed.",
+        terminal_outcome="Paprika finished the task.",
         narration_lifecycle="ready",
     )
     released: list[str] = []

@@ -8,9 +8,11 @@ import { canRequestInlinePreview, InlineArtifactPreview } from './artifacts/Inli
 import { ArtifactPreviewActionBar } from './artifacts/ArtifactPreviewActionBar';
 import { ArtifactReviewDocumentTabs, ArtifactReviewWorkspace } from './artifacts/ArtifactReviewWorkspace';
 import type { DerivedAgentTaskArtifact, DerivedAgentTaskArtifacts } from './artifacts/artifactDerivation';
-import type { AgentRunOverviewPresentation, AgentRunPresentation, AgentRunStage } from './run/agentRunPresentation';
+import type { AgentRunOverviewPresentation, AgentRunPresentation } from './run/agentRunPresentation';
 import { deriveAgentRunOverviewPresentation, deriveAgentRunPresentation } from './run/agentRunPresentation';
-import { AgentRunHistoryTray } from './run/AgentRunHistoryTray';
+import { AgentRunMap } from './run/AgentRunMap';
+import { RunCard, RunStageGlyph } from './run/RunCard';
+import { navigationTargetForStage, type RunNavigationTarget } from './run/runNavigation';
 import type { AgentTaskRunFocusSummary } from './run/agentTaskRunFocus';
 import NativeSymbolIcon, { type NativeSymbolName } from '../../../shared/NativeSymbolIcon';
 import { agentTaskArtifactPreviewTransport } from '../services/bridge';
@@ -66,7 +68,13 @@ interface Props {
   onClosePreview: () => void;
   onCloseRunPanel: () => void;
   runs: AgentTaskRunFocusSummary[];
-  onFocusRun: (runId: string) => void;
+  currentRunId: string;
+  locationRunId: string;
+  peekedRunIds: string[];
+  onNavigateRun: (runId: string, target: RunNavigationTarget) => void;
+  onTogglePeekRun: (runId: string) => void;
+  onOpenRunDocuments: (runId: string) => void;
+  onJumpToLatestRun: () => void;
 }
 
 function formatDetailKind(kind?: string): string {
@@ -99,22 +107,6 @@ function ArtifactDetail({ artifact, onPreviewArtifact }: {
   );
 }
 
-function RunStageGlyph({ stage }: { stage: Pick<AgentRunStage, 'kind' | 'state'> }) {
-  if (stage.state === 'failed') {
-    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" /></svg>;
-  }
-  if (stage.kind === 'artifact') {
-    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h8l4 4v13H6zM14 3.5v5h4" /></svg>;
-  }
-  if (stage.state === 'completed') {
-    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4.2 4.2L19 7.5" /></svg>;
-  }
-  if (stage.kind === 'tool') {
-    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16" /></svg>;
-  }
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7" /><path d="M12 8v4l2.5 2.5" /></svg>;
-}
-
 function PreviewActionIcon({ action }: { action: 'open-file' | 'show-in-folder' | 'open-preview-window' | 'open-local-web-preview' | 'open-local-web-preview-server' | 'close-preview' | 'collapse-panel' }) {
   if (action === 'open-file') {
     return <RunStageGlyph stage={{ kind: 'artifact', state: 'completed' }} />;
@@ -136,59 +128,6 @@ function PreviewActionIcon({ action }: { action: 'open-file' | 'show-in-folder' 
   // component where the larger default size is actually wanted.
   const size = symbolName === 'close' || symbolName === 'collapse' ? 14 : undefined;
   return <NativeSymbolIcon name={symbolName} className="tray-artifact-preview-symbol" size={size} />;
-}
-
-function RunCard({
-  artifacts,
-  presentation,
-  isProcessing,
-  onPreviewArtifact,
-}: {
-  artifacts: DerivedAgentTaskArtifacts;
-  presentation: AgentRunOverviewPresentation;
-  isProcessing: boolean;
-  onPreviewArtifact: (artifactId: string) => void;
-}) {
-  const terminalStateLabel = isProcessing
-    ? 'Working now'
-    : presentation.terminalState === 'completed'
-      ? 'Ready for review'
-      : 'Needs attention';
-
-  return (
-    <section className="run-card" aria-label="Run overview">
-      {presentation.stages.length > 0 ? (
-        <ol className="run-card-stages">
-          {presentation.stages.map(stage => (
-            <li className={`run-card-stage run-card-stage--${stage.kind} is-${stage.state}`} key={stage.id}>
-              <span className="run-card-stage-glyph" aria-hidden="true"><RunStageGlyph stage={stage} /></span>
-              <span className="run-card-stage-label">{stage.label}</span>
-              {stage.kind === 'outcome' ? (
-                <span className="run-card-stage-evidence">{terminalStateLabel}</span>
-              ) : stage.artifactCount > 0 ? (
-                <span className="run-card-stage-evidence">{stage.artifactCount} document{stage.artifactCount === 1 ? '' : 's'}</span>
-              ) : null}
-            </li>
-          ))}
-        </ol>
-      ) : (
-        <p className="run-card-empty">{isProcessing ? 'Waiting for the first meaningful stage.' : 'No high-level stages were recorded.'}</p>
-      )}
-      {artifacts.produced.length > 0 && (
-        <div className="run-card-artifacts" aria-label="Created documents">
-          {artifacts.produced.map(artifact => (
-            <button className="run-card-artifact" type="button" key={artifact.artifactId} onClick={() => onPreviewArtifact(artifact.artifactId)} aria-label={`Preview ${artifact.displayName}`}>
-              <RunStageGlyph stage={{ kind: 'artifact', state: 'completed' }} />
-              <span>{artifact.displayName}</span>
-              {artifact.review && artifact.review.revisionCount > 1 && (
-                <span className="run-card-artifact-badge">v{artifact.review.revisionCount}</span>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-    </section>
-  );
 }
 
 function renderMetadata(metadata?: Record<string, unknown>) {
@@ -408,7 +347,13 @@ export default function ExecutionDetailTray({
   onClosePreview,
   onCloseRunPanel,
   runs,
-  onFocusRun,
+  currentRunId,
+  locationRunId,
+  peekedRunIds,
+  onNavigateRun,
+  onTogglePeekRun,
+  onOpenRunDocuments,
+  onJumpToLatestRun,
 }: Props) {
   const [showRaw, setShowRaw] = useState(false);
   const formatted = useMemo(
@@ -535,6 +480,9 @@ export default function ExecutionDetailTray({
     });
     onCloseRunPanel();
   };
+  const focusedOverviewPresentation = overviewPresentation || deriveAgentRunOverviewPresentation(
+    runPresentation || deriveAgentRunPresentation(timeline, terminalStatus, isProcessing),
+  );
   return (
     <aside
       className={`execution-detail-tray${isRunPanel ? ' execution-detail-tray--run-panel' : ''}${previewArtifact ? ' execution-detail-tray--preview' : !detail ? ' execution-detail-tray--run-card' : ''}${isResizing ? ' execution-detail-tray--resizing' : ''}`}
@@ -686,22 +634,30 @@ export default function ExecutionDetailTray({
             </>
           )}
         </div>
+      ) : runs.length > 1 ? (
+        <AgentRunMap
+          runs={runs}
+          focusedRunId={focusedRunId}
+          locationRunId={locationRunId}
+          currentRunId={currentRunId}
+          peekedRunIds={peekedRunIds}
+          focusedPresentation={focusedOverviewPresentation}
+          focusedIsProcessing={runs.find(run => run.id === focusedRunId)?.isProcessing ?? isProcessing}
+          artifacts={artifacts}
+          onPreviewArtifact={onPreviewArtifact}
+          onNavigateRun={onNavigateRun}
+          onTogglePeekRun={onTogglePeekRun}
+          onOpenRunDocuments={onOpenRunDocuments}
+          onJumpToLatestRun={onJumpToLatestRun}
+        />
       ) : (
-        <>
-          <AgentRunHistoryTray
-            runs={runs}
-            focusedRunId={focusedRunId}
-            onSelect={onFocusRun}
-          />
-          <RunCard
-            artifacts={artifacts}
-            presentation={overviewPresentation || deriveAgentRunOverviewPresentation(
-              runPresentation || deriveAgentRunPresentation(timeline, terminalStatus, isProcessing),
-            )}
-            isProcessing={isProcessing}
-            onPreviewArtifact={onPreviewArtifact}
-          />
-        </>
+        <RunCard
+          artifacts={artifacts}
+          presentation={focusedOverviewPresentation}
+          isProcessing={isProcessing}
+          onPreviewArtifact={onPreviewArtifact}
+          onSelectStage={stage => onNavigateRun(focusedRunId, navigationTargetForStage(stage))}
+        />
       )}
     </aside>
   );

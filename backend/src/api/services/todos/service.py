@@ -212,7 +212,7 @@ class TodoService:
         active_origin_task = root_status_by_id.get(todo_id, {}).get("is_active") is True
         if active_workers or active_origin_task:
             raise TodoTransitionError(
-                "Cannot delete while an originating Agent Task or its follow-up is active.",
+                "Cannot delete while an originating Paprika task or its follow-up is active.",
                 detail=detail,
             )
         try:
@@ -232,7 +232,7 @@ class TodoService:
         active_workers = await self.agent_task_service.list_agent_tasks_by_origin("todo", todo_id, False)
         if active_workers:
             raise TodoTransitionError(
-                "Cannot complete while a directly sourced Agent Task is active.", detail=detail,
+                "Cannot complete while a directly sourced Paprika task is active.", detail=detail,
             )
         return await self._transition(
             todo_id,
@@ -357,7 +357,7 @@ class TodoService:
             raise TodoTransitionError(result.get("error", "To-Do worker submission failed"), detail=detail)
         agent_task_id = result.get("agent_task_id")
         if not isinstance(agent_task_id, str) or not agent_task_id.strip():
-            raise TodoTransitionError("To-Do worker submission did not return an Agent Task id.", detail=detail)
+            raise TodoTransitionError("To-Do worker submission did not return a Paprika task ID.", detail=detail)
         return TodoWorkerLaunchResponse(
             item=await self.get_item_detail(todo_id),
             agent_task_id=agent_task_id,

@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Reasoning Settings Helpers
 extension APIClient {
-    private static let defaultCloudReasoningModel = "claude-sonnet-4-5-20250929"
+    private static let defaultCloudReasoningModel = "claude-sonnet-5-5"
     
     /// Internal struct for decoding model settings response
     private struct ModelSettingsResponse: Codable {

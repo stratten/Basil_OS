@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ProgressStep, StepDetailEntry, TimelineEntry } from '../../types';
 import ExecutionDisclosureChevron from '@shared/ExecutionDisclosureChevron';
+import { plainMarkdownText } from '@shared/plainMarkdownText';
 import { normalizeProgressStepText } from './progressStepText';
 import { conciseExecutionStepText, selectActivityTrail } from './activityPresentation';
 import {
@@ -302,9 +303,10 @@ function TimelineEntryRow({
   const displayContent = conciseExecutionStepText(entry.content, detail);
 
   if (isThinking) {
-    const preview = normalizedContent.length > 120
-      ? normalizedContent.slice(0, 120) + '…'
-      : normalizedContent;
+    const plainContent = plainMarkdownText(normalizedContent);
+    const preview = plainContent.length > 120
+      ? plainContent.slice(0, 120) + '…'
+      : plainContent;
     return (
       <button
         type="button"

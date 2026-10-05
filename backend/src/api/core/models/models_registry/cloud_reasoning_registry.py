@@ -379,6 +379,42 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
         "api_endpoint": "responses",
         "openrouter_id": "openai/gpt-6-astra",
         "description": "OpenAI's most capable model for the hardest reasoning, coding, research, and agentic work",
+        "display_order": -9,
+        "default_enabled": False,
+        "recommended": False,
+        "supports_openrouter_proxy": True,
+    },
+    # GPT-6.1 Sol rejects the `none` reasoning effort and needs the Responses API for tool calls.
+    "gpt-6.1-sol": {
+        "handler": "openai_api",
+        "location": "cloud",
+        "provider": PROVIDER_OPENAI,
+        "display_name": "GPT-6.1 Sol",
+        "capabilities": ["reasoning", "vision"],
+        "features": [
+            "reasoning_effort",
+            "function_calling",
+            "streaming",
+            "structured_outputs",
+            "web_search",
+            "code_interpreter",
+            "file_search",
+            "mcp",
+        ],
+        "feature_config": {
+            "reasoning_effort": {
+                "levels": ["low", "medium", "high", "xhigh", "max"],
+                "default": "medium",
+            },
+            "request_parameters": {
+                "omit": ["temperature", "top_p"],
+            },
+        },
+        "context_window": 1050000,
+        "max_output_tokens": 128000,
+        "api_endpoint": "responses",
+        "openrouter_id": "openai/gpt-6.1-sol",
+        "description": "Near-Astra performance at a lower cost for complex coding, computer use, and professional work",
         "display_order": -8,
         "default_enabled": False,
         "recommended": False,
@@ -654,7 +690,7 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
             "streaming",
             "structured_outputs",
         ],
-        "context_window": 1000000,
+        "context_window": 1047576,
         "max_output_tokens": 32768,
         "openrouter_id": "openai/gpt-4.1",
         "description": "GPT-4.1 with 1M context window for long documents",
@@ -674,7 +710,7 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
             "streaming",
             "structured_outputs",
         ],
-        "context_window": 1000000,
+        "context_window": 1047576,
         "max_output_tokens": 32768,
         "openrouter_id": "openai/gpt-4.1-2025-04-14",
         "description": "GPT-4.1 dated snapshot for reproducibility",
@@ -694,8 +730,8 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
             "streaming",
             "structured_outputs",
         ],
-        "context_window": 1000000,
-        "max_output_tokens": 16384,
+        "context_window": 1047576,
+        "max_output_tokens": 32768,
         "openrouter_id": "openai/gpt-4.1-mini",
         "description": "Compact GPT-4.1 for cost-effective long context tasks",
         "display_order": 12,
@@ -714,8 +750,8 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
             "streaming",
             "structured_outputs",
         ],
-        "context_window": 1000000,
-        "max_output_tokens": 8192,
+        "context_window": 1047576,
+        "max_output_tokens": 32768,
         "openrouter_id": "openai/gpt-4.1-nano",
         "description": "Ultra-compact GPT-4.1 for simple tasks",
         "display_order": 13,
@@ -806,8 +842,8 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
             "streaming",
             "structured_outputs",
         ],
-        "context_window": 1000000,
-        "max_output_tokens": 8192,
+        "context_window": 1048576,
+        "max_output_tokens": 65536,
         "openrouter_id": "google/gemini-3.1-pro-preview",
         "description": "Advanced intelligence with complex problem-solving and agentic capabilities",
         "display_order": 0,
@@ -1027,8 +1063,8 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
             "streaming",
             "structured_outputs",
         ],
-        "context_window": 1000000,
-        "max_output_tokens": 8192,
+        "context_window": 1048576,
+        "max_output_tokens": 65536,
         "openrouter_id": "google/gemini-2.5-pro",
         "description": "Stable Gemini 2.5 with improved reasoning",
         "display_order": 2,
@@ -1047,8 +1083,8 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
             "streaming",
             "api_key_validation",  # Used for Google API key validation.
         ],
-        "context_window": 1000000,
-        "max_output_tokens": 8192,
+        "context_window": 1048576,
+        "max_output_tokens": 65535,
         "openrouter_id": "google/gemini-2.5-flash",
         "description": "Fast and cost-effective Gemini model",
         "display_order": 3,
@@ -1065,6 +1101,43 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
     # `thinking.type` "disabled"/"enabled" plus forced `tool_choice` (any/tool).
     # Ref: https://platform.claude.com/docs/en/about-claude/models/overview
     # -------------------------------------------------------------------------
+    "claude-sonnet-5-5": {
+        "handler": "anthropic_api",
+        "location": "cloud",
+        "provider": PROVIDER_ANTHROPIC,
+        "display_name": "Claude Sonnet 5.5",
+        "capabilities": ["reasoning", "vision"],
+        "features": [
+            "web_search",
+            "adaptive_thinking",
+            "function_calling",
+            "streaming",
+            "system_prompts",
+        ],
+        "feature_config": {
+            "adaptive_thinking": {
+                "type": "adaptive",
+                "effort_levels": ["low", "medium", "high", "xhigh", "max"],
+                "default_effort": "high",
+                # Request provider summaries for Basil's reasoning UI; empty signed adaptive-thinking blocks remain valid and adapter-normalized.
+                "default_display": "summarized",
+            },
+            "request_parameters": {
+                "omit": ["temperature", "top_p", "top_k"],
+            },
+        },
+        "context_window": 1000000,
+        "max_output_tokens": 128000,
+        "openrouter_id": "anthropic/claude-sonnet-5.5",
+        "description": "Latest Claude Sonnet model for coding, agent workflows, and everyday knowledge work",
+        "display_order": -9,
+        "default_enabled": True,
+        "recommended": True,
+        "recommended_reason": "Recommended for standard use",
+        "recommended_for_onboarding": True,
+        "used_by_setup_agent": True,
+        "supports_openrouter_proxy": True,
+    },
     "claude-opus-5-5": {
         "handler": "anthropic_api",
         "location": "cloud",
@@ -1229,7 +1302,6 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
         "display_order": -5,
         "default_enabled": False,
         "recommended": False,
-        "recommended_for_onboarding": True,
         "supports_openrouter_proxy": True,
     },
     "claude-opus-4-8": {
@@ -1325,14 +1397,13 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
                 "speed_multiplier": 2.5,
             },
         },
-        "context_window": 200000,  # 1M available in beta
-        "max_output_tokens": 128000,  # Doubled from 64K
+        "context_window": 1000000,
+        "max_output_tokens": 128000,
         "openrouter_id": "anthropic/claude-opus-4.6",
-        "description": "Most intelligent Claude model for building agents and coding with adaptive thinking and 128K output",
-        "display_order": 0,  # Highest priority - newest flagship model
+        "description": "Opus-tier Claude model for building agents and coding with adaptive thinking and 128K output",
+        "display_order": 0,
         "default_enabled": False,
-        "recommended": True,
-        "recommended_reason": "Latest flagship model with adaptive thinking",
+        "recommended": False,
         "supports_openrouter_proxy": True,
     },
     "claude-sonnet-4-6": {
@@ -1355,7 +1426,7 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
             }
         },
         "context_window": 1000000,
-        "max_output_tokens": 64000,
+        "max_output_tokens": 128000,
         "openrouter_id": "anthropic/claude-sonnet-4.6",
         "description": "Latest Claude Sonnet model with expanded context for coding and agent workflows",
         "display_order": -1,
@@ -1395,7 +1466,6 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
     },
     # -------------------------------------------------------------------------
     # MIGRATED MODEL: Claude Sonnet 4.5 (previously in claude_model.py).
-    # This is the recommended default model for standard use.
     # -------------------------------------------------------------------------
     "claude-sonnet-4-5-20250929": {
         "handler": "anthropic_api",
@@ -1422,9 +1492,7 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
         "description": "Latest Claude Sonnet with exceptional coding and agent capabilities, can operate autonomously for extended periods",
         "display_order": 2,
         "default_enabled": True,
-        "recommended": True,
-        "recommended_reason": "Recommended for standard use",
-        "used_by_setup_agent": True,
+        "recommended": False,
         "supports_openrouter_proxy": True,
     },
     # -------------------------------------------------------------------------
@@ -1443,67 +1511,10 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
             "api_key_validation",  # Used for Anthropic API key validation.
         ],
         "context_window": 200000,
-        "max_output_tokens": 65536,
+        "max_output_tokens": 64000,
         "openrouter_id": "anthropic/claude-haiku-4.5",
         "description": "Fast and cost-efficient Claude model for high-volume tasks",
         "display_order": 3,
-        "default_enabled": False,
-        "recommended": False,
-        "supports_openrouter_proxy": True,
-    },
-    # -------------------------------------------------------------------------
-    # Claude 4 models (previous generation).
-    # -------------------------------------------------------------------------
-    "claude-opus-4-20250514": {
-        "handler": "anthropic_api",
-        "location": "cloud",
-        "provider": PROVIDER_ANTHROPIC,
-        "display_name": "Claude 4 Opus",
-        "capabilities": ["reasoning", "vision"],
-        "features": [
-            "extended_thinking",
-            "function_calling",
-            "streaming",
-            "system_prompts",
-        ],
-        "feature_config": {
-            "extended_thinking": {
-                "budget": 32000,
-                "max_output_tokens_with_thinking": 64000,
-            }
-        },
-        "context_window": 200000,
-        "max_output_tokens": 64000,
-        "openrouter_id": "anthropic/claude-opus-4",
-        "description": "Most powerful Claude 4 model with superior reasoning",
-        "display_order": 10,
-        "default_enabled": False,
-        "recommended": False,
-        "supports_openrouter_proxy": True,
-    },
-    "claude-sonnet-4-20250514": {
-        "handler": "anthropic_api",
-        "location": "cloud",
-        "provider": PROVIDER_ANTHROPIC,
-        "display_name": "Claude 4 Sonnet",
-        "capabilities": ["reasoning", "vision"],
-        "features": [
-            "extended_thinking",
-            "function_calling",
-            "streaming",
-            "system_prompts",
-        ],
-        "feature_config": {
-            "extended_thinking": {
-                "budget": 16000,
-                "max_output_tokens_with_thinking": 32000,
-            }
-        },
-        "context_window": 200000,
-        "max_output_tokens": 32000,
-        "openrouter_id": "anthropic/claude-sonnet-4",
-        "description": "Balanced Claude 4 model for everyday tasks",
-        "display_order": 11,
         "default_enabled": False,
         "recommended": False,
         "supports_openrouter_proxy": True,

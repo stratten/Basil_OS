@@ -23,11 +23,11 @@ export default function MeetingsTab() {
   if (availability === 'separate_window') {
     return (
       <div className="home-unavailable-state basil-board-detached-placeholder" role="status">
-        <p>Meeting Assistant is open in a separate window.</p>
-        <p>Close that window to view Meetings here.</p>
+        <p>Notetaker is open in a separate window.</p>
+        <p>Close that window to view Notetaker here.</p>
       </div>
     );
   }
 
-  return <div className="meetings-embedded-spacer" aria-label="Meetings" />;
+  return <div className="meetings-embedded-spacer" aria-label="Notetaker" />;
 }

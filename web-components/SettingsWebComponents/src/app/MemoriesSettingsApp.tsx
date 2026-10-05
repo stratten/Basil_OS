@@ -15,7 +15,7 @@ import {
 } from '../services/memoriesSettingsBridge'
 
 const SOURCE_OPTIONS: readonly { kind: string; label: string }[] = [
-  { kind: 'agent_task', label: 'Agent tasks' },
+  { kind: 'agent_task', label: 'Paprika tasks' },
   { kind: 'transcription', label: 'Transcriptions' },
   { kind: 'assistant_output', label: 'Assistant outputs' },
   { kind: 'scheduled_run', label: 'Scheduled runs' },
@@ -342,7 +342,7 @@ export function MemoriesSettingsApp() {
       <section className="memories-card" aria-labelledby="memories-summaries-heading">
         <h3 id="memories-summaries-heading">Summaries</h3>
         <Switch id="memories-summarize-automatically" label="Summarize automatically" checked={current.narrativeEnabled} onChange={(checked) => updateSettings({ ...current, narrativeEnabled: checked })} />
-        <p className="memories-hint">A model writes a short summary of each item — what an agent task accomplished, what a conversation covered, and so on.</p>
+        <p className="memories-hint">A model writes a short summary of each item — what a Paprika task accomplished, what a conversation covered, and so on.</p>
         {current.narrativeEnabled && (
           <div className="memories-subcard">
             <label className="memories-field-row">

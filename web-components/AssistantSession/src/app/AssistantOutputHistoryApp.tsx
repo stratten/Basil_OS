@@ -7,6 +7,7 @@ import { HistorySidebar, type HistoryModalityFilter } from '../components/histor
 import { HistoryDetail } from '../components/history/HistoryDetail';
 import { applyAssistantSessionTheme } from './themeCssVars';
 import { plainMarkdownText } from '@shared/plainMarkdownText';
+import { BASIL_TEAM } from '@shared/teamIdentity';
 import type { AssistantSessionThemePayload } from '../bridge/types';
 
 export function AssistantOutputHistoryApp() {
@@ -155,14 +156,14 @@ export function AssistantOutputHistoryApp() {
       <div className="assistant-output-history-shell basil-webkit-window-surface">
         <div className="assistant-output-history-shell__titlebar">
           <div className="assistant-output-history-shell__titlebar-actions">
-            <button type="button" onClick={closeWindow} title="Close" aria-label="Close">
+            <button type="button" onClick={closeWindow} aria-label="Close">
               <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
                 <circle cx="11" cy="11" r="10" fill="color-mix(in srgb, var(--secondary, #4c7bf0) 15%, transparent)" />
                 <line x1="7.5" y1="7.5" x2="14.5" y2="14.5" stroke="var(--secondary, #4c7bf0)" strokeWidth="1.6" strokeLinecap="round" />
                 <line x1="14.5" y1="7.5" x2="7.5" y2="14.5" stroke="var(--secondary, #4c7bf0)" strokeWidth="1.6" strokeLinecap="round" />
               </svg>
             </button>
-            <button type="button" onClick={minimizeWindow} title="Minimize" aria-label="Minimize">
+            <button type="button" onClick={minimizeWindow} aria-label="Minimize">
               <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
                 <circle cx="11" cy="11" r="10" fill="color-mix(in srgb, var(--secondary, #4c7bf0) 15%, transparent)" />
                 <line x1="6.5" y1="11" x2="15.5" y2="11" stroke="var(--secondary, #4c7bf0)" strokeWidth="1.6" strokeLinecap="round" />
@@ -170,7 +171,6 @@ export function AssistantOutputHistoryApp() {
             </button>
             <button
               type="button"
-              title={chromeCollapsed ? 'Expand history' : 'Collapse history'}
               aria-label={chromeCollapsed ? 'Expand history' : 'Collapse history'}
               aria-pressed={chromeCollapsed}
               onClick={() => {
@@ -203,7 +203,7 @@ export function AssistantOutputHistoryApp() {
             src={new URL('../../../shared/assets/native-symbols/dill-icon.png', import.meta.url).href}
             alt=""
           />
-          <span>Dill - Assistant History</span>
+          <span>{BASIL_TEAM.assistantSession.pairedName} History</span>
         </div>
         {!chromeCollapsed && (
           <div className="assistant-output-history-shell__body">
@@ -246,7 +246,7 @@ export function AssistantOutputHistoryApp() {
         <PresenceRegion visible={pendingDelete !== null} className="assistant-output-history-shell__confirm basil-presence--modal" settleWithoutTransition>
           {pendingDelete && (
             <>
-              <p>Are you sure you want to delete &quot;{plainMarkdownText(pendingDelete.title) || 'Untitled AssistantSession Output'}&quot;?</p>
+              <p>Are you sure you want to delete &quot;{plainMarkdownText(pendingDelete.title) || 'Untitled output'}&quot;?</p>
               <button type="button" onClick={() => setPendingDelete(null)}>Cancel</button>
               <button type="button" onClick={() => { void removeEntry(pendingDelete.id); }}>Delete</button>
             </>

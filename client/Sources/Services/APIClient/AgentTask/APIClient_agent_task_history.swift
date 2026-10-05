@@ -204,7 +204,7 @@ extension APIClient {
         let response = try await delete(endpoint)
         
         let success = response.status == "success" || response.status == "deleted"
-        let message = response.details ?? "AgentTask deleted"
+        let message = response.details ?? "Task deleted"
         
         #if DEBUG
         DevLogger.shared.info("✅ AgentTask deleted: \(message)", context: "APIClient")

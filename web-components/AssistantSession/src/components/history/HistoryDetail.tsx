@@ -89,7 +89,7 @@ export function HistoryDetail({
   if (loading) {
     return (
       <div className="assistant-output-history-detail assistant-output-history-detail--empty">
-        Loading AssistantSession output...
+        Loading output...
       </div>
     );
   }
@@ -97,7 +97,7 @@ export function HistoryDetail({
   if (!entry) {
     return (
       <div className="assistant-output-history-detail assistant-output-history-detail--empty">
-        Select a AssistantSession output to view details
+        Select an output to view details
       </div>
     );
   }
@@ -111,7 +111,7 @@ export function HistoryDetail({
     : savedSample.content === sampleContent ? 'saved' : 'changed';
   const outputLabel = entry.refinements.length > 0
     ? `Latest (Refinement #${entry.refinements.length})`
-    : 'AssistantSession Output';
+    : 'Output';
 
   const flash = (kind: 'richText' | 'markdown') => {
     setCopiedKind(kind);
@@ -212,7 +212,7 @@ export function HistoryDetail({
         )}
       </div>
       {entry.refinements.length > 0 && (
-        <CollapsibleSection title="Original AssistantSession Output">
+        <CollapsibleSection title="Original output">
           <MarkdownView content={stripThinking(entry.outputText)} />
         </CollapsibleSection>
       )}

@@ -113,8 +113,8 @@ describe('Header collapsed status', () => {
   it('hides close and minimize controls when hideWindowControls is true', () => {
     const markup = renderHeader({ hideWindowControls: true });
 
-    expect(markup).not.toContain('title="Close"');
-    expect(markup).not.toContain('title="Minimize"');
+    expect(markup).not.toContain('aria-label="Close"');
+    expect(markup).not.toContain('aria-label="Minimize"');
     expect(markup).toContain('header-team-icon');
     expect(markup).toContain('header-bubble');
   });
@@ -133,8 +133,8 @@ describe('Header collapsed status', () => {
     expect(markup).toContain('>Stop</button>');
     expect(markup).not.toContain('header-stop-icon');
     expect(markup).not.toContain('header-bubble');
-    expect(markup).not.toContain('title="Close"');
-    expect(markup).not.toContain('title="Minimize"');
+    expect(markup).not.toContain('aria-label="Close"');
+    expect(markup).not.toContain('aria-label="Minimize"');
     expect(markup).not.toContain('header-team-icon');
     expect(markup).not.toContain('Open in a separate window');
   });

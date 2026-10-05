@@ -22,33 +22,33 @@ extension SettingsShellWindowController {
             self?.performReasoningDefaultsUpdate(requestId: requestId, apply: { await $0.updateUseRegionSelection(enabled) }, isSuccessful: { $0.useRegionSelection == enabled }, failureMessage: "Failed to update the region-selection setting.")
         }
         webView.onRequestUpdateAgentTaskDefaultModality = { [weak self] requestId, modality in
-            self?.performReasoningDefaultsUpdate(requestId: requestId, apply: { await $0.updateAgentTaskDefaultModality(modality) }, isSuccessful: { $0.agentTaskDefaultModality == modality }, failureMessage: "Failed to update the AgentTask default input mode.")
+            self?.performReasoningDefaultsUpdate(requestId: requestId, apply: { await $0.updateAgentTaskDefaultModality(modality) }, isSuccessful: { $0.agentTaskDefaultModality == modality }, failureMessage: "Failed to update the Paprika default input mode.")
         }
         webView.onRequestUpdateAgentTaskAutoReopenOnCompletion = { [weak self] requestId, enabled in
             self?.performReasoningDefaultsUpdate(requestId: requestId, apply: { await $0.updateAgentTaskAutoReopenOnCompletion(enabled) }, isSuccessful: { $0.agentTaskAutoReopenOnCompletion == enabled }, failureMessage: "Failed to update the auto-reopen setting.")
         }
         webView.onRequestUpdateAgentTaskPushToTalk = { [weak self] requestId, enabled in
-            self?.performReasoningDefaultsUpdate(requestId: requestId, apply: { await $0.updateAgentTaskPushToTalk(enabled) }, isSuccessful: { $0.agentTaskPushToTalk == enabled }, failureMessage: "Failed to update AgentTask push-to-talk.")
+            self?.performReasoningDefaultsUpdate(requestId: requestId, apply: { await $0.updateAgentTaskPushToTalk(enabled) }, isSuccessful: { $0.agentTaskPushToTalk == enabled }, failureMessage: "Failed to update Paprika push-to-talk.")
         }
         webView.onRequestUpdateAgentTaskPushToTalkThreshold = { [weak self] requestId, thresholdMs in
             guard (500...5000).contains(thresholdMs) else {
                 self?.rejectReasoningDefaultsRequest(requestId: requestId, message: "Push-to-talk thresholds must be between 500 and 5000 milliseconds.")
                 return
             }
-            self?.performReasoningDefaultsUpdate(requestId: requestId, apply: { await $0.updateAgentTaskPushToTalkThreshold(thresholdMs) }, isSuccessful: { $0.agentTaskPushToTalkThreshold == thresholdMs }, failureMessage: "Failed to update the AgentTask push-to-talk threshold.")
+            self?.performReasoningDefaultsUpdate(requestId: requestId, apply: { await $0.updateAgentTaskPushToTalkThreshold(thresholdMs) }, isSuccessful: { $0.agentTaskPushToTalkThreshold == thresholdMs }, failureMessage: "Failed to update the Paprika push-to-talk threshold.")
         }
         webView.onRequestUpdateAssistantSessionDefaultModality = { [weak self] requestId, modality in
-            self?.performReasoningDefaultsUpdate(requestId: requestId, apply: { await $0.updateAssistantSessionDefaultModality(modality) }, isSuccessful: { $0.assistantSessionDefaultModality == modality }, failureMessage: "Failed to update the AssistantSession default input mode.")
+            self?.performReasoningDefaultsUpdate(requestId: requestId, apply: { await $0.updateAssistantSessionDefaultModality(modality) }, isSuccessful: { $0.assistantSessionDefaultModality == modality }, failureMessage: "Failed to update the Dill default input mode.")
         }
         webView.onRequestUpdateAssistantSessionPushToTalk = { [weak self] requestId, enabled in
-            self?.performReasoningDefaultsUpdate(requestId: requestId, apply: { await $0.updateAssistantSessionPushToTalk(enabled) }, isSuccessful: { $0.assistantSessionPushToTalk == enabled }, failureMessage: "Failed to update AssistantSession push-to-talk.")
+            self?.performReasoningDefaultsUpdate(requestId: requestId, apply: { await $0.updateAssistantSessionPushToTalk(enabled) }, isSuccessful: { $0.assistantSessionPushToTalk == enabled }, failureMessage: "Failed to update Dill push-to-talk.")
         }
         webView.onRequestUpdateAssistantSessionPushToTalkThreshold = { [weak self] requestId, thresholdMs in
             guard (500...5000).contains(thresholdMs) else {
                 self?.rejectReasoningDefaultsRequest(requestId: requestId, message: "Push-to-talk thresholds must be between 500 and 5000 milliseconds.")
                 return
             }
-            self?.performReasoningDefaultsUpdate(requestId: requestId, apply: { await $0.updateAssistantSessionPushToTalkThreshold(thresholdMs) }, isSuccessful: { $0.assistantSessionPushToTalkThreshold == thresholdMs }, failureMessage: "Failed to update the AssistantSession push-to-talk threshold.")
+            self?.performReasoningDefaultsUpdate(requestId: requestId, apply: { await $0.updateAssistantSessionPushToTalkThreshold(thresholdMs) }, isSuccessful: { $0.assistantSessionPushToTalkThreshold == thresholdMs }, failureMessage: "Failed to update the Dill push-to-talk threshold.")
         }
         webView.onRequestUpdateConversationDefaultConversationOnly = { [weak self] requestId, enabled in
             self?.performReasoningDefaultsUpdate(requestId: requestId, apply: { await $0.updateConversationDefaultConversationOnly(enabled) }, isSuccessful: { $0.conversationDefaultConversationOnly == enabled }, failureMessage: "Failed to update the Conversation only default.")

@@ -124,7 +124,7 @@ class AssistantOutputHistoryViewModel: ObservableObject {
             DevLogger.shared.info("✅ Deleted AssistantSession output \(id)", context: "AssistantOutputHistoryVM")
             #endif
         } catch {
-            errorMessage = "Failed to delete AssistantSession output"
+            errorMessage = "Failed to delete output"
 
             #if DEBUG
             DevLogger.shared.error("❌ Failed to delete AssistantSession output \(id): \(error)", context: "AssistantOutputHistoryVM")
@@ -282,7 +282,7 @@ class AssistantOutputHistoryViewModel: ObservableObject {
             )
             #endif
         } catch {
-            errorMessage = "Failed to resume AssistantSession output"
+            errorMessage = "Failed to resume output"
 
             #if DEBUG
             DevLogger.shared.error("❌ Failed to resume AssistantSession output \(id): \(error)", context: "AssistantOutputHistoryVM")

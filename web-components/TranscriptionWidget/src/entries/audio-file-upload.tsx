@@ -5,8 +5,10 @@ import '@shared/reduced-motion.css';
 import '../styles/audio-file-upload.css';
 import '../styles/audio-file-upload-surface-finish.css';
 import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish';
+import { installBasilTooltips } from '@shared/tooltip/basilTooltip';
 
 enableBackdropSurfaceFinish();
+installBasilTooltips();
 
 const container = document.getElementById('root');
 if (!container) {

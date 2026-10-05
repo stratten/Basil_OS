@@ -263,7 +263,7 @@ async def websocket_endpoint(
                                     await websocket.send_json({
                                         "event_type": "agent_task_cancel_result",
                                         "status": "success",
-                                        "message": "AgentTask canceled"
+                                        "message": "Task canceled"
                                     })
                                     logger.info("AgentTask cancellation completed successfully")
                                 except Exception as e:

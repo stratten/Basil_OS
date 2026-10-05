@@ -208,7 +208,7 @@ async def process_agent_task_audio(
                 _release_transcription_lifecycle("canceled_by_user")
                 return AgentTaskAudioResponse(
                     success=False,
-                    message="Agent task was canceled",
+                    message="Task was canceled",
                     transcription="",
                     processed=False,
                     method="swift_audio_capture_service"
@@ -361,7 +361,7 @@ async def process_agent_task_audio(
         
         return AgentTaskAudioResponse(
             success=True,
-            message="Agent task processed successfully via file-based transcription",
+            message="Task processed successfully via file-based transcription",
             transcription=transcribed_text.strip(),
             processing_result=result,
             processed=True,
@@ -565,7 +565,7 @@ async def refine_agent_task_audio(
         
         return AgentTaskRefinementResponse(
             success=True,
-            message="Agent task refinement processed successfully",
+            message="Task refinement processed successfully",
             transcription=refinement_text.strip(),
             refinement_agent_task_id=refinement_agent_task_id,
             root_task_id=root_task_id,

@@ -12,8 +12,12 @@ async def persist_timeline_entry(
     entry: Mapping[str, Any],
     *,
     replace_existing: bool = False,
+    preserve_position: bool = False,
 ) -> None:
-    """Append or replace one complete contract entry without losing legacy fields."""
+    """Append or replace one complete contract entry without losing legacy fields.
+
+    With ``preserve_position`` a replaced entry keeps its original chronological slot instead of moving to the end.
+    """
     if not agent_task_id:
         return
 
@@ -26,6 +30,28 @@ async def persist_timeline_entry(
 
     timeline = list(agent_task_record.execution_timeline or [])
     persisted_entry = normalize_timeline_entry(entry)
+    existing_index = next(
+        (
+            index
+            for index, existing in enumerate(timeline)
+            if isinstance(existing, dict) and existing.get("id") == persisted_entry["id"]
+        ),
+        None,
+    )
+    if replace_existing and preserve_position and existing_index is not None:
+        timeline[existing_index] = persisted_entry
+        timeline = [
+            existing
+            for index, existing in enumerate(timeline)
+            if index == existing_index
+            or not isinstance(existing, dict)
+            or existing.get("id") != persisted_entry["id"]
+        ]
+        await knowledge_service.agent_task_service._mutations.update_execution_timeline(
+            agent_task_id,
+            timeline,
+        )
+        return
     if replace_existing:
         timeline = [
             existing

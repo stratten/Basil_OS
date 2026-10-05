@@ -60,12 +60,13 @@ export function ArtifactReviewDocumentTabs({
           aria-selected={artifact.artifactId === activeArtifactId}
           className={`artifact-review-tab${artifact.artifactId === activeArtifactId ? ' is-active' : ''}`}
           onClick={() => onSelectArtifact(artifact.artifactId)}
+          data-tooltip={artifact.displayName}
+          data-tooltip-when="truncated"
         >
           <span className="artifact-review-tab-name">{artifact.displayName}</span>
           {artifact.review && artifact.review.revisionCount > 1 && (
             <span className="artifact-review-tab-badge">v{artifact.review.revisionCount}</span>
           )}
-          <span className="artifact-review-tab-tooltip" aria-hidden="true">{artifact.displayName}</span>
         </button>
       ))}
     </div>

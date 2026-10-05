@@ -41,8 +41,8 @@ class ClaudeModel(BaseReasoningModel):
         self._client = None
         self._async_client = None
         
-        # Default to Claude Sonnet 4.5 (recommended model with full capabilities)
-        self.model_name = "claude-sonnet-4-5-20250929"
+        # Default to Claude Sonnet 5.5 (recommended model with full capabilities)
+        self.model_name = "claude-sonnet-5-5"
         
         # API settings
         self.api_key = None

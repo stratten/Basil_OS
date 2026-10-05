@@ -246,7 +246,7 @@ final class StatusBarManagerTests: XCTestCase {
             menu.items.first { $0.title == "Meeting / Call Transcription (Legacy QA)" }
         )
         XCTAssertNotNil(
-            menu.items.first { $0.title == "Meeting / Call Transcription" }
+            menu.items.first { $0.title == "Notetaker" }
         )
     }
 } 

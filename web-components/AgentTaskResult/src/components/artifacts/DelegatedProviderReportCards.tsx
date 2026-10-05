@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 import type { DelegatedProviderReportCard } from '../../artifacts/artifactContract';
+import { plainMarkdownText } from '../../../../shared/plainMarkdownText';
 
 export interface DelegatedProviderReportCardsProps {
   cards: DelegatedProviderReportCard[];
@@ -77,7 +78,7 @@ export function DelegatedProviderReportCards({ cards }: DelegatedProviderReportC
             <li key={card.delegatedAgentRunId}>
               <span className="delegated-provider-work-details-label">Provider run {index + 1}</span>
               <span>{readable(card.runStatus)} · {readable(card.verificationState)}</span>
-              {card.latestSummary && <span className="delegated-provider-work-details-summary">{card.latestSummary}</span>}
+              {card.latestSummary && <span className="delegated-provider-work-details-summary">{plainMarkdownText(card.latestSummary)}</span>}
             </li>
           ))}
         </ul>

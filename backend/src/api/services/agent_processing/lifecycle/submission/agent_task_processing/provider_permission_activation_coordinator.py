@@ -207,6 +207,7 @@ class ProviderPermissionActivationCoordinator:
                 root_task_id=self._root_task_id,
                 previous_task_id=self._previous_task_id,
                 interaction_id=interaction_id,
+                status="cancelled",
             )
             raise
         finally:
@@ -217,6 +218,17 @@ class ProviderPermissionActivationCoordinator:
         if resolution.get("outcome") == "selected":
             values = resolution.get("values") or {}
             selected_option_id = values.get("optionId")
+        user_selected_option = next(
+            (option for option in options if option.get("optionId") == selected_option_id),
+            None,
+        )
+        if user_selected_option is None:
+            resolution_status, resolution_response = "cancelled", None
+        else:
+            resolution_status = (
+                "approved" if str(user_selected_option.get("kind", "")).startswith("allow") else "denied"
+            )
+            resolution_response = user_selected_option.get("name") or None
 
         if selected_option_id is None:
             # Coordinator-owned cancellation (run shutdown) or a failed UI
@@ -251,6 +263,8 @@ class ProviderPermissionActivationCoordinator:
             root_task_id=self._root_task_id,
             previous_task_id=self._previous_task_id,
             interaction_id=interaction_id,
+            status=resolution_status,
+            response=resolution_response,
         )
 
         return {"outcome": {"outcome": "selected", "optionId": selected_option_id}}

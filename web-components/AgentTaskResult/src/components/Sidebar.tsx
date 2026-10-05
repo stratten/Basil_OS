@@ -139,7 +139,7 @@ export default function Sidebar({
       const result = await api.listScheduledAgentTasks(true);
       setScheduled(result.agent_tasks);
     } catch (err) {
-      setHistoryError('Failed to load scheduled agent tasks');
+      setHistoryError('Failed to load scheduled tasks');
       console.error('[Sidebar] Scheduled load error:', err);
     } finally {
       setHistoryLoading(false);
@@ -370,7 +370,7 @@ export default function Sidebar({
         inert={isExpanded ? '' : undefined}
       >
         <div style={{ padding: 'var(--padding-xs)' }}>
-          <button className="sidebar-toggle-btn" onClick={onToggle} title="Show AgentTask history">
+          <button className="sidebar-toggle-btn" onClick={onToggle} title="Show task history">
             <AgentTaskSidebarToggleIcon />
           </button>
         </div>
@@ -381,19 +381,19 @@ export default function Sidebar({
         inert={!isExpanded ? '' : undefined}
       >
       <div className="sidebar-header">
-        <span className="sidebar-header-title">{viewMode === 'history' ? 'Agent Tasks' : 'Scheduled'}</span>
+        <span className="sidebar-header-title">{viewMode === 'history' ? 'Tasks' : 'Scheduled'}</span>
         <div style={{ display: 'flex', gap: 'var(--padding-xs)' }}>
           <button
             className="sidebar-toggle-btn"
             onClick={() => setViewMode(viewMode === 'history' ? 'scheduled' : 'history')}
-            title={viewMode === 'history' ? 'View scheduled agent tasks' : 'View AgentTask history'}
+            title={viewMode === 'history' ? 'View scheduled tasks' : 'View task history'}
           >
             <CalendarIcon />
           </button>
           <button className="sidebar-toggle-btn" onClick={handleNewAgent} title="Start new agent">
             {viewMode === 'history' ? <PlusCircleIcon /> : <span style={{ fontSize: 14, lineHeight: 1 }}>+</span>}
           </button>
-          <button className="sidebar-toggle-btn" onClick={onToggle} title="Hide AgentTask history">
+          <button className="sidebar-toggle-btn" onClick={onToggle} title="Hide task history">
             <AgentTaskSidebarToggleIcon />
           </button>
         </div>
@@ -403,7 +403,7 @@ export default function Sidebar({
         <input
           className="sidebar-search-input"
           type="text"
-          placeholder={viewMode === 'history' ? 'Search agent tasks...' : 'Search scheduled...'}
+          placeholder={viewMode === 'history' ? 'Search tasks...' : 'Search scheduled...'}
           value={searchQuery}
           onChange={e => {
             const value = e.target.value;
@@ -431,7 +431,7 @@ export default function Sidebar({
         {historyLoading && (
           <div className="empty-state">
             <div className="loading-spinner" />
-            <span>{viewMode === 'history' ? 'Loading agent tasks...' : 'Loading scheduled jobs...'}</span>
+            <span>{viewMode === 'history' ? 'Loading tasks...' : 'Loading scheduled jobs...'}</span>
           </div>
         )}
         {historyError && (
@@ -444,7 +444,7 @@ export default function Sidebar({
         {!historyLoading && !historyError && unifiedItems.length === 0 && (
           <div className="empty-state">
             <MicrophoneIcon size={24} />
-            <span>{viewMode === 'history' ? 'No agent tasks yet' : 'No scheduled agent tasks'}</span>
+            <span>{viewMode === 'history' ? 'No tasks yet' : 'No scheduled tasks'}</span>
           </div>
         )}
         {unifiedItems.map(item => (

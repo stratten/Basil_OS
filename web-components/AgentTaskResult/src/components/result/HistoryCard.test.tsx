@@ -67,4 +67,22 @@ describe('HistoryCard status and run details', () => {
     expect(expanded).toContain('2 tool calls · Pages');
     expect(expanded).not.toContain('Active app at request');
   });
+
+  it('flattens markdown in the collapsed request and result preview', () => {
+    const collapsed = renderToStaticMarkup(
+      <HistoryCard
+        item={historyItem({
+          agentTaskText: 'Add a **reminder** for `Wednesday`',
+          result: 'Done — reminder created:\n- **Reminder:** "Buy cat t-shirt"\n- **Due:** Wednesday at 9:00 AM',
+        })}
+        isExpanded={false}
+        onToggle={() => {}}
+      />,
+    );
+
+    expect(collapsed).toContain('Add a reminder for Wednesday');
+    expect(collapsed).toContain('Done — reminder created: Reminder: &quot;Buy cat t-shirt&quot; Due: Wednesday at 9:00 AM');
+    expect(collapsed).not.toContain('**');
+    expect(collapsed).not.toContain('`');
+  });
 });

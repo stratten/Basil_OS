@@ -160,7 +160,7 @@ export default function AttachedFilesEditor({ paths, onChange }: Props) {
           }}
         >
           No files attached. Add one below to include it as context every time
-          this scheduled agent task runs.
+          this scheduled task runs.
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -209,7 +209,7 @@ export default function AttachedFilesEditor({ paths, onChange }: Props) {
                 className="action-btn"
                 onClick={() => removeAt(idx)}
                 aria-label={`Remove ${pathBasename(path)}`}
-                title="Remove from this scheduled agent task"
+                title="Remove from this scheduled task"
                 style={{ padding: '2px 8px', flexShrink: 0 }}
               >
                 Remove

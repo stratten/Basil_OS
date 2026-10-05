@@ -107,7 +107,7 @@ export default function AnalysisCard({ ui, analysisHistory }: { ui: MeetingUISta
         disabled={ui.isAnalyzing || ui.selectedAnalysisModes.length === 0 || !ui.hasTranscription || !ui.selectedAnalysisModelId}
       >
         <SparklesIcon />
-        Analyze Meeting
+        Analyze
       </button>
       )}
       {justCompletedForDisplayedMeeting && <p className="meeting-analysis-complete-notice">Analysis complete</p>}

@@ -4,7 +4,13 @@ import json
 import logging
 from collections.abc import Mapping, Sequence
 from typing import Any, Dict, Optional
+from uuid import uuid4
 
+from .user_interaction_timeline import (
+    checkpoint_interaction_kind,
+    record_user_interaction_asked,
+    resolve_latest_waiting_user_interaction,
+)
 from .workflow_results import WorkflowExecutionResult
 
 
@@ -14,6 +20,21 @@ from .workflow_results import WorkflowExecutionResult
 # emitting a final_envelope from already-completed work rather than calling more
 # tools or asking another question.
 USER_DISMISSED_CHECKPOINT_RESPONSE = "__BASIL_USER_DISMISSED_CHECKPOINT__"
+
+
+def checkpoint_interaction_status(
+    user_response: str,
+    provider_target_authorization_resolution: Optional[Mapping[str, object]],
+) -> str:
+    if user_response == USER_DISMISSED_CHECKPOINT_RESPONSE:
+        return "dismissed"
+    if provider_target_authorization_resolution:
+        return {
+            "authorized": "approved",
+            "rejected": "denied",
+            "canceled": "cancelled",
+        }.get(str(provider_target_authorization_resolution.get("status")), "answered")
+    return "answered"
 
 
 def _create_provider_target_authorization_service(
@@ -78,6 +99,15 @@ class WorkflowCheckpointWorkflowService:
                 self.logger.info("✅ Sent checkpoint request to frontend")
             else:
                 self.logger.warning("⚠️ No WebSocket manager available for checkpoint request")
+            await record_user_interaction_asked(
+                agent_task_id,
+                interaction_id=checkpoint_data.get("checkpoint_id") or f"checkpoint_{uuid4().hex}",
+                kind=checkpoint_interaction_kind(checkpoint_data),
+                prompt=prompt,
+                input_type=checkpoint_data.get("input_type"),
+                options=checkpoint_data.get("options"),
+                broadcast=self.websocket_manager.broadcast if self.websocket_manager else None,
+            )
             if self.status_notifier and agent_task_id:
                 await self.status_notifier.send_checkpoint_waiting_status(
                     agent_task_id=agent_task_id,
@@ -192,6 +222,20 @@ class WorkflowCheckpointWorkflowService:
                     ),
                 )
                 self.logger.info("🔄 Updated user_agent_task for continuation")
+                await resolve_latest_waiting_user_interaction(
+                    agent_task_id,
+                    kinds=("clarification", "provider_target"),
+                    status=checkpoint_interaction_status(
+                        user_response,
+                        provider_target_authorization_resolution,
+                    ),
+                    response=(
+                        None
+                        if user_response == USER_DISMISSED_CHECKPOINT_RESPONSE
+                        else user_response
+                    ),
+                    broadcast=self.websocket_manager.broadcast if self.websocket_manager else None,
+                )
 
                 existing_context = updated_state.get("context", {})
                 resumed_context = dict(existing_context) if isinstance(existing_context, dict) else {}
@@ -200,6 +244,30 @@ class WorkflowCheckpointWorkflowService:
                 workflow_coordinator = getattr(self, "workflow_coordinator", None)
                 if workflow_coordinator is not None:
                     resumed_context["_workflow_coordinator"] = workflow_coordinator
+                paused_thinking_history = await self._paused_thinking_history(
+                    knowledge_service,
+                    agent_task_id,
+                    agent_task,
+                )
+                if paused_thinking_history:
+                    from ..finalization.task_state_persistence import (
+                        PRIOR_THINKING_HISTORY_CONTEXT_KEY,
+                    )
+
+                    resumed_context[PRIOR_THINKING_HISTORY_CONTEXT_KEY] = paused_thinking_history
+                from ..execution_graph.service_tooling.tool_call_repetition_guard import (
+                    discard_captured_agent_actions,
+                )
+                from .paused_work_digest import PRIOR_PAUSED_WORK_CONTEXT_KEY, load_paused_work_digest
+
+                discard_captured_agent_actions(resumed_context)
+                paused_work_digest = await load_paused_work_digest(
+                    knowledge_service,
+                    agent_task_id,
+                    agent_task,
+                )
+                if paused_work_digest:
+                    resumed_context[PRIOR_PAUSED_WORK_CONTEXT_KEY] = paused_work_digest
                 updated_state["context"] = resumed_context
                 if context:
                     if isinstance(context.get("context"), dict):
@@ -490,6 +558,31 @@ Every delegated child above is terminal. Treat each summary as durable evidence 
         checkpoint_data = last_result.get("checkpoint_data", {})
         return checkpoint_data.get("prompt", "") if isinstance(checkpoint_data, dict) else ""
 
+    async def _paused_thinking_history(
+        self,
+        knowledge_service: Any,
+        agent_task_id: str,
+        agent_task: Any,
+    ) -> list[dict[str, Any]]:
+        """Return the reasoning saved when the task paused, so the resumed run keeps it."""
+        from ..finalization.task_state_persistence import normalize_thinking_history
+
+        try:
+            if agent_task is None:
+                agent_task_service = getattr(knowledge_service, "agent_task_service", None)
+                if agent_task_service is None:
+                    return []
+                agent_task = await agent_task_service.get_agent_task(agent_task_id)
+            result_data = getattr(agent_task, "result_data", None)
+            if isinstance(result_data, str):
+                result_data = json.loads(result_data)
+            if not isinstance(result_data, Mapping):
+                return []
+            return normalize_thinking_history(result_data.get("thinking_history"))
+        except Exception:
+            self.logger.warning("Could not read paused reasoning for %s", agent_task_id, exc_info=True)
+            return []
+
     async def _resolve_provider_target_checkpoint_response(
         self,
         *,
@@ -582,7 +675,7 @@ Instructions for this turn (STRICT):
 - Do NOT call any more tools.
 - Do NOT ask the user another question.
 - Synthesize a final answer using ONLY the work you have already completed
-  (your existing tool_execution_results, observations, and intermediate results).
+  (listed under WORK BEFORE PAUSE when that section is present).
 - Emit your final_envelope now.
 - If no useful work was completed yet, emit a final_envelope explaining that
   the task was canceled before completion and briefly summarize what you had
@@ -614,7 +707,7 @@ Instructions for this turn (STRICT):
 [CONTINUATION - The agent previously asked: "{prior_checkpoint_prompt}"]
 [USER RESPONSE: {user_response}]
 
-Continue from where you left off. You already have the previous results available. Act on the user's response above."""
+Continue from where you left off. Tools you already ran before the pause are listed under WORK BEFORE PAUSE when that section is present; reuse those results instead of repeating the calls. Act on the user's response above."""
 
         return f"""{original_prompt}
 

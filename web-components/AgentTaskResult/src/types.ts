@@ -124,12 +124,14 @@ export interface ThinkingSegment {
   iteration: number;
   text: string;
   isComplete: boolean;
+  recordedAt?: string;
 }
 
 export interface PersistedThinkingSegment {
   iteration: number;
   text: string;
   is_complete: boolean;
+  recorded_at?: string;
 }
 
 export function normalizePersistedThinkingSegments(
@@ -139,6 +141,7 @@ export function normalizePersistedThinkingSegments(
     iteration: segment.iteration,
     text: segment.text,
     isComplete: segment.is_complete,
+    ...(typeof segment.recorded_at === 'string' && segment.recorded_at ? { recordedAt: segment.recorded_at } : {}),
   }));
 }
 

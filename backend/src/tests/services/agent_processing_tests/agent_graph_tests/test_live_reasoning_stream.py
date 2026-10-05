@@ -1,6 +1,7 @@
 """Unit tests for live agent-loop reasoning streaming (P1)."""
 
 import asyncio
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -109,7 +110,10 @@ async def test_completed_cloud_thinking_is_retained_from_the_emitted_ui_segment(
 
     assert broadcasts[0]["thinking_complete"] is True
     assert broadcasts[0]["thinking_iteration"] == 1
-    assert handler.get_thinking_history() == [{
+    history = handler.get_thinking_history()
+    recorded_at = history[0].pop("recorded_at")
+    assert datetime.fromisoformat(recorded_at).tzinfo is not None
+    assert history == [{
         "iteration": 1,
         "text": "I will use the available history before preparing the answer.",
         "is_complete": True,
@@ -145,7 +149,9 @@ async def test_completed_anthropic_thinking_blocks_are_retained_from_the_emitted
     await asyncio.sleep(0.01)
 
     assert broadcasts[0]["thinking_complete"] is True
-    assert handler.get_thinking_history() == [{
+    history = handler.get_thinking_history()
+    assert datetime.fromisoformat(history[0].pop("recorded_at")).tzinfo is not None
+    assert history == [{
         "iteration": 1,
         "text": "I will inspect the available files before proposing cleanup actions.",
         "is_complete": True,

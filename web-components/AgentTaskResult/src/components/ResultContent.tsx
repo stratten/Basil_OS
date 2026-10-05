@@ -7,7 +7,9 @@ import { ProgressStepsSection } from './result/ExecutionTimeline';
 import { FilesDisplay, ReferencePathsList } from './result/ResultAttachments';
 import { HistoryCard } from './result/HistoryCard';
 import { PartialResultAlert } from './result/PartialResultAlert';
-import { ThinkingSection, ThinkingSegments } from './result/ThinkingSections';
+import { ThinkingSection } from './result/ThinkingSections';
+import { InteractionExchange, ReasoningWithInteractions } from './interaction/InteractionExchange';
+import { userInteractionsFromTimeline } from './interaction/userInteractions';
 import { hasVisibleActivity } from './result/activityDockPresentation';
 import {
   formatBulletPoints,
@@ -26,6 +28,8 @@ import PresenceRegion from '@shared/PresenceRegion';
 import { TurnLabel } from './result/TurnLabel';
 import { resolveTurnStatus } from './result/turnPresentation';
 import { agentTaskRunLabel } from './run/agentTaskRunFocus';
+import { prefersReducedMotion, type RunNavigationRequest } from './run/runNavigation';
+import { useRunNavigationScroll } from './run/useRunNavigationScroll';
 
 interface Props {
   agentTask: DisplayableAgentTask;
@@ -36,6 +40,8 @@ interface Props {
   onSelectDetail?: (ownerTaskId: string, detail: StepDetailEntry, isLatest: boolean) => void;
   focusedRunId?: string | null;
   onFocusRun?: (runId: string) => void;
+  navigationRequest?: RunNavigationRequest | null;
+  onLocationChange?: (runId: string) => void;
 }
 
 type ResultActionMessage = {
@@ -52,6 +58,8 @@ export default function ResultContent({
   onSelectDetail,
   focusedRunId,
   onFocusRun,
+  navigationRequest,
+  onLocationChange,
 }: Props) {
   const hasTurnChain = agentTask.agentTaskHistory.length > 0;
   const currentRunId = agentTask.currentTurnTaskId || agentTask.agentTaskId;
@@ -76,16 +84,6 @@ export default function ResultContent({
     agentTask.status === 'routing' ||
     agentTask.status === 'capturing';
   const latestThinkingSegmentText = agentTask.thinkingSegments[agentTask.thinkingSegments.length - 1]?.text;
-
-  const handleMainContentScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 32;
-    userIsReadingEarlierRef.current = !atBottom;
-    if (atBottom) {
-      setHasUnreadLiveContent(false);
-    }
-  }, []);
 
   useEffect(() => {
     if (!isProcessing || !scrollRef.current) return;
@@ -118,6 +116,10 @@ export default function ResultContent({
   }, [agentTask.agentTaskId]);
 
   const hasThinkingSegments = agentTask.thinkingSegments.length > 0;
+  const userInteractions = useMemo(
+    () => userInteractionsFromTimeline(agentTask.executionTimeline),
+    [agentTask.executionTimeline],
+  );
   const hasResult = Boolean(agentTask.result);
   const responseIsStreaming = isUserFacingResponseStreaming(
     agentTask.isStreaming,
@@ -153,13 +155,40 @@ export default function ResultContent({
     if (!el) return;
     userIsReadingEarlierRef.current = false;
     setHasUnreadLiveContent(false);
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReducedMotion) {
+    if (prefersReducedMotion()) {
       el.scrollTop = el.scrollHeight;
       return;
     }
     el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, []);
+  const priorRunIds = useMemo(
+    () => agentTask.agentTaskHistory.map(item => item.id),
+    [agentTask.agentTaskHistory],
+  );
+  const { isProgrammaticScrollActive, releaseProgrammaticScroll, reportScrollLocation } = useRunNavigationScroll({
+    scrollRef,
+    currentRunId,
+    priorRunIds,
+    expandedCardId,
+    setExpandedCardId,
+    navigationRequest,
+    onLocationChange,
+    userIsReadingEarlierRef,
+    onJumpToLatestContent,
+  });
+
+  const handleMainContentScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 32;
+    if (!isProgrammaticScrollActive()) {
+      userIsReadingEarlierRef.current = !atBottom;
+    }
+    if (atBottom) {
+      setHasUnreadLiveContent(false);
+    }
+    reportScrollLocation(el, atBottom);
+  }, [isProgrammaticScrollActive, reportScrollLocation]);
 
   const handlePreviewSkill = () => {
     setIsSkillSaving(true);
@@ -209,7 +238,15 @@ export default function ResultContent({
 
   return (
     <div className="result-content-shell">
-      <div className="main-content" ref={scrollRef} onScroll={handleMainContentScroll}>
+      <div
+        className="main-content"
+        ref={scrollRef}
+        onScroll={handleMainContentScroll}
+        onWheel={releaseProgrammaticScroll}
+        onTouchMove={releaseProgrammaticScroll}
+        onPointerDown={releaseProgrammaticScroll}
+        onKeyDown={releaseProgrammaticScroll}
+      >
       {agentTask.agentTaskHistory.map((item, index) => (
         <div className="turn-block" key={item.id}>
           <TurnLabel
@@ -258,35 +295,43 @@ export default function ResultContent({
         {agentTask.workflowPlan && <WorkflowPlanSection plan={agentTask.workflowPlan} />}
       </PresenceRegion>
 
-      <PresenceRegion visible={Boolean(hasThinkingSegments || agentTask.thinking)} className="result-presence-region">
-        {hasThinkingSegments ? (
-          <ThinkingSegments
+      <PresenceRegion visible={Boolean(hasThinkingSegments || agentTask.thinking || userInteractions.length > 0)} className="result-presence-region">
+        {hasThinkingSegments || (userInteractions.length > 0 && !agentTask.thinking) ? (
+          <ReasoningWithInteractions
             segments={agentTask.thinkingSegments}
+            interactions={userInteractions}
             isLive={isProcessing && !agentTask.thinkingComplete}
             isRunActive={isProcessing}
             collapseForResponse={responseIsStreaming}
           />
         ) : agentTask.thinking ? (
-          <ThinkingSection
-            thinking={agentTask.thinking}
-            isLive={isProcessing && !agentTask.thinkingComplete}
-            defaultExpanded={isProcessing}
-            collapseForResponse={responseIsStreaming}
-          />
+          <>
+            {userInteractions.map(interaction => (
+              <InteractionExchange key={interaction.entryId} interaction={interaction} />
+            ))}
+            <ThinkingSection
+              thinking={agentTask.thinking}
+              isLive={isProcessing && !agentTask.thinkingComplete}
+              defaultExpanded={isProcessing}
+              collapseForResponse={responseIsStreaming}
+            />
+          </>
         ) : null}
       </PresenceRegion>
 
       <PresenceRegion visible={showInlineCompletedActivity} className="result-presence-region">
-        <ProgressStepsSection
-          key={`activity-inline-${agentTask.agentTaskId}`}
-          presentation="inline"
-          steps={agentTask.progressSteps}
-          timeline={agentTask.executionTimeline}
-          stepDetails={agentTask.stepDetails}
-          selectedDetailId={selectedDetailOwnerId === agentTask.agentTaskId ? selectedDetailId : null}
-          onSelectDetail={(detail, isLatest) => onSelectDetail?.(agentTask.agentTaskId, detail, isLatest)}
-          isProcessing={isProcessing}
-        />
+        <div data-run-section="activity">
+          <ProgressStepsSection
+            key={`activity-inline-${agentTask.agentTaskId}`}
+            presentation="inline"
+            steps={agentTask.progressSteps}
+            timeline={agentTask.executionTimeline}
+            stepDetails={agentTask.stepDetails}
+            selectedDetailId={selectedDetailOwnerId === agentTask.agentTaskId ? selectedDetailId : null}
+            onSelectDetail={(detail, isLatest) => onSelectDetail?.(agentTask.agentTaskId, detail, isLatest)}
+            isProcessing={isProcessing}
+          />
+        </div>
       </PresenceRegion>
 
       <PresenceRegion visible={agentTask.verificationStatus === 'pending'} className="result-presence-region">
@@ -312,7 +357,7 @@ export default function ResultContent({
             <ExecutionSteps stepsContent={parsed.technicalSteps} />
           )}
 
-          <div className="result-header">
+          <div className="result-header" data-run-section="result">
             <span className="result-label">{hasError ? 'Partial Result:' : 'Result:'}</span>
             {agentTask.reasoningFallbackModelUsed && (
               <span

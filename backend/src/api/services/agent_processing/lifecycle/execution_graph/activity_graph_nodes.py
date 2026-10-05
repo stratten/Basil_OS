@@ -70,5 +70,5 @@ async def _node_consider_skills(state: Any) -> Dict[str, Any]:
 
 async def _node_execute_todos_with_tools(state: Any) -> Dict[str, Any]:
     return await _run_node_phase(
-        state, phase="execution", title="Executing agent task", node=legacy_nodes._node_execute_todos_with_tools,
+        state, phase="execution", title="Working on the task", node=legacy_nodes._node_execute_todos_with_tools,
     )

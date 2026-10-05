@@ -90,7 +90,13 @@ function tray(overrides: Partial<React.ComponentProps<typeof ExecutionDetailTray
       onCloseRunPanel={() => {}}
       runs={runs}
       focusedRunId="task-1"
-      onFocusRun={() => {}}
+      currentRunId="task-1"
+      locationRunId="task-1"
+      peekedRunIds={[]}
+      onNavigateRun={() => {}}
+      onTogglePeekRun={() => {}}
+      onOpenRunDocuments={() => {}}
+      onJumpToLatestRun={() => {}}
       {...overrides}
     />
   );
@@ -489,8 +495,8 @@ describe('ExecutionDetailTray artifact detail', () => {
     expect(markup).not.toContain('run-card-artifact-badge');
   });
 
-  it('places the collapsed task history above the unchanged focused-run overview', () => {
-    const onFocusRun = vi.fn();
+  it('renders every turn in the task map and expands only the location turn', () => {
+    const onNavigateRun = vi.fn();
     const container = document.createElement('div');
     document.body.appendChild(container);
     const root = createRoot(container);
@@ -518,29 +524,59 @@ describe('ExecutionDetailTray artifact detail', () => {
           detail: undefined,
           runs: chainRuns,
           focusedRunId: 'follow-up-1',
-          onFocusRun,
+          currentRunId: 'follow-up-1',
+          locationRunId: 'follow-up-1',
+          onNavigateRun,
         }));
       });
-      const historyToggle = container.querySelector<HTMLButtonElement>('.agent-run-history-toggle');
-      expect(historyToggle?.getAttribute('aria-expanded')).toBe('false');
-      const historyTray = container.querySelector('.agent-run-history-tray');
-      const runCard = container.querySelector('section.run-card');
-      expect(historyTray).not.toBeNull();
-      expect(runCard).not.toBeNull();
-      if (!historyTray || !runCard) throw new Error('Expected the history tray and run card.');
-      expect(historyTray.compareDocumentPosition(runCard) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+      expect(container.querySelector('nav.agent-run-map')).not.toBeNull();
+      expect(container.querySelector('.agent-run-history-tray')).toBeNull();
+      expect(container.querySelectorAll('section.run-card')).toHaveLength(1);
+      const followUpTurn = Array.from(container.querySelectorAll('.agent-run-map-turn'))
+        .find(turn => turn.querySelector('.agent-run-map-label')?.textContent === 'Follow-up 1');
+      expect(followUpTurn?.querySelector('section.run-card')).not.toBeNull();
+      expect(followUpTurn?.querySelector('.run-card-artifacts')?.textContent).toContain('résumé-東京.md');
 
-      act(() => {
-        historyToggle?.click();
-      });
-      const initialRun = Array.from(container.querySelectorAll<HTMLButtonElement>('.agent-run-history-row'))
+      const initialRun = Array.from(container.querySelectorAll<HTMLButtonElement>('.agent-run-map-turn-link'))
         .find(button => button.textContent?.includes('Initial request'));
-
       act(() => {
         initialRun?.click();
       });
 
-      expect(onFocusRun).toHaveBeenCalledWith('task-1');
+      expect(onNavigateRun).toHaveBeenCalledWith('task-1', { kind: 'run' });
+    } finally {
+      act(() => {
+        root.unmount();
+      });
+      container.remove();
+    }
+  });
+
+  it('navigates from a single-run overview stage without rendering the task map', () => {
+    const onNavigateRun = vi.fn();
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const timeline: TimelineEntry[] = [
+      { type: 'step', timestamp: '2026-08-09T20:00:01Z', content: 'researching', metadata: { progress_phase: 'Researching', progress_status: 'completed' } },
+    ];
+
+    try {
+      act(() => {
+        root.render(tray({ detail: undefined, timeline, onNavigateRun }));
+      });
+      expect(container.querySelector('.agent-run-map')).toBeNull();
+      const phaseStage = container.querySelector<HTMLButtonElement>('button.run-card-stage--phase');
+      expect(phaseStage?.textContent).toContain('Completing task');
+      act(() => {
+        phaseStage?.click();
+      });
+      expect(onNavigateRun).toHaveBeenCalledWith('task-1', { kind: 'section', section: 'activity' });
+
+      act(() => {
+        container.querySelector<HTMLButtonElement>('button.run-card-stage--outcome')?.click();
+      });
+      expect(onNavigateRun).toHaveBeenLastCalledWith('task-1', { kind: 'section', section: 'result' });
     } finally {
       act(() => {
         root.unmount();

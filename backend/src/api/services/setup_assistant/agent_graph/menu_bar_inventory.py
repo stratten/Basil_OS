@@ -139,18 +139,18 @@ MENU_BAR_INVENTORY: List[MenuBarItem] = [
         ),
     ),
     MenuBarItem(
-        title="Meeting Detection",
+        title="Meeting/Call Detection",
         description=(
-            "Manually starts or stops the mechanical meeting-detection "
+            "Manually starts or stops the mechanical meeting/call detection "
             "monitor, which watches for meeting-app audio and offers to "
-            "start transcription. A checkmark indicates the monitor is "
+            "start the Notetaker. A checkmark indicates the monitor is "
             "currently running."
         ),
-        toggle_labels=("Meeting Detection", "Meeting Detection"),
+        toggle_labels=("Meeting/Call Detection", "Meeting/Call Detection"),
         visibility="conditional",
         visibility_note=(
             "Hidden by default. Only appears in the menu once the user "
-            "has enabled Meeting Detection in Settings."
+            "has enabled Meeting/Call Detection in Settings."
         ),
     ),
     MenuBarItem(
@@ -187,19 +187,19 @@ MENU_BAR_INVENTORY: List[MenuBarItem] = [
         indent=True,
     ),
     MenuBarItem(
-        title="Open Dill",
+        title="Open Dill (Quick Assist)",
         description=(
-            "Opens Dill — my writing and reply partner — as a free-form "
-            "assistant session."
+            "Opens Dill (Quick Assist), which handles one focused request "
+            "at a time: drafting, replying, summarizing, or quick research."
         ),
         # Double-press of Option (U+2325 OPTION KEY twice).
         default_hotkey="\u2325\u2325",
     ),
     MenuBarItem(
-        title="Open Paprika",
+        title="Open Paprika (Agent)",
         description=(
-            "Opens Paprika — my task-running helper — ready to take a "
-            "task prompt."
+            "Opens Paprika (Agent), ready to take a task. Paprika works "
+            "through multi-step tasks and can run several at once."
         ),
         # Option + Space (U+2325 OPTION KEY, U+2423 OPEN BOX).
         default_hotkey="\u2325\u2423",
@@ -215,10 +215,10 @@ MENU_BAR_INVENTORY: List[MenuBarItem] = [
         toggle_labels=("Proactive Suggestions", "Proactive Suggestions"),
     ),
     MenuBarItem(
-        title="Meeting / Call Transcription",
+        title="Notetaker",
         description=(
-            "Opens the meeting and call transcription panel for capturing "
-            "microphone and system audio."
+            "Opens the Notetaker, which records and transcribes meetings "
+            "and calls from microphone and system audio."
         ),
     ),
     MenuBarItem(
@@ -245,6 +245,8 @@ MENU_BAR_INVENTORY: List[MenuBarItem] = [
 SWIFT_DISPLAY_NAME_SUBSTITUTIONS: Dict[str, str] = {
     "BasilTeamIdentity.assistantSession.displayName": "Dill",
     "BasilTeamIdentity.agentTask.displayName": "Paprika",
+    "BasilTeamIdentity.assistantSession.pairedName": "Dill (Quick Assist)",
+    "BasilTeamIdentity.agentTask.pairedName": "Paprika (Agent)",
 }
 
 

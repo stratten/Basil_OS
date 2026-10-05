@@ -110,7 +110,7 @@ extension AgentTaskCaptureViewModel {
 
         // Stop capture AND process/submit the audio
         stopCapture(shouldProcessAudio: true)
-        statusMessage = "Processing AgentTask..."
+        statusMessage = "Processing task..."
         onCaptureComplete?()
     }
 

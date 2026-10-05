@@ -194,7 +194,7 @@ class AgentTaskSubmissionService:
                     "success": False,
                     "agent_task_id": agent_task_id,
                     "status": "canceled",
-                    "message": "AgentTask canceled",
+                    "message": "Task canceled",
                 }
 
             asyncio.ensure_future(self.routing_service.generate_agent_task_title(agent_task_id, agent_task))
@@ -279,7 +279,7 @@ class AgentTaskSubmissionService:
                 "success": True,
                 "agent_task_id": agent_task_id,
                 "status": "routing",
-                "message": "AgentTask received and being processed...",
+                "message": "Task received and being processed...",
                 "context": {
                     "app": "pending",
                     "has_screen_text": False,
@@ -401,9 +401,9 @@ class AgentTaskSubmissionService:
                     "agent_task_id": agent_task_id,
                     "status": final_agent_task.status,
                     "message": (
-                        "AgentTask processed successfully"
+                        "Task processed successfully"
                         if final_agent_task.status == "completed"
-                        else "Agent task processing failed"
+                        else "Task processing failed"
                     ),
                     "operation": operation_parameters.get("operation"),
                     "confidence": operation_parameters.get("confidence", 0.9),

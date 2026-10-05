@@ -16,9 +16,9 @@ export default function InlineCapture({ captureState }: Props) {
   const isRefinement = captureState.type === 'refinement';
 
   const label = isFollowUp
-    ? 'Listening for follow-up AgentTask...'
+    ? 'Listening for follow-up...'
     : isNewAgentTask
-      ? 'Recording new AgentTask...'
+      ? 'Recording new task...'
       : 'Recording refinement...';
 
   const handleDone = () => {

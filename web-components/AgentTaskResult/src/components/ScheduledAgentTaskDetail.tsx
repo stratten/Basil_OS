@@ -6,6 +6,7 @@ import AttachedFilesEditor from './scheduled/AttachedFilesEditor';
 import ScheduleControls from './scheduled/ScheduleControls';
 import ScheduledRunHistoryList from './scheduled/ScheduledRunHistoryList';
 import { plainMarkdownText } from '../../../shared/plainMarkdownText';
+import MarkdownRenderer from './MarkdownRenderer';
 import SmartPromptPanel, {
   type SmartPromptPanelHandle,
   type SmartScheduleFields,
@@ -284,7 +285,7 @@ export default function ScheduledAgentTaskDetail({
       <div className="main-content">
         <div className="result-container">
           <div className="result-header">
-            <span className="result-label">Create Scheduled Agent Task</span>
+            <span className="result-label">Create Scheduled Task</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <SmartPromptPanel
@@ -297,13 +298,13 @@ export default function ScheduledAgentTaskDetail({
 
             <input
               className="sidebar-search-input"
-              placeholder="Title (optional — derived from AgentTask if left blank)"
+              placeholder="Title (optional — derived from the task if left blank)"
               value={title}
               onChange={e => setTitle(e.target.value)}
             />
             <textarea
               className="sidebar-search-input"
-              placeholder="Agent task text"
+              placeholder="Task text"
               value={agentTaskText}
               onChange={e => setAgentTaskText(e.target.value)}
               style={{ minHeight: 92, resize: 'vertical' }}
@@ -348,7 +349,7 @@ export default function ScheduledAgentTaskDetail({
   if (!scheduledAgentTaskId) {
     return (
       <div className="empty-state" style={{ flex: 1 }}>
-        <span>Select a scheduled agent task from the sidebar</span>
+        <span>Select a scheduled task from the sidebar</span>
       </div>
     );
   }
@@ -357,7 +358,7 @@ export default function ScheduledAgentTaskDetail({
     return (
       <div className="empty-state" style={{ flex: 1 }}>
         <div className="loading-spinner" />
-        <span>Loading scheduled agent task...</span>
+        <span>Loading scheduled task...</span>
       </div>
     );
   }
@@ -419,13 +420,13 @@ export default function ScheduledAgentTaskDetail({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
             <input
               className="sidebar-search-input"
-              placeholder="Title (optional — derived from AgentTask if left blank)"
+              placeholder="Title (optional — derived from the task if left blank)"
               value={title}
               onChange={e => setTitle(e.target.value)}
             />
             <textarea
               className="sidebar-search-input"
-              placeholder="Agent task text"
+              placeholder="Task text"
               value={agentTaskText}
               onChange={e => setAgentTaskText(e.target.value)}
               style={{ minHeight: 92, resize: 'vertical', fontFamily: 'var(--font-family-light)' }}
@@ -469,16 +470,8 @@ export default function ScheduledAgentTaskDetail({
           </div>
         ) : (
           <>
-            <div
-              style={{
-                marginBottom: 10,
-                whiteSpace: 'pre-wrap',
-                fontFamily: 'var(--font-family-light)',
-                fontSize: 'var(--font-size-callout)',
-                color: 'var(--text-primary)',
-              }}
-            >
-              {item.agent_task_text}
+            <div style={{ marginBottom: 10 }}>
+              <MarkdownRenderer content={item.agent_task_text} />
             </div>
             {/* Stacked meta block — one row each for schedule / status / next run
                 so the values have room to breathe and "Status: active" isn't

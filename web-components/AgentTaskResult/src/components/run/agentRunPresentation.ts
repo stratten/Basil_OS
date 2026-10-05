@@ -1,6 +1,11 @@
 import type { TimelineEntry } from '../../types';
+import {
+  interactionAskerLabel,
+  userInteractionsFromTimeline,
+  type UserInteraction,
+} from '../interaction/userInteractions';
 
-export type AgentRunStageKind = 'phase' | 'tool' | 'artifact' | 'outcome';
+export type AgentRunStageKind = 'phase' | 'tool' | 'artifact' | 'interaction' | 'outcome';
 export type AgentRunStageState = 'active' | 'completed' | 'failed' | 'waiting' | 'recorded';
 
 export interface AgentRunStage {
@@ -12,6 +17,13 @@ export interface AgentRunStage {
   completedAt?: string;
   artifactId?: string;
   phase?: string;
+  interaction?: UserInteraction;
+}
+
+function interactionStageState(interaction: UserInteraction): AgentRunStageState {
+  if (interaction.status === 'waiting') return 'waiting';
+  if (interaction.status === 'unrecorded') return 'recorded';
+  return 'completed';
 }
 
 export interface AgentRunPresentation {
@@ -112,9 +124,27 @@ export function deriveAgentRunPresentation(
     stages[index] = mergeStage(stages[index], stage);
   };
 
+  const interactionsByEntryId = new Map(
+    userInteractionsFromTimeline(timeline).map(interaction => [interaction.entryId, interaction]),
+  );
+
   for (const { entry } of stableChronologicalEntries(timeline)) {
     if (entry.detail_kind === 'final_summary') {
       finalSummary = entry;
+      continue;
+    }
+
+    const interaction = interactionsByEntryId.get(entry.id || entry.timestamp);
+    if (interaction) {
+      appendOrMerge({
+        id: `interaction:${interaction.entryId}`,
+        kind: 'interaction',
+        label: interactionAskerLabel(interaction),
+        state: interactionStageState(interaction),
+        startedAt: interaction.askedAt,
+        completedAt: interaction.respondedAt,
+        interaction,
+      });
       continue;
     }
 
@@ -188,12 +218,13 @@ export function deriveAgentRunPresentation(
 
 export interface AgentRunOverviewStage {
   id: string;
-  kind: 'phase' | 'outcome';
+  kind: 'phase' | 'interaction' | 'outcome';
   label: string;
   state: AgentRunStageState;
   startedAt: string;
   completedAt?: string;
   artifactCount: number;
+  interaction?: UserInteraction;
 }
 
 export interface AgentRunOverviewPresentation {
@@ -265,6 +296,20 @@ export function deriveAgentRunOverviewPresentation(
         latestPhaseIndex = existingIndex;
         stages[existingIndex] = mergeOverviewPhase(stages[existingIndex], stage);
       }
+      continue;
+    }
+
+    if (stage.kind === 'interaction') {
+      stages.push({
+        id: `overview:${stage.id}`,
+        kind: 'interaction',
+        label: stage.label,
+        state: stage.state,
+        startedAt: stage.startedAt,
+        completedAt: stage.completedAt,
+        artifactCount: 0,
+        interaction: stage.interaction,
+      });
       continue;
     }
 

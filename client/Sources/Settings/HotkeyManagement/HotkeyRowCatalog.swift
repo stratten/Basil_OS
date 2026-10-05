@@ -33,12 +33,12 @@ enum HotkeyRowCatalog {
         HotkeyRowDefinition(
             id: "assistant_session",
             title: BasilTeamIdentity.assistantSession.displayName,
-            subtitle: BasilTeamIdentity.assistantSession.roleLabel
+            subtitle: BasilTeamIdentity.assistantSession.descriptor
         ),
         HotkeyRowDefinition(
             id: "agent_task",
             title: BasilTeamIdentity.agentTask.displayName,
-            subtitle: BasilTeamIdentity.agentTask.roleLabel
+            subtitle: BasilTeamIdentity.agentTask.descriptor
         ),
         HotkeyRowDefinition(
             id: "home_board_toggle",

@@ -92,7 +92,7 @@ export function mapDetailToDisplayable(detail: AgentTaskDetail): DisplayableAgen
       status,
       result: isTerminal ? (mostRecent.result_message || '') : '',
       errorMessage: status === 'failed'
-        ? (mostRecent.error_message || mostRecent.result_message || 'AgentTask failed')
+        ? (mostRecent.error_message || mostRecent.result_message || 'Task failed')
         : undefined,
       outcome: mostRecent.outcome,
       resultSeverity: mostRecent.result_severity,
@@ -134,7 +134,7 @@ export function mapDetailToDisplayable(detail: AgentTaskDetail): DisplayableAgen
     status,
     result: isTerminal ? (detail.result_message || '') : '',
     errorMessage: status === 'failed'
-      ? (detail.error_message || detail.result_message || 'AgentTask failed')
+      ? (detail.error_message || detail.result_message || 'Task failed')
       : undefined,
     outcome: detail.outcome,
     resultSeverity: detail.result_severity,

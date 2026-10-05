@@ -6,6 +6,15 @@ Write one bullet per line, starting with `- `, in plain language for people usin
 
 ## Unreleased
 
+- The Meeting Assistant is now called Notetaker, in the Basil menu, Basil Board, and Settings, and Meeting Detection is now Meeting/Call Detection
+- A paused Notetaker recording now shows amber instead of the red used for a live microphone, and its buttons read simply Start, Resume, End, and Analyze
+- Hover hints now look the same throughout Basil, appear after a short pause, and show up only where they add something, such as a full file name that is cut off
+- When Basil asks you a question during a task, the question now survives quitting or restarting Basil for up to 7 days, and answering it continues the task
+- After you answer a question Basil asked mid-task, the task builds on the work it had already done instead of repeating it
+- Longer agent tasks that use Claude are faster and cheaper, because Basil reuses the unchanged part of each request
+- Basil now cleans up saved agent task history it can no longer use, which could grow past a gigabyte, and saves less of it per task
+- Claude Sonnet 5.5 and GPT-6.1 Sol are now available, and Claude Sonnet 5.5 is the recommended Claude model; the retired Claude Opus 4 and Claude Sonnet 4 are removed, and several Claude, Gemini, and GPT-4.1 models can now give longer answers
+
 ## 1.1.7
 
 - Your own provider API keys are now stored in the macOS Keychain instead of a plain-text file. Keys entered in earlier versions are not carried over, so if you use your own OpenAI, Anthropic, or other provider keys, re-enter them in Settings after updating. The old file at ~/.basil/config/api_keys.json is no longer used and can be deleted.

@@ -187,7 +187,7 @@ extension HotkeyService {
             let apiBase = apiClient.baseURL
             guard let url = URL(string: "\(apiBase)/api/v1/agent-tasks/process-audio") else {
                 throw NSError(domain: BasilTeamIdentity.agentTask.displayName, code: 400,
-                              userInfo: [NSLocalizedDescriptionKey: "Invalid agentTask processing API URL"])
+                              userInfo: [NSLocalizedDescriptionKey: "Invalid task processing API URL"])
             }
             
             var request = URLRequest(url: url)
@@ -214,7 +214,7 @@ extension HotkeyService {
             
             if let httpResponse = response as? HTTPURLResponse, !(200...299).contains(httpResponse.statusCode) {
                 throw NSError(domain: BasilTeamIdentity.agentTask.displayName, code: httpResponse.statusCode,
-                              userInfo: [NSLocalizedDescriptionKey: "AgentTask processing API error: HTTP \(httpResponse.statusCode)"])
+                              userInfo: [NSLocalizedDescriptionKey: "Task processing API error: HTTP \(httpResponse.statusCode)"])
             }
             
             // Process response

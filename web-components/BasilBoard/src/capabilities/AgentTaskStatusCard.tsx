@@ -17,11 +17,11 @@ interface AgentTaskStatusCardProps {
 }
 
 const LIFECYCLE_LABEL: Record<string, string> = {
-  pending: 'Preparing agent task',
-  running: 'Agent task in progress',
-  completed: 'Agent task completed',
-  failed: 'Agent task failed',
-  canceled: 'Agent task canceled',
+  pending: 'Preparing Paprika task',
+  running: 'Paprika task in progress',
+  completed: 'Paprika task completed',
+  failed: 'Paprika task failed',
+  canceled: 'Paprika task canceled',
 };
 
 const LIFECYCLE_ICON: Record<string, string> = {
@@ -78,7 +78,7 @@ function AgentTaskStatusCardComponent({
     <div
       className={`chats-agent-task-card chats-agent-task-card-${turn.lifecycle}${turn.requiresUserAttention ? ' chats-agent-task-card-needs-attention' : ''}`}
       role={turn.requiresUserAttention ? 'alert' : 'status'}
-      aria-label={turn.requiresUserAttention ? 'Agent task needs your input' : LIFECYCLE_LABEL[turn.lifecycle]}
+      aria-label={turn.requiresUserAttention ? 'Paprika task needs your input' : LIFECYCLE_LABEL[turn.lifecycle]}
     >
       <span
         className={`chats-agent-task-icon${isTerminal ? '' : ' is-spinning'}`}
@@ -88,7 +88,7 @@ function AgentTaskStatusCardComponent({
       </span>
       <div className="chats-agent-task-body">
         <span className="chats-agent-task-label">
-          {turn.requiresUserAttention ? 'Agent task needs your input' : LIFECYCLE_LABEL[turn.lifecycle]}
+          {turn.requiresUserAttention ? 'Paprika task needs your input' : LIFECYCLE_LABEL[turn.lifecycle]}
         </span>
         {detailText ? (
           <span className="chats-agent-task-status-text">{detailText}</span>
@@ -103,7 +103,7 @@ function AgentTaskStatusCardComponent({
           </dl>
         ) : null}
         {activity && activity.artifactCount > 0 ? (
-          <div className="chats-agent-task-files" aria-label="Agent task files">
+          <div className="chats-agent-task-files" aria-label="Paprika task files">
             <span className="chats-agent-task-files-label">Files</span>
             <ul className="chats-agent-task-file-chips">
               {previewedArtifacts.map((artifact) => (
@@ -134,7 +134,7 @@ function AgentTaskStatusCardComponent({
         className="chats-agent-task-link"
         onClick={() => openExistingAgentTaskWidget(turn.agentTaskId)}
       >
-        {turn.requiresUserAttention ? 'Respond in Agent Task' : 'Open Agent Task'}
+        {turn.requiresUserAttention ? 'Respond in Paprika' : 'Open in Paprika'}
       </button>
     </div>
   );

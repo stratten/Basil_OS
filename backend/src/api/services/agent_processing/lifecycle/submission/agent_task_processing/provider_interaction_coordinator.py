@@ -173,6 +173,25 @@ def validate_submitted_values(
     return clean_values
 
 
+def _submitted_values_summary(
+    fields: Sequence[Mapping[str, Any]], values: Mapping[str, Any] | None
+) -> str | None:
+    if not isinstance(values, Mapping):
+        return None
+    lines: list[str] = []
+    for field in fields:
+        value = values.get(field["name"])
+        if value is None or value == "":
+            continue
+        option_labels = {
+            option.get("value"): option.get("label")
+            for option in (field.get("options") or [])
+            if isinstance(option, Mapping)
+        }
+        lines.append(f"{field.get('label') or field['name']}: {option_labels.get(value) or value}")
+    return "\n".join(lines) or None
+
+
 class ProviderInteractionCoordinator:
     """Answer ACP `elicitation/create` (form mode) requests for one bound provider run."""
 
@@ -321,6 +340,8 @@ class ProviderInteractionCoordinator:
             root_task_id=self._root_task_id,
             previous_task_id=self._previous_task_id,
             interaction_id=interaction_id,
+            status={"accept": "answered", "decline": "denied"}.get(outcome, "cancelled"),
+            response=_submitted_values_summary(fields, values) if outcome == "accept" else None,
         )
 
         if outcome == "accept":

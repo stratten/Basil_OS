@@ -143,7 +143,7 @@ export function pathBasename(path: string): string {
 // disabled in that case anyway, so this is purely defensive).
 export function deriveTitleFromAgentTask(agentTaskText: string): string {
   const firstLine = agentTaskText.split(/\r?\n/).map(s => s.trim()).find(s => s.length > 0) || '';
-  if (!firstLine) return 'Scheduled Agent Task';
+  if (!firstLine) return 'Scheduled Task';
   const MAX = 60;
   if (firstLine.length <= MAX) return firstLine;
   return `${firstLine.slice(0, MAX - 1).trimEnd()}…`;

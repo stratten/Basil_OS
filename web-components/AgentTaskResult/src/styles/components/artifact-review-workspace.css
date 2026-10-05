@@ -50,37 +50,9 @@
   padding: 1px 6px;
 }
 
-.artifact-review-tab-tooltip {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  z-index: 3;
-  max-width: min(480px, calc(100vw - 48px));
-  padding: 5px 8px;
-  border: var(--border-thin) solid var(--separator-color);
-  border-radius: var(--corner-radius-small);
-  background: var(--background-primary);
-  box-shadow: 0 6px 18px rgb(0 0 0 / 18%);
-  color: var(--text-primary);
-  font-family: var(--font-family-medium);
-  font-size: var(--font-size-status-tiny);
-  line-height: 1.25;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-4px);
-  transition: opacity 80ms ease-out, transform 80ms ease-out;
-  overflow-wrap: anywhere;
-}
-
 .artifact-review-tab:hover,
 .artifact-review-tab:focus-visible {
   border-color: color-mix(in srgb, var(--text-primary) 20%, transparent);
-}
-
-.artifact-review-tab:hover .artifact-review-tab-tooltip,
-.artifact-review-tab:focus-visible .artifact-review-tab-tooltip {
-  opacity: 1;
-  transform: translateY(0);
 }
 
 .artifact-review-tab.is-active {

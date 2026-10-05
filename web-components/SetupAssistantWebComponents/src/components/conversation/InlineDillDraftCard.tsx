@@ -2,6 +2,8 @@ import { useState } from 'react'
 
 import type { SetupInlineDillDraft } from '@/state/setupAssistantStore'
 
+import { SetupConversationMarkdown } from './SetupConversationMarkdown'
+
 /*
  * Inline conversation card that represents a completed (or failed)
  * Dill draft from a setup-launched assistant session. Sibling of
@@ -69,10 +71,12 @@ export function InlineDillDraftCard({ draft }: Props) {
           Dill finished, but the draft text didn't come back from the widget. Open Dill to see what it produced.
         </p>
       ) : (
-        <pre
+        <div
           className={`inline-dill-draft-body ${expanded ? 'is-expanded' : 'is-collapsed'}`}
           aria-label="Dill draft body"
-        >{displayedBody}</pre>
+        >
+          <SetupConversationMarkdown content={displayedBody} />
+        </div>
       )}
 
       {(!isFailed && canCollapse) && (

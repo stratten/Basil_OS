@@ -64,7 +64,7 @@ describe('ConversationTranscript agent task rendering', () => {
     }])}
     />);
 
-    expect(screen.getByRole('status', { name: 'Agent task in progress' })).toBeTruthy();
+    expect(screen.getByRole('status', { name: 'Paprika task in progress' })).toBeTruthy();
     expect(document.querySelector('.chats-message-bubble')).toBeNull();
   });
 
@@ -118,7 +118,7 @@ describe('ConversationTranscript agent task rendering', () => {
     />);
 
     expect(screen.getByText('Here is the answer.')).toBeTruthy();
-    expect(screen.getByRole('status', { name: 'Agent task completed' })).toBeTruthy();
+    expect(screen.getByRole('status', { name: 'Paprika task completed' })).toBeTruthy();
   });
 
   it('never shows the status card or activity disclosure for a user message', () => {

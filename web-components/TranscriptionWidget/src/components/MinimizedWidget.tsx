@@ -45,7 +45,7 @@ export const MinimizedWidget = memo(function MinimizedWidget({ state }: { state:
           type="button"
           className="transcription-widget__icon-button"
           style={{ opacity: showHoverControls ? 1 : 0 }}
-          title="Expand widget"
+          aria-label="Expand widget"
           onClick={() => toggleMinimizedState()}
         >
           <TranscriptionSymbol name="expand" size={15} />

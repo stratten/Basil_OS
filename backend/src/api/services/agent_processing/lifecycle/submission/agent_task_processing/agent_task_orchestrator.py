@@ -293,7 +293,7 @@ class AgentTaskOrchestrator:
                         "event_type": "agent_task_canceled",
                         "agent_task_id": canceled_id,
                         "root_task_id": root_task_id,
-                        "message": "AgentTask canceled",
+                        "message": "Task canceled",
                     })
                 except Exception as exc:
                     self._cancellation.release_terminal_notification(canceled_id)

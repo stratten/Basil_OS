@@ -74,7 +74,7 @@ extension AssistantSessionViewModel {
                 #endif
                 let apiBase = APIClient.shared.baseURL
                 guard let url = URL(string: "\(apiBase)/assistant-sessions/\(sessionId)/process-input") else {
-                    throw NSError(domain: BasilTeamIdentity.assistantSession.displayName, code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid backend AssistantSession API URL"])
+                    throw NSError(domain: BasilTeamIdentity.assistantSession.displayName, code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid backend API URL"])
                 }
                 var request = URLRequest(url: url)
                 request.httpMethod = "POST"
@@ -227,7 +227,7 @@ extension AssistantSessionViewModel {
 
                 let apiBase = APIClient.shared.baseURL
                 guard let url = URL(string: "\(apiBase)/assistant-sessions/\(sessionId)/process-input") else {
-                    throw NSError(domain: BasilTeamIdentity.assistantSession.displayName, code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid backend AssistantSession API URL"])
+                    throw NSError(domain: BasilTeamIdentity.assistantSession.displayName, code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid backend API URL"])
                 }
                 var request = URLRequest(url: url)
                 request.httpMethod = "POST"
@@ -431,7 +431,7 @@ extension AssistantSessionViewModel {
         if assistantSessionStatus == .failed { return }
         guard completedSuccessfully else {
             assistantSessionStatus = .failed
-            errorMessage = "AssistantSession response ended before completion."
+            errorMessage = "The response ended before completion."
             NotificationCenter.default.post(name: NSNotification.Name("AssistantOutputHistoryDidUpdate"), object: nil)
             return
         }

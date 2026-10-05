@@ -56,12 +56,6 @@
       {
         "property": "color",
         "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
-        "selector": ".agent-run-history-item.is-focused .agent-run-history-ordinal",
-        "value": "#fff"
-      },
-      {
-        "property": "color",
-        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
         "selector": ".agent-run-rail-artifact-mark",
         "value": "#fff"
       },
@@ -70,6 +64,12 @@
         "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
         "selector": ".agent-run-rail-flow-stage.is-completed svg, .agent-run-rail-flow-stage.is-failed svg, .agent-run-rail-flow-stage.is-active svg",
         "value": "#fff"
+      },
+      {
+        "property": "color",
+        "reason": "Fixed white glyph on the solid Basil-blue answered-interaction stage, matching the allowlisted completed/failed/active stage glyphs.",
+        "selector": ".agent-run-rail-flow-stage--interaction, .agent-run-rail-flow-stage--interaction.is-completed",
+        "value": "#fff"
       }
     ],
     "web-components/AgentTaskResult/src/styles/components/detail-tray/execution-detail-tray.css": [
@@ -77,6 +77,12 @@
         "property": "color",
         "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
         "selector": ".run-card-stage.is-active .run-card-stage-glyph",
+        "value": "#fff"
+      },
+      {
+        "property": "color",
+        "reason": "Fixed white glyph on the solid Basil-blue answered-interaction stage, matching the allowlisted completed/active stage glyphs and the rail's interaction stage.",
+        "selector": ".run-card-stage--interaction .run-card-stage-glyph, .run-card-stage--interaction.is-completed .run-card-stage-glyph",
         "value": "#fff"
       },
       {

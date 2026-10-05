@@ -1,0 +1,142 @@
+.interaction-exchange {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-s);
+  margin: 0 var(--padding-xs) var(--padding-m);
+  padding: var(--padding-s) var(--padding-m);
+  border: var(--border-thin) solid var(--secondary);
+  border-left: 4px solid var(--secondary);
+  border-radius: var(--corner-radius-medium, 8px);
+  background: var(--background-primary);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--secondary) 14%, transparent);
+}
+
+.interaction-exchange.is-waiting {
+  border-color: var(--warning-base);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--warning-base) 30%, transparent);
+}
+
+.interaction-exchange-heading,
+.interaction-exchange-response-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+}
+
+.interaction-exchange-glyph {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--secondary);
+  color: var(--background-primary);
+}
+
+.interaction-exchange-glyph svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.interaction-exchange-asker {
+  color: var(--secondary);
+}
+
+.interaction-exchange-time {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: inherit;
+  font-size: var(--font-size-status-tiny);
+  opacity: 0.85;
+}
+
+.interaction-exchange-heading .interaction-exchange-time {
+  color: var(--text-primary);
+}
+
+.interaction-exchange-prompt {
+  margin-top: var(--padding-xs);
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-small);
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.interaction-exchange-command {
+  margin: var(--padding-xs) 0 0;
+  padding: var(--padding-xs) var(--padding-s);
+  max-height: 160px;
+  overflow: auto;
+  border-radius: var(--corner-radius-small);
+  background: color-mix(in srgb, var(--secondary) 60%, var(--text-primary));
+  color: var(--background-primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--font-size-status-tiny);
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+
+.interaction-exchange-response {
+  align-self: flex-end;
+  max-width: 88%;
+  padding: 6px var(--padding-s);
+  border: var(--border-thin) solid var(--secondary);
+  border-radius: var(--corner-radius-medium, 8px) var(--corner-radius-medium, 8px) 2px var(--corner-radius-medium, 8px);
+  background: var(--background-primary);
+  color: var(--secondary);
+}
+
+.interaction-exchange-response.is-answer {
+  background: var(--secondary);
+  color: var(--background-primary);
+}
+
+.interaction-exchange-response.is-waiting {
+  border-color: var(--warning-base);
+  background: color-mix(in srgb, var(--warning-base) 16%, var(--background-primary));
+  color: var(--text-primary);
+}
+
+.interaction-exchange-response.is-negative {
+  border-color: var(--error-base);
+  color: var(--error-base);
+}
+
+.interaction-exchange-response-text {
+  margin-top: 3px;
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-small);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.interaction-exchange-waiting-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: var(--warning-base);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.reasoning-with-interactions > .thinking-segments + .thinking-segments {
+  margin-top: var(--padding-s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .interaction-exchange-waiting-dot {
+    animation: none;
+  }
+}

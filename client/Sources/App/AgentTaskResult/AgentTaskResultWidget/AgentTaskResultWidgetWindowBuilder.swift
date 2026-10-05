@@ -93,7 +93,7 @@ extension AgentTaskResultWidgetController {
             defer: false
         )
 
-        newPanel.title = "AgentTask History"
+        newPanel.title = BasilTeamIdentity.agentTask.pairedName
         // ARC owns the panel via the strong `panel` property below; we
         // also nil that property in `dismiss()` to release. With AppKit's
         // default `isReleasedWhenClosed = true`, NSWindow's close cycle

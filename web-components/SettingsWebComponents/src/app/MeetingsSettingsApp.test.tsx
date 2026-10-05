@@ -52,7 +52,7 @@ afterEach(() => {
 
 describe('MeetingsSettingsApp', () => {
   it('shows a loading state before init arrives', () => {
-    expect(container.querySelector('.meetings-settings-status')?.textContent).toBe('Loading Meeting Detection settings...')
+    expect(container.querySelector('.meetings-settings-status')?.textContent).toBe('Loading Meeting/Call Detection settings...')
   })
 
   it('renders loaded settings, including the mode radio, poll seconds, and excluded app names', () => {

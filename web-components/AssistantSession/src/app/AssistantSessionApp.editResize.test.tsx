@@ -70,7 +70,7 @@ describe('AssistantSessionApp edit-mode sizing', () => {
     expect(resizeCalls[resizeCalls.length - 1]?.height).toBe(850);
   });
 
-  it('grows the window when the paste status chip appears after the output', () => {
+  it('grows the window when the paste status chip appears in the output header', () => {
     const originalInnerHeight = window.innerHeight;
     Object.defineProperty(window, 'innerHeight', { configurable: true, value: 300 });
     Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {

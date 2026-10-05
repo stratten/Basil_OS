@@ -407,14 +407,18 @@ def _record_captured_action(
     })
 
 
+def discard_captured_agent_actions(agent_context: dict[str, Any]) -> None:
+    """Forget captured tool actions so a resumed run records only its own steps."""
+    agent_context.pop(_CAPTURED_ACTIONS_KEY, None)
+
+
 def captured_agent_actions_as_intermediate_steps(
     agent_context: dict[str, Any],
     since_offset: int = 0,
 ) -> list[tuple[AgentAction, Any]]:
     """Rebuild LangChain-shaped intermediate_steps from the in-memory log.
 
-    Used only to recover evidence for a pass that ended via
-    RepeatedInvalidToolCallStop, whose own return value has no intermediate_steps.
+    Used to recover evidence for a pass that ended via RepeatedInvalidToolCallStop, whose own return value has no intermediate_steps, and to record the work done before a checkpoint pause.
     """
     actions = agent_context.get(_CAPTURED_ACTIONS_KEY, [])
     return [

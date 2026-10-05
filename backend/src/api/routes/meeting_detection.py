@@ -84,7 +84,7 @@ def _get_runtime_or_raise():
 async def _start_from_preferences() -> MeetingDetectionOperationResponse:
     preferences = load_preferences()
     if not preferences.meeting_detection.enabled:
-        raise HTTPException(status_code=409, detail="Meeting Detection is disabled in Settings")
+        raise HTTPException(status_code=409, detail="Meeting/Call Detection is disabled in Settings")
     runtime = _get_runtime_or_raise()
     await runtime.apply_settings(preferences.meeting_detection)
     await runtime.start()

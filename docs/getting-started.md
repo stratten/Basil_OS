@@ -61,7 +61,7 @@ Basil continues to work when optional permissions are declined, but the related 
 
 macOS may require you to restart the development app after granting Screen Recording. You can change or revoke permissions later in System Settings → Privacy & Security. Revoking a permission leaves unrelated Basil features available but prevents the dependent capability from completing its work.
 
-Do not confuse Meeting Detection with meeting recording. Detection can observe eligible process audio activity without recording audio. A recording starts only when you choose the meeting action or configure an automatic detected-meeting flow. See [Capabilities](capabilities.md#meeting-detection) for the detection behavior and its single-active-meeting safeguard.
+Do not confuse Meeting/Call Detection with meeting recording. Detection can observe eligible process audio activity without recording audio. A recording starts only when you choose the meeting action or configure an automatic detected-meeting flow. See [Capabilities](capabilities.md#meetingcall-detection) for the detection behavior and its single-active-meeting safeguard.
 
 ## Choose a model path
 
@@ -80,7 +80,7 @@ Configure models, provider keys, and default behavior in Settings. The [Configur
 
 After the app opens, begin with a local, low-permission workflow such as opening the Basil Board, choosing a local model, or reviewing Settings. Add Screen Recording when you need capture, Microphone when you need live transcription, and automation permissions only when you intend to automate a supported workflow.
 
-For meeting work, use **Meeting / Call Transcription** when you want to start a recording yourself. Configure Meeting Detection separately if you want prompts or automatic behavior around likely calls. For agent work, begin with an Agent Task or a conversation, then review any request for an external action before approval.
+For meeting work, use **Notetaker** when you want to start a recording yourself. Configure Meeting/Call Detection separately if you want prompts or automatic behavior around likely calls. For agent work, begin with a Paprika task or a conversation, then review any request for an external action before approval.
 
 ## Next steps
 

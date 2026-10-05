@@ -203,6 +203,31 @@ async def test_handle_elicitation_create_persists_publishes_awaits_and_resolves_
     assert repository.resolutions == [(interaction_id, "accept")]
     assert len(routing.resolutions) == 1
     assert routing.resolutions[0]["interaction_id"] == interaction_id
+    assert routing.resolutions[0]["status"] == "answered"
+    assert routing.resolutions[0]["response"] == "strategy: balanced"
+
+
+@pytest.mark.asyncio
+async def test_handle_elicitation_records_a_decline_without_a_response() -> None:
+    repository = _FakeRepository()
+    routing = _FakeRoutingService()
+    coordinator = _make_coordinator(repository, routing)
+    routing.on_request = lambda request: ProviderInteractionDeliveryRegistry.resolve(
+        request["interaction_id"], "decline", None
+    )
+
+    result = await coordinator.handle_elicitation_create(
+        {
+            "sessionId": "session-1",
+            "mode": "form",
+            "message": "Pick a strategy",
+            "requestedSchema": {"type": "object", "properties": {"strategy": {"type": "string"}}},
+        }
+    )
+
+    assert result == {"outcome": "decline"}
+    assert routing.resolutions[0]["status"] == "denied"
+    assert routing.resolutions[0]["response"] is None
 
 
 @pytest.mark.asyncio
@@ -259,6 +284,7 @@ async def test_cancel_pending_interaction_resolves_the_active_future_and_superse
 
     assert result == {"outcome": "cancel"}
     assert repository.superseded_runs == ["run-1"]
+    assert routing.resolutions[-1]["status"] == "cancelled"
 
 
 def test_validate_submitted_values_rejects_an_unknown_field() -> None:

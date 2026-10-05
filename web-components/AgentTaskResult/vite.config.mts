@@ -32,6 +32,8 @@ export default defineConfig({
       '../shared/CrossfadeStack.test.tsx',
       '../shared/bubble/*.test.ts',
       '../shared/plainMarkdownText.test.ts',
+      '../shared/tooltip/*.test.tsx',
+      '../shared/teamIdentity.test.ts',
     ],
   },
   server: {

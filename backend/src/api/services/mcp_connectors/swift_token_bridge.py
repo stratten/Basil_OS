@@ -173,7 +173,7 @@ async def _ask_swift_for_credentials(
                 timeout_s,
             )
             if agent_task_id:
-                await _broadcast_to_active_connections({
+                await _broadcast_token_blocker_resolved(correlation_id, {
                     "event_type": "agent_task_blocker_resolved",
                     "agent_task_id": agent_task_id,
                     "kind": "token_response_timeout",
@@ -191,7 +191,7 @@ async def _ask_swift_for_credentials(
                 connection_id,
             )
             if agent_task_id:
-                await _broadcast_to_active_connections({
+                await _broadcast_token_blocker_resolved(correlation_id, {
                     "event_type": "agent_task_blocker_resolved",
                     "agent_task_id": agent_task_id,
                     "kind": "token_request_canceled",
@@ -208,7 +208,7 @@ async def _ask_swift_for_credentials(
         )
         if access_token:
             if agent_task_id:
-                await _broadcast_to_active_connections({
+                await _broadcast_token_blocker_resolved(correlation_id, {
                     "event_type": "agent_task_blocker_resolved",
                     "agent_task_id": agent_task_id,
                     "kind": "token_available",
@@ -221,7 +221,7 @@ async def _ask_swift_for_credentials(
                 "refresh_token": refresh_token,
             }
         if agent_task_id:
-            await _broadcast_to_active_connections({
+            await _broadcast_token_blocker_resolved(correlation_id, {
                 "event_type": "agent_task_blocker_resolved",
                 "agent_task_id": agent_task_id,
                 "kind": "token_missing",
@@ -358,7 +358,46 @@ async def broadcast_token_user_action_waiting(
         "connection_id": connection_id,
         "user_action_required": True,
     })
+    if not context.get("user_action_recorded"):
+        context["user_action_recorded"] = True
+        from api.services.agent_processing.lifecycle.runtime.user_interaction_timeline import (
+            record_user_interaction_asked,
+        )
+
+        await record_user_interaction_asked(
+            agent_task_id,
+            interaction_id=correlation_id,
+            kind="credential",
+            prompt=message or "Keychain access required",
+            broadcast=_broadcast_to_active_connections,
+        )
     return True
+
+
+_CREDENTIAL_INTERACTION_STATUSES = {
+    "token_available": "approved",
+    "token_missing": "denied",
+    "token_response_timeout": "timed_out",
+    "token_request_canceled": "cancelled",
+}
+
+
+async def _broadcast_token_blocker_resolved(correlation_id: str, payload: Dict[str, Any]) -> None:
+    """Clear the task blocker and close any Keychain prompt the user was shown for this request."""
+    await _broadcast_to_active_connections(payload)
+    context = _token_request_contexts.get(correlation_id) or {}
+    if not context.get("user_action_recorded"):
+        return
+    from api.services.agent_processing.lifecycle.runtime.user_interaction_timeline import (
+        record_user_interaction_resolved,
+    )
+
+    await record_user_interaction_resolved(
+        context.get("agent_task_id"),
+        interaction_id=correlation_id,
+        status=_CREDENTIAL_INTERACTION_STATUSES.get(str(payload.get("kind")), "resolved"),
+        broadcast=_broadcast_to_active_connections,
+    )
 
 
 async def _broadcast_to_active_connections(payload: dict) -> int:

@@ -53,14 +53,14 @@ export default function WindowChrome({
         <div className="meeting-window-chrome-actions">
           {!hideWindowControls && (
             <>
-              <button type="button" className="meeting-chrome-button" onClick={closeWindow} title="Close" aria-label="Close">
+              <button type="button" className="meeting-chrome-button" onClick={closeWindow} aria-label="Close">
                 <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
                   <circle cx="11" cy="11" r="10" fill="var(--meeting-window-control-fill)" />
                   <line x1="7.5" y1="7.5" x2="14.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
                   <line x1="14.5" y1="7.5" x2="7.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
                 </svg>
               </button>
-              <button type="button" className="meeting-chrome-button" onClick={minimizeWindow} title="Minimize" aria-label="Minimize">
+              <button type="button" className="meeting-chrome-button" onClick={minimizeWindow} aria-label="Minimize">
                 <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
                   <circle cx="11" cy="11" r="10" fill="var(--meeting-window-control-fill)" />
                   <line x1="6.5" y1="11" x2="15.5" y2="11" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
@@ -69,7 +69,7 @@ export default function WindowChrome({
             </>
           )}
           {canCollapse && (
-            <button type="button" className="meeting-chrome-button" onClick={onToggleCollapse} title={isCollapsed ? 'Expand' : 'Collapse'} aria-label={isCollapsed ? 'Expand' : 'Collapse'} aria-pressed={isCollapsed}>
+            <button type="button" className="meeting-chrome-button" onClick={onToggleCollapse} aria-label={isCollapsed ? 'Expand' : 'Collapse'} aria-pressed={isCollapsed}>
               <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
                 <circle cx="11" cy="11" r="10" fill="var(--meeting-window-control-fill)" />
                 <path className={`meeting-window-collapse-chevron${isCollapsed ? ' is-collapsed' : ''}`} d="M7 9l4 4 4-4" fill="none" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />

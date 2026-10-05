@@ -43,6 +43,7 @@ from ..planning.request_analyzer import RequestAnalyzer, RequestAnalysis
 from ...service_capabilities.service_method_planner import ServiceCapabilityCache
 # EnhancedTodo, DatabasePersistedTodo imports removed - pre-planning phase deprecated
 from ..runtime.workflow_results import WorkflowExecutionResult
+from ..runtime.agent_checkpoint_store import AGENT_CHECKPOINT_DATABASE_PATH, ExitDurabilityGraph
 
 
 def _emit_runtime_trace(event: str, **fields: Any) -> None:
@@ -144,7 +145,7 @@ class BasilCheckpointSerde:
 
 @asynccontextmanager
 async def _open_tool_enhanced_graph(
-    checkpoint_path: str = "~/.basil/agent_checkpoints.sqlite",
+    checkpoint_path: str = AGENT_CHECKPOINT_DATABASE_PATH,
 ):
     """Yield one compiled graph and close its SQLite checkpointer on exit."""
     if StateGraph is None:
@@ -182,7 +183,9 @@ async def _open_tool_enhanced_graph(
     from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver  # type: ignore
 
     async with AsyncSqliteSaver.from_conn_string(checkpoint_database_path) as saver:
-        yield graph.compile(checkpointer=AsyncSqliteSaver(saver.conn, serde=BasilCheckpointSerde()))
+        yield ExitDurabilityGraph(
+            graph.compile(checkpointer=AsyncSqliteSaver(saver.conn, serde=BasilCheckpointSerde()))
+        )
 
 
 def _derive_thread_id(context: Dict[str, Any], user_agent_task: str) -> str:

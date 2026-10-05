@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Switch } from '@shared/Switch'
+import { BASIL_TEAM } from '@shared/teamIdentity'
 import TokenizedSelect from '@shared/TokenizedSelect'
 import { PolicyRadioGroup, type PolicyRadioOption } from '../components/PolicyRadioGroup'
 import { useOptimisticSettings } from './useOptimisticSettings'
@@ -199,7 +200,7 @@ export function ReasoningDefaultsSettingsApp() {
       </section>
 
       <section className="reasoning-defaults-section" aria-labelledby="reasoning-defaults-agent-task-heading">
-        <h2 id="reasoning-defaults-agent-task-heading">AgentTask</h2>
+        <h2 id="reasoning-defaults-agent-task-heading">{BASIL_TEAM.agentTask.pairedName}</h2>
         <PolicyRadioGroup
           legend="Default input mode"
           name="agent-task-default-modality"
@@ -213,21 +214,21 @@ export function ReasoningDefaultsSettingsApp() {
             submit(requestId)
           }}
         />
-        <p className="reasoning-defaults-field-hint">Chooses whether new agentTasks open the mic immediately or begin in the text editor. Affects the initial capture widget and the new-AgentTask overlay -- voice follow-ups are unaffected.</p>
+        <p className="reasoning-defaults-field-hint">Chooses whether new Paprika tasks open the mic immediately or begin in the text editor. Affects the initial capture widget and the new-task overlay; voice follow-ups are unaffected.</p>
         <Switch
           id="reasoning-defaults-agent-task-auto-reopen"
-          label="Automatically reopen collapsed agent tasks when they finish"
+          label="Automatically reopen collapsed Paprika tasks when they finish"
           checked={s.agentTaskAutoReopenOnCompletion}
           onChange={(checked) => { setSettings({ ...s, agentTaskAutoReopenOnCompletion: checked }); submit(requestUpdateAgentTaskAutoReopenOnCompletion(checked)) }}
         />
-        <p className="reasoning-defaults-field-hint">When a focused agent task completes or fails while its result window is collapsed, reopen the window to show the final update.</p>
+        <p className="reasoning-defaults-field-hint">When a focused Paprika task completes or fails while its result window is collapsed, reopen the window to show the final update.</p>
         <Switch
           id="reasoning-defaults-agent-task-ptt"
           label="Enable push-to-talk mode"
           checked={s.agentTaskPushToTalk}
           onChange={(checked) => { setSettings({ ...s, agentTaskPushToTalk: checked }); submit(requestUpdateAgentTaskPushToTalk(checked)) }}
         />
-        <p className="reasoning-defaults-field-hint">When enabled, holding the agentTask hotkey for longer than the threshold will automatically process when released.</p>
+        <p className="reasoning-defaults-field-hint">When enabled, holding the Paprika hotkey for longer than the threshold will automatically process when released.</p>
         {s.agentTaskPushToTalk && (
           <PushToTalkThreshold
             idPrefix="agent-task"
@@ -238,7 +239,7 @@ export function ReasoningDefaultsSettingsApp() {
       </section>
 
       <section className="reasoning-defaults-section" aria-labelledby="reasoning-defaults-assistant-session-heading">
-        <h2 id="reasoning-defaults-assistant-session-heading">AssistantSession</h2>
+        <h2 id="reasoning-defaults-assistant-session-heading">{BASIL_TEAM.assistantSession.pairedName}</h2>
         <div className="reasoning-defaults-columns">
           <div className="reasoning-defaults-column" role="group" aria-labelledby="reasoning-defaults-assistant-session-input-heading">
             <h3 id="reasoning-defaults-assistant-session-input-heading">Input</h3>
@@ -262,7 +263,7 @@ export function ReasoningDefaultsSettingsApp() {
           checked={s.assistantSessionPushToTalk}
           onChange={(checked) => { setSettings({ ...s, assistantSessionPushToTalk: checked }); submit(requestUpdateAssistantSessionPushToTalk(checked)) }}
         />
-        <p className="reasoning-defaults-field-hint">When enabled, holding the AssistantSession hotkey for longer than the threshold will automatically process when released.</p>
+        <p className="reasoning-defaults-field-hint">When enabled, holding the Dill hotkey for longer than the threshold will automatically process when released.</p>
         {s.assistantSessionPushToTalk && (
           <PushToTalkThreshold
             idPrefix="assistant-session"
@@ -275,7 +276,7 @@ export function ReasoningDefaultsSettingsApp() {
             <h3 id="reasoning-defaults-behavior-heading">Behavior</h3>
         <Switch
           id="reasoning-defaults-close-on-insert"
-          label="Close AssistantSession after inserting"
+          label="Close Dill after inserting"
           checked={s.closeAssistantSessionOnInsert}
           onChange={(checked) => { setSettings({ ...s, closeAssistantSessionOnInsert: checked }); submit(requestUpdateCloseAssistantSessionOnInsert(checked)) }}
         />
@@ -293,7 +294,7 @@ export function ReasoningDefaultsSettingsApp() {
           checked={s.useRegionSelection}
           onChange={(checked) => { setSettings({ ...s, useRegionSelection: checked }); submit(requestUpdateUseRegionSelection(checked)) }}
         />
-        <p className="reasoning-defaults-field-hint">When enabled, allows manual screen region selection instead of automatic window capture for Enhanced and AssistantSession.</p>
+        <p className="reasoning-defaults-field-hint">When enabled, allows manual screen region selection instead of automatic window capture for Enhanced and Dill.</p>
           </div>
         </div>
       </section>
@@ -306,7 +307,7 @@ export function ReasoningDefaultsSettingsApp() {
           checked={s.conversationDefaultConversationOnly === true}
           onChange={(checked) => { setSettings({ ...s, conversationDefaultConversationOnly: checked }); submit(requestUpdateConversationDefaultConversationOnly(checked)) }}
         />
-        <p className="reasoning-defaults-field-hint">New conversations keep replies in the conversation instead of starting agent tasks. Each conversation remembers its own Conversation only choice, so changing this default does not change existing conversations.</p>
+        <p className="reasoning-defaults-field-hint">New conversations keep replies in the conversation instead of starting Paprika tasks. Each conversation remembers its own Conversation only choice, so changing this default does not change existing conversations.</p>
       </section>
 
       <p className="settings-visually-hidden" role="status">{isSaving ? 'Saving setting...' : ''}</p>

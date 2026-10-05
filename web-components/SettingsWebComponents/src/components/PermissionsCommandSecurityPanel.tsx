@@ -132,7 +132,7 @@ export function PermissionsCommandSecurityPanel() {
       <header className="permissions-command-security-header">
         <div>
           <h2>Command Execution Security</h2>
-          <p>Control how shell commands and AppleScript from agent tasks are approved before execution.</p>
+          <p>Control how shell commands and AppleScript from Paprika tasks are approved before execution.</p>
         </div>
       </header>
       {requestError && <p className="permissions-whitelist-form-error" role="alert">{requestError}</p>}

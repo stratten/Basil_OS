@@ -49,7 +49,7 @@ def _agent_task_title(row: sqlite3.Row) -> str:
         _text(row, "title")
         or _text(row, "transcribed_prompt")
         or _text(row, "original_prompt")
-        or "Agent task"
+        or "Paprika task"
     )
 
 

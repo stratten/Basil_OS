@@ -476,7 +476,7 @@ export class AgentStore extends BlockerEventAgentStore {
   }
 
   private handleCanceled(agentTaskId: string, event: WSEvent) {
-    const message = (event.message as string | undefined) || 'Agent task canceled';
+    const message = (event.message as string | undefined) || 'Task canceled';
     if (this.isTransientWithoutDurableData(agentTaskId)) {
       this.removeAgent(agentTaskId);
       return;
@@ -576,11 +576,20 @@ export class AgentStore extends BlockerEventAgentStore {
         if (thinkingComplete !== undefined) a.thinkingComplete = thinkingComplete;
 
         if (thinking !== undefined && thinkingIteration !== undefined) {
-          const idx = a.thinkingSegments.findIndex(s => s.iteration === thinkingIteration);
+          const matchIdx = a.thinkingSegments.findIndex(s => s.iteration === thinkingIteration);
+          const matched = matchIdx >= 0 ? a.thinkingSegments[matchIdx] : undefined;
+          // A run resumed after a checkpoint restarts its step counter; a finished pass with different text is a new pass, not an update.
+          const isRestartedIteration = Boolean(matched?.isComplete && matched.text !== thinking);
+          const idx = isRestartedIteration ? -1 : matchIdx;
           const segment: ThinkingSegment = {
-            iteration: thinkingIteration,
+            iteration: isRestartedIteration
+              ? Math.max(...a.thinkingSegments.map(s => s.iteration)) + 1
+              : thinkingIteration,
             text: thinking,
             isComplete: thinkingComplete ?? false,
+            recordedAt: matched && !isRestartedIteration
+              ? matched.recordedAt
+              : typeof event.timestamp === 'string' ? event.timestamp : new Date().toISOString(),
           };
           if (idx >= 0) {
             a.thinkingSegments[idx] = segment;
@@ -588,7 +597,7 @@ export class AgentStore extends BlockerEventAgentStore {
             a.thinkingSegments.push(segment);
             a.executionTimeline.push({
               type: 'thinking', timestamp: new Date().toISOString(),
-              content: thinking, iteration: thinkingIteration,
+              content: thinking, iteration: segment.iteration,
             });
           }
         }

@@ -466,8 +466,8 @@ describe('SettingsShell', () => {
     expect(container.querySelector('.settings-shell-nav-subitems')).toBeNull()
   })
 
-  it('enables the Meetings leaf directly and hydrates its React surface', () => {
-    const meetings = navigationButton('Meetings')
+  it('enables the Notetaker leaf directly and hydrates its React surface', () => {
+    const meetings = navigationButton('Notetaker')
     expect(meetings.disabled).toBe(false)
     act(() => { meetings.click() })
     expect(postMessage).toHaveBeenCalledWith({ type: 'reactReady', protocolVersion: 1 })

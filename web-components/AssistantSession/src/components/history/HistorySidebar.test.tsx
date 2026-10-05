@@ -83,13 +83,13 @@ describe('HistorySidebar', () => {
     const { container, rerender, props } = renderSidebar();
     const sidebar = container.querySelector<HTMLElement>('.assistant-output-history-sidebar')!;
     expect(sidebar).toHaveClass('basil-collapsible-sidebar', 'is-expanded');
-    expect(screen.queryByRole('button', { name: 'Show AssistantSession history' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Show history' })).toBeNull();
     rerender(<HistorySidebar {...props} collapsed />);
     expect(container.querySelector('.assistant-output-history-sidebar')).toBe(sidebar);
     expect(sidebar).toHaveClass('is-collapsed');
     expect(sidebar.querySelector('.basil-collapsible-sidebar__layer--expanded')).toHaveAttribute('inert');
     expect(sidebar.querySelector('.assistant-output-history-sidebar__search')).not.toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Show AssistantSession history' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show history' }));
     expect(props.onToggleCollapsed).toHaveBeenCalledTimes(1);
   });
 });

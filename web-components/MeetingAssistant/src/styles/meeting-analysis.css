@@ -578,7 +578,18 @@ details[open] > .meeting-proposal-group-summary .meeting-proposal-group-chevron 
   font-family: var(--font-family-light);
   font-size: var(--font-size-callout);
   font-weight: 400;
-  white-space: pre-wrap;
+}
+
+.meeting-proposal-draft-preview :is(p, ol, ul) {
+  margin: 0 0 var(--padding-xs);
+}
+
+.meeting-proposal-draft-preview :is(ol, ul) {
+  padding-left: 20px;
+}
+
+.meeting-proposal-draft-preview .meeting-markdown > :last-child {
+  margin-bottom: 0;
 }
 
 .meeting-analysis-qa-pair {

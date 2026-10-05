@@ -41,7 +41,7 @@ describe('AgentTasksHostPlaceholder', () => {
       enqueueBoardAgentTasksAvailabilityChanged({ availability: 'separate_window' });
     });
 
-    expect(screen.getByText('Agent Tasks is open in a separate window.')).toBeTruthy();
+    expect(screen.getByText('Agents is open in a separate window.')).toBeTruthy();
   });
 
   it('returns to the embedded spacer when availability changes back to embedded', () => {

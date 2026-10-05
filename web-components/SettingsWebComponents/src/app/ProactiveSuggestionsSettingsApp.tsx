@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Switch } from '@shared/Switch'
+import { BASIL_TEAM } from '@shared/teamIdentity'
 import TokenizedSelect from '@shared/TokenizedSelect'
 import { PolicyRadioGroup, type PolicyRadioOption } from '../components/PolicyRadioGroup'
 import { useOptimisticSettings } from './useOptimisticSettings'
@@ -32,8 +33,8 @@ const COOLDOWN_OPTIONS: readonly { value: number; label: string }[] = [
 ]
 
 const CAPABILITIES: readonly { id: ProactiveSuggestionCapability; label: string }[] = [
-  { id: 'assistant_session', label: 'Dill Assistant Session' },
-  { id: 'agent_task', label: 'Paprika Agent Task' },
+  { id: 'assistant_session', label: BASIL_TEAM.assistantSession.pairedName },
+  { id: 'agent_task', label: BASIL_TEAM.agentTask.pairedName },
 ]
 
 function clampFrequency(value: number): number {

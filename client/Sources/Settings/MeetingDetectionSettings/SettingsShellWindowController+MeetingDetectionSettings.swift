@@ -60,7 +60,7 @@ extension SettingsShellWindowController {
         guard generation == meetingDetectionLoadGeneration else { return }
         guard let webView = meetingDetectionWebView else { return }
         if vm.statusMessage?.contains("Error") == true {
-            webView.sendLoadError(message: vm.statusMessage ?? "Failed to load Meeting Detection settings.")
+            webView.sendLoadError(message: vm.statusMessage ?? "Failed to load Meeting/Call Detection settings.")
             return
         }
         webView.sendInit(viewModel: vm)

@@ -322,6 +322,20 @@ async def startup_event():
                     exc_info=True,
                 )
 
+            try:
+                from .services.agent_processing.lifecycle.runtime.agent_checkpoint_store import (
+                    prune_agent_checkpoints_at_startup,
+                )
+
+                checkpoint_prune_result = await prune_agent_checkpoints_at_startup(sqlite_service.db_path)
+                logger.info("Startup: Agent checkpoint pruning finished: %s", checkpoint_prune_result)
+            except Exception as error:
+                logger.error(
+                    "Startup: Failed to prune agent checkpoints: %s",
+                    error,
+                    exc_info=True,
+                )
+
             wake_word_service = WakeWordService(
                 llm_service=llm_service,
                 basil_services=basil_services,

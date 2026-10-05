@@ -57,7 +57,7 @@ final class StatusBarMenuUpdater {
             meetingDetectionItem.isHidden = !manager.isMeetingDetectionEnabled
             if !meetingDetectionItem.isHidden {
                 meetingDetectionItem.state = manager.isMeetingDetectionRunning ? .on : .off
-                meetingDetectionItem.title = "Meeting Detection"
+                meetingDetectionItem.title = "Meeting/Call Detection"
             }
         }
         
@@ -73,16 +73,16 @@ final class StatusBarMenuUpdater {
 
         // Update Open AssistantSession item with current hotkey and key equivalent
         // Note: This uses title matching since there's no tag, so we need to match base title or with suffix
-        if let assistantSessionItem = menu.items.first(where: { $0.title.hasPrefix("Open \(BasilTeamIdentity.assistantSession.displayName)") }),
+        if let assistantSessionItem = menu.items.first(where: { $0.title.hasPrefix("Open \(BasilTeamIdentity.assistantSession.pairedName)") }),
            let assistantSessionBinding = hotkeyService.hotkeyBindings["assistantSession"] {
-            assistantSessionItem.title = "Open \(BasilTeamIdentity.assistantSession.displayName)"
+            assistantSessionItem.title = "Open \(BasilTeamIdentity.assistantSession.pairedName)"
             updateMenuItemWithHotkeyBinding(item: assistantSessionItem, binding: assistantSessionBinding)
         }
         
         // Update Open AgentTask item with current hotkey and key equivalent
         if let agentTaskItem = menu.item(withTag: MenuItemTag.agentTask.rawValue),
            let agentTaskBinding = hotkeyService.hotkeyBindings["agentTask"] {
-            agentTaskItem.title = "Open \(BasilTeamIdentity.agentTask.displayName)"
+            agentTaskItem.title = "Open \(BasilTeamIdentity.agentTask.pairedName)"
             updateMenuItemWithHotkeyBinding(item: agentTaskItem, binding: agentTaskBinding)
         }
     }
@@ -140,11 +140,11 @@ final class StatusBarMenuUpdater {
     @MainActor
     static func getAssistantSessionMenuTitle(hotkeyService: HotkeyService, modifierSymbols: [String: String]) -> String {
         guard let binding = hotkeyService.hotkeyBindings["assistantSession"] else {
-            return "Open \(BasilTeamIdentity.assistantSession.displayName)"
+            return "Open \(BasilTeamIdentity.assistantSession.pairedName)"
         }
         let modString = binding.modifiers.map { modifierSymbols[$0.lowercased()] ?? $0 }.joined(separator: "")
         let keyString = binding.key
         let hotkeyText = modString.isEmpty ? keyString : "\(modString)+\(keyString)"
-        return "Open AssistantSession (\(hotkeyText))"
+        return "Open \(BasilTeamIdentity.assistantSession.pairedName) (\(hotkeyText))"
     }
 } 

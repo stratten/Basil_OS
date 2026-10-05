@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Mapping
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from uuid import uuid4
 
 from ...tools.internal_basil_tools.checkpoint_tool import CheckpointRequest
 
@@ -10,6 +11,8 @@ if TYPE_CHECKING:
     from ..execution_graph.agent_progress_system import PlanningState
 
 logger = logging.getLogger(__name__)
+
+PRIOR_THINKING_HISTORY_CONTEXT_KEY = "prior_thinking_history"
 
 
 def normalize_thinking_history(raw: Any) -> List[Dict[str, Any]]:
@@ -32,13 +35,36 @@ def normalize_thinking_history(raw: Any) -> List[Dict[str, Any]]:
             or not isinstance(is_complete, bool)
         ):
             continue
-        by_iteration[iteration] = {
+        normalized = {
             "iteration": iteration,
             "text": text,
             "is_complete": is_complete,
         }
+        recorded_at = segment.get("recorded_at")
+        if isinstance(recorded_at, str) and recorded_at.strip():
+            normalized["recorded_at"] = recorded_at
+        by_iteration[iteration] = normalized
 
     return [by_iteration[iteration] for iteration in sorted(by_iteration)]
+
+
+def merge_thinking_histories(prior: Any, current: Any) -> List[Dict[str, Any]]:
+    """Append this run's reasoning to reasoning saved before a checkpoint pause.
+
+    A resumed run restarts its step counter, so colliding iterations are shifted past the prior ones instead of overwriting them.
+    """
+    prior_segments = normalize_thinking_history(prior)
+    current_segments = normalize_thinking_history(current)
+    if not prior_segments:
+        return current_segments
+    prior_iterations = {segment["iteration"] for segment in prior_segments}
+    if any(segment["iteration"] in prior_iterations for segment in current_segments):
+        offset = max(prior_iterations)
+        current_segments = [
+            {**segment, "iteration": segment["iteration"] + offset}
+            for segment in current_segments
+        ]
+    return normalize_thinking_history([*prior_segments, *current_segments])
 
 
 async def _store_execution_context(
@@ -146,7 +172,8 @@ async def handle_provider_delegation_wait_request(
 async def handle_checkpoint_request(
     checkpoint_err: CheckpointRequest,
     state: "PlanningState",
-    coordinator: Any
+    coordinator: Any,
+    thinking_history: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """Handle checkpoint request (collaborative flow, NOT an error)."""
     logger.info(f"🤝 Agent requested user input (collaborative checkpoint): {checkpoint_err.checkpoint_data.get('prompt')}")
@@ -183,6 +210,21 @@ async def handle_checkpoint_request(
         except Exception as ws_err:
             logger.warning(f"⚠️ Failed to send checkpoint via WebSocket: {ws_err}")
 
+    from ..runtime.user_interaction_timeline import (
+        checkpoint_interaction_kind,
+        record_user_interaction_asked,
+    )
+
+    await record_user_interaction_asked(
+        agent_task_id,
+        interaction_id=checkpoint_data.get("checkpoint_id") or f"checkpoint_{uuid4().hex}",
+        kind=checkpoint_interaction_kind(checkpoint_data),
+        prompt=str(checkpoint_data.get("prompt") or "Agent needs your input"),
+        input_type=checkpoint_data.get("input_type"),
+        options=checkpoint_data.get("options"),
+        broadcast=ws_manager.broadcast if ws_manager else None,
+    )
+
     if agent_task_id:
         try:
             from api.dependencies import get_sqlite_knowledge_service
@@ -203,6 +245,25 @@ async def handle_checkpoint_request(
                 "needs_user_input": True,
                 "execution_method": "dynamic_langchain_agent"
             })
+            paused_thinking_history = normalize_thinking_history(thinking_history)
+            if paused_thinking_history:
+                existing_data["thinking_history"] = paused_thinking_history
+            from ..runtime.paused_work_digest import (
+                PAUSED_WORK_DIGEST_RESULT_KEY,
+                PRIOR_PAUSED_WORK_CONTEXT_KEY,
+                build_paused_work_digest,
+            )
+
+            try:
+                paused_work_digest = build_paused_work_digest(
+                    state.context,
+                    prior=state.context.get(PRIOR_PAUSED_WORK_CONTEXT_KEY),
+                )
+            except Exception:
+                logger.warning("Could not record the work done before the pause", exc_info=True)
+                paused_work_digest = []
+            if paused_work_digest:
+                existing_data[PAUSED_WORK_DIGEST_RESULT_KEY] = paused_work_digest
             await knowledge_service.agent_task_service.update_agent_task_status(
                 agent_task_id=agent_task_id,
                 status="awaiting_user_input",

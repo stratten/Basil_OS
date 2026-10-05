@@ -31,6 +31,39 @@ function renderSidebar(isCollapsed = false, onCollapsedChange = vi.fn()) {
 }
 
 describe('ConversationSidebar', () => {
+  it('flattens markdown in the last-message preview', () => {
+    render(
+      <ConversationSidebar
+        conversations={[{
+          id: 'conversation-1',
+          title: 'A conversation',
+          created_at: '2026-08-02T12:00:00Z',
+          updated_at: '2026-08-02T12:00:00Z',
+          message_count: 2,
+          last_message_preview: '## Plan\n- **Book** the `hotel`...',
+        }]}
+        query=""
+        activeConversationIds={new Set()}
+        loading={false}
+        loadingMore={false}
+        hasMore={false}
+        isCollapsed={false}
+        onQueryChange={vi.fn()}
+        onRetryLoad={vi.fn()}
+        onRetryLoadMore={vi.fn()}
+        onLoadMore={vi.fn()}
+        onStartNew={vi.fn()}
+        onCollapsedChange={vi.fn()}
+        onSelect={vi.fn()}
+        onRequestDelete={vi.fn()}
+        onCancelDelete={vi.fn()}
+        onConfirmDelete={vi.fn()}
+      />,
+    );
+
+    expect(document.querySelector('.chats-conversation-preview')?.textContent).toBe('Plan Book the hotel...');
+  });
+
   it('uses the original new-conversation and sidebar-collapse controls', async () => {
     const onCollapsedChange = vi.fn();
     renderSidebar(false, onCollapsedChange);
