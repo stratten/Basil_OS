@@ -14,7 +14,7 @@ import { LocalSourceStep, type LocalSource } from './wizardSteps/LocalSourceStep
 import { HuggingFaceStep } from './wizardSteps/HuggingFaceStep'
 import { LocalFileStep } from './wizardSteps/LocalFileStep'
 import { DetailsStep } from './wizardSteps/DetailsStep'
-import { DEFAULT_FEATURES, type HFFileOption, type WizardFeature } from './types'
+import { DEFAULT_FEATURES, type HFFileOption, type ServerType, type WizardFeature } from './types'
 import { generateModelId } from './generateModelId'
 import type { LatestBridgeEvent } from '../CustomModelsPanel'
 
@@ -67,6 +67,7 @@ export function CustomModelWizard({ latestEvent, onDismiss }: CustomModelWizardP
   const [apiKey, setApiKey] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
   const [modelIdentifier, setModelIdentifier] = useState('')
+  const [serverType, setServerType] = useState<ServerType>('openai_compatible')
   const [features, setFeatures] = useState<WizardFeature[]>(DEFAULT_FEATURES)
 
   const [isTestingConnection, setIsTestingConnection] = useState(false)
@@ -96,6 +97,7 @@ export function CustomModelWizard({ latestEvent, onDismiss }: CustomModelWizardP
   function handleDetailsChange(partial: {
     displayName?: string; modelId?: string; description?: string; contextWindow?: string;
     maxOutputTokens?: string; requiresAuth?: boolean; apiKey?: string; baseUrl?: string; modelIdentifier?: string;
+    serverType?: ServerType;
   }) {
     if (partial.displayName !== undefined) {
       setDisplayName(partial.displayName)
@@ -114,6 +116,7 @@ export function CustomModelWizard({ latestEvent, onDismiss }: CustomModelWizardP
     if (partial.apiKey !== undefined) setApiKey(partial.apiKey)
     if (partial.baseUrl !== undefined) setBaseUrl(partial.baseUrl)
     if (partial.modelIdentifier !== undefined) setModelIdentifier(partial.modelIdentifier)
+    if (partial.serverType !== undefined) setServerType(partial.serverType)
   }
 
   function toggleFeature(featureId: string) {
@@ -269,6 +272,7 @@ export function CustomModelWizard({ latestEvent, onDismiss }: CustomModelWizardP
       requiresAuth: isLocal ? false : requiresAuth,
       apiKey: !isLocal && requiresAuth && apiKey !== '' ? apiKey : undefined,
       features: features.filter((feature) => feature.isEnabled).map((feature) => feature.id),
+      serverType: !isLocal && handlerType === 'openai_compatible' ? serverType : undefined,
       description: description === '' ? undefined : description,
       fileSize: fileSize ?? undefined, fileSizeHuman: fileSizeHuman ?? undefined,
     })
@@ -366,7 +370,8 @@ export function CustomModelWizard({ latestEvent, onDismiss }: CustomModelWizardP
         {step === 'details' && (
           <DetailsStep
             isLocal={isLocal}
-            values={{ displayName, modelId, description, contextWindow, maxOutputTokens, requiresAuth, apiKey, baseUrl, modelIdentifier, features }}
+            showServerType={!isLocal && handlerType === 'openai_compatible'}
+            values={{ displayName, modelId, description, contextWindow, maxOutputTokens, requiresAuth, apiKey, baseUrl, modelIdentifier, serverType, features }}
             onChange={handleDetailsChange}
             onToggleFeature={toggleFeature}
             canTestConnection={baseUrl !== '' && modelIdentifier !== ''}

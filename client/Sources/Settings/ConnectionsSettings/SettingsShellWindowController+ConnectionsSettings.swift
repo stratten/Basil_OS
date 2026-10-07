@@ -503,6 +503,7 @@ extension SettingsShellWindowController {
     private func performConnectionsChooseWorkspaceFolder(requestId: String, profileId: String) {
         guard let webView = connectionsWebView else { return }
         let panel = NSOpenPanel()
+        panel.applyBasilThemedAppearance()
         panel.allowsMultipleSelection = false
         panel.canChooseFiles = false
         panel.canChooseDirectories = true

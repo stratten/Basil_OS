@@ -28,6 +28,8 @@ import {
 import { measureCollapsedPanelSize } from './collapsedPanelSizing';
 import { applyHostTheme } from './app/themeBootstrap';
 import { plainMarkdownText } from '@shared/plainMarkdownText';
+import { useCollapseShortcut } from '@shared/useCollapseShortcut';
+import { useSettledExpand } from '@shared/useSettledExpand';
 
 const PANEL_WIDTH = 360;
 const HEADER_HEIGHT = 116;
@@ -99,6 +101,7 @@ export default function App() {
   const [panelMessage, setPanelMessage] = useState<string | null>(null);
   const [countdownNow, setCountdownNow] = useState(Date.now());
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const isContentCollapsed = useSettledExpand(isCollapsed);
   const modelPickerButtonRef = useRef<HTMLButtonElement | null>(null);
   const headerRef = useRef<HTMLElement | null>(null);
   const isEmpty = suggestions.length === 0;
@@ -428,9 +431,11 @@ export default function App() {
     toggleCollapsePanel(compactSize);
   }, [isCollapsed]);
 
+  useCollapseShortcut(toggleCollapsed);
+
   return (
     <div className="basil-webkit-window-frame">
-      <section className={`${isCollapsed ? 'ambient-panel collapsed' : 'ambient-panel'} basil-webkit-window-surface`}>
+      <section className={`${isContentCollapsed ? 'ambient-panel collapsed' : 'ambient-panel'} basil-webkit-window-surface`}>
       <header className="ambient-header" ref={headerRef}>
         <div className="ambient-header-left" data-ambient-header-left>
           <button className="ambient-header-btn" onClick={dismissPanel} aria-label="Close Proactive Suggestions">

@@ -426,8 +426,6 @@ class AgentTaskEventHandlers:
         Triggers: Status changed from 'processing' to 'failed'
         Action: Send error notification to frontend
         """
-        self.logger.error(f"AgentTask {event.agent_task_id} processing failed")
-        
         # Extract error details. Initial AgentTask execution stores router
         # failures under failure_info so the state-change notification should
         # not overwrite them with the generic fallback.
@@ -440,6 +438,10 @@ class AgentTaskEventHandlers:
             final_envelope = result_data.get('final_envelope')
 
         if isinstance(final_envelope, dict):
+            self.logger.warning(
+                "AgentTask %s finished with a non-success outcome (result preserved)",
+                event.agent_task_id,
+            )
             payload = final_envelope.get('result_payload') if isinstance(final_envelope.get('result_payload'), dict) else None
             outcome_reason = (
                 final_envelope.get('outcome_reason')
@@ -462,6 +464,7 @@ class AgentTaskEventHandlers:
             self._release_lifecycle_for_task(event.agent_task_id, "processing_failed_envelope")
             return True
 
+        self.logger.error(f"AgentTask {event.agent_task_id} processing failed")
         failure_info = result_data.get('failure_info') if isinstance(result_data, dict) else None
         error_message = (
             result_data.get('error')

@@ -5,8 +5,11 @@ import XCTest
 final class AudioFileUploadBridgeControllerTests: XCTestCase {
     private final class MockOutput: AudioFileUploadBridgeOutput {
         var snapshots: [(revision: Int, payload: [String: Any])] = []
+        var themes: [[String: Any]] = []
 
-        func sendInit(theme: [String: Any]) {}
+        func sendInit(theme: [String: Any]) {
+            themes.append(theme)
+        }
 
         func sendSnapshot(revision: Int, payload: [String: Any]) {
             snapshots.append((revision, payload))
@@ -32,6 +35,25 @@ final class AudioFileUploadBridgeControllerTests: XCTestCase {
         XCTAssertEqual(output.snapshots.first?.payload["hasSelectedFile"] as? Bool, false)
         XCTAssertEqual(output.snapshots.first?.payload["canUpload"] as? Bool, false)
         XCTAssertEqual(output.snapshots.first?.payload["selectedLanguage"] as? String, "auto")
+    }
+
+    func testInitialThemeCarriesTheHostFontFamilies() {
+        let viewModel = AudioFileUploadViewModel()
+        let output = MockOutput()
+        let window = NSWindow()
+        let collapseController = WindowCollapseController(
+            window: window,
+            compactSize: NSSize(width: 600, height: 64),
+            fallbackExpandedSize: NSSize(width: 600, height: 560)
+        )
+        let bridge = AudioFileUploadBridgeController(viewModel: viewModel, output: output, window: window, collapseController: collapseController)
+
+        bridge.sendInitialSnapshot()
+
+        let fonts = output.themes.first?["fonts"] as? [String: Any]
+        XCTAssertEqual(fonts?["fontFamily"] as? String, AestheticSystem.Typography.preferredFontName)
+        XCTAssertNotNil(fonts?["fontFamilyMedium"] as? String)
+        XCTAssertNotNil(fonts?["fontFamilyBold"] as? String)
     }
 
     func testDismissErrorIntentClearsTheErrorState() {

@@ -7,7 +7,9 @@ export type UserInteractionKind =
   | 'provider_target'
   | 'command_input'
   | 'provider_input'
-  | 'provider_permission';
+  | 'provider_permission'
+  | 'guidance'
+  | 'pause';
 
 export type UserInteractionStatus =
   | 'waiting'
@@ -16,7 +18,7 @@ export type UserInteractionStatus =
   | 'approved'
   | 'denied'
   | 'timed_out'
-  | 'cancelled'
+  | 'canceled'
   | 'resolved'
   | 'unrecorded';
 
@@ -45,6 +47,8 @@ const KINDS: ReadonlySet<string> = new Set([
   'command_input',
   'provider_input',
   'provider_permission',
+  'guidance',
+  'pause',
 ]);
 
 const STATUSES: ReadonlySet<string> = new Set([
@@ -54,7 +58,7 @@ const STATUSES: ReadonlySet<string> = new Set([
   'approved',
   'denied',
   'timed_out',
-  'cancelled',
+  'canceled',
   'resolved',
 ]);
 
@@ -107,13 +111,26 @@ function legacyClarification(entry: TimelineEntry): UserInteraction | null {
   };
 }
 
-/** Return the ask/response exchanges recorded in a task timeline, oldest first. Tasks recorded before exchanges were persisted fall back to their clarification questions, without answers. */
-export function userInteractionsFromTimeline(timeline: TimelineEntry[] | undefined): UserInteraction[] {
+export interface UserInteractionOptions {
+  /** The run already finished or was canceled, so nothing can still be waiting on the user. */
+  runEnded?: boolean;
+}
+
+/** Return the ask/response exchanges recorded in a task timeline, oldest first. Tasks recorded before exchanges were persisted fall back to their clarification questions, without answers. A request still marked waiting on a run that has ended is stale and is presented as canceled. */
+export function userInteractionsFromTimeline(
+  timeline: TimelineEntry[] | undefined,
+  options: UserInteractionOptions = {},
+): UserInteraction[] {
   const entries = timeline || [];
   const recorded = entries.map(recordedInteraction).filter((interaction): interaction is UserInteraction => interaction !== null);
-  const interactions = recorded.length > 0
+  const interactions = (recorded.length > 0
     ? recorded
-    : entries.map(legacyClarification).filter((interaction): interaction is UserInteraction => interaction !== null);
+    : entries.map(legacyClarification).filter((interaction): interaction is UserInteraction => interaction !== null))
+    .map((interaction): UserInteraction => (
+      options.runEnded && interaction.status === 'waiting'
+        ? { ...interaction, status: 'canceled' }
+        : interaction
+    ));
   return interactions
     .map((interaction, index) => ({ interaction, index }))
     .sort((left, right) => {
@@ -174,12 +191,34 @@ export function interactionAskerLabel(interaction: Pick<UserInteraction, 'kind'>
       return 'A provider asked you';
     case 'provider_permission':
       return 'A provider asked permission';
+    case 'guidance':
+      return 'You sent Basil a note';
+    case 'pause':
+      return 'You paused the run';
     default:
       return 'Basil asked';
   }
 }
 
-export function interactionResponseLabel(interaction: Pick<UserInteraction, 'status' | 'response' | 'responseHidden'>): string {
+function runControlResponseLabel(kind: UserInteractionKind | undefined, status: UserInteractionStatus): string | null {
+  if (kind === 'guidance') {
+    if (status === 'waiting') return "Waiting for Basil's next step";
+    if (status === 'resolved') return 'Basil read it at its next step';
+    if (status === 'canceled') return 'Not delivered: the run finished first';
+  }
+  if (kind === 'pause') {
+    if (status === 'waiting') return 'Paused until you resume';
+    if (status === 'resolved') return 'You resumed';
+    if (status === 'canceled') return 'Stopped while paused';
+  }
+  return null;
+}
+
+export function interactionResponseLabel(
+  interaction: Pick<UserInteraction, 'status' | 'response' | 'responseHidden'> & Partial<Pick<UserInteraction, 'kind'>>,
+): string {
+  const runControlLabel = runControlResponseLabel(interaction.kind, interaction.status);
+  if (runControlLabel) return runControlLabel;
   switch (interaction.status) {
     case 'waiting':
       return 'Waiting for your answer';
@@ -193,8 +232,8 @@ export function interactionResponseLabel(interaction: Pick<UserInteraction, 'sta
       return 'You declined';
     case 'timed_out':
       return 'No answer before the time limit';
-    case 'cancelled':
-      return 'This request was cancelled';
+    case 'canceled':
+      return 'Canceled - the run ended before this was answered';
     case 'unrecorded':
       return 'Your answer was not recorded for this task';
     default:

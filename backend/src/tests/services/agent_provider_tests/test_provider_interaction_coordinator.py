@@ -284,7 +284,7 @@ async def test_cancel_pending_interaction_resolves_the_active_future_and_superse
 
     assert result == {"outcome": "cancel"}
     assert repository.superseded_runs == ["run-1"]
-    assert routing.resolutions[-1]["status"] == "cancelled"
+    assert routing.resolutions[-1]["status"] == "canceled"
 
 
 def test_validate_submitted_values_rejects_an_unknown_field() -> None:

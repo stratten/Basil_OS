@@ -30,10 +30,32 @@ describe('CheckpointFlow presentation', () => {
     expect(markup).toContain('checkpoint-prompt-details');
     expect(markup).toContain('checkpoint-response-controls');
     expect(markup).toContain('result-section--checkpoint');
-    expect(markup).toContain('Review Output');
+    expect(markup).toContain('See work so far');
     expect(markup).toContain('for="checkpoint-clarification-input"');
     expect(markup).toContain('checkpoint-submit-actions');
     expect(markup).toContain('Skip');
+  });
+
+  it('keeps the work-review button on the same row as Skip and Continue', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    try {
+      act(() => {
+        root.render(<CheckpointFlow agentTaskId="task-1" checkpoint={checkpoint} mode="overlay" />);
+      });
+
+      const row = container.querySelector('.checkpoint-submit-actions');
+      const labels = Array.from(row?.querySelectorAll('button') ?? []).map(button => button.textContent);
+      expect(labels).toEqual(['See work so far', 'Skip', 'Continue']);
+      expect(container.querySelector('.checkpoint-review-output-actions')).toBeNull();
+    } finally {
+      act(() => {
+        root.unmount();
+      });
+      container.remove();
+    }
   });
 
   it('keeps inline checkpoints out of overlay layout and review mode', () => {
@@ -42,7 +64,7 @@ describe('CheckpointFlow presentation', () => {
     );
 
     expect(markup).not.toContain('checkpoint-flow-content--overlay');
-    expect(markup).not.toContain('Review Output');
+    expect(markup).not.toContain('See work so far');
   });
 
   it('toggles an overlay into a non-modal review dock and preserves an entered clarification', () => {
@@ -61,7 +83,7 @@ describe('CheckpointFlow presentation', () => {
         root.render(<CheckpointFlow agentTaskId="task-1" checkpoint={reviewCheckpoint} mode="overlay" />);
       });
 
-      const reviewButton = Array.from(container.querySelectorAll('button')).find(button => button.textContent === 'Review Output');
+      const reviewButton = Array.from(container.querySelectorAll('button')).find(button => button.textContent === 'See work so far');
       const clarificationInput = container.querySelector<HTMLTextAreaElement>('#checkpoint-clarification-input');
       expect(reviewButton).toBeDefined();
       expect(clarificationInput).toBeDefined();
@@ -83,7 +105,7 @@ describe('CheckpointFlow presentation', () => {
       expect(reviewingDialog?.classList.contains('agent-task-input-dialog--reviewing-output')).toBe(true);
       expect(reviewingDialog?.getAttribute('role')).toBe('region');
       expect(reviewingDialog?.hasAttribute('aria-modal')).toBe(false);
-      expect(reviewButton?.textContent).toBe('Back to input');
+      expect(reviewButton?.textContent).toBe('Back to question');
       expect(container.querySelector<HTMLTextAreaElement>('#checkpoint-clarification-input')?.value).toBe('Use a different audience.');
 
       act(() => {
@@ -95,7 +117,7 @@ describe('CheckpointFlow presentation', () => {
       expect(inputDialog?.classList.contains('agent-task-input-dialog--reviewing-output')).toBe(false);
       expect(inputDialog?.getAttribute('role')).toBe('dialog');
       expect(inputDialog?.getAttribute('aria-modal')).toBe('true');
-      expect(reviewButton?.textContent).toBe('Review Output');
+      expect(reviewButton?.textContent).toBe('See work so far');
     } finally {
       act(() => {
         root.unmount();
@@ -173,8 +195,8 @@ describe('CheckpointFlow provider_form presentation', () => {
     expect(scrollRegionIndex).toBeGreaterThan(-1);
     expect(submitActionsIndex).toBeGreaterThan(scrollRegionIndex);
     expect(markup).toContain('checkpoint-provider-form');
-    expect(markup).toContain('checkpoint-review-output-actions');
     expect(markup).toContain('checkpoint-submit-actions');
+    expect(markup.indexOf('checkpoint-review-output-action')).toBeGreaterThan(submitActionsIndex);
   });
 });
 

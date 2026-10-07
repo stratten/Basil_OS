@@ -41,6 +41,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/** A timeline entry announcing that Basil is now waiting on the user; it must never revive the task to working. */
+export function isWaitingUserInteractionEvent(event: WSEvent): boolean {
+  if (event.event_type !== 'agent_task_step_detail') return false;
+  const entry = isRecord(event.timeline_entry) ? event.timeline_entry : event;
+  if (entry.detail_kind !== 'user_interaction') return false;
+  const metadata = isRecord(entry.metadata) ? entry.metadata : undefined;
+  const interaction = metadata && isRecord(metadata.user_interaction) ? metadata.user_interaction : undefined;
+  return interaction?.status === 'waiting';
+}
+
 function asText(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value : undefined;
 }

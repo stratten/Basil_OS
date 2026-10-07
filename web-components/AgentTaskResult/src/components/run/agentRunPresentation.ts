@@ -29,6 +29,7 @@ function interactionStageState(interaction: UserInteraction): AgentRunStageState
 export interface AgentRunPresentation {
   stages: AgentRunStage[];
   terminalState: 'active' | 'completed' | 'failed';
+  stoppedByUser?: boolean;
 }
 
 type IndexedTimelineEntry = {
@@ -82,7 +83,9 @@ function artifactStageKey(entry: TimelineEntry): string {
 }
 
 function mergeStage(existing: AgentRunStage, update: AgentRunStage): AgentRunStage {
-  const state = update.state === 'active' && existing.state !== 'active' ? existing.state : update.state;
+  const state = update.state === 'active' && (existing.state === 'completed' || existing.state === 'failed')
+    ? existing.state
+    : update.state;
   return {
     ...existing,
     label: existing.label || update.label,
@@ -97,9 +100,40 @@ function isPartialOutcome(outcome: string | undefined): boolean {
   return normalizedOutcome === 'partial';
 }
 
+const AWAITING_USER_TASK_STATUSES: ReadonlySet<string> = new Set([
+  'awaitingInput',
+  'awaiting_user_input',
+  'needs_clarification',
+  'paused',
+]);
+
+interface StageSettlement {
+  awaitingUser: boolean;
+  isProcessing: boolean;
+  isLatest: boolean;
+  terminal: AgentRunPresentation['terminalState'];
+}
+
+// Live states only mean something while the run can still change them; a stopped or waiting run shows what happened, not motion.
+function settledStage(stage: AgentRunStage, settlement: StageSettlement): AgentRunStage {
+  if (stage.state === 'waiting') {
+    if (settlement.awaitingUser) return stage;
+    if (!settlement.isProcessing) return { ...stage, state: 'recorded' };
+    return stage.kind === 'phase' && !settlement.isLatest ? { ...stage, state: 'recorded' } : stage;
+  }
+  if (stage.state !== 'active' || settlement.isProcessing) return stage;
+  if (settlement.terminal === 'completed') {
+    if (stage.kind === 'phase') return { ...stage, state: 'completed', completedAt: stage.completedAt || stage.startedAt };
+    if (stage.kind === 'tool') return { ...stage, state: 'recorded' };
+    return stage;
+  }
+  if (settlement.terminal === 'failed' || settlement.awaitingUser) return { ...stage, state: 'recorded' };
+  return stage;
+}
+
 function terminalState(status: string, outcome: string | undefined): AgentRunPresentation['terminalState'] {
   if (isPartialOutcome(outcome) || status === 'partial') return 'completed';
-  if (status === 'failed') return 'failed';
+  if (status === 'failed' || status === 'canceled') return 'failed';
   if (status === 'completed') return 'completed';
   return 'active';
 }
@@ -189,12 +223,15 @@ export function deriveAgentRunPresentation(
 
   const resolvedTerminalState = terminalState(taskStatus, taskOutcome);
   const hasPartialOutcome = isPartialOutcome(taskOutcome) || taskStatus === 'partial';
-  const normalizedStages = stages.map(stage => {
-    if (isProcessing || resolvedTerminalState !== 'completed' || stage.state !== 'active') return stage;
-    if (stage.kind === 'phase') return { ...stage, state: 'completed' as const, completedAt: stage.completedAt || stage.startedAt };
-    if (stage.kind === 'tool') return { ...stage, state: 'recorded' as const };
-    return stage;
-  });
+  const stoppedByUser = taskStatus === 'canceled';
+  const awaitingUser = AWAITING_USER_TASK_STATUSES.has(taskStatus);
+  const lastStageIndex = stages.length - 1;
+  const normalizedStages = stages.map((stage, index) => settledStage(stage, {
+    awaitingUser,
+    isProcessing,
+    isLatest: index === lastStageIndex,
+    terminal: resolvedTerminalState,
+  }));
 
   if (finalSummary || resolvedTerminalState !== 'active') {
     normalizedStages.push({
@@ -205,7 +242,7 @@ export function deriveAgentRunPresentation(
         : hasPartialOutcome
           ? 'Partial result'
           : resolvedTerminalState === 'failed'
-            ? 'Run failed'
+            ? stoppedByUser ? 'Run stopped' : 'Run failed'
             : 'Run completed',
       state: resolvedTerminalState === 'failed' ? 'failed' : resolvedTerminalState === 'completed' ? 'completed' : 'active',
       startedAt: finalSummary?.timestamp || normalizedStages[normalizedStages.length - 1]?.startedAt || '',
@@ -213,7 +250,11 @@ export function deriveAgentRunPresentation(
     });
   }
 
-  return { stages: normalizedStages, terminalState: resolvedTerminalState };
+  return {
+    stages: normalizedStages,
+    terminalState: resolvedTerminalState,
+    ...(stoppedByUser ? { stoppedByUser: true } : {}),
+  };
 }
 
 export interface AgentRunOverviewStage {
@@ -232,6 +273,7 @@ export interface AgentRunOverviewPresentation {
   activityCount: number;
   artifactCount: number;
   terminalState: AgentRunPresentation['terminalState'];
+  stoppedByUser?: boolean;
 }
 
 const OVERVIEW_PHASES: Record<string, { key: string; label: string }> = {
@@ -275,16 +317,19 @@ export function deriveAgentRunOverviewPresentation(
   let latestPhaseIndex: number | undefined;
   let artifactCount = 0;
   let outcome: AgentRunStage | undefined;
+  let pauseContinuation: { key: string; label: string; startedAt: string } | undefined;
 
   for (const stage of presentation.stages) {
     if (stage.kind === 'phase') {
       const key = overviewPhaseKey(stage);
       const existingIndex = phaseIndexes.get(key);
       if (existingIndex === undefined) {
+        const baseId = `overview:${key}`;
         phaseIndexes.set(key, stages.length);
         latestPhaseIndex = stages.length;
+        pauseContinuation = undefined;
         stages.push({
-          id: `overview:${key}`,
+          id: stages.some(existing => existing.id === baseId) ? `${baseId}:${stages.length}` : baseId,
           kind: 'phase',
           label: overviewPhaseLabel(stage),
           state: stage.state,
@@ -310,6 +355,18 @@ export function deriveAgentRunOverviewPresentation(
         artifactCount: 0,
         interaction: stage.interaction,
       });
+      if (stage.interaction?.kind === 'pause' && latestPhaseIndex !== undefined) {
+        // Work after a pause belongs after it, so the phase that was running is closed off and a new one starts below the pause.
+        phaseIndexes.clear();
+        const interrupted = stages[latestPhaseIndex];
+        pauseContinuation = stage.state === 'waiting'
+          ? undefined
+          : {
+            key: interrupted.id.replace(/^overview:/, '').split(':')[0],
+            label: interrupted.label,
+            startedAt: stage.completedAt || stage.startedAt,
+          };
+      }
       continue;
     }
 
@@ -340,11 +397,24 @@ export function deriveAgentRunOverviewPresentation(
     });
   }
 
+  if (pauseContinuation && presentation.terminalState === 'active') {
+    stages.push({
+      id: `overview:${pauseContinuation.key}:${stages.length}`,
+      kind: 'phase',
+      label: pauseContinuation.label,
+      state: 'active',
+      startedAt: pauseContinuation.startedAt,
+      artifactCount: 0,
+    });
+  }
+
   if (outcome || presentation.terminalState !== 'active') {
     const terminalOutcome = outcome || {
       id: `outcome:${presentation.terminalState}`,
       kind: 'outcome' as const,
-      label: presentation.terminalState === 'failed' ? 'Run failed' : 'Run completed',
+      label: presentation.terminalState === 'failed'
+        ? presentation.stoppedByUser ? 'Run stopped' : 'Run failed'
+        : 'Run completed',
       state: presentation.terminalState === 'failed' ? 'failed' as const : 'completed' as const,
       startedAt: stages[stages.length - 1]?.startedAt || '',
       completedAt: stages[stages.length - 1]?.completedAt,
@@ -381,5 +451,6 @@ export function deriveAgentRunOverviewPresentation(
     activityCount: presentation.stages.length,
     artifactCount,
     terminalState: presentation.terminalState,
+    ...(presentation.stoppedByUser ? { stoppedByUser: true } : {}),
   };
 }

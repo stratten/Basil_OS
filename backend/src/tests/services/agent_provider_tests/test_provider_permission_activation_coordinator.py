@@ -230,7 +230,7 @@ async def test_handle_request_permission_cancels_pending_row_when_resolution_is_
         "root_task_id": "task-1",
         "previous_task_id": None,
         "interaction_id": "permission-1",
-        "status": "cancelled",
+        "status": "canceled",
         "response": None,
     }]
 

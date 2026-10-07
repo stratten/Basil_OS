@@ -326,7 +326,7 @@ async def test_load_tool_family_returns_structured_family_contract_summary():
     all_tools = [_tool("browser_inspect"), _tool("browser_interact")]
     loader = create_load_tool_family_tool(all_tools)
 
-    assert loader.return_direct is True
+    assert loader.return_direct is False
 
     raw = await loader.ainvoke({"family_names": ["browser"], "reason": "Need page automation"})
     data = json.loads(raw)
@@ -338,7 +338,7 @@ async def test_load_tool_family_returns_structured_family_contract_summary():
         "browser_inspect",
         "browser_interact",
     ]
-    assert "Stop this executor pass now" in data["next_step"]
+    assert "available on your next step" in data["next_step"]
     assert "exact full schemas" in data["next_step"]
 
 
@@ -358,7 +358,7 @@ async def test_load_tool_family_reports_already_available_when_family_bound():
 
 
 @pytest.mark.asyncio
-async def test_load_tool_family_still_restarts_for_newly_loaded_family_with_getter():
+async def test_load_tool_family_reports_newly_loaded_family_with_getter():
     all_tools = [_tool("browser_inspect")]
     loader = create_load_tool_family_tool(all_tools, get_available_families=lambda: {"automation", "shell"})
 
@@ -367,7 +367,7 @@ async def test_load_tool_family_still_restarts_for_newly_loaded_family_with_gett
 
     assert data["newly_loaded_families"] == ["browser"]
     assert data["already_available_families"] == []
-    assert "Stop this executor pass now" in data["next_step"]
+    assert "available on your next step" in data["next_step"]
 
 
 @pytest.mark.asyncio

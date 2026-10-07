@@ -340,4 +340,40 @@ final class WindowChromeCollapseGeometryTests: XCTestCase {
         XCTAssertEqual(state?.expandedFrame, savedFrame)
         XCTAssertEqual(state?.expandedFrame, expandedFrame)
     }
+
+    @MainActor
+    func testCollapsingDuringAnExpandRetainsTheExpandTargetAsTheExpandedFrame() {
+        let window = NSWindow(
+            contentRect: expandedFrame,
+            styleMask: [.borderless, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        var state: WindowChromeCollapse.State?
+
+        WindowChromeCollapse.collapse(
+            window: window,
+            preferredCompactSize: NSSize(width: 300, height: 64),
+            state: &state
+        )
+        WindowChromeCollapse.expand(
+            window: window,
+            state: &state,
+            fallbackSize: NSSize(width: 500, height: 400)
+        )
+        XCTAssertNil(state)
+
+        WindowChromeCollapse.collapse(
+            window: window,
+            preferredCompactSize: NSSize(width: 300, height: 64),
+            state: &state
+        )
+
+        XCTAssertEqual(state?.expandedFrame, expandedFrame)
+
+        let settled = expectation(description: "collapsed window stays collapsed after the expand animation would have ended")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { settled.fulfill() }
+        wait(for: [settled], timeout: 3)
+        XCTAssertEqual(window.frame.size, NSSize(width: 300, height: 64))
+    }
 }

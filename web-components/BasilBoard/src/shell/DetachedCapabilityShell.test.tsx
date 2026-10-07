@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { BasilBoardTab } from '../contracts';
+import { settleHostWindowResize } from '@shared/settleHostWindowResize';
 import DetachedCapabilityShell from './DetachedCapabilityShell';
 
 const bridgeMocks = vi.hoisted(() => ({
@@ -26,7 +27,7 @@ const todoTab: BasilBoardTab = {
 };
 
 describe('DetachedCapabilityShell', () => {
-  it('retains the capability content while requesting native collapse and expansion', () => {
+  it('retains the capability content while requesting native collapse and expansion', async () => {
     const { container } = render(<DetachedCapabilityShell tabs={[todoTab]} detachedTabId="todos" />);
 
     expect(screen.getByText('To-Dos')).toBeTruthy();
@@ -40,6 +41,8 @@ describe('DetachedCapabilityShell', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Expand' }));
     expect(bridgeMocks.requestWindowExpand).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('.basil-board-content')?.classList.contains('is-collapsed')).toBe(true);
+    await settleHostWindowResize();
     expect(container.querySelector('.basil-board-detached-shell')?.classList.contains('is-collapsed')).toBe(false);
     expect(container.querySelector('.basil-board-content')?.classList.contains('is-collapsed')).toBe(false);
   });

@@ -17,6 +17,7 @@ from .browser_session_runtime import (
     background_browser_not_available_result,
     is_background_browser_session,
 )
+from .browser_pinned_target import current_agent_task_id, pin_browser_target, pinned_browser_target
 from .browser_target_runtime import (
     BrowserAutomationTarget,
     normalize_browser_name,
@@ -92,7 +93,7 @@ tell application "{app_name}"
             set tabTitle to tabTitleParts as string
             set tabUrl to tabUrlParts as string
             set AppleScript's text item delimiters to ""
-            set end of outputRows to (w as text) & "|" & (t as text) & "|" & (isActive as text) & "|" & tabTitle & "|" & tabUrl
+            set end of outputRows to (w as text) & "|" & (t as text) & "|" & (isActive as text) & "|" & (id of window w as text) & "|" & tabTitle & "|" & tabUrl
         end repeat
     end repeat
     set AppleScript's text item delimiters to linefeed
@@ -120,7 +121,7 @@ tell application "{app_name}"
             set tabTitle to tabTitleParts as string
             set tabUrl to tabUrlParts as string
             set AppleScript's text item delimiters to ""
-            set end of outputRows to (w as text) & "|" & (t as text) & "|" & (isActive as text) & "|" & tabTitle & "|" & tabUrl
+            set end of outputRows to (w as text) & "|" & (t as text) & "|" & (isActive as text) & "|" & (id of window w as text) & "|" & tabTitle & "|" & tabUrl
         end repeat
     end repeat
     set AppleScript's text item delimiters to linefeed
@@ -160,23 +161,41 @@ end tell
 '''
 
 
-def _create_automation_window_script(browser: str, url: Optional[str]) -> str:
+def _ensure_automation_window_script(browser: str, url: Optional[str], pinned_window_id: Optional[int]) -> str:
     app_name = _browser_app_name(browser)
     safe_url = _escape_applescript_string(url or "about:blank")
+    tab_ref = "current tab" if app_name == "Safari" else "active tab"
     if app_name == "Safari":
-        return f'''
-tell application "{app_name}"
-    set newDoc to make new document with properties {{URL:"{safe_url}"}}
-    return "created_window|1|1|{safe_url}"
-end tell
+        create_block = f'''    make new document with properties {{URL:"{safe_url}"}}
+    set targetWindow to front window
+    return "created_window|" & (id of targetWindow as text) & "|{safe_url}"'''
+    else:
+        create_block = f'''    set targetWindow to make new window
+    set URL of active tab of targetWindow to "{safe_url}"
+    set active tab index of targetWindow to 1
+    set index of targetWindow to 1
+    return "created_window|" & (id of targetWindow as text) & "|{safe_url}"'''
+    reuse_block = ""
+    if pinned_window_id is not None:
+        window_ref = f"window id {int(pinned_window_id)}"
+        if url:
+            url_lines = f'''        set URL of {tab_ref} of targetWindow to "{safe_url}"
+        set currentUrl to "{safe_url}"'''
+        else:
+            url_lines = f'''        set currentUrl to ""
+        try
+            set currentUrl to URL of {tab_ref} of targetWindow
+        end try'''
+        reuse_block = f'''    if exists {window_ref} then
+        set targetWindow to {window_ref}
+{url_lines}
+        set index of targetWindow to 1
+        return "reused_window|" & (id of targetWindow as text) & "|" & currentUrl
+    end if
 '''
     return f'''
 tell application "{app_name}"
-    set newWindow to make new window
-    set URL of active tab of newWindow to "{safe_url}"
-    set active tab index of newWindow to 1
-    set index of newWindow to 1
-    return "created_window|1|1|{safe_url}"
+{reuse_block}{create_block}
 end tell
 '''
 
@@ -215,38 +234,38 @@ end tell
 '''
 
 
-def _parse_tab_rows(output: str) -> list[dict]:
+def _parse_tab_rows(output: str, basil_window_id: Optional[int] = None) -> list[dict]:
     tabs = []
     for row in output.splitlines():
-        parts = row.split("|", 4)
-        if len(parts) != 5:
+        parts = row.split("|", 5)
+        if len(parts) != 6:
             continue
-        window_index, tab_index, active, title, url = parts
+        window_index, tab_index, active, window_id, title, url = parts
+        try:
+            parsed_window_id: Optional[int] = int(window_id)
+        except ValueError:
+            parsed_window_id = None
         tabs.append({
             "window_index": int(window_index),
             "tab_index": int(tab_index),
             "active": active.lower() == "true",
+            "window_id": parsed_window_id,
+            "basil_window": basil_window_id is not None and parsed_window_id == basil_window_id,
             "title": title.replace("⎮", "|"),
             "url": url.replace("⎮", "|"),
         })
     return tabs
 
 
-def _find_automation_target(browser: str, tabs: list[dict], url: Optional[str]) -> BrowserAutomationTarget:
-    expected_url = url or "about:blank"
-    matching_tabs = [
-        tab for tab in tabs
-        if str(tab.get("url") or "").rstrip("/") == expected_url.rstrip("/")
-    ]
-    selected = matching_tabs[0] if matching_tabs else (tabs[0] if tabs else {})
-    return BrowserAutomationTarget(
-        browser=normalize_browser_name(browser),
-        window_index=int(selected.get("window_index") or 1),
-        tab_index=int(selected.get("tab_index") or 1),
-        expected_url=str(selected.get("url") or expected_url),
-        expected_title=str(selected.get("title") or ""),
-        created_by_basil=True,
-    )
+def _parse_automation_window(output: str) -> Optional[tuple[str, int, str]]:
+    parts = (output or "").strip().split("|", 2)
+    if len(parts) != 3 or parts[0] not in {"created_window", "reused_window"}:
+        return None
+    try:
+        window_id = int(parts[1])
+    except ValueError:
+        return None
+    return parts[0], window_id, parts[2]
 
 
 async def _browser_tabs_impl(
@@ -282,7 +301,8 @@ async def _browser_tabs_impl(
                 return json.dumps({"success": False, "error": "Action 'close' requires tab_index."})
             script = _close_tab_script(browser, window_index, tab_index)
         elif action == "ensure_automation_window":
-            script = _create_automation_window_script(browser, url)
+            pinned = pinned_browser_target(browser)
+            script = _ensure_automation_window_script(browser, url, pinned.window_id if pinned else None)
         else:
             return json.dumps({"success": False, "error": f"Unsupported action: {action}"})
 
@@ -311,11 +331,12 @@ async def _browser_tabs_impl(
             }, ensure_ascii=False)
 
         if action == "list":
+            pinned = pinned_browser_target(browser)
             result = {
                 "success": True,
                 "browser": browser,
                 "action": action,
-                "tabs": _parse_tab_rows(stdout),
+                "tabs": _parse_tab_rows(stdout, pinned.window_id if pinned else None),
             }
             trace_entry = record_browser_trace(
                 action=f"tabs.{action}",
@@ -328,24 +349,32 @@ async def _browser_tabs_impl(
             return json.dumps(result, ensure_ascii=False, indent=2)
 
         if action == "ensure_automation_window":
-            list_ok, list_stdout, list_stderr = await run_applescript(
-                _list_tabs_script(browser),
-                timeout_s=20.0,
-            )
-            if not list_ok:
+            parsed_window = _parse_automation_window(stdout)
+            if parsed_window is None:
                 return json.dumps({
                     "success": False,
                     "browser": browser,
                     "action": action,
-                    "error": list_stderr or "Could not verify automation window after creation.",
+                    "error": f"Could not identify Basil's browser window from: {stdout or 'empty output'}",
                 }, ensure_ascii=False)
 
-            target = _find_automation_target(browser, _parse_tab_rows(list_stdout), url)
+            window_status, window_id, window_url = parsed_window
+            target = BrowserAutomationTarget(
+                browser=normalize_browser_name(browser),
+                window_index=1,
+                tab_index=1,
+                expected_url=window_url or url or "about:blank",
+                created_by_basil=True,
+                agent_task_id=current_agent_task_id(),
+                window_id=window_id,
+            )
+            pin_browser_target(target)
             result = {
                 "success": True,
                 "browser": browser,
                 "action": action,
                 "result": stdout,
+                "reused_window": window_status == "reused_window",
                 "browser_automation_target": target.to_result(),
             }
             trace_entry = record_browser_trace(
@@ -393,20 +422,18 @@ async def _browser_tabs_impl(
 
 SLIM_DESCRIPTION = (
     "Manage browser tabs in the user's existing Safari/Chrome/Edge session. "
-    "Actions: list, ensure_automation_window (preferred for new browser tasks; returns "
-    "browser_automation_target), create (optional url), switch (window_index + tab_index), "
-    "close (requires tab_index; refuses to close the last tab). Leave browser "
-    "empty to auto-detect. If multiple tabs plausibly match the task, ask the "
-    "user to pick with request_user_input selection options before switching."
+    "Actions: list, ensure_automation_window (preferred for browser tasks; opens or reuses "
+    "this task's own window and returns browser_automation_target), create (optional url), "
+    "switch (window_index + tab_index), close (requires tab_index; refuses to close the last tab). "
+    "After ensure_automation_window, browser_inspect/browser_interact/browser_highlight use that "
+    "window automatically; navigate inside it instead of opening new tabs. If it was closed, call "
+    "ensure_automation_window again. Leave browser empty to auto-detect. If multiple tabs plausibly "
+    "match the task, ask the user to pick with request_user_input selection options before switching."
 )
 
 _FULL_DESCRIPTION = """List, create, switch, or conservatively close tabs in the user's browser.
 
-Use this for browser UI state, not page content. For new browser tasks, prefer
-action="ensure_automation_window" so Basil works in a dedicated browser window and returns
-browser_automation_target for browser_inspect/browser_interact/browser_highlight. For page
-content use browser_inspect and browser_interact. The close action refuses to close the final
-tab in a window.
+Use this for browser UI state, not page content. For browser tasks, prefer action="ensure_automation_window": Basil gets one dedicated window for this task (reused on later calls and follow-ups while it stays open) and a browser_automation_target. After that, browser_inspect, browser_interact, and browser_highlight act on that window's current tab even if the user switches windows; navigate within it rather than opening new tabs. If a tool reports the window was closed, call ensure_automation_window again. In list results, basil_window marks the tabs in Basil's window. For page content use browser_inspect and browser_interact. The close action refuses to close the final tab in a window.
 
 If more than one plausible tab matches the user's target, call request_user_input with
 selection options built from the listed tabs before switching or interacting.

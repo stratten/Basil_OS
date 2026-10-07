@@ -18,6 +18,7 @@ _AGENT_TASK_LIFECYCLES: Final = frozenset({
     "awaiting_provider_delegation",
     "awaiting_delegated_agents",
     "awaiting_user_input",
+    "paused",
     "waiting_user_input",
     "needs_clarification",
     "clarification_added",

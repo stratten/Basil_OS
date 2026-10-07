@@ -190,8 +190,51 @@ describe('interactionSummary', () => {
       .toBe('A provider asked permission: Run tests?\nYou approved: Allow always');
   });
 
-  it('ignores response text on a cancelled request', () => {
-    expect(interactionSummary({ ...base, status: 'cancelled', response: 'stale' }))
-      .toBe('Basil asked: Which hotel did you mean?\nThis request was cancelled');
+  it('ignores response text on a canceled request', () => {
+    expect(interactionSummary({ ...base, status: 'canceled', response: 'stale' }))
+      .toBe('Basil asked: Which hotel did you mean?\nCanceled - the run ended before this was answered');
+  });
+
+  it('describes a note Basil read and a note it never got to', () => {
+    const note: UserInteraction = { ...base, kind: 'guidance', prompt: 'Use the Paris office', response: undefined };
+    expect(interactionSummary({ ...note, status: 'resolved' }))
+      .toBe("You sent Basil a note: Use the Paris office\nBasil read it at its next step");
+    expect(interactionSummary({ ...note, status: 'canceled' }))
+      .toBe('You sent Basil a note: Use the Paris office\nNot delivered: the run finished first');
+    expect(interactionSummary({ ...note, status: 'waiting' }))
+      .toBe("You sent Basil a note: Use the Paris office\nWaiting for Basil's next step");
+  });
+
+  it('describes a pause while waiting, after resuming with a note, and when stopped', () => {
+    const pause: UserInteraction = { ...base, kind: 'pause', prompt: 'Paused by you', response: undefined };
+    expect(interactionSummary({ ...pause, status: 'waiting' }))
+      .toBe('You paused the run: Paused by you\nPaused until you resume');
+    expect(interactionSummary({ ...pause, status: 'resolved', response: 'Skip the PDF' }))
+      .toBe('You paused the run: Paused by you\nYou resumed: Skip the PDF');
+    expect(interactionSummary({ ...pause, status: 'canceled' }))
+      .toBe('You paused the run: Paused by you\nStopped while paused');
+  });
+
+  it('reads recorded notes and pauses from the timeline', () => {
+    const interactions = userInteractionsFromTimeline([
+      interactionEntry('note-1', { kind: 'guidance', status: 'resolved', prompt: 'Use the Paris office' }),
+      interactionEntry('pause-1', { kind: 'pause', status: 'waiting', prompt: 'Paused by you' }, '2026-10-04T23:41:00+00:00'),
+    ]);
+    expect(interactions.map(interaction => [interaction.id, interaction.kind, interaction.status])).toEqual([
+      ['note-1', 'guidance', 'resolved'],
+      ['pause-1', 'pause', 'waiting'],
+    ]);
+  });
+
+  it('presents a request still waiting on a run that has ended as canceled', () => {
+    const timeline = [
+      interactionEntry('ask-1', { kind: 'approval', status: 'waiting', prompt: 'sed -n 2p notes.txt' }),
+      interactionEntry('ask-2', { kind: 'clarification', status: 'answered', prompt: 'Which file?', response: 'notes.txt' }, '2026-10-04T23:42:00+00:00'),
+    ];
+    expect(userInteractionsFromTimeline(timeline).map(interaction => interaction.status)).toEqual(['waiting', 'answered']);
+    expect(userInteractionsFromTimeline(timeline, { runEnded: true }).map(interaction => interaction.status))
+      .toEqual(['canceled', 'answered']);
+    expect(userInteractionsFromTimeline(timeline, { runEnded: false }).map(interaction => interaction.status))
+      .toEqual(['waiting', 'answered']);
   });
 });

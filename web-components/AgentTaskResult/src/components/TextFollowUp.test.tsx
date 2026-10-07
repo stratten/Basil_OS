@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   updateAgentDisplayPromptMarkdown: vi.fn(),
   setError: vi.fn(),
   setSelectedModelId: vi.fn(),
+  updateOriginalModelId: vi.fn(),
   setReferencePaths: vi.fn(),
   filesPickedHandler: null as ((paths: string[]) => void) | null,
   registerFilesPickedHandler: vi.fn<(handler: (paths: string[]) => void) => () => void>(() => () => {}),
@@ -43,6 +44,7 @@ vi.mock('../store/agentStore', () => ({
     updateAgentDisplayPromptMarkdown: mocks.updateAgentDisplayPromptMarkdown,
     setError: mocks.setError,
     setSelectedModelId: mocks.setSelectedModelId,
+    updateOriginalModelId: mocks.updateOriginalModelId,
     setReferencePaths: mocks.setReferencePaths,
   },
 }));
@@ -155,5 +157,47 @@ describe('TextFollowUp', () => {
     expect(mocks.processAgentTask).toHaveBeenCalledWith(expect.objectContaining({
       model_id: 'gpt-5-mini',
     }));
+  });
+
+  it('defaults to the model the previous turn used when nothing was picked manually', async () => {
+    mocks.getAgent.mockReturnValue({ originalModelId: 'gpt-5-mini' });
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root.render(<TextFollowUp agentTaskId="task-1" onCancel={vi.fn()} />);
+    });
+    await act(async () => { await Promise.resolve(); });
+
+    expect(container.querySelector('.rich-text-model-picker-trigger')?.textContent).toContain('GPT-5 mini');
+
+    const editor = container.querySelector('[role="textbox"][aria-label="Message"]') as HTMLDivElement;
+    Object.defineProperty(editor, 'innerText', { configurable: true, value: 'Follow up' });
+    await act(async () => {
+      editor.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await act(async () => {
+      editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true }));
+    });
+
+    expect(mocks.processAgentTask).toHaveBeenCalledWith(expect.objectContaining({ model_id: 'gpt-5-mini' }));
+    expect(mocks.updateOriginalModelId).toHaveBeenCalledWith('task-1', 'gpt-5-mini');
+    mocks.getAgent.mockReturnValue(undefined);
+  });
+
+  it('falls back to the default model when the previous turn model is no longer available', async () => {
+    mocks.getAgent.mockReturnValue({ originalModelId: 'removed-model' });
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root.render(<TextFollowUp agentTaskId="task-1" onCancel={vi.fn()} />);
+    });
+    await act(async () => { await Promise.resolve(); });
+
+    expect(container.querySelector('.rich-text-model-picker-trigger')?.textContent).toContain('Qwen 3.5');
+    mocks.getAgent.mockReturnValue(undefined);
   });
 });

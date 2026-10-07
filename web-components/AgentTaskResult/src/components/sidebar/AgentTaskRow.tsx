@@ -74,11 +74,14 @@ function AgentTaskRowImpl({
 }: AgentTaskRowProps) {
   const [hovered, setHovered] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  const isActive = ['processing', 'routing', 'capturing', 'awaitingInput'].includes(status);
+  const isActive = ['processing', 'routing', 'capturing', 'awaitingInput', 'paused'].includes(status);
   const isProcessingLike = status === 'processing' || status === 'routing' || status === 'capturing';
   const showCancel = isActive && hovered && !isSelected && !!onCancel;
   const showTrash = !isActive && hovered && !!onRequestDelete;
   const revealDelete = useHistoryRowRevealDelete({ enabled: !isActive && !!onRequestDelete });
+
+  const isPaused = status === 'paused';
+  const rowPreview = isPaused ? 'Paused' : currentStep || preview;
 
   const dateDisplayStyle = useDateDisplayStyle();
   const dateStr = timestamp ? formatHistoryTimestamp(timestamp, dateDisplayStyle) : '';
@@ -156,7 +159,7 @@ function AgentTaskRowImpl({
           }}
           role="button"
           tabIndex={0}
-          aria-label={`${title}${currentStep || preview ? `. ${currentStep || preview}` : ''}`}
+          aria-label={`${title}${rowPreview ? `. ${rowPreview}` : ''}`}
           aria-pressed={isSelected}
           onClick={handleClick}
           onKeyDown={handleKeyDown}
@@ -199,6 +202,10 @@ function AgentTaskRowImpl({
               <svg width="12" height="12" viewBox="0 0 16 16" fill="var(--warning-base)">
                 <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm-.5 4.75v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0zM8 12a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/>
               </svg>
+            ) : status === 'paused' ? (
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="var(--warning-base)" fillRule="evenodd" aria-label="Paused">
+                <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zM6 4.75a.75.75 0 0 0-.75.75v5a.75.75 0 0 0 1.5 0v-5A.75.75 0 0 0 6 4.75zm4 0a.75.75 0 0 0-.75.75v5a.75.75 0 0 0 1.5 0v-5a.75.75 0 0 0-.75-.75z"/>
+              </svg>
             ) : (
               <StatusIcon status={status} resultSeverity={resultSeverity} size={8} />
             )}
@@ -228,8 +235,8 @@ function AgentTaskRowImpl({
               </div>
               {needsApproval && !isSelected ? (
                 <div className="row-preview" style={{ color: 'var(--warning-base)' }}>Approval needed</div>
-              ) : (currentStep || preview) ? (
-                <div className="row-preview">{currentStep || preview}</div>
+              ) : rowPreview ? (
+                <div className="row-preview" style={isPaused ? { color: 'var(--warning-base)' } : undefined}>{rowPreview}</div>
               ) : null}
             </div>
 

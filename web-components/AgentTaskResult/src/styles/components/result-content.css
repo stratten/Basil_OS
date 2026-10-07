@@ -9,7 +9,6 @@
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  --progress-overlay-clearance: 0px;
 }
 
 .agent-task-pending-surface {
@@ -159,26 +158,9 @@
   border: 1px solid var(--border-subtle);
 }
 
-/* Quiet "still working" indicator shown while the outcome is verified
-   off the critical path. Reuses the app's processing semantic (purple dot +
-   pulse-dot) and muted secondary text rather than a heavy filled pill. */
-.result-verifying {
-  display: flex;
-  align-items: center;
-  gap: var(--padding-xs);
-  margin: var(--padding-xs) 0;
-  font-family: var(--font-family-light);
-  font-size: var(--font-size-footnote);
-  color: var(--text-secondary);
-}
-
-.result-verifying-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: var(--processing-base);
-  animation: pulse-dot 0.8s ease-in-out infinite alternate;
+.result-provisional-badge {
+  color: var(--text-primary);
+  border-color: var(--processing-base);
 }
 
 .copy-btn {

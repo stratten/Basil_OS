@@ -1,0 +1,112 @@
+.run-control-composer .rich-text-composer {
+  border: 0;
+  border-radius: calc(var(--corner-radius-medium) - 1px);
+}
+
+.run-control-composer:focus-within {
+  border-color: color-mix(in srgb, var(--secondary) 40%, transparent);
+}
+
+.run-control-composer.is-paused,
+.run-control-composer.is-paused:focus-within {
+  border-color: var(--warning-base);
+}
+
+.run-control-composer .rich-text-composer-editor:empty::before {
+  font-size: var(--font-size-footnote);
+}
+
+.run-control-queued {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-xs);
+  margin: 0;
+  padding: var(--padding-xs) var(--padding-s) 0;
+  list-style: none;
+}
+
+.run-control-queued li {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-s);
+  min-width: 0;
+  padding: 3px var(--padding-s);
+  border: var(--border-thin) solid var(--warning-base);
+  border-radius: var(--corner-radius-small);
+  background: color-mix(in srgb, var(--warning-base) 10%, var(--background-primary));
+  color: var(--text-primary);
+  font-size: var(--font-size-status-small);
+}
+
+.run-control-queued-label {
+  flex: 0 0 auto;
+  font-family: var(--font-family-medium);
+}
+
+.run-control-queued-text {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-family-light);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.run-control-queued-files {
+  flex: 0 0 auto;
+  margin-left: auto;
+  font-family: var(--font-family-medium);
+}
+
+.run-control-status {
+  padding: 1px var(--padding-s);
+  border: var(--border-thin) solid var(--warning-base);
+  border-radius: 999px;
+  background: var(--warning-base);
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  line-height: 1.5;
+}
+
+.text-followup-action-btn.run-control-pause {
+  width: 28px;
+  min-height: 28px;
+  justify-content: center;
+  padding: 0;
+  border: var(--border-thin) solid var(--secondary);
+  background: var(--background-primary);
+  color: var(--secondary);
+}
+
+.text-followup-action-btn.run-control-pause:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--secondary) 10%, var(--background-primary));
+}
+
+.text-followup-action-btn.run-control-pause:disabled {
+  opacity: 0.6;
+}
+
+.text-followup-action-btn.run-control-pause.is-pending {
+  border-color: var(--warning-base);
+  color: var(--text-primary);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.run-control-pause:focus-visible {
+  outline: var(--border-thin) solid var(--secondary);
+  outline-offset: 1px;
+}
+
+.run-control-error {
+  margin: 0;
+  padding: var(--padding-xs) var(--padding-s);
+  color: var(--error-base);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .text-followup-action-btn.run-control-pause.is-pending {
+    animation: none;
+  }
+}

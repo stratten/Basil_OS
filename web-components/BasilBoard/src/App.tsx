@@ -15,7 +15,8 @@ import {
 import { applyHostFonts, applyHostTheme } from './theme/agentTaskTheme';
 import BasilBoardShell from './shell/BasilBoardShell';
 import DetachedCapabilityShell from './shell/DetachedCapabilityShell';
-import { HomeRuntimeContext } from './home/HomeRuntimeContext';
+import { HomeRuntimeContext, type HomeVoiceTurn } from './home/HomeRuntimeContext';
+import { plainTextToDisplayMarkdown } from '../../shared/editorMarkdown';
 
 export default function App() {
   const [initialized, setInitialized] = useState(false);
@@ -24,7 +25,7 @@ export default function App() {
   const [error, setError] = useState<string | undefined>();
   const [voiceState, setVoiceState] = useState<HomeVoiceCaptureStatePayload['state']>('idle');
   const [voiceError, setVoiceError] = useState<string | undefined>();
-  const [voiceTurnVersion, setVoiceTurnVersion] = useState(0);
+  const [voiceTurn, setVoiceTurn] = useState<HomeVoiceTurn>();
   const [statusIconDataUrl, setStatusIconDataUrl] = useState<string | undefined>();
   const [originNavigation, setOriginNavigation] = useState<AgentTaskOriginNavigationPayload>();
 
@@ -53,12 +54,16 @@ export default function App() {
         const transcription = payload.transcription?.trim();
         if (!transcription) return;
         try {
-          const response = await submitHomeTurn({ content: transcription });
+          const submission = {
+            content: transcription,
+            displayMarkdown: plainTextToDisplayMarkdown(transcription),
+            referencePaths: [],
+          };
+          const response = await submitHomeTurn(submission);
           const refreshed = await hydrateBasilBoard();
           setHydration(refreshed);
           setVoiceError(undefined);
-          setVoiceTurnVersion((version) => version + 1);
-          void response;
+          setVoiceTurn((current) => ({ version: (current?.version ?? 0) + 1, response, submission }));
         } catch (submitError) {
           setVoiceError(submitError instanceof Error ? submitError.message : 'Voice turn failed');
         }
@@ -98,7 +103,7 @@ export default function App() {
   }
 
   return (
-    <HomeRuntimeContext.Provider value={{ voiceState, voiceError, voiceTurnVersion, statusIconDataUrl }}>
+    <HomeRuntimeContext.Provider value={{ voiceState, voiceError, voiceTurn, statusIconDataUrl }}>
       {detachedTabId ? (
         <DetachedCapabilityShell
           tabs={hydration.tabs}

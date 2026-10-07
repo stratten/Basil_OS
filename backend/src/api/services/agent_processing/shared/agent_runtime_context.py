@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 
 
 AGENT_RUN_STARTED_AT_KEY = "agent_run_started_at"
-"""Context key holding the wall-clock ``time.time()`` at which this agent run's first executor pass began."""
+"""Context key holding the wall-clock ``time.time()`` at which this agent run's first inner agent loop run began."""
 
 _current_agent_context: ContextVar[Optional[Dict[str, Any]]] = ContextVar(
     "current_agent_context",

@@ -68,7 +68,7 @@ export function deriveAgentTaskRunFocusSummaries(
       requestText: displaySource.originalPrompt,
       resultText: displaySource.result,
       timestamp: displaySource.timestamp || '',
-      taskStatus: displaySource.status,
+      taskStatus: displaySource.isCanceled ? 'canceled' : displaySource.status,
       outcome: displaySource.outcome,
       resultSeverity: displaySource.resultSeverity,
       isProcessing,

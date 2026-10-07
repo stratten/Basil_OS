@@ -300,6 +300,34 @@ async def test_canceled_waiter_cancels_durable_approval_and_reraises(monkeypatch
 
 
 @pytest.mark.asyncio
+async def test_canceling_the_run_during_an_approval_wait_records_the_interaction_canceled(monkeypatch):
+    repository = _Repository()
+    websocket = _WebSocket()
+    clear_attention = AsyncMock()
+    _patch_waiting_manager(monkeypatch, repository, clear_attention)
+    resolved = AsyncMock()
+    monkeypatch.setattr(interactive_approval, "record_user_interaction_resolved", resolved)
+    manager = InteractiveApprovalManager(
+        websocket_manager=websocket,
+        generalizer=SimpleNamespace(generalize_command=lambda command: command),
+    )
+    decision = ExecutionApprovalDecision(needs_approval=True, reason="Not whitelisted", risk_level="low")
+    request = asyncio.create_task(
+        manager.request_approval(command="pwd", decision=decision, context={"agent_task_id": "task-1"})
+    )
+    await websocket.published.wait()
+
+    request.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await request
+
+    resolved.assert_awaited_once()
+    assert resolved.await_args.args == ("task-1",)
+    assert resolved.await_args.kwargs["interaction_id"] == "approval-1"
+    assert resolved.await_args.kwargs["status"] == "canceled"
+
+
+@pytest.mark.asyncio
 async def test_retired_approval_returns_unavailable_without_leaking_cancellation(monkeypatch):
     repository = _Repository()
     websocket = _WebSocket()

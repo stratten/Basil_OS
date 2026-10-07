@@ -43,6 +43,7 @@ from api.core.services.custom_models import (
     PathValidationResponse,
     DownloadRequest,
     DownloadResponse,
+    SERVER_TYPE_OLLAMA,
     # Services
     connection_tester,
     huggingface_service,
@@ -127,6 +128,8 @@ async def create_custom_model(request: CustomModelCreate) -> CustomModelResponse
     if request.handler in API_HANDLERS:
         config["base_url"] = request.base_url
         config["model_identifier"] = request.model_identifier
+    if request.server_type:
+        config["server_type"] = request.server_type
     
     # Add local model fields.
     if is_local:
@@ -217,6 +220,15 @@ async def update_custom_model_endpoint(model_id: str, request: CustomModelUpdate
         config["tool_call_format"] = request.tool_call_format
     if request.description is not None:
         config["description"] = request.description
+    if request.server_type is not None:
+        config["server_type"] = request.server_type
+    if config.get("server_type") == SERVER_TYPE_OLLAMA and config.get("handler") != ModelHandler.OPENAI_COMPATIBLE.value:
+        if request.server_type == SERVER_TYPE_OLLAMA:
+            raise HTTPException(
+                status_code=400,
+                detail="server_type 'ollama' requires the openai_compatible handler.",
+            )
+        config.pop("server_type", None)
     
     # Handle API key updates.
     if request.api_key_name is not None:

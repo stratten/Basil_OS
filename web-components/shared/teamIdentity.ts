@@ -23,10 +23,4 @@ export const BASIL_TEAM = {
     pairedName: 'Paprika (Agent)',
     shortDescription: 'Takes a task, works through the steps, and brings back a result.',
   },
-  controlBoard: {
-    displayName: 'Saffron',
-    descriptor: 'Control Board',
-    pairedName: 'Saffron (Control Board)',
-    shortDescription: 'Watches approved sources, coordinates follow-up work, and brings back summaries, drafts, and options for review.',
-  },
 } as const satisfies Record<string, TeamMemberIdentity>;

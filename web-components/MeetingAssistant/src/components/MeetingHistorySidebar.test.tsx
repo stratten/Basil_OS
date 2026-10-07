@@ -74,7 +74,27 @@ describe('MeetingHistorySidebar', () => {
     const user = userEvent.setup();
     render(<MeetingHistorySidebar history={[meeting]} selectedMeetingId={meeting.id} searchText="" searchFilters={filters} isLoading={false} isLoadingMore={false} hasMore={false} loadMoreError={null} activeAnalysisMeetingId={null} />);
     await user.click(screen.getByRole('button', { name: 'Delete Stand Up' }));
-    expect(screen.getByText('Delete?')).toBeInTheDocument();
+    expect(screen.getByText('Delete this meeting?')).toBeInTheDocument();
+  });
+
+  it('replaces the row with an inline confirmation that can be cancelled or confirmed', async () => {
+    const user = userEvent.setup();
+    render(<MeetingHistorySidebar history={[meeting]} selectedMeetingId={null} searchText="" searchFilters={filters} isLoading={false} isLoadingMore={false} hasMore={false} loadMoreError={null} activeAnalysisMeetingId={null} />);
+
+    await user.click(screen.getByRole('button', { name: 'Delete Stand Up' }));
+    const dialog = screen.getByRole('alertdialog', { name: 'Delete meeting' });
+    expect(dialog.closest('li')?.querySelector('.meeting-history-item-name')).toBeNull();
+    expect(screen.queryByText('Stand Up')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(screen.getByText('Stand Up')).toBeInTheDocument();
+    expect(intents.deleteMeeting).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'Delete Stand Up' }));
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(intents.deleteMeeting).toHaveBeenCalledWith('meeting-1');
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   });
 
   it('reveals delete on horizontal swipe and disallows deletion of the active analysis owner', async () => {
@@ -83,7 +103,7 @@ describe('MeetingHistorySidebar', () => {
 
     fireEvent.wheel(screen.getByRole('listitem'), { deltaX: 80, deltaY: 0 });
     await user.click(screen.getByRole('button', { name: 'Delete' }));
-    expect(screen.getByText('Delete?')).toBeInTheDocument();
+    expect(screen.getByText('Delete this meeting?')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
 
     view.rerender(<MeetingHistorySidebar history={[meeting]} selectedMeetingId={null} searchText="" searchFilters={filters} isLoading={false} isLoadingMore={false} hasMore={false} loadMoreError={null} activeAnalysisMeetingId={meeting.id} />);

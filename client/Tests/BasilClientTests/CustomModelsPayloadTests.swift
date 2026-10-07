@@ -16,7 +16,7 @@ final class CustomModelsPayloadTests: XCTestCase {
             downloadUrl: nil, contextWindow: 8192, maxOutputTokens: 4096, requiresAuth: true,
             apiKeyName: "custom_my-openai-compatible", capabilities: ["reasoning"],
             features: ["streaming", "system_prompts"], featureConfig: nil, toolRendering: nil,
-            toolCallFormat: nil, description: "test model", fileSize: nil, fileSizeHuman: nil
+            toolCallFormat: nil, serverType: "ollama", description: "test model", fileSize: nil, fileSizeHuman: nil
         )
         let summaries = CustomModelsPayloadBuilder.makeModelSummaries(
             models: [model], downloadProgressMap: [:], downloadStatus: [:]
@@ -27,6 +27,7 @@ final class CustomModelsPayloadTests: XCTestCase {
         XCTAssertEqual(summaries[0]["needsDownload"] as? Bool, false)
         XCTAssertEqual(summaries[0]["baseUrl"] as? String, "http://localhost:11434/v1")
         XCTAssertEqual(summaries[0]["contextWindow"] as? Int, 8192)
+        XCTAssertEqual(summaries[0]["serverType"] as? String, "ollama")
         XCTAssertNil(summaries[0]["downloadProgress"])
         XCTAssertNil(summaries[0]["downloadStatus"])
     }
@@ -80,6 +81,7 @@ final class CustomModelsPayloadTests: XCTestCase {
         XCTAssertNotNil(summaries[0]["baseUrl"])
         XCTAssertTrue(summaries[0]["baseUrl"] is NSNull)
         XCTAssertTrue(summaries[0]["description"] is NSNull)
+        XCTAssertTrue(summaries[0]["serverType"] is NSNull)
     }
 
     func testReportsChangesForEveryActiveModelDownload() {

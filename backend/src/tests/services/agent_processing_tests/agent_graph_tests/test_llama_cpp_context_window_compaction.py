@@ -9,6 +9,8 @@ the most recent turn) from the Context Window Overflow Recovery plan.
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
+from api.services.agent_processing.lifecycle.execution_graph.conversation_turns import mark_turn_input
+
 from api.services.agent_processing.lifecycle.execution_graph.llama_cpp_langchain_adapter import (
     LocalModelContextWindowExceeded,
     _detect_context_window_overflow,
@@ -174,3 +176,29 @@ def test_compaction_returns_original_messages_unchanged_when_nothing_dropped():
     compacted = compact_scratchpad_for_context_window(llama, messages, max_generation_tokens=1)
 
     assert compacted == messages
+
+
+def test_compaction_pins_the_current_request_and_drops_earlier_turns_first():
+    llama = _FakeLlama(context_window=60)
+    earlier_request = mark_turn_input(HumanMessage(content="first question words"))
+    current_request = mark_turn_input(HumanMessage(content="second question"))
+    messages = [
+        SystemMessage(content="system prompt"),
+        earlier_request,
+        AIMessage(content="", tool_calls=[{"id": "old", "name": "tool_a", "args": {}}]),
+        ToolMessage(content="old observation " + "w " * 20, tool_call_id="old"),
+        AIMessage(content="first answer"),
+        current_request,
+        AIMessage(content="", tool_calls=[{"id": "new", "name": "tool_b", "args": {}}]),
+        ToolMessage(content="new observation", tool_call_id="new"),
+    ]
+
+    compacted = compact_scratchpad_for_context_window(llama, messages, max_generation_tokens=1)
+
+    assert compacted[0].content == "system prompt"
+    assert compacted[1].content.startswith("[2 earlier tool-call turn(s) omitted")
+    assert compacted[2].content == "first answer"
+    assert compacted[3] is current_request
+    assert compacted[4].tool_calls[0]["id"] == "new"
+    assert compacted[5].content == "new observation"
+    assert earlier_request not in compacted

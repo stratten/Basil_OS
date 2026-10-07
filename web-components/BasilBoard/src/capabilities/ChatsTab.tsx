@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { AgentTaskOriginNavigationPayload, BoardConversationAvailability } from '../contracts';
+import { useHomeForward } from '../home/HomeForwardContext';
 import {
   activateBoardConversationSurface,
   deactivateBoardConversationSurface,
@@ -13,6 +14,7 @@ interface ChatsTabProps {
 }
 
 export default function ChatsTab({ originNavigation }: ChatsTabProps) {
+  const homeForward = useHomeForward();
   const [availability, setAvailability] = useState<BoardConversationAvailability>('available');
   // Ids of conversations open in their own detached window. Unlike
   // `availability` above (which only covers the legacy global Conversation
@@ -46,5 +48,12 @@ export default function ChatsTab({ originNavigation }: ChatsTabProps) {
     );
   }
 
-  return <ConversationWorkspace originNavigation={originNavigation} detachedConversationIds={detachedConversationIds} />;
+  return (
+    <ConversationWorkspace
+      originNavigation={originNavigation}
+      detachedConversationIds={detachedConversationIds}
+      homeHandoff={homeForward?.chatHandoff}
+      onHomeHandoffConsumed={homeForward?.consumeChatHandoff}
+    />
+  );
 }

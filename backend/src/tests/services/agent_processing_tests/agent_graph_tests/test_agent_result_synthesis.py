@@ -18,7 +18,7 @@ from api.services.agent_processing.lifecycle.execution_graph.synthesis_budget im
     build_budgeted_synthesis_input,
 )
 from api.services.agent_processing.lifecycle import execution_graph
-from api.services.agent_processing.lifecycle.execution_graph import staged_execution_loop
+from api.services.agent_processing.lifecycle.execution_graph import agent_loop_runner
 from api.services.agent_processing.lifecycle.execution_graph.agent_graph_nodes import (
     _collect_emitted_thinking_history,
 )
@@ -505,22 +505,19 @@ def test_budgeted_synthesis_omits_material_constraints_without_receipts():
     assert "Material change evidence" not in synthesis_input.messages[1]["content"]
 
 
-def test_primary_path_uses_staged_tools_without_finalizer_for_main_executor():
+def test_primary_path_uses_tool_surface_without_finalizer_for_main_loop():
     import inspect
 
-    staged_source = inspect.getsource(staged_execution_loop.run_staged_tool_loading)
+    runner_source = inspect.getsource(agent_loop_runner.run_agent_loop)
     node_source = inspect.getsource(
         execution_graph.agent_graph_nodes._node_execute_todos_with_tools
     )
-    assert "core_tools = select_core_tools(all_tools, family_loader_tool)" in staged_source
-    assert "select_tools_for_families(" in staged_source
-    # Main path must not pass a finalizer tool; recovery executor may still add it.
-    main_start = staged_source.index("agent_executor = create_agent_executor(")
-    main_executor_call = staged_source[main_start:]
-    assert "active_tools" in main_executor_call
-    assert "finalize_tool" not in main_executor_call
-    assert "run_staged_tool_loading(" in node_source
-    assert "recovery_agent_executor = create_agent_executor" in node_source
-    recovery_start = node_source.index("recovery_agent_executor = create_agent_executor")
-    recovery_executor_call = node_source[recovery_start:]
-    assert "custom_instructions_section=custom_instructions_section" in recovery_executor_call
+    assert "ToolSurfaceTracker(" in runner_source
+    # Main loop must not register a finalizer tool; finalizer recovery adds it separately.
+    assert "finalize_tool" not in runner_source
+    assert "run_agent_loop(run_request)" in node_source
+    assert "recovery_agent = FinalizerRecoveryAgent(" in node_source
+    recovery_start = node_source.index("recovery_agent = FinalizerRecoveryAgent(")
+    recovery_call = node_source[recovery_start:]
+    assert "finalize_tool_recovery" in recovery_call
+    assert "system_prompt_text=agent_run.system_prompt_text" in recovery_call

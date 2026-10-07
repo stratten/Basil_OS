@@ -303,18 +303,19 @@ class BaseReasoningModel(BaseAIModel, ReasoningCapable, ABC):
                 total_tokens,
                 budget.input_budget_tokens,
             )
+            # input_budget_tokens is already the window minus the output reserve, so no further reserve is subtracted here.
             messages = truncate_conversation_to_fit(
                 messages,
                 max_tokens=budget.input_budget_tokens,
                 tokenizer=tokenizer,
-                reserve_tokens=budget.effective_output_tokens,
+                reserve_tokens=0,
             )
         elif total_tokens + budget.effective_output_tokens > context_size:
             messages = truncate_conversation_to_fit(
                 messages,
                 max_tokens=max(1, context_size - budget.effective_output_tokens),
                 tokenizer=tokenizer,
-                reserve_tokens=budget.effective_output_tokens,
+                reserve_tokens=0,
             )
 
         async for token in self._generate_from_messages_streaming(

@@ -169,6 +169,33 @@ function ConversationHistoryRowComponent({
     openConversationThreadWindow(conversation.id);
   };
 
+  if (isConfirmingDelete) {
+    return (
+      <li data-conversation-id={conversation.id}>
+        <div
+          className="chats-conversation-row chats-conversation-row--confirm-delete"
+          role="alertdialog"
+          aria-label="Delete conversation"
+        >
+          <span className="chats-conversation-confirm__label">Delete this conversation?</span>
+          <div className="chats-conversation-confirm__actions">
+            <button type="button" className="chats-conversation-confirm__btn" onClick={onCancelDelete}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="chats-conversation-confirm__btn chats-conversation-confirm__btn--danger"
+              onClick={() => onConfirmDelete(conversation.id)}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </button>
+          </div>
+        </div>
+      </li>
+    );
+  }
+
   return (
     <li onWheel={revealDelete.handleWheel} data-conversation-id={conversation.id}>
       {revealDelete.isOpen && (
@@ -235,23 +262,6 @@ function ConversationHistoryRowComponent({
           <OpenInSeparateWindowIcon size={10} />
         </button>
       </div>
-      {isConfirmingDelete ? (
-        <div
-          className="chats-delete-confirmation"
-          role="alertdialog"
-          aria-label="Delete conversation"
-        >
-          <span>Delete this conversation?</span>
-          <button type="button" onClick={onCancelDelete}>Cancel</button>
-          <button
-            type="button"
-            onClick={() => onConfirmDelete(conversation.id)}
-            disabled={isDeleting}
-          >
-            {isDeleting ? 'Deleting...' : 'Delete'}
-          </button>
-        </div>
-      ) : null}
     </li>
   );
 }

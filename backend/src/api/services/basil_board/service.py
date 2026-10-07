@@ -85,6 +85,9 @@ class BasilBoardService:
     async def update_inquiry(self, inquiry_id: str, **fields: Any) -> Optional[BoardInquirySummary]:
         return await self._repo.update_inquiry(inquiry_id, **fields)
 
+    async def get_inquiry(self, inquiry_id: str) -> Optional[BoardInquirySummary]:
+        return await self._repo.get_inquiry(inquiry_id)
+
     async def list_recent_inquiries(self, *, limit: int = 50) -> List[BoardInquirySummary]:
         return await self._repo.list_recent_inquiries(limit=limit)
 

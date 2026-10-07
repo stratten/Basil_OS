@@ -33,7 +33,7 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
   );
   const histParsed = useMemo(() => parseResult(presentationResult), [presentationResult]);
   const userInteractions = useMemo(
-    () => userInteractionsFromTimeline(item.executionTimeline),
+    () => userInteractionsFromTimeline(item.executionTimeline, { runEnded: true }),
     [item.executionTimeline],
   );
   const histRunDetails = useMemo(() => splitRunDetails(histParsed.userSummary), [histParsed.userSummary]);

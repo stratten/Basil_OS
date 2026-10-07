@@ -207,7 +207,7 @@ class ProviderPermissionActivationCoordinator:
                 root_task_id=self._root_task_id,
                 previous_task_id=self._previous_task_id,
                 interaction_id=interaction_id,
-                status="cancelled",
+                status="canceled",
             )
             raise
         finally:
@@ -223,7 +223,7 @@ class ProviderPermissionActivationCoordinator:
             None,
         )
         if user_selected_option is None:
-            resolution_status, resolution_response = "cancelled", None
+            resolution_status, resolution_response = "canceled", None
         else:
             resolution_status = (
                 "approved" if str(user_selected_option.get("kind", "")).startswith("allow") else "denied"

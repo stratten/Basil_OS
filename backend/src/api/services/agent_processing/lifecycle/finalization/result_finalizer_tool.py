@@ -64,6 +64,7 @@ from api.services.agent_processing.shared.material_outcome_brief import (
     summarize_material_effects,
 )
 
+from ..execution_graph.context_window_budget import context_window_exceeded_reason
 from .evaluation import (
     default_outcome_reason as _default_outcome_reason,
     evaluate_finalizer_with_llm,
@@ -101,6 +102,10 @@ async def finalize_agent_task_result(
     synthesis_evidence: Optional[Dict[str, Any]] = None,
     read_file_artifacts: Optional[List[Dict[str, Any]]] = None,
     stream_notifier: Optional[Any] = None,
+    context_window_exceeded: Optional[Dict[str, Any]] = None,
+    agent_final_answer: Optional[str] = None,
+    evaluator_timeout_seconds: Optional[float] = None,
+    on_verifier_reasoning: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """Assemble summary_text and structured payload from execution context.
     
@@ -135,9 +140,8 @@ async def finalize_agent_task_result(
     
     print(f"🔍 FINALIZER: Working with {len(full_agent_output)} chars of agent output from parameters")
     
-    # Local models should not self-evaluate: the extra inference has no heartbeat
-    # guard and small models judging their own output is unreliable.  The caller
-    # determines this from the registry's canonical ``location`` field.
+    # Every model verifies the delivered response. Local models get a shorter
+    # deadline and stream their reasoning to the UI so the pass is never silent.
     mechanical_success_hint = success
     success = None
     outcome = "success"
@@ -152,6 +156,11 @@ async def finalize_agent_task_result(
     material_effect_summary = summarize_material_effects(steps)
     evaluator_ran = False
     if llm_model is not None and full_agent_output:
+        from ..runtime.user_interaction_timeline import user_run_notes_context
+
+        run_notes = await user_run_notes_context(agent_task_id)
+        if run_notes:
+            evaluation_context = f"{run_notes}\n\n{evaluation_context}" if evaluation_context else run_notes
         evaluation = await evaluate_finalizer_with_llm(
             llm_model=llm_model,
             original_prompt=original_prompt,
@@ -161,6 +170,9 @@ async def finalize_agent_task_result(
             tool_error_history=tool_error_history,
             evaluation_context=evaluation_context,
             material_outcome_brief=material_outcome_brief,
+            agent_final_answer=agent_final_answer,
+            timeout_seconds=evaluator_timeout_seconds,
+            on_reasoning=on_verifier_reasoning,
         )
         if evaluation is not None:
             evaluator_ran = True
@@ -368,6 +380,14 @@ async def finalize_agent_task_result(
     outcome_reason = override_result.outcome_reason
 
     content_available = bool("\n".join(standardized_messages or "").strip())
+    if isinstance(context_window_exceeded, dict):
+        success = False
+        outcome = "partial" if content_available else "failure"
+        outcome_reason = context_window_exceeded_reason(context_window_exceeded)
+        technical_reason = (
+            "The agent loop stopped on a context-window overflow after "
+            f"{context_window_exceeded.get('compaction_attempts', 0)} compaction level(s)."
+        )
     outcome, outcome_reason = normalize_outcome_after_content(
         outcome=outcome,
         success=success,

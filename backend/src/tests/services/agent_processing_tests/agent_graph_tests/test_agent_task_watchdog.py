@@ -78,6 +78,26 @@ async def test_progress_callback_closes_completed_tool_run():
     assert notifier.updated[-1]["status"] == "completed"
 
 
+@pytest.mark.asyncio
+async def test_progress_callback_stops_tool_runs_cut_off_by_cancellation():
+    registry = get_tool_run_registry()
+    registry.clear_agent_task("task-watchdog-canceled")
+    notifier = DummyNotifier()
+    handler = LiveProgressCallbackHandler(notifier=notifier, todo_id="task-watchdog-canceled")
+
+    await handler.on_tool_start({"name": "shell_service_execute_command"}, run_id="run-canceled", inputs={"command": "echo"})
+    registry.get("run-canceled").mark("approval_waiting", "approval_requested")
+    heartbeat = handler._heartbeat_tasks_by_run["run-canceled"]
+
+    handler.stop_active_tool_runs()
+    await asyncio.wait({heartbeat}, timeout=1)
+
+    assert heartbeat.done()
+    assert registry.get("run-canceled") is None
+    assert handler._heartbeat_tasks_by_run == {}
+    assert handler._step_ids_by_run == {}
+
+
 def test_watchdog_reports_approval_waiting_and_returned_stale():
     registry = get_tool_run_registry()
     registry.clear_agent_task("task-watchdog-stale")

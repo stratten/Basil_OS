@@ -652,7 +652,23 @@ async def test_validation_provider_permission_request_publishes_through_the_real
     )
 
     assert published is True
-    assert websocket_manager.messages == [{
+    timeline_steps = [
+        message
+        for message in websocket_manager.messages
+        if isinstance(message, dict) and message.get("event_type") == "agent_task_step_detail"
+    ]
+    assert len(timeline_steps) == 1
+    assert timeline_steps[0]["agent_task_id"] == agent_task_id
+    assert timeline_steps[0]["correlation_id"] == "user_interaction_permission-interaction-1"
+    assert timeline_steps[0]["metadata"]["user_interaction"]["kind"] == "provider_permission"
+    assert timeline_steps[0]["metadata"]["user_interaction"]["status"] == "waiting"
+    approval_requests = [
+        message
+        for message in websocket_manager.messages
+        if isinstance(message, dict) and message.get("event_type") == "execution_approval_request"
+    ]
+    assert len(websocket_manager.messages) == len(timeline_steps) + len(approval_requests)
+    assert approval_requests == [{
         "event_type": "execution_approval_request",
         "agent_task_id": agent_task_id,
         "approval_id": "permission-interaction-1",

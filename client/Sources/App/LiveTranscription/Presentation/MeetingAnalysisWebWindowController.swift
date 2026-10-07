@@ -133,6 +133,7 @@ final class MeetingAnalysisWebWindowController: NSObject, NSWindowDelegate {
                 return
             }
             let panel = NSSavePanel()
+            panel.applyBasilThemedAppearance()
             panel.allowedContentTypes = [UTType(filenameExtension: "md") ?? .plainText]
             panel.nameFieldStringValue = filenameSuggestion
             panel.begin { [weak self] response in

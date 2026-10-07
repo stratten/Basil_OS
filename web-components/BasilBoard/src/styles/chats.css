@@ -59,7 +59,6 @@
 .chats-message-footer button,
 .chats-error button,
 .chats-response-error button,
-.chats-delete-confirmation button,
 .chats-pending-attachments button,
 .chats-attach-button,
 .chats-send-button {
@@ -442,29 +441,67 @@
   padding: 4px 7px;
 }
 
-.chats-delete-confirmation {
-  position: relative;
-  z-index: 2;
-  margin-top: 4px;
-  padding: 8px;
-  display: flex;
-  flex-wrap: wrap;
+/* Inline "Delete this conversation?" confirmation, rendered in place of the
+   row's normal content (no modal/backdrop). Mirrors the Agent Task sidebar's
+   .sidebar-row--confirm-delete so both history lists confirm deletion the
+   same way and follow the active theme tokens. */
+.chats-conversation-row.chats-conversation-row--confirm-delete,
+.chats-conversation-list > li:hover .chats-conversation-row.chats-conversation-row--confirm-delete {
+  flex-direction: row;
   align-items: center;
-  gap: 6px;
-  border: 1px solid color-mix(in srgb, var(--error-base) 32%, transparent);
+  justify-content: space-between;
+  gap: var(--padding-s, 8px);
+  padding: 8px 12px;
+  cursor: default;
+  border-color: transparent;
+  background: transparent;
+}
+
+.chats-conversation-confirm__label {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary, #00204d);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-footnote, 12px);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chats-conversation-confirm__actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--padding-xs, 4px);
+}
+
+.chats-conversation-confirm__btn {
+  appearance: none;
+  padding: 2px 8px;
+  border: var(--border-thin, 1px) solid var(--separator-color);
   border-radius: var(--corner-radius-small, 6px);
-  background: #fff7f7;
-  color: #701414;
-  font-size: var(--font-size-status-tiny, 11px);
-  box-shadow: 0 5px 14px rgba(66, 9, 9, 0.12);
+  background: var(--background-primary);
+  color: var(--text-primary, #00204d);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-tiny, 10px);
+  cursor: pointer;
 }
 
-.chats-delete-confirmation span {
-  flex: 1 1 100%;
+.chats-conversation-confirm__btn:hover:not(:disabled) {
+  background: rgba(128, 128, 128, 0.1);
 }
 
-.chats-delete-confirmation button {
-  padding: 4px 7px;
+.chats-conversation-confirm__btn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.chats-conversation-confirm__btn--danger {
+  border-color: var(--error-base);
+  color: var(--error-base);
+}
+
+.chats-conversation-confirm__btn--danger:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 0.08);
 }
 
 .chats-main {

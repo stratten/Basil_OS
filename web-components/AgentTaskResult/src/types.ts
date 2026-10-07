@@ -24,6 +24,7 @@ export type AgentStatus =
   | 'routing'
   | 'processing'
   | 'awaitingInput'
+  | 'paused'
   | 'completed'
   | 'failed';
 
@@ -646,6 +647,7 @@ export type WSEventType =
   | 'agent_task_streaming'
   | 'agent_task_streaming_complete'
   | 'agent_task_canceled'
+  | 'agent_task_paused'
   | 'agent_task_capture_started'
   | 'agent_task_capture_complete'
   | 'agent_task_word_detected'

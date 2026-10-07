@@ -23,6 +23,15 @@ from langchain_core.tools import BaseTool
 from pydantic import Field
 
 from .auth_proxy_stream import StreamAccumulator, apply_chunk
+from api.core.models.reasoning.ollama_native_chat import (
+    build_ollama_chat_body,
+    ollama_context_tokens_used,
+    ollama_native_root,
+    ollama_tool_calls_to_openai,
+    stream_ollama_chat,
+    uses_ollama_native_chat,
+)
+from .llama_cpp_langchain_adapter import LocalModelContextWindowExceeded
 
 from api.core.models.reasoning.model_runtime_profile import (
     TOOL_RENDERING_SLIM_TEXT_CATALOG,
@@ -54,6 +63,8 @@ class OpenAICompatibleLangChainAdapter(BaseChatModel):
     max_tokens: int = Field(default=4096, description="Maximum tokens to generate")
     tool_rendering: str = Field(default="full_schema", description="Tool rendering mode")
     tool_call_format: str = Field(default="json_tool_call", description="Text tool-call format")
+    context_window: int = Field(default=0, description="Configured context window in tokens")
+    server_type: str = Field(default="openai_compatible", description="'ollama' routes calls to Ollama's native chat API")
 
     _client: Any = None
     _bound_tools: Optional[List[Dict[str, Any]]] = None
@@ -108,6 +119,8 @@ class OpenAICompatibleLangChainAdapter(BaseChatModel):
             max_tokens=self.max_tokens,
             tool_rendering=self.tool_rendering,
             tool_call_format=self.tool_call_format,
+            context_window=self.context_window,
+            server_type=self.server_type,
         )
         new_instance._client = self._client
         new_instance._bound_tools = openai_tools
@@ -131,6 +144,10 @@ class OpenAICompatibleLangChainAdapter(BaseChatModel):
             except Exception:
                 pass
         return {"type": "object", "properties": {}, "required": []}
+
+    async def aresolve_effective_context_window(self) -> Optional[int]:
+        """Read by the agent runner to size proactive compaction; always the configured value."""
+        return self.context_window if self.context_window > 0 else None
 
     def _convert_messages(self, messages: List[BaseMessage]) -> List[Dict[str, Any]]:
         converted: List[Dict[str, Any]] = []
@@ -254,7 +271,10 @@ class OpenAICompatibleLangChainAdapter(BaseChatModel):
             len(self._bound_tools or []) if not use_slim_catalog else 0,
         )
 
-        content, structured_tool_calls = await self._consume_stream(call_kwargs, run_manager)
+        if uses_ollama_native_chat(self.server_type):
+            content, structured_tool_calls = await self._consume_ollama_native(call_kwargs, run_manager)
+        else:
+            content, structured_tool_calls = await self._consume_stream(call_kwargs, run_manager)
         tool_calls: List[Dict[str, Any]] = []
         parse_errors: List[str] = []
 
@@ -340,6 +360,51 @@ class OpenAICompatibleLangChainAdapter(BaseChatModel):
 
         return acc.content, acc.merged_tool_calls()
 
+    async def _consume_ollama_native(
+        self,
+        call_kwargs: Dict[str, Any],
+        run_manager: Optional[CallbackManagerForLLMRun],
+    ) -> tuple[str, List[Dict[str, Any]]]:
+        """Ollama's native chat API honors the configured context window through ``options.num_ctx``."""
+        body = build_ollama_chat_body(call_kwargs, num_ctx=self.context_window or None)
+        api_key = getattr(self._client, "api_key", None)
+        content_parts: List[str] = []
+        native_calls: List[Dict[str, Any]] = []
+        final_chunk: Dict[str, Any] = {}
+        async for chunk in stream_ollama_chat(ollama_native_root(self.base_url), body, api_key=api_key):
+            message = chunk.get("message") or {}
+            for delta in (message.get("thinking") or "", message.get("content") or ""):
+                if delta and run_manager is not None:
+                    try:
+                        await run_manager.on_llm_new_token(delta, chunk=AIMessageChunk(content=delta))
+                    except Exception as cb_err:
+                        logger.debug("on_llm_new_token forwarding failed: %s", cb_err)
+            if message.get("content"):
+                content_parts.append(message["content"])
+            if message.get("tool_calls"):
+                native_calls.extend(message["tool_calls"])
+            if chunk.get("done"):
+                final_chunk = chunk
+        logger.info(
+            "Ollama native chat finished: model=%s num_ctx=%s prompt_tokens=%s output_tokens=%s tool_calls=%s",
+            self.model_identifier,
+            body["options"].get("num_ctx"),
+            final_chunk.get("prompt_eval_count"),
+            final_chunk.get("eval_count"),
+            len(native_calls),
+        )
+        num_ctx = body["options"].get("num_ctx")
+        used_tokens = ollama_context_tokens_used(final_chunk, num_ctx, body["options"].get("num_predict"))
+        if used_tokens is not None:
+            logger.warning(
+                "Ollama filled the %s-token context window for %s (%s tokens); treating the call as a context overflow",
+                num_ctx,
+                self.model_identifier,
+                used_tokens,
+            )
+            raise LocalModelContextWindowExceeded(used_tokens, int(num_ctx))
+        return "".join(content_parts), ollama_tool_calls_to_openai(native_calls)
+
     def _build_ai_message(self, content: str, tool_calls: List[Dict[str, Any]]) -> AIMessage:
         if not tool_calls:
             return AIMessage(content=content)
@@ -379,6 +444,8 @@ def create_langchain_llm_from_openai_compatible(
         max_tokens=getattr(openai_compatible_model, "max_output_tokens", 4096),
         tool_rendering=tool_rendering,
         tool_call_format=tool_call_format,
+        context_window=int(getattr(openai_compatible_model, "max_context_length", 0) or 0),
+        server_type=str(getattr(openai_compatible_model, "server_type", None) or "openai_compatible"),
     )
     adapter._client = openai_compatible_model._async_client
     logger.info(

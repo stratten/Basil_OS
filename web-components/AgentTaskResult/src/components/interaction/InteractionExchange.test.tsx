@@ -77,6 +77,24 @@ describe('InteractionExchange', () => {
     expect(markup).toContain('Waiting for your answer');
   });
 
+  it('does not repeat a waiting pause in the transcript, but keeps it once resolved', () => {
+    const pause: UserInteraction = {
+      ...answered,
+      id: 'pause',
+      entryId: 'user_interaction_pause',
+      kind: 'pause',
+      status: 'waiting',
+      prompt: 'Paused at your request',
+      response: undefined,
+      respondedAt: undefined,
+    };
+
+    expect(renderToStaticMarkup(<InteractionExchange interaction={pause} />)).toBe('');
+    const resolved = renderToStaticMarkup(<InteractionExchange interaction={{ ...pause, status: 'resolved' }} />);
+    expect(resolved).toContain('You paused the run');
+    expect(resolved).toContain('You resumed');
+  });
+
   it('never renders a hidden answer', () => {
     const markup = renderToStaticMarkup(
       <InteractionExchange interaction={{ ...answered, kind: 'command_input', response: 'hunter2', responseHidden: true }} />,

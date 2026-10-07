@@ -91,7 +91,7 @@ extension LiveTranscriptionViewModel {
     /// The backend's `timeline_start_seconds` is a continuous, sample-accurate
     /// position in that source's own audio stream (silence gaps are now
     /// measured from real sample counts, not wall-clock reads - see
-    /// `AudioProcessor._stream_position_seconds` - so it no longer drifts ahead
+    /// `AudioProcessor._timeline_end_for_sample` - so it no longer drifts ahead
     /// of true elapsed time under processing load). The backend has already
     /// anchored each source's stream-relative token positions to the native
     /// capture clock before emitting them. The renderer only applies the

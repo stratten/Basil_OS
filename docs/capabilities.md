@@ -12,9 +12,11 @@ Local records remain on the Mac unless you select a model or service path that s
 
 ### Basil Board
 
-Start in the Basil Board when you want a single workspace for an inquiry. The Board brings together inquiry history, conversations, Paprika (Agent) tasks, meeting state, and the todo workspace. It accepts text, voice, files, and images when the selected model and the relevant permission support that input.
+Start in the Basil Board when you want a single workspace for a request. The Board brings together conversations, Paprika (Agent) tasks, meeting state, and the todo workspace. It accepts text, voice, files, and images when the selected model and the relevant permission support that input.
 
-The immediate result is an inquiry or workspace item you can continue, revisit, or hand off to another Basil surface. Conversations may stay inside the Board or open in their own window. Board-related inquiry, conversation, task, and todo data can be retained locally so work can be reopened.
+Home is the front door: a single input that routes each request and then forwards you to the place where the work continues. A question opens a new conversation in Chats with the message already sent. A task starts a Paprika task and opens it in the Agents tab, or in the task window if that window is already open. A short notice names where the request went and offers a one-click correction ("Send as agent task instead" or "Answer in a chat instead"). Your text stays in the box if the request could not be handed off. Below the input, Home lists your last few requests as links that reopen each one.
+
+The immediate result is a conversation or task you can continue, revisit, or hand off to another Basil surface. Conversations may stay inside the Board or open in their own window. Board-related inquiry, conversation, task, and todo data can be retained locally so work can be reopened.
 
 The Board is not an elevated permission surface. A request that needs a connection, browser action, desktop automation, command, or other side effect still follows the configured model, authorization, and approval flow.
 

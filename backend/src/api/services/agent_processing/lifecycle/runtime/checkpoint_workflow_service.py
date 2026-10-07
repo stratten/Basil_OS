@@ -6,6 +6,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
+from .resume_cancellation import ResumedRunCanceled, run_registered_resume
 from .user_interaction_timeline import (
     checkpoint_interaction_kind,
     record_user_interaction_asked,
@@ -32,7 +33,7 @@ def checkpoint_interaction_status(
         return {
             "authorized": "approved",
             "rejected": "denied",
-            "canceled": "cancelled",
+            "canceled": "canceled",
         }.get(str(provider_target_authorization_resolution.get("status")), "answered")
     return "answered"
 
@@ -211,17 +212,27 @@ class WorkflowCheckpointWorkflowService:
                         user_response=user_response,
                     )
                 )
-                updated_state["user_agent_task"] = self._build_continuation_agent_task(
-                    original_prompt=original_prompt,
-                    checkpoint_prompt=checkpoint_prompt,
-                    tool_results=tool_results,
-                    user_response=user_response,
-                    agent_task_id=agent_task_id,
-                    provider_target_authorization_resolution=(
-                        provider_target_authorization_resolution
-                    ),
-                )
-                self.logger.info("🔄 Updated user_agent_task for continuation")
+                if updated_state.get("agent_messages"):
+                    updated_state["agent_resume_input"] = self._build_checkpoint_tool_result(
+                        tool_results=tool_results,
+                        user_response=user_response,
+                        provider_target_authorization_resolution=(
+                            provider_target_authorization_resolution
+                        ),
+                    )
+                    self.logger.info("🔄 Answering the paused tool call with the user's response")
+                else:
+                    updated_state["user_agent_task"] = self._build_continuation_agent_task(
+                        original_prompt=original_prompt,
+                        checkpoint_prompt=checkpoint_prompt,
+                        tool_results=tool_results,
+                        user_response=user_response,
+                        agent_task_id=agent_task_id,
+                        provider_target_authorization_resolution=(
+                            provider_target_authorization_resolution
+                        ),
+                    )
+                    self.logger.info("🔄 Updated user_agent_task for continuation")
                 await resolve_latest_waiting_user_interaction(
                     agent_task_id,
                     kinds=("clarification", "provider_target"),
@@ -255,19 +266,6 @@ class WorkflowCheckpointWorkflowService:
                     )
 
                     resumed_context[PRIOR_THINKING_HISTORY_CONTEXT_KEY] = paused_thinking_history
-                from ..execution_graph.service_tooling.tool_call_repetition_guard import (
-                    discard_captured_agent_actions,
-                )
-                from .paused_work_digest import PRIOR_PAUSED_WORK_CONTEXT_KEY, load_paused_work_digest
-
-                discard_captured_agent_actions(resumed_context)
-                paused_work_digest = await load_paused_work_digest(
-                    knowledge_service,
-                    agent_task_id,
-                    agent_task,
-                )
-                if paused_work_digest:
-                    resumed_context[PRIOR_PAUSED_WORK_CONTEXT_KEY] = paused_work_digest
                 updated_state["context"] = resumed_context
                 if context:
                     if isinstance(context.get("context"), dict):
@@ -284,7 +282,10 @@ class WorkflowCheckpointWorkflowService:
                     f"   Preserved keys from checkpoint: {list(updated_state.keys())}"
                 )
                 try:
-                    final_state = await app.ainvoke(updated_state, config=config)
+                    final_state = await run_registered_resume(
+                        agent_task_id,
+                        app.ainvoke(updated_state, config=config),
+                    )
                     self.logger.info("✅ Workflow resumed and completed")
                     self.logger.info(
                         f"   Final state keys: {list(final_state.keys()) if isinstance(final_state, dict) else 'n/a'}"
@@ -306,6 +307,8 @@ class WorkflowCheckpointWorkflowService:
                             exc_info=True,
                         )
                     return result
+                except ResumedRunCanceled:
+                    return await self._settle_canceled_resume(agent_task_id, updated_state)
                 except Exception as resume_error:
                     if self.is_checkpoint_request(resume_error):
                         self.logger.info("🛑 Agent requested another checkpoint during resume")
@@ -376,10 +379,15 @@ class WorkflowCheckpointWorkflowService:
                 status="processing",
             )
             updated_state = dict(checkpoint_state.values)
-            updated_state["user_agent_task"] = self._build_provider_delegation_continuation(
-                original_prompt=str(updated_state.get("user_agent_task") or ""),
-                child_outcomes=child_outcomes,
-            )
+            if updated_state.get("agent_messages"):
+                updated_state["agent_resume_input"] = self._build_provider_delegation_result(
+                    child_outcomes=child_outcomes,
+                )
+            else:
+                updated_state["user_agent_task"] = self._build_provider_delegation_continuation(
+                    original_prompt=str(updated_state.get("user_agent_task") or ""),
+                    child_outcomes=child_outcomes,
+                )
             existing_context = updated_state.get("context")
             context = dict(existing_context) if isinstance(existing_context, dict) else {}
             context["agent_task_id"] = parent_agent_task_id
@@ -390,7 +398,12 @@ class WorkflowCheckpointWorkflowService:
                 context["_workflow_coordinator"] = workflow_coordinator
             updated_state["context"] = context
             try:
-                final_state = await app.ainvoke(updated_state, config=config)
+                final_state = await run_registered_resume(
+                    parent_agent_task_id,
+                    app.ainvoke(updated_state, config=config),
+                )
+            except ResumedRunCanceled:
+                return await self._settle_canceled_resume(parent_agent_task_id, updated_state)
             except Exception as error:
                 if self.is_checkpoint_request(error):
                     await self.handle_checkpoint_request(
@@ -465,11 +478,17 @@ class WorkflowCheckpointWorkflowService:
                 status="processing",
             )
             updated_state = dict(checkpoint_state.values)
-            updated_state["user_agent_task"] = self._build_acp_supervision_continuation(
-                original_prompt=str(updated_state.get("user_agent_task") or ""),
-                delegated_agent_run_id=str(delegated_agent_run["id"]),
-                report_card=report_card,
-            )
+            if updated_state.get("agent_messages"):
+                updated_state["agent_resume_input"] = self._build_acp_supervision_result(
+                    delegated_agent_run_id=str(delegated_agent_run["id"]),
+                    report_card=report_card,
+                )
+            else:
+                updated_state["user_agent_task"] = self._build_acp_supervision_continuation(
+                    original_prompt=str(updated_state.get("user_agent_task") or ""),
+                    delegated_agent_run_id=str(delegated_agent_run["id"]),
+                    report_card=report_card,
+                )
             existing_context = updated_state.get("context")
             context = dict(existing_context) if isinstance(existing_context, dict) else {}
             context["agent_task_id"] = parent_agent_task_id
@@ -481,7 +500,12 @@ class WorkflowCheckpointWorkflowService:
                 context["_workflow_coordinator"] = workflow_coordinator
             updated_state["context"] = context
             try:
-                final_state = await app.ainvoke(updated_state, config=config)
+                final_state = await run_registered_resume(
+                    parent_agent_task_id,
+                    app.ainvoke(updated_state, config=config),
+                )
+            except ResumedRunCanceled:
+                return await self._settle_canceled_resume(parent_agent_task_id, updated_state)
             except Exception as error:
                 if self.is_checkpoint_request(error):
                     await self.handle_checkpoint_request(
@@ -514,9 +538,17 @@ class WorkflowCheckpointWorkflowService:
     def _build_acp_supervision_continuation(
         *, original_prompt: str, delegated_agent_run_id: str, report_card: Mapping[str, object]
     ) -> str:
-        return f"""{original_prompt}
+        supervision_result = WorkflowCheckpointWorkflowService._build_acp_supervision_result(
+            delegated_agent_run_id=delegated_agent_run_id,
+            report_card=report_card,
+        )
+        return f"{original_prompt}\n\n{supervision_result}"
 
-[ACP SUPERVISION REQUIRED]
+    @staticmethod
+    def _build_acp_supervision_result(
+        *, delegated_agent_run_id: str, report_card: Mapping[str, object]
+    ) -> str:
+        return f"""[ACP SUPERVISION REQUIRED]
 delegated_agent_run_id: {delegated_agent_run_id}
 executor_kind: acp_provider
 evidence_capture_state: {report_card.get("capture_state")}
@@ -533,6 +565,16 @@ You are the supervisor. Treat every provider_reported claim as unverified. Use d
         original_prompt: str,
         child_outcomes: Sequence[Mapping[str, object]],
     ) -> str:
+        delegation_result = WorkflowCheckpointWorkflowService._build_provider_delegation_result(
+            child_outcomes=child_outcomes,
+        )
+        return f"{original_prompt}\n\n{delegation_result}"
+
+    @staticmethod
+    def _build_provider_delegation_result(
+        *,
+        child_outcomes: Sequence[Mapping[str, object]],
+    ) -> str:
         blocks = "\n\n".join(
             f"""[DELEGATED CHILD RESULT {index + 1} of {len(child_outcomes)}]
 delegated_agent_run_id: {outcome["delegated_agent_run_id"]}
@@ -542,9 +584,7 @@ evidence_state: {outcome["evidence_state"]}
 summary: {outcome["summary"]}"""
             for index, outcome in enumerate(child_outcomes)
         )
-        return f"""{original_prompt}
-
-{blocks}
+        return f"""{blocks}
 
 Every delegated child above is terminal. Treat each summary as durable evidence labeled by its evidence_state; an evidence_state of provider_reported or unavailable is not independently verified. Do not attempt another delegated-child proposal for work already reported above. Continue the original task from this evidence, ask another user checkpoint only when necessary, and otherwise emit your own final_envelope."""
 
@@ -674,8 +714,7 @@ The user closed the agent-task widget without answering your last checkpoint{dis
 Instructions for this turn (STRICT):
 - Do NOT call any more tools.
 - Do NOT ask the user another question.
-- Synthesize a final answer using ONLY the work you have already completed
-  (listed under WORK BEFORE PAUSE when that section is present).
+- Synthesize a final answer using ONLY the work you have already completed.
 - Emit your final_envelope now.
 - If no useful work was completed yet, emit a final_envelope explaining that
   the task was canceled before completion and briefly summarize what you had
@@ -707,13 +746,47 @@ Instructions for this turn (STRICT):
 [CONTINUATION - The agent previously asked: "{prior_checkpoint_prompt}"]
 [USER RESPONSE: {user_response}]
 
-Continue from where you left off. Tools you already ran before the pause are listed under WORK BEFORE PAUSE when that section is present; reuse those results instead of repeating the calls. Act on the user's response above."""
+Continue from where you left off and act on the user's response above."""
 
         return f"""{original_prompt}
 
 [CONTINUATION - User responded: {user_response}]
 
 Continue from where you left off using the user's response above."""
+
+    def _build_checkpoint_tool_result(
+        self,
+        *,
+        tool_results: Any,
+        user_response: str,
+        provider_target_authorization_resolution: Mapping[str, object] | None = None,
+    ) -> str:
+        if user_response == USER_DISMISSED_CHECKPOINT_RESPONSE:
+            return (
+                "The user closed the question without answering. Do NOT call any more tools and do NOT ask "
+                "another question. Write your final answer now using only the work already completed in this "
+                "conversation. If no useful work was completed, say the task was canceled before completion "
+                "and briefly summarize what you had planned to do."
+            )
+        resolution_context = self._get_provider_target_resolution_context(tool_results)
+        if (
+            provider_target_authorization_resolution
+            and provider_target_authorization_resolution.get("status") == "authorized"
+            and isinstance(provider_target_authorization_resolution.get("id"), str)
+        ):
+            resolution_context += (
+                "\n[PROVIDER TARGET AUTHORIZATION RESOLVED]\n"
+                f"authorization_id: {provider_target_authorization_resolution['id']}\n"
+                "status: authorized\n"
+                "The selected target is already authorized. Do not list, describe, "
+                "propose, authorize, or request another provider target. Call "
+                "provider_catalog action='delegate' exactly once with this "
+                "authorization_id.\n"
+            )
+        resolution_context = resolution_context.strip()
+        if not resolution_context:
+            return f"User response: {user_response}"
+        return f"{resolution_context}\n\nUser response: {user_response}"
 
     def _get_provider_target_resolution_context(self, tool_results: Any) -> str:
         if not isinstance(tool_results, list) or not tool_results:
@@ -788,6 +861,31 @@ Continue from where you left off using the user's response above."""
         if not isinstance(result_data, dict):
             return None
         return result_data.get("checkpoint_data")
+
+    async def _settle_canceled_resume(
+        self,
+        agent_task_id: str,
+        updated_state: Dict[str, Any],
+    ) -> WorkflowExecutionResult:
+        self.logger.info("🛑 Resumed run stopped by the user: %s", agent_task_id)
+        try:
+            from api.dependencies import get_sqlite_knowledge_service
+
+            await get_sqlite_knowledge_service().update_agent_task_status(
+                agent_task_id=agent_task_id,
+                status="canceled",
+            )
+        except Exception as error:
+            self.logger.warning("Could not record the stopped resume for %s: %s", agent_task_id, error)
+        return WorkflowExecutionResult(
+            original_prompt=str(updated_state.get("user_agent_task") or ""),
+            execution_results=[{"status": "canceled", "success": False}],
+            total_execution_duration=0.0,
+            todos_completed=0,
+            todos_failed=0,
+            overall_success=False,
+            error_message="Run stopped",
+        )
 
     def _create_resumed_workflow_result(self, final_state: Dict[str, Any]) -> WorkflowExecutionResult:
         tool_results = final_state.get("tool_execution_results", [])

@@ -1,13 +1,14 @@
 import { Fragment, useEffect, useRef, type CSSProperties } from 'react';
 import type { AgentRunOverviewPresentation } from './agentRunPresentation';
-import { SpeechBubbleGlyph } from '../interaction/InteractionExchange';
+import { PausedGlyph, SpeechBubbleGlyph, YourTurnGlyph } from '../interaction/InteractionExchange';
 import { interactionSummary } from '../interaction/userInteractions';
 import type { AgentTaskRunFocusSummary } from './agentTaskRunFocus';
 import { presentRunStatus, RUN_STATUS_TONE_CLASS } from './agentRunMapPresentation';
 
 function RailGlyph({ stage }: { stage: AgentRunOverviewPresentation['stages'][number] }) {
   if (stage.kind === 'interaction') {
-    return <SpeechBubbleGlyph />;
+    if (stage.interaction?.kind === 'pause') return <PausedGlyph />;
+    return stage.state === 'waiting' ? <YourTurnGlyph /> : <SpeechBubbleGlyph />;
   }
   if (stage.state === 'failed') {
     return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" /></svg>;
@@ -23,7 +24,8 @@ function RailGlyph({ stage }: { stage: AgentRunOverviewPresentation['stages'][nu
 
 function railStageTitle(stage: AgentRunOverviewPresentation['stages'][number]): string {
   if (stage.kind === 'interaction' && stage.interaction) {
-    return interactionSummary(stage.interaction);
+    const summary = interactionSummary(stage.interaction);
+    return stage.state === 'waiting' ? `Your turn: ${summary}` : summary;
   }
   const state = stage.state === 'completed'
     ? 'completed'

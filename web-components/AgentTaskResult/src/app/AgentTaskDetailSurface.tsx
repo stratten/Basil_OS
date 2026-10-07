@@ -8,11 +8,12 @@ import type {
   ValidationRunFocusRequest,
 } from '../types';
 import ResultContent from '../components/ResultContent';
-import ProgressOverlay from '../components/ProgressOverlay';
 import ApprovalSetOverlay from '../components/ApprovalSetOverlay';
 import CheckpointFlow from '../components/CheckpointFlow';
 import InlineCapture from '../components/InlineCapture';
 import TextFollowUp from '../components/TextFollowUp';
+import RunControlComposer from '../components/RunControlComposer';
+import { userInteractionsFromTimeline } from '../components/interaction/userInteractions';
 import ExecutionDetailTray from '../components/ExecutionDetailTray';
 import { deriveAgentTaskArtifacts } from '../components/artifacts/artifactDerivation';
 import {
@@ -181,6 +182,25 @@ export function AgentTaskDetailSurface({
   const checkpointPresence = usePresenceTransition(checkpointVisible);
   const inlineCheckpointPresence = usePresenceTransition(inlineCheckpointVisible);
   const followUpPresence = usePresenceTransition(followUpVisible);
+  const runControlMode: 'running' | 'paused' | null = followUpVisible || approvalVisible || checkpointVisible || inlineCheckpointVisible
+    ? null
+    : displaySource.status === 'paused'
+      ? 'paused'
+      : displaySource.status === 'processing'
+        ? 'running'
+        : null;
+  const runControlPresence = usePresenceTransition(runControlMode !== null);
+  const retainedRunControlMode = useRef<'running' | 'paused'>(runControlMode ?? 'running');
+  if (runControlMode) retainedRunControlMode.current = runControlMode;
+  const runControlTurnId = displaySource.currentTurnTaskId || displaySource.agentTaskId;
+  const deliveredNoteIds = useMemo(
+    () => new Set(
+      userInteractionsFromTimeline(displaySource.executionTimeline)
+        .filter(interaction => interaction.kind === 'guidance' && interaction.status !== 'waiting')
+        .map(interaction => interaction.id),
+    ),
+    [displaySource.executionTimeline, displaySource.executionTimeline.length],
+  );
   const retainedApprovals = useRef(selectedAgent?.approvalRequests ?? []);
   const retainedCheckpoint = useRef(selectedAgent?.currentCheckpoint);
   const retainedInlineCheckpoint = useRef(selectedAgent?.inlineCheckpoint);
@@ -491,16 +511,28 @@ export function AgentTaskDetailSurface({
             />
           </div>
         )}
+        {runControlPresence.shouldRender && (
+          <div
+            className="text-followup-presence-region"
+            data-presence-phase={runControlPresence.phase}
+            aria-hidden={runControlPresence.phase === 'exiting'}
+            inert={runControlPresence.phase === 'exiting' ? '' : undefined}
+            onTransitionEnd={runControlPresence.completeTransition}
+            style={{ flexShrink: 0, padding: '0 var(--padding-l)', paddingBottom: 'var(--padding-s)' }}
+          >
+            <RunControlComposer
+              key={runControlTurnId}
+              turnTaskId={runControlTurnId}
+              mode={retainedRunControlMode.current}
+              deliveredNoteIds={deliveredNoteIds}
+            />
+          </div>
+        )}
         {captureState?.isCapturing && (
           <div style={{ flexShrink: 0, padding: '0 var(--padding-l)' }}>
             <InlineCapture captureState={captureState} />
           </div>
         )}
-        <ProgressOverlay
-          isProcessing={isProcessing}
-          currentStep={displaySource.currentStep}
-          isStepComplete={displaySource.progressSteps.find(step => step.step === displaySource.currentStep)?.isComplete}
-        />
         {approvalPresence.shouldRender && retainedApprovals.current.length > 0 && retainedInteractiveAgentId.current && (
           <div
             className="approval-presence-region"

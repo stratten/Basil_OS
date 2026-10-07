@@ -31,6 +31,7 @@ enum CustomModelsPayloadBuilder {
                 "features": model.features,
                 "toolRendering": model.toolRendering as Any? ?? NSNull(),
                 "toolCallFormat": model.toolCallFormat as Any? ?? NSNull(),
+                "serverType": model.serverType as Any? ?? NSNull(),
                 "description": model.description as Any? ?? NSNull(),
                 "fileSize": model.fileSize as Any? ?? NSNull(),
                 "fileSizeHuman": model.fileSizeHuman as Any? ?? NSNull(),

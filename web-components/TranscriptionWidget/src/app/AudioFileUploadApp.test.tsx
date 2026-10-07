@@ -141,6 +141,29 @@ describe('AudioFileUploadApp', () => {
     expect(mocks.cancelAudioUpload).toHaveBeenCalledOnce();
   });
 
+  it('applies the host font families sent with the theme', () => {
+    render(<AudioFileUploadApp />);
+    act(() => {
+      eventListener?.({
+        type: 'init',
+        protocolVersion: 1,
+        theme: {
+          primary: '#111111',
+          secondary: '#222222',
+          backgroundPrimary: '#ffffff',
+          textPrimary: '#000000',
+          textSecondary: '#444444',
+          errorBase: '#880000',
+          fonts: { fontFamily: 'Upload-Light', fontFamilyMedium: 'Upload-Medium', fontFamilyBold: 'Upload-Bold' },
+        },
+      });
+    });
+    const style = document.documentElement.style;
+    expect(style.getPropertyValue('--font-family-light')).toBe('Upload-Light');
+    expect(style.getPropertyValue('--font-family-medium')).toBe('Upload-Medium');
+    expect(style.getPropertyValue('--font-family-bold')).toBe('Upload-Bold');
+  });
+
   it('renders the shared BasilWindowChrome controls and wires them to the bridge', async () => {
     render(<AudioFileUploadApp />);
     expect(screen.getByText('Upload Audio File')).toBeInTheDocument();

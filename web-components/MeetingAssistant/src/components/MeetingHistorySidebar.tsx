@@ -184,6 +184,28 @@ function MeetingHistoryRow({
     selectMeeting(meeting.id);
   };
 
+  if (pendingDelete) {
+    return (
+      <li className="meeting-history-item">
+        <div className="meeting-history-confirm" role="alertdialog" aria-label="Delete meeting">
+          <span className="meeting-history-confirm__label">Delete this meeting?</span>
+          <div className="meeting-history-confirm__actions">
+            <button type="button" className="meeting-history-confirm__btn" onClick={onDeleteCancel}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="meeting-history-confirm__btn meeting-history-confirm__btn--danger"
+              onClick={onDeleteConfirm}
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </li>
+    );
+  }
+
   return (
     <li className={isSelected ? 'meeting-history-item meeting-history-item--selected' : 'meeting-history-item'} onWheel={revealDelete.handleWheel}>
       {revealDelete.isOpen && (
@@ -232,26 +254,18 @@ function MeetingHistoryRow({
             <OpenAnalysisIcon />
           </button>
         )}
-        {pendingDelete ? (
-          <span className="meeting-history-delete-confirm">
-            <span>Delete?</span>
-            <button type="button" onClick={onDeleteConfirm}>Delete</button>
-            <button type="button" onClick={onDeleteCancel}>Cancel</button>
-          </span>
-        ) : (
-          <button
-            type="button"
-            className="meeting-history-item-delete"
-            onClick={requestDelete}
-            disabled={isAnalyzing}
-            aria-label={`Delete ${meeting.name}`}
-            title={isAnalyzing ? 'Cannot delete while analysis is in progress' : `Delete ${meeting.name}`}
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-              <path d="M3.25 4.25h7.5M5.25 4.25V2.75h3.5v1.5M4.25 4.25l.5 7h4.5l.5-7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-        )}
+        <button
+          type="button"
+          className="meeting-history-item-delete"
+          onClick={requestDelete}
+          disabled={isAnalyzing}
+          aria-label={`Delete ${meeting.name}`}
+          title={isAnalyzing ? 'Cannot delete while analysis is in progress' : `Delete ${meeting.name}`}
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <path d="M3.25 4.25h7.5M5.25 4.25V2.75h3.5v1.5M4.25 4.25l.5 7h4.5l.5-7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
       </div>
     </li>
   );

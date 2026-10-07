@@ -91,9 +91,8 @@ final class AgentTaskCaptureInputWindowController: NSObject, NSWindowDelegate, A
     /// below a size the user deliberately dragged it to.
     private var userExpandedSize: NSSize?
     /// True for the duration of a programmatic `resizeWindow(to:)` call,
-    /// including its animation, so `windowDidResize` — whose top-right
-    /// anchoring is meant only for live user drag-resizes — does not fight
-    /// the animation using stale intermediate frame sizes.
+    /// including its animation, so `windowDidResize` does not record the
+    /// animation's intermediate sizes as a user-chosen size.
     private var isApplyingProgrammaticResize = false
     private var didNotifyBackendWidgetClosed = false
 
@@ -379,6 +378,7 @@ final class AgentTaskCaptureInputWindowController: NSObject, NSWindowDelegate, A
     private func presentReferenceFilePicker(viewModel: AgentTaskCaptureViewModel) {
         guard referenceFilePicker == nil else { return }
         let openPanel = NSOpenPanel()
+        openPanel.applyBasilThemedAppearance()
         openPanel.allowsMultipleSelection = true
         openPanel.canChooseFiles = true
         openPanel.canChooseDirectories = true
@@ -581,18 +581,8 @@ final class AgentTaskCaptureInputWindowController: NSObject, NSWindowDelegate, A
             return
         }
 
-        if let lastFrame = lastCaptureWidgetFrame {
-            let topRight = NSPoint(x: lastFrame.maxX, y: lastFrame.maxY)
-            let anchoredOrigin = NSPoint(
-                x: topRight.x - currentFrame.width,
-                y: topRight.y - currentFrame.height
-            )
-            if anchoredOrigin != currentFrame.origin {
-                window.setFrameOrigin(anchoredOrigin)
-            }
-        }
-        lastCaptureWidgetFrame = window.frame
-        userExpandedSize = window.frame.size
+        lastCaptureWidgetFrame = currentFrame
+        userExpandedSize = currentFrame.size
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {

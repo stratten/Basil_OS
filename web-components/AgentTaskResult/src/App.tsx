@@ -22,9 +22,11 @@ import type { MissedRunToast } from './app/useHostBridge';
 import { useAgentSelection } from './app/useAgentSelection';
 import { useAgentStatusReporting } from './app/useAgentStatusReporting';
 import { useResultWidgetSizing } from './app/useResultWidgetSizing';
+import { useCollapseShortcut } from '@shared/useCollapseShortcut';
 import { AgentTaskResultBody } from './app/AgentTaskResultBody';
 import { effectiveRootId, isDisplaySourceDetached } from './app/detachedPresentation';
 import { beginRunningAgentCancellation } from './app/runningAgentCancellation';
+import { deriveRunPhase } from './components/run/runPhase';
 
 // Initialize the processing-bubble CSS variables at module-load time, before
 // React renders, so the bubble has its Royal Purple default *before* the
@@ -170,6 +172,8 @@ export default function App() {
     initiallyProcessing,
   });
 
+  useCollapseShortcut(handleToggleChromeCollapsed, !embedded);
+
   useEffect(() => {
     registerExpandChromeForTaskCompletionHandler(expandChrome);
   }, [expandChrome]);
@@ -238,7 +242,8 @@ export default function App() {
       && !selectedAgent.currentCheckpoint
       && !selectedAgent.showApprovalPrompt;
 
-    if (!agentTaskId || (!isActive && !hasActiveFollowUp && !needsCheckpointRecovery)) return;
+    const isPaused = selectedAgent?.status === 'paused';
+    if (!agentTaskId || (!isActive && !hasActiveFollowUp && !needsCheckpointRecovery && !isPaused)) return;
 
     const reconcile = () => {
       hydrateAgentFromBackend(agentTaskId);
@@ -293,9 +298,11 @@ export default function App() {
   const displaySourceDetached = isDisplaySourceDetached(displaySource, detachedRootsElsewhere);
   const detachedDisplayRootId = displaySource ? effectiveRootId(displaySource) : null;
 
+  const isVerifying = displaySource ? deriveRunPhase(displaySource).kind === 'verifying' : false;
+
   let bubbleMode: BubbleMode = 'ambient';
   if (isCapturing) bubbleMode = 'audioResponsive';
-  else if (isProcessing) bubbleMode = 'processing';
+  else if (isProcessing || isVerifying) bubbleMode = 'processing';
 
   const handleStartFollowUp = useCallback(() => {
     if (!displaySource) return;
@@ -411,10 +418,11 @@ export default function App() {
       captureState={captureState}
       textFollowUpMode={textFollowUpMode}
       isProcessing={isProcessing}
+      isVerifying={isVerifying}
       isCapturing={isCapturing}
       bubbleMode={bubbleMode}
       isCollapseIconRotated={isCollapseIconRotated}
-      showCancelStop={isInFlightAgentStatus(selectedAgent?.status)}
+      showCancelStop={isInFlightAgentStatus(selectedAgent?.status) || selectedAgent?.status === 'paused'}
       onCancelRunningAgent={handleCancelRunningAgent}
       onToggleChromeCollapsed={() => {
         logDetailTrayDiagnostic('chrome-collapse toggle invoked', {

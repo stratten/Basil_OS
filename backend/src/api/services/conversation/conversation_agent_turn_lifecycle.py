@@ -50,6 +50,7 @@ _STATUS_TEXT_BY_AGENT_TASK_STATUS = {
     "routed": "Paprika is ready to begin.",
     "processing": "Paprika is working.",
     "awaiting_user_input": "Paprika needs your input.",
+    "paused": "Paprika is paused.",
     "needs_clarification": "Paprika needs clarification.",
     "clarification_added": "Paprika received your clarification.",
     "completed": "Paprika finished the task. Preparing a conversation response.",

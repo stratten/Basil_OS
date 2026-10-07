@@ -378,7 +378,7 @@ _CREDENTIAL_INTERACTION_STATUSES = {
     "token_available": "approved",
     "token_missing": "denied",
     "token_response_timeout": "timed_out",
-    "token_request_canceled": "cancelled",
+    "token_request_canceled": "canceled",
 }
 
 

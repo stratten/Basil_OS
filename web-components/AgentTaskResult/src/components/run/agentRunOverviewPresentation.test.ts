@@ -136,7 +136,7 @@ describe('deriveAgentRunOverviewPresentation', () => {
     expect(overview.stages[1]).toMatchObject({ state: 'completed', interaction: { response: 'La Fantaisie' } });
   });
 
-  it('marks a pending exchange as waiting even after the run completes', () => {
+  it('settles a pending exchange once the run is no longer waiting on the user', () => {
     const presentation = deriveAgentRunPresentation([
       {
         id: 'user_interaction_ap',
@@ -149,9 +149,62 @@ describe('deriveAgentRunOverviewPresentation', () => {
     ], 'completed', false);
 
     expect(deriveAgentRunOverviewPresentation(presentation).stages).toEqual([
-      expect.objectContaining({ kind: 'interaction', label: 'Basil asked to run', state: 'waiting' }),
+      expect.objectContaining({ kind: 'interaction', label: 'Basil asked to run', state: 'recorded' }),
       expect.objectContaining({ kind: 'outcome', state: 'completed' }),
     ]);
+  });
+
+  const pauseEntry = (status: string): TimelineEntry => ({
+    id: 'user_interaction_pause-1',
+    type: 'step',
+    timestamp: '2026-10-04T23:40:02Z',
+    content: 'Paused by you',
+    detail_kind: 'user_interaction',
+    metadata: { user_interaction: { interaction_id: 'pause-1', kind: 'pause', status, prompt: 'Paused by you', asked_at: '2026-10-04T23:40:02Z' } },
+  });
+  const executionEntry = (id: string, timestamp: string): TimelineEntry => ({
+    id,
+    type: 'step',
+    timestamp,
+    content: 'Working',
+    metadata: { progress_phase: 'execution' },
+  });
+
+  it('puts the processing stage after a resolved pause instead of leaving the pause last', () => {
+    const presentation = deriveAgentRunPresentation([
+      executionEntry('exec-1', '2026-10-04T23:39:00Z'),
+      pauseEntry('resolved'),
+    ], 'processing', true);
+    const overview = deriveAgentRunOverviewPresentation(presentation);
+
+    expect(overview.stages.map(item => [item.kind, item.state])).toEqual([
+      ['phase', 'completed'],
+      ['interaction', 'completed'],
+      ['phase', 'active'],
+    ]);
+    expect(new Set(overview.stages.map(item => item.id)).size).toBe(3);
+  });
+
+  it('starts a fresh phase stage when work arrives after a pause', () => {
+    const presentation = deriveAgentRunPresentation([
+      executionEntry('exec-1', '2026-10-04T23:39:00Z'),
+      pauseEntry('resolved'),
+      executionEntry('exec-2', '2026-10-04T23:45:00Z'),
+    ], 'processing', true);
+    const overview = deriveAgentRunOverviewPresentation(presentation);
+
+    expect(overview.stages.map(item => item.kind)).toEqual(['phase', 'interaction', 'phase']);
+    expect(new Set(overview.stages.map(item => item.id)).size).toBe(3);
+  });
+
+  it('keeps a waiting pause last while the run is paused', () => {
+    const presentation = deriveAgentRunPresentation([
+      executionEntry('exec-1', '2026-10-04T23:39:00Z'),
+      pauseEntry('waiting'),
+    ], 'paused', false);
+    const overview = deriveAgentRunOverviewPresentation(presentation);
+
+    expect(overview.stages.map(item => item.kind)).toEqual(['phase', 'interaction']);
   });
 
   it('presents a legacy completed-with-warnings outcome as completed', () => {
@@ -161,5 +214,84 @@ describe('deriveAgentRunOverviewPresentation', () => {
     expect(presentation.stages).toEqual([
       expect.objectContaining({ kind: 'outcome', label: 'Run completed', state: 'completed' }),
     ]);
+  });
+});
+
+describe('settling live stage states', () => {
+  const phaseEntry = (id: string, timestamp: string, status: string): TimelineEntry => ({
+    id,
+    type: 'step',
+    timestamp,
+    content: 'Working',
+    metadata: { progress_phase: 'execution', progress_step: 'Working', progress_status: status },
+  });
+  const waitingApproval: TimelineEntry = {
+    id: 'user_interaction_ap',
+    type: 'step',
+    timestamp: '2026-10-04T23:40:02Z',
+    content: 'rm -rf build',
+    detail_kind: 'user_interaction',
+    metadata: { user_interaction: { interaction_id: 'ap', kind: 'approval', status: 'waiting', prompt: 'rm -rf build' } },
+  };
+
+  it('lets a resumed phase become active again after it waited on the user', () => {
+    const presentation = deriveAgentRunPresentation([
+      phaseEntry('p1', '2026-10-05T10:00:00Z', 'waiting_user_input'),
+      phaseEntry('p2', '2026-10-05T10:01:00Z', 'started'),
+    ], 'processing', true);
+
+    expect(presentation.stages).toEqual([expect.objectContaining({ kind: 'phase', state: 'active' })]);
+  });
+
+  it('records an older waiting phase once newer work has started', () => {
+    const presentation = deriveAgentRunPresentation([
+      { ...phaseEntry('p1', '2026-10-05T10:00:00Z', 'waiting_user_input'), metadata: { progress_phase: 'routing', progress_step: 'Asking', progress_status: 'waiting_user_input' } },
+      phaseEntry('p2', '2026-10-05T10:01:00Z', 'started'),
+    ], 'processing', true);
+
+    expect(presentation.stages.map(stage => stage.state)).toEqual(['recorded', 'active']);
+  });
+
+  it('keeps an approval waiting while the run is still working', () => {
+    const presentation = deriveAgentRunPresentation([waitingApproval], 'processing', true);
+
+    expect(presentation.stages).toEqual([expect.objectContaining({ kind: 'interaction', state: 'waiting' })]);
+  });
+
+  it('keeps a question waiting while the task is awaiting input or paused', () => {
+    for (const status of ['awaitingInput', 'paused']) {
+      const presentation = deriveAgentRunPresentation([waitingApproval], status, false);
+      expect(presentation.stages).toEqual([expect.objectContaining({ kind: 'interaction', state: 'waiting' })]);
+    }
+  });
+
+  it('stops every live state and says the user stopped a canceled run', () => {
+    const presentation = deriveAgentRunPresentation([
+      phaseEntry('p1', '2026-10-05T10:00:00Z', 'started'),
+      { ...waitingApproval, timestamp: '2026-10-05T10:02:00Z' },
+    ], 'canceled', false);
+    const overview = deriveAgentRunOverviewPresentation(presentation);
+
+    expect(presentation.terminalState).toBe('failed');
+    expect(presentation.stoppedByUser).toBe(true);
+    expect(presentation.stages).toEqual([
+      expect.objectContaining({ kind: 'phase', state: 'recorded' }),
+      expect.objectContaining({ kind: 'interaction', state: 'recorded' }),
+      expect.objectContaining({ kind: 'outcome', label: 'Run stopped', state: 'failed' }),
+    ]);
+    expect(overview.stoppedByUser).toBe(true);
+    expect(overview.stages.some(stage => stage.state === 'active' || stage.state === 'waiting')).toBe(false);
+  });
+
+  it('stops spinning phases while the run waits on the user', () => {
+    const presentation = deriveAgentRunPresentation([phaseEntry('p1', '2026-10-05T10:00:00Z', 'started')], 'paused', false);
+
+    expect(presentation.stages).toEqual([expect.objectContaining({ kind: 'phase', state: 'recorded' })]);
+  });
+
+  it('labels the fallback outcome of a stopped run', () => {
+    const overview = deriveAgentRunOverviewPresentation({ terminalState: 'failed', stoppedByUser: true, stages: [] });
+
+    expect(overview.stages).toEqual([expect.objectContaining({ kind: 'outcome', label: 'Run stopped', state: 'failed' })]);
   });
 });

@@ -9,6 +9,7 @@ import AppKit
 enum WindowChromeCollapse {
     static let compactWidthCap: CGFloat = 400
     private static let movementTolerance: CGFloat = 1
+    private static var inFlightExpandFrames: [ObjectIdentifier: NSRect] = [:]
 
     struct State {
         let expandedFrame: NSRect
@@ -78,9 +79,19 @@ enum WindowChromeCollapse {
         )
         let clampedCompactFrame = clamp(compactFrame, inside: visibleFrame)
 
+        let inFlightExpandFrame = inFlightExpandFrames.removeValue(forKey: ObjectIdentifier(window))
+        if inFlightExpandFrame != nil {
+            // A later setFrame does not cancel an in-flight animator animation,
+            // which would otherwise resume and re-expand the collapsed window.
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0
+                context.allowsImplicitAnimation = false
+                window.animator().setFrame(window.frame, display: true)
+            }
+        }
         if state == nil {
             state = State(
-                expandedFrame: currentFrame,
+                expandedFrame: inFlightExpandFrame ?? currentFrame,
                 minSize: window.minSize,
                 maxSize: window.maxSize,
                 contentMinSize: window.contentMinSize,
@@ -125,7 +136,7 @@ enum WindowChromeCollapse {
                 visibleFrame: visibleFrame
             )
         }
-        applyFrame(window: window, frame: targetFrame, visibleFrame: visibleFrame)
+        applyFrame(window: window, frame: targetFrame, visibleFrame: visibleFrame, animatesWithoutBlocking: true)
         restoreConstraints(window: window, state: savedState)
         state = nil
     }
@@ -305,7 +316,19 @@ enum WindowChromeCollapse {
         }
     }
 
-    private static func applyFrame(window: NSWindow, frame: NSRect, visibleFrame: NSRect) {
+    /// `setFrame(_:display:animate:)` runs its animation in a blocking loop that
+    /// starves the main run loop, so a hosted WKWebView cannot receive the
+    /// repaint for each new size until the animation ends and the window looks
+    /// like it pops to full size. Expanding is the case where the page must
+    /// paint new area as the window grows, so it uses the animator proxy, which
+    /// keeps the main run loop serviced. Collapse only clips existing content
+    /// and keeps the blocking form.
+    private static func applyFrame(
+        window: NSWindow,
+        frame: NSRect,
+        visibleFrame: NSRect,
+        animatesWithoutBlocking: Bool = false
+    ) {
         let effectiveMinSize = NSSize(
             width: min(window.minSize.width, visibleFrame.width),
             height: min(window.minSize.height, visibleFrame.height)
@@ -317,7 +340,23 @@ enum WindowChromeCollapse {
         window.minSize = effectiveMinSize
         window.maxSize = effectiveMaxSize
         window.contentMinSize = effectiveMinSize
-        window.setFrame(clamp(frame, inside: visibleFrame), display: true, animate: true)
+        let targetFrame = clamp(frame, inside: visibleFrame)
+        guard animatesWithoutBlocking else {
+            window.setFrame(targetFrame, display: true, animate: true)
+            return
+        }
+
+        let windowID = ObjectIdentifier(window)
+        inFlightExpandFrames[windowID] = targetFrame
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = window.animationResizeTime(targetFrame)
+            context.allowsImplicitAnimation = true
+            window.animator().setFrame(targetFrame, display: true)
+        }, completionHandler: {
+            if inFlightExpandFrames[windowID] == targetFrame {
+                inFlightExpandFrames[windowID] = nil
+            }
+        })
     }
 
     private static func restoreConstraints(window: NSWindow, state: State) {

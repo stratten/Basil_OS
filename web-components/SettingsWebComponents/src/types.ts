@@ -1167,6 +1167,7 @@ export interface CustomModelSummary {
   features: string[]
   toolRendering: string | null
   toolCallFormat: string | null
+  serverType: string | null
   description: string | null
   fileSize: number | null
   fileSizeHuman: string | null

@@ -286,6 +286,34 @@ describe('hydrateAgentFromBackend durable metadata', () => {
     expect(agentStore.getAgent('task-follow-up-root')?.delegatedProviderReportCards[0]?.delegatedAgentRunId).toBe('run-follow-up');
   });
 
+  it('keeps a just-submitted follow-up as the current turn until the backend lists it', async () => {
+    agentStore.registerAgent('task-turn-root');
+    agentStore.handleWSEvent({ event_type: 'agent_task_result', agent_task_id: 'task-turn-root', result: 'First answer.' } as never);
+    agentStore.updateAgentTaskText('task-turn-root', 'First request');
+    agentStore.beginFollowUpTurn('task-turn-child', 'task-turn-root');
+    expect(agentStore.getAgent('task-turn-root')?.currentTurnTaskId).toBe('task-turn-child');
+
+    vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
+      id: 'task-turn-root',
+      status: 'completed',
+      result_message: 'First answer.',
+      follow_ups: [],
+    }));
+    await hydrateAgentFromBackend('task-turn-root');
+
+    expect(agentStore.getAgent('task-turn-root')?.currentTurnTaskId).toBe('task-turn-child');
+
+    vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
+      id: 'task-turn-root',
+      status: 'completed',
+      result_message: 'First answer.',
+      follow_ups: [{ id: 'task-turn-child', status: 'processing' } as never],
+    }));
+    await hydrateAgentFromBackend('task-turn-root');
+
+    expect(agentStore.getAgent('task-turn-root')?.currentTurnTaskId).toBe('task-turn-child');
+  });
+
   it('replaces a live artifact with durable verification during nonterminal hydration', async () => {
     agentStore.registerAgent('task-artifact-hydration');
     agentStore.handleWSEvent({

@@ -6,12 +6,8 @@ import asyncio
 import logging
 from typing import Any, AsyncIterator, Dict, List, Optional
 
-from langchain_classic.agents import AgentExecutor
-from langchain_classic.agents.format_scratchpad.tools import format_to_tool_messages
-from langchain_classic.agents.output_parsers.tools import ToolsAgentOutputParser
+from langchain.agents import create_agent
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 
 from api.core.models.model_types import ModelCapability
 from api.core.models.reasoning.model_runtime_profile import (
@@ -33,7 +29,13 @@ from api.services.agent_processing.lifecycle.execution_graph.agent_executor_fact
 from api.services.agent_processing.lifecycle.execution_graph.llama_cpp_langchain_adapter import (
     create_langchain_llm_from_llama_cpp,
 )
-from api.services.agent_processing.lifecycle.execution_graph.model_errors import LLM_RETRY_EXCEPTION_TYPES
+from api.services.agent_processing.lifecycle.execution_graph.agent_loop_messages import (
+    final_agent_output,
+)
+from api.services.agent_processing.lifecycle.execution_graph.agent_loop_model_recovery import (
+    AgentRunFlags,
+    ModelRecoveryMiddleware,
+)
 from api.services.setup_assistant.agent_graph.setup_agent_progress import SetupAgentProgressCallback
 from api.services.setup_assistant.agent_graph.setup_agent_system_prompt import (
     build_setup_agent_system_prompt,
@@ -51,6 +53,9 @@ from api.services.setup_assistant.context_catalog_service import (
 )
 
 logger = logging.getLogger(__name__)
+
+SETUP_AGENT_TURN_TIMEOUT_SECONDS = 600
+SETUP_AGENT_RECURSION_LIMIT = 10_000
 
 
 class SetupAgentRuntime:
@@ -85,17 +90,30 @@ class SetupAgentRuntime:
         async def run_agent_turn() -> None:
             try:
                 await emit_event(SetupAgentEvent(kind=SetupAgentEventKind.turn_started))
-                executor = await self._build_setup_agent_executor(
+                agent = await self._build_setup_agent(
                     emit_event, request, finalize_mode=finalize_mode
                 )
-                result = await executor.ainvoke(
-                    {
-                        "input": self._build_setup_turn_input(request),
-                        "chat_history": self._build_setup_chat_history(request),
-                    },
-                    config={"callbacks": [SetupAgentProgressCallback(emit_event)]},
-                )
-                output = result.get("output") if isinstance(result, dict) else None
+                messages = [
+                    *self._build_setup_chat_history(request),
+                    HumanMessage(content=self._build_setup_turn_input(request)),
+                ]
+                try:
+                    result = await asyncio.wait_for(
+                        agent.ainvoke(
+                            {"messages": messages},
+                            config={
+                                "callbacks": [SetupAgentProgressCallback(emit_event)],
+                                "recursion_limit": SETUP_AGENT_RECURSION_LIMIT,
+                            },
+                        ),
+                        timeout=SETUP_AGENT_TURN_TIMEOUT_SECONDS,
+                    )
+                except asyncio.TimeoutError as timeout_error:
+                    raise RuntimeError(
+                        "The setup agent did not finish this turn within 10 minutes."
+                    ) from timeout_error
+                result_messages = result.get("messages") if isinstance(result, dict) else None
+                output = final_agent_output(result_messages or [])
                 if (
                     not emitted_message_content
                     and isinstance(output, str)
@@ -127,12 +145,12 @@ class SetupAgentRuntime:
             if not task.done():
                 task.cancel()
 
-    async def _build_setup_agent_executor(
+    async def _build_setup_agent(
         self,
         event_emitter: Any,
         request: SetupAgentRequest,
         finalize_mode: bool = False,
-    ) -> AgentExecutor:
+    ) -> Any:
         model_selection = self.context_catalog_service.resolve_setup_agent_model(
             request.setup_agent_model_override_id,
             request.setup_agent_model_access,
@@ -148,35 +166,13 @@ class SetupAgentRuntime:
         system_prompt = build_setup_agent_system_prompt(
             capture_state, finalize_mode=finalize_mode
         )
-        prompt = ChatPromptTemplate.from_messages(
-            [
-                ("system", system_prompt),
-                ("placeholder", "{chat_history}"),
-                ("human", "{input}"),
-                ("placeholder", "{agent_scratchpad}"),
-            ]
-        )
-        llm_with_tools = langchain_model.bind_tools(tools).with_retry(
-            retry_if_exception_type=LLM_RETRY_EXCEPTION_TYPES,
-            stop_after_attempt=3,
-            wait_exponential_jitter=True,
-        )
-        agent = (
-            RunnablePassthrough.assign(
-                agent_scratchpad=lambda values: format_to_tool_messages(values["intermediate_steps"])
-            )
-            | prompt
-            | llm_with_tools
-            | RunnableLambda(lambda output: output)
-            | ToolsAgentOutputParser()
-        )
-        return AgentExecutor(
-            agent=agent,
+        return create_agent(
+            langchain_model,
             tools=tools,
-            verbose=True,
-            handle_parsing_errors=True,
-            return_intermediate_steps=True,
-            max_execution_time=600,
+            system_prompt=system_prompt,
+            middleware=[ModelRecoveryMiddleware(AgentRunFlags())],
+            checkpointer=False,
+            name="basil_setup_loop",
         )
 
     async def _create_setup_langchain_model(self, model_selection: SetupAgentModelSelection) -> Any:

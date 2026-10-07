@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { BasilWindowChrome } from './BasilWindowChrome'
+import { settleHostWindowResize } from './settleHostWindowResize'
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -48,7 +49,7 @@ describe('BasilWindowChrome', () => {
     container.remove()
   })
 
-  it('toggles the collapse control, notifies the bridge, and hides content while collapsed', () => {
+  it('toggles the collapse control, notifies the bridge, and hides content while collapsed', async () => {
     const onCollapse = vi.fn()
     const onExpand = vi.fn()
     const container = document.createElement('div')
@@ -78,6 +79,46 @@ describe('BasilWindowChrome', () => {
       expandButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
     expect(onExpand).toHaveBeenCalledTimes(1)
+    expect(content.classList.contains('is-collapsed')).toBe(true)
+    await settleHostWindowResize()
+    expect(content.classList.contains('is-collapsed')).toBe(false)
+
+    act(() => {
+      root.unmount()
+    })
+    container.remove()
+  })
+
+  it('collapses and expands on Cmd+E', async () => {
+    const onCollapse = vi.fn()
+    const onExpand = vi.fn()
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root: Root = createRoot(container)
+
+    act(() => {
+      root.render(
+        <BasilWindowChrome title="Appearance" onClose={vi.fn()} onMinimize={vi.fn()} onCollapse={onCollapse} onExpand={onExpand}>
+          <div>child content</div>
+        </BasilWindowChrome>,
+      )
+    })
+
+    const content = container.querySelector('.basil-window-content')!
+    const pressCommandE = () => {
+      act(() => {
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', metaKey: true, bubbles: true, cancelable: true }))
+      })
+    }
+
+    pressCommandE()
+    expect(onCollapse).toHaveBeenCalledTimes(1)
+    expect(content.classList.contains('is-collapsed')).toBe(true)
+
+    pressCommandE()
+    expect(onExpand).toHaveBeenCalledTimes(1)
+    expect(content.classList.contains('is-collapsed')).toBe(true)
+    await settleHostWindowResize()
     expect(content.classList.contains('is-collapsed')).toBe(false)
 
     act(() => {

@@ -138,7 +138,7 @@ class CommandInputBroker:
             await record_user_interaction_resolved(
                 pending.agent_task_id,
                 interaction_id=pending.request_id,
-                status={"answered": "answered", "canceled": "cancelled"}.get(reply.status, "timed_out"),
+                status={"answered": "answered", "canceled": "canceled"}.get(reply.status, "timed_out"),
                 response=reply.text if reply.status == "answered" else None,
                 response_hidden=pending.secret and reply.status == "answered",
                 broadcast=websocket_manager.broadcast,

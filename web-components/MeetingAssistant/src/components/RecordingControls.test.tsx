@@ -139,7 +139,7 @@ describe('RecordingControls', () => {
 
   it('toggles live transcription mid-recording without stopping capture', () => {
     render(<RecordingControls ui={recordingUi} />);
-    const toggle = screen.getByRole('checkbox', { name: 'Live transcription' });
+    const toggle = screen.getByRole('checkbox', { name: 'Live Transcribe' });
     expect(toggle).toBeChecked();
     fireEvent.click(toggle);
     expect(bridge.setLiveTranscription).toHaveBeenCalledWith(false);
@@ -148,7 +148,7 @@ describe('RecordingControls', () => {
 
   it('lets the user choose record-only before starting', () => {
     render(<RecordingControls ui={{ ...ui, isLiveTranscriptionEnabled: false }} />);
-    const toggle = screen.getByRole('checkbox', { name: 'Live transcription' });
+    const toggle = screen.getByRole('checkbox', { name: 'Live Transcribe' });
     expect(toggle).not.toBeChecked();
     fireEvent.click(toggle);
     expect(bridge.setLiveTranscription).toHaveBeenCalledWith(true);

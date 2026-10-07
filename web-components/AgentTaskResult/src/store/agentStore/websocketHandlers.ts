@@ -13,7 +13,20 @@ import { BlockerEventAgentStore } from './blockerEventActions';
 import { normalizeCheckpointPayload } from './checkpointNormalization';
 import { parseAgentTaskArtifactEvent } from './artifactTimelineReconciliation';
 import { deriveResultSeverity } from './timelineDetails';
-import { isLiveProgressEvent, isTerminalProgressEvent, parseProgressEvent } from './progressEvent';
+import {
+  isLiveProgressEvent,
+  isTerminalProgressEvent,
+  isWaitingUserInteractionEvent,
+  parseProgressEvent,
+} from './progressEvent';
+
+const PAUSED_ACCEPTED_EVENTS = new Set([
+  'agent_task_paused',
+  'checkpoint_resumed',
+  'agent_task_step_detail',
+  'agent_task_origin',
+  'agent_task_canceled',
+]);
 
 export class AgentStore extends BlockerEventAgentStore {
   private markCurrentTurnLive(
@@ -45,7 +58,7 @@ export class AgentStore extends BlockerEventAgentStore {
 
       // Terminal tasks should not have live noise clear the finished snapshot.
       // Only explicit trusted resume events may move the row back to processing.
-      if (priorStatus === 'completed' || priorStatus === 'failed') {
+      if (priorStatus === 'completed' || priorStatus === 'failed' || priorStatus === 'paused') {
         if (!options.allowTerminalRevival) {
           if (isResultStreamingEvent) {
             a.isStreaming = isStreamingEvent;
@@ -166,7 +179,16 @@ export class AgentStore extends BlockerEventAgentStore {
       return;
     }
 
-    if (isLiveProgressEvent(event) && eventType !== 'checkpoint_waiting') {
+    if (
+      cancellationState?.status === 'paused'
+      && !isTerminalProgressEvent(event)
+      && !PAUSED_ACCEPTED_EVENTS.has(eventType)
+    ) {
+      console.debug(`[AgentStore] Ignoring ${eventType} while ${agentTaskId} is paused`);
+      return;
+    }
+
+    if (isLiveProgressEvent(event) && eventType !== 'checkpoint_waiting' && !isWaitingUserInteractionEvent(event)) {
       this.markCurrentTurnLive(agentTaskId, event, {
         allowTerminalRevival: eventType === 'checkpoint_resumed',
       });
@@ -189,7 +211,10 @@ export class AgentStore extends BlockerEventAgentStore {
         this.handleStreamingComplete(agentTaskId, event);
         break;
       case 'agent_task_canceled':
-        this.handleCanceled(agentTaskId, event);
+        this.handleCanceled(agentTaskId);
+        break;
+      case 'agent_task_paused':
+        this.handlePaused(agentTaskId);
         break;
       case 'step_progress_update':
         this.handleStepProgressUpdate(agentTaskId, event);
@@ -475,8 +500,18 @@ export class AgentStore extends BlockerEventAgentStore {
     });
   }
 
-  private handleCanceled(agentTaskId: string, event: WSEvent) {
-    const message = (event.message as string | undefined) || 'Task canceled';
+  private handlePaused(agentTaskId: string) {
+    this.hideCheckpoint(agentTaskId);
+    this.updateAgent(agentTaskId, a => {
+      a.status = 'paused';
+      a.isStreaming = false;
+      a.currentStep = 'Paused';
+      a.timestamp = new Date().toISOString();
+    });
+    this.updateProgressStep(agentTaskId, 'Paused', false, true);
+  }
+
+  private handleCanceled(agentTaskId: string) {
     if (this.isTransientWithoutDurableData(agentTaskId)) {
       this.removeAgent(agentTaskId);
       return;
@@ -490,7 +525,7 @@ export class AgentStore extends BlockerEventAgentStore {
       a.isCanceled = true;
       a.cancellationError = undefined;
       a.currentStep = 'Canceled';
-      a.errorMessage = message;
+      a.errorMessage = undefined;
       a.timestamp = new Date().toISOString();
     });
     this.updateProgressStep(agentTaskId, 'Canceled', false, true);

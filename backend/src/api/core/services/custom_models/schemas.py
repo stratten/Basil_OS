@@ -18,6 +18,18 @@ API_HANDLERS = {
     ModelHandler.ANTHROPIC_COMPATIBLE.value,
 }
 
+SERVER_TYPE_OPENAI_COMPATIBLE = "openai_compatible"
+SERVER_TYPE_OLLAMA = "ollama"
+SERVER_TYPES = (SERVER_TYPE_OPENAI_COMPATIBLE, SERVER_TYPE_OLLAMA)
+
+
+def _validate_server_type(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return value
+    if value not in SERVER_TYPES:
+        raise ValueError(f"server_type must be one of {list(SERVER_TYPES)}, got '{value}'")
+    return value
+
 
 # =============================================================================
 # CRUD SCHEMAS
@@ -53,6 +65,10 @@ class CustomModelCreate(BaseModel):
                                            description="Feature-specific model configuration")
     tool_rendering: Optional[str] = Field(default=None, description="Tool schema rendering profile")
     tool_call_format: Optional[str] = Field(default=None, description="Text tool-call format")
+    server_type: Optional[str] = Field(
+        default=None,
+        description="Server behind an openai_compatible endpoint: 'openai_compatible' (default) or 'ollama', which sends the context window to Ollama's native chat API",
+    )
     description: Optional[str] = Field(default=None, description="Model description")
     
     @field_validator("base_url")
@@ -71,10 +87,17 @@ class CustomModelCreate(BaseModel):
                 f"URL scheme must be 'http' or 'https', got '{parsed.scheme}'"
             )
         return v
+
+    @field_validator("server_type")
+    @classmethod
+    def validate_server_type(cls, v: Optional[str]) -> Optional[str]:
+        return _validate_server_type(v)
     
     @model_validator(mode="after")
     def validate_handler_fields(self) -> "CustomModelCreate":
         """Validate that required fields are present based on handler type."""
+        if self.server_type == SERVER_TYPE_OLLAMA and self.handler != ModelHandler.OPENAI_COMPATIBLE.value:
+            raise ValueError("server_type 'ollama' requires the openai_compatible handler")
         if self.handler in API_HANDLERS:
             # API models require base_url and model_identifier
             if not self.base_url:
@@ -107,7 +130,13 @@ class CustomModelUpdate(BaseModel):
     feature_config: Optional[Dict[str, Any]] = None
     tool_rendering: Optional[str] = None
     tool_call_format: Optional[str] = None
+    server_type: Optional[str] = None
     description: Optional[str] = None
+
+    @field_validator("server_type")
+    @classmethod
+    def validate_server_type(cls, v: Optional[str]) -> Optional[str]:
+        return _validate_server_type(v)
     
     @field_validator("base_url")
     @classmethod

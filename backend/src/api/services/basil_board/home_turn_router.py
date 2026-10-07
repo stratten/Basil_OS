@@ -18,7 +18,6 @@ from api.services.basil_board.models import (
 )
 from api.services.basil_board.repository import BasilBoardRepository
 from api.services.basil_board.service import BasilBoardService
-from api.services.conversation.conversation_models import ConversationError, ModelNotAvailableError
 from api.services.conversation.conversation_service import ConversationService
 
 logger = logging.getLogger(__name__)
@@ -144,14 +143,10 @@ class HomeTurnRouter:
         route = await self._classifier.classify(content, request.model_id)
 
         if route.route_kind == HomeTurnRouteKind.CONVERSATION:
-            return await self._route_conversation(
+            return await self._hand_off_conversation(
                 inquiry_id=inquiry.id,
                 conversation_id=conversation_id,
-                content=content,
-                model_id=request.model_id,
                 route=route,
-                reference_paths=reference_paths,
-                message_metadata=message_metadata,
             )
         return await self._route_agent_task(
             inquiry_id=inquiry.id,
@@ -164,101 +159,92 @@ class HomeTurnRouter:
             message_metadata=message_metadata,
         )
 
-    async def _route_conversation(
+    async def _hand_off_conversation(
         self,
         *,
         inquiry_id: str,
         conversation_id: str,
-        content: str,
-        model_id: Optional[str],
         route: HomeTurnRoute,
-        reference_paths: Optional[List[str]],
-        message_metadata: Dict[str, Any],
     ) -> HomeTurnResponse:
-        try:
-            response = await self._conversation_service.send_message(
-                conversation_id,
-                content,
-                model_id=model_id,
-                file_paths=reference_paths,
-                message_metadata=message_metadata,
-            )
-        except ModelNotAvailableError as exc:
-            if exc.user_message_id and exc.error_message_id:
-                await self._board.update_inquiry(
-                    inquiry_id,
-                    route_kind=route.route_kind,
-                    route_reason=route.reason,
-                    route_confidence=route.confidence,
-                    state=HomeTurnState.FAILED,
-                    user_message_id=exc.user_message_id,
-                    assistant_message_id=exc.error_message_id,
-                )
-                return HomeTurnResponse(
-                    inquiry_id=inquiry_id,
-                    user_message_id=exc.user_message_id,
-                    route_kind=route.route_kind,
-                    route_reason=route.reason,
-                    route_confidence=route.confidence,
-                    state=HomeTurnState.FAILED,
-                    assistant_message_id=exc.error_message_id,
-                    assistant_content=str(exc),
-                )
-            await self._board.update_inquiry(
-                inquiry_id,
-                route_kind=route.route_kind,
-                route_reason=route.reason,
-                route_confidence=route.confidence,
-                state=HomeTurnState.FAILED,
-            )
-            raise ValueError(str(exc)) from exc
-        except ConversationError as exc:
-            await self._board.update_inquiry(
-                inquiry_id,
-                route_kind=route.route_kind,
-                route_reason=route.reason,
-                route_confidence=route.confidence,
-                state=HomeTurnState.FAILED,
-            )
-            raise ValueError(str(exc)) from exc
-        except Exception:
-            await self._board.update_inquiry(
-                inquiry_id,
-                route_kind=route.route_kind,
-                route_reason=route.reason,
-                route_confidence=route.confidence,
-                state=HomeTurnState.FAILED,
-            )
-            raise
-
-        user_message_id = response.user_message_id
-        if not user_message_id:
-            raise ValueError("Conversation route did not return a user_message_id")
-
-        state = (
-            HomeTurnState.FAILED
-            if response.message.role.value == "error"
-            else HomeTurnState.COMPLETED
-        )
+        """Record the chat route and return immediately. The Chats tab sends
+        the first message over its own streaming socket, so the answer streams
+        there instead of blocking Home. The inquiry is only a routing log for
+        chat turns; Chats owns the outcome, hence COMPLETED here."""
         await self._board.update_inquiry(
             inquiry_id,
             route_kind=route.route_kind,
             route_reason=route.reason,
             route_confidence=route.confidence,
-            state=state,
-            user_message_id=user_message_id,
-            assistant_message_id=response.message.id,
+            state=HomeTurnState.COMPLETED,
+            conversation_id=conversation_id,
         )
-
         return HomeTurnResponse(
             inquiry_id=inquiry_id,
-            user_message_id=user_message_id,
+            conversation_id=conversation_id,
             route_kind=route.route_kind,
             route_reason=route.reason,
             route_confidence=route.confidence,
-            state=state,
-            assistant_message_id=response.message.id,
-            assistant_content=response.message.content,
+            state=HomeTurnState.COMPLETED,
+        )
+
+    async def reroute_inquiry(
+        self,
+        inquiry_id: str,
+        target: HomeTurnRouteKind,
+    ) -> HomeTurnResponse:
+        inquiry = await self._board.get_inquiry(inquiry_id)
+        if inquiry is None:
+            raise LookupError("Inquiry not found")
+        if inquiry.routeKind == target:
+            raise ValueError("Inquiry is already routed that way")
+
+        route = HomeTurnRoute(
+            route_kind=target,
+            reason="Rerouted by user",
+            confidence=1.0,
+        )
+
+        if target == HomeTurnRouteKind.AGENT_TASK:
+            conversation_id = await self._board.create_inquiry_conversation(inquiry.promptText)
+            await self._board.update_inquiry(
+                inquiry_id,
+                conversation_id=conversation_id,
+                user_message_id=None,
+                assistant_message_id=None,
+            )
+            reference_paths = list(inquiry.referencePaths)
+            return await self._route_agent_task(
+                inquiry_id=inquiry_id,
+                conversation_id=conversation_id,
+                content=inquiry.promptText,
+                model_id=None,
+                route=route,
+                reference_paths=reference_paths or None,
+                display_prompt_markdown=inquiry.displayMarkdown,
+                message_metadata={
+                    "surface": "basil_board_home",
+                    "reference_paths": reference_paths,
+                },
+            )
+
+        if inquiry.agentTaskId:
+            if inquiry.state not in {HomeTurnState.ROUTING, HomeTurnState.RUNNING}:
+                raise ValueError("The agent task has already finished")
+            await self._submission_service.cancel_agent_task_durably(
+                inquiry.agentTaskId,
+                "Rerouted to a chat from Home",
+            )
+        conversation_id = await self._board.create_inquiry_conversation(inquiry.promptText)
+        await self._board.update_inquiry(
+            inquiry_id,
+            agent_task_id=None,
+            user_message_id=None,
+            assistant_message_id=None,
+        )
+        return await self._hand_off_conversation(
+            inquiry_id=inquiry_id,
+            conversation_id=conversation_id,
+            route=route,
         )
 
     async def _route_agent_task(
@@ -323,6 +309,7 @@ class HomeTurnRouter:
         return HomeTurnResponse(
             inquiry_id=inquiry_id,
             user_message_id=user_message_id,
+            conversation_id=conversation_id,
             route_kind=route.route_kind,
             route_reason=route.reason,
             route_confidence=route.confidence,

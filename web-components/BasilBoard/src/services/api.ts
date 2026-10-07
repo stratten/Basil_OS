@@ -1,6 +1,5 @@
 import type {
   BasilBoardHydration,
-  BoardInquiryDetail,
   ConversationListItem,
   ConversationMessageItem,
   HomeTurnResponse,
@@ -69,10 +68,6 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
 
 export function hydrateBasilBoard(): Promise<BasilBoardHydration> {
   return requestJson<BasilBoardHydration>('/api/v1/basil-board/hydrate');
-}
-
-export function getBoardInquiry(inquiryId: string): Promise<BoardInquiryDetail> {
-  return requestJson<BoardInquiryDetail>(`/api/v1/basil-board/inquiries/${inquiryId}`);
 }
 
 export function hydrateTodoWorkspace(
@@ -244,6 +239,16 @@ export function submitHomeTurn(payload: SubmitHomeTurnPayload): Promise<HomeTurn
       model_id: payload.modelId ?? undefined,
     }),
   });
+}
+
+export function rerouteHomeInquiry(
+  inquiryId: string,
+  target: 'conversation' | 'agent_task',
+): Promise<HomeTurnResponse> {
+  return requestJson<HomeTurnResponse>(
+    `/api/v1/basil-board/home/inquiries/${encodeURIComponent(inquiryId)}/reroute`,
+    { method: 'POST', body: JSON.stringify({ route_kind: target }) },
+  );
 }
 
 export function reconcileHomeTurn(messageId: string): Promise<HomeTurnResponse> {

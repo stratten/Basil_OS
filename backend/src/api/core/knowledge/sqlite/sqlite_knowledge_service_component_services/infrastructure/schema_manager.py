@@ -55,6 +55,7 @@ from ..schema_management.zettel_migrations import (
 )
 from ..schema_management.american_spelling_migration import migrate_american_spelling
 from ..schema_management.agent_follow_up_migrations import migrate_agent_follow_up_tables
+from ..schema_management.agent_conversation_thread_migrations import migrate_agent_conversation_thread_tables
 from ..schema_management.fts.tables import (
     ensure_agent_task_search_fts,
     ensure_fts_tables,
@@ -132,6 +133,7 @@ class SchemaManager:
                 self._migrate_execution_approval_tables(conn)
                 self._migrate_managed_file_history_tables(conn)
                 self._migrate_agent_follow_up_tables(conn)
+                self._migrate_agent_conversation_thread_tables(conn)
                 self._migrate_writing_samples_table(conn)
 
                 self._ensure_fts_tables(conn)
@@ -333,3 +335,7 @@ class SchemaManager:
     def _migrate_agent_follow_up_tables(self, conn: sqlite3.Connection) -> None:
         """Create the durable agent follow-up table on fresh and existing databases."""
         migrate_agent_follow_up_tables(conn)
+
+    def _migrate_agent_conversation_thread_tables(self, conn: sqlite3.Connection) -> None:
+        """Create the per-task conversation thread table on fresh and existing databases."""
+        migrate_agent_conversation_thread_tables(conn)

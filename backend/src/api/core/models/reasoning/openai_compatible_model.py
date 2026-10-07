@@ -20,6 +20,14 @@ from ..model_types import ModelCapability
 from .base_reasoning import BaseReasoningModel
 from ..models_registry import get_model, has_feature, ModelFeature
 from config.api_keys import get_api_key
+from .ollama_native_chat import (
+    OllamaContextWindowFilled,
+    build_ollama_chat_body,
+    ollama_context_tokens_used,
+    ollama_native_root,
+    stream_ollama_chat,
+    uses_ollama_native_chat,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +53,7 @@ class OpenAICompatibleModel(BaseReasoningModel):
         self.api_key: Optional[str] = None
         self.api_key_name: Optional[str] = None
         self.requires_auth: bool = False
+        self.server_type: str = "openai_compatible"
         
         # API settings.
         self.temperature: float = 0.7
@@ -97,6 +106,7 @@ class OpenAICompatibleModel(BaseReasoningModel):
         # Optional auth fields.
         self.requires_auth = cfg.get("requires_auth", False)
         self.api_key_name = cfg.get("api_key_name")
+        self.server_type = str(cfg.get("server_type") or "openai_compatible")
         
         # Feature detection from user-defined features.
         features = cfg.get("features", [])
@@ -106,7 +116,8 @@ class OpenAICompatibleModel(BaseReasoningModel):
         
         logger.info(f"Loaded config for {self.model_name}: base_url={self.base_url}, "
                    f"model_identifier={self.model_identifier}, context={self.max_context_length}, "
-                   f"max_output={self.max_output_tokens}, requires_auth={self.requires_auth}")
+                   f"max_output={self.max_output_tokens}, requires_auth={self.requires_auth}, "
+                   f"server_type={self.server_type}")
     
     def _get_api_key(self) -> Optional[str]:
         """Get the API key if required.
@@ -208,6 +219,9 @@ class OpenAICompatibleModel(BaseReasoningModel):
         messages.append({"role": "user", "content": prompt})
         
         try:
+            native_root = self._ollama_native_root()
+            if native_root is not None:
+                return "".join([text async for text in self._stream_ollama_text(native_root, messages, tokens_to_sample)])
             response = await self._async_client.chat.completions.create(
                 model=self.model_identifier,
                 messages=messages,
@@ -261,6 +275,11 @@ class OpenAICompatibleModel(BaseReasoningModel):
         messages.append({"role": "user", "content": prompt})
         
         try:
+            native_root = self._ollama_native_root()
+            if native_root is not None:
+                async for text in self._stream_ollama_text(native_root, messages, tokens_to_sample):
+                    yield text
+                return
             stream = await self._async_client.chat.completions.create(
                 model=self.model_identifier,
                 messages=messages,
@@ -277,6 +296,37 @@ class OpenAICompatibleModel(BaseReasoningModel):
             logger.error(f"Error in streaming response: {e}")
             raise
     
+    def _ollama_native_root(self) -> Optional[str]:
+        if not uses_ollama_native_chat(self.server_type):
+            return None
+        return ollama_native_root(self.base_url)
+
+    async def _stream_ollama_text(
+        self,
+        native_root: str,
+        messages: List[Dict[str, str]],
+        max_tokens: int,
+    ) -> AsyncGenerator[str, None]:
+        body = build_ollama_chat_body(
+            {
+                "model": self.model_identifier,
+                "messages": messages,
+                "max_tokens": max_tokens,
+                "temperature": self.temperature,
+            },
+            num_ctx=self.max_context_length,
+        )
+        final_chunk: Dict[str, Any] = {}
+        async for chunk in stream_ollama_chat(native_root, body, api_key=self.api_key):
+            text = (chunk.get("message") or {}).get("content") or ""
+            if text:
+                yield text
+            if chunk.get("done"):
+                final_chunk = chunk
+        used_tokens = ollama_context_tokens_used(final_chunk, body["options"].get("num_ctx"), body["options"].get("num_predict"))
+        if used_tokens is not None:
+            raise OllamaContextWindowFilled(used_tokens, int(body["options"]["num_ctx"]), self.model_identifier)
+
     def get_metadata(self) -> ModelMetadata:
         """Get model metadata."""
         cfg = get_model(self.model_name) or {}

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any
 
 
 def parse_token_limit_error(error_str: str) -> tuple[int, int] | None:
@@ -121,41 +120,4 @@ def trim_oldest_context(user_input: str, chars_to_remove: int, trim_logger: logg
     return None
 
 
-_RESUME_DIGEST_OBSERVATION_CHAR_LIMIT = 400
 
-
-def build_context_overflow_resume_input(
-    original_input: str,
-    recovered_steps: list[tuple[Any, Any]],
-) -> str:
-    """Build a compact "already completed" digest from captured tool steps
-    and prepend it to the original task text.
-
-    Used by execute_with_token_retry when a context-window overflow is
-    caught mid-pass (many tool-call turns already ran before the failing
-    LLM call). Replaces blindly resending a trimmed copy of the *original*
-    prompt -- which has no memory of any of that work -- with a fresh input
-    that tells the model exactly what it already did, so it can continue
-    instead of restarting blind. ``recovered_steps`` is a list of
-    ``(AgentAction, observation)`` tuples, the same shape
-    ``captured_agent_actions_as_intermediate_steps`` already returns for the
-    repetition-guard recovery path.
-    """
-    if not recovered_steps:
-        return original_input
-
-    lines = [
-        "===== ALREADY COMPLETED THIS PASS =====",
-        "Your working context grew too large and had to be reset. The steps "
-        "below already ran successfully before that happened -- do not repeat "
-        "them; continue the task using their results.",
-    ]
-    for action, observation in recovered_steps:
-        observation_text = observation if isinstance(observation, str) else str(observation)
-        if len(observation_text) > _RESUME_DIGEST_OBSERVATION_CHAR_LIMIT:
-            observation_text = observation_text[:_RESUME_DIGEST_OBSERVATION_CHAR_LIMIT] + "...[truncated]"
-        lines.append(f"- {action.tool}({action.tool_input!r}) -> {observation_text}")
-    lines.append("===== END ALREADY COMPLETED THIS PASS =====")
-    lines.append("")
-    lines.append(original_input)
-    return "\n".join(lines)

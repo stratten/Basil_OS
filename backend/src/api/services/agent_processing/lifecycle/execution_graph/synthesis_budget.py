@@ -15,6 +15,11 @@ from api.services.agent_processing.shared.material_outcome_brief import (
 )
 from api.services.agent_processing.shared.truncation_evidence import TruncationEvidence
 
+from .context_window_budget import CHARS_PER_TOKEN_ESTIMATE
+
+OUTPUT_RESERVE_WINDOW_DIVISOR = 4
+INPUT_BUDGET_SAFETY_RATIO = 0.95
+
 
 @dataclass
 class SynthesisInput:
@@ -42,8 +47,19 @@ def build_budgeted_synthesis_input(
         purpose="final_synthesis",
         input_token_estimate=0,
     )
+    window = preliminary_budget.context_window
+    if window and preliminary_budget.requested_output_tokens > window // OUTPUT_RESERVE_WINDOW_DIVISOR:
+        preliminary_budget = resolve_generation_budget(
+            llm_model,
+            purpose="final_synthesis",
+            input_token_estimate=0,
+            requested_output_tokens=window // OUTPUT_RESERVE_WINDOW_DIVISOR,
+        )
     input_budget_tokens = preliminary_budget.input_budget_tokens or 16000
-    input_budget_chars = max(4000, input_budget_tokens * 4)
+    input_budget_chars = max(
+        4000,
+        int(input_budget_tokens * CHARS_PER_TOKEN_ESTIMATE * INPUT_BUDGET_SAFETY_RATIO),
+    )
     evidence: List[TruncationEvidence] = []
 
     ctx = context or {}
@@ -146,6 +162,7 @@ def build_budgeted_synthesis_input(
         llm_model,
         purpose="final_synthesis",
         input_token_estimate=_estimate_tokens(user_content) + _estimate_tokens(system_prompt),
+        requested_output_tokens=preliminary_budget.requested_output_tokens,
     )
     return SynthesisInput(
         messages=[
@@ -182,11 +199,12 @@ def _format_tool_trace_for_budget(intermediate_steps: List[Any]) -> Tuple[str, L
             if input_evidence:
                 evidence.append(input_evidence)
         observation_text = observation if isinstance(observation, str) else str(observation)
+        # The agent handoff always precedes the tool trace and was written from the untruncated observation, so capping one observation does not make coverage unverifiable; only dropping part of the whole trace does.
         bounded_obs, obs_evidence = _bounded_text(
             observation_text,
             12000,
             f"synthesis.tool_observation.{index}",
-            affects_coverage=True,
+            affects_coverage=False,
         )
         lines.append(f"Observation: {bounded_obs}")
         lines.append("")
@@ -248,7 +266,7 @@ def _safe_json(value: Any) -> str:
 
 
 def _estimate_tokens(text: str) -> int:
-    return max(0, (len(text or "") + 3) // 4)
+    return max(0, int(len(text or "") / CHARS_PER_TOKEN_ESTIMATE) + 1)
 
 
 def normalize_agent_executor_output(output: Any) -> str:

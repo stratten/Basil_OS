@@ -240,7 +240,7 @@ describe('ResultContent artifact integration', () => {
     expect(markup).not.toContain('No artifacts were reported for this task.');
   });
 
-  it('keeps the detailed failure text in the existing partial-result alert', () => {
+  it('shows a failed outcome, its reason and Retry in the run status card', () => {
     const markup = renderToStaticMarkup(
       <ResultContent
         agentTask={{
@@ -254,9 +254,94 @@ describe('ResultContent artifact integration', () => {
       />,
     );
 
-    expect(markup).toContain('Partial result alert');
+    expect(markup).toContain('run-status-card');
+    expect(markup).toContain("Couldn&#x27;t complete");
     expect(markup).toContain('SECRET failure detail');
-    expect(markup.indexOf('Partial result alert')).toBeLessThan(markup.indexOf('SECRET failure detail'));
+    expect(markup).toContain('Retry');
+    expect(markup).toContain('Partial Result:');
+    expect(markup).not.toContain('Partial result alert');
+    expect(markup).toContain('activity-summary');
+  });
+
+  it('shows one verifying state with a provisional result and no recovery actions', () => {
+    for (const status of ['completed', 'failed'] as const) {
+      const markup = renderToStaticMarkup(
+        <ResultContent
+          agentTask={{
+            ...completedTask,
+            status,
+            verificationStatus: 'pending',
+            errorMessage: status === 'failed' ? 'provisional failure text' : undefined,
+          }}
+          onRetry={() => {}}
+          onContinue={() => {}}
+        />,
+      );
+
+      expect(markup).toContain('Verifying the outcome');
+      expect(markup).toContain('run-status-card--live');
+      expect(markup).toContain('Provisional');
+      expect(markup).not.toContain('Retry');
+      expect(markup).not.toContain('Partial Result:');
+      expect(markup).not.toContain('Partial result alert');
+      expect(markup).not.toContain('final result will appear in a moment');
+      expect(markup).not.toContain('result-verifying');
+      expect(markup).toContain('execution-activity-dock');
+      expect(markup).not.toContain('activity-summary');
+    }
+  });
+
+  it('shows a canceled run as neutral with Run again, never as a failure or a pending question', () => {
+    const markup = renderToStaticMarkup(
+      <ResultContent
+        agentTask={{
+          ...completedTask,
+          status: 'failed',
+          isCanceled: true,
+          errorMessage: 'Task failed',
+          executionTimeline: [
+            ...completedTask.executionTimeline,
+            {
+              id: 'user_interaction_ask-1',
+              type: 'step',
+              timestamp: '2026-10-04T23:40:02+00:00',
+              content: 'sed -n 2p notes.txt',
+              detail_kind: 'user_interaction',
+              metadata: {
+                progress_step: 'Basil asked to run',
+                user_interaction: {
+                  interaction_id: 'ask-1',
+                  kind: 'approval',
+                  status: 'waiting',
+                  prompt: 'sed -n 2p notes.txt',
+                  asked_at: '2026-10-04T23:40:02+00:00',
+                },
+              },
+            },
+          ],
+        }}
+        onRetry={() => {}}
+        onContinue={() => {}}
+      />,
+    );
+
+    expect(markup).toContain('run-status-card--neutral');
+    expect(markup).toContain('Canceled');
+    expect(markup).toContain('Run again');
+    expect(markup).toContain('Canceled - the run ended before this was answered');
+    expect(markup).not.toContain('Waiting for your answer');
+    expect(markup).not.toContain('Task failed');
+    expect(markup).not.toContain("Couldn&#x27;t complete");
+    expect(markup).not.toContain('run-status-card--danger');
+  });
+
+  it('does not show a status card for a clean completed run', () => {
+    const markup = renderToStaticMarkup(
+      <ResultContent agentTask={completedTask} onRetry={() => {}} onContinue={() => {}} />,
+    );
+
+    expect(markup).not.toContain('run-status-card');
+    expect(markup).not.toContain('Retry');
   });
 
   it('suppresses stale failure residue for a legacy successful warning outcome', () => {
@@ -274,7 +359,7 @@ describe('ResultContent artifact integration', () => {
     );
 
     expect(markup).not.toContain('Completed with warnings');
-    expect(markup).not.toContain('Partial result alert');
+    expect(markup).not.toContain('run-status-card');
     expect(markup).not.toContain('Recovered retry detail');
     expect(markup).toContain('Created report.');
   });

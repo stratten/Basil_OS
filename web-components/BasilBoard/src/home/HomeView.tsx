@@ -1,58 +1,51 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { BoardInquirySummary } from '../contracts';
 import { hydrateBasilBoard, submitHomeTurn } from '../services/api';
+import { enqueueAgentTaskOriginNavigation, showAgentTaskFromHome } from '../services/bridge';
 import { basilBoardWebSocket } from '../services/websocket';
 import HomeComposer, { type HomeComposerSubmission } from './HomeComposer';
+import { useHomeForward } from './HomeForwardContext';
+import { homeErrorMessage } from './homeErrorMessage';
 import { isTerminalAgentTaskEvent } from './homeReducer';
-import InquiryDetail from './InquiryDetail';
-import InquiryHistory from './InquiryHistory';
 import { useHomeRuntime } from './HomeRuntimeContext';
+import RecentRequests from './RecentRequests';
+
+export const HOME_ROUTING_STATUS = 'Working out where this goes...';
 
 export default function HomeView() {
-  const { voiceError, voiceState, voiceTurnVersion } = useHomeRuntime();
+  const { voiceError, voiceState, voiceTurn } = useHomeRuntime();
+  const forward = useHomeForward();
   const [inquiries, setInquiries] = useState<BoardInquirySummary[]>([]);
-  const [selectedInquiryId, setSelectedInquiryId] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | undefined>();
 
-  const refresh = useCallback(async (selectInquiryId?: string) => {
+  const refresh = useCallback(async () => {
     setLoading(true);
     setLoadError(undefined);
     try {
       const hydration = await hydrateBasilBoard();
       setInquiries(hydration.recent_inquiries);
-      setSelectedInquiryId((current) => {
-        if (selectInquiryId) return selectInquiryId;
-        if (current && hydration.recent_inquiries.some((inquiry) => inquiry.id === current)) {
-          return current;
-        }
-        return hydration.recent_inquiries[0]?.id;
-      });
     } catch (error) {
-      setLoadError(error instanceof Error ? error.message : 'Failed to load Home');
+      setLoadError(homeErrorMessage(error, 'Failed to load Home'));
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
+  const voiceTurnVersion = voiceTurn?.version ?? 0;
   useEffect(() => {
-    if (voiceTurnVersion > 0) {
-      void refresh();
-    }
+    if (voiceTurnVersion > 0) void refresh();
   }, [refresh, voiceTurnVersion]);
 
   useEffect(() => {
     return basilBoardWebSocket.subscribe((event) => {
-      if (isTerminalAgentTaskEvent(event)) {
-        void refresh();
-      }
+      if (isTerminalAgentTaskEvent(event)) void refresh();
     });
   }, [refresh]);
 
@@ -61,48 +54,47 @@ export default function HomeView() {
     setSubmitError(undefined);
     try {
       const response = await submitHomeTurn(submission);
-      await refresh(response.inquiry_id);
+      if (!forward) throw new Error('Home cannot open the destination from this window.');
+      forward.forwardTurn(response, submission);
+      void refresh();
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Failed to submit turn');
+      setSubmitError(homeErrorMessage(error, 'Failed to submit turn'));
       throw error;
     } finally {
       setSubmitting(false);
     }
   }
 
-  if (loading && inquiries.length === 0) {
-    return <div className="home-loading">Loading Home...</div>;
-  }
-
-  if (loadError) {
-    return (
-      <div className="home-error-state">
-        <p>{loadError}</p>
-        <button type="button" onClick={() => void refresh()}>Retry</button>
-      </div>
-    );
+  function openInquiry(inquiry: BoardInquirySummary) {
+    if (inquiry.routeKind === 'conversation' && inquiry.conversationId) {
+      enqueueAgentTaskOriginNavigation({ originType: 'conversation', originId: inquiry.conversationId });
+    } else if (inquiry.routeKind === 'agent_task' && inquiry.agentTaskId) {
+      showAgentTaskFromHome(inquiry.agentTaskId);
+    }
   }
 
   return (
-    <section className="home-view home-view-with-history">
-      <div className="home-history-pane">
-        <InquiryHistory
-          inquiries={inquiries}
-          selectedInquiryId={selectedInquiryId}
-          onSelect={setSelectedInquiryId}
+    <section className="home-view home-front-door">
+      <div className="home-front-door-column">
+        <h1 className="home-front-door-title">What can Basil do for you?</h1>
+        <p className="home-front-door-hint">
+          Ask a question or hand over a task. Basil will open a chat or start an agent task for you.
+        </p>
+        <HomeComposer
+          disabled={submitting}
+          voiceState={voiceState}
+          statusText={submitting ? HOME_ROUTING_STATUS : undefined}
+          onSubmit={handleSubmit}
         />
-      </div>
-      <div className="home-detail-pane">
-        {selectedInquiryId ? (
-          <InquiryDetail key={selectedInquiryId} inquiryId={selectedInquiryId} />
-        ) : (
-          <div className="home-empty-state">
-            <p>Ask Basil anything to get started.</p>
-          </div>
-        )}
-        {submitError ? <div className="home-inline-error">{submitError}</div> : null}
-        {voiceError ? <div className="home-inline-error">{voiceError}</div> : null}
-        <HomeComposer disabled={submitting} voiceState={voiceState} onSubmit={handleSubmit} />
+        {submitError ? <div className="home-inline-error" role="alert">{submitError}</div> : null}
+        {voiceError ? <div className="home-inline-error" role="alert">{voiceError}</div> : null}
+        <RecentRequests
+          inquiries={inquiries}
+          loading={loading}
+          loadError={loadError}
+          onOpen={openInquiry}
+          onRetry={() => void refresh()}
+        />
       </div>
     </section>
   );

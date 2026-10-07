@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import CrossfadeStack from '@shared/CrossfadeStack';
 import PresenceRegion from '@shared/PresenceRegion';
+import { useCollapseShortcut } from '@shared/useCollapseShortcut';
+import { useSettledExpand } from '@shared/useSettledExpand';
 import { closeWindow, minimizeWindow, onHistoryEvent, reportHistoryReady, toggleChromeCollapse } from '../bridge/historyBridge';
 import { deleteHistoryEntry, fetchHistory, fetchHistoryDetail, type AssistantOutputHistoryDetail, type AssistantOutputHistoryEntry } from '../services/historyApi';
 import { HistorySidebar, type HistoryModalityFilter } from '../components/history/HistorySidebar';
@@ -28,6 +30,7 @@ export function AssistantOutputHistoryApp() {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [chromeCollapsed, setChromeCollapsed] = useState(false);
+  const isBodyCollapsed = useSettledExpand(chromeCollapsed);
   const [pendingDelete, setPendingDelete] = useState<AssistantOutputHistoryEntry | null>(null);
   const [nativeActionError, setNativeActionError] = useState<string | null>(null);
   const requestGeneration = useRef(0);
@@ -141,6 +144,14 @@ export function AssistantOutputHistoryApp() {
     }
   };
 
+  const toggleChrome = () => {
+    const next = !chromeCollapsed;
+    setChromeCollapsed(next);
+    toggleChromeCollapse(next);
+  };
+
+  useCollapseShortcut(toggleChrome, Boolean(theme));
+
   if (!theme) {
     return (
       <div className="basil-webkit-window-frame">
@@ -173,11 +184,7 @@ export function AssistantOutputHistoryApp() {
               type="button"
               aria-label={chromeCollapsed ? 'Expand history' : 'Collapse history'}
               aria-pressed={chromeCollapsed}
-              onClick={() => {
-                const next = !chromeCollapsed;
-                setChromeCollapsed(next);
-                toggleChromeCollapse(next);
-              }}
+              onClick={toggleChrome}
             >
               <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
                 <circle cx="11" cy="11" r="10" fill="color-mix(in srgb, var(--secondary, #4c7bf0) 15%, transparent)" />
@@ -205,7 +212,7 @@ export function AssistantOutputHistoryApp() {
           />
           <span>{BASIL_TEAM.assistantSession.pairedName} History</span>
         </div>
-        {!chromeCollapsed && (
+        {!isBodyCollapsed && (
           <div className="assistant-output-history-shell__body">
             <HistorySidebar
               entries={entries}

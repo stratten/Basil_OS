@@ -822,3 +822,79 @@ async def test_evaluator_success_is_not_overridden_by_coverage_truncation():
 
     assert result["success"] is True
     assert result["outcome"] == "success"
+
+
+CONTEXT_WINDOW_STOP = {
+    "actual_tokens": 17_200,
+    "max_tokens": 16_384,
+    "model": "Local Qwen",
+    "completed_steps": 3,
+    "compaction_attempts": 2,
+    "message": "Stopped: this task needed more context than Local Qwen's 16,384-token context window holds.",
+}
+
+
+@pytest.mark.asyncio
+async def test_context_window_stop_overrides_an_evaluator_success_with_partial():
+    result = await finalize_agent_task_result(
+        original_prompt="Review every file in the project and summarize it.",
+        agent_task_id="agent-context-1",
+        active_app=None,
+        steps=[{"service": "files", "method": "read_file", "success": True, "result": {"chars": 9000}}],
+        standardized_messages=[long_message("I reviewed the first three files before the run stopped.")],
+        metrics={"steps_completed": 3, "steps_total": 3},
+        success=None,
+        llm_model=FakeFinalizerModel({
+            "outcome": "success",
+            "success": True,
+            "user_reason": "",
+            "technical_reason": "",
+            "should_retry": False,
+        }),
+        context_window_exceeded=CONTEXT_WINDOW_STOP,
+    )
+
+    assert result["success"] is False
+    assert result["outcome"] == "partial"
+    assert result["outcome_reason"].startswith(
+        "This task needed more context than Local Qwen's 16,384-token context window holds (it needed about 17,200 tokens)."
+    )
+    assert "raise its context window in Settings" in result["outcome_reason"]
+    assert result["result_payload"]["outcome_reason"] == result["outcome_reason"]
+
+
+@pytest.mark.asyncio
+async def test_context_window_stop_without_content_is_a_failure():
+    result = await finalize_agent_task_result(
+        original_prompt="Review every file in the project and summarize it.",
+        agent_task_id="agent-context-2",
+        active_app=None,
+        steps=[],
+        standardized_messages=[],
+        metrics={"steps_completed": 0, "steps_total": 0},
+        success=None,
+        llm_model=None,
+        context_window_exceeded=CONTEXT_WINDOW_STOP,
+    )
+
+    assert result["success"] is False
+    assert result["outcome"] == "failure"
+    assert "Local Qwen's 16,384-token context window" in result["outcome_reason"]
+
+
+@pytest.mark.asyncio
+async def test_runs_without_a_context_window_stop_are_unchanged():
+    result = await finalize_agent_task_result(
+        original_prompt="Summarize emails.",
+        agent_task_id="agent-context-3",
+        active_app=None,
+        steps=[{"service": "email", "method": "search", "success": True, "result": {"count": 5}}],
+        standardized_messages=[long_message("I found and summarized five emails.")],
+        metrics={"steps_completed": 1, "steps_total": 1},
+        success=True,
+        llm_model=None,
+        context_window_exceeded=None,
+    )
+
+    assert result["success"] is True
+    assert result["outcome"] == "success"

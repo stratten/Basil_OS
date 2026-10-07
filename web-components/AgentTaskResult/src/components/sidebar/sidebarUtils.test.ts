@@ -217,6 +217,33 @@ describe('mapDetailToDisplayable', () => {
     expect(mapped.agentTaskHistory[1]?.resultSeverity).toBe('warning');
   });
 
+  it('maps a canceled task as canceled without inventing a failure message', () => {
+    const direct = mapDetailToDisplayable(detail({ status: 'canceled', result_message: 'partial notes' }));
+    const followUp = mapDetailToDisplayable(detail({
+      follow_ups: [{
+        id: 'follow-up-task',
+        original_prompt: 'Try again',
+        timestamp: '2026-07-10T12:01:00Z',
+        status: 'canceled',
+        files: [],
+        reference_paths: [],
+        chain_sequence_number: 1,
+        root_task_id: 'root-task',
+        previous_task_id: 'root-task',
+      }],
+    }));
+
+    for (const mapped of [direct, followUp]) {
+      expect(mapped.isCanceled).toBe(true);
+      expect(mapped.status).toBe('failed');
+      expect(mapped.errorMessage).toBeUndefined();
+    }
+    expect(mapDetailToDisplayable(detail({ status: 'failed', error_message: 'boom' }))).toMatchObject({
+      isCanceled: false,
+      errorMessage: 'boom',
+    });
+  });
+
   it('suppresses a malformed or mismatched presentation summary', () => {
     expect(mapDetailToDisplayable(detail({
       agent_task_presentation_summary: presentationSummary('other-task'),

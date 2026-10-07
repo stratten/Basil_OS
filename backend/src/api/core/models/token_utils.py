@@ -205,5 +205,42 @@ def truncate_conversation_to_fit(
         else:
             # Can't fit any more messages
             break
-    
-    return result 
+
+    # Dropping every non-system message would send the model an empty prompt, so a single oversize message is shortened instead of discarded.
+    if other_messages and len(result) == len(system_messages):
+        newest = other_messages[0]
+        remaining_tokens = adjusted_max - current_tokens - 4
+        shortened = _shorten_message_to_tokens(newest, remaining_tokens, tokenizer)
+        if shortened is not None:
+            result.append(shortened)
+
+    return result
+
+
+def _count_message_tokens(content: str, tokenizer=None) -> int:
+    if tokenizer:
+        return count_tokens_with_tokenizer(content, tokenizer)
+    return estimate_tokens(content)
+
+
+def _shorten_message_to_tokens(
+    message: Dict[str, str],
+    token_budget: int,
+    tokenizer=None,
+) -> Optional[Dict[str, str]]:
+    """Keep the head and tail of a message so it fits the token budget; None when nothing useful fits."""
+    content = message.get("content", "") or ""
+    if token_budget < 32 or not content:
+        return None
+    total_tokens = _count_message_tokens(content, tokenizer)
+    if total_tokens <= token_budget:
+        return message
+    marker = "\n\n[... middle of this message omitted to fit the model's context window ...]\n\n"
+    chars_per_token = len(content) / max(1, total_tokens)
+    keep_chars = int(token_budget * chars_per_token * 0.9) - len(marker)
+    if keep_chars <= 0:
+        return None
+    head_chars = int(keep_chars * 0.7)
+    tail_chars = keep_chars - head_chars
+    shortened = content[:head_chars] + marker + (content[-tail_chars:] if tail_chars > 0 else "")
+    return {**message, "content": shortened}

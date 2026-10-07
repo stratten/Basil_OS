@@ -23,7 +23,7 @@
 .meeting-tools-header h2 {
   margin: 0;
   font-family: var(--font-family-medium);
-  font-size: var(--font-size-headline);
+  font-size: var(--font-size-body);
   font-weight: 400;
 }
 
@@ -89,6 +89,10 @@
   font-size: var(--font-size-body);
 }
 
+.meeting-live-transcription-switch {
+  font-size: var(--font-size-caption);
+}
+
 .meeting-automation-analysis-options {
   display: flex;
   flex-direction: column;
@@ -146,12 +150,15 @@
 
 .meeting-analysis-card {
   flex: 0 0 auto;
-  padding: 0 2px;
+  padding: 8px 16px;
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  background: var(--background-secondary);
 }
 
 .meeting-analysis-disclosure {
   margin: 0;
-  font-size: var(--font-size-headline);
+  font-size: var(--font-size-body);
 }
 
 .meeting-analysis-chevron {
@@ -265,6 +272,7 @@
 
 .meeting-analysis-mode-checkbox strong {
   font-family: var(--font-family-light);
+  font-size: var(--font-size-callout);
   font-weight: 400;
 }
 
@@ -289,6 +297,7 @@
   min-height: 140px;
   margin: 0;
   background: var(--background-secondary);
+  font-size: var(--font-size-callout);
 }
 
 .meeting-analysis-progress > span {

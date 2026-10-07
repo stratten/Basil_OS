@@ -64,6 +64,7 @@ function labelForActiveStatus(status: string): string {
     case 'processing': return 'Paprika task in progress';
     case 'awaiting_provider_delegation': return 'Waiting for provider delegation';
     case 'awaiting_delegated_agents': return 'Waiting for delegated agents';
+    case 'paused': return 'Paprika task paused';
     case 'awaiting_user_input':
     case 'waiting_user_input':
     case 'needs_clarification':

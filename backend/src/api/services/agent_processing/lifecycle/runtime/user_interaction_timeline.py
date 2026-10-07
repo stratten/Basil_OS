@@ -20,6 +20,8 @@ USER_INTERACTION_KINDS = frozenset({
     "command_input",
     "provider_input",
     "provider_permission",
+    "guidance",
+    "pause",
 })
 
 USER_INTERACTION_STATUSES = frozenset({
@@ -29,7 +31,7 @@ USER_INTERACTION_STATUSES = frozenset({
     "approved",
     "denied",
     "timed_out",
-    "cancelled",
+    "canceled",
     "resolved",
 })
 
@@ -43,6 +45,8 @@ _WAITING_TITLES = {
     "command_input": "A command asked for your input",
     "provider_input": "A provider asked for your input",
     "provider_permission": "A provider asked for your permission",
+    "guidance": "Your note is queued for Basil's next step",
+    "pause": "You paused Basil",
 }
 
 _RESOLVED_TITLES = {
@@ -51,8 +55,15 @@ _RESOLVED_TITLES = {
     "approved": "You approved",
     "denied": "You declined",
     "timed_out": "No response before the time limit",
-    "cancelled": "The request was cancelled",
+    "canceled": "The request was canceled",
     "resolved": "You responded",
+}
+
+_RESOLVED_TITLES_BY_KIND = {
+    ("guidance", "resolved"): "Basil received your note",
+    ("guidance", "canceled"): "Basil finished before reading your note",
+    ("pause", "resolved"): "You resumed the run",
+    ("pause", "canceled"): "The paused run was stopped",
 }
 
 
@@ -86,7 +97,11 @@ def build_user_interaction_entry(
     if status not in USER_INTERACTION_STATUSES:
         raise ValueError(f"Unknown user interaction status: {status!r}")
     asked_at = asked_at or timeline_timestamp()
-    title = _WAITING_TITLES[kind] if status == "waiting" else _RESOLVED_TITLES[status]
+    title = (
+        _WAITING_TITLES[kind]
+        if status == "waiting"
+        else _RESOLVED_TITLES_BY_KIND.get((kind, status), _RESOLVED_TITLES[status])
+    )
     interaction: Dict[str, Any] = {
         "interaction_id": interaction_id,
         "kind": kind,
@@ -158,6 +173,36 @@ async def record_user_interaction_asked(
         logger.exception("Failed to record user interaction request %s", interaction_id)
 
 
+async def record_user_interaction_entry(
+    agent_task_id: Optional[str],
+    *,
+    interaction_id: Optional[str],
+    kind: str,
+    prompt: str,
+    status: str,
+    asked_at: Optional[str] = None,
+    response: Optional[str] = None,
+    broadcast: Optional[Broadcast] = None,
+) -> None:
+    """Persist and announce one exchange in a single step, already in its final status; never raises."""
+    if not agent_task_id or not interaction_id:
+        return
+    try:
+        entry = build_user_interaction_entry(
+            interaction_id=str(interaction_id),
+            kind=kind,
+            prompt=prompt,
+            status=status,
+            asked_at=asked_at,
+            response=response,
+            responded_at=None if status == "waiting" else timeline_timestamp(),
+        )
+        await persist_timeline_entry(agent_task_id, entry, replace_existing=True, preserve_position=True)
+        await _broadcast_entry(agent_task_id, entry, broadcast)
+    except Exception:
+        logger.exception("Failed to record user interaction %s", interaction_id)
+
+
 async def _load_timeline(agent_task_id: str) -> list:
     from api.dependencies import get_sqlite_knowledge_service
 
@@ -171,6 +216,44 @@ def _interaction_of(entry: Any) -> Optional[Mapping[str, Any]]:
     metadata = entry.get("metadata")
     interaction = metadata.get("user_interaction") if isinstance(metadata, Mapping) else None
     return interaction if isinstance(interaction, Mapping) else None
+
+
+def user_run_notes_from_timeline(timeline: Iterable[Any]) -> list[str]:
+    """Notes Basil read during the run and notes added on resume, oldest first."""
+    notes: list[str] = []
+    for entry in timeline:
+        interaction = _interaction_of(entry)
+        if interaction is None or interaction.get("status") != "resolved":
+            continue
+        kind = interaction.get("kind")
+        if kind == "guidance":
+            text = interaction.get("prompt")
+        elif kind == "pause":
+            text = interaction.get("response")
+        else:
+            continue
+        if isinstance(text, str) and text.strip():
+            notes.append(text.strip())
+    return notes
+
+
+async def user_run_notes_context(agent_task_id: Optional[str]) -> Optional[str]:
+    """Describe the user's mid-run notes for the outcome evaluator; never raises."""
+    if not agent_task_id:
+        return None
+    try:
+        notes = user_run_notes_from_timeline(await _load_timeline(agent_task_id))
+    except Exception:
+        logger.exception("Could not load run notes for %s", agent_task_id)
+        return None
+    if not notes:
+        return None
+    lines = "\n".join(f"- {note[:1000]}" for note in notes)
+    return (
+        "NOTES THE USER SENT DURING THIS RUN (oldest first). These amend the original request; "
+        "when a note changes the scope, judge the result against the request as amended, and let later notes win:\n"
+        f"{lines}"
+    )
 
 
 async def record_user_interaction_resolved(
@@ -227,6 +310,58 @@ async def resolve_latest_waiting_user_interaction(
         await _persist_resolution(agent_task_id, waiting[-1], status, response, False, broadcast)
     except Exception:
         logger.exception("Failed to resolve the waiting user interaction for %s", agent_task_id)
+
+
+def close_waiting_interactions_in_timeline(
+    timeline: Iterable[Any],
+    *,
+    status: str = "canceled",
+) -> tuple[list, int]:
+    """Return the timeline with every still-waiting user interaction closed, and how many were closed. Pure, so durable startup reconciliation and the live cancel path share one definition of stale."""
+    closed = 0
+    updated: list = []
+    for entry in timeline:
+        interaction = _interaction_of(entry)
+        if interaction is None or interaction.get("status") != "waiting":
+            updated.append(entry)
+            continue
+        updated.append(
+            build_user_interaction_entry(
+                interaction_id=str(interaction.get("interaction_id")),
+                kind=str(interaction.get("kind")),
+                prompt=str(interaction.get("prompt") or ""),
+                status=status,
+                asked_at=interaction.get("asked_at") if isinstance(interaction.get("asked_at"), str) else None,
+                input_type=interaction.get("input_type") if isinstance(interaction.get("input_type"), str) else None,
+                options=interaction.get("options") if isinstance(interaction.get("options"), list) else None,
+                responded_at=timeline_timestamp(),
+            )
+        )
+        closed += 1
+    return updated, closed
+
+
+async def resolve_all_waiting_user_interactions(
+    agent_task_id: Optional[str],
+    *,
+    status: str = "canceled",
+    broadcast: Optional[Broadcast] = None,
+) -> int:
+    """Close every request still waiting on the user (the run that asked it has ended); returns how many were closed and never raises."""
+    if not agent_task_id:
+        return 0
+    try:
+        waiting = [
+            interaction
+            for interaction in (_interaction_of(entry) for entry in await _load_timeline(agent_task_id))
+            if interaction is not None and interaction.get("status") == "waiting"
+        ]
+        for interaction in waiting:
+            await _persist_resolution(agent_task_id, interaction, status, None, False, broadcast)
+        return len(waiting)
+    except Exception:
+        logger.exception("Failed to close waiting user interactions for %s", agent_task_id)
+        return 0
 
 
 async def _persist_resolution(

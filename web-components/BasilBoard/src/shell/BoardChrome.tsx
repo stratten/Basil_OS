@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import AnimatedBubble from '@shared/bubble/AnimatedBubble';
+import { useCollapseShortcut } from '@shared/useCollapseShortcut';
+import { useSettledExpand } from '@shared/useSettledExpand';
 import type { BasilBoardTab, BasilBoardTabDetachBehavior } from '../contracts';
 import { useHomeRuntime } from '../home/HomeRuntimeContext';
 import {
@@ -65,6 +67,7 @@ export default function BoardChrome({
   const { voiceState, statusIconDataUrl } = useHomeRuntime();
   const activeTab = tabs.find((tab) => tab.id === activeTabId);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const isContentCollapsed = useSettledExpand(isCollapsed);
   const tabRailRef = useRef<HTMLElement | null>(null);
   const bubbleRef = useRef<HTMLDivElement | null>(null);
 
@@ -116,9 +119,11 @@ export default function BoardChrome({
     }
   };
 
+  useCollapseShortcut(toggleCollapsed);
+
   return (
     <div className="basil-webkit-window-frame">
-      <div className={`basil-board-root basil-webkit-window-surface${isCollapsed ? ' is-collapsed' : ''}`}>
+      <div className={`basil-board-root basil-webkit-window-surface${isContentCollapsed ? ' is-collapsed' : ''}`}>
       <header className="basil-board-header">
         <div className="basil-board-header-left">
           <div className="basil-board-window-controls">
@@ -197,7 +202,7 @@ export default function BoardChrome({
           </div>
         </div>
       </header>
-      <div className={`basil-board-body${isCollapsed ? ' is-collapsed' : ''}`} aria-hidden={isCollapsed} inert={isCollapsed ? '' : undefined}>
+      <div className={`basil-board-body${isContentCollapsed ? ' is-collapsed' : ''}`} aria-hidden={isContentCollapsed} inert={isContentCollapsed ? '' : undefined}>
         <nav className="basil-board-tabs" aria-label="Basil board tabs" ref={tabRailRef}>
           {tabs.map((tab) => (
             <button

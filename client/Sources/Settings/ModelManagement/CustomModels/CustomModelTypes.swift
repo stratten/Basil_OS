@@ -258,6 +258,7 @@ struct CustomModelConfig: Codable, Identifiable {
     var featureConfig: [String: AnyCodable]?
     var toolRendering: String?
     var toolCallFormat: String?
+    var serverType: String?
     var description: String?
     var fileSize: Int?
     var fileSizeHuman: String?
@@ -279,6 +280,7 @@ struct CustomModelConfig: Codable, Identifiable {
         case featureConfig = "feature_config"
         case toolRendering = "tool_rendering"
         case toolCallFormat = "tool_call_format"
+        case serverType = "server_type"
         case description
         case fileSize = "file_size"
         case fileSizeHuman = "file_size_human"

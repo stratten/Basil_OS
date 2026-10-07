@@ -11,7 +11,7 @@ This module wraps agent-bound tools so the run can detect that pattern and react
 
 - Counts 1-2 of a repeated invalid signature: pass the tool's own error through.
 - Counts 3-5: replace the observation with a stronger, explicit repair prompt.
-- Count 6: raise :class:`RepeatedInvalidToolCallStop` to end the pass cleanly.
+- Count 6: raise :class:`RepeatedInvalidToolCallStop` to end the run cleanly.
 
 It deliberately does *not* relax any tool schema, infer default arguments, or add
 browser-specific logic. It only recognizes already-recoverable invalid-argument
@@ -25,8 +25,10 @@ import json
 import logging
 from typing import Any, Iterable, Optional
 
-from langchain_core.agents import AgentAction
-from langchain_core.tools import StructuredTool
+from langchain_core.messages import ToolMessage
+from langchain_core.messages.tool import ToolOutputMixin
+from langchain_core.runnables import RunnableConfig
+from langchain_core.tools import BaseTool, StructuredTool
 
 from ....shared.agent_runtime_context import get_current_agent_context
 from .tool_ledger_capture import ToolLedgerCaptureCoordinator, next_tool_invocation_id
@@ -45,8 +47,6 @@ _ORIGINAL_TOOL_ATTR = "basil_original_tool"
 
 _VALIDATION_PREFIX = "Tool input validation failed for field(s): "
 _REQUIRED_ARGUMENT_TOKENS = ("selector", "value", "URL", "connection_id", "tool_name", "session_id")
-
-_CAPTURED_ACTIONS_KEY = "captured_agent_tool_actions"
 
 
 class RepeatedInvalidToolCallStop(Exception):
@@ -300,7 +300,22 @@ class RepetitionGuardedTool(StructuredTool):
 
     basil_original_tool: Any = None
 
+    async def ainvoke(self, input: Any, config: Optional[RunnableConfig] = None, **kwargs: Any) -> Any:  # type: ignore[override]
+        # StructuredTool.ainvoke runs a sync tool's whole invoke() on a worker thread, where Basil's async callbacks would run on a private event loop and block on main-loop resources; BaseTool.ainvoke keeps callbacks on this loop and moves only the tool body off it.
+        return await BaseTool.ainvoke(self, input, config, **kwargs)
+
     async def arun(self, tool_input: Any, *args: Any, **kwargs: Any) -> Any:  # type: ignore[override]
+        tool_call_id = kwargs.pop("tool_call_id", None)
+        observation = await self._guarded_observation(tool_input, *args, **kwargs)
+        if tool_call_id is None or isinstance(observation, ToolOutputMixin):
+            return observation
+        return ToolMessage(
+            content=_tool_message_content(observation),
+            tool_call_id=str(tool_call_id),
+            name=self.name,
+        )
+
+    async def _guarded_observation(self, tool_input: Any, *args: Any, **kwargs: Any) -> Any:
         original = self.basil_original_tool
         agent_context = get_current_agent_context()
         invocation_id = next_tool_invocation_id(agent_context, self.name, tool_input)
@@ -316,7 +331,6 @@ class RepetitionGuardedTool(StructuredTool):
                     error=tool_error,
                     invocation_id=invocation_id,
                 )
-                _record_captured_action(agent_context, self.name, tool_input, str(tool_error))
                 raise
 
             await _capture_tool_observation(
@@ -325,7 +339,6 @@ class RepetitionGuardedTool(StructuredTool):
                 observation=observation,
                 invocation_id=invocation_id,
             )
-            _record_captured_action(agent_context, self.name, tool_input, observation)
             try:
                 diagnostic = classify_invalid_tool_observation(
                     self.name, tool_input, observation
@@ -343,7 +356,7 @@ class RepetitionGuardedTool(StructuredTool):
             if repeat_count >= STOP_REPEAT_COUNT:
                 agent_output = _build_stop_agent_output(diagnostic, repeat_count)
                 logger.warning(
-                    "🛑 Tool repetition guard stopping pass: tool=%s kind=%s repeat=%s",
+                    "🛑 Tool repetition guard stopping run: tool=%s kind=%s repeat=%s",
                     diagnostic.get("tool_name"),
                     diagnostic.get("invalid_kind"),
                     repeat_count,
@@ -381,50 +394,15 @@ async def _capture_tool_observation(**kwargs: Any) -> None:
         logger.warning("Work-ledger observation capture failed: %s", capture_error)
 
 
-def agent_tool_action_capture_offset(agent_context: dict[str, Any]) -> int:
-    """Length of the captured-action log right now, for later since_offset use."""
-    return len(agent_context.get(_CAPTURED_ACTIONS_KEY, []))
-
-
-def _record_captured_action(
-    agent_context: dict[str, Any],
-    tool_name: str,
-    tool_input: Any,
-    observation: Any,
-) -> None:
-    """Mirror a tool call/observation in-memory so it survives an aborted pass.
-
-    LangChain's own ``intermediate_steps`` only exist on a clean
-    ``AgentExecutor.ainvoke`` return; an exception raised mid-loop (for example
-    RepeatedInvalidToolCallStop) discards them entirely. This is the one place
-    every guarded tool call is recorded regardless of how the pass ends.
-    """
-    actions: list[dict[str, Any]] = agent_context.setdefault(_CAPTURED_ACTIONS_KEY, [])
-    actions.append({
-        "tool": tool_name,
-        "tool_input": tool_input if isinstance(tool_input, dict) else {"value": tool_input},
-        "observation": observation,
-    })
-
-
-def discard_captured_agent_actions(agent_context: dict[str, Any]) -> None:
-    """Forget captured tool actions so a resumed run records only its own steps."""
-    agent_context.pop(_CAPTURED_ACTIONS_KEY, None)
-
-
-def captured_agent_actions_as_intermediate_steps(
-    agent_context: dict[str, Any],
-    since_offset: int = 0,
-) -> list[tuple[AgentAction, Any]]:
-    """Rebuild LangChain-shaped intermediate_steps from the in-memory log.
-
-    Used to recover evidence for a pass that ended via RepeatedInvalidToolCallStop, whose own return value has no intermediate_steps, and to record the work done before a checkpoint pause.
-    """
-    actions = agent_context.get(_CAPTURED_ACTIONS_KEY, [])
-    return [
-        (AgentAction(tool=record["tool"], tool_input=record["tool_input"], log=""), record["observation"])
-        for record in actions[since_offset:]
-    ]
+def _tool_message_content(observation: Any) -> Any:
+    if isinstance(observation, str):
+        return observation
+    if isinstance(observation, list) and all(isinstance(item, (str, dict)) for item in observation):
+        return observation
+    try:
+        return json.dumps(observation, ensure_ascii=False, default=str)
+    except Exception:
+        return str(observation)
 
 
 def _is_guardable_tool(tool: Any) -> bool:

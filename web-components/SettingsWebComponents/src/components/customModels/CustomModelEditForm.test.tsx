@@ -19,7 +19,7 @@ const API_MODEL: CustomModelSummary = {
   modelId: 'my-ollama', displayName: 'My Ollama', handler: 'openai_compatible', isLocal: false,
   baseUrl: 'http://localhost:11434/v1', modelIdentifier: 'llama3.3', modelPath: null, downloadUrl: null,
   contextWindow: 8192, maxOutputTokens: 4096, requiresAuth: false, capabilities: ['reasoning'],
-  features: ['streaming', 'system_prompts'], toolRendering: null, toolCallFormat: null, description: null,
+  features: ['streaming', 'system_prompts'], toolRendering: null, toolCallFormat: null, serverType: null, description: null,
   fileSize: null, fileSizeHuman: null, needsDownload: false,
 }
 
@@ -27,7 +27,7 @@ const LOCAL_FILE_MODEL: CustomModelSummary = {
   modelId: 'llama-gguf', displayName: 'Llama GGUF', handler: 'llama_cpp', isLocal: true,
   baseUrl: null, modelIdentifier: null, modelPath: '/Users/test/model.gguf', downloadUrl: null,
   contextWindow: 4096, maxOutputTokens: 2048, requiresAuth: false, capabilities: ['reasoning'],
-  features: [], toolRendering: null, toolCallFormat: null, description: null,
+  features: [], toolRendering: null, toolCallFormat: null, serverType: null, description: null,
   fileSize: 4_000_000_000, fileSizeHuman: '4.0 GB', needsDownload: false,
 }
 
@@ -102,6 +102,31 @@ describe('CustomModelEditForm', () => {
     expect(requestUpdateModel).toHaveBeenCalledWith('my-ollama', expect.objectContaining({
       handler: 'anthropic_compatible',
     }))
+  })
+
+  it('defaults the server type to other OpenAI-compatible servers and saves an Ollama selection', () => {
+    render(API_MODEL, null)
+    const serverTypeSelect = container.querySelector<HTMLButtonElement>('[aria-label="Server Type"]')!
+    expect(serverTypeSelect.textContent).toContain('Other OpenAI-compatible server')
+    act(() => { serverTypeSelect.click() })
+    const ollamaOption = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="option"]')).find((option) => option.textContent === 'Ollama')!
+    act(() => { ollamaOption.click() })
+    ;(requestUpdateModel as unknown as ReturnType<typeof vi.fn>).mockReturnValue('update-server-type')
+    act(() => { findButton('Save Changes').click() })
+    expect(requestUpdateModel).toHaveBeenCalledWith('my-ollama', expect.objectContaining({ serverType: 'ollama' }))
+  })
+
+  it('pre-selects a saved Ollama server type and hides it for Anthropic-compatible handlers', () => {
+    render({ ...API_MODEL, serverType: 'ollama' }, null)
+    expect(container.querySelector('[aria-label="Server Type"]')!.textContent).toContain('Ollama')
+    const handlerSelect = container.querySelector<HTMLButtonElement>('[aria-label="API Handler"]')!
+    act(() => { handlerSelect.click() })
+    const anthropicOption = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="option"]')).find((option) => option.textContent === 'Anthropic-Compatible')!
+    act(() => { anthropicOption.click() })
+    expect(container.querySelector('[aria-label="Server Type"]')).toBeNull()
+    ;(requestUpdateModel as unknown as ReturnType<typeof vi.fn>).mockReturnValue('update-anthropic')
+    act(() => { findButton('Save Changes').click() })
+    expect(requestUpdateModel).toHaveBeenCalledWith('my-ollama', expect.objectContaining({ handler: 'anthropic_compatible', serverType: undefined }))
   })
 
   it('does not allow fractional context limits to be saved', () => {

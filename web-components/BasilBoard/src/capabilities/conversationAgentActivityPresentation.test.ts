@@ -224,6 +224,10 @@ describe('conversationAgentActivityPresentation', () => {
     }] }))).toBeUndefined();
   });
 
+  it('accepts a paused task lifecycle', () => {
+    expect(parseConversationAgentActivitySummary(summary({ lifecycle: 'paused' }))).toBeDefined();
+  });
+
   it('does not require activity lifecycle to duplicate the linked status lifecycle', () => {
     expect(conversationAgentActivityMetadata(agentTaskMessage(summary({ lifecycle: 'completed' })))).toMatchObject({
       lifecycle: 'completed',

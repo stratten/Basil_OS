@@ -101,6 +101,7 @@ def test_activity_payload_bounds_visible_text_without_changing_identifier_correl
         "awaiting_provider_delegation",
         "awaiting_delegated_agents",
         "awaiting_user_input",
+        "paused",
         "waiting_user_input",
         "needs_clarification",
         "clarification_added",

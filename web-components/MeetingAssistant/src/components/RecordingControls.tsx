@@ -128,7 +128,7 @@ function RecordingControls({ ui }: RecordingControlsProps) {
 function LiveTranscriptionSwitch({ enabled }: { enabled: boolean }) {
   return (
     <label className="meeting-switch-control meeting-live-transcription-switch">
-      <span>Live transcription</span>
+      <span>Live Transcribe</span>
       <input type="checkbox" checked={enabled} onChange={(event) => setLiveTranscription(event.target.checked)} />
       <span className="meeting-switch-track" aria-hidden="true" />
     </label>

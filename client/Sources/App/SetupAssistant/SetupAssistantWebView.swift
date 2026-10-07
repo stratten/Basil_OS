@@ -217,6 +217,7 @@ struct SetupAssistantWebView: NSViewRepresentable {
                 payload["suggestedFilename"] as? String
             )?.trimmingCharacters(in: .whitespacesAndNewlines)
             let savePanel = NSSavePanel()
+            savePanel.applyBasilThemedAppearance()
             savePanel.allowedContentTypes = [.pdf]
             if let suggestedFilename, !suggestedFilename.isEmpty {
                 savePanel.nameFieldStringValue = suggestedFilename

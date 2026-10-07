@@ -9,6 +9,8 @@ from api.core.models.preference_models.browser_automation import (
     BrowserPreferredUserBrowser,
 )
 
+from .browser_pinned_target import pin_browser_target, pinned_browser_target
+
 
 @dataclass(frozen=True)
 class BrowserAutomationTarget:
@@ -21,6 +23,7 @@ class BrowserAutomationTarget:
     expected_title: Optional[str] = None
     created_by_basil: bool = False
     agent_task_id: Optional[str] = None
+    window_id: Optional[int] = None
 
     def to_result(self) -> dict[str, Any]:
         return asdict(self)
@@ -62,6 +65,7 @@ def parse_browser_automation_target(value: Any) -> Optional[BrowserAutomationTar
             ),
             created_by_basil=bool(value.get("created_by_basil")),
             agent_task_id=str(value["agent_task_id"]) if value.get("agent_task_id") else None,
+            window_id=int(value["window_id"]) if value.get("window_id") else None,
         )
     except Exception:
         return None
@@ -77,6 +81,10 @@ def resolve_browser_target_inputs(
     """Resolve browser/window/tab inputs while preserving backwards compatibility."""
 
     target = parse_browser_automation_target(browser_automation_target)
+    if target is not None and target.window_id is not None:
+        pin_browser_target(target)
+    if target is None and window_index is None and tab_index is None:
+        target = pinned_browser_target(browser)
     resolved_browser = browser
     resolved_window_index = window_index
     resolved_tab_index = tab_index

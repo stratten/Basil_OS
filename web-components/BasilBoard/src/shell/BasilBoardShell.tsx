@@ -1,8 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AgentTaskOriginNavigationPayload, BasilBoardTab } from '../contracts';
+import { HomeForwardContext } from '../home/HomeForwardContext';
 import { rejectUnknownTabKind } from '../home/homeReducer';
+import { useHomeRuntime } from '../home/HomeRuntimeContext';
+import RoutedNotice from '../home/RoutedNotice';
+import { useHomeForwarding } from '../home/useHomeForwarding';
 import {
   bringBasilBoardTabToFront,
+  registerBoardTabNavigationHandler,
   registerDetachedTabsChangedHandler,
 } from '../services/bridge';
 import BoardChrome from './BoardChrome';
@@ -42,6 +47,33 @@ export default function BasilBoardShell({ tabs, originNavigation }: BasilBoardSh
     [],
   );
 
+  const hasTab = useCallback((tabId: string) => activeTabs.some((tab) => tab.id === tabId), [activeTabs]);
+  const { contextValue: homeForward, notice, dismissNotice, reroute, setNoticeEngaged } = useHomeForwarding({
+    hasTab,
+    selectTab: setActiveTabId,
+  });
+
+  const { voiceTurn } = useHomeRuntime();
+  const forwardedVoiceTurnVersion = useRef(voiceTurn?.version ?? 0);
+  const { forwardTurn } = homeForward;
+  useEffect(() => {
+    if (!voiceTurn || voiceTurn.version === forwardedVoiceTurnVersion.current) return;
+    forwardedVoiceTurnVersion.current = voiceTurn.version;
+    try {
+      forwardTurn(voiceTurn.response, voiceTurn.submission);
+    } catch (error) {
+      console.error('[BasilBoardShell] Voice turn could not be forwarded:', error);
+    }
+  }, [forwardTurn, voiceTurn]);
+
+  useEffect(
+    () =>
+      registerBoardTabNavigationHandler(({ tabId }) => {
+        if (hasTab(tabId)) setActiveTabId(tabId);
+      }),
+    [hasTab],
+  );
+
   useEffect(() => {
     if (!originNavigation) return;
     const targetTabId = originNavigation.originType === 'meeting'
@@ -57,6 +89,7 @@ export default function BasilBoardShell({ tabs, originNavigation }: BasilBoardSh
   }, [activeTabs, originNavigation]);
 
   return (
+    <HomeForwardContext.Provider value={homeForward}>
     <BoardChrome
       tabs={activeTabs}
       activeTabId={activeTab?.id ?? 'home'}
@@ -65,6 +98,14 @@ export default function BasilBoardShell({ tabs, originNavigation }: BasilBoardSh
       activeTabDetached={isActiveTabDetachedElsewhere}
     >
       <main className="basil-board-content">
+        {notice ? (
+          <RoutedNotice
+            notice={notice}
+            onReroute={() => void reroute()}
+            onDismiss={dismissNotice}
+            onEngagedChange={setNoticeEngaged}
+          />
+        ) : null}
         {!activeTab || rejectUnknownTabKind(activeTab.tab_kind) ? (
           <div className="home-unavailable-state">This tab is unavailable.</div>
         ) : isActiveTabDetachedElsewhere ? (
@@ -78,5 +119,6 @@ export default function BasilBoardShell({ tabs, originNavigation }: BasilBoardSh
         )}
       </main>
     </BoardChrome>
+    </HomeForwardContext.Provider>
   );
 }

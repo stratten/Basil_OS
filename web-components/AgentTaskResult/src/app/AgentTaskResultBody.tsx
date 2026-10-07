@@ -166,6 +166,7 @@ interface AgentTaskResultBodyProps {
   captureState: CaptureStateMessage | null;
   textFollowUpMode: boolean;
   isProcessing: boolean;
+  isVerifying?: boolean;
   isCapturing: boolean;
   bubbleMode: BubbleMode;
   isCollapseIconRotated: boolean;
@@ -225,6 +226,7 @@ export function AgentTaskResultBody({
   captureState,
   textFollowUpMode,
   isProcessing,
+  isVerifying = false,
   isCapturing,
   bubbleMode,
   isCollapseIconRotated,
@@ -254,7 +256,8 @@ export function AgentTaskResultBody({
   const isAwaitingInput =
     selectedAgent?.showApprovalPrompt === true ||
     selectedAgent?.showCheckpointPrompt === true ||
-    selectedAgent?.status === 'awaitingInput';
+    selectedAgent?.status === 'awaitingInput' ||
+    selectedAgent?.status === 'paused';
   const collapsedActivityStatus = displaySource
     ? activityStatusSnapshot(displaySource.executionTimeline)
     : undefined;
@@ -273,7 +276,7 @@ export function AgentTaskResultBody({
       <div ref={rootRef} className={`widget-root basil-webkit-window-surface${embedded ? ' widget-root--embedded' : ''}${isChromeCollapsed ? ' chrome-collapsed' : ''}`}>
       <div className="agent-task-header-shell">
         <Header
-          isProcessing={displaySourceDetached ? false : isProcessing}
+          isProcessing={displaySourceDetached ? false : isProcessing || isVerifying}
           isCapturing={isCapturing}
           bubbleMode={displaySourceDetached ? 'ambient' : bubbleMode}
           baseColor={getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#33559B'}

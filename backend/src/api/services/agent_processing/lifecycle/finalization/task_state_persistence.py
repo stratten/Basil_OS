@@ -45,7 +45,11 @@ def normalize_thinking_history(raw: Any) -> List[Dict[str, Any]]:
             normalized["recorded_at"] = recorded_at
         by_iteration[iteration] = normalized
 
-    return [by_iteration[iteration] for iteration in sorted(by_iteration)]
+    # Negative iterations are post-loop passes (-1 final synthesis, -2 outcome verification) and read after the loop's own steps.
+    return [
+        by_iteration[iteration]
+        for iteration in sorted(by_iteration, key=lambda value: (1, -value) if value < 0 else (0, value))
+    ]
 
 
 def merge_thinking_histories(prior: Any, current: Any) -> List[Dict[str, Any]]:
@@ -176,6 +180,10 @@ async def handle_checkpoint_request(
     thinking_history: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """Handle checkpoint request (collaborative flow, NOT an error)."""
+    if getattr(checkpoint_err, "is_user_pause", False):
+        from .user_pause_persistence import handle_user_pause_request
+
+        return await handle_user_pause_request(checkpoint_err, state, coordinator, thinking_history)
     logger.info(f"🤝 Agent requested user input (collaborative checkpoint): {checkpoint_err.checkpoint_data.get('prompt')}")
 
     checkpoint_data = checkpoint_err.checkpoint_data
@@ -248,22 +256,6 @@ async def handle_checkpoint_request(
             paused_thinking_history = normalize_thinking_history(thinking_history)
             if paused_thinking_history:
                 existing_data["thinking_history"] = paused_thinking_history
-            from ..runtime.paused_work_digest import (
-                PAUSED_WORK_DIGEST_RESULT_KEY,
-                PRIOR_PAUSED_WORK_CONTEXT_KEY,
-                build_paused_work_digest,
-            )
-
-            try:
-                paused_work_digest = build_paused_work_digest(
-                    state.context,
-                    prior=state.context.get(PRIOR_PAUSED_WORK_CONTEXT_KEY),
-                )
-            except Exception:
-                logger.warning("Could not record the work done before the pause", exc_info=True)
-                paused_work_digest = []
-            if paused_work_digest:
-                existing_data[PAUSED_WORK_DIGEST_RESULT_KEY] = paused_work_digest
             await knowledge_service.agent_task_service.update_agent_task_status(
                 agent_task_id=agent_task_id,
                 status="awaiting_user_input",

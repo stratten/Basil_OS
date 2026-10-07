@@ -33,8 +33,8 @@ class SetupAgentProgressCallback(AsyncCallbackHandler):
         **kwargs: Any,
     ) -> None:
         # LangChain fires ``on_chain_start`` for every nested chain inside an
-        # ``AgentExecutor`` run (each agent step, each scratchpad assembly,
-        # each tool-call chain). We only want to signal a new user-facing turn
+        # agent graph run (each model node, each tool node, each middleware
+        # hook). We only want to signal a new user-facing turn
         # for the top-level invocation, otherwise the frontend clears the
         # latest ``narrate_progress`` line on every internal step and the user
         # sees the generic fallback flashing back in between narrations.

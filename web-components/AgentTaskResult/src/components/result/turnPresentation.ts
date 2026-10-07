@@ -9,7 +9,7 @@ export interface TurnStatusInput {
   resultSeverity?: ResultSeverity;
 }
 
-const ACTIVE_STATUSES = new Set(['capturing', 'routing', 'processing', 'awaitingInput']);
+const ACTIVE_STATUSES = new Set(['capturing', 'routing', 'processing', 'awaitingInput', 'paused']);
 
 export const TURN_STATUS_LABELS: Record<TurnStatus, string> = {
   success: 'Completed',

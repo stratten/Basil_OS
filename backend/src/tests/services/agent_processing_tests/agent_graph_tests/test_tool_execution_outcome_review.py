@@ -77,7 +77,7 @@ async def test_tool_wrapper_logs_unverified_outcome_review():
     assert payload["result"]["outcome_review"]["verification_status"] == "unverified"
 
 
-def test_file_preparation_tools_end_the_executor_pass():
+def test_file_preparation_tools_do_not_end_the_agent_loop():
     factory = SimpleNamespace(
         service_execution_engine=FakeExecutionEngine(),
         max_tool_output_chars=20_000,
@@ -104,5 +104,5 @@ def test_file_preparation_tools_end_the_executor_pass():
         {},
     )
 
-    assert preparation_tool.return_direct is True
+    assert preparation_tool.return_direct is False
     assert ordinary_file_tool.return_direct is False

@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import type { ConversationMessageItem, WSEvent } from '../contracts';
+import { HomeForwardContext } from '../home/HomeForwardContext';
 import { enqueueBoardConversationAvailabilityChanged, enqueueDetachedConversationsChanged } from '../services/bridge';
 import ChatsTab from './ChatsTab';
 import { resetPersistedConversationSessionStateForTests } from './conversationSessionState';
@@ -265,6 +266,39 @@ describe('ChatsTab', () => {
 
     expect(await screen.findByText('New Conversation')).toBeTruthy();
     expect(mocks.getConversationMessages).not.toHaveBeenCalled();
+  });
+
+  it('sends a handed-off Home request once in its new conversation and shows it streaming', async () => {
+    const consumeChatHandoff = vi.fn();
+    const handoff = {
+      nonce: 'handoff-1',
+      conversationId: 'home-conversation',
+      content: 'Summarize my week',
+      displayMarkdown: 'Summarize my **week**',
+      filePaths: ['/tmp/week.md'],
+      modelId: 'default-model',
+      createdAt: Date.now(),
+    };
+    render(
+      <HomeForwardContext.Provider value={{ forwardTurn: vi.fn(), chatHandoff: handoff, consumeChatHandoff }}>
+        <ChatsTab />
+      </HomeForwardContext.Provider>,
+    );
+
+    await waitFor(() => expect(mocks.sendConversationMessage).toHaveBeenCalledTimes(1));
+    expect(mocks.sendConversationMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: 'Summarize my week',
+      displayMarkdown: 'Summarize my **week**',
+      conversationId: 'home-conversation',
+      modelId: 'default-model',
+      filePaths: ['/tmp/week.md'],
+      delegationOptOut: true,
+      source: 'composer',
+    }));
+    expect(consumeChatHandoff).toHaveBeenCalledWith('handoff-1');
+    expect(await screen.findByRole('status', { name: /Thinking/ })).toBeTruthy();
+    expect(document.querySelector('.chats-message-user')?.textContent).toContain('Summarize my week');
+    expect(mocks.getConversationMessages).not.toHaveBeenCalledWith('home-conversation');
   });
 
   it('renders an icon-only voice control while idle', async () => {
@@ -874,8 +908,11 @@ describe('ChatsTab', () => {
     await screen.findByText('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Delete Alpha' }));
     const dialog = screen.getByRole('alertdialog', { name: 'Delete conversation' });
+    expect(within(dialog).getByText('Delete this conversation?')).toBeTruthy();
+    expect(dialog.closest('li')?.querySelector('.chats-conversation-title')).toBeNull();
     await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Delete Alpha' })).toBeTruthy();
 
     await userEvent.click(screen.getByRole('button', { name: 'Delete Alpha' }));
     await userEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete' }));

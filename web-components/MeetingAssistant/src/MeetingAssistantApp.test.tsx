@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { settleHostWindowResize } from '@shared/settleHostWindowResize';
 import MeetingAssistantApp from './MeetingAssistantApp';
 import type { MeetingBridgeEvent } from './bridge/types';
 import { publishMeetingMeter } from './bridge/meetingMeterStore';
@@ -151,7 +152,7 @@ const minimalUI: MeetingBridgeEvent['ui'] = {
 };
 
 describe('MeetingAssistantApp collapse retention', () => {
-  it('keeps the content subtree mounted and inert while collapsed', () => {
+  it('keeps the content subtree mounted and inert while collapsed', async () => {
     render(<MeetingAssistantApp />);
     const content = screen.getByText('Connecting to Notetaker…');
 
@@ -163,6 +164,8 @@ describe('MeetingAssistantApp collapse retention', () => {
     expect(content).toHaveAttribute('inert');
 
     fireEvent.click(screen.getByRole('button', { name: 'Expand' }));
+    expect(content).toHaveAttribute('hidden');
+    await settleHostWindowResize();
 
     expect(screen.getByText('Connecting to Notetaker…')).toBe(content);
     expect(content).not.toHaveAttribute('hidden');

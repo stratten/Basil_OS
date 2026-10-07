@@ -17,7 +17,7 @@ const API_MODEL: CustomModelSummary = {
   modelId: 'my-ollama', displayName: 'My Ollama', handler: 'openai_compatible', isLocal: false,
   baseUrl: 'http://localhost:11434/v1', modelIdentifier: 'llama3.3', modelPath: null, downloadUrl: null,
   contextWindow: 8192, maxOutputTokens: 4096, requiresAuth: false, capabilities: ['reasoning'],
-  features: ['streaming'], toolRendering: null, toolCallFormat: null, description: null,
+  features: ['streaming'], toolRendering: null, toolCallFormat: null, serverType: null, description: null,
   fileSize: null, fileSizeHuman: null, needsDownload: false,
 }
 
@@ -25,7 +25,7 @@ const UNDOWNLOADED_LOCAL_MODEL: CustomModelSummary = {
   modelId: 'llama-gguf', displayName: 'Llama GGUF', handler: 'llama_cpp', isLocal: true,
   baseUrl: null, modelIdentifier: null, modelPath: null, downloadUrl: 'https://huggingface.co/org/repo/resolve/main/model.gguf',
   contextWindow: 4096, maxOutputTokens: 2048, requiresAuth: false, capabilities: ['reasoning'],
-  features: [], toolRendering: null, toolCallFormat: null, description: null,
+  features: [], toolRendering: null, toolCallFormat: null, serverType: null, description: null,
   fileSize: 4_000_000_000, fileSizeHuman: '4.0 GB', needsDownload: true,
 }
 

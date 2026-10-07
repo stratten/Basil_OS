@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional
 from api.core.knowledge.sqlite.sqlite_knowledge_service import AgentTaskEvent, SQLiteKnowledgeService
 
 from .agent_task_cancellation import AgentTaskCancellationRegistry
+from api.services.agent_processing.shared.agent_run_registry import set_process_cancellation_registry
 from .agent_task_event_handlers import AgentTaskEventHandlers
 from .agent_task_provider_run_service import AgentTaskProviderRunService
 from .agent_task_processing_service import AgentTaskProcessingService
@@ -65,6 +66,7 @@ class AgentTaskOrchestrator:
         self._processed_events = set()
         self._processing_agent_tasks = set()
         self._cancellation = AgentTaskCancellationRegistry()
+        set_process_cancellation_registry(self._cancellation)
 
         self.db_service = db_service if db_service is not None else SQLiteKnowledgeService()
         self.state_machine = AgentTaskStateMachine()

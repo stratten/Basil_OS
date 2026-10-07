@@ -31,8 +31,9 @@ class FakeWebSocketManager:
 
 async def _wait_for_event(manager: FakeWebSocketManager) -> dict:
     for _ in range(200):
-        if manager.events:
-            return manager.events[-1]
+        requests = [event for event in manager.events if event.get("event_type") == "execution_approval_request"]
+        if requests:
+            return requests[-1]
         with contextlib.suppress(asyncio.TimeoutError):
             await asyncio.wait_for(asyncio.Event().wait(), timeout=0.01)
     raise AssertionError("no command input event was broadcast")

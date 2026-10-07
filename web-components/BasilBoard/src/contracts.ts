@@ -1,24 +1,3 @@
-export type HomeTimelineItem =
-  | {
-      kind: 'user_message';
-      messageId: string;
-      content: string;
-      displayMarkdown?: string;
-      referencePaths?: string[];
-      createdAt: string;
-    }
-  | { kind: 'conversation_answer'; messageId: string; inReplyTo: string; content: string; createdAt: string }
-  | {
-      kind: 'agent_task';
-      messageId: string;
-      inReplyTo: string;
-      agentTaskId: string;
-      state: 'queued' | 'running' | 'completed' | 'failed' | 'canceled';
-      result?: string;
-      outcome?: string;
-      createdAt: string;
-    };
-
 export type BasilBoardTabDetachBehavior = 'useBoardWindow' | 'useNativeWindow' | 'none';
 
 export interface BasilBoardTab {
@@ -46,10 +25,6 @@ export interface BoardInquirySummary {
   updatedAt?: string | null;
 }
 
-export interface BoardInquiryDetail extends BoardInquirySummary {
-  timeline: HomeTimelineItem[];
-}
-
 export interface BasilBoardHydration {
   tabs: BasilBoardTab[];
   recent_inquiries: BoardInquirySummary[];
@@ -59,7 +34,8 @@ export interface BasilBoardHydration {
 
 export interface HomeTurnResponse {
   inquiry_id: string;
-  user_message_id: string;
+  user_message_id?: string | null;
+  conversation_id?: string | null;
   route_kind: 'conversation' | 'agent_task';
   route_reason: string;
   route_confidence?: number | null;
@@ -342,6 +318,7 @@ export type ConversationAgentActivityLifecycle =
   | 'awaiting_user_input'
   | 'waiting_user_input'
   | 'needs_clarification'
+  | 'paused'
   | 'clarification_added'
   | 'completed'
   | 'failed'

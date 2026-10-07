@@ -226,6 +226,13 @@ export class AgentStoreCore {
     return this.agents.get(agentTaskId)?.isCanceled === true;
   }
 
+  markCanceled(agentTaskId: string) {
+    this.updateAgent(agentTaskId, a => {
+      a.isCanceled = true;
+      a.isCanceling = false;
+    });
+  }
+
   protected clearPendingStepTimer(agentTaskId: string) {
     const existing = this.pendingStepTimers.get(agentTaskId);
     if (existing) {

@@ -347,9 +347,7 @@ async def test_browser_tabs_ensure_automation_window_returns_target(monkeypatch)
 
     async def fake_run_applescript(script: str, timeout_s: float = 30.0):
         calls.append(script)
-        if "make new window" in script:
-            return True, "created_window|1|1|https://example.com", ""
-        return True, "1|1|true|Example|https://example.com", ""
+        return True, "created_window|4242|https://example.com", ""
 
     monkeypatch.setattr(browser_tabs_tool, "run_applescript", fake_run_applescript)
 
@@ -362,16 +360,20 @@ async def test_browser_tabs_ensure_automation_window_returns_target(monkeypatch)
 
     assert parsed["success"] is True
     assert parsed["browser"] == "Chrome"
+    assert parsed["reused_window"] is False
     assert parsed["browser_automation_target"] == {
         "browser": "Chrome",
         "window_index": 1,
         "tab_index": 1,
         "expected_url": "https://example.com",
-        "expected_title": "Example",
+        "expected_title": None,
         "created_by_basil": True,
         "agent_task_id": None,
+        "window_id": 4242,
     }
-    assert len(calls) == 2
+    assert len(calls) == 1
+    assert "make new window" in calls[0]
+    assert "exists window id" not in calls[0]
 
 
 def test_browser_permission_classifier_detects_javascript_automation_blocker():

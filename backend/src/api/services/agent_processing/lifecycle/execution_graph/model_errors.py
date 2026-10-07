@@ -1,4 +1,4 @@
-"""Typed model-call failures shared by the model adapters and execute_with_token_retry."""
+"""Typed model-call failures shared by the model adapters and the inner agent loop's model recovery."""
 
 from __future__ import annotations
 
@@ -6,12 +6,8 @@ from __future__ import annotations
 class TransientModelError(RuntimeError):
     """A model call failed in a way that is worth retrying unchanged after a backoff.
 
-    Subclasses ``RuntimeError`` (not ``ValueError``) so the "No generation chunks were returned" ``except ValueError`` branch in ``execute_with_token_retry`` never intercepts it.
+    Subclasses ``RuntimeError`` (not ``ValueError``) so ``classify_model_error`` never mistakes it for the "No generation chunks were returned" empty-generation ``ValueError``.
     """
-
-
-class PassBudgetExhausted(Exception):
-    """The pause-aware per-pass execution budget ran out while the agent was still working."""
 
 
 LLM_RETRY_EXCEPTION_TYPES = (TransientModelError,)
@@ -57,7 +53,6 @@ def is_transient_error_text(text: str) -> bool:
 
 __all__ = [
     "LLM_RETRY_EXCEPTION_TYPES",
-    "PassBudgetExhausted",
     "TRANSIENT_ERROR_MARKERS",
     "TRANSIENT_ERROR_TYPE_NAMES",
     "TransientModelError",

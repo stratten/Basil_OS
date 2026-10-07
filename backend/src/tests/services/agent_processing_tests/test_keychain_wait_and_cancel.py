@@ -1,14 +1,12 @@
 """Tests for the Keychain-wait + cancel fixes.
 
-Covers the four fix surfaces:
+Covers the three fix surfaces:
   * WS1 helper ``await_future_with_cancellation`` — resolved / timeout / cancel.
   * WS1 bridge ``_ask_swift_for_credentials`` — bounded wait + blocker_resolved
     broadcasts on the timeout and cancel branches (previously the timeout branch
     left the UI blocker up forever).
   * WS2 durable cancellation — preserves completed parent turns, terminates
     active follow-ups, and prevents terminal records from resuming checkpoints.
-  * WS3 ``_relabel_execution_timeout`` — rewrites LangChain's ambiguous
-    force-stop string into an explicit execution-timeout message.
 """
 
 from __future__ import annotations
@@ -245,54 +243,6 @@ async def test_bridge_user_action_waiting_ignores_unknown_correlation(monkeypatc
 
     assert delivered is False
     assert not events
-
-
-# --------------------------------------------------------------------------- #
-# WS3 - timeout relabeling                                                    #
-# --------------------------------------------------------------------------- #
-def test_relabel_rewrites_langchain_force_stop_sentinel():
-    from api.services.agent_processing.lifecycle.execution_graph.agent_execution_core import (
-        _relabel_execution_timeout,
-    )
-    from api.services.agent_processing.lifecycle.execution_graph.execution_limits import (
-        LANGCHAIN_FORCE_STOP_SENTINEL,
-        execution_timeout_message,
-    )
-
-    result = {"output": LANGCHAIN_FORCE_STOP_SENTINEL, "intermediate_steps": []}
-    _relabel_execution_timeout(result)
-
-    assert result["output"] == execution_timeout_message()
-    assert result["execution_timed_out"] is True
-    assert "iteration limit" not in result["output"]
-
-
-def test_relabel_rewrites_anthropic_block_sentinel():
-    from api.services.agent_processing.lifecycle.execution_graph.agent_execution_core import (
-        _relabel_execution_timeout,
-    )
-    from api.services.agent_processing.lifecycle.execution_graph.execution_limits import (
-        LANGCHAIN_FORCE_STOP_SENTINEL,
-        execution_timeout_message,
-    )
-
-    result = {"output": [{"type": "text", "text": LANGCHAIN_FORCE_STOP_SENTINEL}]}
-    _relabel_execution_timeout(result)
-
-    assert result["output"] == execution_timeout_message()
-    assert result["execution_timed_out"] is True
-
-
-def test_relabel_leaves_normal_output_untouched():
-    from api.services.agent_processing.lifecycle.execution_graph.agent_execution_core import (
-        _relabel_execution_timeout,
-    )
-
-    result = {"output": "Completed the task successfully."}
-    _relabel_execution_timeout(result)
-
-    assert result["output"] == "Completed the task successfully."
-    assert "execution_timed_out" not in result
 
 
 # --------------------------------------------------------------------------- #

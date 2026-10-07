@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react';
-import { onAssistantSessionEvent, reportReady, requestResize } from '../bridge/assistantSessionBridge';
+import { useCollapseShortcut } from '@shared/useCollapseShortcut';
+import { onAssistantSessionEvent, reportReady, requestResize, toggleResultCollapse } from '../bridge/assistantSessionBridge';
 import { applyAssistantSessionEvent, initialAssistantSessionState, resolveTheme } from '../state/assistantSessionReducer';
 import type { AssistantSessionState } from '../state/assistantSessionReducer';
 import { deriveWidgetPhase } from '../lib/widgetPhase';
@@ -36,6 +37,7 @@ export function AssistantSessionApp() {
 
   const theme = resolveTheme(state);
   const phase = deriveWidgetPhase(state);
+  useCollapseShortcut(toggleResultCollapse, phase === 'result');
   const widgetSize = deriveWidgetSize(state, phase);
 
   useEffect(() => {

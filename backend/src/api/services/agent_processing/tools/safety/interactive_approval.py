@@ -285,14 +285,22 @@ class InteractiveApprovalManager:
                         "Failed to clear execution approval attention after interruption for %s",
                         approval_id,
                     )
-                if task_is_canceling:
-                    raise
-                await record_user_interaction_resolved(
+                resolution = record_user_interaction_resolved(
                     agent_task_id,
                     interaction_id=approval_id,
-                    status="cancelled",
+                    status="canceled",
                     broadcast=self.websocket_manager.broadcast,
                 )
+                if task_is_canceling:
+                    # The run is ending; the waiting card must not outlive it, so the resolution is shielded from the cancellation that is unwinding this task.
+                    try:
+                        await asyncio.shield(resolution)
+                    except asyncio.CancelledError:
+                        pass
+                    except Exception:
+                        logger.exception("Failed to record canceled interaction for %s", approval_id)
+                    raise
+                await resolution
                 logger.info("Approval %s was retired while waiting; reporting it as unavailable", approval_id)
                 return (False, False, "approval_unavailable")
 

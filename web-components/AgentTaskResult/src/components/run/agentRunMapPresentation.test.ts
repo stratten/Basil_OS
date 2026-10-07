@@ -108,3 +108,10 @@ describe('deriveAgentRunMapTurns', () => {
     expect(deriveAgentRunMapTurns([])).toEqual([]);
   });
 });
+
+describe('presentRunStatus for paused and stopped runs', () => {
+  it('shows a paused run as waiting and a stopped run as stopped', () => {
+    expect(presentRunStatus({ ...baseRun, taskStatus: 'paused', isProcessing: false })).toEqual({ label: 'Paused', tone: 'waiting' });
+    expect(presentRunStatus({ ...baseRun, taskStatus: 'canceled', isProcessing: false })).toEqual({ label: 'Stopped', tone: 'failed' });
+  });
+});

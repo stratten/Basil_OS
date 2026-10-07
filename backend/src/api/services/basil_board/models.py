@@ -223,9 +223,16 @@ class HomeTurnRequest(BaseModel):
         return normalized
 
 
+class HomeTurnRerouteRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    route_kind: HomeTurnRouteKind
+
+
 class HomeTurnResponse(BaseModel):
     inquiry_id: str
-    user_message_id: str
+    user_message_id: Optional[str] = None
+    conversation_id: Optional[str] = None
     route_kind: HomeTurnRouteKind
     route_reason: str
     route_confidence: Optional[float] = None

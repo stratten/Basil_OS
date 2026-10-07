@@ -7,6 +7,9 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from api.services.agent_processing.lifecycle.runtime.user_interaction_timeline import (
+    resolve_all_waiting_user_interactions,
+)
 from api.services.agent_processing.lifecycle.runtime.workflow_coordinator import WorkflowCoordinator
 
 from .execution_models import (
@@ -138,6 +141,11 @@ async def continue_session(
                 status_code=409,
                 detail=f"AgentTask {agent_task_id} is terminal and cannot be resumed",
             )
+        if agent_task_record.status == "paused":
+            raise HTTPException(
+                status_code=409,
+                detail=f"AgentTask {agent_task_id} is paused; use Resume",
+            )
 
         agent_task_orchestrator = getattr(
             agent_task_submission_service,
@@ -252,6 +260,12 @@ async def cancel_session(
             (cleanup_at - durable_at) * 1000,
             (response_at - route_started_at) * 1000,
         )
+        for canceled_task_id in cancellation["canceled_task_ids"]:
+            await resolve_all_waiting_user_interactions(
+                canceled_task_id,
+                status="canceled",
+                broadcast=getattr(agent_task_submission_service, "broadcast", None),
+            )
         return CancelSessionResponse(
             success=True,
             message="Session canceled.",

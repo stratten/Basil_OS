@@ -58,6 +58,14 @@
   margin-top: var(--padding-xs);
 }
 
+.execution-steps-body .result-section > :first-child {
+  margin-top: 0;
+}
+
+.execution-steps-body .result-section > :last-child {
+  margin-bottom: 0;
+}
+
 /* Smooth height collapse for the reasoning body. Animating grid-template-rows
    from 1fr to 0fr transitions to the content's natural height without JS
    measurement, so the reasoning glides closed when the result starts arriving
@@ -98,6 +106,10 @@
    already gets from its own neighbor rule above. */
 .thinking-history-group + .thinking-pill {
   margin-top: var(--padding-s);
+}
+
+.thinking-segments > .thinking-history-group:first-child {
+  margin-top: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -252,53 +264,136 @@
   color: var(--text-secondary);
 }
 
+/* The live activity dock and the run status card share the finished-turn Activity row's thin bordered treatment. */
 .execution-activity-dock {
   flex: 0 0 auto;
   min-width: 0;
-  margin-bottom: var(--progress-overlay-clearance, 0px);
-  border-top: var(--border-thin) solid var(--separator-color);
+  margin: 0 var(--padding-l) var(--padding-s);
+  border: var(--border-thin) solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
   background: var(--background-primary);
-  box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.execution-activity-dock.run-status-card--live {
+  border-color: color-mix(in srgb, var(--processing-base) 55%, var(--separator-color));
+}
+
+.execution-activity-dock.run-status-card--attention {
+  border-color: color-mix(in srgb, var(--warning-base) 60%, var(--separator-color));
+}
+
+.execution-activity-dock.run-status-card--danger {
+  border-color: color-mix(in srgb, var(--error-base) 60%, var(--separator-color));
 }
 
 .execution-activity-dock-header {
-  display: grid;
-  grid-template-columns: 10px auto minmax(0, 1fr) auto;
+  display: flex;
   align-items: center;
-  gap: var(--padding-s);
+  gap: 6px;
   width: 100%;
-  min-height: 32px;
-  padding: 5px var(--padding-l);
+  padding: calc(var(--padding-xs) + 2px) var(--padding-s);
   border: 0;
-  background: var(--background-secondary);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
   color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
   cursor: pointer;
   text-align: left;
 }
 
-.execution-activity-dock-header[aria-expanded='true'] {
-  min-height: 38px;
-  padding: var(--padding-s) var(--padding-l);
+.execution-activity-dock-header:hover {
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
 }
 
 .execution-activity-dock-beacon-slot {
   display: flex;
   width: 10px;
   height: 10px;
+  flex: 0 0 10px;
   align-items: center;
   justify-content: center;
-  transform: translateY(-1px);
+}
+
+.run-status-dot {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.run-status-dot--attention {
+  background: var(--warning-base);
+}
+
+.run-status-dot--danger {
+  background: var(--error-base);
+}
+
+.run-status-dot--neutral {
+  background: var(--text-primary);
+}
+
+.run-status-label {
+  flex-shrink: 0;
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+
+.run-status-detail {
+  font-family: var(--font-family-light);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
 }
 
 .execution-activity-dock-count {
-  /* Fixed to fit "Activity · 99999 updates" so the latest-activity text keeps one start position as the count grows. */
-  width: 24ch;
-  margin-right: var(--padding-s);
-  overflow: hidden;
+  display: inline-grid;
+  flex-shrink: 0;
   font-variant-numeric: tabular-nums;
-  text-overflow: ellipsis;
-  transform: translateY(-1px);
   white-space: nowrap;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+}
+
+.execution-activity-dock-count > * {
+  grid-area: 1 / 1;
+}
+
+.execution-activity-dock-count-sizer {
+  visibility: hidden;
+}
+
+.execution-activity-dock-count-value {
+  opacity: 0.6;
+}
+
+.run-status-footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-s);
+  padding: var(--padding-s);
+  border-top: var(--border-thin) solid var(--separator-color);
+}
+
+.run-status-reason {
+  max-height: 220px;
+  overflow-y: auto;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-small);
+  user-select: text;
+}
+
+.run-status-note {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-small);
+}
+
+.run-status-footer .run-status-actions {
+  margin: 0;
+  padding: 0;
 }
 
 .execution-activity-dock-header:focus-visible,
@@ -311,8 +406,9 @@
 
 .execution-activity-dock-latest {
   min-width: 0;
+  flex: 1;
   overflow: hidden;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   font-family: var(--font-family-light);
   font-size: var(--font-size-status-small);
   text-overflow: ellipsis;
@@ -321,8 +417,8 @@
 
 .execution-activity-dock-jump {
   display: block;
-  width: calc(100% - (2 * var(--padding-l)));
-  margin: 0 var(--padding-l) var(--padding-xs);
+  width: calc(100% - (2 * var(--padding-s)));
+  margin: var(--padding-xs) var(--padding-s);
   min-height: 28px;
   border: var(--border-thin) solid var(--separator-color);
   border-radius: var(--corner-radius-small);
@@ -353,14 +449,20 @@
 }
 
 .execution-activity-dock-list {
-  padding: var(--padding-xs) var(--padding-l) 0;
+  padding: var(--padding-xs) var(--padding-s) 0;
+}
+
+.execution-activity-dock-body-inner > .activity-fulldetails-toggle {
+  box-sizing: border-box;
+  margin-top: var(--padding-xs);
+  padding: calc(var(--padding-xs) + 2px) var(--padding-s) var(--padding-s);
 }
 
 .execution-activity-dock-controls {
   display: flex;
   flex-direction: column;
   gap: var(--padding-xs);
-  padding: 0 var(--padding-l) var(--padding-s);
+  padding: 0 var(--padding-s) var(--padding-s);
 }
 
 .execution-activity-dock-control {

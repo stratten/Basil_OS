@@ -64,6 +64,11 @@ class PlanningState:
     final_envelope: Optional[Dict[str, Any]] = None
     workflow_result: Optional[str] = None
 
+    # Inner agent loop conversation kept across a user-input or delegation pause (messages_to_dict primitives)
+    agent_messages: Optional[List[Dict[str, Any]]] = None
+    agent_pending_tool_call_id: Optional[str] = None
+    agent_resume_input: Optional[str] = None
+
 
 class LiveProgressCallbackHandler(BaseCallbackHandler):
     """LangChain callback handler that streams intermediary progress to the frontend.
@@ -100,10 +105,7 @@ class LiveProgressCallbackHandler(BaseCallbackHandler):
         self._thinking_history: List[Dict[str, Any]] = []
         self._execution_timeline: List[Dict[str, Any]] = []
         self._tool_run_registry = get_tool_run_registry()
-        # Incremented only in on_llm_end (never on_chain_start, which fires
-        # before the network call resolves). Used by execute_with_token_retry
-        # to decide whether a first-attempt unreachable error is eligible for
-        # local-model fallback: eligible only while this is still 0.
+        # Incremented only in on_llm_end, once per completed model call.
         self.completed_llm_calls = 0
         # Create tool lookup for metadata access
         self.tool_metadata = {}
@@ -670,6 +672,13 @@ class LiveProgressCallbackHandler(BaseCallbackHandler):
         task = self._heartbeat_tasks_by_run.pop(str(run_id), None)
         if task:
             task.cancel()
+
+    def stop_active_tool_runs(self) -> None:
+        """Stop heartbeats and drop registry entries for tool runs a cancellation cut off before their end/error callback."""
+        for run_key in list(self._heartbeat_tasks_by_run) + list(self._step_ids_by_run):
+            self._stop_active_step_heartbeat(run_key)
+            self._step_ids_by_run.pop(run_key, None)
+            self._tool_run_registry.discard(run_key)
 
     # Tool lifecycle callbacks
     async def on_tool_start(self, serialized, input_str=None, *, run_id=None, parent_run_id=None, tags=None, metadata=None, name=None, inputs=None, **kwargs):  # type: ignore[override]

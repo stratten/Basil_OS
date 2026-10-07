@@ -24,6 +24,27 @@ function renderRow(onDetach?: () => void): string {
   );
 }
 
+describe('AgentTaskRow paused status', () => {
+  it('shows Paused instead of the last running step', () => {
+    const markup = renderToStaticMarkup(
+      <AgentTaskRow
+        id="task-1"
+        title="Count to thirty"
+        status="paused"
+        currentStep="Running project command"
+        fileCount={0}
+        followUpCount={0}
+        hasUnreadResult={false}
+        isSelected={false}
+        onSelect={vi.fn()}
+      />
+    );
+    expect(markup).toContain('aria-label="Count to thirty. Paused"');
+    expect(markup).toContain('>Paused</div>');
+    expect(markup).not.toContain('Running project command');
+  });
+});
+
 describe('AgentTaskRow detached-window action', () => {
   it('renders the selectable row as an accessible button', () => {
     const markup = renderRow();

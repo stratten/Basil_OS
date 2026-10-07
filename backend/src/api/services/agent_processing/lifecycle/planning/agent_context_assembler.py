@@ -41,6 +41,8 @@ _STEP_COMPLETE_PREFIX_RE = re.compile(r"^STEP_COMPLETE:")
 
 logger = logging.getLogger(__name__)
 
+CONVERSATION_THREAD_SEEDED_KEY = "conversation_thread_seeded"
+
 
 SENSITIVE_KEY_PARTS = (
     "api_key",
@@ -164,20 +166,6 @@ class AgentContextAssembler:
             )
             sections.append(ContextSection("REFERENCE MATERIALS", body, priority=10))
 
-        from ..runtime.paused_work_digest import (
-            PRIOR_PAUSED_WORK_CONTEXT_KEY,
-            format_paused_work_section,
-            normalize_paused_work_digest,
-        )
-
-        prior_paused_work = normalize_paused_work_digest(context.get(PRIOR_PAUSED_WORK_CONTEXT_KEY))
-        if prior_paused_work:
-            sections.append(ContextSection(
-                "WORK BEFORE PAUSE",
-                format_paused_work_section(prior_paused_work),
-                priority=12,
-            ))
-
         retry_context = context.get("retry_context")
         if isinstance(retry_context, dict) and retry_context:
             sections.append(ContextSection(
@@ -199,11 +187,12 @@ class AgentContextAssembler:
 
         chain_context = context.get("chain_context")
         if isinstance(chain_context, dict) and chain_context:
-            sections.append(ContextSection(
-                "FOLLOW UP CONTEXT",
-                self._format_chain_context(chain_context),
-                priority=30,
-            ))
+            if not context.get(CONVERSATION_THREAD_SEEDED_KEY):
+                sections.append(ContextSection(
+                    "FOLLOW UP CONTEXT",
+                    self._format_chain_context(chain_context),
+                    priority=30,
+                ))
             pinned_body = self._format_pinned_context(chain_context)
             if pinned_body:
                 sections.append(ContextSection(

@@ -96,8 +96,14 @@
 .checkpoint-review-output-action {
   margin-right: auto;
   background: var(--background-primary);
-  border: var(--border-thin) solid var(--secondary);
-  color: var(--secondary);
+  border: var(--border-thin) solid var(--warning-base);
+  color: var(--text-primary);
+}
+
+.checkpoint-review-output-action:hover:not(:disabled),
+.checkpoint-review-output-action[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--warning-base) 16%, var(--background-primary));
+  opacity: 1;
 }
 
 .checkpoint-flow-content {
@@ -206,7 +212,8 @@
 .checkpoint-inline-card {
   padding: var(--padding-m);
   border-color: var(--warning-base);
-  border-width: var(--border-medium);
+  border-width: var(--border-thin);
+  cursor: default;
 }
 
 .checkpoint-inline-card .checkpoint-prompt {
@@ -357,7 +364,7 @@
   text-align: left;
   padding: var(--padding-s) var(--padding-m);
   background: var(--background-primary);
-  border: var(--border-medium) solid var(--separator-color);
+  border: var(--border-thin) solid var(--separator-color);
   border-radius: var(--corner-radius-medium);
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
@@ -452,7 +459,7 @@
   width: 18px;
   height: 18px;
   margin-top: 1px;
-  border: var(--border-medium) solid currentColor;
+  border: var(--border-thin) solid currentColor;
   color: var(--secondary);
 }
 
@@ -493,14 +500,14 @@
   display: block;
   width: 100%;
   box-sizing: border-box;
-  min-height: 72px;
-  padding: var(--padding-s) var(--padding-m);
+  min-height: 84px;
+  padding: 6px var(--padding-s);
   background: var(--background-primary);
   border: var(--border-thin) solid color-mix(in srgb, var(--primary) 25%, transparent);
   border-radius: var(--corner-radius-medium);
   font-family: var(--font-family-light);
-  font-size: var(--font-size-body);
-  line-height: 1.5;
+  font-size: var(--font-size-callout);
+  line-height: 1.4;
   color: var(--text-primary);
   caret-color: var(--text-primary);
   -webkit-caret-color: var(--text-primary);
@@ -561,7 +568,7 @@ fieldset.checkpoint-provider-form-field {
 }
 
 .checkpoint-clarification-input {
-  min-height: 56px;
+  min-height: 72px;
 }
 
 .checkpoint-numeric {

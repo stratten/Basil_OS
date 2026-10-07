@@ -11,6 +11,19 @@ export const DEFAULT_FEATURES: WizardFeature[] = [
   { id: 'json_mode', name: 'JSON Mode', isEnabled: false },
 ]
 
+export type ServerType = 'openai_compatible' | 'ollama'
+
+export const SERVER_TYPE_OPTIONS: { value: ServerType; label: string }[] = [
+  { value: 'openai_compatible', label: 'Other OpenAI-compatible server' },
+  { value: 'ollama', label: 'Ollama' },
+]
+
+export const SERVER_TYPE_HINT = 'Choose Ollama so Basil sends this context window to Ollama when it loads the model. Other servers use the context length they were started with, so enter that value above.'
+
+export function serverTypeFrom(value: string | null | undefined): ServerType {
+  return value === 'ollama' ? 'ollama' : 'openai_compatible'
+}
+
 export interface HFFileOption {
   name: string
   sizeBytes: number | null

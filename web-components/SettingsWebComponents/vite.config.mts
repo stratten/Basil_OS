@@ -40,6 +40,8 @@ export default defineConfig({
       '../shared/BasilWindowChrome.test.tsx',
       '../shared/ExecutionDisclosureChevron.test.tsx',
       '../shared/SettingsSubTabs.test.tsx',
+      '../shared/useCollapseShortcut.test.tsx',
+      '../shared/useSettledExpand.test.tsx',
     ],
   },
 })

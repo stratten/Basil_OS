@@ -11,6 +11,8 @@ import tempfile
 from dataclasses import dataclass
 from typing import Optional
 
+from .browser_pinned_target import pinned_browser_target
+
 logger = logging.getLogger(__name__)
 
 
@@ -277,15 +279,69 @@ async def get_default_browser() -> str:
         return "Safari"
 
 
+_CLOSED_PINNED_WINDOW_ERROR = (
+    "Basil's browser window for this task was closed. Call browser_tabs with "
+    "action=\"ensure_automation_window\" to open a new one, then continue there."
+)
+
+
+def _applescript_string_literal(value: str) -> str:
+    return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _pinned_window_id(browser: str, window_index: Optional[int], tab_index: Optional[int]) -> Optional[int]:
+    pinned = pinned_browser_target(browser)
+    if pinned is None or pinned.window_id is None:
+        return None
+    if window_index is not None and int(window_index) != pinned.window_index:
+        return None
+    if tab_index is not None and int(tab_index) != pinned.tab_index:
+        return None
+    return pinned.window_id
+
+
+def _window_id_applescript(browser: str, escaped_js: str, window_id: int) -> str:
+    closed_result = _applescript_string_literal(json.dumps({
+        "success": False,
+        "browser_window_closed": True,
+        "error": _CLOSED_PINNED_WINDOW_ERROR,
+    }))
+    normalized = browser.lower()
+    if normalized == "safari":
+        app_name = "Safari"
+        run_line = f'set pageData to do JavaScript "{escaped_js}" in current tab of window id {window_id}'
+    elif normalized in {"chrome", "google chrome"}:
+        app_name = "Google Chrome"
+        run_line = f'set pageData to execute active tab of window id {window_id} javascript "{escaped_js}"'
+    elif normalized in {"edge", "microsoft edge"}:
+        app_name = "Microsoft Edge"
+        run_line = f'set pageData to execute active tab of window id {window_id} javascript "{escaped_js}"'
+    else:
+        raise ValueError(f"Unsupported browser: {browser}. Use 'Safari', 'Chrome', or 'Edge'.")
+    return f'''
+tell application "{app_name}"
+    if not (exists window id {window_id}) then
+        return "{closed_result}"
+    end if
+    {run_line}
+    return pageData
+end tell
+'''
+
+
 def build_browser_applescript(
     browser: str,
     js_code: str,
     *,
     window_index: Optional[int] = None,
     tab_index: Optional[int] = None,
+    window_id: Optional[int] = None,
 ) -> str:
-    """Build AppleScript to execute JavaScript in the specified browser."""
+    """Build AppleScript to execute JavaScript in the specified browser, preferring the task's pinned window."""
     escaped_js = js_code.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+    target_window_id = window_id if window_id is not None else _pinned_window_id(browser, window_index, tab_index)
+    if target_window_id is not None:
+        return _window_id_applescript(browser, escaped_js, int(target_window_id))
     window_ref = int(window_index or 1)
     tab_ref = int(tab_index or 1)
     target_supplied = window_index is not None or tab_index is not None

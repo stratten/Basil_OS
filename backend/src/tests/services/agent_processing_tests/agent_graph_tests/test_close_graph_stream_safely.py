@@ -9,13 +9,45 @@ fake stream objects instead of standing up a full LangGraph app.
 
 from __future__ import annotations
 
+import asyncio
+import gc
 import logging
 
 import pytest
 
 from api.services.agent_processing.lifecycle.execution_graph.agent_graph_runtime import (
     _close_graph_stream_safely,
+    _settle_stream_tasks,
 )
+
+
+async def _raises_on_cancel() -> None:
+    try:
+        await asyncio.sleep(10)
+    except asyncio.CancelledError:
+        raise RuntimeError("Node 'execute_todos_with_tools' raised asyncio.CancelledError")
+
+
+@pytest.mark.asyncio
+async def test_settle_cancels_in_flight_task_and_retrieves_its_exception():
+    loop = asyncio.get_running_loop()
+    unretrieved: list[dict] = []
+    previous_handler = loop.get_exception_handler()
+    loop.set_exception_handler(lambda _loop, context: unretrieved.append(context))
+    try:
+        in_flight = asyncio.create_task(_raises_on_cancel())
+        finished = asyncio.create_task(asyncio.sleep(0))
+        await asyncio.sleep(0)
+
+        await _settle_stream_tasks(in_flight, finished, None)
+        await asyncio.sleep(0)
+
+        assert in_flight.done() and finished.done()
+        del in_flight, finished
+        gc.collect()
+        assert unretrieved == []
+    finally:
+        loop.set_exception_handler(previous_handler)
 
 
 class _FakeStreamRaisingBenignRace:

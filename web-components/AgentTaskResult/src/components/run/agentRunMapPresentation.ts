@@ -33,6 +33,12 @@ export function presentRunStatus(run: AgentTaskRunFocusSummary): RunStatusPresen
   if (run.taskStatus === 'awaitingInput') {
     return { label: 'Waiting for input', tone: 'waiting' };
   }
+  if (run.taskStatus === 'paused') {
+    return { label: 'Paused', tone: 'waiting' };
+  }
+  if (run.taskStatus === 'canceled') {
+    return { label: 'Stopped', tone: 'failed' };
+  }
   const isVerifiedContinuityNote = run.hasVerifiedArtifactOutput
     && run.outcome === 'partial'
     && run.resultSeverity === 'warning';

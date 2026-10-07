@@ -526,15 +526,60 @@
   opacity: 0.45;
 }
 
-.meeting-history-delete-confirm {
-  position: absolute;
-  inset: 5px;
-  z-index: 3;
-  justify-content: flex-end;
-  padding: 6px;
-  border-radius: 5px;
-  background: var(--background-tertiary);
-  box-shadow: var(--shadow-medium);
+/* Inline "Delete this meeting?" confirmation, rendered in place of the row's
+   normal content (no overlay). Mirrors the Agent Task sidebar's
+   .sidebar-row--confirm-delete so every history list confirms deletion the
+   same way. */
+.meeting-history-confirm {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--padding-s);
+  padding: 8px 12px;
+  cursor: default;
+}
+
+.meeting-history-confirm__label {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-footnote);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meeting-history-confirm__actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--padding-xs);
+}
+
+.meeting-history-confirm__btn {
+  appearance: none;
+  padding: 2px 8px;
+  border: var(--border-thin) solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  background: var(--background-primary);
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-tiny);
+  cursor: pointer;
+}
+
+.meeting-history-confirm__btn:hover {
+  background: rgba(128, 128, 128, 0.1);
+}
+
+.meeting-history-confirm__btn--danger {
+  border-color: var(--error-base);
+  color: var(--error-base);
+}
+
+.meeting-history-confirm__btn--danger:hover {
+  background: rgba(220, 38, 38, 0.08);
 }
 
 @media (max-width: 620px) {

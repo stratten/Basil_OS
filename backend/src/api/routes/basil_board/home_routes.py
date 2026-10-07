@@ -18,6 +18,7 @@ from api.services.basil_board.models import (
     BoardInquiryDetail,
     HomeTranscribeResponse,
     HomeTurnRequest,
+    HomeTurnRerouteRequest,
     HomeTurnResponse,
 )
 from api.services.basil_board.service import BasilBoardService
@@ -82,6 +83,23 @@ async def submit_home_turn(
     except Exception as exc:
         logger.error("Error submitting Home turn: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error submitting Home turn: {exc}") from exc
+
+
+@router.post("/home/inquiries/{inquiry_id}/reroute", response_model=HomeTurnResponse)
+async def reroute_home_inquiry(
+    inquiry_id: str,
+    body: HomeTurnRerouteRequest,
+    turn_router: HomeTurnRouter = Depends(_router),
+) -> HomeTurnResponse:
+    try:
+        return await turn_router.reroute_inquiry(inquiry_id, body.route_kind)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("Error rerouting Home inquiry %s: %s", inquiry_id, exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error rerouting Home inquiry: {exc}") from exc
 
 
 async def _transcribe_basil_board_voice(
@@ -191,6 +209,7 @@ async def reconcile_home_turn(message_id: str) -> HomeTurnResponse:
     return HomeTurnResponse(
         inquiry_id=inquiry_id,
         user_message_id=turn.user_message_id,
+        conversation_id=turn.conversation_id,
         route_kind=turn.route_kind,
         route_reason=turn.route_reason,
         route_confidence=turn.route_confidence,

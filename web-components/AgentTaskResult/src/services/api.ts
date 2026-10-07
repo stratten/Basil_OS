@@ -357,6 +357,38 @@ export async function cancelSession(
   });
 }
 
+export interface RunControlResponse {
+  success: boolean;
+  status: string;
+  message_id?: string | null;
+}
+
+export async function pauseSession(agentTaskId: string): Promise<RunControlResponse> {
+  return request('POST', `/api/v1/agent-tasks/sessions/${agentTaskId}/pause`, {});
+}
+
+export async function resumeSession(
+  agentTaskId: string,
+  note?: string,
+  referencePaths?: string[],
+): Promise<RunControlResponse> {
+  return request('POST', `/api/v1/agent-tasks/sessions/${agentTaskId}/resume`, {
+    ...(note ? { note } : {}),
+    ...(referencePaths?.length ? { reference_paths: referencePaths } : {}),
+  });
+}
+
+export async function sendRunMessage(
+  agentTaskId: string,
+  text: string,
+  referencePaths?: string[],
+): Promise<RunControlResponse> {
+  return request('POST', `/api/v1/agent-tasks/sessions/${agentTaskId}/message`, {
+    text,
+    ...(referencePaths?.length ? { reference_paths: referencePaths } : {}),
+  });
+}
+
 // Reasoning models for model selector
 export interface ReasoningModel {
   id: string;

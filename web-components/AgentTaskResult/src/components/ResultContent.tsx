@@ -6,7 +6,6 @@ import ExecutionDisclosureChevron from '@shared/ExecutionDisclosureChevron';
 import { ProgressStepsSection } from './result/ExecutionTimeline';
 import { FilesDisplay, ReferencePathsList } from './result/ResultAttachments';
 import { HistoryCard } from './result/HistoryCard';
-import { PartialResultAlert } from './result/PartialResultAlert';
 import { ThinkingSection } from './result/ThinkingSections';
 import { InteractionExchange, ReasoningWithInteractions } from './interaction/InteractionExchange';
 import { userInteractionsFromTimeline } from './interaction/userInteractions';
@@ -20,14 +19,14 @@ import {
 } from './result/resultContentUtils';
 import { RunDetailsDisclosure } from './result/RunDetailsDisclosure';
 import RequestDisplay from './request/RequestDisplay';
-import { getReasoningModels, saveAgentTaskAsSkill, submitAgentTaskFeedback, type ReasoningModel } from '../services/api';
-import ReasoningModelPicker from '../../../shared/ReasoningModelPicker';
-import NativeSymbolIcon from '../../../shared/NativeSymbolIcon';
+import { saveAgentTaskAsSkill, submitAgentTaskFeedback } from '../services/api';
 import { DelegatedProviderReportCards } from './artifacts/DelegatedProviderReportCards';
 import PresenceRegion from '@shared/PresenceRegion';
 import { TurnLabel } from './result/TurnLabel';
 import { resolveTurnStatus } from './result/turnPresentation';
 import { agentTaskRunLabel } from './run/agentTaskRunFocus';
+import { RunStatusCard } from './run/RunStatusCard';
+import { deriveRunPhase, isActivityInCard, showsRunStatusCard } from './run/runPhase';
 import { prefersReducedMotion, type RunNavigationRequest } from './run/runNavigation';
 import { useRunNavigationScroll } from './run/useRunNavigationScroll';
 
@@ -71,7 +70,6 @@ export default function ResultContent({
   const runDetails = useMemo(() => splitRunDetails(parsed.userSummary), [parsed.userSummary]);
   const hasTechnicalSteps = parsed.technicalSteps.length > 0;
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
-  const [isErrorMessageCollapsed, setIsErrorMessageCollapsed] = useState(true);
   const [skillPreview, setSkillPreview] = useState<{ title: string; body: string; when_to_use: string; triggers: string[] } | null>(null);
   const [isSkillSaving, setIsSkillSaving] = useState(false);
   const [skillSaveMessage, setSkillSaveMessage] = useState<ResultActionMessage | null>(null);
@@ -104,10 +102,6 @@ export default function ResultContent({
   ]);
 
   useEffect(() => {
-    setIsErrorMessageCollapsed(true);
-  }, [agentTask.errorMessage]);
-
-  useEffect(() => {
     setSkillPreview(null);
     setSkillSaveMessage(null);
     setIsSkillSaving(false);
@@ -116,40 +110,27 @@ export default function ResultContent({
   }, [agentTask.agentTaskId]);
 
   const hasThinkingSegments = agentTask.thinkingSegments.length > 0;
+  const phase = deriveRunPhase(agentTask);
+  const runEnded = phase.kind === 'settled' || phase.kind === 'canceled' || phase.kind === 'verifying';
   const userInteractions = useMemo(
-    () => userInteractionsFromTimeline(agentTask.executionTimeline),
-    [agentTask.executionTimeline],
+    () => userInteractionsFromTimeline(agentTask.executionTimeline, { runEnded }),
+    [agentTask.executionTimeline, runEnded],
   );
   const hasResult = Boolean(agentTask.result);
   const responseIsStreaming = isUserFacingResponseStreaming(
     agentTask.isStreaming,
     agentTask.result,
   );
-  const hasError = Boolean(agentTask.errorMessage)
-    && agentTask.outcome?.trim().toLowerCase() !== 'completed_with_warnings';
-  const canSaveAsSkill = agentTask.status === 'completed' && !agentTask.isStreaming && hasResult;
-  const [retryModels, setRetryModels] = useState<ReasoningModel[]>([]);
-  const [retryModelId, setRetryModelId] = useState<string | undefined>(
-    agentTask.selectedModelId ?? agentTask.originalModelId,
-  );
-  useEffect(() => {
-    setRetryModelId(agentTask.selectedModelId ?? agentTask.originalModelId);
-  }, [agentTask.agentTaskId, agentTask.selectedModelId, agentTask.originalModelId]);
-  useEffect(() => {
-    if (!hasError) return;
-    getReasoningModels()
-      .then((data) => {
-        setRetryModels(data.models);
-        setRetryModelId((current) => current ?? data.current_model);
-      })
-      .catch((error) => console.error('[ResultContent] Failed to load models:', error));
-  }, [hasError]);
+  const resultIsProvisional = phase.kind === 'verifying';
+  const resultIsPartial = phase.kind === 'canceled' || (phase.kind === 'settled' && phase.outcome !== 'success');
+  const canSaveAsSkill = agentTask.status === 'completed' && !agentTask.isStreaming && hasResult && phase.kind === 'settled';
   const hasActivity = hasVisibleActivity(
     agentTask.executionTimeline,
     agentTask.progressSteps,
   );
-  const activityPresentation = isProcessing || agentTask.isStreaming ? 'dock' : 'inline';
-  const showInlineCompletedActivity = hasActivity && activityPresentation === 'inline';
+  const activityInCard = isActivityInCard(phase);
+  const showInlineCompletedActivity = hasActivity && !activityInCard;
+  const showStatusCard = activityInCard || showsRunStatusCard(phase);
   const onJumpToLatestContent = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -303,6 +284,7 @@ export default function ResultContent({
             isLive={isProcessing && !agentTask.thinkingComplete}
             isRunActive={isProcessing}
             collapseForResponse={responseIsStreaming}
+            runComplete={phase.kind === 'settled' || phase.kind === 'canceled'}
           />
         ) : agentTask.thinking ? (
           <>
@@ -312,7 +294,7 @@ export default function ResultContent({
             <ThinkingSection
               thinking={agentTask.thinking}
               isLive={isProcessing && !agentTask.thinkingComplete}
-              defaultExpanded={isProcessing}
+              defaultExpanded={false}
               collapseForResponse={responseIsStreaming}
             />
           </>
@@ -334,23 +316,6 @@ export default function ResultContent({
         </div>
       </PresenceRegion>
 
-      <PresenceRegion visible={agentTask.verificationStatus === 'pending'} className="result-presence-region">
-        <div className="result-verifying" title="Verifying the outcome…">
-          <span className="result-verifying-dot" aria-hidden="true" />
-          <span>Verifying the outcome — the final result will appear in a moment.</span>
-        </div>
-      </PresenceRegion>
-
-      <PresenceRegion visible={hasError} className="result-presence-region">
-        <PartialResultAlert
-          message={agentTask.errorMessage || ''}
-          isCollapsed={isErrorMessageCollapsed}
-          onToggle={() => setIsErrorMessageCollapsed(!isErrorMessageCollapsed)}
-          severity={agentTask.resultSeverity}
-          outcome={agentTask.outcome}
-        />
-      </PresenceRegion>
-
       <PresenceRegion visible={hasResult} className="result-presence-region result-presence-region--response">
         <div>
           {hasTechnicalSteps && agentTask.executionTimeline.length === 0 && agentTask.progressSteps.length === 0 && (
@@ -358,7 +323,12 @@ export default function ResultContent({
           )}
 
           <div className="result-header" data-run-section="result">
-            <span className="result-label">{hasError ? 'Partial Result:' : 'Result:'}</span>
+            <span className="result-label">{resultIsPartial ? 'Partial Result:' : 'Result:'}</span>
+            {resultIsProvisional && (
+              <span className="result-fallback-badge result-provisional-badge" title="This result is shown while Basil checks it against your request">
+                Provisional
+              </span>
+            )}
             {agentTask.reasoningFallbackModelUsed && (
               <span
                 className="result-fallback-badge"
@@ -462,44 +432,20 @@ export default function ResultContent({
         </div>
       </PresenceRegion>
 
-      <PresenceRegion visible={hasError && !agentTask.isStreaming} className="result-presence-region">
-        <div className="result-actions">
-          {agentTask.checkpointAvailable && (
-            <button className="action-btn primary" onClick={onContinue}>
-              <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M5.5 3.5v9l7-4.5z"/>
-              </svg>
-              {' '}Continue
-            </button>
-          )}
-          <ReasoningModelPicker
-            models={retryModels}
-            selectedModelId={retryModelId}
-            disabled={false}
-            onModelChange={(modelId) => setRetryModelId(modelId)}
-            ariaLabel="Retry model"
-            placeholder="Model"
-          />
-          <button className="action-btn primary" onClick={() => onRetry(retryModelId)}>
-            <NativeSymbolIcon name="retry" style={{ verticalAlign: '-2px' }} />
-            {' '}Retry
-          </button>
-        </div>
-      </PresenceRegion>
       </div>
 
-      {hasActivity && activityPresentation === 'dock' && (
-        <ProgressStepsSection
-          key={`activity-dock-${agentTask.agentTaskId}`}
-          presentation="dock"
-          steps={agentTask.progressSteps}
-          timeline={agentTask.executionTimeline}
-          stepDetails={agentTask.stepDetails}
+      {showStatusCard && (
+        <RunStatusCard
+          key={`run-status-${agentTask.agentTaskId}`}
+          agentTask={agentTask}
+          phase={phase}
+          showTrail={activityInCard}
           selectedDetailId={selectedDetailOwnerId === agentTask.agentTaskId ? selectedDetailId : null}
           onSelectDetail={(detail, isLatest) => onSelectDetail?.(agentTask.agentTaskId, detail, isLatest)}
-          isProcessing={isProcessing}
           hasUnreadLiveContent={hasUnreadLiveContent}
           onJumpToLatestContent={onJumpToLatestContent}
+          onRetry={onRetry}
+          onContinue={onContinue}
         />
       )}
     </div>

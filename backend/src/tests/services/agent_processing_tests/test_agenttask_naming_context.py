@@ -6,7 +6,17 @@ import pytest
 
 from api.services.agent_processing.lifecycle.planning.agent_context_assembler import AgentContextAssembler
 from api.services.agent_processing.lifecycle.planning.request_analyzer import RequestAnalyzer
+from api.services.agent_processing.lifecycle.execution_graph.agent_conversation_thread import (
+    load_thread_for_task,
+    save_thread,
+)
+from api.services.agent_processing.lifecycle.execution_graph.conversation_turns import mark_turn_input
 from api.services.agent_processing.lifecycle.submission import AgentTaskSubmissionService
+from api.services.agent_processing.lifecycle.submission.agent_task_submission_service import (
+    FAST_LANE_SYSTEM,
+    FAST_LANE_THREAD_SYSTEM,
+)
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 
 class FakeAgentTask:
@@ -517,3 +527,133 @@ async def test_handle_discussion_followup_persists_failure_outcome_when_generati
     assert payload["outcome_reason"]
     broadcasted = service.broadcast.call_args.args[0]
     assert broadcasted["success"] is False
+
+
+class InMemoryThreadRepository:
+    def __init__(self):
+        self.rows = {}
+
+    async def save_thread(self, **row):
+        self.rows[row["agent_task_id"]] = dict(row)
+
+    async def get_thread(self, agent_task_id):
+        return self.rows.get(agent_task_id)
+
+
+def _fast_lane_service(repository):
+    chain = [FakeAgentTask(task_id="root", text="Read the notes", sequence=0)]
+    db_service = FakeDbService(chain)
+    db_service.agent_conversation_thread_repository = repository
+    service = AgentTaskSubmissionService(
+        agent_task_orchestrator=SimpleNamespace(websocket_manager=None),
+        db_service=db_service,
+    )
+    service.db_service.store_agent_task = AsyncMock()
+    service.db_service.update_agent_task_status = AsyncMock()
+    service.broadcast = AsyncMock()
+    return service
+
+
+class CapturingFastLaneModel:
+    def __init__(self):
+        self.messages = None
+
+    async def chat_completion(self, messages):
+        self.messages = messages
+        return {"content": "You read /tmp/notes.txt."}
+
+
+@pytest.mark.asyncio
+async def test_handle_discussion_followup_continues_the_real_thread():
+    repository = InMemoryThreadRepository()
+    await save_thread(
+        agent_task_id="root",
+        root_task_id="root",
+        model_family="anthropic-chat",
+        model_id="claude-sonnet-5-5",
+        messages=[
+            mark_turn_input(HumanMessage(content="Current request: Read the notes")),
+            AIMessage(
+                content="",
+                tool_calls=[{"name": "read_file", "args": {"path": "/tmp/notes.txt"}, "id": "call-1", "type": "tool_call"}],
+            ),
+            ToolMessage(content="CODE WORD: amber", tool_call_id="call-1", name="read_file"),
+            AIMessage(content="The code word is amber."),
+        ],
+        repository=repository,
+    )
+    service = _fast_lane_service(repository)
+    model = CapturingFastLaneModel()
+    service._resolve_fast_lane_model = AsyncMock(return_value=model)
+
+    with patch(
+        "api.services.agent_processing.lifecycle.runtime.agent_work_ledger_service.AgentWorkLedgerService",
+        side_effect=RuntimeError("no repository configured"),
+    ):
+        result = await service.handle_discussion_followup(
+            "Which file did you read?",
+            root_task_id="root",
+            agent_task_id="fast-1",
+            previous_task_id="root",
+        )
+
+    assert result["success"] is True
+    sent = model.messages
+    assert sent[0] == {"role": "system", "content": FAST_LANE_THREAD_SYSTEM}
+    assert sent[1] == {"role": "user", "content": "Read the notes"}
+    assert sent[2]["role"] == "assistant"
+    assert '[Called read_file with {"path": "/tmp/notes.txt"}]' in sent[2]["content"]
+    assert "[read_file returned: CODE WORD: amber]" in sent[2]["content"]
+    assert "The code word is amber." in sent[2]["content"]
+    assert sent[-1] == {"role": "user", "content": "Which file did you read?"}
+
+    stored = await load_thread_for_task("fast-1", repository=repository)
+    assert stored is not None
+    assert stored.model_family == "neutral"
+    assert stored.model_id == ""
+    assert stored.messages[-2].content == "Current request: Which file did you read?"
+    assert stored.messages[-1].content == "You read /tmp/notes.txt."
+    assert repository.rows["fast-1"]["root_task_id"] == "root"
+
+
+@pytest.mark.asyncio
+async def test_handle_discussion_followup_without_a_thread_keeps_the_text_history():
+    repository = InMemoryThreadRepository()
+    service = _fast_lane_service(repository)
+    model = CapturingFastLaneModel()
+    service._resolve_fast_lane_model = AsyncMock(return_value=model)
+
+    with patch(
+        "api.services.agent_processing.lifecycle.runtime.agent_work_ledger_service.AgentWorkLedgerService",
+        side_effect=RuntimeError("no repository configured"),
+    ):
+        await service.handle_discussion_followup(
+            "Which file did you read?",
+            root_task_id="root",
+            agent_task_id="fast-1",
+            previous_task_id="root",
+        )
+
+    assert model.messages[0] == {"role": "system", "content": FAST_LANE_SYSTEM}
+    assert "User: Which file did you read?" in model.messages[1]["content"]
+    stored = await load_thread_for_task("fast-1", repository=repository)
+    assert stored is not None
+    assert "Read the notes" in stored.messages[0].content
+    assert stored.messages[0].content.endswith("Current request: Which file did you read?")
+
+
+@pytest.mark.asyncio
+async def test_handle_discussion_followup_failure_stores_no_thread():
+    repository = InMemoryThreadRepository()
+    service = _fast_lane_service(repository)
+    service._resolve_fast_lane_model = AsyncMock(return_value=None)
+
+    result = await service.handle_discussion_followup(
+        "Which file did you read?",
+        root_task_id="root",
+        agent_task_id="fast-1",
+        previous_task_id="root",
+    )
+
+    assert result["success"] is False
+    assert repository.rows == {}

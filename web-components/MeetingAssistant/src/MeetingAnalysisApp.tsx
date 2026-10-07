@@ -2,6 +2,8 @@ import { useEffect, useMemo, useReducer, useState } from 'react';
 import { copyText, exportAnalysis, registerEventHandler, reportReady, toggleWindowCollapse, viewAnalysis } from './bridge/meetingBridge';
 import { applyMeetingBridgeEvent, initialMeetingState } from './state/meetingReducer';
 import AnalysisResults from './components/AnalysisResults';
+import { useCollapseShortcut } from '@shared/useCollapseShortcut';
+import { useSettledExpand } from '@shared/useSettledExpand';
 import WindowChrome from './components/WindowChrome';
 import { applyMeetingHostFonts, applyMeetingHostTheme } from './lib/hostAppearance';
 import {
@@ -16,6 +18,7 @@ export default function MeetingAnalysisApp() {
   const [state, dispatch] = useReducer(applyMeetingBridgeEvent, initialMeetingState);
   const [tab, setTab] = useState<AnalysisModeId | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const isContentCollapsed = useSettledExpand(isCollapsed);
 
   useEffect(() => {
     registerEventHandler((event) => dispatch(event));
@@ -39,6 +42,14 @@ export default function MeetingAnalysisApp() {
 
   const exportText = result ? buildAnalysisExportText(result, proposals) : '';
 
+  const handleToggleCollapse = () => {
+    const next = !isCollapsed;
+    setIsCollapsed(next);
+    toggleWindowCollapse(next);
+  };
+
+  useCollapseShortcut(handleToggleCollapse);
+
   return (
     <div className="basil-webkit-window-frame">
       <div className="basil-webkit-window-surface meeting-analysis-surface">
@@ -48,11 +59,7 @@ export default function MeetingAnalysisApp() {
           titleVariant="headline"
           isCollapsed={isCollapsed}
           isRecording={false}
-          onToggleCollapse={() => {
-            const next = !isCollapsed;
-            setIsCollapsed(next);
-            toggleWindowCollapse(next);
-          }}
+          onToggleCollapse={handleToggleCollapse}
           trailing={result ? (
             <div className="meeting-window-chrome-trailing">
               <button
@@ -77,10 +84,10 @@ export default function MeetingAnalysisApp() {
           ) : null}
         />
         <div
-          hidden={isCollapsed}
-          aria-hidden={isCollapsed}
-          inert={isCollapsed ? '' : undefined}
-          style={isCollapsed ? undefined : { display: 'contents' }}
+          hidden={isContentCollapsed}
+          aria-hidden={isContentCollapsed}
+          inert={isContentCollapsed ? '' : undefined}
+          style={isContentCollapsed ? undefined : { display: 'contents' }}
         >
         {state.ui?.isLoadingAnalysisResult ? (
           <div className="meeting-loading-state">Opening analysis…</div>

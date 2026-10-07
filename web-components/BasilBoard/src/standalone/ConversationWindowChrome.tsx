@@ -1,4 +1,6 @@
 import { useState, type ReactNode } from 'react';
+import { useCollapseShortcut } from '@shared/useCollapseShortcut';
+import { useSettledExpand } from '@shared/useSettledExpand';
 import { requestWindowClose, requestWindowCollapse, requestWindowExpand, requestWindowMinimize } from '../services/bridge';
 
 interface ConversationWindowChromeProps {
@@ -11,6 +13,7 @@ export default function ConversationWindowChrome({
   subtitle,
 }: ConversationWindowChromeProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const isContentCollapsed = useSettledExpand(isCollapsed);
 
   const toggleCollapsed = () => {
     const next = !isCollapsed;
@@ -22,9 +25,11 @@ export default function ConversationWindowChrome({
     }
   };
 
+  useCollapseShortcut(toggleCollapsed);
+
   return (
     <div className="basil-webkit-window-frame conversation-standalone-frame">
-      <div className={`basil-board-root basil-board-detached-shell basil-webkit-window-surface${isCollapsed ? ' is-collapsed' : ''}`}>
+      <div className={`basil-board-root basil-board-detached-shell basil-webkit-window-surface${isContentCollapsed ? ' is-collapsed' : ''}`}>
         <header className="basil-board-detached-header">
           <div className="conversation-window-header-left">
             <div className="basil-board-window-controls">
@@ -85,9 +90,9 @@ export default function ConversationWindowChrome({
           </div>
         </header>
         <main
-          className={`basil-board-content${isCollapsed ? ' is-collapsed' : ''}`}
-          aria-hidden={isCollapsed}
-          inert={isCollapsed ? '' : undefined}
+          className={`basil-board-content${isContentCollapsed ? ' is-collapsed' : ''}`}
+          aria-hidden={isContentCollapsed}
+          inert={isContentCollapsed ? '' : undefined}
         >
           {children}
         </main>

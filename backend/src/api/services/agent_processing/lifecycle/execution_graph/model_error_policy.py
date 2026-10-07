@@ -1,10 +1,10 @@
 """Classify model-call failures so each failure kind gets the recovery that fits it.
 
-Recovery per kind, applied by ``execute_with_token_retry``:
-- context_overflow: resume with a digest of captured steps, or trim the oldest context, then retry.
-- empty_generation: retry the pass once, then return a controlled empty result.
-- transient_exhausted: a typed ``TransientModelError`` that the LLM-level retry already retried; the pass is not restarted.
-- transient: an untyped network-shaped failure; the pass restarts after an exponential backoff.
+Recovery per kind, applied per model call by ``ModelRecoveryMiddleware`` in ``agent_loop_model_recovery``:
+- context_overflow: compact older tool results in the model request, then stop with the completed steps.
+- empty_generation: retry the model call once, then return a controlled empty result.
+- transient_exhausted: a typed ``TransientModelError``; the model call is retried with jittered backoff.
+- transient: an untyped network-shaped failure; the model call is retried after an exponential backoff.
 - fatal: everything else, including authentication failures; never retried.
 """
 

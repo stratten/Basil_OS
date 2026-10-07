@@ -160,11 +160,22 @@ def add_custom_model(model_id: str, config: Dict[str, Any]) -> None:
     missing = [f for f in required_fields if f not in config]
     if missing:
         raise ValueError(f"Missing required fields: {missing}")
+    _validate_server_type(config)
     
     # Add the model.
     models[model_id] = config
     _save_custom_models()
     logger.info(f"Added custom model: {model_id}")
+
+
+def _validate_server_type(config: Dict[str, Any]) -> None:
+    server_type = config.get("server_type")
+    if server_type is None:
+        return
+    if server_type not in ("openai_compatible", "ollama"):
+        raise ValueError("server_type must be 'openai_compatible' or 'ollama'")
+    if server_type == "ollama" and config.get("handler") != "openai_compatible":
+        raise ValueError("server_type 'ollama' requires the openai_compatible handler")
 
 
 def update_custom_model(model_id: str, config: Dict[str, Any]) -> None:
@@ -186,6 +197,7 @@ def update_custom_model(model_id: str, config: Dict[str, Any]) -> None:
     valid_handlers = ["openai_compatible", "anthropic_compatible", "llama_cpp"]
     if config.get("handler") not in valid_handlers:
         raise ValueError(f"Handler must be one of: {valid_handlers}")
+    _validate_server_type(config)
     
     # Update the model.
     models[model_id] = config

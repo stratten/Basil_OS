@@ -1,5 +1,5 @@
 import type { DerivedAgentTaskArtifacts } from '../artifacts/artifactDerivation';
-import { SpeechBubbleGlyph } from '../interaction/InteractionExchange';
+import { PausedGlyph, SpeechBubbleGlyph, YourTurnGlyph } from '../interaction/InteractionExchange';
 import { interactionResponseLabel, interactionSummary } from '../interaction/userInteractions';
 import type { AgentRunOverviewPresentation, AgentRunOverviewStage, AgentRunStage } from './agentRunPresentation';
 
@@ -10,9 +10,10 @@ export const EMPTY_RUN_ARTIFACTS: DerivedAgentTaskArtifacts = {
   ungrouped: [],
 };
 
-export function RunStageGlyph({ stage }: { stage: Pick<AgentRunStage, 'kind' | 'state'> }) {
+export function RunStageGlyph({ stage }: { stage: Pick<AgentRunStage, 'kind' | 'state' | 'interaction'> }) {
   if (stage.kind === 'interaction') {
-    return <SpeechBubbleGlyph />;
+    if (stage.interaction?.kind === 'pause') return <PausedGlyph />;
+    return stage.state === 'waiting' ? <YourTurnGlyph /> : <SpeechBubbleGlyph />;
   }
   if (stage.state === 'failed') {
     return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" /></svg>;
@@ -41,7 +42,13 @@ function RunStageContent({ stage, terminalStateLabel }: {
         <span className="run-card-stage-evidence">{terminalStateLabel}</span>
       ) : stage.kind === 'interaction' && stage.interaction ? (
         <span className="run-card-stage-evidence" title={interactionSummary(stage.interaction)}>
+          {stage.state === 'waiting' && <span className="run-card-your-turn">Your turn</span>}
           {interactionResponseLabel(stage.interaction)}
+        </span>
+      ) : stage.state === 'waiting' ? (
+        <span className="run-card-stage-evidence">
+          <span className="run-card-your-turn">Your turn</span>
+          Waiting on you
         </span>
       ) : stage.artifactCount > 0 ? (
         <span className="run-card-stage-evidence">{stage.artifactCount} document{stage.artifactCount === 1 ? '' : 's'}</span>
@@ -69,7 +76,9 @@ export function RunCard({
     ? 'Working now'
     : presentation.terminalState === 'completed'
       ? 'Ready for review'
-      : 'Needs attention';
+      : presentation.stoppedByUser
+        ? 'Stopped by you'
+        : 'Needs attention';
 
   return (
     <section className="run-card" aria-label={ariaLabel}>

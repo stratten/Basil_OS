@@ -357,12 +357,4 @@ def create_tool_function(
         args_schema=input_model,
         metadata=progress_metadata,
         coroutine=tool_function,
-        return_direct=(
-            service_name == "file_service"
-            and method_name in {
-                "detect_and_prepare_current_document",
-                "find_file_for_llm",
-                "prepare_file_by_path",
-            }
-        ),
     )

@@ -320,7 +320,7 @@ export default function CheckpointFlow({ agentTaskId, checkpoint, mode }: Props)
             : 'Type a different answer or add a note for Basil.'
         }
         aria-describedby={targetAuthorizationMetadata ? 'checkpoint-clarification-help' : undefined}
-        rows={2}
+        rows={3}
         disabled={submitting}
       />
     </div>
@@ -429,21 +429,20 @@ export default function CheckpointFlow({ agentTaskId, checkpoint, mode }: Props)
         )}
       </div>
 
-      {mode === 'overlay' && (
-        <div className="agent-task-input-actions checkpoint-review-output-actions">
+      </div>
+      <div className="agent-task-input-actions checkpoint-submit-actions">
+        {mode === 'overlay' && (
           <button
             type="button"
             className="action-btn checkpoint-review-output-action"
             onClick={handleReviewOutput}
             aria-pressed={isReviewingOutput}
             disabled={submitting}
+            title="Look over the work Basil has done so far before you answer"
           >
-            {isReviewingOutput ? 'Back to input' : 'Review Output'}
+            {isReviewingOutput ? 'Back to question' : 'See work so far'}
           </button>
-        </div>
-      )}
-      </div>
-      <div className="agent-task-input-actions checkpoint-submit-actions">
+        )}
         {targetAuthorizationMetadata && (
           <button
             className="action-btn"
@@ -477,7 +476,7 @@ export default function CheckpointFlow({ agentTaskId, checkpoint, mode }: Props)
   if (mode === 'overlay') {
     return (
       <AgentTaskInputSurface
-        eyebrow={isReviewingOutput ? 'Review output, then respond' : 'Input required'}
+        eyebrow={isReviewingOutput ? 'Look over the work, then answer' : 'Input required'}
         isReviewingOutput={isReviewingOutput}
       >
         {content}

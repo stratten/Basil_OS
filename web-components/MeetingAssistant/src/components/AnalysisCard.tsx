@@ -129,9 +129,11 @@ export default function AnalysisCard({ ui, analysisHistory }: { ui: MeetingUISta
             <span title={entry.modelUsed}>{entry.shortModelName || entry.modelUsed}</span>
             {pendingDeleteFilename === entry.filename ? (
               <span className="meeting-analysis-delete-confirm">
-                Delete?
-                <button type="button" onClick={() => { deleteAnalysis(entry.filename); setPendingDeleteFilename(null); }}>Delete</button>
-                <button type="button" onClick={() => setPendingDeleteFilename(null)}>Cancel</button>
+                <span className="meeting-analysis-delete-confirm__label">Delete?</span>
+                <span className="meeting-analysis-delete-confirm__actions">
+                  <button type="button" onClick={() => { deleteAnalysis(entry.filename); setPendingDeleteFilename(null); }}>Delete</button>
+                  <button type="button" onClick={() => setPendingDeleteFilename(null)}>Cancel</button>
+                </span>
               </span>
             ) : (
               <span className="meeting-analysis-history-actions"><button type="button" onClick={() => viewAnalysis(entry.filename)} disabled={ui.isLoadingAnalysisResult}>{ui.isLoadingAnalysisResult ? 'Opening…' : 'View'}</button><button type="button" className="meeting-analysis-history-delete" onClick={() => setPendingDeleteFilename(entry.filename)} aria-label={`Delete analysis from ${entry.formattedDate}`}>Delete</button></span>

@@ -21,7 +21,7 @@ import logging
 import asyncio
 import json
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from ..finalization.result_finalizer_tool import finalize_agent_task_result
 import os
 from pathlib import Path
@@ -204,6 +204,23 @@ def _derive_thread_id(context: Dict[str, Any], user_agent_task: str) -> str:
     return f"session_{uuid.uuid4().hex[:8]}"
 
 
+def _retrieve_task_outcome(task: asyncio.Task) -> None:
+    if not task.cancelled():
+        task.exception()
+
+
+async def _settle_stream_tasks(*tasks: Optional[asyncio.Task]) -> None:
+    """Cancel and wait out the stream's helper tasks so none is left running or holding an unretrieved exception."""
+    live_tasks = [task for task in tasks if task is not None]
+    for task in live_tasks:
+        task.add_done_callback(_retrieve_task_outcome)
+        if not task.done():
+            task.cancel()
+    unfinished = [task for task in live_tasks if not task.done()]
+    if unfinished:
+        await asyncio.wait(unfinished)
+
+
 async def _close_graph_stream_safely(graph_stream: Any) -> None:
     """Best-effort ``aclose()`` on a graph astream, tolerating one benign race.
 
@@ -294,6 +311,8 @@ async def execute_tool_enhanced_workflow(user_agent_task: str, context: Dict[str
                 node_names=sorted(event.keys()),
             )
 
+        next_event_task: Optional[asyncio.Task] = None
+        cancel_task: Optional[asyncio.Task] = None
         try:
             if cancel_event is not None and hasattr(cancel_event, "wait"):
                 while True:
@@ -301,20 +320,13 @@ async def execute_tool_enhanced_workflow(user_agent_task: str, context: Dict[str
                         raise asyncio.CancelledError()
                     next_event_task = asyncio.create_task(graph_stream.__anext__())
                     cancel_task = asyncio.create_task(cancel_event.wait())
-                    done, pending = await asyncio.wait(
+                    done, _pending = await asyncio.wait(
                         {next_event_task, cancel_task},
                         return_when=asyncio.FIRST_COMPLETED,
                     )
                     if cancel_task in done and cancel_task.result():
-                        next_event_task.cancel()
-                        try:
-                            await next_event_task
-                        except (asyncio.CancelledError, StopAsyncIteration):
-                            pass
                         raise asyncio.CancelledError()
                     cancel_task.cancel()
-                    for pending_task in pending:
-                        pending_task.cancel()
                     try:
                         event = next_event_task.result()
                     except StopAsyncIteration:
@@ -324,6 +336,7 @@ async def execute_tool_enhanced_workflow(user_agent_task: str, context: Dict[str
                 async for event in graph_stream:
                     _record_graph_event(event)
         finally:
+            await _settle_stream_tasks(next_event_task, cancel_task)
             await _close_graph_stream_safely(graph_stream)
 
     # Extract results from the final state

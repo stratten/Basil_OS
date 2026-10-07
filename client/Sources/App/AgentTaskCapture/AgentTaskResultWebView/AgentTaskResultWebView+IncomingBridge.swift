@@ -303,6 +303,7 @@ extension AgentTaskResultWebView {
             }
         case "pickFiles":
             let panel = NSOpenPanel()
+            panel.applyBasilThemedAppearance()
             panel.allowsMultipleSelection = true
             panel.canChooseFiles = true
             panel.canChooseDirectories = true

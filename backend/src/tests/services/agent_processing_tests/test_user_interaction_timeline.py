@@ -198,7 +198,7 @@ def test_checkpoint_kind_and_status_mapping():
     assert checkpoint_interaction_status("Yes", None) == "answered"
     assert checkpoint_interaction_status("Yes", {"status": "authorized"}) == "approved"
     assert checkpoint_interaction_status("No", {"status": "rejected"}) == "denied"
-    assert checkpoint_interaction_status("", {"status": "canceled"}) == "cancelled"
+    assert checkpoint_interaction_status("", {"status": "canceled"}) == "canceled"
     assert checkpoint_interaction_status("Which one?", {"status": "clarification_received"}) == "answered"
 
 

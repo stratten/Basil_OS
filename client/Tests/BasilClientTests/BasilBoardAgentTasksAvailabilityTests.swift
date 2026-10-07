@@ -134,6 +134,49 @@ final class BasilBoardAgentTasksAvailabilityTests: XCTestCase {
         AgentTaskResultPresentationCoordinator.shared.standaloneDidDismiss()
     }
 
+    func testHomeForwardWaitsForAgentsTabThenQueuesShowExisting() throws {
+        let webView = BasilBoardWebView()
+        webView.handleMessage(
+            name: "basilBoardBridge",
+            body: ["type": "showAgentTaskFromHome", "agentTaskId": "task-from-home"]
+        )
+        XCTAssertEqual(webView.pendingHomeAgentTaskId, "task-from-home")
+        XCTAssertNil(AgentTaskResultPresentationCoordinator.shared.activeEmbeddedHost)
+
+        webView.handleMessage(name: "basilBoardBridge", body: ["type": "activateBoardAgentTasksSurface"])
+
+        XCTAssertNil(webView.pendingHomeAgentTaskId)
+        let host = try XCTUnwrap(AgentTaskResultPresentationCoordinator.shared.activeEmbeddedHost)
+        let queued = host.pendingWebCommands.compactMap { command -> String? in
+            if case let .showExisting(agentTaskId) = command { return agentTaskId }
+            return nil
+        }
+        XCTAssertEqual(queued, ["task-from-home"])
+
+        webView.handleMessage(name: "basilBoardBridge", body: ["type": "deactivateBoardAgentTasksSurface"])
+    }
+
+    func testHomeForwardWithVisibleStandaloneDoesNotWaitForAgentsTab() {
+        AgentTaskResultPresentationCoordinator.shared.standaloneDidBecomeVisible()
+        let webView = BasilBoardWebView()
+        webView.handleMessage(
+            name: "basilBoardBridge",
+            body: ["type": "showAgentTaskFromHome", "agentTaskId": "task-from-home"]
+        )
+
+        XCTAssertNil(webView.pendingHomeAgentTaskId)
+        XCTAssertNil(AgentTaskResultPresentationCoordinator.shared.activeEmbeddedHost)
+        AgentTaskResultWidgetController.shared?.dismiss()
+        AgentTaskResultPresentationCoordinator.shared.standaloneDidDismiss()
+    }
+
+    func testHomeForwardWithoutTaskIdIsIgnored() {
+        let webView = BasilBoardWebView()
+        webView.handleMessage(name: "basilBoardBridge", body: ["type": "showAgentTaskFromHome", "agentTaskId": ""])
+
+        XCTAssertNil(webView.pendingHomeAgentTaskId)
+    }
+
     func testStandaloneDismissingRecreatesEmbeddedHost() {
         let webView = BasilBoardWebView()
         webView.handleMessage(name: "basilBoardBridge", body: ["type": "activateBoardAgentTasksSurface"])

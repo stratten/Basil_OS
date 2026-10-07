@@ -4,29 +4,55 @@ import ExecutionDisclosureChevron from '@shared/ExecutionDisclosureChevron';
 import MarkdownRenderer from '../MarkdownRenderer';
 import { shouldAutoCollapseThinking } from './thinkingPresentation';
 
+/** Whether the newest reasoning pass is shown open. A new pass takes over the open view and the pass it replaces folds into the earlier passes. */
+export interface ReasoningFollowState {
+  open: boolean;
+  setOpen: (open: boolean) => void;
+}
+
+/** Reasoning starts closed and only the user opens or closes the latest pass. While it is open, each new pass opens in its place, through the response and after the run ends. */
+export function useReasoningFollowState(): ReasoningFollowState {
+  const [open, setOpen] = useState(false);
+  return { open, setOpen };
+}
+
+/** Negative iterations are the backend's post-loop passes: -1 writes the final answer, -2 verifies the outcome. */
+export function reasoningPassLabel(iteration: number): string {
+  if (iteration === -1) return 'Reasoning (Final answer)';
+  if (iteration === -2) return 'Reasoning (Verifying the outcome)';
+  return `Reasoning (Step ${iteration})`;
+}
+
 export function ThinkingSegments({
   segments,
   isLive,
   isRunActive,
   collapseForResponse,
+  follow,
+  followable = true,
 }: {
   segments: ThinkingSegment[];
   isLive: boolean;
   isRunActive?: boolean;
   collapseForResponse: boolean;
+  follow?: ReasoningFollowState;
+  followable?: boolean;
 }) {
+  const ownFollow = useReasoningFollowState();
+  const active = followable ? follow ?? ownFollow : undefined;
+  const runActive = isRunActive ?? isLive;
+
+  const followProps = active
+    ? { followOpen: active.open, onUserToggle: active.setOpen }
+    : {};
+
   // A local model can loop through many reasoning iterations, each arriving
-  // as its own ThinkingSegment. Rendering every one as its own standalone
-  // pill dominates the main content area once there are more than a
-  // handful. Only the latest segment (the one that can still be live) gets
-  // its own standalone pill; every earlier segment collapses into a single
-  // "N earlier reasoning passes" group, reusing the same ThinkingPill for
-  // each item once expanded so nothing about an individual pill's own
-  // rendering or per-item expand/collapse memory (keyed on seg.iteration)
-  // changes. With one segment total -- the common case for tasks that
-  // don't loop much -- there is no "earlier" group and this is identical
-  // to before. Once the run is no longer active, the latest step has no
-  // special standing, so every step folds into one "N reasoning passes" group.
+  // as its own ThinkingSegment. Only the latest segment gets its own
+  // standalone pill; every earlier segment collapses into a single
+  // "N earlier reasoning passes" group. The latest pill's open state is
+  // owned here rather than by the pill, so a new pass opens exactly as the
+  // previous one was left. Once the run is no longer active and the user is
+  // not holding the reasoning open, every step folds into one group.
   if (segments.length <= 1) {
     return (
       <div className="thinking-segments">
@@ -37,9 +63,10 @@ export function ThinkingSegments({
               key={seg.iteration}
               segment={seg}
               isLive={segIsLive}
-              defaultExpanded={segIsLive}
-              label={undefined}
+              defaultExpanded={false}
+              label={seg.iteration < 0 ? reasoningPassLabel(seg.iteration) : undefined}
               collapseForResponse={collapseForResponse}
+              {...followProps}
             />
           );
         })}
@@ -47,7 +74,7 @@ export function ThinkingSegments({
     );
   }
 
-  if (!(isRunActive ?? isLive)) {
+  if (!runActive && !active?.open) {
     return (
       <div className="thinking-segments">
         <ThinkingHistoryGroup
@@ -59,8 +86,8 @@ export function ThinkingSegments({
   }
 
   const earlierSegments = segments.slice(0, -1);
-  const latestSegment = segments[segments.length - 1];
-  const latestIsLive = isLive && !latestSegment.isComplete;
+  const latest = segments[segments.length - 1];
+  const latestIsLive = isLive && !latest.isComplete;
 
   return (
     <div className="thinking-segments">
@@ -69,12 +96,13 @@ export function ThinkingSegments({
         title={`${earlierSegments.length} earlier reasoning ${earlierSegments.length === 1 ? 'pass' : 'passes'}`}
       />
       <ThinkingPill
-        key={latestSegment.iteration}
-        segment={latestSegment}
+        key={latest.iteration}
+        segment={latest}
         isLive={latestIsLive}
-        defaultExpanded={latestIsLive}
-        label={`Reasoning (Step ${latestSegment.iteration})`}
+        defaultExpanded={false}
+        label={reasoningPassLabel(latest.iteration)}
         collapseForResponse={collapseForResponse}
+        {...followProps}
       />
     </div>
   );
@@ -108,7 +136,7 @@ function ThinkingHistoryGroup({ segments, title }: { segments: ThinkingSegment[]
                 segment={seg}
                 isLive={false}
                 defaultExpanded={false}
-                label={`Reasoning (Step ${seg.iteration})`}
+                label={reasoningPassLabel(seg.iteration)}
                 collapseForResponse={false}
               />
             ))}
@@ -125,45 +153,49 @@ function ThinkingPill({
   defaultExpanded,
   label,
   collapseForResponse,
+  followOpen,
+  onUserToggle,
 }: {
   segment: ThinkingSegment;
   isLive: boolean;
   defaultExpanded: boolean;
   label?: string;
   collapseForResponse: boolean;
+  followOpen?: boolean;
+  onUserToggle?: (open: boolean) => void;
 }) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
-  const previousLiveRef = useRef(isLive);
+  const isFollowed = followOpen !== undefined;
+  const [localExpanded, setLocalExpanded] = useState(followOpen ?? defaultExpanded);
   const previousCollapseForResponseRef = useRef(collapseForResponse);
   const responseCollapseHandledRef = useRef(false);
 
   useEffect(() => {
-    const wasLive = previousLiveRef.current;
-    if (isLive && !wasLive) {
-      setExpanded(true);
-      responseCollapseHandledRef.current = false;
-    }
-    if (!isLive && wasLive) {
-      setExpanded(false);
-    }
-    previousLiveRef.current = isLive;
-  }, [isLive]);
+    if (followOpen !== undefined) setLocalExpanded(followOpen);
+  }, [followOpen]);
 
   useEffect(() => {
     const wasStreaming = previousCollapseForResponseRef.current;
+    previousCollapseForResponseRef.current = collapseForResponse;
+    if (isFollowed) return;
     if (wasStreaming && !collapseForResponse && isLive) {
       responseCollapseHandledRef.current = false;
     }
     if (shouldAutoCollapseThinking(wasStreaming, collapseForResponse, responseCollapseHandledRef.current)) {
-      setExpanded(false);
+      setLocalExpanded(false);
       responseCollapseHandledRef.current = true;
     }
-    previousCollapseForResponseRef.current = collapseForResponse;
-  }, [collapseForResponse]);
+  }, [collapseForResponse, isFollowed, isLive]);
+
+  const expanded = followOpen ?? localExpanded;
+  const toggle = () => {
+    const next = !expanded;
+    setLocalExpanded(next);
+    onUserToggle?.(next);
+  };
 
   return (
     <div className="thinking-pill">
-      <div className="execution-steps-header" onClick={() => setExpanded(!expanded)}>
+      <div className="execution-steps-header" onClick={toggle}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {isLive ? (
             <span style={{
@@ -213,24 +245,14 @@ export function ThinkingSection({
   collapseForResponse: boolean;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
-  const previousLiveRef = useRef(isLive);
+  const pinnedRef = useRef(false);
   const previousCollapseForResponseRef = useRef(collapseForResponse);
   const responseCollapseHandledRef = useRef(false);
 
   useEffect(() => {
-    const wasLive = previousLiveRef.current;
-    if (isLive && !wasLive) {
-      setExpanded(true);
-      responseCollapseHandledRef.current = false;
-    }
-    if (!isLive && wasLive) {
-      setExpanded(false);
-    }
-    previousLiveRef.current = isLive;
-  }, [isLive]);
-
-  useEffect(() => {
     const wasStreaming = previousCollapseForResponseRef.current;
+    previousCollapseForResponseRef.current = collapseForResponse;
+    if (pinnedRef.current) return;
     if (wasStreaming && !collapseForResponse && isLive) {
       responseCollapseHandledRef.current = false;
     }
@@ -238,14 +260,18 @@ export function ThinkingSection({
       setExpanded(false);
       responseCollapseHandledRef.current = true;
     }
-    previousCollapseForResponseRef.current = collapseForResponse;
-  }, [collapseForResponse]);
+  }, [collapseForResponse, isLive]);
+
+  const toggle = () => {
+    pinnedRef.current = true;
+    setExpanded(!expanded);
+  };
 
   return (
     <div className="thinking-section">
       <div
         className="execution-steps-header"
-        onClick={() => setExpanded(!expanded)}
+        onClick={toggle}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {isLive ? (

@@ -3,7 +3,7 @@
 Consolidates the "wait for X, but bail out cleanly on a cancel_event or a
 deadline" pattern so callers (e.g. the Swift MCP token bridge) do not each
 reimplement the asyncio.wait bookkeeping. This mirrors the cancel_event race
-already used by the agent executor wrapper (``execute_with_token_retry``) and
+already used by the inner agent loop runner (``drive_agent_loop``) and
 final-answer synthesis, but returns a structured outcome instead of raising so
 callers can degrade gracefully rather than tearing down the whole run.
 """

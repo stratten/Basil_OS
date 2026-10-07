@@ -74,6 +74,12 @@ async def delete_agent_task(
                 agent_task_ids,
             )
 
+        if table_exists("agent_conversation_threads"):
+            conn.execute(
+                f"DELETE FROM agent_conversation_threads WHERE agent_task_id IN ({placeholders})",
+                agent_task_ids,
+            )
+
         conn.execute(
             f"DELETE FROM agent_tasks WHERE id IN ({placeholders})",
             agent_task_ids,

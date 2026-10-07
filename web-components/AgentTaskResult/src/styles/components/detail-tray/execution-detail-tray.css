@@ -106,6 +106,7 @@
 }
 
 .run-card-stage-glyph {
+  position: relative;
   display: grid;
   flex: 0 0 28px;
   width: 28px;
@@ -137,7 +138,19 @@
   border-color: var(--processing-base);
   background: var(--processing-base);
   color: #fff;
-  animation: run-stage-pulse 1.2s ease-in-out infinite;
+}
+
+.run-card-stage.is-active .run-card-stage-glyph::before {
+  position: absolute;
+  inset: -5px;
+  box-sizing: border-box;
+  border: 2px solid transparent;
+  border-top-color: var(--processing-base);
+  border-right-color: var(--processing-base);
+  border-radius: 50%;
+  content: '';
+  pointer-events: none;
+  animation: run-card-stage-spin 1s linear infinite;
 }
 
 .run-card-stage.is-failed .run-card-stage-glyph {
@@ -146,15 +159,21 @@
   color: #fff;
 }
 
-.run-card-stage.is-recorded .run-card-stage-glyph,
-.run-card-stage.is-waiting .run-card-stage-glyph {
+.run-card-stage.is-recorded .run-card-stage-glyph {
   border-color: var(--text-tertiary);
   background: var(--background-primary);
   color: var(--text-tertiary);
 }
 
+.run-card-stage.is-waiting .run-card-stage-glyph {
+  border-color: var(--warning-base);
+  background: var(--background-primary);
+  color: var(--text-primary);
+}
+
 .run-card-stage--interaction .run-card-stage-glyph,
 .run-card-stage--interaction.is-completed .run-card-stage-glyph {
+  border-width: var(--border-thin);
   border-color: var(--secondary);
   border-radius: 8px;
   background: var(--secondary);
@@ -165,6 +184,31 @@
   border-color: var(--warning-base);
   background: var(--warning-base);
   color: var(--text-primary);
+  box-shadow: 0 0 0 2px var(--background-primary), 0 0 0 3px var(--warning-base);
+}
+
+.run-card-stage--interaction.is-waiting .run-card-stage-glyph::before {
+  position: absolute;
+  inset: -2px;
+  box-sizing: border-box;
+  border: var(--border-thin) solid var(--warning-base);
+  border-radius: 10px;
+  content: '';
+  opacity: 0;
+  pointer-events: none;
+  animation: run-card-stage-ping 900ms ease-out 2;
+}
+
+.run-card-your-turn {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--warning-base);
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  line-height: 1.5;
 }
 
 .run-card-stage--interaction.is-recorded .run-card-stage-glyph {
@@ -289,9 +333,21 @@
   overflow-wrap: anywhere;
 }
 
-@keyframes run-stage-pulse {
-  50% {
-    box-shadow: 0 0 0 8px color-mix(in srgb, var(--processing-base) 8%, transparent);
+@keyframes run-card-stage-ping {
+  from {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(1.45);
+  }
+}
+
+@keyframes run-card-stage-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
@@ -727,5 +783,13 @@
   .execution-detail-tray > :not(.detail-tray-resize-handle) {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
+  }
+
+  .run-card-stage-glyph::before {
+    animation-duration: 0.01ms !important;
+  }
+
+  .run-card-stage.is-active .run-card-stage-glyph::before {
+    animation: none !important;
   }
 }

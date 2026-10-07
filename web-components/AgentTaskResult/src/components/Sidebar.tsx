@@ -26,7 +26,7 @@ const HISTORY_PAGE_SIZE = 300;
 const HISTORY_SEARCH_DEBOUNCE_MS = 300;
 
 export function isLiveAgentTaskStatus(status: string): boolean {
-  return ['capturing', 'routing', 'processing', 'awaiting_user_input', 'needs_clarification'].includes(status);
+  return ['capturing', 'routing', 'processing', 'awaiting_user_input', 'needs_clarification', 'paused'].includes(status);
 }
 
 function AgentTaskSidebarToggleIcon() {

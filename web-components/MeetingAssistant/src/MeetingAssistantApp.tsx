@@ -14,10 +14,13 @@ import { CollapsedHistoryRail } from '../../shared/HistorySidebarControls';
 import CollapsibleSidebar from '@shared/CollapsibleSidebar';
 import AnimatedBubble from '../../shared/bubble/AnimatedBubble';
 import { useMeetingMeter } from './bridge/meetingMeterStore';
+import { useCollapseShortcut } from '@shared/useCollapseShortcut';
+import { useSettledExpand } from '@shared/useSettledExpand';
 
 export default function MeetingAssistantApp() {
   const [state, dispatch] = useReducer(applyMeetingBridgeEvent, initialMeetingState);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const isContentCollapsed = useSettledExpand(isCollapsed);
   const [embedded] = useState(
     () => document.documentElement.dataset.meetingAssistantEmbedded === 'true',
   );
@@ -39,6 +42,8 @@ export default function MeetingAssistantApp() {
     setIsCollapsed(next);
     toggleWindowCollapse(next);
   };
+
+  useCollapseShortcut(handleToggleCollapse, !embedded);
 
   const content = useMemo<ReactElement<HTMLAttributes<HTMLDivElement>>>(() => {
     if (!state.connected || !ui) {
@@ -115,9 +120,9 @@ export default function MeetingAssistantApp() {
           />
         )}
         {cloneElement(content, {
-          hidden: isCollapsed,
-          'aria-hidden': isCollapsed,
-          inert: isCollapsed ? '' : undefined,
+          hidden: isContentCollapsed,
+          'aria-hidden': isContentCollapsed,
+          inert: isContentCollapsed ? '' : undefined,
         })}
       </div>
     </div>

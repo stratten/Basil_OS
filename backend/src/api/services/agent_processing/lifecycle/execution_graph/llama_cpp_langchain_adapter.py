@@ -44,6 +44,7 @@ from api.core.models.reasoning.model_runtime_profile import (
     resolve_tool_call_format_for,
     resolve_tool_rendering_for,
 )
+from .conversation_turns import turn_input_index
 from .model_errors import TransientModelError
 from .local_tool_call_parser import (
     extract_text_tool_calls,
@@ -71,10 +72,7 @@ class LocalModelContextWindowExceeded(RuntimeError):
     -- never parsed from llama.cpp's ``ValueError`` text, whose exact wording
     is an internal implementation detail, not a contract Basil owns.
 
-    Deliberately subclasses ``RuntimeError`` rather than ``ValueError``: the
-    caller (``execute_with_token_retry`` in ``agent_execution_core.py``) has
-    an unrelated ``except ValueError`` clause for "No generation chunks were
-    returned" that must never intercept this different failure.
+    Deliberately subclasses ``RuntimeError`` rather than ``ValueError`` so ``classify_model_error`` never mistakes it for the unrelated "No generation chunks were returned" ``ValueError``.
     """
 
     def __init__(self, actual_tokens: int, max_tokens: int) -> None:
@@ -136,6 +134,52 @@ def _count_tokens(llama_instance: Any, text: str) -> int:
 _CONTEXT_TRIM_TOKEN_MARGIN = 512
 
 
+def _group_turns(messages: List[BaseMessage]) -> List[List[BaseMessage]]:
+    """Each non-tool message plus the ToolMessages that directly answer it form one atomic turn."""
+    turns: List[List[BaseMessage]] = []
+    cursor = 0
+    while cursor < len(messages):
+        turn = [messages[cursor]]
+        cursor += 1
+        while cursor < len(messages) and isinstance(messages[cursor], ToolMessage):
+            turn.append(messages[cursor])
+            cursor += 1
+        turns.append(turn)
+    return turns
+
+
+def _turn_tokens(llama_instance: Any, turn: List[BaseMessage]) -> int:
+    return sum(_count_tokens(llama_instance, _message_plain_text(m)) for m in turn)
+
+
+def _keep_newest_turns(
+    llama_instance: Any,
+    turns: List[List[BaseMessage]],
+    available_tokens: int,
+    *,
+    keep_at_least_one: bool,
+) -> List[List[BaseMessage]]:
+    kept: List[List[BaseMessage]] = []
+    used = 0
+    for turn in reversed(turns):
+        cost = _turn_tokens(llama_instance, turn)
+        if used + cost > available_tokens and (kept or not keep_at_least_one):
+            break
+        kept.append(turn)
+        used += cost
+    kept.reverse()
+    return kept
+
+
+def _omitted_turns_marker(dropped_count: int) -> AIMessage:
+    return AIMessage(
+        content=(
+            f"[{dropped_count} earlier tool-call turn(s) omitted here to fit the "
+            "model's context window. Continue from the remaining history below.]"
+        )
+    )
+
+
 def compact_scratchpad_for_context_window(
     llama_instance: Any,
     messages: List[BaseMessage],
@@ -143,17 +187,13 @@ def compact_scratchpad_for_context_window(
 ) -> List[BaseMessage]:
     """Drop the oldest complete tool-call turns until the prompt fits.
 
-    Preserves every leading SystemMessage and the first HumanMessage (the
-    original task) untouched. Walks the remaining messages back-to-front,
-    grouping each AIMessage that carries tool_calls together with the
-    ToolMessage(s) that immediately answer it into one atomic "turn" so a cut
-    can never separate a tool call from its response (llama.cpp's OpenAI-style
-    chat format requires every ToolMessage to follow the AIMessage that issued
-    its tool_call_id). Always keeps at least the single most recent turn, even
-    if it alone exceeds budget -- dropping the very last thing the agent did
-    would be worse than letting the call fail and recovering at a higher
-    level. Replaces every dropped turn with one visible marker message so the
-    model is told compaction happened, rather than silently losing history.
+    Leading SystemMessages are always kept. When the conversation carries a
+    marked current request (a follow-up seeded with earlier turns), that
+    request is pinned, the current turn's newest steps are kept first (at
+    least one), and earlier turns are kept only while they still fit.
+    Otherwise the first HumanMessage is pinned and the newest turns are kept,
+    as before. A tool call is never separated from its response, and one
+    marker message replaces everything dropped.
     """
     if not messages:
         return messages
@@ -167,42 +207,43 @@ def compact_scratchpad_for_context_window(
     while idx < len(messages) and isinstance(messages[idx], SystemMessage):
         head.append(messages[idx])
         idx += 1
+
+    pinned_index = turn_input_index(messages)
+    if pinned_index is not None and pinned_index >= idx:
+        prior_turns = _group_turns(messages[idx:pinned_index])
+        current_head = [messages[pinned_index]]
+        current_turns = _group_turns(messages[pinned_index + 1:])
+        head_tokens = _turn_tokens(llama_instance, head + current_head)
+        kept_current = _keep_newest_turns(
+            llama_instance, current_turns, budget - head_tokens, keep_at_least_one=True
+        )
+        kept_prior: List[List[BaseMessage]] = []
+        if len(kept_current) == len(current_turns):
+            current_tokens = sum(_turn_tokens(llama_instance, turn) for turn in kept_current)
+            kept_prior = _keep_newest_turns(
+                llama_instance, prior_turns, budget - head_tokens - current_tokens, keep_at_least_one=False
+            )
+        dropped_count = (len(prior_turns) - len(kept_prior)) + (len(current_turns) - len(kept_current))
+        if dropped_count == 0:
+            return messages
+        return (
+            head
+            + [_omitted_turns_marker(dropped_count)]
+            + [m for turn in kept_prior for m in turn]
+            + current_head
+            + [m for turn in kept_current for m in turn]
+        )
+
     if idx < len(messages) and isinstance(messages[idx], HumanMessage):
         head.append(messages[idx])
         idx += 1
-
-    turns: List[List[BaseMessage]] = []
-    cursor = idx
-    while cursor < len(messages):
-        turn = [messages[cursor]]
-        cursor += 1
-        while cursor < len(messages) and isinstance(messages[cursor], ToolMessage):
-            turn.append(messages[cursor])
-            cursor += 1
-        turns.append(turn)
-
-    head_tokens = sum(_count_tokens(llama_instance, _message_plain_text(m)) for m in head)
-    kept: List[List[BaseMessage]] = []
-    running_tokens = head_tokens
-    for turn in reversed(turns):
-        turn_tokens = sum(_count_tokens(llama_instance, _message_plain_text(m)) for m in turn)
-        if kept and running_tokens + turn_tokens > budget:
-            break
-        kept.append(turn)
-        running_tokens += turn_tokens
-    kept.reverse()
-
+    turns = _group_turns(messages[idx:])
+    head_tokens = _turn_tokens(llama_instance, head)
+    kept = _keep_newest_turns(llama_instance, turns, budget - head_tokens, keep_at_least_one=True)
     dropped_count = len(turns) - len(kept)
     if dropped_count == 0:
         return messages
-
-    marker = AIMessage(
-        content=(
-            f"[{dropped_count} earlier tool-call turn(s) omitted here to fit the "
-            "model's context window. Continue from the remaining history below.]"
-        )
-    )
-    return head + [marker] + [m for turn in kept for m in turn]
+    return head + [_omitted_turns_marker(dropped_count)] + [m for turn in kept for m in turn]
 
 
 def _detect_context_window_overflow(

@@ -244,10 +244,19 @@
 
 .meeting-analysis-delete-confirm {
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: var(--padding-xs);
+  min-width: 0;
   color: var(--error-base);
   font-size: var(--font-size-status-small);
+}
+
+.meeting-analysis-delete-confirm__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--padding-xs);
 }
 
 .meeting-analysis-delete-confirm button {
@@ -278,23 +287,6 @@
 
 .meeting-history-item-delete {
   align-self: center;
-}
-
-.meeting-history-delete-confirm {
-  display: flex;
-  align-items: center;
-  gap: var(--padding-xs);
-  padding: 0 var(--padding-xs);
-  color: var(--error-base);
-  font-size: var(--font-size-status-small);
-}
-
-.meeting-history-delete-confirm button {
-  border: 0;
-  border-radius: var(--corner-radius-small);
-  background: var(--error-base);
-  color: white;
-  cursor: pointer;
 }
 
 .meeting-history-item-analysis-badge {

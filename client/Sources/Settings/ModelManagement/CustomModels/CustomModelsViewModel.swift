@@ -45,6 +45,7 @@ class CustomModelsViewModel: ObservableObject {
                     featureConfig: value.featureConfig,
                     toolRendering: value.toolRendering,
                     toolCallFormat: value.toolCallFormat,
+                    serverType: value.serverType,
                     description: value.description,
                     fileSize: value.fileSize,
                     fileSizeHuman: value.fileSizeHuman
@@ -82,6 +83,7 @@ class CustomModelsViewModel: ObservableObject {
         featureConfig: [String: AnyCodable]? = nil,
         toolRendering: String? = nil,
         toolCallFormat: String? = nil,
+        serverType: String? = nil,
         description: String?,
         fileSize: Int? = nil,
         fileSizeHuman: String? = nil
@@ -112,6 +114,7 @@ class CustomModelsViewModel: ObservableObject {
                 featureConfig: featureConfig,
                 toolRendering: toolRendering,
                 toolCallFormat: toolCallFormat,
+                serverType: serverType,
                 description: description,
                 fileSize: fileSize,
                 fileSizeHuman: fileSizeHuman
@@ -166,6 +169,7 @@ class CustomModelsViewModel: ObservableObject {
         featureConfig: [String: AnyCodable]? = nil,
         toolRendering: String? = nil,
         toolCallFormat: String? = nil,
+        serverType: String? = nil,
         description: String?
     ) async -> Bool {
         do {
@@ -188,6 +192,7 @@ class CustomModelsViewModel: ObservableObject {
                 featureConfig: featureConfig,
                 toolRendering: toolRendering,
                 toolCallFormat: toolCallFormat,
+                serverType: serverType,
                 description: description
             )
             
@@ -410,6 +415,7 @@ struct CustomModelCreateRequest: Encodable {
     let featureConfig: [String: AnyCodable]?
     let toolRendering: String?
     let toolCallFormat: String?
+    let serverType: String?
     let description: String?
     let fileSize: Int?
     let fileSizeHuman: String?
@@ -432,6 +438,7 @@ struct CustomModelCreateRequest: Encodable {
         case featureConfig = "feature_config"
         case toolRendering = "tool_rendering"
         case toolCallFormat = "tool_call_format"
+        case serverType = "server_type"
         case description
         case fileSize = "file_size"
         case fileSizeHuman = "file_size_human"
@@ -455,6 +462,7 @@ struct CustomModelUpdateRequest: Encodable {
     let featureConfig: [String: AnyCodable]?
     let toolRendering: String?
     let toolCallFormat: String?
+    let serverType: String?
     let description: String?
     
     enum CodingKeys: String, CodingKey {
@@ -474,6 +482,7 @@ struct CustomModelUpdateRequest: Encodable {
         case featureConfig = "feature_config"
         case toolRendering = "tool_rendering"
         case toolCallFormat = "tool_call_format"
+        case serverType = "server_type"
         case description
     }
 }
@@ -536,6 +545,7 @@ struct CustomModelConfigFromAPI: Decodable {
     let featureConfig: [String: AnyCodable]?
     let toolRendering: String?
     let toolCallFormat: String?
+    let serverType: String?
     let description: String?
     let fileSize: Int?
     let fileSizeHuman: String?
@@ -556,6 +566,7 @@ struct CustomModelConfigFromAPI: Decodable {
         case featureConfig = "feature_config"
         case toolRendering = "tool_rendering"
         case toolCallFormat = "tool_call_format"
+        case serverType = "server_type"
         case description
         case fileSize = "file_size"
         case fileSizeHuman = "file_size_human"
@@ -578,6 +589,7 @@ struct CustomModelConfigFromAPI: Decodable {
         featureConfig = try container.decodeIfPresent([String: AnyCodable].self, forKey: .featureConfig)
         toolRendering = try container.decodeIfPresent(String.self, forKey: .toolRendering)
         toolCallFormat = try container.decodeIfPresent(String.self, forKey: .toolCallFormat)
+        serverType = try container.decodeIfPresent(String.self, forKey: .serverType)
         description = try container.decodeIfPresent(String.self, forKey: .description)
         fileSize = try container.decodeIfPresent(Int.self, forKey: .fileSize)
         fileSizeHuman = try container.decodeIfPresent(String.self, forKey: .fileSizeHuman)

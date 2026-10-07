@@ -481,8 +481,8 @@ def create_load_tool_family_tool(
             next_step = "Choose one or more names from available_families and call load_tool_family again."
         elif newly_loaded:
             next_step = (
-                "Stop this executor pass now; the backend will restart execution "
-                "with the exact full schemas for loaded_families."
+                "The exact full schemas for loaded_families are available on your next step. "
+                "Call those tools directly; do not call load_tool_family for these families again."
             )
         else:
             available_tool_names = sorted(
@@ -520,7 +520,6 @@ def create_load_tool_family_tool(
             + render_family_routing_catalog()
         ),
         args_schema=LoadToolFamilyInput,
-        return_direct=True,
     )
     return normalize_structured_tool_args_schema(loader_tool)
 

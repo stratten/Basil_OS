@@ -5,7 +5,6 @@
   margin: 0 var(--padding-xs) var(--padding-m);
   padding: var(--padding-s) var(--padding-m);
   border: var(--border-thin) solid var(--secondary);
-  border-left: 4px solid var(--secondary);
   border-radius: var(--corner-radius-medium, 8px);
   background: var(--background-primary);
   box-shadow: 0 2px 8px color-mix(in srgb, var(--secondary) 14%, transparent);

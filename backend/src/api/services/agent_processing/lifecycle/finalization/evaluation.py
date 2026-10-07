@@ -3,19 +3,37 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import json
+import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 from api.core.models.reasoning.base_reasoning import (
     _accepts_keyword,
     has_unterminated_reasoning,
     strip_inline_reasoning,
 )
-from api.core.models.reasoning.streaming_contract import resolve_generation_budget
+from api.core.models.reasoning.streaming_contract import (
+    GenerationBudget,
+    resolve_generation_budget,
+)
+
+logger = logging.getLogger(__name__)
 
 EVALUATOR_TIMEOUT_SECONDS = 120
+LOCAL_EVALUATOR_TIMEOUT_SECONDS = 45
+# The evaluator judges the delivered response against the request; it never needs raw tool payloads, so each bounded section keeps the prompt small enough to prefill quickly on a local model.
+MAX_DELIVERED_RESPONSE_CHARS = 24000
+MAX_AGENT_ANSWER_CHARS = 8000
+MAX_STEPS_METADATA_CHARS = 6000
+MAX_STEP_RESULT_CHARS = 240
+CHARS_PER_TOKEN_ESTIMATE = 3
+# Negative iterations are reserved sentinels: -1 is the final-synthesis pass, -2 is outcome verification.
+VERIFIER_THINKING_ITERATION = -2
+
+ReasoningSink = Callable[[str, bool], Awaitable[None]]
 # A reasoning model that opened <think> but ran out of budget before closing it
 # gets exactly one retry at a larger budget before the evaluator gives up. Any
 # more risks masking a persistently over-long thinker as repeated latency.
@@ -138,16 +156,44 @@ def _resolve_max_output_chars(llm_model: Any) -> int:
     max_output_chars = 50000
     try:
         if hasattr(llm_model, "context_window"):
-            max_output_chars = int((llm_model.context_window * 4) * 0.7)
+            max_output_chars = int((llm_model.context_window * CHARS_PER_TOKEN_ESTIMATE) * 0.5)
         elif hasattr(llm_model, "get_metadata"):
             metadata = llm_model.get_metadata()
             if hasattr(metadata, "context_window"):
-                max_output_chars = int((metadata.context_window * 4) * 0.7)
-
-        print(f"🔍 FINALIZER: Using context window limit of {max_output_chars} chars for evaluation")
+                max_output_chars = int((metadata.context_window * CHARS_PER_TOKEN_ESTIMATE) * 0.5)
     except Exception as ctx_err:
-        print(f"⚠️ FINALIZER: Could not determine context window: {ctx_err}, using default")
-    return max_output_chars
+        logger.debug("Could not determine the evaluator context window: %s", ctx_err)
+    return max(2000, min(max_output_chars, MAX_DELIVERED_RESPONSE_CHARS))
+
+
+def format_steps_metadata(steps: Optional[List[Dict[str, Any]]]) -> str:
+    """Compact one-line-per-step summary; raw tool payloads are cut so a file-reading run cannot bloat the evaluator prompt."""
+    if not steps:
+        return "(No steps recorded)"
+    lines: List[str] = []
+    used = 0
+    for index, step in enumerate(steps):
+        if not isinstance(step, dict):
+            line = f"{index + 1}. {str(step)[:MAX_STEP_RESULT_CHARS]}"
+        else:
+            parts = [
+                f"{key}={step[key]}"
+                for key in ("service", "method", "tool", "success", "status", "error")
+                if step.get(key) is not None
+            ]
+            result = step.get("result")
+            if result is not None:
+                result_text = str(result)
+                if len(result_text) > MAX_STEP_RESULT_CHARS:
+                    result_text = result_text[:MAX_STEP_RESULT_CHARS] + "..."
+                parts.append(f"result={result_text}")
+            line = f"{index + 1}. " + ", ".join(parts)
+        if used + len(line) > MAX_STEPS_METADATA_CHARS:
+            lines.append(f"... {len(steps) - index} more step(s) omitted")
+            break
+        lines.append(line)
+        used += len(line) + 1
+    return "\n".join(lines)
 
 
 def _build_evaluation_context_block(evaluation_context: Optional[str]) -> str:
@@ -171,9 +217,16 @@ def build_evaluation_prompt(
     tool_error_history: Optional[List[Dict[str, str]]],
     evaluation_context: Optional[str],
     material_outcome_brief: Optional[str] = None,
+    agent_final_answer: Optional[str] = None,
 ) -> str:
     """Build the independent finalizer prompt."""
     evaluator_context_block = _build_evaluation_context_block(evaluation_context)
+    agent_answer_block = ""
+    if _is_non_empty_string(agent_final_answer):
+        agent_answer_block = (
+            "\nTHE AGENT'S OWN FINAL ANSWER (written by the agent loop before the delivered response was composed):\n"
+            f"{agent_final_answer[:MAX_AGENT_ANSWER_CHARS]}\n"
+        )
     material_outcome_block = ""
     if _is_non_empty_string(material_outcome_brief):
         material_outcome_block = (
@@ -189,11 +242,11 @@ USER'S ORIGINAL REQUEST:
 AGENT'S SELF-ASSESSMENT:
 {self_assessment or "(No self-assessment provided)"}
 
-COMPLETE AGENT OUTPUT (from database):
+COMPLETE AGENT OUTPUT — THE DELIVERED RESPONSE (exactly what the user is shown):
 {full_agent_output[:max_output_chars]}
-
-EXECUTION STEPS METADATA:
-{str(steps) if steps else "(No steps recorded)"}
+{agent_answer_block}
+EXECUTION STEPS METADATA (compact per-step summary):
+{format_steps_metadata(steps)}
 
 TOOL ERROR HISTORY (independent of agent's self-report — recorded by the tool execution layer):
 {format_tool_error_history(tool_error_history)}
@@ -203,6 +256,10 @@ YOUR ROLE AS FINALIZER:
 You are an independent observer with complete visibility into what the agent did. Your job is to determine:
 1. Did the agent actually deliver what the user wanted?
 2. If not, should the agent retry?
+
+FIRST CHECK (BEFORE ANYTHING ELSE): does the DELIVERED RESPONSE answer the USER'S ORIGINAL REQUEST?
+- Read the DELIVERED RESPONSE as the user will read it. If it does not address the request — for example it asks the user to restate or provide a request they already gave, says it has no request or no context, or is unrelated to the request — classify failure_basis "content_mismatch" with outcome=failure and should_retry=true. This overrides the ground-truth rule below, even when tools ran cleanly and THE AGENT'S OWN FINAL ANSWER looks correct, because the user never received that answer.
+- Only after the delivered response is confirmed to address the request do the remaining guidelines apply.
 
 TOOL OUTPUT IS GROUND TRUTH (HIGHEST PRIORITY):
 - COMPLETE AGENT OUTPUT and EXECUTION STEPS METADATA contain facts the agent gathered with tools (web search, file reads, app queries). Treat those facts as authoritative.
@@ -378,8 +435,14 @@ async def evaluate_finalizer_with_llm(
     tool_error_history: Optional[List[Dict[str, str]]],
     evaluation_context: Optional[str],
     material_outcome_brief: Optional[str] = None,
+    agent_final_answer: Optional[str] = None,
+    timeout_seconds: Optional[float] = None,
+    on_reasoning: Optional[ReasoningSink] = None,
 ) -> Optional[FinalizerEvaluation]:
-    """Run independent LLM finalization, returning None when fallback is needed."""
+    """Run independent LLM finalization, returning None when fallback is needed.
+
+    ``timeout_seconds`` is a total deadline across the budget-doubling retry. ``on_reasoning`` receives the verifier's growing reasoning text (and a final ``complete=True`` call) when the model can stream.
+    """
     max_output_chars = _resolve_max_output_chars(llm_model)
     evaluation_prompt = build_evaluation_prompt(
         original_prompt=original_prompt,
@@ -390,41 +453,148 @@ async def evaluate_finalizer_with_llm(
         tool_error_history=tool_error_history,
         evaluation_context=evaluation_context,
         material_outcome_brief=material_outcome_brief,
+        agent_final_answer=agent_final_answer,
+    )
+    prompt_tokens_estimate = len(evaluation_prompt) // CHARS_PER_TOKEN_ESTIMATE
+    timeout = timeout_seconds if timeout_seconds is not None else EVALUATOR_TIMEOUT_SECONDS
+    deadline = time.monotonic() + timeout
+    relay = _ReasoningRelay(on_reasoning) if on_reasoning is not None else None
+    use_streaming = relay is not None and hasattr(llm_model, "stream_chat_completion")
+    logger.info(
+        "Outcome evaluation starting: prompt_chars=%d prompt_tokens~%d timeout=%.0fs streaming=%s",
+        len(evaluation_prompt),
+        prompt_tokens_estimate,
+        timeout,
+        use_streaming,
+    )
+    try:
+        return await _run_evaluation_attempts(
+            llm_model=llm_model,
+            evaluation_prompt=evaluation_prompt,
+            prompt_tokens_estimate=prompt_tokens_estimate,
+            deadline=deadline,
+            timeout=timeout,
+            relay=relay if use_streaming else None,
+        )
+    finally:
+        if relay is not None:
+            await relay.close()
+
+
+class _ReasoningRelay:
+    """Forwards the verifier's reasoning to the UI in coalesced updates and guarantees a final complete=True call."""
+
+    _MIN_CHARS_BETWEEN_SENDS = 80
+
+    def __init__(self, sink: ReasoningSink) -> None:
+        self._sink = sink
+        self.text = ""
+        self._sent_length = 0
+        self._closed = False
+
+    async def push(self, delta: str) -> None:
+        if not delta or self._closed:
+            return
+        self.text += delta
+        if len(self.text) - self._sent_length >= self._MIN_CHARS_BETWEEN_SENDS:
+            await self._send(False)
+
+    async def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        if self.text:
+            await self._send(True)
+
+    async def _send(self, complete: bool) -> None:
+        self._sent_length = len(self.text)
+        try:
+            await self._sink(self.text, complete)
+        except Exception as exc:
+            logger.debug("Verifier reasoning relay failed (non-fatal): %s", exc)
+
+
+async def _stream_evaluation_text(
+    llm_model: Any,
+    prompt: str,
+    budget: GenerationBudget,
+    max_tokens: int,
+    relay: _ReasoningRelay,
+) -> str:
+    """Stream the evaluator call, relaying reasoning live, and return the raw text including any think block so the caller's unterminated-reasoning handling still applies."""
+    from api.services.agent_processing.lifecycle.execution_graph.agent_result_synthesis import (
+        _ReasoningTagRouter,
     )
 
+    router = _ReasoningTagRouter()
+    raw = ""
+    attempt_budget = dataclasses.replace(budget, effective_output_tokens=max_tokens)
+    messages = [{"role": "user", "content": prompt}]
+    async for event in llm_model.stream_chat_completion(messages, attempt_budget):
+        if event.is_terminal:
+            terminal = event.terminal
+            if terminal is not None and terminal.error_message:
+                raise RuntimeError(terminal.error_message)
+            continue
+        if not event.text:
+            continue
+        raw += event.text
+        _, reasoning_delta = router.feed(event.text)
+        await relay.push(reasoning_delta)
+    _, tail_reasoning = router.flush()
+    await relay.push(tail_reasoning)
+    return raw
+
+
+async def _run_evaluation_attempts(
+    *,
+    llm_model: Any,
+    evaluation_prompt: str,
+    prompt_tokens_estimate: int,
+    deadline: float,
+    timeout: float,
+    relay: Optional[_ReasoningRelay],
+) -> Optional[FinalizerEvaluation]:
     budget = resolve_generation_budget(
         llm_model,
         purpose="structured",
-        input_token_estimate=len(evaluation_prompt) // 4,
+        input_token_estimate=prompt_tokens_estimate,
     )
     # Only llama.cpp-family adapters accept this kwarg; passing it to a model
     # that doesn't declare it raises TypeError (same hazard enable_web_search
     # caused elsewhere), so gate it the same way base_reasoning.py does.
-    supports_preserve_thinking = _accepts_keyword(llm_model.generate_response, "preserve_thinking")
+    supports_preserve_thinking = relay is not None or _accepts_keyword(
+        llm_model.generate_response, "preserve_thinking"
+    )
     max_tokens = budget.effective_output_tokens
     token_ceiling = budget.model_max_output_tokens or max_tokens
 
     attempt = 0
     while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            print(f"⚠️ FINALIZER LLM EVALUATION TIMED OUT (limit {timeout:.0f}s), falling back to mechanical check")
+            return None
         started_at = time.monotonic()
         try:
-            call_kwargs: Dict[str, Any] = {"max_tokens": max_tokens}
-            if supports_preserve_thinking:
-                # Without this, an adapter that interleaves reasoning with the
-                # answer raises instead of returning text once the budget runs
-                # out mid-thought, which this function needs to see itself to
-                # retry with more budget rather than treating it as an error.
-                call_kwargs["preserve_thinking"] = True
-            llm_response = await asyncio.wait_for(
-                llm_model.generate_response(evaluation_prompt, **call_kwargs),
-                timeout=EVALUATOR_TIMEOUT_SECONDS,
-            )
+            if relay is not None:
+                generation = _stream_evaluation_text(llm_model, evaluation_prompt, budget, max_tokens, relay)
+            else:
+                call_kwargs: Dict[str, Any] = {"max_tokens": max_tokens}
+                if supports_preserve_thinking:
+                    # Without this, an adapter that interleaves reasoning with the
+                    # answer raises instead of returning text once the budget runs
+                    # out mid-thought, which this function needs to see itself to
+                    # retry with more budget rather than treating it as an error.
+                    call_kwargs["preserve_thinking"] = True
+                generation = llm_model.generate_response(evaluation_prompt, **call_kwargs)
+            llm_response = await asyncio.wait_for(generation, timeout=remaining)
             duration_s = time.monotonic() - started_at
         except asyncio.TimeoutError:
             duration_s = time.monotonic() - started_at
             print(
                 f"⚠️ FINALIZER LLM EVALUATION TIMED OUT after {duration_s:.2f}s "
-                f"(limit {EVALUATOR_TIMEOUT_SECONDS}s), falling back to mechanical check"
+                f"(limit {timeout:.0f}s), falling back to mechanical check"
             )
             return None
         except Exception as e:

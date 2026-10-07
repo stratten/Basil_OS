@@ -176,6 +176,45 @@ async def test_task_waiting_for_the_user_past_retention_expires_on_restart(tmp_p
 
 
 @pytest.mark.asyncio
+async def test_recent_paused_task_survives_restart(tmp_path) -> None:
+    service = SQLiteKnowledgeService(tmp_path / "paused.db")
+    await service.store_agent_task(
+        agent_task_id="paused-task",
+        original_prompt="Prompt",
+        transcribed_prompt="Prompt",
+        status="paused",
+    )
+    _set_days_since_update(service, "paused-task", 6)
+
+    interrupted_count = await service.agent_task_service.mark_interrupted_active_agent_tasks()
+
+    assert interrupted_count == 0
+    refreshed = await service.get_agent_task("paused-task")
+    assert refreshed.status == "paused"
+
+
+@pytest.mark.asyncio
+async def test_paused_task_past_retention_expires_on_restart(tmp_path) -> None:
+    service = SQLiteKnowledgeService(tmp_path / "stale-paused.db")
+    await service.store_agent_task(
+        agent_task_id="stale-paused",
+        original_prompt="Prompt",
+        transcribed_prompt="Prompt",
+        status="paused",
+    )
+    _set_days_since_update(service, "stale-paused", 8)
+
+    interrupted_count = await service.agent_task_service.mark_interrupted_active_agent_tasks()
+
+    assert interrupted_count == 1
+    refreshed = await service.get_agent_task("stale-paused")
+    assert refreshed.status == "failed"
+    failure_info = (refreshed.result_data or {}).get("failure_info")
+    assert failure_info["previous_status"] == "paused"
+    assert "paused for more than" in failure_info["error"]
+
+
+@pytest.mark.asyncio
 async def test_restart_cancels_pending_approvals_of_a_preserved_waiting_task(tmp_path) -> None:
     service = SQLiteKnowledgeService(tmp_path / "waiting-approval.db")
     await service.store_agent_task(
@@ -202,3 +241,111 @@ async def test_restart_cancels_pending_approvals_of_a_preserved_waiting_task(tmp
     approval_record = await service.execution_approval_repository.get_approval(str(approval["id"]))
     assert refreshed.status == "awaiting_user_input"
     assert approval_record["status"] == "canceled"
+
+
+def _waiting_interaction_timeline(interaction_id: str = "approval-1") -> list:
+    from api.services.agent_processing.lifecycle.runtime.user_interaction_timeline import (
+        build_user_interaction_entry,
+    )
+
+    return [
+        {"id": "step-1", "type": "step", "title": "Ran a command", "content": "Ran a command"},
+        build_user_interaction_entry(
+            interaction_id=interaction_id,
+            kind="approval",
+            prompt="Run sed -n 2p notes.txt?",
+        ),
+    ]
+
+
+def _interaction_status(refreshed, interaction_id: str = "approval-1") -> str:
+    entry = next(item for item in refreshed.execution_timeline if item["id"] == f"user_interaction_{interaction_id}")
+    return entry["metadata"]["user_interaction"]["status"]
+
+
+@pytest.mark.asyncio
+async def test_startup_closes_waiting_interactions_on_finished_tasks(tmp_path) -> None:
+    service = SQLiteKnowledgeService(tmp_path / "stale-waiting.db")
+    for status in ("canceled", "failed", "completed"):
+        await service.store_agent_task(
+            agent_task_id=f"task-{status}",
+            original_prompt="Prompt",
+            transcribed_prompt="Prompt",
+            status=status,
+        )
+        await service.agent_task_service.update_execution_timeline(
+            f"task-{status}", _waiting_interaction_timeline()
+        )
+
+    await service.agent_task_service.mark_interrupted_active_agent_tasks()
+
+    for status in ("canceled", "failed", "completed"):
+        refreshed = await service.get_agent_task(f"task-{status}")
+        assert refreshed.status == status
+        assert _interaction_status(refreshed) == "canceled"
+        assert refreshed.execution_timeline[0]["id"] == "step-1"
+        assert [item["id"] for item in refreshed.execution_timeline][1] == "user_interaction_approval-1"
+
+
+@pytest.mark.asyncio
+async def test_startup_closes_the_waiting_interaction_of_a_task_it_interrupts(tmp_path) -> None:
+    service = SQLiteKnowledgeService(tmp_path / "interrupted-waiting.db")
+    await service.store_agent_task(
+        agent_task_id="task-processing",
+        original_prompt="Prompt",
+        transcribed_prompt="Prompt",
+        status="processing",
+    )
+    await service.agent_task_service.update_execution_timeline("task-processing", _waiting_interaction_timeline())
+
+    await service.agent_task_service.mark_interrupted_active_agent_tasks()
+
+    refreshed = await service.get_agent_task("task-processing")
+    assert refreshed.status == "failed"
+    assert _interaction_status(refreshed) == "canceled"
+
+
+@pytest.mark.asyncio
+async def test_startup_keeps_the_waiting_interaction_of_a_task_that_can_still_resume(tmp_path) -> None:
+    service = SQLiteKnowledgeService(tmp_path / "resumable-waiting.db")
+    await service.store_agent_task(
+        agent_task_id="task-awaiting",
+        original_prompt="Prompt",
+        transcribed_prompt="Prompt",
+        status="awaiting_user_input",
+    )
+    await service.agent_task_service.update_execution_timeline("task-awaiting", _waiting_interaction_timeline())
+
+    await service.agent_task_service.mark_interrupted_active_agent_tasks()
+
+    refreshed = await service.get_agent_task("task-awaiting")
+    assert refreshed.status == "awaiting_user_input"
+    assert _interaction_status(refreshed) == "waiting"
+
+
+@pytest.mark.asyncio
+async def test_startup_reconciliation_is_idempotent_and_ignores_malformed_timelines(tmp_path) -> None:
+    service = SQLiteKnowledgeService(tmp_path / "idempotent-waiting.db")
+    await service.store_agent_task(
+        agent_task_id="task-canceled",
+        original_prompt="Prompt",
+        transcribed_prompt="Prompt",
+        status="canceled",
+    )
+    await service.store_agent_task(
+        agent_task_id="task-garbled",
+        original_prompt="Prompt",
+        transcribed_prompt="Prompt",
+        status="canceled",
+    )
+    await service.agent_task_service.update_execution_timeline("task-canceled", _waiting_interaction_timeline())
+    with closing(sqlite3.connect(service.db_path)) as conn:
+        conn.execute("UPDATE agent_tasks SET execution_timeline = ? WHERE id = ?", ("not json user_interaction", "task-garbled"))
+        conn.commit()
+
+    await service.agent_task_service.mark_interrupted_active_agent_tasks()
+    await service.agent_task_service.mark_interrupted_active_agent_tasks()
+
+    refreshed = await service.get_agent_task("task-canceled")
+    assert _interaction_status(refreshed) == "canceled"
+    assert len([item for item in refreshed.execution_timeline if item["id"] == "user_interaction_approval-1"]) == 1

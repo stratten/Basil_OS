@@ -23,6 +23,7 @@ export interface HomeComposerSubmission {
 interface HomeComposerProps {
   disabled?: boolean;
   voiceState: HomeVoiceCaptureState;
+  statusText?: string;
   onSubmit: (submission: HomeComposerSubmission) => Promise<void>;
 }
 
@@ -31,7 +32,7 @@ function basename(path: string): string {
   return parts[parts.length - 1] || path;
 }
 
-export default function HomeComposer({ disabled = false, voiceState, onSubmit }: HomeComposerProps) {
+export default function HomeComposer({ disabled = false, voiceState, statusText, onSubmit }: HomeComposerProps) {
   const [draftContent, setDraftContent] = useState('');
   const [referencePaths, setReferencePaths] = useState<string[]>([]);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -135,7 +136,7 @@ export default function HomeComposer({ disabled = false, voiceState, onSubmit }:
           className="home-composer-editor-shell"
           editorClassName="home-composer-editor"
           disabled={inputDisabled}
-          placeholder="Ask Basil anything..."
+          placeholder="Ask a question, or describe what you need done..."
           submitDisabled={sendDisabled}
           onDraftChange={setDraftContent}
           onSubmit={() => void submit()}
@@ -182,6 +183,12 @@ export default function HomeComposer({ disabled = false, voiceState, onSubmit }:
             </>
           )}
         />
+        {statusText ? (
+          <div className="home-composer-status" role="status">
+            <span className="home-composer-status-dot" aria-hidden="true" />
+            {statusText}
+          </div>
+        ) : null}
         {referencePaths.length > 0 ? (
           <div className="home-composer-references">
             <div className="home-composer-references-label">

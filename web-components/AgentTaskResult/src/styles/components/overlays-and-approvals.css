@@ -1,21 +1,3 @@
-/* Progress overlay — matches Swift's ProgressIndicatorOverlay */
-.progress-overlay {
-  position: absolute;
-  bottom: 2px;
-  left: 2px;
-  right: 2px;
-  pointer-events: none;
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 200ms ease-out, transform 200ms ease-out;
-}
-
-.progress-overlay[data-presence-phase='entering'],
-.progress-overlay[data-presence-phase='exiting'] {
-  opacity: 0;
-  transform: translateY(4px);
-}
-
 .approval-presence-region {
   position: absolute;
   inset: 0;
@@ -174,7 +156,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .progress-overlay,
   .approval-presence-region,
   .progress-step-stack-layer {
     transition-duration: 0.01ms !important;

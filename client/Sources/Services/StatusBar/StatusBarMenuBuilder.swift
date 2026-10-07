@@ -136,7 +136,7 @@ final class StatusBarMenuBuilder {
         menu.addItem(ambientSuggestionsItem)
 
         // Notetaker (formerly "Meeting / Call Transcription").
-        let liveTranscriptionItem = NSMenuItem(title: "Notetaker", action: #selector(StatusBarManager.openLiveTranscription), keyEquivalent: "")
+        let liveTranscriptionItem = NSMenuItem(title: "Notetaker (Meeting / Call Assistant)", action: #selector(StatusBarManager.openLiveTranscription), keyEquivalent: "")
         liveTranscriptionItem.target = target
         menu.addItem(liveTranscriptionItem)
 

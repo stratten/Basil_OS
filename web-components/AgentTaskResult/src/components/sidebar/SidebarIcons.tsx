@@ -9,6 +9,14 @@ export function StatusIcon({
   size?: number;
   resultSeverity?: string;
 }) {
+  if (status === 'canceled') {
+    return (
+      <svg width={size} height={size} viewBox="0 0 16 16" style={{ flexShrink: 0 }}>
+        <circle cx="8" cy="8" r="8" fill="#4A5568" />
+        <rect x="5" y="5" width="6" height="6" rx="1" fill="white" />
+      </svg>
+    );
+  }
   if (resultSeverity === 'warning') {
     return (
       <svg width={size} height={size} viewBox="0 0 16 16" style={{ flexShrink: 0 }}>

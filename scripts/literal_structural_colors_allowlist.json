@@ -462,24 +462,6 @@
       {
         "property": "background",
         "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
-        "selector": ".home-agent-task-card",
-        "value": "var(--background-primary, #ffffff)"
-      },
-      {
-        "property": "background",
-        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
-        "selector": ".home-agent-task-open, .home-send-button, .home-voice-button, .home-cancel-button, .home-composer-reference-remove",
-        "value": "var(--background-primary, #ffffff)"
-      },
-      {
-        "property": "background",
-        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
-        "selector": ".home-composer",
-        "value": "var(--background-primary, #ffffff)"
-      },
-      {
-        "property": "background",
-        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
         "selector": ".home-composer-shell",
         "value": "var(--background-primary, #ffffff)"
       },
@@ -487,18 +469,6 @@
         "property": "background",
         "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
         "selector": ".home-error-state button, .home-loading button",
-        "value": "var(--background-primary, #ffffff)"
-      },
-      {
-        "property": "background",
-        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
-        "selector": ".home-inquiry-history-item",
-        "value": "var(--background-primary, #ffffff)"
-      },
-      {
-        "property": "background",
-        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
-        "selector": ".home-message-assistant",
         "value": "var(--background-primary, #ffffff)"
       },
       {

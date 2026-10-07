@@ -16,6 +16,8 @@ export function backendStatusToAgentStatus(status: string): AgentStatus | null {
     case 'awaiting_user_input':
     case 'needs_clarification':
       return 'awaitingInput';
+    case 'paused':
+      return 'paused';
     default:
       return null;
   }
@@ -265,7 +267,13 @@ export function hydrateAgentFromBackend(agentTaskId: string): Promise<HydrationO
       agentStore.updateAgentOrigin(agentTaskId, detail.origin_type, detail.origin_id);
       agentStore.updateReasoningFallbackModelUsed(agentTaskId, turn.reasoning_fallback_model_used);
       agentStore.updateOriginalModelId(agentTaskId, turn.model_id);
-      agentStore.setCurrentTurnTaskId(agentTaskId, mostRecentFollowUp?.id || detail.id);
+      // A follow-up that was just submitted is not in the backend's follow_ups yet. Until it is, resetting the current turn to the root's id would give the new turn the same id as the first turn it was snapshotted from, and the run rail would draw turn 1 twice.
+      const activeFollowUpId = agentStore.getActiveFollowUpId(agentTaskId);
+      const backendKnowsActiveFollowUp = !activeFollowUpId
+        || Boolean(detail.follow_ups?.some(followUp => followUp.id === activeFollowUpId));
+      if (backendKnowsActiveFollowUp) {
+        agentStore.setCurrentTurnTaskId(agentTaskId, mostRecentFollowUp?.id || detail.id);
+      }
       if (isTerminal && agentStore.hasActiveFollowUpTurn(agentTaskId)) {
         console.debug('[AgentTaskResult] Ignoring terminal parent hydration while follow-up is active', {
           agentTaskId,
@@ -307,6 +315,15 @@ export function hydrateAgentFromBackend(agentTaskId: string): Promise<HydrationO
         // Pending approvals/checkpoints/provider interactions are keyed by the
         // actual in-flight backend task id, which is the follow-up's own id
         // once one exists -- not the root's id.
+        if (localStatus === 'paused') {
+          if ((agentStore.getAgent(agentTaskId)?.thinkingSegments?.length ?? 0) === 0) {
+            agentStore.setThinkingSegments(agentTaskId, normalizePersistedThinkingSegments(turn.thinking_history));
+          }
+          if (turn.execution_timeline && turn.execution_timeline.length > 0) {
+            agentStore.setExecutionTimeline(agentTaskId, turn.execution_timeline);
+          }
+          return 'hydrated';
+        }
         const sessionAgentTaskId = mostRecentFollowUp?.id ?? agentTaskId;
         if (localStatus === 'awaitingInput') {
           const restoredApproval = await restorePendingExecutionApproval(agentTaskId, sessionAgentTaskId, isCurrentRequest);
@@ -376,8 +393,8 @@ export function hydrateAgentFromBackend(agentTaskId: string): Promise<HydrationO
         if (turn.execution_timeline && turn.execution_timeline.length > 0) {
           agentStore.setExecutionTimeline(agentTaskId, turn.execution_timeline);
         }
-        agentStore.setError(agentTaskId, 'Task was canceled.');
         agentStore.updateStatus(agentTaskId, 'failed');
+        agentStore.markCanceled(agentTaskId);
       }
       return 'hydrated';
     })
@@ -448,6 +465,13 @@ export function hydrateActiveFollowUpChild(rootTaskId: string, childId: string):
         const restoredApproval = await restorePendingExecutionApproval(rootTaskId, childId, isCurrentChild);
         if (!restoredApproval) {
           await restoreAwaitingCheckpoint(rootTaskId, childId, detail, isCurrentChild);
+        }
+        return;
+      }
+      if (detail.status === 'paused') {
+        agentStore.updateStatus(rootTaskId, 'paused');
+        if (detail.execution_timeline && detail.execution_timeline.length > 0) {
+          agentStore.reconcileDurableArtifactTimeline(rootTaskId, detail.execution_timeline);
         }
         return;
       }

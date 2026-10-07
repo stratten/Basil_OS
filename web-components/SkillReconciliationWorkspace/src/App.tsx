@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { useCollapseShortcut } from '@shared/useCollapseShortcut';
+import { useSettledExpand } from '@shared/useSettledExpand';
 import { useReconciliationBridge } from './app/useReconciliationBridge';
 import { store } from './app/reconciliationStore';
 import { closeWorkspace, collapseWorkspace, expandWorkspace, minimizeWorkspace } from './services/bridge';
@@ -17,6 +19,7 @@ export default function App() {
   const session = state.session;
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('proposals');
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const isContentCollapsed = useSettledExpand(isCollapsed);
 
   const toggleCollapsed = () => {
     const next = !isCollapsed;
@@ -27,6 +30,8 @@ export default function App() {
       expandWorkspace();
     }
   };
+
+  useCollapseShortcut(toggleCollapsed);
 
   const selectedAction = useMemo(
     () => session?.actions.find((action) => action.id === state.selectedActionId) ?? null,
@@ -68,9 +73,9 @@ export default function App() {
       />
 
       <div
-        className={`workspace-collapsible${isCollapsed ? ' is-collapsed' : ''}`}
-        aria-hidden={isCollapsed}
-        {...(isCollapsed ? { inert: '' } : {})}
+        className={`workspace-collapsible${isContentCollapsed ? ' is-collapsed' : ''}`}
+        aria-hidden={isContentCollapsed}
+        {...(isContentCollapsed ? { inert: '' } : {})}
       >
         {session && <ProgressBanner progress={session.progress} status={session.status} />}
 

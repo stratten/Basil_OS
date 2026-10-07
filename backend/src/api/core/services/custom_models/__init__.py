@@ -23,6 +23,9 @@ from .schemas import (
     PathValidationResponse,
     DownloadRequest,
     DownloadResponse,
+    SERVER_TYPE_OLLAMA,
+    SERVER_TYPE_OPENAI_COMPATIBLE,
+    SERVER_TYPES,
 )
 
 from .huggingface_service import (
@@ -62,6 +65,9 @@ __all__ = [
     "PathValidationResponse",
     "DownloadRequest",
     "DownloadResponse",
+    "SERVER_TYPE_OLLAMA",
+    "SERVER_TYPE_OPENAI_COMPATIBLE",
+    "SERVER_TYPES",
     # Services
     "ConnectionTester",
     "HuggingFaceService",

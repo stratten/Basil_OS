@@ -215,7 +215,7 @@ MENU_BAR_INVENTORY: List[MenuBarItem] = [
         toggle_labels=("Proactive Suggestions", "Proactive Suggestions"),
     ),
     MenuBarItem(
-        title="Notetaker",
+        title="Notetaker (Meeting / Call Assistant)",
         description=(
             "Opens the Notetaker, which records and transcribes meetings "
             "and calls from microphone and system audio."

@@ -19,6 +19,7 @@ from __future__ import annotations
 import logging
 
 from api.services.agent_processing.lifecycle.planning.agent_context_assembler import (
+    CONVERSATION_THREAD_SEEDED_KEY,
     AgentContextAssembler,
 )
 from api.services.agent_processing.shared.prompt_context_trimming import (
@@ -248,3 +249,36 @@ def test_empty_or_malformed_todo_worker_handoff_is_omitted():
 
     assert not any(section.name == "TODO WORKER HANDOFF" for section in empty.sections)
     assert not any(section.name == "TODO WORKER HANDOFF" for section in malformed.sections)
+
+
+def test_follow_up_summary_is_skipped_when_a_real_thread_seeds_the_turn():
+    assembler = AgentContextAssembler()
+    chain_context = {
+        "chain_agentTasks": [
+            {
+                "sequence": 2,
+                "text": "use that file",
+                "status": "completed",
+                "result": {
+                    "message": "Copied best_candidate.docx to Downloads.",
+                    "files": [{"name": "best_candidate.docx", "full_path": "/Users/me/Documents/best_candidate.docx"}],
+                },
+            },
+        ],
+    }
+
+    seeded = assembler.assemble(
+        current_request="put a copy in my downloads folder",
+        context={"chain_context": chain_context, CONVERSATION_THREAD_SEEDED_KEY: True, "work_ledger_handoff": "1 file copied."},
+    )
+    unseeded = assembler.assemble(
+        current_request="put a copy in my downloads folder",
+        context={"chain_context": chain_context},
+    )
+
+    seeded_names = [section.name for section in seeded.sections]
+    assert "FOLLOW UP CONTEXT" not in seeded_names
+    assert "PINNED CONTEXT" in seeded_names
+    assert "WORK LEDGER" in seeded_names
+    assert "FOLLOW UP CONTEXT" in [section.name for section in unseeded.sections]
+    assert seeded.user_input.endswith("Current request: put a copy in my downloads folder")

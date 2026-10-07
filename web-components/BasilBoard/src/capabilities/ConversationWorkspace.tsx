@@ -45,6 +45,8 @@ import {
   type ConversationDraftSubmission,
   type ConversationSessionStore,
 } from './conversationSessionState';
+import type { HomeChatHandoff } from '../home/HomeForwardContext';
+import { useHomeChatHandoff } from './useHomeChatHandoff';
 import ConversationArtifactPreviewSidebar from './conversation-artifact-preview/ConversationArtifactPreviewSidebar';
 import { useConversationArtifactPreview } from './conversation-artifact-preview/useConversationArtifactPreview';
 import { usePresenceTransition } from '@shared/usePresenceTransition';
@@ -75,6 +77,8 @@ interface ConversationWorkspaceProps {
    * browsing and selecting other conversations.
    */
   detachedConversationIds?: Set<string>;
+  homeHandoff?: HomeChatHandoff;
+  onHomeHandoffConsumed?: (nonce: string) => void;
 }
 
 function createLocalId(prefix: string): string {
@@ -118,6 +122,8 @@ export default function ConversationWorkspace({
   conversationPresentation = 'global',
   originNavigation,
   detachedConversationIds,
+  homeHandoff,
+  onHomeHandoffConsumed,
 }: ConversationWorkspaceProps) {
   const {
     conversations,
@@ -405,6 +411,24 @@ export default function ConversationWorkspace({
     };
     sendSubmission(submission, { clearComposer: false }, threadKey);
   }, [defaultConversationOnly, sendSubmission, selectedModelId, store]);
+
+  const adoptHomeConversation = useCallback((conversationId: string) => {
+    setSelectedPendingThreadKey(undefined);
+    setSelectedConversationId(conversationId);
+  }, []);
+  const sendHomeFirstMessage = useCallback(
+    (submission: ConversationDraftSubmission, conversationId: string) => (
+      sendSubmission(submission, { clearComposer: false }, conversationId)
+    ),
+    [sendSubmission],
+  );
+  useHomeChatHandoff({
+    handoff: homeHandoff,
+    onConsumed: onHomeHandoffConsumed,
+    connectionOpen: connectionState === 'open',
+    adoptConversation: adoptHomeConversation,
+    sendFirstMessage: sendHomeFirstMessage,
+  });
 
   const { handlePastedImages } = useConversationNativeInputs({
     focusEditor,

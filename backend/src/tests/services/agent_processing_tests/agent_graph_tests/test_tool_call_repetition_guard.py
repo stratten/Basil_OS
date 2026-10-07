@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 from contextlib import contextmanager
 from typing import Any, Iterator, List, Optional
@@ -335,82 +334,6 @@ def test_already_wrapped_tools_are_not_double_wrapped():
     assert wrapped_twice[0] is wrapped_once[0]
 
 
-@pytest.mark.asyncio
-async def test_execute_with_token_retry_returns_synthetic_result_on_guard_stop():
-    from api.services.agent_processing.lifecycle.execution_graph.agent_execution_core import (
-        execute_with_token_retry,
-    )
-
-    diagnostic = {
-        "tool_name": "browser_interact",
-        "invalid_kind": "missing_action",
-        "input_keys": ["color"],
-        "signature": "browser_interact:missing_action:abc",
-    }
-
-    class _StoppingExecutor:
-        async def ainvoke(self, *args: Any, **kwargs: Any) -> Any:
-            raise RepeatedInvalidToolCallStop(
-                tool_name="browser_interact",
-                signature="browser_interact:missing_action:abc",
-                repeat_count=STOP_REPEAT_COUNT,
-                diagnostic=diagnostic,
-                agent_output="Stopped: repeated invalid calls.",
-            )
-
-    result, final_input = await execute_with_token_retry(
-        agent_executor=_StoppingExecutor(),
-        user_input="do the thing",
-        callbacks=[],
-    )
-
-    assert result["output"] == "Stopped: repeated invalid calls."
-    assert result["intermediate_steps"] == []
-    assert result["tool_repetition_guard_stop"] == diagnostic
-    assert final_input == "do the thing"
-
-
-@pytest.mark.asyncio
-async def test_execute_with_token_retry_recovers_captured_steps_on_guard_stop():
-    from api.services.agent_processing.lifecycle.execution_graph.agent_execution_core import (
-        execute_with_token_retry,
-    )
-
-    tool = wrap_tools_with_repetition_guard([_fixed_observation_tool(_MISSING_ACTION_OBSERVATION)])[0]
-
-    diagnostic = {
-        "tool_name": "browser_interact",
-        "invalid_kind": "missing_action",
-        "input_keys": ["color"],
-        "signature": "browser_interact:missing_action:abc",
-    }
-
-    class _StoppingExecutor:
-        async def ainvoke(self, *args: Any, **kwargs: Any) -> Any:
-            await tool.ainvoke({"color": "green"})
-            await tool.ainvoke({"color": "blue"})
-            raise RepeatedInvalidToolCallStop(
-                tool_name="browser_interact",
-                signature="browser_interact:missing_action:abc",
-                repeat_count=STOP_REPEAT_COUNT,
-                diagnostic=diagnostic,
-                agent_output="Stopped: repeated invalid calls.",
-            )
-
-    with _active_agent_context():
-        result, _ = await execute_with_token_retry(
-            agent_executor=_StoppingExecutor(),
-            user_input="do the thing",
-            callbacks=[],
-        )
-
-    recovered = result["intermediate_steps"]
-    assert len(recovered) == 2
-    assert recovered[0][0].tool == "browser_interact"
-    assert recovered[0][0].tool_input == {"color": "green"}
-    assert recovered[0][1] == _MISSING_ACTION_OBSERVATION
-
-
 def test_ledger_capture_flags_validation_failure_text_as_not_succeeded():
     from api.services.agent_processing.lifecycle.execution_graph.service_tooling.tool_ledger_capture import (
         _is_recognized_invalid_tool_call,
@@ -445,112 +368,54 @@ def test_ledger_capture_still_marks_genuine_text_result_as_succeeded():
 
 
 @pytest.mark.asyncio
-async def test_empty_stream_retry_stays_async_and_preserves_agent_context():
-    from api.services.agent_processing.lifecycle.execution_graph.agent_execution_core import (
-        execute_with_token_retry,
-    )
+async def test_guard_returns_tool_message_when_invoked_as_a_tool_call():
+    from langchain_core.messages import ToolMessage
 
-    class StreamingFailureExecutor:
-        def __init__(self):
-            self.async_calls = 0
-
-        async def ainvoke(self, *args: Any, **kwargs: Any) -> Any:
-            self.async_calls += 1
-            if self.async_calls == 1:
-                raise ValueError("No generation chunks were returned")
-            return {"output": get_current_agent_context()["agent_task_id"]}
-
-        def invoke(self, *args: Any, **kwargs: Any) -> Any:
-            raise AssertionError("sync executor fallback must not run")
-
-    executor = StreamingFailureExecutor()
-    token = set_current_agent_context({"agent_task_id": "thread-context-task"})
-    try:
-        result, _ = await execute_with_token_retry(
-            agent_executor=executor,
-            user_input="do the thing",
-            callbacks=[],
+    tool = wrap_tools_with_repetition_guard([_fixed_observation_tool("page loaded")])[0]
+    with _active_agent_context():
+        result = await tool.ainvoke(
+            {
+                "name": "browser_interact",
+                "args": {"action": "click"},
+                "id": "call-1",
+                "type": "tool_call",
+            }
         )
-    finally:
-        reset_current_agent_context(token)
 
-    assert result["output"] == "thread-context-task"
-    assert executor.async_calls == 2
-
-
-@pytest.mark.asyncio
-async def test_empty_stream_second_failure_returns_controlled_result():
-    from api.services.agent_processing.lifecycle.execution_graph.agent_execution_core import (
-        execute_with_token_retry,
-    )
-
-    class EmptyExecutor:
-        async def ainvoke(self, *args: Any, **kwargs: Any) -> Any:
-            raise ValueError("No generation chunks were returned")
-
-    result, _ = await execute_with_token_retry(
-        agent_executor=EmptyExecutor(),
-        user_input="do the thing",
-        callbacks=[],
-    )
-
-    assert result["empty_generation_failure"] is True
-    assert result["intermediate_steps"] == []
+    assert isinstance(result, ToolMessage)
+    assert result.tool_call_id == "call-1"
+    assert result.name == "browser_interact"
+    assert result.content == "page loaded"
 
 
 @pytest.mark.asyncio
-async def test_cooperative_cancellation_interrupts_transient_retry_backoff():
-    from api.services.agent_processing.lifecycle.execution_graph.agent_execution_core import (
-        execute_with_token_retry,
-    )
+async def test_guard_returns_raw_observation_without_tool_call_id():
+    tool = wrap_tools_with_repetition_guard([_fixed_observation_tool("page loaded")])[0]
+    with _active_agent_context():
+        result = await tool.ainvoke({"action": "click"})
 
-    first_attempt_finished = asyncio.Event()
-    cancel_event = asyncio.Event()
-
-    class TransientFailureExecutor:
-        async def ainvoke(self, *args: Any, **kwargs: Any) -> Any:
-            first_attempt_finished.set()
-            raise ConnectionError("temporary connection failure")
-
-    task = asyncio.create_task(execute_with_token_retry(
-        agent_executor=TransientFailureExecutor(),
-        user_input="do the thing",
-        callbacks=[],
-        cancel_event=cancel_event,
-    ))
-    await first_attempt_finished.wait()
-    cancel_event.set()
-
-    with pytest.raises(asyncio.CancelledError):
-        await asyncio.wait_for(task, timeout=0.5)
+    assert result == "page loaded"
 
 
 @pytest.mark.asyncio
-async def test_top_level_cancellation_stops_nested_async_invoke():
-    from api.services.agent_processing.lifecycle.execution_graph.agent_execution_core import (
-        execute_with_token_retry,
-    )
+async def test_guard_wraps_repair_observation_in_tool_message():
+    from langchain_core.messages import ToolMessage
 
-    invoke_started = asyncio.Event()
-    invoke_stopped = asyncio.Event()
+    tool = wrap_tools_with_repetition_guard([_fixed_observation_tool(_MISSING_ACTION_OBSERVATION)])[0]
+    results = []
+    with _active_agent_context():
+        for index in range(REPAIR_OBSERVATION_REPEAT_COUNT):
+            results.append(
+                await tool.ainvoke(
+                    {
+                        "name": "browser_interact",
+                        "args": {"color": "green"},
+                        "id": f"call-{index}",
+                        "type": "tool_call",
+                    }
+                )
+            )
 
-    class BlockingExecutor:
-        async def ainvoke(self, *args: Any, **kwargs: Any) -> Any:
-            invoke_started.set()
-            try:
-                await asyncio.Event().wait()
-            finally:
-                invoke_stopped.set()
-
-    task = asyncio.create_task(execute_with_token_retry(
-        agent_executor=BlockingExecutor(),
-        user_input="do the thing",
-        callbacks=[],
-        cancel_event=asyncio.Event(),
-    ))
-    await invoke_started.wait()
-    task.cancel()
-
-    with pytest.raises(asyncio.CancelledError):
-        await task
-    assert invoke_stopped.is_set()
+    assert all(isinstance(result, ToolMessage) for result in results)
+    assert results[-1].tool_call_id == f"call-{REPAIR_OBSERVATION_REPEAT_COUNT - 1}"
+    assert results[-1].content != _MISSING_ACTION_OBSERVATION

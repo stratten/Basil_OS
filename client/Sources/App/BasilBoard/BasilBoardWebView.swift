@@ -86,6 +86,7 @@ final class BasilBoardWebView: NSObject, WKScriptMessageHandler, WKNavigationDel
     private var detachedTabIds: [String] = []
     private var detachedConversationIds: [String] = []
     private var pendingAgentTaskOriginNavigation: (originType: String, originId: String)?
+    private(set) var pendingHomeAgentTaskId: String?
     private var pendingConversationComposerFocus = false
     private let audioCaptureService = AudioCaptureService()
     private var voiceCaptureTask: Task<Void, Never>?
@@ -328,6 +329,7 @@ final class BasilBoardWebView: NSObject, WKScriptMessageHandler, WKNavigationDel
             }
         case "pickHomeFiles":
             let panel = NSOpenPanel()
+            panel.applyBasilThemedAppearance()
             panel.allowsMultipleSelection = true
             panel.canChooseFiles = true
             panel.canChooseDirectories = true
@@ -339,6 +341,7 @@ final class BasilBoardWebView: NSObject, WKScriptMessageHandler, WKNavigationDel
             }
         case "pickConversationFiles":
             let panel = NSOpenPanel()
+            panel.applyBasilThemedAppearance()
             panel.allowsMultipleSelection = true
             panel.canChooseFiles = true
             panel.canChooseDirectories = false
@@ -353,6 +356,7 @@ final class BasilBoardWebView: NSObject, WKScriptMessageHandler, WKNavigationDel
             }
         case "pickTodoWorkspaceFiles":
             let panel = NSOpenPanel()
+            panel.applyBasilThemedAppearance()
             panel.allowsMultipleSelection = true
             panel.canChooseFiles = true
             panel.canChooseDirectories = true
@@ -367,6 +371,7 @@ final class BasilBoardWebView: NSObject, WKScriptMessageHandler, WKNavigationDel
             }
         case "pickTodoReferenceFiles":
             let panel = NSOpenPanel()
+            panel.applyBasilThemedAppearance()
             panel.allowsMultipleSelection = true
             panel.canChooseFiles = true
             panel.canChooseDirectories = true
@@ -385,6 +390,7 @@ final class BasilBoardWebView: NSObject, WKScriptMessageHandler, WKNavigationDel
                 return
             }
             let panel = NSOpenPanel()
+            panel.applyBasilThemedAppearance()
             panel.allowsMultipleSelection = false
             panel.canChooseFiles = false
             panel.canChooseDirectories = true
@@ -456,6 +462,12 @@ final class BasilBoardWebView: NSObject, WKScriptMessageHandler, WKNavigationDel
             if let meetingId = dict["meetingId"] as? String, !meetingId.isEmpty {
                 onOpenMeetingWorkspace?(meetingId)
             }
+        case "showAgentTaskFromHome":
+            if let agentTaskId = dict["agentTaskId"] as? String, !agentTaskId.isEmpty {
+                showAgentTaskFromHome(agentTaskId: agentTaskId)
+            } else {
+                emitWidgetLaunchFailed(reason: "missing_agent_task_id", message: "No Paprika task ID was provided.")
+            }
         case "activateBoardAgentTasksSurface":
             if !isAgentTasksSurfaceActive {
                 isAgentTasksSurfaceActive = true
@@ -465,6 +477,7 @@ final class BasilBoardWebView: NSObject, WKScriptMessageHandler, WKNavigationDel
                 self?.reconcileAgentTasksEmbedding()
             }
             reconcileAgentTasksEmbedding()
+            deliverPendingHomeAgentTaskIfPossible()
         case "deactivateBoardAgentTasksSurface":
             deactivateBoardAgentTasksSurface()
         case "activateBoardMeetingsSurface":
@@ -791,6 +804,38 @@ final class BasilBoardWebView: NSObject, WKScriptMessageHandler, WKNavigationDel
             "onBoardAgentTasksAvailabilityChanged",
             payload: ["availability": standaloneAuthoritative ? "separate_window" : "embedded"]
         )
+    }
+
+    /// Home forwards an agent-routed request here. A visible standalone task
+    /// window is always authoritative (see
+    /// `AgentTaskResultPresentationCoordinator`), so it is shown and focused
+    /// and the Board stays where it is. Otherwise the Board must switch to the
+    /// Agents tab first; the tab mounts asynchronously, so the task id waits
+    /// in `pendingHomeAgentTaskId` until the embedded host exists.
+    private func showAgentTaskFromHome(agentTaskId: String) {
+        if AgentTaskResultPresentationCoordinator.shared.isStandaloneVisible {
+            pendingHomeAgentTaskId = nil
+            AgentTaskResultPresentationRouter.showExistingAgentTask(agentTaskId: agentTaskId)
+            return
+        }
+        if isAgentTasksSurfaceActive, agentTaskResultEmbeddedHost != nil {
+            pendingHomeAgentTaskId = agentTaskId
+            deliverPendingHomeAgentTaskIfPossible()
+            return
+        }
+        pendingHomeAgentTaskId = agentTaskId
+        emitBridgeCallback("onNavigateBoardTab", payload: ["tabId": "agent_tasks"])
+    }
+
+    private func deliverPendingHomeAgentTaskIfPossible() {
+        guard let agentTaskId = pendingHomeAgentTaskId else { return }
+        if let host = agentTaskResultEmbeddedHost {
+            pendingHomeAgentTaskId = nil
+            host.dispatchOrQueueWebCommand(.showExisting(agentTaskId: agentTaskId))
+        } else if AgentTaskResultPresentationCoordinator.shared.isStandaloneVisible {
+            pendingHomeAgentTaskId = nil
+            AgentTaskResultPresentationRouter.showExistingAgentTask(agentTaskId: agentTaskId)
+        }
     }
 
     private func tearDownAgentTasksEmbedding() {

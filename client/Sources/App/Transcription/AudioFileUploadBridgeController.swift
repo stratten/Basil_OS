@@ -82,6 +82,7 @@ final class AudioFileUploadBridgeController {
     private func presentOpenPanel() {
         guard let window else { return }
         let openPanel = NSOpenPanel()
+        openPanel.applyBasilThemedAppearance()
         openPanel.allowsMultipleSelection = false
         openPanel.canChooseDirectories = false
         openPanel.canChooseFiles = true
@@ -148,6 +149,8 @@ final class AudioFileUploadBridgeController {
     }
 
     private func currentThemeJSON() -> [String: Any] {
-        AestheticWebPayload.themePayload()
+        var theme = AestheticWebPayload.themePayload()
+        theme["fonts"] = AestheticWebPayload.fontPayload()
+        return theme
     }
 }

@@ -19,7 +19,10 @@ export function mapBackendStatus(status: string): AgentStatus {
       return status;
     case 'awaiting_user_input':
       return 'awaitingInput';
+    case 'paused':
+      return 'paused';
     case 'canceled':
+      // AgentStatus has no canceled member; mapDetailToDisplayable carries the distinction in isCanceled.
       return 'failed';
     default:
       return 'completed';
@@ -91,7 +94,8 @@ export function mapDetailToDisplayable(detail: AgentTaskDetail): DisplayableAgen
       taskTitle: detail.title,
       status,
       result: isTerminal ? (mostRecent.result_message || '') : '',
-      errorMessage: status === 'failed'
+      isCanceled: mostRecent.status === 'canceled',
+      errorMessage: status === 'failed' && mostRecent.status !== 'canceled'
         ? (mostRecent.error_message || mostRecent.result_message || 'Task failed')
         : undefined,
       outcome: mostRecent.outcome,
@@ -133,7 +137,8 @@ export function mapDetailToDisplayable(detail: AgentTaskDetail): DisplayableAgen
     taskTitle: detail.title,
     status,
     result: isTerminal ? (detail.result_message || '') : '',
-    errorMessage: status === 'failed'
+    isCanceled: detail.status === 'canceled',
+    errorMessage: status === 'failed' && detail.status !== 'canceled'
       ? (detail.error_message || detail.result_message || 'Task failed')
       : undefined,
     outcome: detail.outcome,

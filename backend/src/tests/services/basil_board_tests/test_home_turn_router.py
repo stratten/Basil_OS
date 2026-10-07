@@ -12,13 +12,6 @@ from api.services.basil_board.home_turn_router import HomeTurnRouteClassifier, H
 from api.services.basil_board.models import HomeTurnRequest, HomeTurnRouteKind, HomeTurnState
 from api.services.basil_board.repository import BasilBoardRepository
 from api.services.basil_board.service import BasilBoardService
-from api.services.conversation.conversation_models import (
-    ConversationError,
-    ConversationResponse,
-    Message,
-    MessageRole,
-    ModelNotAvailableError,
-)
 
 
 def _build_router(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[HomeTurnRouter, BasilBoardService]:
@@ -35,6 +28,7 @@ def _build_router(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Home
     )
     submission_service = SimpleNamespace(
         process_agent_task_direct=AsyncMock(return_value={"success": True, "status": "processing"}),
+        cancel_agent_task_durably=AsyncMock(return_value={"canceled_task_ids": []}),
     )
     router = HomeTurnRouter(
         basil_board_service=board_service,
@@ -50,20 +44,6 @@ def _classify_as(route_kind: HomeTurnRouteKind, reason: str, confidence: float) 
     )
 
 
-async def _fake_send_message_success(conversation_id, content, *, model_id=None, file_paths=None, message_metadata=None):
-    """Mirrors the real ConversationService.send_message contract closely
-    enough to satisfy basil_board_inquiries' FK on user_message_id/
-    assistant_message_id: both ids must be real conversation_messages rows."""
-    conv_repo = _fake_send_message_success.conv_repo
-    user_message_id = await conv_repo.add_message(conversation_id, "user", content, metadata=message_metadata)
-    assistant_message_id = await conv_repo.add_message(conversation_id, "assistant", "Hello!")
-    return ConversationResponse(
-        message=Message(id=assistant_message_id, content="Hello!", role=MessageRole.ASSISTANT),
-        conversation_id=conversation_id,
-        user_message_id=user_message_id,
-    )
-
-
 @pytest.mark.asyncio
 async def test_classifier_falls_back_to_agent_task_without_model(
     tmp_path: Path,
@@ -75,24 +55,28 @@ async def test_classifier_falls_back_to_agent_task_without_model(
 
 
 @pytest.mark.asyncio
-async def test_conversation_route_creates_inquiry_and_persists_completed_state(
+async def test_conversation_route_hands_off_without_waiting_for_an_answer(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     router, board_service = _build_router(tmp_path, monkeypatch)
-    _fake_send_message_success.conv_repo = router._conversation_service.conversation_repository
-    router._conversation_service.send_message = AsyncMock(side_effect=_fake_send_message_success)
     router._classifier.classify = _classify_as(HomeTurnRouteKind.CONVERSATION, "Direct chat", 0.95)
 
     response = await router.submit_turn(HomeTurnRequest(content="Hello"))
+
+    router._conversation_service.send_message.assert_not_awaited()
     assert response.route_kind == HomeTurnRouteKind.CONVERSATION
     assert response.state == HomeTurnState.COMPLETED
     assert response.inquiry_id
+    assert response.conversation_id
+    assert response.user_message_id is None
+    assert response.assistant_content is None
 
     inquiry = await board_service._repo.get_inquiry(response.inquiry_id)
     assert inquiry is not None
+    assert inquiry.routeKind == HomeTurnRouteKind.CONVERSATION
     assert inquiry.state == HomeTurnState.COMPLETED
-    assert inquiry.conversationId
+    assert inquiry.conversationId == response.conversation_id
 
 
 @pytest.mark.asyncio
@@ -129,60 +113,6 @@ async def test_agent_task_failure_marks_inquiry_failed_and_reraises(
 
     inquiries = await board_service._repo.list_recent_inquiries()
     assert len(inquiries) == 1
-    assert inquiries[0].state == HomeTurnState.FAILED
-
-
-@pytest.mark.asyncio
-async def test_conversation_error_response_persists_failed_inquiry(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    router, board_service = _build_router(tmp_path, monkeypatch)
-
-    async def _fake_send_message_raises(conversation_id, content, *, model_id=None, file_paths=None, message_metadata=None):
-        conv_repo = router._conversation_service.conversation_repository
-        user_message_id = await conv_repo.add_message(conversation_id, "user", content, metadata=message_metadata)
-        error_message_id = await conv_repo.add_message(conversation_id, "error", "Error: model unavailable")
-        raise ModelNotAvailableError(
-            "Error: model unavailable",
-            conversation_id=conversation_id,
-            user_message_id=user_message_id,
-            error_message_id=error_message_id,
-        )
-
-    router._conversation_service.send_message = AsyncMock(side_effect=_fake_send_message_raises)
-    router._classifier.classify = _classify_as(HomeTurnRouteKind.CONVERSATION, "Direct chat", 0.95)
-
-    response = await router.submit_turn(HomeTurnRequest(content="Hello"))
-
-    assert response.state == HomeTurnState.FAILED
-    assert response.assistant_content == "Error: model unavailable"
-    inquiry = await board_service._repo.get_inquiry(response.inquiry_id)
-    assert inquiry is not None
-    assert inquiry.state == HomeTurnState.FAILED
-
-
-@pytest.mark.asyncio
-async def test_conversation_exception_without_message_ids_marks_inquiry_failed(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    router, board_service = _build_router(tmp_path, monkeypatch)
-    router._conversation_service.send_message = AsyncMock(
-        side_effect=ConversationError("conversation failed")
-    )
-    router._classifier.classify = _classify_as(
-        HomeTurnRouteKind.CONVERSATION,
-        "Direct chat",
-        0.95,
-    )
-
-    with pytest.raises(ValueError, match="conversation failed"):
-        await router.submit_turn(HomeTurnRequest(content="Hello"))
-
-    inquiries = await board_service._repo.list_recent_inquiries()
-    assert len(inquiries) == 1
-    assert inquiries[0].routeKind == HomeTurnRouteKind.CONVERSATION
     assert inquiries[0].state == HomeTurnState.FAILED
 
 
@@ -224,35 +154,6 @@ async def test_classifier_accepts_high_confidence_conversation_json() -> None:
 
 
 @pytest.mark.asyncio
-async def test_conversation_route_passes_metadata_and_file_paths(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    router, _ = _build_router(tmp_path, monkeypatch)
-    _fake_send_message_success.conv_repo = router._conversation_service.conversation_repository
-    router._conversation_service.send_message = AsyncMock(side_effect=_fake_send_message_success)
-    router._classifier.classify = _classify_as(HomeTurnRouteKind.CONVERSATION, "Direct chat", 0.95)
-
-    await router.submit_turn(
-        HomeTurnRequest(
-            content="Summarize this",
-            display_prompt_markdown="**Summarize this**",
-            reference_paths=["/tmp/a.txt", "/tmp/b.txt"],
-        )
-    )
-
-    call_args = router._conversation_service.send_message.await_args
-    assert call_args.args[1] == "Summarize this"
-    assert call_args.kwargs["model_id"] is None
-    assert call_args.kwargs["file_paths"] == ["/tmp/a.txt", "/tmp/b.txt"]
-    assert call_args.kwargs["message_metadata"] == {
-        "surface": "basil_board_home",
-        "reference_paths": ["/tmp/a.txt", "/tmp/b.txt"],
-        "display_prompt_markdown": "**Summarize this**",
-    }
-
-
-@pytest.mark.asyncio
 async def test_agent_task_route_passes_display_markdown_and_reference_paths(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -277,25 +178,6 @@ async def test_agent_task_route_passes_display_markdown_and_reference_paths(
 
 
 @pytest.mark.asyncio
-async def test_no_metadata_request_keeps_existing_behavior(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    router, _ = _build_router(tmp_path, monkeypatch)
-    _fake_send_message_success.conv_repo = router._conversation_service.conversation_repository
-    router._conversation_service.send_message = AsyncMock(side_effect=_fake_send_message_success)
-    router._classifier.classify = _classify_as(HomeTurnRouteKind.CONVERSATION, "Direct chat", 0.95)
-
-    await router.submit_turn(HomeTurnRequest(content="Hello"))
-
-    call_args = router._conversation_service.send_message.await_args
-    assert call_args.kwargs["message_metadata"] == {
-        "surface": "basil_board_home",
-        "reference_paths": [],
-    }
-
-
-@pytest.mark.asyncio
 async def test_each_inquiry_gets_its_own_conversation(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -304,8 +186,6 @@ async def test_each_inquiry_gets_its_own_conversation(
     core property that makes Recent Inquiries a list of independent
     records instead of one singleton scrollback."""
     router, board_service = _build_router(tmp_path, monkeypatch)
-    _fake_send_message_success.conv_repo = router._conversation_service.conversation_repository
-    router._conversation_service.send_message = AsyncMock(side_effect=_fake_send_message_success)
     router._classifier.classify = _classify_as(HomeTurnRouteKind.CONVERSATION, "Direct chat", 0.95)
 
     first = await router.submit_turn(HomeTurnRequest(content="First question"))
@@ -314,6 +194,81 @@ async def test_each_inquiry_gets_its_own_conversation(
     first_inquiry = await board_service._repo.get_inquiry(first.inquiry_id)
     second_inquiry = await board_service._repo.get_inquiry(second.inquiry_id)
     assert first_inquiry.conversationId != second_inquiry.conversationId
+
+
+@pytest.mark.asyncio
+async def test_reroute_chat_to_agent_task_reuses_inquiry_and_prompt(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    router, board_service = _build_router(tmp_path, monkeypatch)
+    router._classifier.classify = _classify_as(HomeTurnRouteKind.CONVERSATION, "Direct chat", 0.95)
+    first = await router.submit_turn(
+        HomeTurnRequest(
+            content="Find my notes",
+            display_prompt_markdown="Find my **notes**",
+            reference_paths=["/tmp/a.txt"],
+        )
+    )
+
+    rerouted = await router.reroute_inquiry(first.inquiry_id, HomeTurnRouteKind.AGENT_TASK)
+
+    assert rerouted.inquiry_id == first.inquiry_id
+    assert rerouted.route_kind == HomeTurnRouteKind.AGENT_TASK
+    assert rerouted.agent_task_id
+    assert rerouted.conversation_id and rerouted.conversation_id != first.conversation_id
+    call_kwargs = router._submission_service.process_agent_task_direct.await_args.kwargs
+    assert call_kwargs["agent_task"] == "Find my notes"
+    assert call_kwargs["display_prompt_markdown"] == "Find my **notes**"
+    assert call_kwargs["reference_paths"] == ["/tmp/a.txt"]
+    inquiries = await board_service._repo.list_recent_inquiries()
+    assert len(inquiries) == 1
+    assert inquiries[0].routeKind == HomeTurnRouteKind.AGENT_TASK
+    assert inquiries[0].agentTaskId == rerouted.agent_task_id
+    assert inquiries[0].state == HomeTurnState.RUNNING
+
+
+@pytest.mark.asyncio
+async def test_reroute_agent_task_to_chat_cancels_running_task(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    router, board_service = _build_router(tmp_path, monkeypatch)
+    router._classifier.classify = _classify_as(HomeTurnRouteKind.AGENT_TASK, "Needs tools", 0.2)
+    first = await router.submit_turn(HomeTurnRequest(content="What is a haiku?"))
+
+    rerouted = await router.reroute_inquiry(first.inquiry_id, HomeTurnRouteKind.CONVERSATION)
+
+    router._submission_service.cancel_agent_task_durably.assert_awaited_once()
+    assert router._submission_service.cancel_agent_task_durably.await_args.args[0] == first.agent_task_id
+    assert rerouted.route_kind == HomeTurnRouteKind.CONVERSATION
+    assert rerouted.agent_task_id is None
+    assert rerouted.conversation_id and rerouted.conversation_id != first.conversation_id
+    inquiry = await board_service._repo.get_inquiry(first.inquiry_id)
+    assert inquiry is not None
+    assert inquiry.routeKind == HomeTurnRouteKind.CONVERSATION
+    assert inquiry.agentTaskId is None
+    assert inquiry.conversationId == rerouted.conversation_id
+
+
+@pytest.mark.asyncio
+async def test_reroute_rejects_same_route_missing_inquiry_and_finished_task(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    router, board_service = _build_router(tmp_path, monkeypatch)
+    router._classifier.classify = _classify_as(HomeTurnRouteKind.AGENT_TASK, "Needs tools", 0.2)
+    first = await router.submit_turn(HomeTurnRequest(content="Search my email history"))
+
+    with pytest.raises(ValueError, match="already routed"):
+        await router.reroute_inquiry(first.inquiry_id, HomeTurnRouteKind.AGENT_TASK)
+    with pytest.raises(LookupError):
+        await router.reroute_inquiry("missing", HomeTurnRouteKind.CONVERSATION)
+
+    await board_service.update_inquiry(first.inquiry_id, state=HomeTurnState.COMPLETED)
+    with pytest.raises(ValueError, match="already finished"):
+        await router.reroute_inquiry(first.inquiry_id, HomeTurnRouteKind.CONVERSATION)
+    router._submission_service.cancel_agent_task_durably.assert_not_awaited()
 
 
 def test_reference_paths_validator_normalizes_and_rejects() -> None:

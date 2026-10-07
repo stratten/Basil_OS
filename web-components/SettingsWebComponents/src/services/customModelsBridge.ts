@@ -15,6 +15,7 @@ export interface CreateModelPayload {
   features: string[]
   toolRendering?: string
   toolCallFormat?: string
+  serverType?: string
   description?: string
   fileSize?: number
   fileSizeHuman?: string
@@ -34,6 +35,7 @@ export interface UpdateModelPayload {
   features: string[]
   toolRendering?: string
   toolCallFormat?: string
+  serverType?: string
   description?: string
 }
 

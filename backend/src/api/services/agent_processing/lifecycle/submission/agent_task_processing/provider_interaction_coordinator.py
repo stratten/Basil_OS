@@ -340,7 +340,7 @@ class ProviderInteractionCoordinator:
             root_task_id=self._root_task_id,
             previous_task_id=self._previous_task_id,
             interaction_id=interaction_id,
-            status={"accept": "answered", "decline": "denied"}.get(outcome, "cancelled"),
+            status={"accept": "answered", "decline": "denied"}.get(outcome, "canceled"),
             response=_submitted_values_summary(fields, values) if outcome == "accept" else None,
         )
 

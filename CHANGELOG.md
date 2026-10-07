@@ -6,14 +6,26 @@ Write one bullet per line, starting with `- `, in plain language for people usin
 
 ## Unreleased
 
+- Home in the Basil Board is now a single centered input that sends your request where it belongs: questions open in Chats with the message already sent, and tasks open in Agents, or in the task window if it is already open
+- After Home routes a request, a short notice says where it went and lets you correct it with one click, such as Send as agent task instead or Answer in a chat instead
+- Home now lists your last few requests as simple links that reopen the chat or task, instead of a history sidebar and transcript
 - The Meeting Assistant is now called Notetaker, in the Basil menu, Basil Board, and Settings, and Meeting Detection is now Meeting/Call Detection
 - A paused Notetaker recording now shows amber instead of the red used for a live microphone, and its buttons read simply Start, Resume, End, and Analyze
 - Hover hints now look the same throughout Basil, appear after a short pause, and show up only where they add something, such as a full file name that is cut off
 - When Basil asks you a question during a task, the question now survives quitting or restarting Basil for up to 7 days, and answering it continues the task
 - After you answer a question Basil asked mid-task, the task builds on the work it had already done instead of repeating it
 - Longer agent tasks that use Claude are faster and cheaper, because Basil reuses the unchanged part of each request
+- Agent tasks no longer restart part of their work when they need an additional set of tools
+- Follow-up requests now continue the actual conversation, including the files Basil read and the tools it ran, so a follow-up no longer depends on a short summary of the previous turn; this also works when you switch models between turns and for quick answers that don't need tools
+- Custom models have a new Server Type setting: choose Ollama and Basil sends the model's context window to Ollama when it loads the model, instead of Ollama's smaller default
+- Long tasks on local models now shorten older material before the context fills up, and if a task still needs more context than the model holds, Basil stops and tells you which model ran out, how large its context window is, about how much the task needed, and how to fix it
 - Basil now cleans up saved agent task history it can no longer use, which could grow past a gigabyte, and saves less of it per task
 - Claude Sonnet 5.5 and GPT-6.1 Sol are now available, and Claude Sonnet 5.5 is the recommended Claude model; the retired Claude Opus 4 and Claude Sonnet 4 are removed, and several Claude, Gemini, and GPT-4.1 models can now give longer answers
+- You can now pause a running agent task and resume it later, even after restarting Basil, and you can send Basil a note while it works, which it reads before its next step
+- Stop now also stops a task that was continuing after you answered a question, and a stopped task no longer keeps pulsing in the sidebar or the run map
+- The run map no longer keeps showing a question as waiting after you have answered it, and a question waiting on you now shows an amber "Your turn" marker instead of a plain pulse
+- If you open Basil's reasoning while it is thinking, it stays open and keeps updating until you close it yourself
+- Browser tasks now use one dedicated browser window per task, including its follow-ups, so Basil no longer loses track of which tab it was working in
 
 ## 1.1.7
 

@@ -130,6 +130,41 @@ describe('AgentRunRail', () => {
     }
   });
 
+  it("marks a waiting exchange as the user's turn", () => {
+    const markup = renderToStaticMarkup(
+      <AgentRunRail
+        overview={{
+          terminalState: 'active',
+          activityCount: 1,
+          artifactCount: 0,
+          stages: [{
+            id: 'overview:interaction:user_interaction_cp',
+            kind: 'interaction',
+            label: 'Basil asked',
+            state: 'waiting',
+            startedAt: '2026-10-05T10:00:00Z',
+            artifactCount: 0,
+            interaction: {
+              id: 'cp',
+              entryId: 'user_interaction_cp',
+              kind: 'clarification',
+              status: 'waiting',
+              prompt: 'Which hotel?',
+              askedAt: '2026-10-05T10:00:00Z',
+              responseHidden: false,
+              options: [],
+            },
+          }],
+        }}
+        onExpand={() => undefined}
+      />,
+    );
+
+    expect(markup).toContain('agent-run-rail-flow-stage--interaction is-waiting');
+    expect(markup).toContain('data-tooltip="Your turn: Basil asked: Which hotel?');
+    expect(markup).toContain('M9.2 9.2');
+  });
+
   it('remounts stage nodes when the focused run changes', () => {
     const container = document.createElement('div');
     const root = createRoot(container);

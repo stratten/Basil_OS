@@ -33,6 +33,7 @@ type TodoReferenceFilesPickedHandler = (paths: string[]) => void;
 type DetachedTabsChangedHandler = (payload: DetachedTabsChangedPayload) => void;
 type DetachedConversationsChangedHandler = (payload: DetachedConversationsChangedPayload) => void;
 type AgentTaskOriginNavigationHandler = (payload: AgentTaskOriginNavigationPayload) => void;
+type BoardTabNavigationHandler = (payload: { tabId: string }) => void;
 
 interface WorkspaceDirectoryPickedPayload {
   requestId: string;
@@ -87,6 +88,7 @@ declare global {
       onDetachedBoardTabsChanged?: DetachedTabsChangedHandler;
       onDetachedConversationsChanged?: DetachedConversationsChangedHandler;
       onNavigateToAgentTaskOrigin?: AgentTaskOriginNavigationHandler;
+      onNavigateBoardTab?: BoardTabNavigationHandler;
       onBoardAgentTasksAvailabilityChanged?: BoardAgentTasksAvailabilityHandler;
       onBoardConversationAvailabilityChanged?: BoardConversationAvailabilityHandler;
       onBoardMeetingsAvailabilityChanged?: BoardMeetingsAvailabilityHandler;
@@ -111,6 +113,8 @@ const pendingTodoReferenceFilesPicked: string[][] = [];
 const pendingDetachedTabsChanged: DetachedTabsChangedPayload[] = [];
 const pendingDetachedConversationsChanged: DetachedConversationsChangedPayload[] = [];
 let pendingAgentTaskOriginNavigation: AgentTaskOriginNavigationPayload | null = null;
+let pendingBoardTabNavigation: { tabId: string } | null = null;
+let boardTabNavigationHandler: BoardTabNavigationHandler | null = null;
 const pendingBoardAgentTasksAvailability: BoardAgentTasksAvailabilityPayload[] = [];
 const pendingBoardConversationAvailability: BoardConversationAvailabilityPayload[] = [];
 const pendingBoardMeetingsAvailability: BoardMeetingsAvailabilityPayload[] = [];
@@ -202,6 +206,10 @@ export function requestWindowMinimize(): void {
 
 export function openExistingAgentTaskWidget(agentTaskId: string): void {
   postBridgeMessage('openExistingAgentTaskWidget', { agentTaskId });
+}
+
+export function showAgentTaskFromHome(agentTaskId: string): void {
+  postBridgeMessage('showAgentTaskFromHome', { agentTaskId });
 }
 
 export function openConversationThreadWindow(conversationId: string, messageId?: string): void {
@@ -687,6 +695,34 @@ export function enqueueAgentTaskOriginNavigation(payload: AgentTaskOriginNavigat
     agentTaskOriginNavigationHandler(payload);
   } else {
     pendingAgentTaskOriginNavigation = payload;
+  }
+}
+
+export function registerBoardTabNavigationHandler(handler: BoardTabNavigationHandler): () => void {
+  boardTabNavigationHandler = handler;
+  window.basilBoardBridge = {
+    ...window.basilBoardBridge,
+    onNavigateBoardTab: enqueueBoardTabNavigation,
+  };
+  if (pendingBoardTabNavigation) {
+    handler(pendingBoardTabNavigation);
+    pendingBoardTabNavigation = null;
+  }
+  return () => {
+    if (boardTabNavigationHandler === handler) {
+      boardTabNavigationHandler = null;
+    }
+  };
+}
+
+export function enqueueBoardTabNavigation(payload: { tabId: string }): void {
+  if (!payload || typeof payload.tabId !== 'string' || !payload.tabId.trim()) {
+    return;
+  }
+  if (boardTabNavigationHandler) {
+    boardTabNavigationHandler(payload);
+  } else {
+    pendingBoardTabNavigation = payload;
   }
 }
 

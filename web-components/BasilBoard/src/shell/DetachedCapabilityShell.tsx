@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { useCollapseShortcut } from '@shared/useCollapseShortcut';
+import { useSettledExpand } from '@shared/useSettledExpand';
 import type { AgentTaskOriginNavigationPayload, BasilBoardTab } from '../contracts';
 import { requestWindowClose, requestWindowCollapse, requestWindowExpand, requestWindowMinimize } from '../services/bridge';
 import { resolveTabRenderer } from './TabRegistry';
@@ -17,6 +19,7 @@ export default function DetachedCapabilityShell({
   const tab = useMemo(() => tabs.find((candidate) => candidate.id === detachedTabId), [tabs, detachedTabId]);
   const renderer = tab ? resolveTabRenderer(tab) : null;
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const isContentCollapsed = useSettledExpand(isCollapsed);
 
   const toggleCollapsed = () => {
     const next = !isCollapsed;
@@ -28,9 +31,11 @@ export default function DetachedCapabilityShell({
     }
   };
 
+  useCollapseShortcut(toggleCollapsed);
+
   return (
     <div className="basil-webkit-window-frame">
-      <div className={`basil-board-root basil-board-detached-shell basil-webkit-window-surface${isCollapsed ? ' is-collapsed' : ''}`}>
+      <div className={`basil-board-root basil-board-detached-shell basil-webkit-window-surface${isContentCollapsed ? ' is-collapsed' : ''}`}>
       <header className="basil-board-detached-header">
         <div className="basil-board-window-controls">
           <button
@@ -79,7 +84,7 @@ export default function DetachedCapabilityShell({
         </div>
         <span className="basil-board-detached-title">{tab?.title ?? 'Basil'}</span>
       </header>
-      <main className={`basil-board-content${isCollapsed ? ' is-collapsed' : ''}`} aria-hidden={isCollapsed} inert={isCollapsed ? '' : undefined}>
+      <main className={`basil-board-content${isContentCollapsed ? ' is-collapsed' : ''}`} aria-hidden={isContentCollapsed} inert={isContentCollapsed ? '' : undefined}>
         {!tab || !renderer ? (
           <div className="home-unavailable-state">This capability is unavailable.</div>
         ) : (

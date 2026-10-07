@@ -13,7 +13,9 @@
   --separator-color: rgba(0, 0, 0, 0.1);
   --field-border: rgba(0, 0, 0, 0.18);
   --error-base: #8b0000;
+  --font-family-light: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
   --font-family-medium: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-family-bold: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
   --font-size-callout: 13px;
   --corner-radius-small: 6px;
   --corner-radius-medium: 8px;
@@ -37,10 +39,6 @@ body,
   margin: 0;
 }
 
-.audio-upload-frame {
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
 .transcription-symbol {
   display: inline-block;
   background-color: currentColor;
@@ -58,6 +56,7 @@ body,
   height: 100%;
   min-width: 520px;
   min-height: 480px;
+  font-family: var(--font-family-light);
   color: var(--text-primary, #111318);
   background: var(--background-primary, #ffffff);
 }
@@ -87,6 +86,7 @@ body,
   border: 2px dashed transparent;
   border-radius: 8px;
   background: none;
+  font-family: inherit;
   color: var(--text-secondary, #5b6270);
   cursor: pointer;
 }
@@ -130,6 +130,7 @@ body,
   background: none;
   cursor: pointer;
   color: var(--text-tertiary);
+  font-family: inherit;
   font-size: 16px;
 }
 
@@ -171,6 +172,7 @@ body,
 }
 
 .audio-upload-actions button {
+  font-family: inherit;
   font-size: 13px;
   padding: 6px 14px;
   border-radius: 6px;
@@ -248,5 +250,6 @@ body,
   padding: 3px 8px;
   background: var(--background-primary);
   color: inherit;
+  font-family: inherit;
   cursor: pointer;
 }

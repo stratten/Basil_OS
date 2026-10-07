@@ -743,3 +743,57 @@ describe('AgentTaskDetailSurface turn labels', () => {
     }
   });
 });
+
+describe('AgentTaskDetailSurface run controls', () => {
+  function renderStatus(status: string) {
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    act(() => {
+      root.render(surface(null, undefined, false, () => {}, () => {}, { ...displaySource, status, result: '' }));
+    });
+    return { container, unmount: () => act(() => root.unmount()) };
+  }
+
+  it('offers the regular rich note box with an icon Pause while the run is working', () => {
+    const { container, unmount } = renderStatus('processing');
+    try {
+      const composer = container.querySelector('.run-control-composer');
+      expect(composer?.getAttribute('data-run-control-mode')).toBe('running');
+      expect(composer?.querySelector('[role="textbox"][aria-label="Note for Basil"]')).not.toBeNull();
+      expect(composer?.querySelector('.rich-text-composer-toolbar')).not.toBeNull();
+      const pause = composer?.querySelector('button[aria-label="Pause"]');
+      expect(pause?.getAttribute('title')).toBe('Pause after the current step');
+      expect(pause?.textContent).toBe('');
+      expect(pause?.querySelector('svg')).not.toBeNull();
+      expect(composer?.querySelector('button[aria-label="Send"]')).not.toBeNull();
+      expect(container.querySelector('form[aria-label="Run controls"]')).toBeNull();
+    } finally {
+      unmount();
+    }
+  });
+
+  it('offers an icon Resume in the same box while the run is paused', () => {
+    const { container, unmount } = renderStatus('paused');
+    try {
+      const composer = container.querySelector('.run-control-composer');
+      expect(composer?.getAttribute('data-run-control-mode')).toBe('paused');
+      expect(composer?.querySelector('[role="textbox"][aria-label="Note for when Basil resumes"]')).not.toBeNull();
+      const resume = composer?.querySelector('button[aria-label="Resume"]');
+      expect(resume?.getAttribute('title')).toBe('Resume (⌘↩)');
+      expect(resume?.textContent).toBe('');
+      expect(composer?.querySelector('button[aria-label="Pause"]')).toBeNull();
+      expect(composer?.querySelector('button[aria-label="Send"]')).toBeNull();
+    } finally {
+      unmount();
+    }
+  });
+
+  it('hides the run controls once the run has finished', () => {
+    const { container, unmount } = renderStatus('completed');
+    try {
+      expect(container.querySelector('.run-control-composer')).toBeNull();
+    } finally {
+      unmount();
+    }
+  });
+});

@@ -1,6 +1,7 @@
 import { FormField, FormSection } from '../FormField'
 import { Switch } from '@shared/Switch'
-import type { WizardFeature } from '../types'
+import TokenizedSelect from '@shared/TokenizedSelect'
+import { SERVER_TYPE_HINT, SERVER_TYPE_OPTIONS, type ServerType, type WizardFeature } from '../types'
 
 function ConnectionTestIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path d="m8.5 12.2 2.2 2.2 4.8-5" /></svg>
@@ -16,11 +17,13 @@ export interface DetailsStepValues {
   apiKey: string
   baseUrl: string
   modelIdentifier: string
+  serverType: ServerType
   features: WizardFeature[]
 }
 
 interface DetailsStepProps {
   isLocal: boolean
+  showServerType: boolean
   values: DetailsStepValues
   onChange: (partial: Partial<DetailsStepValues>) => void
   onToggleFeature: (featureId: string) => void
@@ -34,7 +37,7 @@ interface DetailsStepProps {
 }
 
 export function DetailsStep({
-  isLocal, values, onChange, onToggleFeature, canTestConnection, onTestConnection,
+  isLocal, showServerType, values, onChange, onToggleFeature, canTestConnection, onTestConnection,
   isTestingConnection, connectionTestResult, isDownloading, downloadProgress, downloadStatus,
 }: DetailsStepProps) {
   return (
@@ -56,6 +59,16 @@ export function DetailsStep({
 
       {!isLocal && (
         <FormSection title="API Endpoint">
+          {showServerType && (
+            <FormField label="Server Type" hint={SERVER_TYPE_HINT}>
+              <TokenizedSelect
+                value={values.serverType}
+                ariaLabel="Server Type"
+                onValueChange={(value) => onChange({ serverType: value })}
+                options={SERVER_TYPE_OPTIONS}
+              />
+            </FormField>
+          )}
           <FormField label="Base URL">
             <input type="text" value={values.baseUrl} onChange={(event) => onChange({ baseUrl: event.target.value })} placeholder="https://api.example.com/v1" />
           </FormField>

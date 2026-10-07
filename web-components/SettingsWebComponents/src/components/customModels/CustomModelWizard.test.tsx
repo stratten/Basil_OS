@@ -80,10 +80,25 @@ describe('CustomModelWizard', () => {
     expect(requestCreateModel).toHaveBeenCalledWith(expect.objectContaining({
       displayName: 'My API Model', handler: 'openai_compatible', baseUrl: 'http://localhost:11434/v1',
       modelIdentifier: 'llama3.3', requiresAuth: false, apiKey: undefined, modelPath: undefined, downloadUrl: undefined,
+      serverType: 'openai_compatible',
     }))
 
     render({ seq: 1, event: { type: 'intentResult', requestId: 'create-1', status: 'success' } })
     expect(onDismiss).toHaveBeenCalled()
+  })
+
+  it('sends the Ollama server type when the user selects it for an API model', () => {
+    act(() => { findButton('API / Remote Model').click() })
+    typeInto(findFieldInput('Display Name'), 'Ollama Model')
+    typeInto(findFieldInput('Base URL'), 'http://localhost:11434/v1')
+    typeInto(findFieldInput('Model Identifier'), 'qwen2.5:1.5b')
+    const serverTypeSelect = container.querySelector<HTMLButtonElement>('[aria-label="Server Type"]')!
+    act(() => { serverTypeSelect.click() })
+    const ollamaOption = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="option"]')).find((option) => option.textContent === 'Ollama')!
+    act(() => { ollamaOption.click() })
+    ;(requestCreateModel as unknown as ReturnType<typeof vi.fn>).mockReturnValue('create-ollama')
+    act(() => { findButton('Add Model').click() })
+    expect(requestCreateModel).toHaveBeenCalledWith(expect.objectContaining({ handler: 'openai_compatible', serverType: 'ollama' }))
   })
 
   it('shows a save error and does not dismiss when creation fails', () => {

@@ -165,27 +165,35 @@ async def test_langchain_adapter_maps_transport_failures_to_transient_error(monk
         await adapter._agenerate([HumanMessage(content="hi")])
 
 
-def test_agent_executor_retries_only_typed_transient_errors(monkeypatch):
-    from langchain_core.messages import AIMessage
-    from langchain_core.runnables import RunnableLambda
+@pytest.mark.asyncio
+async def test_agent_loop_retries_typed_transient_adapter_errors():
+    from langchain_core.messages import AIMessage, HumanMessage
 
-    import api.services.agent_processing.lifecycle.execution_graph.agent_executor_factory as factory_module
+    from api.services.agent_processing.lifecycle.execution_graph.agent_loop_model_recovery import (
+        AgentRunFlags,
+        ModelRecoveryMiddleware,
+        TRANSIENT_RETRIES,
+    )
     from api.services.agent_processing.lifecycle.execution_graph.model_errors import TransientModelError
 
-    class RecordingBound:
-        retry_kwargs = None
+    class StubRequest:
+        messages = [HumanMessage(content="hi")]
 
-        def with_retry(self, **kwargs):
-            RecordingBound.retry_kwargs = kwargs
-            return RunnableLambda(lambda _value: AIMessage(content="done"))
+        def override(self, **kwargs):
+            return self
 
-    class FakeLLM:
-        def bind_tools(self, tools):
-            return RecordingBound()
+    attempts = []
 
-    monkeypatch.setattr(factory_module, "get_agent_system_prompt", lambda **kwargs: "system")
+    async def handler(_request):
+        attempts.append(1)
+        if len(attempts) <= TRANSIENT_RETRIES:
+            raise TransientModelError("auth proxy busy")
+        return AIMessage(content="done")
 
-    factory_module.create_agent_executor(langchain_llm=FakeLLM(), tools=[])
+    middleware = ModelRecoveryMiddleware(AgentRunFlags(), completed_model_calls=1)
+    middleware.backoff_base_seconds = 0
 
-    assert RecordingBound.retry_kwargs["retry_if_exception_type"] == (TransientModelError,)
-    assert RecordingBound.retry_kwargs["stop_after_attempt"] == 3
+    response = await middleware.awrap_model_call(StubRequest(), handler)
+
+    assert response.content == "done"
+    assert len(attempts) == TRANSIENT_RETRIES + 1

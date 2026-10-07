@@ -603,21 +603,25 @@ async def test_local_setup_model_passes_its_registry_tool_call_profile(monkeypat
 
 
 @pytest.mark.asyncio
-async def test_setup_runtime_emits_executor_output_when_no_message_tool_was_called(
+async def test_setup_runtime_emits_agent_output_when_no_message_tool_was_called(
     monkeypatch,
 ) -> None:
+    from langchain_core.messages import AIMessage
+
     runtime = SetupAgentRuntime()
-    executor = SimpleNamespace(
-        ainvoke=AsyncMock(return_value={"output": "Setup summary from the agent."})
+    agent = SimpleNamespace(
+        ainvoke=AsyncMock(
+            return_value={"messages": [AIMessage(content="Setup summary from the agent.")]}
+        )
     )
 
-    async def fake_build_executor(*_args, **_kwargs):
-        return executor
+    async def fake_build_agent(*_args, **_kwargs):
+        return agent
 
     monkeypatch.setattr(
         runtime,
-        "_build_setup_agent_executor",
-        fake_build_executor,
+        "_build_setup_agent",
+        fake_build_agent,
     )
     monkeypatch.setattr(runtime, "_build_setup_turn_input", lambda _request: "test input")
     monkeypatch.setattr(runtime, "_build_setup_chat_history", lambda _request: [])

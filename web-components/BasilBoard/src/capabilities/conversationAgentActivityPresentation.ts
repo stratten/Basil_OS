@@ -24,6 +24,7 @@ const ACTIVITY_LIFECYCLES: ReadonlySet<string> = new Set([
   'waiting_user_input',
   'needs_clarification',
   'clarification_added',
+  'paused',
   'completed',
   'failed',
   'canceled',

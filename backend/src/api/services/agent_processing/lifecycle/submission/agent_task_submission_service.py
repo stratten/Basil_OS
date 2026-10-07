@@ -5,6 +5,13 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from api.services.agent_processing.lifecycle.execution_graph.agent_conversation_thread import (
+    build_fast_lane_messages,
+    fast_lane_history_char_budget,
+    load_thread_for_task,
+    save_fast_lane_thread,
+    thread_to_chat_turns,
+)
 from api.services.agent_processing.lifecycle.execution_graph.agent_result_synthesis import (
     stream_synthesized_final_answer,
 )
@@ -37,6 +44,8 @@ FAST_LANE_SYSTEM = (
     "decided, or verified, since the ledger reflects what actually happened rather "
     "than a prior turn's self-reported summary."
 )
+
+FAST_LANE_THREAD_SYSTEM = "You are continuing an ongoing conversation with this user. The earlier messages are the real exchange so far: assistant messages are things you already said or did, and bracketed lines such as [Called tool with ...] and [tool returned: ...] record tools you actually ran and what they returned. Answer the user's latest message using that history. Do not call tools or invent new actions; if the answer isn't already available from the conversation, say so plainly rather than guessing. If a WORK_LEDGER section is present, it holds durable, structured records from this task chain's actual tool execution -- prefer it over your own recollection whenever the user asks about what was found, decided, or verified."
 
 
 class AgentTaskSubmissionService:
@@ -230,6 +239,26 @@ class AgentTaskSubmissionService:
             logger.error("Error building chain context: %s", exc, exc_info=True)
             return None
 
+    @staticmethod
+    def _release_local_model_from_verification(model_id: Optional[str]) -> None:
+        """A new local run must not queue behind an earlier run's outcome verification; the canceled verification resolves with its provisional outcome."""
+        if not model_id:
+            return
+        try:
+            from api.core.models.models_registry.schema import get_model
+
+            if (get_model(model_id) or {}).get("location") != "local":
+                return
+            from api.services.agent_processing.lifecycle.execution_graph.async_finalizer import (
+                cancel_pending_verifications,
+            )
+
+            canceled = cancel_pending_verifications()
+            if canceled:
+                logger.info("Canceled %d in-flight outcome verification(s) for a new local run", canceled)
+        except Exception as exc:
+            logger.debug("Could not release the local model from verification: %s", exc)
+
     async def process_agent_task_direct(
         self,
         agent_task: str,
@@ -251,6 +280,7 @@ class AgentTaskSubmissionService:
         """Capability-named wrapper for delegated task processing."""
         if agent_task is None:
             raise ValueError("process_agent_task_direct requires agent_task")
+        self._release_local_model_from_verification(model_id)
         return await self._process_agent_task_direct_impl(
             agent_task,
             display_prompt_markdown=display_prompt_markdown,
@@ -372,6 +402,11 @@ class AgentTaskSubmissionService:
             if work_ledger_handoff else ""
         )
 
+        thread_repository = getattr(self.db_service, "agent_conversation_thread_repository", None)
+        prior_thread = None
+        if thread_repository is not None:
+            prior_thread = await load_thread_for_task(resolved_previous_task_id, repository=thread_repository)
+
         model = await self._resolve_fast_lane_model(model_id)
         response_text = ""
         if model is not None:
@@ -381,17 +416,34 @@ class AgentTaskSubmissionService:
                 root_task_id=resolved_root_task_id,
                 previous_task_id=resolved_previous_task_id,
             )
-            messages = [
-                {"role": "system", "content": FAST_LANE_SYSTEM},
-                {
-                    "role": "user",
-                    "content": (
-                        f"{ledger_section}{conversation_history}\n\n"
-                        f"User: {agent_task}\n\n"
-                        "Respond to the user's latest message:"
-                    ),
-                },
-            ]
+            history_turns = (
+                thread_to_chat_turns(prior_thread.messages, fast_lane_history_char_budget(model, model_id))
+                if prior_thread is not None
+                else []
+            )
+            if history_turns:
+                logger.info(
+                    "🧵 Fast lane continuing the conversation thread from task %s (%s turn(s))",
+                    resolved_previous_task_id,
+                    len(history_turns),
+                )
+                messages = build_fast_lane_messages(
+                    FAST_LANE_THREAD_SYSTEM,
+                    history_turns,
+                    f"{ledger_section}{agent_task}",
+                )
+            else:
+                messages = [
+                    {"role": "system", "content": FAST_LANE_SYSTEM},
+                    {
+                        "role": "user",
+                        "content": (
+                            f"{ledger_section}{conversation_history}\n\n"
+                            f"User: {agent_task}\n\n"
+                            "Respond to the user's latest message:"
+                        ),
+                    },
+                ]
             try:
                 synthesis = await stream_synthesized_final_answer(
                     llm_model=model,
@@ -450,6 +502,17 @@ class AgentTaskSubmissionService:
             )
         except Exception as exc:
             logger.warning("Failed to persist discussion entry: %s", exc)
+
+        if generation_succeeded and thread_repository is not None:
+            await save_fast_lane_thread(
+                agent_task_id=cmd_id,
+                root_task_id=resolved_root_task_id,
+                prior_thread=prior_thread,
+                user_request=agent_task,
+                answer_text=response_text,
+                repository=thread_repository,
+                history_text=conversation_history,
+            )
 
         await self.broadcast(
             {

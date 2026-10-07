@@ -4,7 +4,7 @@ import type { AgentTaskRowProps } from './AgentTaskRow';
 import { plainSidebarText, stripStepMarkers, truncateTitle } from './sidebarUtils';
 
 export function isActiveStatus(s: string): boolean {
-  return ['processing', 'routing', 'capturing', 'awaitingInput'].includes(s);
+  return ['processing', 'routing', 'capturing', 'awaitingInput', 'paused'].includes(s);
 }
 
 interface BuildHistoryItemsArgs {
@@ -61,9 +61,11 @@ export function buildHistoryItems({
       // window closes while genuinely still awaiting, the badge returns.
       const rootId = agent.rootTaskId || agent.agentTaskId;
       const isDetachedElsewhere = detachedRoots.has(rootId);
-      const rowStatus = isDetachedElsewhere && agent.status === 'awaitingInput'
-        ? 'processing'
-        : agent.status;
+      const rowStatus = agent.isCanceled
+        ? 'canceled'
+        : isDetachedElsewhere && agent.status === 'awaitingInput'
+          ? 'processing'
+          : agent.status;
       const active = isActiveStatus(rowStatus);
       return {
         id: agent.agentTaskId,

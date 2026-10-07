@@ -21,7 +21,7 @@ import {
 import { applyAudioFileUploadEvent, initialAudioFileUploadState, resolveAudioUploadTheme } from '../state/audioFileUploadReducer';
 import { AUDIO_UPLOAD_LANGUAGE_OPTIONS } from '../bridge/audioFileUploadTypes';
 import { TranscriptionSymbol } from '../components/TranscriptionSymbol';
-import { applyHostTheme } from '@shared/webTheme';
+import { applyHostFonts, applyHostTheme } from '@shared/webTheme';
 
 export function AudioFileUploadApp() {
   const [state, dispatch] = useReducer(applyAudioFileUploadEvent, initialAudioFileUploadState);
@@ -35,6 +35,7 @@ export function AudioFileUploadApp() {
   const theme = resolveAudioUploadTheme(state);
   useEffect(() => {
     applyHostTheme(theme);
+    applyHostFonts(theme.fonts);
   }, [theme]);
 
   return (

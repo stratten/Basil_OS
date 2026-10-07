@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import type { BasilBoardTab } from '../contracts';
+import { settleHostWindowResize } from '@shared/settleHostWindowResize';
 import BoardChrome from './BoardChrome';
 
 vi.mock('@shared/bubble/AnimatedBubble', () => ({
@@ -143,7 +144,7 @@ describe('BoardChrome', () => {
     expect(frames[0]?.querySelector('.basil-board-root.basil-webkit-window-surface')).toBeTruthy();
   });
 
-  it('retains mounted Board content while requesting native collapse and expansion', () => {
+  it('retains mounted Board content while requesting native collapse and expansion', async () => {
     const { container } = render(
       <BoardChrome tabs={tabs} activeTabId="home" onSelectTab={() => {}}>
         <div>Board workspace content</div>
@@ -158,6 +159,8 @@ describe('BoardChrome', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Expand' }));
     expect(bridgeMocks.requestWindowExpand).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('.basil-board-body')?.classList.contains('is-collapsed')).toBe(true);
+    await settleHostWindowResize();
     expect(container.querySelector('.basil-board-root')?.classList.contains('is-collapsed')).toBe(false);
     expect(container.querySelector('.basil-board-body')?.classList.contains('is-collapsed')).toBe(false);
   });

@@ -662,6 +662,52 @@ async def stream_synthesized_final_answer(
     )
 
 
+_REQUEST_PROBE_CHARS = 200
+
+
+def synthesis_prompt_contains_request(messages: List[Dict[str, str]], request_text: str) -> bool:
+    """True when the user's request survived into the prompt the model will receive.
+
+    A synthesis call whose prompt lost the request produces a confident answer to nothing, so callers must not make it.
+    """
+    probe = (request_text or "").strip()[:_REQUEST_PROBE_CHARS]
+    if not probe:
+        return True
+    return any(
+        message.get("role") != "system" and probe in (message.get("content") or "")
+        for message in messages
+    )
+
+
+def _handoff_fallback_result(agent_output: Any, synthesis_input: Any) -> SynthesisResult:
+    """Deliver the tool agent's own final answer when a request-grounded synthesis prompt could not be built."""
+    logger.warning(
+        "Final synthesis prompt could not retain the user request; using the agent's own final answer"
+    )
+    handoff = normalize_agent_executor_output(agent_output).strip()
+    evidence = list(synthesis_input.truncation_evidence)
+    evidence.append(
+        {
+            "source": "synthesis.prompt",
+            "original_length": 0,
+            "retained_length": 0,
+            "affects_coverage": False,
+            "reason": "request_missing_from_prompt",
+        }
+    )
+    terminal = (
+        terminal_from_provider_reason("completed")
+        if handoff
+        else terminal_from_error(RuntimeError("Final synthesis prompt could not retain the user request"))
+    )
+    return SynthesisResult(
+        text=handoff,
+        terminal=terminal,
+        truncation_evidence=evidence,
+        input_token_estimate=synthesis_input.input_token_estimate,
+    )
+
+
 async def run_final_synthesis_for_state(
     *,
     state: "PlanningState",
@@ -687,6 +733,9 @@ async def run_final_synthesis_for_state(
         intermediate_steps=intermediate_steps,
         context=ctx,
     )
+    request_text = (getattr(state, "user_agent_task", "") or "").strip()
+    if not synthesis_prompt_contains_request(synthesis_input.messages, request_text):
+        return _handoff_fallback_result(agent_output, synthesis_input)
     _emit_synthesis_trace(
         "final_synthesis_started",
         model_type=type(llm_model).__name__,

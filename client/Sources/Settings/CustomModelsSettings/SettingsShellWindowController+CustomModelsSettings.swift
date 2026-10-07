@@ -71,6 +71,7 @@ extension SettingsShellWindowController {
         let apiKey = payload["apiKey"] as? String
         let toolRendering = payload["toolRendering"] as? String
         let toolCallFormat = payload["toolCallFormat"] as? String
+        let serverType = payload["serverType"] as? String
         let description = payload["description"] as? String
         let fileSize = (payload["fileSize"] as? NSNumber)?.intValue
         let fileSizeHuman = payload["fileSizeHuman"] as? String
@@ -83,7 +84,7 @@ extension SettingsShellWindowController {
                 modelIdentifier: modelIdentifier, modelPath: modelPath, downloadUrl: downloadUrl,
                 contextWindow: contextWindow, maxOutputTokens: maxOutputTokens, requiresAuth: requiresAuth,
                 apiKey: apiKey, features: features, toolRendering: toolRendering, toolCallFormat: toolCallFormat,
-                description: description, fileSize: fileSize, fileSizeHuman: fileSizeHuman
+                serverType: serverType, description: description, fileSize: fileSize, fileSizeHuman: fileSizeHuman
             )
             // Judge success from the create call's own result, captured before
             // the refresh reload below -- a reload failure must not overwrite a
@@ -120,6 +121,7 @@ extension SettingsShellWindowController {
         let apiKey = payload["apiKey"] as? String
         let toolRendering = payload["toolRendering"] as? String
         let toolCallFormat = payload["toolCallFormat"] as? String
+        let serverType = payload["serverType"] as? String
         let description = payload["description"] as? String
 
         Task { @MainActor in
@@ -129,7 +131,8 @@ extension SettingsShellWindowController {
                 modelId: modelId, displayName: displayName, handler: handler, baseUrl: baseUrl, modelIdentifier: modelIdentifier,
                 modelPath: modelPath, downloadUrl: downloadUrl, contextWindow: contextWindow,
                 maxOutputTokens: maxOutputTokens, requiresAuth: requiresAuth, apiKey: apiKey, features: features,
-                toolRendering: toolRendering, toolCallFormat: toolCallFormat, description: description
+                toolRendering: toolRendering, toolCallFormat: toolCallFormat, serverType: serverType,
+                description: description
             )
             // Judge success from the update call's own result, captured before
             // the refresh reload below -- a reload failure must not overwrite a
@@ -241,6 +244,7 @@ extension SettingsShellWindowController {
             return
         }
         let panel = NSOpenPanel()
+        panel.applyBasilThemedAppearance()
         panel.title = "Select Model File"
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false

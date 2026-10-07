@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { ProgressStep, StepDetailEntry, TimelineEntry } from '../../types';
 import ExecutionDisclosureChevron from '@shared/ExecutionDisclosureChevron';
 import { plainMarkdownText } from '@shared/plainMarkdownText';
@@ -12,6 +12,21 @@ import {
   type ActivityDisclosure,
 } from './activityDockPresentation';
 
+export type ActivityStatusTone = 'live' | 'attention' | 'danger' | 'neutral';
+
+/** Run state shown in the dock header; present only when the dock is acting as the run status card. */
+export interface ActivityStatusDisplay {
+  tone: ActivityStatusTone;
+  label: string;
+  /** Short qualifier after the label, such as elapsed seconds. */
+  detail?: string;
+  /** Replaces the latest-activity text in the collapsed header. */
+  summary?: string;
+  /** Used only when no activity entry has produced a readable latest label yet. */
+  fallbackSummary?: string;
+  openByDefault?: boolean;
+}
+
 export function ProgressStepsSection({
   steps,
   timeline,
@@ -22,6 +37,9 @@ export function ProgressStepsSection({
   presentation = 'inline',
   hasUnreadLiveContent = false,
   onJumpToLatestContent,
+  status,
+  statusFooter,
+  showTrail = true,
 }: {
   steps: ProgressStep[];
   timeline?: TimelineEntry[];
@@ -32,8 +50,19 @@ export function ProgressStepsSection({
   presentation?: 'inline' | 'dock';
   hasUnreadLiveContent?: boolean;
   onJumpToLatestContent?: () => void;
+  status?: ActivityStatusDisplay;
+  statusFooter?: ReactNode;
+  showTrail?: boolean;
 }) {
-  const [disclosure, setDisclosure] = useState<ActivityDisclosure>('collapsed');
+  const [disclosure, setDisclosure] = useState<ActivityDisclosure>(
+    status?.openByDefault ? 'trail' : 'collapsed',
+  );
+  const openByDefault = status?.openByDefault === true;
+  useEffect(() => {
+    if (openByDefault) {
+      setDisclosure(current => (current === 'collapsed' ? 'trail' : current));
+    }
+  }, [openByDefault]);
   const fullDetailsExpanded = disclosure === 'full';
   const listRef = useRef<HTMLDivElement>(null);
   const userScrolledRef = useRef(false);
@@ -124,15 +153,22 @@ export function ProgressStepsSection({
       : '';
 
   if (presentation === 'dock') {
-    if (!hasVisibleActivity(timelineEntries, steps)) {
+    const dockHasActivity = hasVisibleActivity(timelineEntries, steps);
+    if (!status && !dockHasActivity) {
       return null;
     }
 
     const dockBodyOpen = disclosure !== 'collapsed';
     const dockVisibleEntries = disclosure === 'full' ? timelineEntries : activityTrail;
+    const dockTrailVisible = showTrail && dockHasActivity;
+    const headerSummary = status?.summary ?? (latestActivityLabel || status?.fallbackSummary || '');
+    const beaconVisible = status ? status.tone === 'live' : isLive;
 
     return (
-      <section className="execution-activity-dock">
+      <section
+        className={`execution-activity-dock${status ? ` run-status-card run-status-card--${status.tone}` : ''}`}
+        aria-label={status ? `Run status: ${status.label}` : undefined}
+      >
         <button
           type="button"
           className="execution-activity-dock-header"
@@ -140,12 +176,26 @@ export function ProgressStepsSection({
           onClick={() => setDisclosure(current => nextActivityDisclosure(current, 'toggleTrail'))}
         >
           <span className="execution-activity-dock-beacon-slot">
-            {isLive ? <span className="execution-live-beacon" aria-hidden="true" /> : null}
+            {beaconVisible ? <span className="execution-live-beacon" aria-hidden="true" /> : null}
+            {status && !beaconVisible ? (
+              <span className={`run-status-dot run-status-dot--${status.tone}`} aria-hidden="true" />
+            ) : null}
           </span>
-          <span className="execution-activity-dock-count">Activity · {readableCount} {readableCount === 1 ? 'update' : 'updates'}</span>
-          {latestActivityLabel ? (
-            <span className="execution-activity-dock-latest">{latestActivityLabel}</span>
+          {status ? (
+            <span className="run-status-label">
+              {status.label}
+              {status.detail ? <span className="run-status-detail">{` · ${status.detail}`}</span> : null}
+            </span>
           ) : null}
+          {dockHasActivity ? (
+            <span className="execution-activity-dock-count">
+              <span className="execution-activity-dock-count-sizer" aria-hidden="true">Activity · 000 updates</span>
+              <span className="execution-activity-dock-count-value">Activity · {readableCount} {readableCount === 1 ? 'update' : 'updates'}</span>
+            </span>
+          ) : null}
+          {headerSummary ? (
+            <span className="execution-activity-dock-latest">{headerSummary}</span>
+          ) : <span className="execution-activity-dock-latest" />}
           <ExecutionDisclosureChevron expanded={dockBodyOpen} />
         </button>
 
@@ -161,7 +211,7 @@ export function ProgressStepsSection({
 
         <div className={`execution-activity-dock-body${dockBodyOpen ? ' is-open' : ''}`}>
           <div className="execution-activity-dock-body-inner">
-            {dockBodyOpen && hasTimeline && hasActivityTrail ? (
+            {dockBodyOpen && dockTrailVisible && hasTimeline && hasActivityTrail ? (
               <div
                 ref={disclosure === 'full' ? listRef : undefined}
                 onScroll={disclosure === 'full' ? handleScroll : undefined}
@@ -172,7 +222,7 @@ export function ProgressStepsSection({
               </div>
             ) : null}
 
-            {dockBodyOpen && !hasActivityTrail && steps.length > 0 ? (
+            {dockBodyOpen && dockTrailVisible && !hasActivityTrail && steps.length > 0 ? (
               <div
                 ref={disclosure === 'full' ? listRef : undefined}
                 onScroll={disclosure === 'full' ? handleScroll : undefined}
@@ -187,7 +237,7 @@ export function ProgressStepsSection({
               </div>
             ) : null}
 
-            {dockBodyOpen && disclosure === 'trail' && hasFullDetails ? (
+            {dockBodyOpen && dockTrailVisible && disclosure === 'trail' && hasFullDetails ? (
               <button
                 type="button"
                 className="execution-step-row activity-fulldetails-toggle execution-activity-dock-control"
@@ -203,7 +253,7 @@ export function ProgressStepsSection({
               </button>
             ) : null}
 
-            {dockBodyOpen && disclosure === 'full' ? (
+            {dockBodyOpen && dockTrailVisible && disclosure === 'full' ? (
               <div className="execution-activity-dock-controls">
                 <button
                   type="button"
@@ -226,6 +276,10 @@ export function ProgressStepsSection({
                   Collapse activity
                 </button>
               </div>
+            ) : null}
+
+            {dockBodyOpen && statusFooter ? (
+              <div className="run-status-footer">{statusFooter}</div>
             ) : null}
           </div>
         </div>

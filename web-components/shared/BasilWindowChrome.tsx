@@ -1,4 +1,6 @@
 import { useState, type ReactNode } from 'react'
+import { useCollapseShortcut } from './useCollapseShortcut'
+import { useSettledExpand } from './useSettledExpand'
 
 interface BasilWindowChromeProps {
   title: string
@@ -11,6 +13,7 @@ interface BasilWindowChromeProps {
 
 export function BasilWindowChrome({ title, children, onClose, onMinimize, onCollapse, onExpand }: BasilWindowChromeProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const isContentCollapsed = useSettledExpand(isCollapsed)
 
   const toggleCollapsed = () => {
     const next = !isCollapsed
@@ -21,6 +24,8 @@ export function BasilWindowChrome({ title, children, onClose, onMinimize, onColl
       onExpand()
     }
   }
+
+  useCollapseShortcut(toggleCollapsed)
 
   return (
     <div className="basil-webkit-window-frame">
@@ -64,9 +69,9 @@ export function BasilWindowChrome({ title, children, onClose, onMinimize, onColl
           <span className="basil-window-title">{title}</span>
         </header>
         <div
-          className={`basil-window-content${isCollapsed ? ' is-collapsed' : ''}`}
-          aria-hidden={isCollapsed}
-          {...(isCollapsed ? { inert: '' } : {})}
+          className={`basil-window-content${isContentCollapsed ? ' is-collapsed' : ''}`}
+          aria-hidden={isContentCollapsed}
+          {...(isContentCollapsed ? { inert: '' } : {})}
         >
           {children}
         </div>

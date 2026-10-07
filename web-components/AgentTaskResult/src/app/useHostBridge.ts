@@ -68,7 +68,9 @@ export async function hydrateDetachedChain(rootTaskId: string): Promise<void> {
       }
       const finalStatus: 'completed' | 'failed' = displayable.status === 'failed' ? 'failed' : 'completed';
       agentStore.updateStatus(rootTaskId, finalStatus);
-      if (finalStatus === 'failed') {
+      if (displayable.isCanceled) {
+        agentStore.markCanceled(rootTaskId);
+      } else if (finalStatus === 'failed') {
         agentStore.setError(rootTaskId, displayable.errorMessage || displayable.result || 'Task failed');
       }
       return;

@@ -40,7 +40,6 @@ from .agent_executor_factory import (
     create_langchain_llm,
     create_langchain_llm_from_model,
     create_finalizer_tool,
-    create_agent_executor,
     create_unsupported_llm_result,
     _build_finalizer_evaluation_context,
 )
@@ -49,13 +48,14 @@ from .agent_result_synthesis import (
     intermediate_steps_to_finalizer_steps,
     run_final_synthesis_for_state,
 )
-from .execution_limits import AGENT_EXECUTOR_MAX_EXECUTION_TIME_SECONDS
+from .execution_limits import AGENT_RUN_MAX_ACTIVE_SECONDS
 from ..runtime.workflow_status_notifier import WorkflowStatusNotifier
 from .agent_execution_core import (
     setup_live_callbacks,
     ModelUnavailableBeforeFirstResponse,
 )
-from .staged_execution_loop import StagedExecutionRequest, run_staged_tool_loading
+from .agent_loop_runner import AgentRunRequest, FinalizerRecoveryAgent, run_agent_loop
+from .agent_conversation_thread import load_prior_thread, save_agent_turn_thread
 from .workflow_deadline import deadline_evidence, deadline_from_context
 from ..finalization.execution_result_processing import handle_execution_error, process_agent_result
 from ..finalization.recovery import attempt_finalization_recovery
@@ -67,11 +67,27 @@ from ..finalization.task_state_persistence import (
 )
 from api.services.agent_providers.targeting.delegation_service import ProviderDelegationWaitRequest
 from ...tools.internal_basil_tools.checkpoint_tool import CheckpointRequest
+from ...shared.agent_run_registry import resolve_run_cancel_event
 
 # Use a child of the configured `api.main` logger so node logs (including the
 # skill-consideration decision line) reach the backend log file. A bare
 # logging.getLogger(__name__) sits outside that handler tree and is dropped.
 logger = api_logger.getChild("agent_graph_nodes")
+
+_CLEARED_AGENT_LOOP_FIELDS: Dict[str, Any] = {
+    "agent_messages": None,
+    "agent_pending_tool_call_id": None,
+    "agent_resume_input": None,
+}
+
+
+def _paused_agent_loop_fields(pause_request: BaseException) -> Dict[str, Any]:
+    """Keep the inner loop's conversation in the checkpoint so resume can answer the pending tool call."""
+    return {
+        "agent_messages": getattr(pause_request, "basil_agent_messages", None),
+        "agent_pending_tool_call_id": getattr(pause_request, "basil_tool_call_id", None),
+        "agent_resume_input": None,
+    }
 
 
 def _collect_emitted_thinking_history(
@@ -600,8 +616,8 @@ async def _node_execute_todos_with_tools(state: PlanningState) -> Dict[str, Any]
             pass
 
         # Finalizer is not an agent tool on the primary path: backend runs streamed
-        # synthesis then calls finalize_agent_task_result directly. Keep a recovery
-        # executor that still includes the finalizer tool for legacy repair runs.
+        # synthesis then calls finalize_agent_task_result directly. Finalizer recovery
+        # runs a separate short loop that still includes the finalizer tool.
         finalize_tool_recovery = create_finalizer_tool(state, coordinator, profile=finalizer_runtime_profile)
         
         # Fetch user profile for identity context in the system prompt
@@ -643,7 +659,7 @@ async def _node_execute_todos_with_tools(state: PlanningState) -> Dict[str, Any]
 
         # Execute the user agent task with token-limit retry
         logger.info(f"🤖 EXECUTING USER AGENT TASK WITH LANGCHAIN AGENT: {state.user_agent_task}")
-        cancel_event = state.context.get("cancel_event") if state.context else None
+        cancel_event = resolve_run_cancel_event(state.context)
         if cancel_event is not None and hasattr(cancel_event, "is_set") and cancel_event.is_set():
             raise asyncio.CancelledError()
 
@@ -651,7 +667,8 @@ async def _node_execute_todos_with_tools(state: PlanningState) -> Dict[str, Any]
         _timing = get_or_create_turn_timing(state.context)
         if _timing is not None:
             _timing.start("agent_loop")
-        staged_request = StagedExecutionRequest(
+        prior_thread = await load_prior_thread(state.context)
+        run_request = AgentRunRequest(
             langchain_llm=langchain_llm,
             state=state,
             user_profile_context=user_profile_context,
@@ -660,9 +677,10 @@ async def _node_execute_todos_with_tools(state: PlanningState) -> Dict[str, Any]
             selected_skill_section=selected_skill_section,
             live_callbacks=live_callbacks,
             cancel_event=cancel_event,
+            prior_thread=prior_thread,
         )
         try:
-            staged = await run_staged_tool_loading(staged_request)
+            agent_run = await run_agent_loop(run_request)
         except ModelUnavailableBeforeFirstResponse as unavailable_err:
             from api.dependencies import get_model_usage_service
             from api.core.models.model_types import ModelCapability
@@ -683,17 +701,14 @@ async def _node_execute_todos_with_tools(state: PlanningState) -> Dict[str, Any]
             )
             langchain_llm = fallback_langchain_llm
             import dataclasses
-            staged_request = dataclasses.replace(staged_request, langchain_llm=fallback_langchain_llm)
+            run_request = dataclasses.replace(run_request, langchain_llm=fallback_langchain_llm)
             if state.context is not None:
                 state.context["reasoning_fallback_model_used"] = fallback_model.model_name
-            staged = await run_staged_tool_loading(staged_request)
-        result = staged.result
-        loaded_families = staged.loaded_families
-        intermediate_steps = staged.intermediate_steps
-        agent_output = staged.agent_output
-        final_input = staged.final_input
-        active_tools_for_recovery = staged.active_tools_for_recovery
-        core_tools = staged.core_tools
+            agent_run = await run_agent_loop(run_request)
+        result = agent_run.result
+        intermediate_steps = agent_run.intermediate_steps
+        agent_output = agent_run.agent_output
+        final_input = agent_run.final_input
 
         if _timing is not None:
             _timing.stop("agent_loop")
@@ -743,6 +758,13 @@ async def _node_execute_todos_with_tools(state: PlanningState) -> Dict[str, Any]
         else:
             synthesized_text = st
 
+        await save_agent_turn_thread(
+            context=state.context,
+            langchain_llm=langchain_llm,
+            messages=getattr(agent_run, "messages", None),
+            answer_text=synthesized_text,
+        )
+
         ctx = state.context or {}
         _local = False
         try:
@@ -770,8 +792,8 @@ async def _node_execute_todos_with_tools(state: PlanningState) -> Dict[str, Any]
             raise asyncio.CancelledError()
         if _timing is not None:
             _timing.start("finalize")
-        # P2: broadcast a provisional envelope now (no LLM eval); run the cloud-only
-        # LLM outcome verification off the critical path and patch the result after.
+        # P2: broadcast a provisional envelope now (no LLM eval); run the LLM outcome
+        # verification (every model) off the critical path and patch the result after.
         from .async_finalizer import (
             FinalizeInputs,
             build_provisional_envelope,
@@ -793,6 +815,9 @@ async def _node_execute_todos_with_tools(state: PlanningState) -> Dict[str, Any]
             read_file_artifacts=ctx.get("file_reads"),
             evaluation_context=_build_finalizer_evaluation_context(ctx),
             synthesis_evidence=ctx.get("final_synthesis_evidence"),
+            context_window_exceeded=(result or {}).get("context_window_exceeded") if isinstance(result, dict) else None,
+            agent_final_answer=agent_output if isinstance(agent_output, str) else None,
+            is_local_model=_local,
         )
         final_envelope = await build_provisional_envelope(finalize_inputs)
         if final_envelope is not None and coordinator._llm_model is not None:
@@ -804,6 +829,7 @@ async def _node_execute_todos_with_tools(state: PlanningState) -> Dict[str, Any]
                 root_task_id=ctx.get("root_task_id"),
                 previous_task_id=ctx.get("previous_task_id"),
                 cancel_event=cancel_event,
+                provisional_envelope=final_envelope,
             )
         elif final_envelope is not None:
             # No model instance available at all (should not happen in practice);
@@ -816,10 +842,10 @@ async def _node_execute_todos_with_tools(state: PlanningState) -> Dict[str, Any]
         # Legacy recovery: only if the direct finalizer did not return an envelope
         if final_envelope is None and finalize_attempts == 0:
             deadline = deadline_from_context(state.context)
-            recovery_max_execution_time = AGENT_EXECUTOR_MAX_EXECUTION_TIME_SECONDS
+            recovery_budget_seconds = float(AGENT_RUN_MAX_ACTIVE_SECONDS)
             if deadline is not None:
                 if not deadline.can_start_execution(
-                    per_pass_cap_seconds=AGENT_EXECUTOR_MAX_EXECUTION_TIME_SECONDS,
+                    per_pass_cap_seconds=AGENT_RUN_MAX_ACTIVE_SECONDS,
                 ):
                     if state.context is not None:
                         state.context["workflow_deadline_evidence"] = deadline_evidence(
@@ -827,29 +853,20 @@ async def _node_execute_todos_with_tools(state: PlanningState) -> Dict[str, Any]
                             reason="insufficient_remaining_time_for_finalizer_recovery",
                         )
                     raise TimeoutError("Insufficient remaining workflow time for finalizer recovery.")
-                recovery_max_execution_time = deadline.execution_seconds_available(
-                    per_pass_cap_seconds=AGENT_EXECUTOR_MAX_EXECUTION_TIME_SECONDS,
+                recovery_budget_seconds = deadline.execution_seconds_available(
+                    per_pass_cap_seconds=AGENT_RUN_MAX_ACTIVE_SECONDS,
                 )
-            recovery_agent_executor = create_agent_executor(
-                langchain_llm,
-                list(active_tools_for_recovery) + [finalize_tool_recovery],
-                user_profile_context=user_profile_context,
-                communication_context_section=communication_context_section,
-                custom_instructions_section=custom_instructions_section,
-                preloaded_skill_section=selected_skill_section,
-                staged_tool_metadata={
-                    "stage": "recovery",
-                    "loaded_families": loaded_families,
-                    "family_count": len(loaded_families),
-                    "initial_tool_count": len(core_tools),
-                    "expanded_tool_count": len(active_tools_for_recovery) + 1,
-                    "expansion_count": len(loaded_families),
-                },
-                max_execution_time_seconds=recovery_max_execution_time,
+            recovery_agent = FinalizerRecoveryAgent(
+                langchain_llm=langchain_llm,
+                tools=list(agent_run.surface_tools) + [finalize_tool_recovery],
+                system_prompt_text=agent_run.system_prompt_text,
+                cancel_event=cancel_event,
+                budget_seconds=recovery_budget_seconds,
+                workflow_deadline=deadline,
             )
             recovered_envelope, intermediate_steps = await attempt_finalization_recovery(
                 state=state,
-                agent_executor=recovery_agent_executor,
+                agent_executor=recovery_agent,
                 intermediate_steps=intermediate_steps,
                 agent_output=agent_output,
                 callbacks=live_callbacks,
@@ -883,7 +900,7 @@ async def _node_execute_todos_with_tools(state: PlanningState) -> Dict[str, Any]
             _timing.emit()
 
         # Process and return result
-        return await process_agent_result(
+        agent_result_updates = await process_agent_result(
             result=result,
             state=state,
             coordinator=coordinator,
@@ -892,16 +909,18 @@ async def _node_execute_todos_with_tools(state: PlanningState) -> Dict[str, Any]
             finalize_attempts=finalize_attempts,
             execution_timeline=execution_timeline or None
         )
+        return {**agent_result_updates, **_CLEARED_AGENT_LOOP_FIELDS}
         
     except ProviderDelegationWaitRequest as delegation_wait:
-        return await handle_provider_delegation_wait_request(
+        delegation_updates = await handle_provider_delegation_wait_request(
             delegation_wait,
             state,
             coordinator,
         )
+        return {**delegation_updates, **_paused_agent_loop_fields(delegation_wait)}
     except CheckpointRequest as checkpoint_err:
         # Agent explicitly requested user input - collaborative flow, NOT an error
-        return await handle_checkpoint_request(
+        checkpoint_updates = await handle_checkpoint_request(
             checkpoint_err,
             state,
             coordinator,
@@ -912,6 +931,7 @@ async def _node_execute_todos_with_tools(state: PlanningState) -> Dict[str, Any]
                 locals().get("synthesis_thinking_history"),
             ),
         )
+        return {**checkpoint_updates, **_paused_agent_loop_fields(checkpoint_err)}
         
     except Exception as e:
         # Execution error with possible recovery from every emitted reasoning source.
@@ -921,4 +941,5 @@ async def _node_execute_todos_with_tools(state: PlanningState) -> Dict[str, Any]
             locals().get("langchain_llm"),
             locals().get("synthesis_thinking_history"),
         )
-        return handle_execution_error(e, state, thinking_history=error_thinking_history)
+        error_updates = handle_execution_error(e, state, thinking_history=error_thinking_history)
+        return {**error_updates, **_CLEARED_AGENT_LOOP_FIELDS}

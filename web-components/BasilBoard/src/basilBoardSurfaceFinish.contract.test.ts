@@ -15,11 +15,11 @@ describe('BasilBoard main window surface finish', () => {
 
   it('clears the Home and Todos layout containers only', () => {
     expect(finishCss).toContain(`${SCOPE} :is(`);
-    for (const chrome of ['.home-view', '.home-transcript', '.home-composer', '.todo-view', '.todo-list-pane']) {
+    for (const chrome of ['.home-view', '.home-composer', '.todo-view', '.todo-list-pane']) {
       expect(finishCss).toContain(chrome);
     }
     expect(finishCss.split(SCOPE).length - 1).toBe(1);
-    for (const solidSurface of ['.home-message-assistant', '.home-composer-shell', '.todo-detail-pane', '.todo-workspace-pane']) {
+    for (const solidSurface of ['.home-composer-shell', '.todo-detail-pane', '.todo-workspace-pane']) {
       expect(finishCss).not.toContain(solidSurface);
     }
   });

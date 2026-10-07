@@ -68,6 +68,29 @@ describe('AnalysisCard', () => {
     expect(intents.viewAnalysis).toHaveBeenCalledWith('analysis.json');
   });
 
+  it('places the delete confirmation buttons below the question and supports cancel and confirm', async () => {
+    const user = userEvent.setup();
+    render(<AnalysisCard ui={ui} analysisHistory={history} />);
+
+    await user.click(screen.getByRole('button', { name: 'Delete analysis from 2026-08-14 11:00 am' }));
+    const label = screen.getByText('Delete?');
+    const confirm = label.closest('.meeting-analysis-delete-confirm');
+    expect(label).toHaveClass('meeting-analysis-delete-confirm__label');
+    const actions = confirm?.querySelector('.meeting-analysis-delete-confirm__actions');
+    expect(actions).not.toBeNull();
+    expect(label.nextElementSibling).toBe(actions);
+    expect(actions?.contains(screen.getByRole('button', { name: 'Delete' }))).toBe(true);
+    expect(actions?.contains(screen.getByRole('button', { name: 'Cancel' }))).toBe(true);
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByText('Delete?')).not.toBeInTheDocument();
+    expect(intents.deleteAnalysis).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'Delete analysis from 2026-08-14 11:00 am' }));
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(intents.deleteAnalysis).toHaveBeenCalledWith('analysis.json');
+  });
+
   it('renders one analysis progress label with a normal-weight percentage', () => {
     render(<AnalysisCard ui={{
       ...ui,

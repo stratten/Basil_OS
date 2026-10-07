@@ -3,7 +3,7 @@ import { Switch } from '@shared/Switch'
 import TokenizedSelect from '@shared/TokenizedSelect'
 import { requestFetchLocalGGUFMetadata, requestPickLocalFile, requestTestConnection, requestUpdateModel } from '../../services/customModelsBridge'
 import { FormField, FormSection } from './FormField'
-import { DEFAULT_FEATURES, type WizardFeature } from './types'
+import { DEFAULT_FEATURES, SERVER_TYPE_HINT, SERVER_TYPE_OPTIONS, serverTypeFrom, type ServerType, type WizardFeature } from './types'
 import type { CustomModelSummary } from '../../types'
 import type { LatestBridgeEvent } from '../CustomModelsPanel'
 
@@ -39,6 +39,7 @@ export function CustomModelEditForm({ model, latestEvent, onDismiss }: CustomMod
   const [handler, setHandler] = useState(model.handler)
   const [baseUrl, setBaseUrl] = useState(model.baseUrl ?? '')
   const [modelIdentifier, setModelIdentifier] = useState(model.modelIdentifier ?? '')
+  const [serverType, setServerType] = useState<ServerType>(serverTypeFrom(model.serverType))
   const [modelPath, setModelPath] = useState(model.modelPath ?? '')
   const [downloadUrl, setDownloadUrl] = useState(model.downloadUrl ?? '')
   const [contextWindow, setContextWindow] = useState(String(model.contextWindow))
@@ -155,6 +156,7 @@ export function CustomModelEditForm({ model, latestEvent, onDismiss }: CustomMod
       features: features.filter((feature) => feature.isEnabled).map((feature) => feature.id),
       toolRendering: !model.isLocal && isFunctionCallingEnabled && useSlimToolRendering ? 'slim_schema' : undefined,
       toolCallFormat: !model.isLocal && isFunctionCallingEnabled ? toolCallFormat : undefined,
+      serverType: !model.isLocal && handler === 'openai_compatible' ? serverType : undefined,
       description: description === '' ? undefined : description,
     })
     setPendingSaveRequestId(id)
@@ -195,6 +197,16 @@ export function CustomModelEditForm({ model, latestEvent, onDismiss }: CustomMod
                 options={API_HANDLER_OPTIONS.map((option) => ({ value: option.id, label: option.label }))}
               />
             </FormField>
+            {handler === 'openai_compatible' && (
+              <FormField label="Server Type" hint={SERVER_TYPE_HINT}>
+                <TokenizedSelect
+                  value={serverType}
+                  ariaLabel="Server Type"
+                  onValueChange={setServerType}
+                  options={SERVER_TYPE_OPTIONS}
+                />
+              </FormField>
+            )}
             <FormField label="Base URL">
               <input type="text" value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} />
             </FormField>
