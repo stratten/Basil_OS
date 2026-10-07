@@ -6,7 +6,7 @@ This repository contains the source and build inputs for the supported macOS app
 
 - `client/` is the Swift package for the native Basil client. It contains native application lifecycle and presentation code, menu and permission integrations, audio and screen capture, WebKit hosts, packaged resources, and client-side tests.
 - `backend/` is the local Python/FastAPI service. Its source contains route registration, domain services, model orchestration, persistence-facing code, WebSocket coordination, configuration, and backend tests.
-- `web-components/` contains the React/Vite source for embedded interactive surfaces. Packages are grouped by shipped surface, such as the Basil Board, Meeting Assistant, Assistant Session, transcription, Settings, Setup Assistant, and skill reconciliation.
+- `web-components/` contains the React/Vite source for embedded interactive surfaces. Packages are grouped by shipped surface, such as the Basil Board, Notetaker (the `MeetingAssistant` package), Assistant Session, transcription, Settings, Setup Assistant, and skill reconciliation.
 - `scripts/` contains canonical asset builders, generators, and supporting validation utilities shared across source surfaces.
 - `build/` contains local packaging inputs, third-party build helpers, and release tooling. Its scripts can create local packages and, when explicitly invoked with the appropriate options and credentials, perform owner-only release operations.
 

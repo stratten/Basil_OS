@@ -50,7 +50,7 @@ The embedded applications are source code under `web-components/`; the files sta
 
 The canonical builders are:
 
-- `scripts/build-agent-task-assets.sh` builds and stages Agent Task, scheduled-run, model-download, power-user-guide, setup-resume, Meeting Detection, ambient-suggestions, Basil Board/conversation, Meeting Assistant/analysis, Assistant Session/history, Transcription/audio-file, and Agent Task capture-input bundles.
+- `scripts/build-agent-task-assets.sh` builds and stages Agent Task, scheduled-run, model-download, power-user-guide, setup-resume, Meeting/Call Detection, ambient-suggestions, Basil Board/conversation, Notetaker/analysis (the `MeetingAssistant` package), Assistant Session/history, Transcription/audio-file, and Agent Task capture-input bundles.
 - `scripts/build-setup-assistant-assets.sh` builds and stages Setup Assistant.
 - `scripts/build-profile-editor-assets.sh` builds and stages profile, memory, and skills editing.
 - `scripts/build-settings-appearance-assets.sh` builds and stages the Settings renderer.

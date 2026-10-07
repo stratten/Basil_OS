@@ -24,7 +24,10 @@ Write one bullet per line, starting with `- `, in plain language for people usin
 - You can now pause a running agent task and resume it later, even after restarting Basil, and you can send Basil a note while it works, which it reads before its next step
 - Stop now also stops a task that was continuing after you answered a question, and a stopped task no longer keeps pulsing in the sidebar or the run map
 - The run map no longer keeps showing a question as waiting after you have answered it, and a question waiting on you now shows an amber "Your turn" marker instead of a plain pulse
-- If you open Basil's reasoning while it is thinking, it stays open and keeps updating until you close it yourself
+- Basil's reasoning now stays closed until you open it; once open it follows the newest step while Basil thinks, and it folds closed when the task finishes
+- While a task runs, one thin status card above the message box shows what it is doing, such as Working, Verifying the outcome, Paused, or Needs attention, and a stopped task now shows a neutral Canceled card with Run again instead of looking like a failure
+- You can attach files or folders to a note you send a running task or to the note you add when you resume a paused task
+- Follow-up questions start on the model used for the previous turn
 - Browser tasks now use one dedicated browser window per task, including its follow-ups, so Basil no longer loses track of which tab it was working in
 
 ## 1.1.7

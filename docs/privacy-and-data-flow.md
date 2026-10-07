@@ -18,7 +18,7 @@ When you select a local model, Basil performs inference on your Mac. The text, a
 
 When you select a direct provider model, Basil sends the request content needed by that model to the selected provider. This can include conversation messages, prompts assembled from files or application context that you explicitly provide, screenshots or image content selected for vision work, and audio submitted for cloud transcription. The provider receives the request under its own terms and privacy policy. Basil sends the provider credential with the request; it is not included in this repository.
 
-You can supply direct provider keys through the process environment, including `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, and `GOOGLE_API_KEY`, or through Basil's local provider-key settings. Choose only providers whose data handling is acceptable for the content you submit.
+You can supply direct provider keys through the process environment, including `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, and `GOOGLE_API_KEY`, or through Basil's provider-key settings, which store the key in the macOS Keychain. Choose only providers whose data handling is acceptable for the content you submit.
 
 ### Basil Cloud
 
@@ -63,7 +63,7 @@ MCP connections and ACP provider profiles have their own provider-specific autho
 The following locations are used by the current desktop/backend implementation. They can contain private information and should be included in any backup, deletion, or incident-response decision. These are application roots, not a promise that every capability writes to every location on every use.
 
 - `~/.basil/knowledge_base.db` stores Basil's local SQLite knowledge data, including conversation, Agent Task, transcription, memory, and related application records.
-- `~/.basil/config/preferences.json` stores Basil preferences; `~/.basil/config/api_keys.json` can store user-provided provider keys.
+- `~/.basil/config/preferences.json` stores Basil preferences; `~/.basil/config/api_key_flags.json` records only which providers use your own key, never the key itself. Provider key values are stored in the macOS Keychain under the service `com.basil.providerKeys`. Earlier versions kept keys in a plain-text `~/.basil/config/api_keys.json`; current versions do not read that file, do not migrate it, and it can be deleted.
 - `~/.basil/data/` holds runtime data and capture-related working files, including capture folders and temporary screen/window-capture material. `BASIL_DATA_DIR` overrides the backend data-directory default for components that use the shared API settings.
 - `~/.basil/models/` holds downloaded local model files. `BASIL_MODELS_DIR` overrides its shared API-settings default.
 - `~/.basil/meetings/` holds meeting recording and analysis material organized by meeting identifier.

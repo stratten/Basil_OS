@@ -55,9 +55,9 @@ Models are organized by capability:
 
 Select the capability first, then choose the available local, provider, or custom path. Download local models only when you have enough storage and the capability requires them. Local model files are stored under `~/.basil/models/`. Removing a local model removes its managed copy and related cache material so that a later use requires a fresh download.
 
-For direct-provider models, use the provider's configuration area to supply a key. The current supported environment-variable examples are `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, and `GOOGLE_API_KEY`; Basil also supports locally stored user-provided keys. A provider's enablement control is distinct from the choice to use your own API key. The latter is an explicit bring-your-own-key path, not a second provider-enable switch.
+For direct-provider models, use the provider's configuration area to supply a key. The current supported environment-variable examples are `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, and `GOOGLE_API_KEY`; Basil also supports user-provided keys, which it stores in the macOS Keychain rather than in a file. A provider's enablement control is distinct from the choice to use your own API key. The latter is an explicit bring-your-own-key path, not a second provider-enable switch.
 
-Custom models are configured separately from local and provider catalogs. Use only endpoints and runtimes you trust with the content sent to them. Choosing a model path affects a request only when that capability uses the selection; it does not convert previously stored local data or rerun historical work.
+Custom models are configured separately from local and provider catalogs. Use only endpoints and runtimes you trust with the content sent to them. For an OpenAI-compatible custom model, the Server Type setting tells Basil what is behind the endpoint: choose Ollama so Basil sends the model's context window to Ollama when it loads the model, and leave the default for other servers, which use the context length they were started with. Choosing a model path affects a request only when that capability uses the selection; it does not convert previously stored local data or rerun historical work.
 
 ### Automation & Agents
 

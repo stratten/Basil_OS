@@ -10,7 +10,7 @@ This distinction matters because the native app packages the staged WebKit resou
 
 - Agent Task results and local preview.
 - Scheduled-run, model-download, power-user-guide, and setup-resume panels.
-- Meeting Detection, ambient suggestions, Basil Board, conversations, Meeting Assistant, and meeting analysis.
+- Meeting/Call Detection, ambient suggestions, Basil Board, conversations, Notetaker (the `MeetingAssistant` package), and meeting analysis.
 - Assistant Session and Assistant Session output history.
 - The transcription widget, audio-file transcription, and Agent Task capture input.
 

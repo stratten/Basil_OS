@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useState } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { copyText, exportAnalysis, registerEventHandler, reportReady, toggleWindowCollapse, viewAnalysis } from './bridge/meetingBridge';
 import { applyMeetingBridgeEvent, initialMeetingState } from './state/meetingReducer';
 import AnalysisResults from './components/AnalysisResults';
@@ -14,11 +14,19 @@ import {
   type AnalysisModeId,
 } from './lib/analysisModes';
 
+const COPIED_CONFIRMATION_MS = 1500;
+
 export default function MeetingAnalysisApp() {
   const [state, dispatch] = useReducer(applyMeetingBridgeEvent, initialMeetingState);
   const [tab, setTab] = useState<AnalysisModeId | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const isContentCollapsed = useSettledExpand(isCollapsed);
+  const [copied, setCopied] = useState(false);
+  const copiedTimerRef = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (copiedTimerRef.current !== null) window.clearTimeout(copiedTimerRef.current);
+  }, []);
 
   useEffect(() => {
     registerEventHandler((event) => dispatch(event));
@@ -41,6 +49,16 @@ export default function MeetingAnalysisApp() {
   }, [analysisKey]);
 
   const exportText = result ? buildAnalysisExportText(result, proposals) : '';
+
+  const copyAll = () => {
+    copyText(exportText);
+    setCopied(true);
+    if (copiedTimerRef.current !== null) window.clearTimeout(copiedTimerRef.current);
+    copiedTimerRef.current = window.setTimeout(() => {
+      copiedTimerRef.current = null;
+      setCopied(false);
+    }, COPIED_CONFIRMATION_MS);
+  };
 
   const handleToggleCollapse = () => {
     const next = !isCollapsed;
@@ -66,10 +84,10 @@ export default function MeetingAnalysisApp() {
                 type="button"
                 className="meeting-window-chrome-action"
                 title="Copy all results to clipboard"
-                onClick={() => copyText(exportText)}
+                onClick={copyAll}
               >
-                <CopyAllIcon />
-                Copy All
+                {copied ? <CopiedIcon /> : <CopyAllIcon />}
+                {copied ? 'Copied' : 'Copy All'}
               </button>
               <button
                 type="button"
@@ -144,6 +162,14 @@ function CopyAllIcon() {
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
       <rect x="5.5" y="5.5" width="8" height="8" rx="1.2" />
       <path d="M10.5 5.5V3.8A1.3 1.3 0 0 0 9.2 2.5H3.8A1.3 1.3 0 0 0 2.5 3.8v5.4A1.3 1.3 0 0 0 3.8 10.5H5.5" />
+    </svg>
+  );
+}
+
+function CopiedIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <path d="m3 8.2 3.1 3.1L13 4.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

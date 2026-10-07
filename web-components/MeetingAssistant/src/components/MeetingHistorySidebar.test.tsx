@@ -77,7 +77,7 @@ describe('MeetingHistorySidebar', () => {
     expect(screen.getByText('Delete this meeting?')).toBeInTheDocument();
   });
 
-  it('replaces the row with an inline confirmation that can be cancelled or confirmed', async () => {
+  it('replaces the row with an inline confirmation that can be canceled or confirmed', async () => {
     const user = userEvent.setup();
     render(<MeetingHistorySidebar history={[meeting]} selectedMeetingId={null} searchText="" searchFilters={filters} isLoading={false} isLoadingMore={false} hasMore={false} loadMoreError={null} activeAnalysisMeetingId={null} />);
 
