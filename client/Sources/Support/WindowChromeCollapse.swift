@@ -111,7 +111,8 @@ enum WindowChromeCollapse {
         window: NSWindow,
         state: inout State?,
         fallbackSize: NSSize,
-        overrideSize: NSSize? = nil
+        overrideSize: NSSize? = nil,
+        animated: Bool = true
     ) {
         let currentFrame = window.frame
         guard let savedState = state else {
@@ -136,7 +137,13 @@ enum WindowChromeCollapse {
                 visibleFrame: visibleFrame
             )
         }
-        applyFrame(window: window, frame: targetFrame, visibleFrame: visibleFrame, animatesWithoutBlocking: true)
+        applyFrame(
+            window: window,
+            frame: targetFrame,
+            visibleFrame: visibleFrame,
+            animatesWithoutBlocking: true,
+            animated: animated
+        )
         restoreConstraints(window: window, state: savedState)
         state = nil
     }
@@ -327,7 +334,8 @@ enum WindowChromeCollapse {
         window: NSWindow,
         frame: NSRect,
         visibleFrame: NSRect,
-        animatesWithoutBlocking: Bool = false
+        animatesWithoutBlocking: Bool = false,
+        animated: Bool = true
     ) {
         let effectiveMinSize = NSSize(
             width: min(window.minSize.width, visibleFrame.width),
@@ -341,6 +349,11 @@ enum WindowChromeCollapse {
         window.maxSize = effectiveMaxSize
         window.contentMinSize = effectiveMinSize
         let targetFrame = clamp(frame, inside: visibleFrame)
+        guard animated else {
+            inFlightExpandFrames[ObjectIdentifier(window)] = nil
+            window.setFrame(targetFrame, display: true, animate: false)
+            return
+        }
         guard animatesWithoutBlocking else {
             window.setFrame(targetFrame, display: true, animate: true)
             return

@@ -1,4 +1,4 @@
-import { act, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MeetingActionProposalDTO, MeetingAnalysisResultDTO, MeetingBridgeEvent } from './bridge/types';
@@ -229,6 +229,62 @@ describe('MeetingAnalysisApp', () => {
     expect(text).toContain('## Action Items');
     expect(text).toContain('## To-Do Candidates');
     expect(text).toContain('## Summary');
+  });
+
+  it('confirms the title-bar Copy All with a check and Copied label that revert after a moment', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      render(<MeetingAnalysisApp />);
+      publishResult(makeResult());
+
+      const copyAll = screen.getByRole('button', { name: 'Copy All' });
+      expect(copyAll.querySelector('path[d="m3 8.2 3.1 3.1L13 4.8"]')).toBeNull();
+
+      fireEvent.click(copyAll);
+      const copied = screen.getByRole('button', { name: 'Copied' });
+      expect(copied.querySelector('path[d="m3 8.2 3.1 3.1L13 4.8"]')).not.toBeNull();
+      expect(mocks.copyText).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        vi.advanceTimersByTime(1499);
+      });
+      expect(screen.getByRole('button', { name: 'Copied' })).toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(screen.getByRole('button', { name: 'Copy All' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Copied' })).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('restarts the confirmation window when Copy All is clicked again before it reverts', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      render(<MeetingAnalysisApp />);
+      publishResult(makeResult());
+
+      fireEvent.click(screen.getByRole('button', { name: 'Copy All' }));
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Copied' }));
+      expect(mocks.copyText).toHaveBeenCalledTimes(2);
+
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+      expect(screen.getByRole('button', { name: 'Copied' })).toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+      expect(screen.getByRole('button', { name: 'Copy All' })).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('hides title-bar copy and export while the window is collapsed', async () => {

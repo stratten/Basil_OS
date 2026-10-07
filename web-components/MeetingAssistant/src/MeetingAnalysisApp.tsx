@@ -87,7 +87,10 @@ export default function MeetingAnalysisApp() {
                 onClick={copyAll}
               >
                 {copied ? <CopiedIcon /> : <CopyAllIcon />}
-                {copied ? 'Copied' : 'Copy All'}
+                <span className="meeting-window-chrome-action__label-stack">
+                  <span aria-hidden={copied ? undefined : true} className={copied ? undefined : 'meeting-window-chrome-action__label-inactive'}>Copied</span>
+                  <span aria-hidden={copied ? true : undefined} className={copied ? 'meeting-window-chrome-action__label-inactive' : undefined}>Copy All</span>
+                </span>
               </button>
               <button
                 type="button"

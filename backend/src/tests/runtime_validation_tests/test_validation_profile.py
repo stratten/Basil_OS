@@ -616,8 +616,13 @@ async def test_validation_provider_interaction_fixtures_publish_through_the_real
 @pytest.mark.asyncio
 async def test_validation_provider_permission_request_publishes_through_the_real_routing_service(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     knowledge_service = SQLiteKnowledgeService(tmp_path / "provider-permission.db")
+    monkeypatch.setattr(
+        "api.dependencies.get_sqlite_knowledge_service",
+        lambda: knowledge_service,
+    )
     agent_task_id = "validation-provider-permission"
     await knowledge_service.agent_task_service.store_agent_task(
         agent_task_id=agent_task_id,

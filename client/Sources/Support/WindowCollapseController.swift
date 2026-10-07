@@ -66,7 +66,7 @@ final class WindowCollapseController {
             }
         } else {
             let resolvedFallback = fallbackExpandedSize ?? self.fallbackExpandedSize
-            WindowChromeCollapse.expand(window: window, state: &state, fallbackSize: resolvedFallback, overrideSize: fallbackExpandedSize)
+            WindowChromeCollapse.expand(window: window, state: &state, fallbackSize: resolvedFallback, overrideSize: fallbackExpandedSize, animated: animated)
         }
     }
 

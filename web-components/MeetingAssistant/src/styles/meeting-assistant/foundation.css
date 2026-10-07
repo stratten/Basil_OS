@@ -163,6 +163,19 @@
   cursor: pointer;
 }
 
+.meeting-window-chrome-action__label-stack {
+  display: inline-grid;
+}
+
+.meeting-window-chrome-action__label-stack > span {
+  grid-area: 1 / 1;
+  text-align: left;
+}
+
+.meeting-window-chrome-action__label-inactive {
+  visibility: hidden;
+}
+
 .meeting-window-chrome-action:hover {
   background: color-mix(in srgb, var(--secondary) 16%, var(--background-primary));
 }
