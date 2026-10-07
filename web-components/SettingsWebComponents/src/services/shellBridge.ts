@@ -1,5 +1,7 @@
+import { postToSwiftHandler } from '@shared/swiftBridge'
+
 function postMessage(message: { type: 'close' | 'minimize' | 'collapse' | 'expand' }) {
-  window.webkit?.messageHandlers?.basilSettingsShellBridge?.postMessage(message)
+  postToSwiftHandler('basilSettingsShellBridge', message)
 }
 
 export function closeSettingsShell() {

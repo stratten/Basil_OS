@@ -1,3 +1,4 @@
+import { postToSwiftHandler } from '@shared/swiftBridge'
 import type { PermissionKind, PermissionsApplicationNativeEvent } from '../types'
 
 type OutgoingPermissionsApplicationMessage =
@@ -40,7 +41,7 @@ export function onPermissionsApplicationEvent(handler: EventHandler): () => void
 }
 
 function postMessage(message: OutgoingPermissionsApplicationMessage) {
-  window.webkit?.messageHandlers?.basilPermissionsApplicationBridge?.postMessage(message)
+  postToSwiftHandler('basilPermissionsApplicationBridge', message)
 }
 
 function requestId(prefix: string): string {

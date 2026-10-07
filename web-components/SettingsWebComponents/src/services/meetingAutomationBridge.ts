@@ -1,3 +1,4 @@
+import { postToSwiftHandler } from '@shared/swiftBridge'
 import type { MeetingAutomationNativeEvent } from '../types'
 
 type OutgoingMeetingAutomationMessage =
@@ -45,7 +46,7 @@ export function onMeetingAutomationEvent(handler: EventHandler): () => void {
 }
 
 function postMessage(message: OutgoingMeetingAutomationMessage) {
-  window.webkit?.messageHandlers?.basilMeetingAutomationSettingsBridge?.postMessage(message)
+  postToSwiftHandler('basilMeetingAutomationSettingsBridge', message)
 }
 
 function requestId(prefix: string): string {

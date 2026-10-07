@@ -81,6 +81,8 @@ npm test
 npm run build
 ```
 
+Every renderer talks to Swift through a WKWebView message handler. Use `createSwiftBridge` from `web-components/shared/swiftBridge.ts` instead of reading `window.webkit` directly: it resolves the handler on every call, owns the one global `Window.webkit` type, reports a dropped message when the page runs outside the app, and lets a package keep its own typed outgoing message union. Use `hasSwiftHandler` when code needs to branch on whether the native host is present.
+
 `npm run typecheck` runs `tsc --noEmit` against the package's `tsconfig.json`, including every `web-components/shared` file the package imports. Vitest and Vite do not type-check, so run it alongside the tests; CI runs it for every package.
 
 `python3 scripts/check_literal_structural_colors.py` fails when web-component CSS outside a `theme.css` file uses a hardcoded black or white value that is not an accepted exception. Each exception in `scripts/literal_structural_colors_allowlist.json` is named by its file, selector, property, and value and carries a reason, so moving or editing unrelated rules does not affect it. Add a new intentional exception with `python3 scripts/check_literal_structural_colors.py --update-baseline --reason "Why it is intentional."`. CI runs the check.

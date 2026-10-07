@@ -349,3 +349,55 @@ async def test_startup_reconciliation_is_idempotent_and_ignores_malformed_timeli
     refreshed = await service.get_agent_task("task-canceled")
     assert _interaction_status(refreshed) == "canceled"
     assert len([item for item in refreshed.execution_timeline if item["id"] == "user_interaction_approval-1"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_a_stale_timeline_write_cannot_drop_a_recorded_exchange(tmp_path) -> None:
+    service = SQLiteKnowledgeService(tmp_path / "stale-writer-drop.db")
+    await service.store_agent_task(
+        agent_task_id="task-1",
+        original_prompt="Prompt",
+        transcribed_prompt="Prompt",
+        status="processing",
+    )
+    await service.agent_task_service.update_execution_timeline("task-1", _waiting_interaction_timeline())
+
+    await service.agent_task_service.update_execution_timeline(
+        "task-1", [{"id": "step-1", "type": "step", "content": "Searching"}, {"id": "step-2", "type": "step", "content": "Reading"}]
+    )
+
+    refreshed = await service.get_agent_task("task-1")
+    assert {item["id"] for item in refreshed.execution_timeline} == {"step-1", "step-2", "user_interaction_approval-1"}
+    assert _interaction_status(refreshed) == "waiting"
+
+
+@pytest.mark.asyncio
+async def test_a_stale_timeline_write_cannot_put_an_answered_request_back_to_waiting(tmp_path) -> None:
+    from api.services.agent_processing.lifecycle.runtime.user_interaction_timeline import (
+        build_user_interaction_entry,
+    )
+
+    service = SQLiteKnowledgeService(tmp_path / "stale-writer-regress.db")
+    await service.store_agent_task(
+        agent_task_id="task-1",
+        original_prompt="Prompt",
+        transcribed_prompt="Prompt",
+        status="processing",
+    )
+    stale = _waiting_interaction_timeline()
+    answered = [
+        *stale[:1],
+        build_user_interaction_entry(
+            interaction_id="approval-1",
+            kind="approval",
+            prompt="Run sed -n 2p notes.txt?",
+            status="approved",
+        ),
+    ]
+    await service.agent_task_service.update_execution_timeline("task-1", answered)
+
+    await service.agent_task_service.update_execution_timeline("task-1", stale)
+
+    refreshed = await service.get_agent_task("task-1")
+    assert _interaction_status(refreshed) == "approved"
+    assert len([item for item in refreshed.execution_timeline if item["id"] == "user_interaction_approval-1"]) == 1

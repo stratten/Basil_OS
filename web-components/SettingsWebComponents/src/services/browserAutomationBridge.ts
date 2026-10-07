@@ -1,3 +1,4 @@
+import { postToSwiftHandler } from '@shared/swiftBridge'
 import type {
   BrowserAutomationNativeEvent,
   BrowserAutomationSessionMode,
@@ -52,7 +53,7 @@ export function onBrowserAutomationEvent(handler: EventHandler): () => void {
 }
 
 function postMessage(message: OutgoingBrowserAutomationMessage) {
-  window.webkit?.messageHandlers?.basilBrowserAutomationSettingsBridge?.postMessage(message)
+  postToSwiftHandler('basilBrowserAutomationSettingsBridge', message)
 }
 
 function requestId(prefix: string): string {

@@ -1,3 +1,4 @@
+import { postToSwiftHandler } from '@shared/swiftBridge'
 import type { AppearanceThemesNativeEvent, CustomAppearanceThemeInput } from '../types'
 
 type OutgoingAppearanceThemesMessage =
@@ -39,7 +40,7 @@ export function onAppearanceThemesEvent(handler: EventHandler): () => void {
 }
 
 function postMessage(message: OutgoingAppearanceThemesMessage) {
-  window.webkit?.messageHandlers?.basilAppearanceThemesBridge?.postMessage(message)
+  postToSwiftHandler('basilAppearanceThemesBridge', message)
 }
 
 function requestId(prefix: string): string {

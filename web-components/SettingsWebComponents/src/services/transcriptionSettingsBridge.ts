@@ -1,3 +1,4 @@
+import { postToSwiftHandler } from '@shared/swiftBridge'
 import type {
   TranscriptionSettingsNativeEvent,
   TranscriptionTextReplacementFields,
@@ -48,7 +49,7 @@ export function onTranscriptionSettingsEvent(handler: EventHandler): () => void 
 }
 
 function postMessage(message: OutgoingTranscriptionSettingsMessage) {
-  window.webkit?.messageHandlers?.basilTranscriptionSettingsBridge?.postMessage(message)
+  postToSwiftHandler('basilTranscriptionSettingsBridge', message)
 }
 
 function requestId(prefix: string): string {

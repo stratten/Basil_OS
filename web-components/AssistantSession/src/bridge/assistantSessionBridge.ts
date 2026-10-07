@@ -1,5 +1,6 @@
 // web-components/AssistantSession/src/bridge/assistantSessionBridge.ts
 
+import { createSwiftBridge, missingHandlerLogger } from '@shared/swiftBridge';
 import { PROTOCOL_VERSION } from './types';
 import type {
   AssistantSessionBridgeEvent,
@@ -54,14 +55,12 @@ export function onAssistantSessionMeter(listener: MeterListener): () => void {
   };
 }
 
+const swiftBridge = createSwiftBridge<AssistantSessionBridgeIntent>('assistantSessionBridge', {
+  onMissing: missingHandlerLogger('warn', '[assistantSessionBridge] no native handler registered; intent dropped'),
+});
+
 function postToSwift(intent: AssistantSessionBridgeIntent): void {
-  const handler = window.webkit?.messageHandlers?.assistantSessionBridge;
-  if (!handler) {
-    // eslint-disable-next-line no-console
-    console.warn('[assistantSessionBridge] no native handler registered; intent dropped', intent);
-    return;
-  }
-  handler.postMessage(intent);
+  swiftBridge.post(intent);
 }
 
 export function reportReady(): void {

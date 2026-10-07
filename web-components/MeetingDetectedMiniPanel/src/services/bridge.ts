@@ -1,14 +1,8 @@
+import { createSwiftBridge, missingHandlerLogger } from '@shared/swiftBridge';
 import type { FontConfig, InitMessage, MeetingInfo, SwiftMessage, ThemeConfig } from '../types';
 
 declare global {
   interface Window {
-    webkit?: {
-      messageHandlers: {
-        meetingDetectedPanelBridge: {
-          postMessage: (message: SwiftMessage) => void;
-        };
-      };
-    };
     basilMeetingDetectedPanel?: {
       onInit: (config: InitMessage) => void;
       onThemeChanged: (theme: ThemeConfig, fonts: FontConfig) => void;
@@ -62,12 +56,12 @@ window.basilMeetingDetectedPanel = {
   },
 };
 
+const swiftBridge = createSwiftBridge<SwiftMessage>('meetingDetectedPanelBridge', {
+  onMissing: missingHandlerLogger('log', '[MeetingDetectedPanelBridge] No Swift handler, message:'),
+});
+
 function postToSwift(message: SwiftMessage) {
-  if (window.webkit?.messageHandlers.meetingDetectedPanelBridge) {
-    window.webkit.messageHandlers.meetingDetectedPanelBridge.postMessage(message);
-  } else {
-    console.log('[MeetingDetectedPanelBridge] No Swift handler, message:', message);
-  }
+  swiftBridge.post(message);
 }
 
 export function startMeeting() {

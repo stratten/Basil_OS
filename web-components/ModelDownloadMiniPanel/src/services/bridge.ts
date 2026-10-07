@@ -1,16 +1,10 @@
+import { createSwiftBridge } from '@shared/swiftBridge'
 import type { FontConfig, InitMessage, PanelSnapshot, SwiftMessage, ThemeConfig } from '../types'
 
 export const modelDownloadPanelBridgeProtocolVersion = 1
 
 declare global {
   interface Window {
-    webkit?: {
-      messageHandlers?: {
-        modelDownloadPanelBridge?: {
-          postMessage: (message: SwiftMessage & { protocolVersion: number }) => void
-        }
-      }
-    }
     basilModelDownloadPanel?: {
       onInit: (config: InitMessage) => void
       onSnapshot: (snapshot: PanelSnapshot) => void
@@ -56,8 +50,10 @@ window.basilModelDownloadPanel = {
   },
 }
 
+const swiftBridge = createSwiftBridge<SwiftMessage & { protocolVersion: number }>('modelDownloadPanelBridge')
+
 function postToSwift(message: SwiftMessage) {
-  window.webkit?.messageHandlers?.modelDownloadPanelBridge?.postMessage({
+  swiftBridge.post({
     ...message,
     protocolVersion: modelDownloadPanelBridgeProtocolVersion,
   })

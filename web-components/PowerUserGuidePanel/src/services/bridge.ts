@@ -1,16 +1,10 @@
+import { createSwiftBridge } from '@shared/swiftBridge'
 import type { FontConfig, InitMessage, SwiftMessage, ThemeConfig } from '../types'
 
 export const powerUserGuidePanelBridgeProtocolVersion = 1
 
 declare global {
   interface Window {
-    webkit?: {
-      messageHandlers?: {
-        powerUserGuidePanelBridge?: {
-          postMessage: (message: SwiftMessage & { protocolVersion: number }) => void
-        }
-      }
-    }
     basilPowerUserGuidePanel?: {
       onInit: (config: InitMessage) => void
       onThemeChanged: (theme: ThemeConfig, fonts: FontConfig) => void
@@ -47,8 +41,10 @@ window.basilPowerUserGuidePanel = {
   },
 }
 
+const swiftBridge = createSwiftBridge<SwiftMessage & { protocolVersion: number }>('powerUserGuidePanelBridge')
+
 function postToSwift(message: SwiftMessage) {
-  window.webkit?.messageHandlers?.powerUserGuidePanelBridge?.postMessage({
+  swiftBridge.post({
     ...message,
     protocolVersion: powerUserGuidePanelBridgeProtocolVersion,
   })

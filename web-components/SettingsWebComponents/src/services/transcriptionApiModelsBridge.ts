@@ -1,3 +1,4 @@
+import { postToSwiftHandler } from '@shared/swiftBridge'
 import type { TranscriptionApiModelsNativeEvent } from '../types'
 
 type OutgoingMessage =
@@ -41,7 +42,7 @@ export function onTranscriptionApiModelsEvent(handler: EventHandler): () => void
 }
 
 function postMessage(message: OutgoingMessage) {
-  window.webkit?.messageHandlers?.basilTranscriptionApiModelsBridge?.postMessage(message)
+  postToSwiftHandler('basilTranscriptionApiModelsBridge', message)
 }
 
 function requestId(prefix: string): string {

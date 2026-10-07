@@ -1,3 +1,4 @@
+import { postToSwiftHandler } from '@shared/swiftBridge'
 import type { DateDisplayStyle, DateTimeNativeEvent } from '../types'
 
 type OutgoingDateTimeMessage =
@@ -38,7 +39,7 @@ export function onDateTimeEvent(handler: EventHandler): () => void {
 }
 
 function postMessage(message: OutgoingDateTimeMessage) {
-  window.webkit?.messageHandlers?.basilDateTimeSettingsBridge?.postMessage(message)
+  postToSwiftHandler('basilDateTimeSettingsBridge', message)
 }
 
 function requestId(prefix: string): string {

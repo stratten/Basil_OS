@@ -1,3 +1,4 @@
+import { createSwiftBridge, missingHandlerLogger } from '@shared/swiftBridge';
 import type { FontConfig, ReconciliationConfig, ThemeConfig } from '../types';
 import { applyHostFonts, applyHostTheme } from '../app/themeBootstrap';
 
@@ -10,13 +11,6 @@ type SwiftMessage =
 
 declare global {
   interface Window {
-    webkit?: {
-      messageHandlers?: {
-        basilReconciliation?: {
-          postMessage: (message: SwiftMessage) => void;
-        };
-      };
-    };
     basilReconciliationConfig?: ReconciliationConfig;
     basilReconciliation?: {
       onInit: (config: ReconciliationConfig) => void;
@@ -62,13 +56,12 @@ export function expandWorkspace() {
   postToSwift({ action: 'expand' });
 }
 
+const swiftBridge = createSwiftBridge<SwiftMessage>('basilReconciliation', {
+  onMissing: missingHandlerLogger('log', '[ReconciliationBridge] No Swift handler, message:'),
+});
+
 function postToSwift(message: SwiftMessage) {
-  const handler = window.webkit?.messageHandlers?.basilReconciliation;
-  if (handler) {
-    handler.postMessage(message);
-  } else {
-    console.log('[ReconciliationBridge] No Swift handler, message:', message);
-  }
+  swiftBridge.post(message);
 }
 
 window.basilReconciliation = {

@@ -1,3 +1,4 @@
+import { createSwiftBridge } from '@shared/swiftBridge'
 import type { SetupAction, SetupTaskOffer } from '@/types'
 
 type BridgeMessageName =
@@ -30,20 +31,10 @@ export interface SetupBridgeActionResult {
   resultPayload?: Record<string, unknown>
 }
 
-declare global {
-  interface Window {
-    webkit?: {
-      messageHandlers?: {
-        setupAssistant?: {
-          postMessage: (message: SetupAssistantBridgeMessage) => void
-        }
-      }
-    }
-  }
-}
+const swiftBridge = createSwiftBridge<SetupAssistantBridgeMessage>('setupAssistant')
 
 function postBridgeMessage(name: BridgeMessageName, payload?: Record<string, unknown>) {
-  window.webkit?.messageHandlers?.setupAssistant?.postMessage({
+  swiftBridge.post({
     version: 1,
     name,
     payload,
@@ -54,7 +45,7 @@ function postBridgeMessageWithResult(
   name: BridgeMessageName,
   payload?: Record<string, unknown>,
 ): Promise<SetupBridgeActionResult> {
-  if (!window.webkit?.messageHandlers?.setupAssistant) {
+  if (!swiftBridge.isAvailable()) {
     return Promise.reject(new Error(`Native setup bridge is unavailable for '${name}'.`))
   }
 
@@ -81,7 +72,7 @@ function postBridgeMessageWithResult(
     }
 
     window.addEventListener('setupAssistantActionResult', handleResult)
-    window.webkit?.messageHandlers?.setupAssistant?.postMessage({
+    swiftBridge.post({
       version: 1,
       name,
       payload,

@@ -13,15 +13,24 @@ from api.services.agent_processing.lifecycle.runtime.checkpoint_workflow_service
     USER_DISMISSED_CHECKPOINT_RESPONSE,
     checkpoint_interaction_status,
 )
+from api.services.agent_processing.lifecycle.runtime import user_interaction_timeline
 from api.services.agent_processing.lifecycle.runtime.user_interaction_timeline import (
     USER_INTERACTION_DETAIL_KIND,
     build_user_interaction_entry,
     checkpoint_interaction_kind,
     record_user_interaction_asked,
     record_user_interaction_resolved,
+    resolve_all_waiting_user_interactions,
     resolve_latest_waiting_user_interaction,
     user_interaction_entry_id,
 )
+
+
+@pytest.fixture(autouse=True)
+def _clear_announced_requests():
+    user_interaction_timeline._pending_asked.clear()
+    yield
+    user_interaction_timeline._pending_asked.clear()
 
 
 class _Mutations:
@@ -156,6 +165,76 @@ async def test_resolving_an_unrecorded_request_is_a_no_op(knowledge):
 
     assert [entry["id"] for entry in knowledge.timeline()] == ["before", "after"]
     assert broadcasts.events == []
+
+
+@pytest.mark.asyncio
+async def test_answer_still_reaches_the_ui_when_another_writer_dropped_the_waiting_entry(knowledge):
+    broadcasts = _Broadcasts()
+    await record_user_interaction_asked(
+        "task-1",
+        interaction_id="cred-1",
+        kind="credential",
+        prompt="Keychain access required",
+        broadcast=broadcasts,
+    )
+    asked_at = _interaction(knowledge.timeline()[-1])["asked_at"]
+    knowledge.records["task-1"].execution_timeline = [
+        entry for entry in knowledge.timeline() if entry.get("detail_kind") != USER_INTERACTION_DETAIL_KIND
+    ]
+
+    await record_user_interaction_resolved(
+        "task-1", interaction_id="cred-1", status="approved", broadcast=broadcasts
+    )
+
+    resolved = _interaction(knowledge.timeline()[-1])
+    assert (resolved["kind"], resolved["status"], resolved["prompt"], resolved["asked_at"]) == (
+        "credential",
+        "approved",
+        "Keychain access required",
+        asked_at,
+    )
+    assert _interaction(broadcasts.events[-1]["timeline_entry"])["status"] == "approved"
+    assert len(broadcasts.events) == 2
+
+
+@pytest.mark.asyncio
+async def test_a_resolved_request_is_not_resolved_again_from_memory(knowledge):
+    broadcasts = _Broadcasts()
+    await record_user_interaction_asked("task-1", interaction_id="cp-1", kind="clarification", prompt="Q")
+    await record_user_interaction_resolved(
+        "task-1", interaction_id="cp-1", status="answered", response="A", broadcast=broadcasts
+    )
+
+    assert await resolve_all_waiting_user_interactions("task-1", broadcast=broadcasts) == 0
+    await resolve_latest_waiting_user_interaction(
+        "task-1", kinds=("clarification",), status="dismissed", broadcast=broadcasts
+    )
+
+    assert _interaction(knowledge.timeline()[-1])["status"] == "answered"
+    assert len(broadcasts.events) == 1
+
+
+@pytest.mark.asyncio
+async def test_cancel_and_resume_also_close_requests_whose_saved_entry_was_dropped(knowledge):
+    for interaction_id in ("cp-1", "cp-2"):
+        await record_user_interaction_asked(
+            "task-1", interaction_id=interaction_id, kind="clarification", prompt=f"Question {interaction_id}"
+        )
+    knowledge.records["task-1"].execution_timeline = [
+        entry for entry in knowledge.timeline() if entry.get("detail_kind") != USER_INTERACTION_DETAIL_KIND
+    ]
+
+    await resolve_latest_waiting_user_interaction(
+        "task-1", kinds=("clarification",), status="answered", response="Yes"
+    )
+    assert await resolve_all_waiting_user_interactions("task-1") == 1
+
+    statuses = {
+        _interaction(entry)["interaction_id"]: _interaction(entry)["status"]
+        for entry in knowledge.timeline()
+        if entry.get("detail_kind") == USER_INTERACTION_DETAIL_KIND
+    }
+    assert statuses == {"cp-2": "answered", "cp-1": "canceled"}
 
 
 @pytest.mark.asyncio

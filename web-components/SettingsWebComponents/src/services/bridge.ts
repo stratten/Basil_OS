@@ -1,3 +1,4 @@
+import { postToSwiftHandler } from '@shared/swiftBridge'
 import type {
   AppearanceColorPickerRequest,
   AppearanceIntentName,
@@ -68,7 +69,7 @@ export function onAppearanceEvent(handler: EventHandler): () => void {
 }
 
 function postMessage(message: OutgoingIntentMessage) {
-  window.webkit?.messageHandlers?.basilAppearanceSettingsBridge?.postMessage(message)
+  postToSwiftHandler('basilAppearanceSettingsBridge', message)
 }
 
 export function notifyAppearanceSettingsReady() {

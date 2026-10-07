@@ -62,6 +62,7 @@ import { useConversationPreferences } from './useConversationPreferences';
 import { resolveThreadDelegationOptOut, withHistoryDelegationOptOut } from './conversationDelegationPreference';
 import { focusEditableAtEnd } from './focusEditableAtEnd';
 import { plainMarkdownText } from '@shared/plainMarkdownText';
+import { hasSwiftHandler } from '@shared/swiftBridge';
 
 interface ConversationWorkspaceProps {
   onConversationSubtitleChange?: (subtitle?: string) => void;
@@ -619,7 +620,7 @@ export default function ConversationWorkspace({
 
   const copyMessage = useCallback(async (content: string, format: 'markdown' | 'richText') => {
     try {
-      if (window.webkit?.messageHandlers?.basilBoardBridge) {
+      if (hasSwiftHandler('basilBoardBridge')) {
         if (format === 'richText') copyRichTextToClipboard(content);
         else copyToClipboard(content);
       } else {

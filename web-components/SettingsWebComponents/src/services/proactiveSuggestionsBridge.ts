@@ -1,3 +1,4 @@
+import { postToSwiftHandler } from '@shared/swiftBridge'
 import type {
   ProactiveSuggestionCapability,
   ProactiveSuggestionMode,
@@ -50,7 +51,7 @@ export function onProactiveSuggestionsEvent(handler: EventHandler): () => void {
 }
 
 function postMessage(message: OutgoingProactiveSuggestionsMessage) {
-  window.webkit?.messageHandlers?.basilProactiveSuggestionsSettingsBridge?.postMessage(message)
+  postToSwiftHandler('basilProactiveSuggestionsSettingsBridge', message)
 }
 
 function requestId(prefix: string): string {

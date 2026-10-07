@@ -4,11 +4,11 @@ import { copyRichTextToClipboard, copyToClipboard } from '../../services/bridge'
 
 const copyButtonGroupStyle = {
   position: 'absolute',
-  top: 'var(--padding-s)',
-  right: 'var(--padding-s)',
+  top: 2,
+  right: 'var(--padding-xs)',
   display: 'flex',
   alignItems: 'center',
-  gap: '6px',
+  gap: 2,
   zIndex: 1,
 } as const;
 
@@ -19,8 +19,8 @@ const copyButtonBaseStyle = {
   alignItems: 'center',
   justifyContent: 'center',
   color: 'var(--secondary)',
-  width: 24,
-  height: 24,
+  width: 20,
+  height: 20,
   padding: 0,
   borderRadius: 'var(--corner-radius-small)',
   lineHeight: 1,

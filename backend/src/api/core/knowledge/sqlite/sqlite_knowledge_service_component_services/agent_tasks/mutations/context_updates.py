@@ -55,6 +55,49 @@ def _preserve_missing_artifacts(
     return [*requested_timeline, *missing_artifacts_by_id.values()]
 
 
+def _user_interaction_status(value: Any) -> Optional[str]:
+    if not isinstance(value, Mapping) or value.get("detail_kind") != "user_interaction":
+        return None
+    metadata = value.get("metadata")
+    interaction = metadata.get("user_interaction") if isinstance(metadata, Mapping) else None
+    status = interaction.get("status") if isinstance(interaction, Mapping) else None
+    return status if isinstance(status, str) else None
+
+
+def _preserve_user_interactions(
+    persisted_timeline: Any,
+    requested_timeline: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Keep every recorded exchange with the user when a stale full-timeline writer catches up.
+
+    Such a writer read the timeline before an exchange was recorded or answered, so it would either drop the exchange
+    or put a request that was already answered back to waiting.
+    """
+    if not isinstance(persisted_timeline, list):
+        return requested_timeline
+
+    persisted_by_id = {
+        entry["id"]: entry
+        for entry in persisted_timeline
+        if isinstance(entry, dict) and isinstance(entry.get("id"), str) and _user_interaction_status(entry) is not None
+    }
+    if not persisted_by_id:
+        return requested_timeline
+
+    requested_ids = {entry.get("id") for entry in requested_timeline if isinstance(entry, dict)}
+    merged = [
+        persisted_by_id[entry["id"]]
+        if isinstance(entry, dict)
+        and entry.get("id") in persisted_by_id
+        and _user_interaction_status(entry) == "waiting"
+        and _user_interaction_status(persisted_by_id[entry["id"]]) != "waiting"
+        else entry
+        for entry in requested_timeline
+    ]
+    merged.extend(entry for entry_id, entry in persisted_by_id.items() if entry_id not in requested_ids)
+    return merged
+
+
 async def clear_agent_task_execution_timeline(
     db_path: str,
     agent_task_id: str,
@@ -192,7 +235,10 @@ async def update_execution_timeline(
             persisted_timeline = json.loads(row["execution_timeline"] or "[]") if row else []
         except (TypeError, ValueError):
             persisted_timeline = []
-        timeline_with_artifacts = _preserve_missing_artifacts(persisted_timeline, timeline)
+        timeline_with_artifacts = _preserve_user_interactions(
+            persisted_timeline,
+            _preserve_missing_artifacts(persisted_timeline, timeline),
+        )
         conn.execute(
             "UPDATE agent_tasks SET execution_timeline = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
             (json.dumps(timeline_with_artifacts), agent_task_id),
@@ -231,7 +277,10 @@ async def update_execution_timeline_if_active(
             persisted_timeline = json.loads(row["execution_timeline"] or "[]")
         except (TypeError, ValueError):
             persisted_timeline = []
-        timeline_with_artifacts = _preserve_missing_artifacts(persisted_timeline, timeline)
+        timeline_with_artifacts = _preserve_user_interactions(
+            persisted_timeline,
+            _preserve_missing_artifacts(persisted_timeline, timeline),
+        )
         updated = conn.execute(
             """
             UPDATE agent_tasks

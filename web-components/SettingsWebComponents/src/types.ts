@@ -1019,43 +1019,6 @@ export type HomeNativeEvent =
   | HomeLoadErrorEvent
   | HomeIntentResultEvent
 
-declare global {
-  interface Window {
-    webkit?: {
-      messageHandlers?: {
-        basilAppearanceSettingsBridge?: { postMessage: any }
-        basilHotkeySettingsBridge?: { postMessage: any }
-        basilDateTimeSettingsBridge?: { postMessage: any }
-        basilAppearanceThemesBridge?: { postMessage: any }
-        basilProfileSettingsBridge?: { postMessage: any }
-        basilMacContactsSettingsBridge?: { postMessage: any }
-        basilMemoryIntelligenceSettingsBridge?: { postMessage: any }
-        basilWritingExamplesSettingsBridge?: { postMessage: any }
-        basilModelsSettingsBridge?: { postMessage: any }
-        basilTranscriptionApiModelsBridge?: { postMessage: any }
-        basilReasoningApiModelsBridge?: { postMessage: any }
-        basilCustomModelsBridge?: { postMessage: any }
-        basilBrowserAutomationSettingsBridge?: { postMessage: any }
-        basilReasoningDefaultsSettingsBridge?: { postMessage: any }
-        basilSkillsSettingsBridge?: { postMessage: any }
-        basilMemoriesSettingsBridge?: { postMessage: any }
-        basilProactiveSuggestionsSettingsBridge?: { postMessage: any }
-        basilActivityCaptureSettingsBridge?: { postMessage: any }
-        basilMeetingDetectionSettingsBridge?: { postMessage: any }
-        basilMeetingAutomationSettingsBridge?: { postMessage: any }
-        basilAccountSettingsBridge?: { postMessage: any }
-        basilTranscriptionSettingsBridge?: { postMessage: any }
-        basilTranscriptionHistoryBridge?: { postMessage: any }
-        basilPermissionsApplicationBridge?: { postMessage: any }
-        basilPermissionsCommandSecurityBridge?: { postMessage: any }
-        basilConnectionsSettingsBridge?: { postMessage: any }
-        basilSettingsShellBridge?: { postMessage: any }
-        basilHomeSettingsBridge?: { postMessage: any }
-      }
-    }
-  }
-}
-
 export interface TranscriptionApiModelSummary {
   id: string
   displayName: string

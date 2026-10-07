@@ -78,7 +78,7 @@ export default function HomeView() {
       <div className="home-front-door-column">
         <h1 className="home-front-door-title">What can Basil do for you?</h1>
         <p className="home-front-door-hint">
-          Ask a question or hand over a task. Basil will open a chat or start an agent task for you.
+          Ask a question or hand over a task. I'll open a chat or start an agent for you.
         </p>
         <HomeComposer
           disabled={submitting}

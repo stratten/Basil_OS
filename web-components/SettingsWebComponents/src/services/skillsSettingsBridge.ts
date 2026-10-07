@@ -1,3 +1,4 @@
+import { postToSwiftHandler } from '@shared/swiftBridge'
 import type { SkillsNativeEvent } from '../types'
 
 type OutgoingSkillsMessage =
@@ -49,7 +50,7 @@ export function onSkillsEvent(handler: EventHandler): () => void {
 }
 
 function postMessage(message: OutgoingSkillsMessage) {
-  window.webkit?.messageHandlers?.basilSkillsSettingsBridge?.postMessage(message)
+  postToSwiftHandler('basilSkillsSettingsBridge', message)
 }
 
 function requestId(prefix: string): string {

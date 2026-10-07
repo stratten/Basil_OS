@@ -1,3 +1,4 @@
+import { postToSwiftHandler } from '@shared/swiftBridge'
 import type { ReasoningApiModelsNativeEvent } from '../types'
 
 type OutgoingMessage =
@@ -43,7 +44,7 @@ export function onReasoningApiModelsEvent(handler: EventHandler): () => void {
 }
 
 function postMessage(message: OutgoingMessage) {
-  window.webkit?.messageHandlers?.basilReasoningApiModelsBridge?.postMessage(message)
+  postToSwiftHandler('basilReasoningApiModelsBridge', message)
 }
 
 function requestId(prefix: string): string {

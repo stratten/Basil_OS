@@ -271,10 +271,12 @@ export class ProgressTimelineAgentStore extends FollowUpAgentStore {
                 ...(rawEntry.metadata || {}),
               },
             };
-        a.executionTimeline[existingIndex] = timelineEntry;
+        a.executionTimeline = a.executionTimeline.map((existing, index) => (
+          index === existingIndex ? timelineEntry : existing
+        ));
       } else {
         timelineEntry = rawEntry;
-        a.executionTimeline.push(timelineEntry);
+        a.executionTimeline = [...a.executionTimeline, timelineEntry];
       }
       const detail = timelineEntryToDetail(timelineEntry);
       const detailIndex = detail ? a.stepDetails.findIndex(existing => existing.id === detail.id) : -1;

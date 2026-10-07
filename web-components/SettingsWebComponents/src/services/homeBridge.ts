@@ -1,3 +1,4 @@
+import { postToSwiftHandler } from '@shared/swiftBridge'
 import type { HomeNativeEvent, HomeQuickToggleField } from '../types'
 
 type OutgoingHomeMessage =
@@ -42,7 +43,7 @@ export function onHomeEvent(handler: EventHandler): () => void {
 }
 
 function postMessage(message: OutgoingHomeMessage) {
-  window.webkit?.messageHandlers?.basilHomeSettingsBridge?.postMessage(message)
+  postToSwiftHandler('basilHomeSettingsBridge', message)
 }
 
 function requestId(prefix: string): string {

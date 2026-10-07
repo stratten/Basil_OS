@@ -1,3 +1,4 @@
+import { postToSwiftHandler } from '@shared/swiftBridge'
 import type { WritingExamplesContextFilter, WritingExamplesNativeEvent } from '../types'
 
 type OutgoingWritingExamplesMessage =
@@ -44,7 +45,7 @@ export function onWritingExamplesEvent(handler: EventHandler): () => void {
 }
 
 function postMessage(message: OutgoingWritingExamplesMessage) {
-  window.webkit?.messageHandlers?.basilWritingExamplesSettingsBridge?.postMessage(message)
+  postToSwiftHandler('basilWritingExamplesSettingsBridge', message)
 }
 
 function requestId(prefix: string): string {

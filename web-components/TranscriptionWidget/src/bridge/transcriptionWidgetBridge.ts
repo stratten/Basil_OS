@@ -1,5 +1,6 @@
 // web-components/TranscriptionWidget/src/bridge/transcriptionWidgetBridge.ts
 
+import { createSwiftBridge, missingHandlerLogger } from '@shared/swiftBridge';
 import { PROTOCOL_VERSION } from './types';
 import type { TranscriptionBridgeEvent, TranscriptionBridgeIntent, TranscriptionModelInfo } from './types';
 import { publishTranscriptionMeter } from './transcriptionMeterStore';
@@ -37,14 +38,12 @@ export function onTranscriptionEvent(listener: EventListener): () => void {
   };
 }
 
+const swiftBridge = createSwiftBridge<TranscriptionBridgeIntent>('transcriptionWidgetBridge', {
+  onMissing: missingHandlerLogger('warn', '[transcriptionWidgetBridge] no native handler registered; intent dropped'),
+});
+
 function postToSwift(intent: TranscriptionBridgeIntent): void {
-  const handler = window.webkit?.messageHandlers?.transcriptionWidgetBridge;
-  if (!handler) {
-    // eslint-disable-next-line no-console
-    console.warn('[transcriptionWidgetBridge] no native handler registered; intent dropped', intent);
-    return;
-  }
-  handler.postMessage(intent);
+  swiftBridge.post(intent);
 }
 
 export function reportReady(): void {

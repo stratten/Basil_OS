@@ -1,17 +1,8 @@
+import { createSwiftBridge, missingHandlerLogger, postToSwiftHandler } from '@shared/swiftBridge';
 import type { AnchorRect, AmbientRuntimeStatus, AmbientSuggestion, EvaluationModel, FontConfig, InitMessage, SwiftMessage, ThemeConfig } from '../types';
 
 declare global {
   interface Window {
-    webkit?: {
-      messageHandlers: {
-        ambientSuggestionsBridge: {
-          postMessage: (message: SwiftMessage) => void;
-        };
-        ambientSuggestionsLog?: {
-          postMessage: (message: { level: string; message: string }) => void;
-        };
-      };
-    };
     basilAmbientSuggestions?: {
       onInit: (config: InitMessage) => void;
       onThemeChanged: (theme: ThemeConfig, fonts: FontConfig) => void;
@@ -102,12 +93,12 @@ window.basilAmbientSuggestions = {
   },
 };
 
+const swiftBridge = createSwiftBridge<SwiftMessage>('ambientSuggestionsBridge', {
+  onMissing: missingHandlerLogger('log', '[AmbientSuggestionsBridge] No Swift handler, message:'),
+});
+
 function postToSwift(message: SwiftMessage) {
-  if (window.webkit?.messageHandlers.ambientSuggestionsBridge) {
-    window.webkit.messageHandlers.ambientSuggestionsBridge.postMessage(message);
-  } else {
-    console.log('[AmbientSuggestionsBridge] No Swift handler, message:', message);
-  }
+  swiftBridge.post(message);
 }
 
 export function acceptSuggestion(suggestionId: string) {
@@ -147,9 +138,10 @@ export function requestModelPicker(models: EvaluationModel[], selectedModelId: s
 }
 
 export function logAmbientPanel(level: 'log' | 'warn' | 'error', message: string) {
-  if (window.webkit?.messageHandlers.ambientSuggestionsLog) {
-    window.webkit.messageHandlers.ambientSuggestionsLog.postMessage({ level, message });
-  } else if (level === 'error') {
+  if (postToSwiftHandler('ambientSuggestionsLog', { level, message })) {
+    return;
+  }
+  if (level === 'error') {
     console.error(message);
   } else if (level === 'warn') {
     console.warn(message);

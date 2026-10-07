@@ -1,15 +1,9 @@
+import { createSwiftBridge, missingHandlerLogger } from '@shared/swiftBridge';
 import type { MeetingBridgeEvent, MeetingBridgeIntent, MeetingHistorySearchFiltersDTO, MeetingMeterPayload } from './types';
 import { publishMeetingMeter } from './meetingMeterStore';
 
 declare global {
   interface Window {
-    webkit?: {
-      messageHandlers: {
-        meetingBridge?: {
-          postMessage: (message: MeetingBridgeIntent) => void;
-        };
-      };
-    };
     basilMeetingAssistant?: {
       onEvent: (event: MeetingBridgeEvent) => void;
       onMeter: (payload: MeetingMeterPayload) => void;
@@ -50,13 +44,12 @@ export function registerEventHandler(cb: (event: MeetingBridgeEvent) => void) {
   }
 }
 
+const swiftBridge = createSwiftBridge<MeetingBridgeIntent>('meetingBridge', {
+  onMissing: missingHandlerLogger('log', '[MeetingBridge] No Swift handler, intent:'),
+});
+
 function postToSwift(intent: MeetingBridgeIntent) {
-  if (window.webkit?.messageHandlers.meetingBridge) {
-    window.webkit.messageHandlers.meetingBridge.postMessage(intent);
-  } else {
-    // eslint-disable-next-line no-console
-    console.log('[MeetingBridge] No Swift handler, intent:', intent);
-  }
+  swiftBridge.post(intent);
 }
 
 export function reportReady() {
@@ -188,7 +181,7 @@ export function retryAnalysisModes(filename: string, modes: string[]) {
 }
 
 export function copyText(text: string, rich: boolean = false) {
-  if (window.webkit?.messageHandlers.meetingBridge) {
+  if (swiftBridge.isAvailable()) {
     postToSwift({ type: 'copyText', text, rich });
     return;
   }

@@ -1,3 +1,4 @@
+import { postToSwiftHandler } from '@shared/swiftBridge'
 import type { HotkeyBinding, HotkeyNativeEvent } from '../types'
 
 interface OutgoingIntentMessage {
@@ -52,7 +53,7 @@ export function onHotkeyEvent(handler: EventHandler): () => void {
 }
 
 function postMessage(message: OutgoingIntentMessage) {
-  window.webkit?.messageHandlers?.basilHotkeySettingsBridge?.postMessage(message)
+  postToSwiftHandler('basilHotkeySettingsBridge', message)
 }
 
 export function notifyHotkeySettingsReady() {

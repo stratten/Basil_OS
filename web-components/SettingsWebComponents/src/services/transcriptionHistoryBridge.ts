@@ -1,3 +1,4 @@
+import { postToSwiftHandler } from '@shared/swiftBridge'
 import type { TranscriptionHistoryNativeEvent, TranscriptionHistoryTimeFrameId } from '../types'
 
 type OutgoingTranscriptionHistoryMessage =
@@ -43,7 +44,7 @@ export function onTranscriptionHistoryEvent(handler: EventHandler): () => void {
 }
 
 function postMessage(message: OutgoingTranscriptionHistoryMessage) {
-  window.webkit?.messageHandlers?.basilTranscriptionHistoryBridge?.postMessage(message)
+  postToSwiftHandler('basilTranscriptionHistoryBridge', message)
 }
 
 function requestId(prefix: string): string {

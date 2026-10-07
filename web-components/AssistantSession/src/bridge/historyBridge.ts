@@ -1,5 +1,6 @@
 // web-components/AssistantSession/src/bridge/historyBridge.ts
 
+import { createSwiftBridge, missingHandlerLogger } from '@shared/swiftBridge';
 import type { AssistantOutputHistoryBridgeEvent, AssistantOutputHistoryBridgeIntent, HistoryRefinementInput } from './historyTypes';
 
 type EventListener = (event: AssistantOutputHistoryBridgeEvent) => void;
@@ -30,14 +31,12 @@ export function onHistoryEvent(listener: EventListener): () => void {
   };
 }
 
+const swiftBridge = createSwiftBridge<AssistantOutputHistoryBridgeIntent>('assistantOutputHistoryBridge', {
+  onMissing: missingHandlerLogger('warn', '[historyBridge] no native handler registered; intent dropped'),
+});
+
 function postToSwift(intent: AssistantOutputHistoryBridgeIntent): void {
-  const handler = window.webkit?.messageHandlers?.assistantOutputHistoryBridge;
-  if (!handler) {
-    // eslint-disable-next-line no-console
-    console.warn('[historyBridge] no native handler registered; intent dropped', intent);
-    return;
-  }
-  handler.postMessage(intent);
+  swiftBridge.post(intent);
 }
 
 export function reportHistoryReady(): void {

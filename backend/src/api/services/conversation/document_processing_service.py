@@ -277,9 +277,9 @@ class DocumentProcessingService:
     async def _extract_pdf_text(self, path: str) -> Optional[str]:
         """Extract text from a PDF file."""
         try:
-            import PyPDF2
+            import pypdf
             with open(path, "rb") as f:
-                reader = PyPDF2.PdfReader(f)
+                reader = pypdf.PdfReader(f)
                 pages = []
                 for page in reader.pages:
                     text = page.extract_text()
@@ -288,7 +288,7 @@ class DocumentProcessingService:
                 if pages:
                     return "\n\n".join(pages)
         except ImportError:
-            logger.warning("PyPDF2 not installed, cannot extract PDF text")
+            logger.warning("pypdf not installed, cannot extract PDF text")
         except Exception as e:
             logger.error(f"Failed to extract PDF text from {path}: {e}")
 

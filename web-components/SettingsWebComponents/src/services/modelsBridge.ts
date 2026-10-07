@@ -1,3 +1,4 @@
+import { postToSwiftHandler } from '@shared/swiftBridge'
 import type { ModelsNativeEvent } from '../types'
 
 type OutgoingModelsMessage =
@@ -42,7 +43,7 @@ export function onModelsEvent(handler: EventHandler): () => void {
 }
 
 function postMessage(message: OutgoingModelsMessage) {
-  window.webkit?.messageHandlers?.basilModelsSettingsBridge?.postMessage(message)
+  postToSwiftHandler('basilModelsSettingsBridge', message)
 }
 
 function requestId(prefix: string): string {

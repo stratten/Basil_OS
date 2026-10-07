@@ -13,9 +13,9 @@ import type {
   HomeVoiceCaptureStatePayload,
   WidgetLaunchFailedPayload,
 } from '../contracts';
-import type { SwiftMessage } from '@agent-task/types';
 import type { FilePreviewPayload } from '@agent-task/components/artifacts/transport/artifactPreviewTransport';
 import { applyHostFonts, applyHostTheme } from '../theme/agentTaskTheme';
+import { createSwiftBridge, missingHandlerLogger } from '@shared/swiftBridge';
 
 type InitHandler = (payload: BasilBoardInitPayload) => void;
 type VoiceStateHandler = (payload: HomeVoiceCaptureStatePayload) => void;
@@ -52,19 +52,6 @@ type BoardMeetingsAvailabilityHandler = (payload: BoardMeetingsAvailabilityPaylo
 
 declare global {
   interface Window {
-    webkit?: {
-      messageHandlers: {
-        agentTaskBridge?: {
-          postMessage: (message: SwiftMessage) => void;
-        };
-        basilBoardBridge?: {
-          postMessage: (message: Record<string, unknown>) => void;
-        };
-        localWebPreviewBridge?: {
-          postMessage: (message: unknown) => void;
-        };
-      };
-    };
     basilBoardBridge?: {
       onInit?: InitHandler;
       onThemeChanged?: (payload: {
@@ -179,17 +166,16 @@ window.basilBoardBridge = {
   onWorkspaceDirectoryPicked: (payload) => handleWorkspaceDirectoryPicked(payload),
 };
 
+const swiftBridge = createSwiftBridge<Record<string, unknown>>('basilBoardBridge', {
+  onMissing: missingHandlerLogger('error', '[BasilBoardBridge] basilBoardBridge handler unavailable; message dropped'),
+});
+
 function bridgeAvailable(): boolean {
-  return Boolean(window.webkit?.messageHandlers?.basilBoardBridge);
+  return swiftBridge.isAvailable();
 }
 
 export function postBridgeMessage(type: string, payload: Record<string, unknown> = {}): void {
-  const message = { type, ...payload };
-  if (!bridgeAvailable()) {
-    console.error('[BasilBoardBridge] basilBoardBridge handler unavailable; message dropped', message);
-    return;
-  }
-  window.webkit!.messageHandlers!.basilBoardBridge!.postMessage(message);
+  swiftBridge.post({ type, ...payload });
 }
 
 export function notifyReady(): void {

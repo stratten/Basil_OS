@@ -44,6 +44,30 @@ describe('AgentStore exchanges with the user', () => {
     expect(exchanges[0].metadata?.user_interaction).toMatchObject({ status: 'answered', response: 'La Fantaisie' });
   });
 
+  it('hands React a new timeline array when an answer replaces its question in place', () => {
+    const store = makeStore();
+    const entry = (status: string) => ({
+      id: 'user_interaction_cred',
+      type: 'step',
+      timestamp: '2026-10-07T12:25:43+00:00',
+      content: 'Keychain access required',
+      detail_kind: 'user_interaction',
+      metadata: {
+        user_interaction: { interaction_id: 'cred', kind: 'credential', status, prompt: 'Keychain access required' },
+      },
+    });
+
+    store.handleWSEvent({ event_type: 'agent_task_step_detail', agent_task_id: 'task-1', timeline_entry: entry('waiting') });
+    const waitingTimeline = store.getAgent('task-1')!.executionTimeline;
+    store.handleWSEvent({ event_type: 'agent_task_step_detail', agent_task_id: 'task-1', timeline_entry: entry('approved') });
+
+    const resolvedTimeline = store.getAgent('task-1')!.executionTimeline;
+    expect(resolvedTimeline).not.toBe(waitingTimeline);
+    expect(waitingTimeline[0].metadata?.user_interaction).toMatchObject({ status: 'waiting' });
+    expect(resolvedTimeline).toHaveLength(1);
+    expect(resolvedTimeline[0].metadata?.user_interaction).toMatchObject({ status: 'approved' });
+  });
+
   it('stamps live reasoning passes and keeps a resumed run from overwriting earlier passes', () => {
     const store = makeStore();
 

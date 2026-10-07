@@ -1,3 +1,4 @@
+import { createSwiftBridge, missingHandlerLogger } from '@shared/swiftBridge';
 import type { FontConfig, ProfileEditorConfig, ThemeConfig } from '../types';
 import { applyHostFonts, applyHostTheme } from '../app/themeBootstrap';
 
@@ -10,13 +11,6 @@ type SwiftMessage =
 
 declare global {
   interface Window {
-    webkit?: {
-      messageHandlers?: {
-        basilProfileEditor?: {
-          postMessage: (message: SwiftMessage) => void;
-        };
-      };
-    };
     basilProfileEditorConfig?: ProfileEditorConfig;
     basilProfileEditor?: {
       onInit: (config: ProfileEditorConfig) => void;
@@ -69,13 +63,12 @@ export function openSourceTask(taskId: string) {
   postToSwift({ action: 'openSourceTask', taskId });
 }
 
+const swiftBridge = createSwiftBridge<SwiftMessage>('basilProfileEditor', {
+  onMissing: missingHandlerLogger('log', '[ProfileEditorBridge] No Swift handler, message:'),
+});
+
 function postToSwift(message: SwiftMessage) {
-  const handler = window.webkit?.messageHandlers?.basilProfileEditor;
-  if (handler) {
-    handler.postMessage(message);
-  } else {
-    console.log('[ProfileEditorBridge] No Swift handler, message:', message);
-  }
+  swiftBridge.post(message);
 }
 
 window.basilProfileEditor = {

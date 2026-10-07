@@ -1,5 +1,6 @@
 // web-components/TranscriptionWidget/src/bridge/audioFileUploadBridge.ts
 
+import { createSwiftBridge, missingHandlerLogger } from '@shared/swiftBridge';
 import { AUDIO_UPLOAD_PROTOCOL_VERSION } from './audioFileUploadTypes';
 import type { AudioFileUploadBridgeEvent, AudioFileUploadBridgeIntent } from './audioFileUploadTypes';
 
@@ -31,14 +32,12 @@ export function onAudioFileUploadEvent(listener: EventListener): () => void {
   };
 }
 
+const swiftBridge = createSwiftBridge<AudioFileUploadBridgeIntent>('audioFileUploadBridge', {
+  onMissing: missingHandlerLogger('warn', '[audioFileUploadBridge] no native handler registered; intent dropped'),
+});
+
 function postToSwift(intent: AudioFileUploadBridgeIntent): void {
-  const handler = window.webkit?.messageHandlers?.audioFileUploadBridge;
-  if (!handler) {
-    // eslint-disable-next-line no-console
-    console.warn('[audioFileUploadBridge] no native handler registered; intent dropped', intent);
-    return;
-  }
-  handler.postMessage(intent);
+  swiftBridge.post(intent);
 }
 
 export function reportAudioUploadReady(): void {

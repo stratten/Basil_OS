@@ -4,6 +4,7 @@ import {
   type FilePreviewPayload,
 } from '@agent-task/components/artifacts/transport/artifactPreviewTransport';
 import { postBridgeMessage } from './bridge';
+import { hasSwiftHandler } from '@shared/swiftBridge';
 
 let filePreviewReadyCallback: ((payload: FilePreviewPayload) => void) | null = null;
 let filePreviewUpdatedCallback: ((payload: FilePreviewPayload) => void) | null = null;
@@ -88,7 +89,7 @@ export function openConversationLocalServerPreview(path: string, agentTaskId: st
 export function checkConversationArtifactPreviewAvailability(paths: string[]): Promise<Set<string>> {
   const uniquePaths = [...new Set(paths)];
   if (uniquePaths.length === 0) return Promise.resolve(new Set());
-  if (!window.webkit?.messageHandlers?.basilBoardBridge) return Promise.resolve(new Set(uniquePaths));
+  if (!hasSwiftHandler('basilBoardBridge')) return Promise.resolve(new Set(uniquePaths));
 
   const requestId = `board-file-preview-availability-${Date.now()}-${++filePreviewAvailabilityRequestCounter}`;
   return new Promise((resolve, reject) => {

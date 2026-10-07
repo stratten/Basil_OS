@@ -1,3 +1,4 @@
+import { postToSwiftHandler } from '@shared/swiftBridge'
 import type { CustomModelsNativeEvent } from '../types'
 
 export interface CreateModelPayload {
@@ -92,7 +93,7 @@ export function onCustomModelsEvent(handler: EventHandler): () => void {
 }
 
 function postMessage(message: OutgoingMessage) {
-  window.webkit?.messageHandlers?.basilCustomModelsBridge?.postMessage(message)
+  postToSwiftHandler('basilCustomModelsBridge', message)
 }
 
 function requestId(prefix: string): string {

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
+import { postToSwiftHandler } from '@shared/swiftBridge'
+
 import {
   closeSetupAssistant,
   continueSetupAssistant,
@@ -108,7 +110,7 @@ const initialPermissionStatuses: PermissionStatusMap = {
 }
 
 function requestPermissionStatusRefresh() {
-  window.webkit?.messageHandlers?.setupAssistant?.postMessage({
+  postToSwiftHandler('setupAssistant', {
     version: 1,
     name: 'requestPermissionStatus',
   })

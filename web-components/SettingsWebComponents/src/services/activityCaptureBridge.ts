@@ -1,3 +1,4 @@
+import { postToSwiftHandler } from '@shared/swiftBridge'
 import type {
   ActivityCaptureNativeEvent,
   ActivityCaptureProcessingMode,
@@ -63,7 +64,7 @@ export function onActivityCaptureEvent(handler: EventHandler): () => void {
 }
 
 function postMessage(message: OutgoingActivityCaptureMessage) {
-  window.webkit?.messageHandlers?.basilActivityCaptureSettingsBridge?.postMessage(message)
+  postToSwiftHandler('basilActivityCaptureSettingsBridge', message)
 }
 
 function requestId(prefix: string): string {

@@ -1,14 +1,8 @@
+import { createSwiftBridge, missingHandlerLogger } from '@shared/swiftBridge';
 import type { CaptureInitMessage, CaptureInputMessage, CaptureModelPickerAnchorRect, CaptureModelPickerOption, CaptureSnapshot, FontConfig, ThemeConfig } from '../types';
 
 declare global {
   interface Window {
-    webkit?: {
-      messageHandlers: {
-        agentTaskCaptureBridge?: {
-          postMessage: (message: CaptureInputMessage) => void;
-        };
-      };
-    };
     basilAgentTaskCapture?: {
       onInit: (payload: CaptureInitMessage) => void;
       onSnapshot: (snapshot: CaptureSnapshot) => void;
@@ -90,12 +84,12 @@ window.basilAgentTaskCapture = {
   onFontsChanged: (fonts: FontConfig) => fontsCallback?.(fonts),
 };
 
+const swiftBridge = createSwiftBridge<CaptureInputMessage>('agentTaskCaptureBridge', {
+  onMissing: missingHandlerLogger('log', '[AgentTaskCaptureInput] No Swift handler, message:'),
+});
+
 function postCaptureIntent(message: CaptureInputMessage) {
-  if (window.webkit?.messageHandlers.agentTaskCaptureBridge) {
-    window.webkit.messageHandlers.agentTaskCaptureBridge.postMessage(message);
-  } else {
-    console.log('[AgentTaskCaptureInput] No Swift handler, message:', message);
-  }
+  swiftBridge.post(message);
 }
 
 export function sendCaptureInputReady() {

@@ -1,14 +1,8 @@
+import { createSwiftBridge, missingHandlerLogger } from '@shared/swiftBridge';
 import type { SwiftMessage, InitMessage, ThemeConfig, FontConfig } from '../types';
 
 declare global {
   interface Window {
-    webkit?: {
-      messageHandlers: {
-        miniPanelBridge: {
-          postMessage: (message: SwiftMessage) => void;
-        };
-      };
-    };
     basilMiniPanel?: {
       onInit: (config: InitMessage) => void;
       onThemeChanged: (theme: ThemeConfig, fonts: FontConfig) => void;
@@ -46,12 +40,12 @@ window.basilMiniPanel = {
   onThemeChanged: (theme: ThemeConfig, fonts: FontConfig) => themeCallback?.(theme, fonts),
 };
 
+const swiftBridge = createSwiftBridge<SwiftMessage>('miniPanelBridge', {
+  onMissing: missingHandlerLogger('log', '[MiniPanelBridge] No Swift handler, message:'),
+});
+
 function postToSwift(message: SwiftMessage) {
-  if (window.webkit?.messageHandlers.miniPanelBridge) {
-    window.webkit.messageHandlers.miniPanelBridge.postMessage(message);
-  } else {
-    console.log('[MiniPanelBridge] No Swift handler, message:', message);
-  }
+  swiftBridge.post(message);
 }
 
 export function openAgentTaskInResultWidget(agentTaskId: string, runId: string) {

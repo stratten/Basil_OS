@@ -1,3 +1,4 @@
+import { postToSwiftHandler } from '@shared/swiftBridge'
 import type {
   AgentTaskInputModality,
   AssistantOutputPasteMode,
@@ -54,7 +55,7 @@ export function onReasoningDefaultsEvent(handler: EventHandler): () => void {
 }
 
 function postMessage(message: OutgoingReasoningDefaultsMessage) {
-  window.webkit?.messageHandlers?.basilReasoningDefaultsSettingsBridge?.postMessage(message)
+  postToSwiftHandler('basilReasoningDefaultsSettingsBridge', message)
 }
 
 function requestId(prefix: string): string {

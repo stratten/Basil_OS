@@ -1,3 +1,4 @@
+import { createSwiftBridge } from '@shared/swiftBridge';
 import type { FontConfig, ThemeConfig } from '../../types';
 
 export type LocalWebPreviewMode = 'static' | 'devServer';
@@ -103,8 +104,10 @@ window.basilLocalWebPreview = {
   },
 };
 
+const swiftBridge = createSwiftBridge<LocalWebPreviewBridgeMessage>('localWebPreviewBridge');
+
 function postToNative(message: LocalWebPreviewBridgeMessage) {
-  window.webkit?.messageHandlers?.localWebPreviewBridge?.postMessage(message);
+  swiftBridge.post(message);
 }
 
 export function registerLocalWebPreviewInitHandler(
@@ -160,7 +163,7 @@ export function openExternalUrl(url: string) {
 }
 
 export function captureScreenshot(): Promise<LocalWebPreviewScreenshotPayload> {
-  if (!window.webkit?.messageHandlers?.localWebPreviewBridge) {
+  if (!swiftBridge.isAvailable()) {
     return Promise.resolve({});
   }
   return new Promise(resolve => {

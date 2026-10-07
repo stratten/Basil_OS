@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections import OrderedDict
 from typing import Any, Awaitable, Callable, Dict, Iterable, Mapping, Optional, Sequence
 
 from .agent_timeline_contract import build_timeline_event, normalize_timeline_entry, timeline_timestamp
@@ -36,6 +37,12 @@ USER_INTERACTION_STATUSES = frozenset({
 })
 
 Broadcast = Callable[[Dict[str, Any]], Awaitable[Any]]
+
+# Requests this process announced and has not yet resolved. The durable timeline is rewritten whole by several
+# independent writers, so a waiting entry can be lost before its answer arrives; this lets the answer still reach
+# the UI and the saved timeline instead of leaving the request showing as waiting.
+_PENDING_ASKED_LIMIT = 512
+_pending_asked: "OrderedDict[tuple[str, str], Dict[str, Any]]" = OrderedDict()
 
 _WAITING_TITLES = {
     "clarification": "Basil asked you a question",
@@ -168,6 +175,7 @@ async def record_user_interaction_asked(
             options=options,
         )
         await persist_timeline_entry(agent_task_id, entry, replace_existing=True, preserve_position=True)
+        _remember_asked(agent_task_id, entry["metadata"]["user_interaction"])
         await _broadcast_entry(agent_task_id, entry, broadcast)
     except Exception:
         logger.exception("Failed to record user interaction request %s", interaction_id)
@@ -216,6 +224,35 @@ def _interaction_of(entry: Any) -> Optional[Mapping[str, Any]]:
     metadata = entry.get("metadata")
     interaction = metadata.get("user_interaction") if isinstance(metadata, Mapping) else None
     return interaction if isinstance(interaction, Mapping) else None
+
+
+def _remember_asked(agent_task_id: str, interaction: Mapping[str, Any]) -> None:
+    key = (agent_task_id, str(interaction.get("interaction_id")))
+    _pending_asked[key] = dict(interaction)
+    _pending_asked.move_to_end(key)
+    while len(_pending_asked) > _PENDING_ASKED_LIMIT:
+        _pending_asked.popitem(last=False)
+
+
+def _waiting_interactions(
+    agent_task_id: str,
+    timeline: Iterable[Any],
+    kinds: Optional[Iterable[str]] = None,
+) -> list[Mapping[str, Any]]:
+    """Requests still waiting on the user, oldest first: those in the saved timeline plus announced ones the saved timeline lost."""
+    recorded = [interaction for interaction in (_interaction_of(entry) for entry in timeline) if interaction is not None]
+    saved_ids = {str(interaction.get("interaction_id")) for interaction in recorded}
+    waiting = [interaction for interaction in recorded if interaction.get("status") == "waiting"]
+    waiting.extend(
+        interaction
+        for (task_id, interaction_id), interaction in _pending_asked.items()
+        if task_id == agent_task_id and interaction_id not in saved_ids
+    )
+    allowed = set(kinds) if kinds is not None else None
+    return sorted(
+        (interaction for interaction in waiting if allowed is None or interaction.get("kind") in allowed),
+        key=lambda interaction: str(interaction.get("asked_at") or ""),
+    )
 
 
 def user_run_notes_from_timeline(timeline: Iterable[Any]) -> list[str]:
@@ -279,6 +316,8 @@ async def record_user_interaction_resolved(
             None,
         )
         if existing is None:
+            existing = _pending_asked.get((agent_task_id, str(interaction_id)))
+        if existing is None:
             return
         await _persist_resolution(agent_task_id, existing, status, response, response_hidden, broadcast)
     except Exception:
@@ -297,14 +336,7 @@ async def resolve_latest_waiting_user_interaction(
     if not agent_task_id:
         return
     try:
-        allowed = set(kinds)
-        waiting = [
-            interaction
-            for interaction in (_interaction_of(entry) for entry in await _load_timeline(agent_task_id))
-            if interaction is not None
-            and interaction.get("status") == "waiting"
-            and interaction.get("kind") in allowed
-        ]
+        waiting = _waiting_interactions(agent_task_id, await _load_timeline(agent_task_id), kinds)
         if not waiting:
             return
         await _persist_resolution(agent_task_id, waiting[-1], status, response, False, broadcast)
@@ -351,11 +383,7 @@ async def resolve_all_waiting_user_interactions(
     if not agent_task_id:
         return 0
     try:
-        waiting = [
-            interaction
-            for interaction in (_interaction_of(entry) for entry in await _load_timeline(agent_task_id))
-            if interaction is not None and interaction.get("status") == "waiting"
-        ]
+        waiting = _waiting_interactions(agent_task_id, await _load_timeline(agent_task_id))
         for interaction in waiting:
             await _persist_resolution(agent_task_id, interaction, status, None, False, broadcast)
         return len(waiting)
@@ -384,5 +412,9 @@ async def _persist_resolution(
         response_hidden=response_hidden,
         responded_at=timeline_timestamp(),
     )
-    await persist_timeline_entry(agent_task_id, entry, replace_existing=True, preserve_position=True)
+    try:
+        await persist_timeline_entry(agent_task_id, entry, replace_existing=True, preserve_position=True)
+    except Exception:
+        logger.exception("Failed to save the resolution of user interaction %s", existing.get("interaction_id"))
+    _pending_asked.pop((agent_task_id, str(existing.get("interaction_id"))), None)
     await _broadcast_entry(agent_task_id, entry, broadcast)

@@ -1,3 +1,4 @@
+import { postToSwiftHandler } from '@shared/swiftBridge'
 import type { MemoryIntelligenceNativeEvent, MemorySettingField } from '../types'
 
 type OutgoingMemoryIntelligenceMessage =
@@ -44,7 +45,7 @@ export function onMemoryIntelligenceEvent(handler: EventHandler): () => void {
 }
 
 function postMessage(message: OutgoingMemoryIntelligenceMessage) {
-  window.webkit?.messageHandlers?.basilMemoryIntelligenceSettingsBridge?.postMessage(message)
+  postToSwiftHandler('basilMemoryIntelligenceSettingsBridge', message)
 }
 
 function requestId(prefix: string): string {

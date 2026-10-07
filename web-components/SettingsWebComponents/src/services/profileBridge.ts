@@ -1,3 +1,4 @@
+import { postToSwiftHandler } from '@shared/swiftBridge'
 import type { ProfileFields, ProfileNativeEvent } from '../types'
 
 type OutgoingProfileMessage =
@@ -39,7 +40,7 @@ export function onProfileEvent(handler: EventHandler): () => void {
 }
 
 function postMessage(message: OutgoingProfileMessage) {
-  window.webkit?.messageHandlers?.basilProfileSettingsBridge?.postMessage(message)
+  postToSwiftHandler('basilProfileSettingsBridge', message)
 }
 
 function requestId(prefix: string): string {

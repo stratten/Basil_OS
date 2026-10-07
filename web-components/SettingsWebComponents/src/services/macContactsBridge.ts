@@ -1,3 +1,4 @@
+import { postToSwiftHandler } from '@shared/swiftBridge'
 import type { MacContactsSettingsNativeEvent } from '../types'
 
 type OutgoingMacContactsMessage =
@@ -28,7 +29,7 @@ function dispatch(event: MacContactsSettingsNativeEvent) {
 window.basilMacContactsSettings = { onEvent: dispatch }
 
 function postMessage(message: OutgoingMacContactsMessage) {
-  window.webkit?.messageHandlers?.basilMacContactsSettingsBridge?.postMessage(message)
+  postToSwiftHandler('basilMacContactsSettingsBridge', message)
 }
 
 function requestId(prefix: string): string {

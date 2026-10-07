@@ -42,6 +42,7 @@ export default defineConfig({
       '../shared/SettingsSubTabs.test.tsx',
       '../shared/useCollapseShortcut.test.tsx',
       '../shared/useSettledExpand.test.tsx',
+      '../shared/swiftBridge.test.ts',
     ],
   },
 })

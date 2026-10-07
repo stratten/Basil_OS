@@ -29,6 +29,7 @@ Write one bullet per line, starting with `- `, in plain language for people usin
 - You can attach files or folders to a note you send a running task or to the note you add when you resume a paused task
 - Follow-up questions start on the model used for the previous turn
 - Browser tasks now use one dedicated browser window per task, including its follow-ups, so Basil no longer loses track of which tab it was working in
+- Basil's bundled networking, image, PDF, and security libraries are updated to versions that fix publicly reported security advisories, and PDF text is now read with the maintained pypdf library
 
 ## 1.1.7
 

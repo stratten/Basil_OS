@@ -1,3 +1,4 @@
+import { postToSwiftHandler } from '@shared/swiftBridge'
 import type { AccountNativeEvent, ApiKeyPreference } from '../types'
 
 type OutgoingAccountMessage =
@@ -45,7 +46,7 @@ export function onAccountEvent(handler: EventHandler): () => void {
 }
 
 function postMessage(message: OutgoingAccountMessage) {
-  window.webkit?.messageHandlers?.basilAccountSettingsBridge?.postMessage(message)
+  postToSwiftHandler('basilAccountSettingsBridge', message)
 }
 
 function requestId(prefix: string): string {

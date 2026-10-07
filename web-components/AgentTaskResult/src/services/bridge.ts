@@ -17,6 +17,7 @@ import {
   type InlineNativePreviewFrame,
 } from '../components/artifacts/transport/artifactPreviewTransport';
 import { publishCaptureMeter } from '../store/captureMeterStore';
+import { createSwiftBridge, missingHandlerLogger } from '@shared/swiftBridge';
 
 export type { ArtifactPreviewTransport, FilePreviewKind, FilePreviewPayload, InlineNativePreviewFrame };
 
@@ -27,19 +28,6 @@ export interface FilePreviewAvailabilityPayload {
 
 declare global {
   interface Window {
-    webkit?: {
-      messageHandlers: {
-        agentTaskBridge?: {
-          postMessage: (message: SwiftMessage) => void;
-        };
-        basilBoardBridge?: {
-          postMessage: (message: Record<string, unknown>) => void;
-        };
-        localWebPreviewBridge?: {
-          postMessage: (message: unknown) => void;
-        };
-      };
-    };
     basilAgentTask?: {
       onInit: (config: InitMessage) => void;
       onCaptureStateChanged: (state: CaptureStateMessage) => void;
@@ -439,12 +427,12 @@ window.basilAgentTask = {
   },
 };
 
+const swiftBridge = createSwiftBridge<SwiftMessage>('agentTaskBridge', {
+  onMissing: missingHandlerLogger('log', '[Bridge] No Swift handler, message:'),
+});
+
 function postToSwift(message: SwiftMessage) {
-  if (window.webkit?.messageHandlers.agentTaskBridge) {
-    window.webkit.messageHandlers.agentTaskBridge.postMessage(message);
-  } else {
-    console.log('[Bridge] No Swift handler, message:', message);
-  }
+  swiftBridge.post(message);
 }
 
 export function closeWidget() {
@@ -636,7 +624,7 @@ export function previewFile(path: string): Promise<FilePreviewPayload> {
 export function checkFilePreviewAvailability(paths: string[]): Promise<Set<string>> {
   const uniquePaths = [...new Set(paths)];
   if (uniquePaths.length === 0) return Promise.resolve(new Set());
-  if (!window.webkit?.messageHandlers.agentTaskBridge) return Promise.resolve(new Set(uniquePaths));
+  if (!swiftBridge.isAvailable()) return Promise.resolve(new Set(uniquePaths));
 
   const requestId = `file-preview-availability-${Date.now()}-${++filePreviewAvailabilityRequestCounter}`;
   return new Promise((resolve, reject) => {

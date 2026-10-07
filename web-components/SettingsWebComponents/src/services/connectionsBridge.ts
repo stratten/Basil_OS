@@ -1,3 +1,4 @@
+import { postToSwiftHandler } from '@shared/swiftBridge'
 import type { ConnectionsNativeEvent } from '../types'
 
 type OutgoingConnectionsMessage =
@@ -60,7 +61,7 @@ export function onConnectionsEvent(handler: EventHandler): () => void {
 }
 
 function postMessage(message: OutgoingConnectionsMessage) {
-  window.webkit?.messageHandlers?.basilConnectionsSettingsBridge?.postMessage(message)
+  postToSwiftHandler('basilConnectionsSettingsBridge', message)
 }
 
 function requestId(prefix: string): string {

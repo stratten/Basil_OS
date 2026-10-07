@@ -1,16 +1,10 @@
+import { createSwiftBridge } from '@shared/swiftBridge'
 import type { FontConfig, InitMessage, SwiftMessage, ThemeConfig } from '../types'
 
 export const setupAssistantResumeToastBridgeProtocolVersion = 1
 
 declare global {
   interface Window {
-    webkit?: {
-      messageHandlers?: {
-        setupAssistantResumeToastBridge?: {
-          postMessage: (message: SwiftMessage & { protocolVersion: number }) => void
-        }
-      }
-    }
     basilSetupAssistantResumeToast?: {
       onInit: (config: InitMessage) => void
       onThemeChanged: (theme: ThemeConfig, fonts: FontConfig) => void
@@ -47,8 +41,10 @@ window.basilSetupAssistantResumeToast = {
   },
 }
 
+const swiftBridge = createSwiftBridge<SwiftMessage & { protocolVersion: number }>('setupAssistantResumeToastBridge')
+
 function postToSwift(message: SwiftMessage) {
-  window.webkit?.messageHandlers?.setupAssistantResumeToastBridge?.postMessage({
+  swiftBridge.post({
     ...message,
     protocolVersion: setupAssistantResumeToastBridgeProtocolVersion,
   })
