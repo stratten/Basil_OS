@@ -15,6 +15,7 @@ import {
 } from '../../services/historyApi';
 import { copyHistoryMarkdown, copyHistoryRichText, refineFromHistory } from '../../bridge/historyBridge';
 import { NativeSymbol } from '../NativeSymbol';
+import { useCopyFeedback } from '@shared/useCopyFeedback';
 
 const EDIT_MIN_HEIGHT_PX = 120;
 const EDIT_CHROME_ALLOWANCE_PX = 72;
@@ -44,7 +45,7 @@ export function HistoryDetail({
   const [sampleContext, setSampleContext] = useState<SampleContextType>('document');
   const [savingSample, setSavingSample] = useState(false);
   const [hovering, setHovering] = useState(false);
-  const [copiedKind, setCopiedKind] = useState<'richText' | 'markdown' | null>(null);
+  const { copiedKey: copiedKind, flash } = useCopyFeedback<'richText' | 'markdown'>();
   const [actionError, setActionError] = useState<string | null>(null);
   const editRef = useRef<HTMLTextAreaElement>(null);
   const activeEntryIdRef = useRef<number | null>(null);
@@ -112,13 +113,6 @@ export function HistoryDetail({
   const outputLabel = entry.refinements.length > 0
     ? `Latest (Refinement #${entry.refinements.length})`
     : 'Output';
-
-  const flash = (kind: 'richText' | 'markdown') => {
-    setCopiedKind(kind);
-    window.setTimeout(() => {
-      setCopiedKind((current) => (current === kind ? null : current));
-    }, 1500);
-  };
 
   const copy = (kind: 'richText' | 'markdown') => {
     if (kind === 'richText') {

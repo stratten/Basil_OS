@@ -3,6 +3,7 @@ import { copyMarkdown, copyRichText } from '../../bridge/assistantSessionBridge'
 import type { AssistantSessionPasteOutcome } from '../../bridge/types';
 import { MarkdownView } from '../MarkdownView';
 import { NativeSymbol } from '../NativeSymbol';
+import { useCopyFeedback } from '@shared/useCopyFeedback';
 import { PasteStatusLine } from './PasteStatusLine';
 
 export function OutputCard({
@@ -23,14 +24,7 @@ export function OutputCard({
   pasteTargetApplicationName?: string | null;
 }) {
   const [hovering, setHovering] = useState(false);
-  const [copiedKind, setCopiedKind] = useState<'richText' | 'markdown' | null>(null);
-
-  const flash = (kind: 'richText' | 'markdown') => {
-    setCopiedKind(kind);
-    window.setTimeout(() => {
-      setCopiedKind((current) => (current === kind ? null : current));
-    }, 1500);
-  };
+  const { copiedKey: copiedKind, flash } = useCopyFeedback<'richText' | 'markdown'>();
 
   return (
     <div className="assistant-session-result__output-wrap">

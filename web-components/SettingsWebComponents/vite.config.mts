@@ -43,6 +43,8 @@ export default defineConfig({
       '../shared/useCollapseShortcut.test.tsx',
       '../shared/useSettledExpand.test.tsx',
       '../shared/swiftBridge.test.ts',
+      '../shared/useCopyFeedback.test.tsx',
+      '../shared/themeLayoutTokens.contract.test.ts',
     ],
   },
 })

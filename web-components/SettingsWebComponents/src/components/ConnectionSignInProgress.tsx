@@ -1,3 +1,4 @@
+import { useCopiedFlag } from '@shared/useCopyFeedback'
 import { requestCancelGitHubDeviceFlow, requestOpenExternalUrl } from '../services/connectionsBridge'
 import type { ConnectionsSettingsFields } from '../types'
 
@@ -14,6 +15,7 @@ export function ConnectionSignInProgress({
   onContinueInBackground,
   showPendingFlow = true,
 }: ConnectionSignInProgressProps) {
+  const [codeCopied, flashCodeCopied] = useCopiedFlag()
   const deviceFlow = fields.githubDeviceFlow
 
   if (deviceFlow) {
@@ -26,9 +28,11 @@ export function ConnectionSignInProgress({
           <button
             type="button"
             className="secondary-button"
-            onClick={() => navigator.clipboard.writeText(deviceFlow.userCode)}
+            onClick={() => {
+              navigator.clipboard.writeText(deviceFlow.userCode).then(() => flashCodeCopied(), () => undefined)
+            }}
           >
-            Copy Code
+            {codeCopied ? 'Copied' : 'Copy Code'}
           </button>
           <button
             type="button"

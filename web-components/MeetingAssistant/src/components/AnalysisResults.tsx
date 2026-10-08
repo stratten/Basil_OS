@@ -1,4 +1,5 @@
 import type { MeetingActionProposalDTO, MeetingAnalysisResultDTO } from '../bridge/types';
+import { useCopiedFlag } from '@shared/useCopyFeedback';
 import { copyText, retryAnalysisModes } from '../bridge/meetingBridge';
 import { MeetingMarkdown } from '../lib/markdown';
 import { ANALYSIS_MODE_ORDER, formatModeResult, type AnalysisModeId } from '../lib/analysisModes';
@@ -11,6 +12,7 @@ interface AnalysisResultsProps {
 }
 
 export default function AnalysisResults({ result, mode, proposals }: AnalysisResultsProps) {
+  const [sectionCopied, flashSectionCopied] = useCopiedFlag();
   const definition = ANALYSIS_MODE_ORDER.find((entry) => entry.id === mode);
   const failedModeIds = (result.failedModes ?? []).filter((failure) => failure.retryable).map((failure) => failure.mode);
   const modeOmissions = (result.safetyOmissions ?? []).filter((omission) => omission.mode === mode);
@@ -64,9 +66,12 @@ export default function AnalysisResults({ result, mode, proposals }: AnalysisRes
           className="meeting-analysis-mode-copy"
           title="Copy this section"
           aria-label="Copy this section"
-          onClick={() => copyText(formatModeResult(result, mode, proposals), true)}
+          onClick={() => {
+            copyText(formatModeResult(result, mode, proposals), true);
+            flashSectionCopied();
+          }}
         >
-          <CopySectionIcon />
+          {sectionCopied ? <CopiedSectionIcon /> : <CopySectionIcon />}
         </button>
       </header>
 
@@ -184,6 +189,14 @@ function CopySectionIcon() {
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
       <rect x="5.5" y="5.5" width="8" height="8" rx="1.2" />
       <path d="M10.5 5.5V3.8A1.3 1.3 0 0 0 9.2 2.5H3.8A1.3 1.3 0 0 0 2.5 3.8v5.4A1.3 1.3 0 0 0 3.8 10.5H5.5" />
+    </svg>
+  );
+}
+
+function CopiedSectionIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
+      <path d="m3 8.2 3.1 3.1L13 4.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

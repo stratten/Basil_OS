@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useCopiedFlag } from '@shared/useCopyFeedback'
 import type { TranscriptionModelOptionFields, TranscriptionRecordFields } from '../types'
 
 interface TranscriptionHistoryItemProps {
@@ -44,7 +45,7 @@ export function TranscriptionHistoryItem({
   onDelete,
 }: TranscriptionHistoryItemProps) {
   const [showFullText, setShowFullText] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [copied, flashCopied] = useCopiedFlag()
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [showRetranscribeMenu, setShowRetranscribeMenu] = useState(false)
   const retranscribeMenuRef = useRef<HTMLDivElement>(null)
@@ -55,8 +56,7 @@ export function TranscriptionHistoryItem({
 
   function handleCopy() {
     navigator.clipboard.writeText(record.displayText).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1200)
+      flashCopied()
     })
   }
 

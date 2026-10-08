@@ -287,6 +287,35 @@ describe('MeetingAnalysisApp', () => {
     }
   });
 
+  it('confirms the per-section copy with a check icon that reverts after a moment', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const checkPath = 'path[d="m3 8.2 3.1 3.1L13 4.8"]';
+    try {
+      render(<MeetingAnalysisApp />);
+      publishResult(makeResult());
+      fireEvent.click(screen.getByRole('tab', { name: 'Summary' }));
+
+      const sectionCopy = screen.getByRole('button', { name: 'Copy this section' });
+      expect(sectionCopy.querySelector(checkPath)).toBeNull();
+
+      fireEvent.click(sectionCopy);
+      expect(mocks.copyText).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('button', { name: 'Copy this section' }).querySelector(checkPath)).not.toBeNull();
+
+      act(() => {
+        vi.advanceTimersByTime(1499);
+      });
+      expect(screen.getByRole('button', { name: 'Copy this section' }).querySelector(checkPath)).not.toBeNull();
+
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(screen.getByRole('button', { name: 'Copy this section' }).querySelector(checkPath)).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('hides title-bar copy and export while the window is collapsed', async () => {
     const user = userEvent.setup();
     render(<MeetingAnalysisApp />);

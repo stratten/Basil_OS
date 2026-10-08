@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import TokenizedSelect from '@shared/TokenizedSelect'
 import { plainMarkdownText } from '@shared/plainMarkdownText'
+import { useCopyFeedback } from '@shared/useCopyFeedback'
 import { RecipientChipList, RecipientChipsInput } from '../components/RecipientChips'
 import { WritingSampleMarkdown } from '../components/WritingSampleMarkdown'
 import {
@@ -84,7 +85,7 @@ export function WritingExamplesSettingsApp() {
   const [statusMessage, setStatusMessage] = useState<StatusMessage | null>(null)
   const [pending, setPending] = useState<PendingRequest | null>(null)
   const [expandedSampleId, setExpandedSampleId] = useState<string | null>(null)
-  const [copiedSampleId, setCopiedSampleId] = useState<string | null>(null)
+  const { copiedKey: copiedSampleId, flash: flashCopiedSample } = useCopyFeedback<string>()
   const [editingSampleId, setEditingSampleId] = useState<string | null>(null)
   const [editingDraft, setEditingDraft] = useState<EditDraft>(EMPTY_EDIT_DRAFT)
   const [changedContexts, setChangedContexts] = useState<ReadonlySet<string>>(() => new Set())
@@ -193,8 +194,7 @@ export function WritingExamplesSettingsApp() {
 
   function handleCopy(sample: WritingExampleSample) {
     copyWritingSampleToClipboard(sample.content)
-    setCopiedSampleId(sample.id)
-    setTimeout(() => setCopiedSampleId((current) => (current === sample.id ? null : current)), 1200)
+    flashCopiedSample(sample.id)
   }
 
   function handleStartEdit(sample: WritingExampleSample) {

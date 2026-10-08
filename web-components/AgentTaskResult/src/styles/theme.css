@@ -1,3 +1,5 @@
+@import '../../../shared/theme-layout-tokens.css';
+
 :root {
   /* User-configurable colors (defaults from AestheticSystem) */
   --background-primary: #FFFFFF;
@@ -40,50 +42,12 @@
   --error-base: #8B0000;
   --success-base: #348738;
 
-  /* Layout constants */
-  --corner-radius-small: 6px;
-  --corner-radius-medium: 8px;
-  --corner-radius-large: 16px;
-  --padding-xs: 4px;
-  --padding-s: 8px;
-  --padding-m: 12px;
-  --padding-l: 16px;
-  --padding-xl: 20px;
-  --border-thin: 1px;
-  --border-medium: 2px;
-
-  /* Shadow definitions */
-  --shadow-light: 0 1px 2px rgba(0, 0, 0, 0.03);
-  --shadow-medium: 0 1px 4px rgba(0, 0, 0, 0.05);
-  --shadow-dark: 0 2px 8px rgba(0, 0, 0, 0.1);
-
   /* Typography - user font (defaults) */
   --font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --font-family-light: 'HelveticaNeue-Light', 'Helvetica Neue Light', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --font-family-medium: 'HelveticaNeue-Medium', 'Helvetica Neue Medium', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --font-family-bold: 'HelveticaNeue-Bold', 'Helvetica Neue Bold', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --font-family-mono: 'SF Mono', Menlo, Monaco, 'Courier New', monospace;
-
-  /* Font sizes */
-  --font-size-large-title: 28px;
-  --font-size-title1: 24px;
-  --font-size-title2: 20px;
-  --font-size-title3: 18px;
-  --font-size-headline: 16px;
-  --font-size-subheadline: 14px;
-  --font-size-body: 14px;
-  --font-size-callout: 13px;
-  --font-size-footnote: 12px;
-  --font-size-caption: 12px;
-  --font-size-code: 13px;
-  --font-size-code-small: 11px;
-  --font-size-status-small: 11px;
-  --font-size-status-tiny: 10px;
-
-  /* Sidebar width */
-  --sidebar-collapsed-width: 28px;
-  --sidebar-expanded-width: 220px;
-
 }
 
 html,

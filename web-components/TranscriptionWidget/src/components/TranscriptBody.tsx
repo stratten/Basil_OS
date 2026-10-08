@@ -1,6 +1,7 @@
 // web-components/TranscriptionWidget/src/components/TranscriptBody.tsx
 
 import { useState } from 'react';
+import { useCopiedFlag } from '@shared/useCopyFeedback';
 import { copyToClipboard } from '../bridge/transcriptionWidgetBridge';
 import { TranscriptionSymbol } from './TranscriptionSymbol';
 
@@ -12,13 +13,12 @@ export function TranscriptBody({
   isStatus: boolean;
 }) {
   const [isHovering, setIsHovering] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied, flashCopied] = useCopiedFlag();
   const showCopyButton = !isStatus && displayText.length > 0;
 
   function handleCopy(): void {
     copyToClipboard();
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1500);
+    flashCopied();
   }
 
   return (

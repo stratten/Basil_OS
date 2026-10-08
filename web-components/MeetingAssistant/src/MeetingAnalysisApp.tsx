@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useEffect, useMemo, useReducer, useState } from 'react';
 import { copyText, exportAnalysis, registerEventHandler, reportReady, toggleWindowCollapse, viewAnalysis } from './bridge/meetingBridge';
 import { applyMeetingBridgeEvent, initialMeetingState } from './state/meetingReducer';
 import AnalysisResults from './components/AnalysisResults';
 import { useCollapseShortcut } from '@shared/useCollapseShortcut';
+import { useCopiedFlag } from '@shared/useCopyFeedback';
 import { useSettledExpand } from '@shared/useSettledExpand';
 import WindowChrome from './components/WindowChrome';
 import { applyMeetingHostFonts, applyMeetingHostTheme } from './lib/hostAppearance';
@@ -14,19 +15,12 @@ import {
   type AnalysisModeId,
 } from './lib/analysisModes';
 
-const COPIED_CONFIRMATION_MS = 1500;
-
 export default function MeetingAnalysisApp() {
   const [state, dispatch] = useReducer(applyMeetingBridgeEvent, initialMeetingState);
   const [tab, setTab] = useState<AnalysisModeId | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const isContentCollapsed = useSettledExpand(isCollapsed);
-  const [copied, setCopied] = useState(false);
-  const copiedTimerRef = useRef<number | null>(null);
-
-  useEffect(() => () => {
-    if (copiedTimerRef.current !== null) window.clearTimeout(copiedTimerRef.current);
-  }, []);
+  const [copied, flashCopied] = useCopiedFlag();
 
   useEffect(() => {
     registerEventHandler((event) => dispatch(event));
@@ -52,12 +46,7 @@ export default function MeetingAnalysisApp() {
 
   const copyAll = () => {
     copyText(exportText);
-    setCopied(true);
-    if (copiedTimerRef.current !== null) window.clearTimeout(copiedTimerRef.current);
-    copiedTimerRef.current = window.setTimeout(() => {
-      copiedTimerRef.current = null;
-      setCopied(false);
-    }, COPIED_CONFIRMATION_MS);
+    flashCopied();
   };
 
   const handleToggleCollapse = () => {

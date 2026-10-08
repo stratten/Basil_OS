@@ -254,7 +254,9 @@ describe('WritingExamplesSettingsApp', () => {
     act(() => { copyButton.click() })
     expect(lastMessageOfType('copySampleToClipboard')).toEqual({ type: 'copySampleToClipboard', content: SAMPLE.content })
     expect(copyButton.textContent).toBe('Copied')
-    act(() => { vi.advanceTimersByTime(1300) })
+    act(() => { vi.advanceTimersByTime(1499) })
+    expect(copyButton.textContent).toBe('Copied')
+    act(() => { vi.advanceTimersByTime(1) })
     expect(copyButton.textContent).toBe('Copy')
   })
 

@@ -1,5 +1,6 @@
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { AudioSourceKindDTO, TranscriptLineDTO } from '../bridge/types';
+import { useCopiedFlag } from '@shared/useCopyFeedback';
 import { copyText } from '../bridge/meetingBridge';
 import { buildTranscriptRows, formatTranscriptForCopy, formatTranscriptTimestamp } from '../lib/transcriptFormatting';
 
@@ -24,7 +25,7 @@ function TranscriptPanel({ transcript, ui }: TranscriptPanelProps) {
   const [searchActive, setSearchActive] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
-  const [copied, setCopied] = useState(false);
+  const [copied, flashCopied] = useCopiedFlag();
   const [isNearBottom, setIsNearBottom] = useState(true);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
@@ -70,8 +71,7 @@ function TranscriptPanel({ transcript, ui }: TranscriptPanelProps) {
 
   const copyAll = () => {
     copyText(formatTranscriptForCopy(rows));
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1500);
+    flashCopied();
   };
 
   const closeSearch = () => {

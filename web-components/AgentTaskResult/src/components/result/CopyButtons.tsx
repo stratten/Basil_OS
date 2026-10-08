@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
+import { useCopiedFlag } from '@shared/useCopyFeedback';
 import { copyRichTextToClipboard, copyToClipboard } from '../../services/bridge';
 
 const copyButtonGroupStyle = {
@@ -53,15 +54,12 @@ function CopyConfirmationButton({
   onCopy: () => void;
   icon: ReactNode;
 }) {
-  const [copied, setCopied] = useState(false);
+  const [copied, flashCopied] = useCopiedFlag();
   const [isHovering, setIsHovering] = useState(false);
 
   const handleCopy = () => {
     onCopy();
-    setCopied(true);
-    window.setTimeout(() => {
-      setCopied(false);
-    }, 1500);
+    flashCopied();
   };
 
   return (

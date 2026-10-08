@@ -1,4 +1,5 @@
-import { memo, useCallback, useState, type RefObject, type UIEvent } from 'react';
+import { memo, useCallback, type RefObject, type UIEvent } from 'react';
+import { useCopyFeedback } from '@shared/useCopyFeedback';
 import type { ConversationMessageItem } from '../contracts';
 import ConversationMessageRow from './ConversationMessageRow';
 
@@ -31,7 +32,7 @@ function ConversationTranscriptComponent({
   onPreviewArtifact,
   onViewAllArtifacts,
 }: ConversationTranscriptProps) {
-  const [copiedAction, setCopiedAction] = useState<string>();
+  const { copiedKey: copiedAction, flash: flashCopiedAction } = useCopyFeedback<string>();
 
   const handleScroll = (event: UIEvent<HTMLDivElement>) => {
     const target = event.currentTarget;
@@ -46,11 +47,8 @@ function ConversationTranscriptComponent({
   ) => {
     const actionId = `${messageId}:${format}`;
     await onCopy(content, format);
-    setCopiedAction(actionId);
-    window.setTimeout(() => {
-      setCopiedAction((current) => current === actionId ? undefined : current);
-    }, 1500);
-  }, [onCopy]);
+    flashCopiedAction(actionId);
+  }, [onCopy, flashCopiedAction]);
 
   const handleRowCopy = useCallback((messageId: string, content: string, format: 'markdown' | 'richText') => {
     void copyMessage(messageId, content, format).catch(() => undefined);
