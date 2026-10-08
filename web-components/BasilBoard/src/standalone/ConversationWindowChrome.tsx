@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { WindowControlButton } from '@shared/WindowControlButton';
 import { useCollapseShortcut } from '@shared/useCollapseShortcut';
 import { useSettledExpand } from '@shared/useSettledExpand';
 import { requestWindowClose, requestWindowCollapse, requestWindowExpand, requestWindowMinimize } from '../services/bridge';
@@ -33,49 +34,16 @@ export default function ConversationWindowChrome({
         <header className="basil-board-detached-header">
           <div className="conversation-window-header-left">
             <div className="basil-board-window-controls">
-              <button
-                type="button"
+              <WindowControlButton kind="close" label="Close" className="basil-board-window-control" onClick={requestWindowClose} />
+              <WindowControlButton kind="minimize" label="Minimize" className="basil-board-window-control" onClick={requestWindowMinimize} />
+              <WindowControlButton
+                kind="collapse"
+                label={isCollapsed ? 'Expand' : 'Collapse'}
                 className="basil-board-window-control"
-                onClick={requestWindowClose}
-                aria-label="Close"
-              >
-                <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
-                  <circle cx="11" cy="11" r="10" fill="var(--conversation-window-control-fill)" />
-                  <line x1="7.5" y1="7.5" x2="14.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
-                  <line x1="14.5" y1="7.5" x2="7.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                className="basil-board-window-control"
-                onClick={requestWindowMinimize}
-                aria-label="Minimize"
-              >
-                <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
-                  <circle cx="11" cy="11" r="10" fill="var(--conversation-window-control-fill)" />
-                  <line x1="6.5" y1="11" x2="15.5" y2="11" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                className="basil-board-window-control"
+                collapsed={isCollapsed}
+                pressed={isCollapsed}
                 onClick={toggleCollapsed}
-                aria-label={isCollapsed ? 'Expand' : 'Collapse'}
-                aria-pressed={isCollapsed}
-              >
-                <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
-                  <circle cx="11" cy="11" r="10" fill="var(--conversation-window-control-fill)" />
-                  <path
-                    className={`conversation-window-collapse-chevron${isCollapsed ? ' is-collapsed' : ''}`}
-                    d="M7 9l4 4 4-4"
-                    fill="none"
-                    stroke="var(--secondary)"
-                    strokeWidth="1.6"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
+              />
             </div>
             <svg className="conversation-window-feature-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.35" aria-hidden="true">
               <circle cx="10" cy="10" r="8" />

@@ -62,12 +62,3 @@
   pointer-events: none;
 }
 
-.basil-window-collapse-chevron {
-  transform-box: fill-box;
-  transform-origin: center;
-  transition: transform 0.15s ease;
-}
-
-.basil-window-collapse-chevron.is-collapsed {
-  transform: rotate(-90deg);
-}

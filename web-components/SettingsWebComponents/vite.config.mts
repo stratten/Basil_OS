@@ -45,6 +45,11 @@ export default defineConfig({
       '../shared/swiftBridge.test.ts',
       '../shared/useCopyFeedback.test.tsx',
       '../shared/themeLayoutTokens.contract.test.ts',
+      '../shared/WindowControlButton.test.tsx',
+      '../shared/windowControlButton.contract.test.ts',
+      '../shared/markdownSafety.test.ts',
+      '../shared/InlineDeleteConfirm.test.tsx',
+      '../shared/inlineDeleteConfirm.contract.test.ts',
     ],
   },
 })

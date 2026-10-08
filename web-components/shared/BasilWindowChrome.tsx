@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useCollapseShortcut } from './useCollapseShortcut'
 import { useSettledExpand } from './useSettledExpand'
+import { WindowControlButton } from './WindowControlButton'
 
 interface BasilWindowChromeProps {
   title: string
@@ -32,39 +33,16 @@ export function BasilWindowChrome({ title, children, onClose, onMinimize, onColl
       <div className="basil-window-surface basil-webkit-window-surface">
         <header className="basil-window-header">
           <div className="basil-window-controls">
-            <button type="button" className="basil-window-control" onClick={() => onClose()} aria-label="Close window">
-              <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
-                <circle cx="11" cy="11" r="10" fill="rgba(51, 85, 155, 0.15)" />
-                <line x1="7.5" y1="7.5" x2="14.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
-                <line x1="14.5" y1="7.5" x2="7.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
-            </button>
-            <button type="button" className="basil-window-control" onClick={() => onMinimize()} aria-label="Minimize window">
-              <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
-                <circle cx="11" cy="11" r="10" fill="rgba(51, 85, 155, 0.15)" />
-                <line x1="6.5" y1="11" x2="15.5" y2="11" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
-            </button>
-            <button
-              type="button"
+            <WindowControlButton kind="close" label="Close window" className="basil-window-control" onClick={onClose} />
+            <WindowControlButton kind="minimize" label="Minimize window" className="basil-window-control" onClick={onMinimize} />
+            <WindowControlButton
+              kind="collapse"
+              label={isCollapsed ? 'Expand window' : 'Collapse window'}
               className="basil-window-control"
+              collapsed={isCollapsed}
+              pressed={isCollapsed}
               onClick={toggleCollapsed}
-              aria-label={isCollapsed ? 'Expand window' : 'Collapse window'}
-              aria-pressed={isCollapsed}
-            >
-              <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
-                <circle cx="11" cy="11" r="10" fill="rgba(51, 85, 155, 0.15)" />
-                <path
-                  className={`basil-window-collapse-chevron${isCollapsed ? ' is-collapsed' : ''}`}
-                  d="M7 9l4 4 4-4"
-                  fill="none"
-                  stroke="var(--secondary)"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
+            />
           </div>
           <span className="basil-window-title">{title}</span>
         </header>

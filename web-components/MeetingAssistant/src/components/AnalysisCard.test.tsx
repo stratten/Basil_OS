@@ -74,9 +74,9 @@ describe('AnalysisCard', () => {
 
     await user.click(screen.getByRole('button', { name: 'Delete analysis from 2026-08-14 11:00 am' }));
     const label = screen.getByText('Delete?');
-    const confirm = label.closest('.meeting-analysis-delete-confirm');
-    expect(label).toHaveClass('meeting-analysis-delete-confirm__label');
-    const actions = confirm?.querySelector('.meeting-analysis-delete-confirm__actions');
+    const confirm = label.closest('.inline-delete-confirm');
+    expect(label).toHaveClass('inline-delete-confirm__label');
+    const actions = confirm?.querySelector('.inline-delete-confirm__actions');
     expect(actions).not.toBeNull();
     expect(label.nextElementSibling).toBe(actions);
     expect(actions?.contains(screen.getByRole('button', { name: 'Delete' }))).toBe(true);

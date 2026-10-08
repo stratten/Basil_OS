@@ -316,7 +316,7 @@ describe('Sidebar', () => {
       expect(document.body.querySelector('.overlay-backdrop')).toBeNull();
 
       await act(async () => {
-        container.querySelector<HTMLButtonElement>('.sidebar-row-confirm__btn--danger')?.click();
+        container.querySelector<HTMLButtonElement>('.inline-delete-confirm__btn--danger')?.click();
       });
 
       expect(deleteAgentTask).toHaveBeenCalledWith('history-task-1');

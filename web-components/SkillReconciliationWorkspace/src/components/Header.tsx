@@ -1,3 +1,5 @@
+import { WindowControlButton } from '@shared/WindowControlButton';
+
 interface HeaderProps {
   summary: string;
   isCollapsed: boolean;
@@ -10,38 +12,16 @@ export function Header({ summary, isCollapsed, onMinimize, onClose, onToggleColl
   return (
     <div className="widget-header">
       <div className="header-left">
-        <button className="header-btn" onClick={onClose} aria-label="Close">
-          <svg width="20" height="20" viewBox="0 0 22 22">
-            <circle cx="11" cy="11" r="10" fill="rgba(51,85,155,0.15)" />
-            <line x1="7.5" y1="7.5" x2="14.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
-            <line x1="14.5" y1="7.5" x2="7.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
-          </svg>
-        </button>
-        <button className="header-btn" onClick={onMinimize} aria-label="Minimize">
-          <svg width="20" height="20" viewBox="0 0 22 22">
-            <circle cx="11" cy="11" r="10" fill="rgba(51,85,155,0.15)" />
-            <line x1="6.5" y1="11" x2="15.5" y2="11" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
-          </svg>
-        </button>
-        <button
+        <WindowControlButton kind="close" label="Close" className="header-btn" onClick={onClose} />
+        <WindowControlButton kind="minimize" label="Minimize" className="header-btn" onClick={onMinimize} />
+        <WindowControlButton
+          kind="collapse"
+          label={isCollapsed ? 'Expand' : 'Collapse'}
           className="header-btn"
+          collapsed={isCollapsed}
+          pressed={isCollapsed}
           onClick={onToggleCollapse}
-          aria-label={isCollapsed ? 'Expand' : 'Collapse'}
-          aria-pressed={isCollapsed}
-        >
-          <svg width="20" height="20" viewBox="0 0 22 22">
-            <circle cx="11" cy="11" r="10" fill="rgba(51,85,155,0.15)" />
-            <path
-              className={`header-collapse-chevron${isCollapsed ? ' is-collapsed' : ''}`}
-              d="M7 9l4 4 4-4"
-              fill="none"
-              stroke="var(--secondary)"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
+        />
         <span className="header-title">Skill Reconciliation</span>
       </div>
       <div className="header-right">

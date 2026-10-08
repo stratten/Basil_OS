@@ -1,3 +1,5 @@
+import { externalLinkTarget } from './markdownSafety';
+
 type MarkdownBlockKind = 'line' | 'paragraph' | 'block';
 
 interface MarkdownBlock {
@@ -95,7 +97,7 @@ function codeSpan(text: string): string {
 
 function safeLinkHref(element: HTMLElement): string | undefined {
   const href = element.getAttribute?.('href')?.trim();
-  if (!href || !/^(https?:|mailto:)/i.test(href)) return undefined;
+  if (!href || !externalLinkTarget(href, { allowMailto: true })) return undefined;
   return href.replace(/[\s()<>]/g, (character) => HREF_ESCAPES[character] ?? encodeURIComponent(character));
 }
 

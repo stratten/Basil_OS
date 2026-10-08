@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import CrossfadeStack from '@shared/CrossfadeStack';
 import PresenceRegion from '@shared/PresenceRegion';
+import { WindowControlButton } from '@shared/WindowControlButton';
 import { useCollapseShortcut } from '@shared/useCollapseShortcut';
 import { useSettledExpand } from '@shared/useSettledExpand';
 import { closeWindow, minimizeWindow, onHistoryEvent, reportHistoryReady, toggleChromeCollapse } from '../bridge/historyBridge';
@@ -167,43 +168,15 @@ export function AssistantOutputHistoryApp() {
       <div className="assistant-output-history-shell basil-webkit-window-surface">
         <div className="assistant-output-history-shell__titlebar">
           <div className="assistant-output-history-shell__titlebar-actions">
-            <button type="button" onClick={closeWindow} aria-label="Close">
-              <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
-                <circle cx="11" cy="11" r="10" fill="color-mix(in srgb, var(--secondary, #4c7bf0) 15%, transparent)" />
-                <line x1="7.5" y1="7.5" x2="14.5" y2="14.5" stroke="var(--secondary, #4c7bf0)" strokeWidth="1.6" strokeLinecap="round" />
-                <line x1="14.5" y1="7.5" x2="7.5" y2="14.5" stroke="var(--secondary, #4c7bf0)" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
-            </button>
-            <button type="button" onClick={minimizeWindow} aria-label="Minimize">
-              <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
-                <circle cx="11" cy="11" r="10" fill="color-mix(in srgb, var(--secondary, #4c7bf0) 15%, transparent)" />
-                <line x1="6.5" y1="11" x2="15.5" y2="11" stroke="var(--secondary, #4c7bf0)" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              aria-label={chromeCollapsed ? 'Expand history' : 'Collapse history'}
-              aria-pressed={chromeCollapsed}
+            <WindowControlButton kind="close" label="Close" onClick={closeWindow} />
+            <WindowControlButton kind="minimize" label="Minimize" onClick={minimizeWindow} />
+            <WindowControlButton
+              kind="collapse"
+              label={chromeCollapsed ? 'Expand history' : 'Collapse history'}
+              collapsed={chromeCollapsed}
+              pressed={chromeCollapsed}
               onClick={toggleChrome}
-            >
-              <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
-                <circle cx="11" cy="11" r="10" fill="color-mix(in srgb, var(--secondary, #4c7bf0) 15%, transparent)" />
-                <path
-                  d="M7 9l4 4 4-4"
-                  fill="none"
-                  stroke="var(--secondary, #4c7bf0)"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{
-                    transformBox: 'fill-box',
-                    transformOrigin: 'center',
-                    transition: 'transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)',
-                    transform: chromeCollapsed ? 'rotate(-90deg)' : undefined,
-                  }}
-                />
-              </svg>
-            </button>
+            />
           </div>
           <img
             className="assistant-output-history-shell__dill"

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { externalLinkTarget } from '@shared/markdownSafety';
 import { postToSwiftHandler } from '@shared/swiftBridge';
 import { markdownToHTML } from '../lib/markdownToHtml';
 
@@ -16,7 +17,7 @@ export function MarkdownView({
     const url = anchor?.getAttribute('href');
     if (!url) return;
     event.preventDefault();
-    if (!url.startsWith('https://') && !url.startsWith('http://')) return;
+    if (!externalLinkTarget(url, { allowMailto: false })) return;
     if (!postToSwiftHandler('assistantSessionBridge', { type: 'openExternalUrl', url })) {
       postToSwiftHandler('assistantOutputHistoryBridge', { type: 'openHistoryExternalUrl', url });
     }

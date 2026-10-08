@@ -1,0 +1,74 @@
+/* Shared in-place delete confirmation (see InlineDeleteConfirm.tsx). Tokens only: the host package's theme supplies every color, size, and font, so no literal colors belong here. Hosts add their own row padding and chrome through the className hook. */
+.inline-delete-confirm {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--padding-s);
+  cursor: default;
+}
+
+.inline-delete-confirm__label {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-footnote);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inline-delete-confirm__actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--padding-xs);
+}
+
+.inline-delete-confirm__btn {
+  appearance: none;
+  padding: 2px 8px;
+  border: var(--border-thin) solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  background: var(--background-primary);
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-tiny);
+  cursor: pointer;
+}
+
+.inline-delete-confirm__btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+}
+
+.inline-delete-confirm__btn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.inline-delete-confirm__btn--danger {
+  border-color: var(--error-base);
+  color: var(--error-base);
+}
+
+.inline-delete-confirm__btn--danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--error-base) 8%, transparent);
+}
+
+/* Narrow-column variant (for example the 100 px Actions column of the Notetaker analysis history): the question sits above the buttons and both may wrap. */
+.inline-delete-confirm--stacked {
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--padding-xs);
+  min-width: 0;
+}
+
+.inline-delete-confirm--stacked .inline-delete-confirm__label {
+  text-align: center;
+  white-space: normal;
+}
+
+.inline-delete-confirm--stacked .inline-delete-confirm__actions {
+  flex-wrap: wrap;
+  justify-content: center;
+}

@@ -1,6 +1,7 @@
 import { useMemo, useRef, useEffect, useCallback } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
+import { ARTIFACT_MARKDOWN_PURIFY_OPTIONS, escapeHtmlText, normalizeMarkdownBullets } from '@shared/markdownSafety';
 import { openFile, openExternalUrl } from '../services/bridge';
 import hljs from 'highlight.js/lib/core';
 import javascript from 'highlight.js/lib/languages/javascript';
@@ -52,20 +53,6 @@ renderer.code = function ({ text, lang }: { text: string; lang?: string }) {
   return `<pre><code class="hljs language-${languageClass}">${highlighted}</code></pre>`;
 };
 
-const SANITIZE_OPTIONS = {
-  FORBID_TAGS: ['audio', 'form', 'iframe', 'source', 'style', 'video'],
-  FORBID_ATTR: ['style'],
-};
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
 interface Props {
   content: string;
   isStreaming?: boolean;
@@ -77,11 +64,11 @@ export default function MarkdownRenderer({ content, isStreaming, variant }: Prop
   const prevLengthRef = useRef(0);
 
   const html = useMemo(() => {
-    const normalized = content.replace(/^[•●]\s/gm, '- ');
+    const normalized = normalizeMarkdownBullets(content);
     try {
-      return DOMPurify.sanitize(marked.parse(normalized, { renderer }) as string, SANITIZE_OPTIONS);
+      return DOMPurify.sanitize(marked.parse(normalized, { renderer }) as string, ARTIFACT_MARKDOWN_PURIFY_OPTIONS);
     } catch {
-      return `<p>${escapeHtml(normalized)}</p>`;
+      return `<p>${escapeHtmlText(normalized)}</p>`;
     }
   }, [content]);
 

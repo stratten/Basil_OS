@@ -4,7 +4,8 @@ from datetime import datetime
 from types import SimpleNamespace
 
 import pytest
-from starlette.routing import Match
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 from api.core.knowledge.sqlite.sqlite_knowledge_service import SQLiteKnowledgeService
 from api.routes.agent_tasks.core_routes import (
@@ -12,6 +13,7 @@ from api.routes.agent_tasks.core_routes import (
     router as agent_task_router,
     save_agent_task_as_skill,
 )
+from api.routes.agent_tasks import history_routes
 from api.routes.agent_tasks.history_routes import _delegated_provider_report_cards, get_agent_task_details
 from api.routes.agent_tasks.models import (
     AgentTaskChainItem,
@@ -32,21 +34,25 @@ from api.services.skills.skill_store import SkillStore
 
 def test_uppercase_agent_task_id_resolves_to_the_get_detail_route():
     task_id = "D1FD4640-8B72-4E33-834D-39252D3EA5F4"
-    request_scope = {
-        "type": "http",
-        "method": "GET",
-        "path": f"/api/v1/agent-tasks/{task_id}",
-        "headers": [],
-    }
+    looked_up_ids: list[str] = []
 
-    matched_routes = [
-        route
-        for route in agent_task_router.routes
-        if route.matches(request_scope)[0] == Match.FULL
-    ]
+    class _RecordingAgentTaskService:
+        async def get_agent_task(self, agent_task_id: str):
+            looked_up_ids.append(agent_task_id)
+            return None
 
-    assert len(matched_routes) == 1
-    assert matched_routes[0].endpoint is get_agent_task_details
+    class _RecordingKnowledgeService:
+        agent_task_service = _RecordingAgentTaskService()
+
+    app = FastAPI()
+    app.include_router(agent_task_router)
+    app.dependency_overrides[history_routes.get_sqlite_knowledge_service] = lambda: _RecordingKnowledgeService()
+
+    response = TestClient(app).get(f"/api/v1/agent-tasks/{task_id}")
+
+    assert looked_up_ids == [task_id]
+    assert response.status_code == 404
+    assert response.json()["detail"] == f"AgentTask {task_id} not found"
 
 
 def test_detail_and_chain_models_serialize_typed_file_artifact_metadata():

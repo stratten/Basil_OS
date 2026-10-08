@@ -153,11 +153,9 @@ def test_execution_approval_decision_is_registered_under_agent_tasks() -> None:
     app = FastAPI()
     app.include_router(agent_task_router)
     app.include_router(execution_control_router)
-    route_paths = {
-        route.path
-        for route in app.routes
-        if getattr(route, "methods", set())
-    }
+    # OpenAPI lists every registered operation with its final prefixed path, including routes
+    # from nested included routers, which `app.routes` no longer exposes as flat entries.
+    route_paths = set(app.openapi()["paths"])
 
     assert "/api/v1/agent-tasks/approval/decide" in route_paths
     assert "/api/v1/agent-tasks/sessions/{agent_task_id}/checkpoint-status" in route_paths

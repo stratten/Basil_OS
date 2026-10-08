@@ -441,10 +441,7 @@
   padding: 4px 7px;
 }
 
-/* Inline "Delete this conversation?" confirmation, rendered in place of the
-   row's normal content (no modal/backdrop). Mirrors the Agent Task sidebar's
-   .sidebar-row--confirm-delete so both history lists confirm deletion the
-   same way and follow the active theme tokens. */
+/* Inline "Delete this conversation?" confirmation, rendered in place of the row's normal content (no modal/backdrop). The label and buttons come from shared/inline-delete-confirm.css; this override only resets the conversation row's own column layout, gap, padding, cursor, and chrome. */
 .chats-conversation-row.chats-conversation-row--confirm-delete,
 .chats-conversation-list > li:hover .chats-conversation-row.chats-conversation-row--confirm-delete {
   flex-direction: row;
@@ -455,53 +452,6 @@
   cursor: default;
   border-color: transparent;
   background: transparent;
-}
-
-.chats-conversation-confirm__label {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--text-primary, #00204d);
-  font-family: var(--font-family-medium);
-  font-size: var(--font-size-footnote, 12px);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.chats-conversation-confirm__actions {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--padding-xs, 4px);
-}
-
-.chats-conversation-confirm__btn {
-  appearance: none;
-  padding: 2px 8px;
-  border: var(--border-thin, 1px) solid var(--separator-color);
-  border-radius: var(--corner-radius-small, 6px);
-  background: var(--background-primary);
-  color: var(--text-primary, #00204d);
-  font-family: var(--font-family-medium);
-  font-size: var(--font-size-status-tiny, 10px);
-  cursor: pointer;
-}
-
-.chats-conversation-confirm__btn:hover:not(:disabled) {
-  background: rgba(128, 128, 128, 0.1);
-}
-
-.chats-conversation-confirm__btn:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-
-.chats-conversation-confirm__btn--danger {
-  border-color: var(--error-base);
-  color: var(--error-base);
-}
-
-.chats-conversation-confirm__btn--danger:hover:not(:disabled) {
-  background: rgba(220, 38, 38, 0.08);
 }
 
 .chats-main {

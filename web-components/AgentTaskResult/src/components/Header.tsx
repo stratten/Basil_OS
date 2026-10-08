@@ -1,4 +1,5 @@
 import AnimatedBubble from '../../../shared/bubble/AnimatedBubble';
+import { WindowControlButton } from '@shared/WindowControlButton';
 import paprikaIcon from '../assets/paprika-icon.png';
 import { BASIL_TEAM } from '../copy/teamIdentity';
 import { closeWidget, minimizeWidget } from '../services/bridge';
@@ -121,40 +122,18 @@ export default function Header({
         <div className="header-controls" data-agent-task-header-controls>
           {!hideWindowControls && (
             <>
-              <button className="header-btn" onClick={closeWidget} aria-label="Close">
-          <svg width="20" height="20" viewBox="0 0 22 22">
-            <circle cx="11" cy="11" r="10" fill="rgba(51,85,155,0.15)" />
-            <line x1="7.5" y1="7.5" x2="14.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
-            <line x1="14.5" y1="7.5" x2="7.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
-          </svg>
-          </button>
-          <button className="header-btn" onClick={minimizeWidget} aria-label="Minimize">
-          <svg width="20" height="20" viewBox="0 0 22 22">
-            <circle cx="11" cy="11" r="10" fill="rgba(51,85,155,0.15)" />
-            <line x1="6.5" y1="11" x2="15.5" y2="11" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
-          </svg>
-          </button>
+              <WindowControlButton kind="close" label="Close" className="header-btn" onClick={closeWidget} />
+              <WindowControlButton kind="minimize" label="Minimize" className="header-btn" onClick={minimizeWidget} />
             </>
           )}
           {canCollapse && onToggleCollapse && (
-            <button
-            className="header-btn"
-            onClick={onToggleCollapse}
-            aria-label={isCollapsed ? 'Expand results' : 'Collapse results'}
-            >
-            <svg width="20" height="20" viewBox="0 0 22 22">
-              <circle cx="11" cy="11" r="10" fill="rgba(51,85,155,0.15)" />
-              <path
-                className={`header-collapse-chevron ${isCollapsed ? 'collapsed' : ''}`}
-                d="M7 9l4 4 4-4"
-                fill="none"
-                stroke="var(--secondary)"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            </button>
+            <WindowControlButton
+              kind="collapse"
+              label={isCollapsed ? 'Expand results' : 'Collapse results'}
+              className="header-btn"
+              collapsed={isCollapsed}
+              onClick={onToggleCollapse}
+            />
           )}
           <img className="header-team-icon" src={paprikaIcon} alt="" aria-hidden="true" />
         </div>

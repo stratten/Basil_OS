@@ -113,7 +113,11 @@ def register_application_routers(app: FastAPI, logger: logging.Logger) -> None:
 
     logger.info("Registering transcription router with routes:")
     for route in transcription_router.routes:
-        logger.info(f"  - {route.path} [{', '.join(route.methods)}]")
+        # Newer FastAPI represents an included sub-router as an entry without a path or methods.
+        route_path = getattr(route, "path", None)
+        if route_path is None:
+            continue
+        logger.info(f"  - {route_path} [{', '.join(sorted(getattr(route, 'methods', None) or []))}]")
     app.include_router(transcription_router)
 
 

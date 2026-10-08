@@ -68,14 +68,6 @@
   margin-left: 3px;
 }
 
-.header-collapse-chevron {
-  transition: transform 0.15s ease;
-}
-
-.header-collapse-chevron.is-collapsed {
-  transform: rotate(-90deg);
-}
-
 .workspace-collapsible {
   display: flex;
   flex-direction: column;

@@ -1,6 +1,7 @@
 import { memo, useState } from 'react';
 import type { KeyboardEvent, MouseEvent } from 'react';
 import { useHistoryRowRevealDelete } from '@shared/useHistoryRowRevealDelete';
+import { InlineDeleteConfirm } from '@shared/InlineDeleteConfirm';
 import {
   BranchIcon,
   ConversationOriginIcon,
@@ -106,25 +107,13 @@ function AgentTaskRowImpl({
 
   if (isPendingDelete) {
     return (
-      <div className="sidebar-row sidebar-row--confirm-delete">
-        <span className="sidebar-row-confirm__label">Delete this task?</span>
-        <div className="sidebar-row-confirm__actions">
-          <button
-            type="button"
-            className="sidebar-row-confirm__btn"
-            onClick={(e) => { e.stopPropagation(); onCancelDeleteRequest?.(id); }}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="sidebar-row-confirm__btn sidebar-row-confirm__btn--danger"
-            onClick={(e) => { e.stopPropagation(); onConfirmDelete?.(id); }}
-          >
-            Delete
-          </button>
-        </div>
-      </div>
+      <InlineDeleteConfirm
+        className="sidebar-row sidebar-row--confirm-delete"
+        label="Delete this task?"
+        ariaLabel="Delete task"
+        onCancel={() => onCancelDeleteRequest?.(id)}
+        onConfirm={() => onConfirmDelete?.(id)}
+      />
     );
   }
 

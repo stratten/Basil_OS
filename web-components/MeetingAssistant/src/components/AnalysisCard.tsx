@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import PresenceRegion from '@shared/PresenceRegion';
+import { InlineDeleteConfirm } from '@shared/InlineDeleteConfirm';
 import NativeSymbolIcon, { type NativeSymbolName } from '../../../shared/NativeSymbolIcon';
 import ReasoningModelPicker, { type SharedReasoningModel } from '../../../shared/ReasoningModelPicker';
 import type { AnalysisMetadataEntryDTO, MeetingUIStateDTO } from '../bridge/types';
@@ -128,13 +129,13 @@ export default function AnalysisCard({ ui, analysisHistory }: { ui: MeetingUISta
             <span>{entry.modesDisplay}</span>
             <span title={entry.modelUsed}>{entry.shortModelName || entry.modelUsed}</span>
             {pendingDeleteFilename === entry.filename ? (
-              <span className="meeting-analysis-delete-confirm">
-                <span className="meeting-analysis-delete-confirm__label">Delete?</span>
-                <span className="meeting-analysis-delete-confirm__actions">
-                  <button type="button" onClick={() => { deleteAnalysis(entry.filename); setPendingDeleteFilename(null); }}>Delete</button>
-                  <button type="button" onClick={() => setPendingDeleteFilename(null)}>Cancel</button>
-                </span>
-              </span>
+              <InlineDeleteConfirm
+                layout="stacked"
+                label="Delete?"
+                ariaLabel={`Confirm deleting analysis from ${entry.formattedDate}`}
+                onCancel={() => setPendingDeleteFilename(null)}
+                onConfirm={() => { deleteAnalysis(entry.filename); setPendingDeleteFilename(null); }}
+              />
             ) : (
               <span className="meeting-analysis-history-actions"><button type="button" onClick={() => viewAnalysis(entry.filename)} disabled={ui.isLoadingAnalysisResult}>{ui.isLoadingAnalysisResult ? 'Opening…' : 'View'}</button><button type="button" className="meeting-analysis-history-delete" onClick={() => setPendingDeleteFilename(entry.filename)} aria-label={`Delete analysis from ${entry.formattedDate}`}>Delete</button></span>
             )}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { WindowControlButton } from '@shared/WindowControlButton';
 import { MemoryFileEditor } from '../components/MemoryFileEditor';
 import { MemoryProposalEditor } from '../components/MemoryProposalEditor';
 import { SkillCandidateEditor } from '../components/SkillCandidateEditor';
@@ -28,29 +29,8 @@ export function ProfileEditorApp({ initialConfig }: Props) {
       <main className="profile-editor-window basil-webkit-window-surface">
       <header className="profile-editor-window-header">
         <div className="profile-editor-window-controls" aria-label="Window controls">
-          <button
-            type="button"
-            className="profile-editor-window-control header-btn"
-            aria-label="Close profile editor"
-            onClick={closeEditor}
-          >
-            <svg width="20" height="20" viewBox="0 0 22 22">
-              <circle cx="11" cy="11" r="10" fill="rgba(51,85,155,0.15)" />
-              <line x1="7.5" y1="7.5" x2="14.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
-              <line x1="14.5" y1="7.5" x2="7.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            className="profile-editor-window-control header-btn"
-            aria-label="Minimize profile editor"
-            onClick={minimizeEditor}
-          >
-            <svg width="20" height="20" viewBox="0 0 22 22">
-              <circle cx="11" cy="11" r="10" fill="rgba(51,85,155,0.15)" />
-              <line x1="6.5" y1="11" x2="15.5" y2="11" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
-            </svg>
-          </button>
+          <WindowControlButton kind="close" label="Close profile editor" className="profile-editor-window-control header-btn" onClick={closeEditor} />
+          <WindowControlButton kind="minimize" label="Minimize profile editor" className="profile-editor-window-control header-btn" onClick={minimizeEditor} />
         </div>
         <div className="profile-editor-window-title-group">
           <div className="profile-editor-window-eyebrow">Basil Profile Editor</div>

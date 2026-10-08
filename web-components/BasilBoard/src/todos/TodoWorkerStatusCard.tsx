@@ -4,6 +4,13 @@ import { openExistingAgentTaskWidget, openExternalUrl } from '../services/bridge
 import type { TodoWorkAttempt } from '../contracts';
 import type { TodoWorkerLiveState } from './useTodoWorkerProgress';
 import { plainMarkdownText } from '@shared/plainMarkdownText';
+import {
+  BASIC_MARKDOWN_TAGS,
+  escapeHtmlText,
+  externalLinkTarget,
+  normalizeMarkdownBullets,
+  sanitizeMarkdownHtml,
+} from '@shared/markdownSafety';
 
 interface TodoWorkerStatusCardProps {
   attempt: TodoWorkAttempt;
@@ -27,9 +34,6 @@ const ATTENTION_STATUSES = new Set([
 
 const TERMINAL_STATUSES = new Set(['completed', 'failed', 'canceled']);
 const RESULT_PREVIEW_EXPAND_THRESHOLD = 600;
-const ALLOWED_MARKDOWN_TAGS = new Set([
-  'P', 'H1', 'H2', 'H3', 'H4', 'UL', 'OL', 'LI', 'STRONG', 'B', 'EM', 'I', 'U', 'CODE', 'PRE', 'BLOCKQUOTE', 'BR', 'A',
-]);
 
 type CardSeverity = 'success' | 'warning' | 'error' | 'canceled' | 'neutral';
 
@@ -90,31 +94,12 @@ function resultMessage(liveState: TodoWorkerLiveState | undefined, attempt: Todo
     ?? undefined;
 }
 
-function sanitizeMarkdownHtml(html: string): string {
-  const document = new DOMParser().parseFromString(html, 'text/html');
-  for (const element of Array.from(document.body.querySelectorAll('*'))) {
-    if (!ALLOWED_MARKDOWN_TAGS.has(element.tagName)) {
-      element.replaceWith(...Array.from(element.childNodes));
-      continue;
-    }
-    for (const attribute of Array.from(element.attributes)) {
-      if (element.tagName !== 'A' || attribute.name !== 'href') {
-        element.removeAttribute(attribute.name);
-      }
-    }
-    if (element.tagName === 'A' && !/^(https?:|mailto:)/i.test(element.getAttribute('href') ?? '')) {
-      element.removeAttribute('href');
-    }
-  }
-  return document.body.innerHTML;
-}
-
 function renderResultMarkdown(content: string): string {
-  const normalized = content.replace(/^[•●]\s/gm, '- ');
+  const normalized = normalizeMarkdownBullets(content);
   try {
-    return sanitizeMarkdownHtml(marked.parse(normalized, { breaks: true, gfm: true }) as string);
+    return sanitizeMarkdownHtml(marked.parse(normalized, { breaks: true, gfm: true }) as string, BASIC_MARKDOWN_TAGS);
   } catch {
-    return `<p>${normalized.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`;
+    return `<p>${escapeHtmlText(normalized)}</p>`;
   }
 }
 
@@ -139,8 +124,8 @@ export default function TodoWorkerStatusCard({ attempt, liveState }: TodoWorkerS
 
   function handleOutcomeLinkClick(event: MouseEvent<HTMLDivElement>): void {
     const anchor = (event.target as HTMLElement).closest('a');
-    const href = anchor?.getAttribute('href');
-    if (!href || !/^(https?:|mailto:)/i.test(href)) return;
+    const href = externalLinkTarget(anchor?.getAttribute('href'), { allowMailto: true });
+    if (!href) return;
     event.preventDefault();
     openExternalUrl(href);
   }

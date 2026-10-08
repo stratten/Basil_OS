@@ -111,16 +111,6 @@
   opacity: 1;
 }
 
-.header-collapse-chevron {
-  transform-box: fill-box;
-  transform-origin: center center;
-  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.header-collapse-chevron.collapsed {
-  transform: rotate(-90deg);
-}
-
 /* The collapsed window is a fixed height (AGENT_TASK_COMPACT_HEIGHT). Let the
    header fill it so the identity column has real vertical space to work with:
    the window title stays pinned at the top with the controls while the task
@@ -654,59 +644,9 @@ select.sidebar-search-input {
   justify-content: center;
 }
 
-/* Inline "Delete this AgentTask?" confirmation, rendered in place of a
-   row's normal content (no modal/backdrop). Sized and typed to match
-   .row-title/.row-preview's density rather than the wider .overlay-title/
-   .action-btn scale those use, since this replaces content inside the
-   already-narrow sidebar column. */
+/* Inline "Delete this task?" confirmation, rendered in place of a row's normal content (no modal/backdrop). The label, buttons, and layout come from shared/inline-delete-confirm.css; the row only has to override its own pointer cursor. */
 .sidebar-row--confirm-delete {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--padding-s);
   cursor: default;
-}
-
-.sidebar-row-confirm__label {
-  font-family: var(--font-family-medium);
-  font-size: var(--font-size-footnote);
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
-.sidebar-row-confirm__actions {
-  display: flex;
-  align-items: center;
-  gap: var(--padding-xs);
-  flex-shrink: 0;
-}
-
-.sidebar-row-confirm__btn {
-  appearance: none;
-  border: var(--border-thin) solid var(--separator-color);
-  border-radius: var(--corner-radius-small);
-  background: var(--background-primary);
-  color: var(--text-primary);
-  font-family: var(--font-family-medium);
-  font-size: var(--font-size-status-tiny);
-  padding: 2px 8px;
-  cursor: pointer;
-}
-
-.sidebar-row-confirm__btn:hover {
-  background: rgba(128, 128, 128, 0.1);
-}
-
-.sidebar-row-confirm__btn--danger {
-  border-color: var(--error-base);
-  color: var(--error-base);
-}
-
-.sidebar-row-confirm__btn--danger:hover {
-  background: rgba(220, 38, 38, 0.08);
 }
 
 /* Right-click context menu */

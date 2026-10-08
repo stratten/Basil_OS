@@ -169,7 +169,7 @@ describe('AgentTaskRow inline delete confirmation', () => {
         );
       });
 
-      const buttons = container.querySelectorAll<HTMLButtonElement>('.sidebar-row-confirm__btn');
+      const buttons = container.querySelectorAll<HTMLButtonElement>('.inline-delete-confirm__btn');
       expect(buttons.length).toBe(2);
       act(() => { buttons[1].click(); });
       expect(onConfirmDelete).toHaveBeenCalledWith('task-1');
@@ -204,7 +204,7 @@ describe('AgentTaskRow inline delete confirmation', () => {
         );
       });
 
-      const buttons = container.querySelectorAll<HTMLButtonElement>('.sidebar-row-confirm__btn');
+      const buttons = container.querySelectorAll<HTMLButtonElement>('.inline-delete-confirm__btn');
       act(() => { buttons[0].click(); });
       expect(onCancelDeleteRequest).toHaveBeenCalledWith('task-1');
       expect(onConfirmDelete).not.toHaveBeenCalled();

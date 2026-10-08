@@ -3,10 +3,10 @@ set -euo pipefail
 
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-readonly FFMPEG_VERSION="7.1.1"
+readonly FFMPEG_VERSION="7.1.5"
 readonly FFMPEG_ARCHIVE="ffmpeg-${FFMPEG_VERSION}.tar.xz"
 readonly FFMPEG_URL="https://ffmpeg.org/releases/${FFMPEG_ARCHIVE}"
-readonly FFMPEG_SHA256="733984395e0dbbe5c046abda2dc49a5544e7e0e1e2366bba849222ae9e3a03b1"
+readonly FFMPEG_SHA256="de668509caf9e35e3cd162473441fdb29538c6d96ed080292b3cf9e6fc5d558f"
 readonly FFMPEG_PREFIX="${1:-$REPO_ROOT/build/third_party/ffmpeg-lgpl}"
 readonly FFMPEG_CACHE_DIR="${BASIL_FFMPEG_CACHE_DIR:-$REPO_ROOT/build/cache}"
 readonly FFMPEG_ARCHIVE_PATH="$FFMPEG_CACHE_DIR/$FFMPEG_ARCHIVE"
@@ -39,6 +39,9 @@ pushd "$FFMPEG_SOURCE_DIR" >/dev/null
     --disable-static \
     --disable-doc \
     --disable-ffplay \
+    --disable-sdl2 \
+    --disable-xlib \
+    --disable-libxcb \
     --disable-gpl \
     --disable-nonfree \
     --disable-debug \

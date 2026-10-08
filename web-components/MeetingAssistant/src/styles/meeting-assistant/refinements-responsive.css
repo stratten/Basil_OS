@@ -100,9 +100,3 @@ button:focus-visible {
     grid-template-columns: 84px auto minmax(0, 1fr);
   }
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .meeting-window-collapse-chevron {
-    transition: none;
-  }
-}

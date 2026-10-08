@@ -189,23 +189,33 @@ class TestAPIEndpoints:
     def test_settings_endpoints_have_response_models(self):
         """Test that settings endpoints have proper response models."""
         from api.main import app
-        from fastapi.routing import APIRoute
-        
-        settings_routes = [
-            route for route in app.routes 
-            if isinstance(route, APIRoute) and '/settings/' in route.path
+
+        # OpenAPI lists every operation with its final path, including routes from nested included
+        # routers, which `app.routes` no longer exposes as flat APIRoute entries. An operation has a
+        # response model when its success response declares a non-empty JSON schema.
+        http_methods = {"get", "post", "put", "patch", "delete"}
+        settings_operations = [
+            operation
+            for path, path_item in app.openapi()["paths"].items()
+            if '/settings/' in path
+            for method, operation in path_item.items()
+            if method in http_methods
         ]
-        
+
         # Check that we have settings routes
-        assert len(settings_routes) > 0, "Should have settings routes"
-        
+        assert len(settings_operations) > 0, "Should have settings routes"
+
         # Check that most have response models
         routes_with_models = [
-            route for route in settings_routes 
-            if route.response_model is not None
+            operation for operation in settings_operations
+            if any(
+                status.startswith("2")
+                and response.get("content", {}).get("application/json", {}).get("schema")
+                for status, response in operation.get("responses", {}).items()
+            )
         ]
-        
-        coverage = len(routes_with_models) / len(settings_routes)
+
+        coverage = len(routes_with_models) / len(settings_operations)
         assert coverage > 0.5, \
             f"At least 50% of settings routes should have response models (got {coverage:.1%})"
 

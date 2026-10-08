@@ -34,7 +34,7 @@ diagnostic_build_check() {
         echo "   Relocatable Python: ✅ Available ($python_version)"
     else
         echo "   Relocatable Python: ❌ Not found at $RELOCATABLE_PYTHON_BIN"
-        echo "   Run: Download python-build-standalone Python 3.11.13 to build/python/"
+        echo "   Run: Download python-build-standalone Python 3.11.17 to build/python/"
         return 1
     fi
     

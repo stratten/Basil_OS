@@ -55,12 +55,12 @@ describe('ConversationWindowChrome', () => {
     expect(bridgeMocks.requestWindowCollapse).toHaveBeenCalledTimes(1);
     expect(screen.getByText('Workspace content')).toBeTruthy();
     expect(document.querySelector('.basil-board-content')?.classList.contains('is-collapsed')).toBe(true);
-    expect(document.querySelector('.conversation-window-collapse-chevron')?.classList.contains('is-collapsed')).toBe(true);
+    expect(document.querySelector('.basil-window-control-chevron')?.classList.contains('is-collapsed')).toBe(true);
 
     await expandAndSettle(user);
     expect(bridgeMocks.requestWindowExpand).toHaveBeenCalledTimes(1);
     expect(screen.getByText('Workspace content')).toBeTruthy();
-    expect(document.querySelector('.conversation-window-collapse-chevron')?.classList.contains('is-collapsed')).toBe(false);
+    expect(document.querySelector('.basil-window-control-chevron')?.classList.contains('is-collapsed')).toBe(false);
   });
 
   it('keeps the content collapsed while the window grows and reveals it after the resize settles', async () => {

@@ -151,16 +151,6 @@
   pointer-events: none;
 }
 
-.basil-board-collapse-chevron {
-  transform-box: fill-box;
-  transform-origin: center;
-  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.basil-board-collapse-chevron.is-collapsed {
-  transform: rotate(-90deg);
-}
-
 .basil-board-tabs {
   flex: 0 0 52px;
   display: flex;
@@ -291,7 +281,6 @@
 }
 
 .conversation-standalone-frame {
-  --conversation-window-control-fill: rgba(51, 85, 155, 0.15);
   background: transparent;
 }
 
@@ -352,16 +341,6 @@
   min-width: 0;
   flex-direction: column;
   margin-left: var(--padding-xs);
-}
-
-.conversation-window-collapse-chevron {
-  transform-box: fill-box;
-  transform-origin: center;
-  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.conversation-window-collapse-chevron.is-collapsed {
-  transform: rotate(-90deg);
 }
 
 .basil-board-detached-title {

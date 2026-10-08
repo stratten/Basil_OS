@@ -3,6 +3,7 @@ import { HistorySidebarHeader } from '../../../shared/HistorySidebarControls';
 import PresenceRegion from '@shared/PresenceRegion';
 import TokenizedSelect from '@shared/TokenizedSelect';
 import { useHistoryRowRevealDelete } from '@shared/useHistoryRowRevealDelete';
+import { InlineDeleteConfirm } from '@shared/InlineDeleteConfirm';
 import type { MeetingHistorySearchFiltersDTO, MeetingListItemDTO, MeetingSearchTermModeDTO } from '../bridge/types';
 import { deleteMeeting, loadMoreMeetings, selectMeeting, setMeetingSearch, setMeetingSearchFilters, setSidebarCollapsed, startNewMeeting, viewAnalysis } from '../bridge/meetingBridge';
 
@@ -187,21 +188,13 @@ function MeetingHistoryRow({
   if (pendingDelete) {
     return (
       <li className="meeting-history-item">
-        <div className="meeting-history-confirm" role="alertdialog" aria-label="Delete meeting">
-          <span className="meeting-history-confirm__label">Delete this meeting?</span>
-          <div className="meeting-history-confirm__actions">
-            <button type="button" className="meeting-history-confirm__btn" onClick={onDeleteCancel}>
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="meeting-history-confirm__btn meeting-history-confirm__btn--danger"
-              onClick={onDeleteConfirm}
-            >
-              Delete
-            </button>
-          </div>
-        </div>
+        <InlineDeleteConfirm
+          className="meeting-history-confirm"
+          label="Delete this meeting?"
+          ariaLabel="Delete meeting"
+          onCancel={onDeleteCancel}
+          onConfirm={onDeleteConfirm}
+        />
       </li>
     );
   }

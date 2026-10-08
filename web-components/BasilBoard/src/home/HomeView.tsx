@@ -76,7 +76,7 @@ export default function HomeView() {
   return (
     <section className="home-view home-front-door">
       <div className="home-front-door-column">
-        <h1 className="home-front-door-title">What can Basil do for you?</h1>
+        <h1 className="home-front-door-title">What can I do for you?</h1>
         <p className="home-front-door-hint">
           Ask a question or hand over a task. I'll open a chat or start an agent for you.
         </p>

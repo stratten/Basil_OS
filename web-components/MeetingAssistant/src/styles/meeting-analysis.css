@@ -3,7 +3,6 @@
 @import './meeting-assistant.css';
 
 .meeting-analysis-surface {
-  --meeting-window-control-fill: color-mix(in srgb, var(--primary) 15%, transparent);
   --meeting-analysis-muted-text: color-mix(in srgb, var(--text-primary) 68%, var(--background-primary));
   --meeting-analysis-line: color-mix(in srgb, var(--primary) 18%, var(--background-primary));
   display: flex;

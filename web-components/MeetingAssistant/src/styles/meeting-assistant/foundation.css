@@ -1,5 +1,4 @@
 .meeting-assistant-surface {
-  --meeting-window-control-fill: color-mix(in srgb, var(--primary) 15%, transparent);
   --meeting-hairline: color-mix(in srgb, var(--primary) 8%, var(--background-primary));
   --meeting-structural-border: color-mix(in srgb, var(--primary) 14%, var(--background-primary));
   --meeting-control-border: color-mix(in srgb, var(--primary) 18%, var(--background-primary));
@@ -110,16 +109,6 @@
 .meeting-chrome-button:focus-visible {
   outline: 2px solid var(--secondary);
   outline-offset: 2px;
-}
-
-.meeting-window-collapse-chevron {
-  transform-box: fill-box;
-  transform-origin: center;
-  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.meeting-window-collapse-chevron.is-collapsed {
-  transform: rotate(-90deg);
 }
 
 .meeting-window-feature-icon {

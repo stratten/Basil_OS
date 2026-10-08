@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { closeWindow, minimizeWindow, reportChromeHeight } from '../bridge/meetingBridge';
+import { WindowControlButton } from '@shared/WindowControlButton';
 
 interface WindowChromeProps {
   title: string;
@@ -53,28 +54,19 @@ export default function WindowChrome({
         <div className="meeting-window-chrome-actions">
           {!hideWindowControls && (
             <>
-              <button type="button" className="meeting-chrome-button" onClick={closeWindow} aria-label="Close">
-                <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
-                  <circle cx="11" cy="11" r="10" fill="var(--meeting-window-control-fill)" />
-                  <line x1="7.5" y1="7.5" x2="14.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
-                  <line x1="14.5" y1="7.5" x2="7.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
-                </svg>
-              </button>
-              <button type="button" className="meeting-chrome-button" onClick={minimizeWindow} aria-label="Minimize">
-                <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
-                  <circle cx="11" cy="11" r="10" fill="var(--meeting-window-control-fill)" />
-                  <line x1="6.5" y1="11" x2="15.5" y2="11" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
-                </svg>
-              </button>
+              <WindowControlButton kind="close" label="Close" className="meeting-chrome-button" onClick={closeWindow} />
+              <WindowControlButton kind="minimize" label="Minimize" className="meeting-chrome-button" onClick={minimizeWindow} />
             </>
           )}
           {canCollapse && (
-            <button type="button" className="meeting-chrome-button" onClick={onToggleCollapse} aria-label={isCollapsed ? 'Expand' : 'Collapse'} aria-pressed={isCollapsed}>
-              <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
-                <circle cx="11" cy="11" r="10" fill="var(--meeting-window-control-fill)" />
-                <path className={`meeting-window-collapse-chevron${isCollapsed ? ' is-collapsed' : ''}`} d="M7 9l4 4 4-4" fill="none" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
+            <WindowControlButton
+              kind="collapse"
+              label={isCollapsed ? 'Expand' : 'Collapse'}
+              className="meeting-chrome-button"
+              collapsed={isCollapsed}
+              pressed={isCollapsed}
+              onClick={onToggleCollapse}
+            />
           )}
         </div>
       )}

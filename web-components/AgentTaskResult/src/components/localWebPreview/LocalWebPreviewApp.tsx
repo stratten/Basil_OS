@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import NativeSymbolIcon from '../../../../shared/NativeSymbolIcon';
+import { WindowControlButton } from '@shared/WindowControlButton';
 import { createLocalWebPreviewTransport, type LocalWebPreviewSessionDTO } from '../artifacts/transport/localWebPreviewTransport';
 import { processAgentTask, setBaseUrl } from '../../services/api';
 import { WebSocketManager } from '../../services/websocket';
@@ -512,12 +513,8 @@ export default function LocalWebPreviewApp() {
       <div className="file-preview-window basil-webkit-window-surface">
         <header className="file-preview-window-header" ref={headerRef}>
           <div className="file-preview-window-controls" aria-label="Window controls">
-            <button type="button" className="file-preview-window-control header-btn" aria-label="Close preview window" onClick={closeLocalWebPreviewWindow}>
-              <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="10" fill="rgba(51,85,155,0.15)" /><line x1="7.5" y1="7.5" x2="14.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" /><line x1="14.5" y1="7.5" x2="7.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" /></svg>
-            </button>
-            <button type="button" className="file-preview-window-control header-btn" aria-label="Minimize preview window" onClick={minimizeLocalWebPreviewWindow}>
-              <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="10" fill="rgba(51,85,155,0.15)" /><line x1="6.5" y1="11" x2="15.5" y2="11" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" /></svg>
-            </button>
+            <WindowControlButton kind="close" label="Close preview window" className="file-preview-window-control header-btn" onClick={closeLocalWebPreviewWindow} />
+            <WindowControlButton kind="minimize" label="Minimize preview window" className="file-preview-window-control header-btn" onClick={minimizeLocalWebPreviewWindow} />
           </div>
           <div className="file-preview-window-title-group">
             <div className="file-preview-window-eyebrow">Rendered preview</div>

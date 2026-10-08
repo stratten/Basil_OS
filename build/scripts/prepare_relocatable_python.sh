@@ -3,12 +3,12 @@ set -euo pipefail
 
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 readonly REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd -P)"
-readonly PYTHON_VERSION="3.11.13"
+readonly PYTHON_VERSION="3.11.17"
 readonly DEFAULT_ARCHIVE="$REPO_ROOT/local/python/python-${PYTHON_VERSION}-relocatable.tar.gz"
 readonly DOWNLOADED_ARCHIVE="$REPO_ROOT/build/cache/python-${PYTHON_VERSION}-relocatable.tar.gz"
-readonly UPSTREAM_ARCHIVE_URL="https://github.com/astral-sh/python-build-standalone/releases/download/20250807/cpython-3.11.13%2B20250807-aarch64-apple-darwin-install_only.tar.gz"
+readonly UPSTREAM_ARCHIVE_URL="https://github.com/astral-sh/python-build-standalone/releases/download/20261003/cpython-3.11.17%2B20261003-aarch64-apple-darwin-install_only.tar.gz"
 ARCHIVE="${BASIL_RELOCATABLE_PYTHON_ARCHIVE:-$DEFAULT_ARCHIVE}"
-readonly EXPECTED_SHA256="${BASIL_RELOCATABLE_PYTHON_SHA256:-d97de34acef2eeaf64cfddab978a894977732704d4b9f0ce78cf09ee7497d9c5}"
+readonly EXPECTED_SHA256="${BASIL_RELOCATABLE_PYTHON_SHA256:-3663b71c18364eccfbad74c4f21f9f6149e40b07329cd776287410cc1da5d612}"
 readonly DESTINATION="$REPO_ROOT/build/python/python"
 
 for command in shasum tar; do

@@ -1,4 +1,5 @@
 import AnimatedBubble from '../../../shared/bubble/AnimatedBubble';
+import { WindowControlButton } from '@shared/WindowControlButton';
 import { cancelOperation, enterTypedRefinement, minimizeWidget, openHistory, switchInputMode, toggleResultCollapse } from '../bridge/assistantSessionBridge';
 import type { AssistantSessionState } from '../state/assistantSessionReducer';
 import type { AssistantSessionThemePayload } from '../bridge/types';
@@ -37,38 +38,16 @@ export function Header({
             <line x1="14.5" y1="7.5" x2="7.5" y2="14.5" stroke="var(--secondary, #4c7bf0)" strokeWidth="1.6" strokeLinecap="round" />
           </svg>
         </button>
-        <button type="button" className="assistant-session-header__traffic" aria-label="Minimize" onClick={minimizeWidget}>
-          <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
-            <circle cx="11" cy="11" r="10" fill="color-mix(in srgb, var(--secondary, #4c7bf0) 15%, transparent)" />
-            <line x1="6.5" y1="11" x2="15.5" y2="11" stroke="var(--secondary, #4c7bf0)" strokeWidth="1.6" strokeLinecap="round" />
-          </svg>
-        </button>
+        <WindowControlButton kind="minimize" label="Minimize" className="assistant-session-header__traffic" onClick={minimizeWidget} />
         {showResultCollapse && (
-          <button
-            type="button"
+          <WindowControlButton
+            kind="collapse"
+            label={state.isResultChromeCollapsed ? 'Expand results' : 'Collapse results'}
             className="assistant-session-header__traffic"
-            aria-label={state.isResultChromeCollapsed ? 'Expand results' : 'Collapse results'}
-            aria-pressed={state.isResultChromeCollapsed}
+            collapsed={state.isResultChromeCollapsed}
+            pressed={state.isResultChromeCollapsed}
             onClick={toggleResultCollapse}
-          >
-            <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
-              <circle cx="11" cy="11" r="10" fill="color-mix(in srgb, var(--secondary, #4c7bf0) 15%, transparent)" />
-              <path
-                d="M7 9l4 4 4-4"
-                fill="none"
-                stroke="var(--secondary, #4c7bf0)"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                style={{
-                  transformBox: 'fill-box',
-                  transformOrigin: 'center',
-                  transition: 'transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)',
-                  transform: state.isResultChromeCollapsed ? 'rotate(-90deg)' : undefined,
-                }}
-              />
-            </svg>
-          </button>
+          />
         )}
         <button type="button" className="assistant-session-header__ghost-btn" title="Open history" aria-label="Open history" onClick={openHistory}>
           <NativeSymbol name="history" size={10} />

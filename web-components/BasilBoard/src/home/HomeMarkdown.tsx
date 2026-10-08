@@ -1,38 +1,18 @@
 import { useMemo } from 'react';
 import { marked } from 'marked';
 import { openExternalUrl } from '../services/bridge';
+import {
+  EXTENDED_MARKDOWN_TAGS,
+  escapeHtmlText,
+  externalLinkTarget,
+  normalizeMarkdownBullets,
+  sanitizeMarkdownHtml,
+} from '@shared/markdownSafety';
 
 marked.setOptions({
   gfm: true,
   breaks: true,
 });
-
-const allowedTags = new Set([
-  'P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'UL', 'OL', 'LI', 'STRONG', 'B', 'EM', 'I', 'U', 'DEL', 'S', 'CODE', 'PRE', 'BLOCKQUOTE', 'BR', 'HR', 'A',
-  'TABLE', 'THEAD', 'TBODY', 'TR', 'TH', 'TD',
-]);
-
-function sanitizeHomeMarkdown(html: string): string {
-  const document = new DOMParser().parseFromString(html, 'text/html');
-  for (const element of Array.from(document.body.querySelectorAll('*'))) {
-    if (!allowedTags.has(element.tagName)) {
-      element.replaceWith(...Array.from(element.childNodes));
-      continue;
-    }
-    for (const attribute of Array.from(element.attributes)) {
-      if (element.tagName !== 'A' || attribute.name !== 'href') {
-        element.removeAttribute(attribute.name);
-      }
-    }
-    if (element.tagName === 'A') {
-      const href = element.getAttribute('href') ?? '';
-      if (!/^(https?:|mailto:)/i.test(href)) {
-        element.removeAttribute('href');
-      }
-    }
-  }
-  return document.body.innerHTML;
-}
 
 interface HomeMarkdownProps {
   content: string;
@@ -41,11 +21,11 @@ interface HomeMarkdownProps {
 
 export default function HomeMarkdown({ content, variant }: HomeMarkdownProps) {
   const html = useMemo(() => {
-    const normalized = content.replace(/^[•●]\s/gm, '- ');
+    const normalized = normalizeMarkdownBullets(content);
     try {
-      return sanitizeHomeMarkdown(marked.parse(normalized) as string);
+      return sanitizeMarkdownHtml(marked.parse(normalized) as string, EXTENDED_MARKDOWN_TAGS);
     } catch {
-      return `<p>${normalized.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`;
+      return `<p>${escapeHtmlText(normalized)}</p>`;
     }
   }, [content]);
 
@@ -57,13 +37,9 @@ export default function HomeMarkdown({ content, variant }: HomeMarkdownProps) {
         const target = event.target as HTMLElement | null;
         const anchor = target?.closest('a');
         if (!anchor) return;
-        const href = anchor.getAttribute('href');
-        if (!href || !/^(https?:|mailto:)/i.test(href)) {
-          event.preventDefault();
-          return;
-        }
         event.preventDefault();
-        openExternalUrl(href);
+        const href = externalLinkTarget(anchor.getAttribute('href'), { allowMailto: true });
+        if (href) openExternalUrl(href);
       }}
     />
   );

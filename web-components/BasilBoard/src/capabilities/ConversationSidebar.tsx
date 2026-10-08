@@ -3,6 +3,7 @@ import type { ConversationListItem } from '../contracts';
 import { OpenInSeparateWindowIcon, StatusIcon, TrashIcon } from '@agent-task/components/sidebar/SidebarIcons';
 import { CollapsedHistoryRail, HistorySearchField, HistorySidebarHeader } from '../../../shared/HistorySidebarControls';
 import { useHistoryRowRevealDelete } from '../../../shared/useHistoryRowRevealDelete';
+import { InlineDeleteConfirm } from '@shared/InlineDeleteConfirm';
 import CollapsibleSidebar from '../../../shared/CollapsibleSidebar';
 import { openConversationThreadWindow } from '../services/bridge';
 import { formatConversationTimestamp } from './chatsPresentation';
@@ -172,26 +173,14 @@ function ConversationHistoryRowComponent({
   if (isConfirmingDelete) {
     return (
       <li data-conversation-id={conversation.id}>
-        <div
+        <InlineDeleteConfirm
           className="chats-conversation-row chats-conversation-row--confirm-delete"
-          role="alertdialog"
-          aria-label="Delete conversation"
-        >
-          <span className="chats-conversation-confirm__label">Delete this conversation?</span>
-          <div className="chats-conversation-confirm__actions">
-            <button type="button" className="chats-conversation-confirm__btn" onClick={onCancelDelete}>
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="chats-conversation-confirm__btn chats-conversation-confirm__btn--danger"
-              onClick={() => onConfirmDelete(conversation.id)}
-              disabled={isDeleting}
-            >
-              {isDeleting ? 'Deleting...' : 'Delete'}
-            </button>
-          </div>
-        </div>
+          label="Delete this conversation?"
+          ariaLabel="Delete conversation"
+          busy={isDeleting}
+          onCancel={onCancelDelete}
+          onConfirm={() => onConfirmDelete(conversation.id)}
+        />
       </li>
     );
   }

@@ -4,7 +4,7 @@ import WebKit
 /// Builds every Basil web view configuration so bundled pages can authenticate to the local backend.
 @MainActor
 enum BasilWebViewConfigurationFactory {
-    static let credentialMessageHandlerName = "basilBackendCredentials"
+    nonisolated static let credentialMessageHandlerName = "basilBackendCredentials"
 
     static func makeConfiguration(
         credentialStore: BackendCredentialStore = .shared,
