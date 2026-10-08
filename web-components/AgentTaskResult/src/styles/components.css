@@ -16,3 +16,7 @@
 @import './components/progress-and-workflow.css';
 @import './components/interaction-exchange.css';
 @import './components/request-display.css';
+@import './components/agent-task-row.css';
+@import './components/history-card.css';
+@import './components/result-attachments.css';
+@import './components/approval-details.css';

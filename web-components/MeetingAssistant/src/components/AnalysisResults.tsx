@@ -1,5 +1,6 @@
 import type { MeetingActionProposalDTO, MeetingAnalysisResultDTO } from '../bridge/types';
 import { useCopiedFlag } from '@shared/useCopyFeedback';
+import { formatClockSeconds } from '@shared/formatClockSeconds';
 import { copyText, retryAnalysisModes } from '../bridge/meetingBridge';
 import { MeetingMarkdown } from '../lib/markdown';
 import { ANALYSIS_MODE_ORDER, formatModeResult, type AnalysisModeId } from '../lib/analysisModes';
@@ -143,13 +144,13 @@ function renderModeContent(
           {(result.sentimentAnalysis.positiveMoments?.length ?? 0) > 0 && (
             <div className="meeting-sentiment-moments meeting-sentiment-moments--positive">
               <h3>Positive Moments</h3>
-              {result.sentimentAnalysis.positiveMoments?.map((moment) => <p key={moment.id}>{moment.description}<time>{formatTimestamp(moment.timestamp)}</time></p>)}
+              {result.sentimentAnalysis.positiveMoments?.map((moment) => <p key={moment.id}>{moment.description}<time>{formatClockSeconds(moment.timestamp)}</time></p>)}
             </div>
           )}
           {(result.sentimentAnalysis.negativeMoments?.length ?? 0) > 0 && (
             <div className="meeting-sentiment-moments meeting-sentiment-moments--negative">
               <h3>Negative Moments</h3>
-              {result.sentimentAnalysis.negativeMoments?.map((moment) => <p key={moment.id}>{moment.description}<time>{formatTimestamp(moment.timestamp)}</time></p>)}
+              {result.sentimentAnalysis.negativeMoments?.map((moment) => <p key={moment.id}>{moment.description}<time>{formatClockSeconds(moment.timestamp)}</time></p>)}
             </div>
           )}
         </div>
@@ -171,17 +172,12 @@ function renderModeContent(
 }
 
 function formatOmissionRange({ startTimestamp, endTimestamp }: { startTimestamp: number; endTimestamp: number }): string {
-  const format = (seconds: number) => `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${Math.floor(seconds % 60).toString().padStart(2, '0')}`;
+  const format = (seconds: number) => formatClockSeconds(seconds, { padMinutes: true });
   return startTimestamp === endTimestamp ? format(startTimestamp) : `${format(startTimestamp)}–${format(endTimestamp)}`;
 }
 
 function EmptyMode() {
   return <p className="meeting-analysis-empty-state">No results for this analysis.</p>;
-}
-
-function formatTimestamp(seconds: number): string {
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes}:${Math.floor(seconds % 60).toString().padStart(2, '0')}`;
 }
 
 function CopySectionIcon() {

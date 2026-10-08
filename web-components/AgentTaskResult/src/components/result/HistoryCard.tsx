@@ -42,64 +42,38 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
     () => plainMarkdownText(histRunDetails.narrative).substring(0, 200),
     [histRunDetails.narrative],
   );
-  const alertColor = item.resultSeverity === 'warning' ? 'var(--warning-base)' : 'var(--error-base)';
-  const alertBorder = item.resultSeverity === 'warning'
-    ? '1px solid rgba(198, 121, 0, 0.28)'
-    : '1px solid rgba(139, 0, 0, 0.2)';
-  const alertBackground = item.resultSeverity === 'warning'
-    ? 'rgba(198, 121, 0, 0.06)'
-    : 'rgba(139, 0, 0, 0.05)';
+  const alertSeverityClass = item.resultSeverity === 'warning'
+    ? 'history-card__alert--warning'
+    : 'history-card__alert--error';
   const hasError = Boolean(item.errorMessage)
     && item.outcome?.trim().toLowerCase() !== 'completed_with_warnings';
 
   return (
     <div
-      className="agent-task-card"
+      className={`agent-task-card history-card${isExpanded ? ' history-card--expanded' : ''}`}
       data-run-content={item.id}
-      style={{
-        background: isExpanded ? 'var(--background-primary)' : 'rgba(var(--background-secondary-rgb, 246,246,246), 0.5)',
-        borderWidth: 1,
-        borderColor: isExpanded ? 'rgba(0,48,135,0.3)' : 'rgba(0,48,135,0.15)',
-        overflow: 'hidden',
-      }}
       onClick={onToggle}
     >
       {!isExpanded ? (
-        <div style={{ padding: 'var(--padding-m)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--padding-s)' }}>
-            <span style={{
-              fontFamily: 'var(--font-family-medium)', fontSize: 'var(--font-size-status-small)',
-              color: 'var(--text-secondary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>
+        <div className="history-card__collapsed">
+          <div className="history-card__collapsed-head">
+            <span className="history-card__request-line">
               {plainRequest}
             </span>
-            <span style={{
-              fontFamily: 'var(--font-family-medium)', fontSize: 'var(--font-size-status-tiny)',
-              color: 'var(--text-secondary)', flexShrink: 0,
-            }}>
+            <span className="history-card__time">
               {timeStr}
             </span>
             <AgentTaskOriginChip originType={item.originType} originId={item.originId} />
           </div>
-          <div style={{
-            fontFamily: 'var(--font-family-medium)', fontSize: 'var(--font-size-status-tiny)',
-            color: 'var(--text-secondary)', marginTop: 'var(--padding-s)',
-            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-            wordBreak: 'break-word', userSelect: 'text',
-          }}>
+          <div className="history-card__preview">
             {collapsedPreview}
           </div>
           {item.files.length > 0 && (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 'var(--padding-xs)', marginTop: 'var(--padding-s)',
-            }}>
+            <div className="history-card__files">
               <svg width="10" height="10" viewBox="0 0 14 16" fill="var(--text-secondary)">
                 <path d="M8 0H3a1.5 1.5 0 0 0-1.5 1.5v13A1.5 1.5 0 0 0 3 16h8a1.5 1.5 0 0 0 1.5-1.5V5L8 0z"/>
               </svg>
-              <span style={{
-                fontFamily: 'var(--font-family-medium)', fontSize: 'var(--font-size-status-tiny)',
-                color: 'var(--text-secondary)',
-              }}>
+              <span className="history-card__files-label">
                 {item.files.length} file{item.files.length === 1 ? '' : 's'}
               </span>
             </div>
@@ -107,15 +81,12 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
         </div>
       ) : (
         <div>
-          <div style={{
-            display: 'flex', alignItems: 'flex-start', gap: 'var(--padding-s)',
-            padding: 'var(--padding-m) var(--padding-l) 0',
-          }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: 'var(--font-family-light)', fontSize: 10, color: 'var(--text-primary)', wordBreak: 'break-word' }}>
+          <div className="history-card__head">
+            <div className="history-card__head-main">
+              <div className="history-card__request-full">
                 {plainRequest}
               </div>
-              <div style={{ fontFamily: 'var(--font-family-medium)', fontSize: 'var(--font-size-status-tiny)', color: 'var(--text-secondary)', marginTop: 2 }}>
+              <div className="history-card__time--expanded">
                 {timeStr}
               </div>
               <AgentTaskOriginChip originType={item.originType} originId={item.originId} />
@@ -123,15 +94,15 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
                 <ReferencePathsList paths={item.reference_paths} />
               )}
             </div>
-            <svg width="11" height="11" viewBox="0 0 16 16" fill="var(--secondary)" style={{ flexShrink: 0, marginTop: 2 }}>
+            <svg className="history-card__collapse-icon" width="11" height="11" viewBox="0 0 16 16" fill="var(--secondary)">
               <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zM4.5 9.5L8 6l3.5 3.5"/>
             </svg>
           </div>
 
-          <div style={{ height: 1, background: 'var(--separator-color)', margin: 'var(--padding-m) var(--padding-l) 0' }} />
+          <div className="history-card__divider" />
 
           {/* Expanded result — matches Swift's AgentTaskResultContentView */}
-          <div style={{ padding: 'var(--padding-m) var(--padding-l)' }} onClick={e => e.stopPropagation()}>
+          <div className="history-card__body" onClick={e => e.stopPropagation()}>
             <RequestDisplay
               originalPrompt={item.agentTaskText}
               displayPromptMarkdown={item.displayPromptMarkdown}
@@ -162,15 +133,8 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
             )}
             {/* Error banner for failed history items */}
             {hasError && (
-              <div style={{
-                display: 'flex', alignItems: 'flex-start', gap: 'var(--padding-s)',
-                padding: 'var(--padding-s) var(--padding-m)',
-                marginBottom: 'var(--padding-s)',
-                background: alertBackground,
-                borderRadius: 'var(--corner-radius-medium, 8px)',
-                border: alertBorder,
-              }}>
-                <svg width="10" height="10" viewBox="0 0 16 16" fill={alertColor} style={{ flexShrink: 0, marginTop: 2 }}>
+              <div className={`history-card__alert ${alertSeverityClass}`}>
+                <svg className="history-card__alert-icon" width="10" height="10" viewBox="0 0 16 16">
                   <path d="M8.982 1.566a1.13 1.13 0 0 0-1.964 0L.165 13.233c-.457.778.091 1.767.982 1.767h13.706c.891 0 1.439-.99.982-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
                 </svg>
                 {/* Same rationale as the live-result error banner above: the
@@ -180,20 +144,13 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
                     history-card density (status-small instead of callout) so
                     historical failures don't visually outweigh more recent
                     in-flight content. */}
-                <div className="error-markdown" style={{
-                  color: alertColor,
-                  fontFamily: 'var(--font-family-light)',
-                  fontSize: 'var(--font-size-status-small)',
-                  userSelect: 'text',
-                  flex: 1,
-                  minWidth: 0,
-                }}>
+                <div className="error-markdown history-card__alert-text">
                   <MarkdownRenderer content={item.errorMessage || ''} />
                 </div>
               </div>
             )}
-            <div style={{ marginBottom: 6 }} data-run-section="result">
-              <span style={{ fontFamily: 'var(--font-family-light)', fontSize: 'var(--font-size-body)', color: 'var(--text-primary)' }}>
+            <div className="history-card__result-heading" data-run-section="result">
+              <span className="history-card__result-heading-text">
                 {hasError ? 'Partial Result:' : 'Result:'}
               </span>
             </div>
@@ -201,13 +158,7 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
               !(item.executionTimeline?.length || item.executionSteps?.length) && (
               <ExecutionSteps stepsContent={histParsed.technicalSteps} />
             )}
-            <div style={{
-              padding: 'var(--padding-m)', background: 'var(--background-primary)',
-              borderRadius: 'var(--corner-radius-medium, 8px)',
-              border: '1px solid rgba(0,48,135,0.2)',
-              overflow: 'hidden', wordBreak: 'break-word',
-              position: 'relative',
-            }}>
+            <div className="history-card__result">
               <CopyButtonGroup text={presentationResult} />
               <MarkdownRenderer content={formatBulletPoints(histRunDetails.narrative)} />
             </div>
@@ -224,22 +175,18 @@ function ExecutionSteps({ stepsContent }: { stepsContent: string }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div style={{ padding: '0 var(--padding-xs)', marginBottom: 'var(--padding-m)' }}>
+    <div className="history-card__steps">
       <div
         className="execution-steps-header"
         onClick={() => setExpanded(!expanded)}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div className="history-card__steps-title">
           <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="6" cy="6" r="4.5" />
             <circle cx="11" cy="11" r="3.5" />
             <path d="M6 4v2h2M11 9.5v1.5h1.5" />
           </svg>
-          <span style={{
-            fontFamily: 'var(--font-family-medium)',
-            fontSize: 'var(--font-size-status-small)',
-            color: 'var(--text-tertiary)',
-          }}>
+          <span className="history-card__steps-label">
             Execution Steps
           </span>
         </div>
@@ -247,17 +194,8 @@ function ExecutionSteps({ stepsContent }: { stepsContent: string }) {
       </div>
 
       {expanded && (
-        <div className="execution-steps-body" style={{ maxHeight: 200, overflow: 'auto' }}>
-          <pre style={{
-            fontFamily: 'var(--font-family-light)',
-            fontSize: 'var(--font-size-status-small)',
-            color: 'var(--text-secondary)',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            margin: 0,
-            padding: 'var(--padding-s)',
-            userSelect: 'text',
-          }}>
+        <div className="execution-steps-body history-card__steps-body">
+          <pre className="history-card__steps-pre">
             {stepsContent}
           </pre>
         </div>

@@ -146,43 +146,22 @@ export default function ApprovalOverlay({ agentTaskId, approval, rememberChoice,
 
         <div className="overlay-body">
           {/* Risk level */}
-          <div style={{ marginBottom: 'var(--padding-m)' }}>
+          <div className="approval-section">
             <span className={`risk-badge ${approval.risk_level}`}>
               {approval.risk_level} risk
             </span>
             {isAppleScript && (
-              <span style={{
-                marginLeft: 8,
-                padding: '2px 8px',
-                borderRadius: 'var(--corner-radius-small)',
-                background: 'rgba(147, 130, 220, 0.15)',
-                color: 'var(--text-secondary)',
-                fontSize: 'var(--font-size-status-small)',
-              }}>
+              <span className="approval-tag">
                 AppleScript
               </span>
             )}
             {isBrowserSensitiveFill && (
-              <span style={{
-                marginLeft: 8,
-                padding: '2px 8px',
-                borderRadius: 'var(--corner-radius-small)',
-                background: 'rgba(147, 130, 220, 0.15)',
-                color: 'var(--text-secondary)',
-                fontSize: 'var(--font-size-status-small)',
-              }}>
+              <span className="approval-tag">
                 Browser
               </span>
             )}
             {isProviderPermission && (
-              <span style={{
-                marginLeft: 8,
-                padding: '2px 8px',
-                borderRadius: 'var(--corner-radius-small)',
-                background: 'rgba(147, 130, 220, 0.15)',
-                color: 'var(--text-secondary)',
-                fontSize: 'var(--font-size-status-small)',
-              }}>
+              <span className="approval-tag">
                 Provider
               </span>
             )}
@@ -193,24 +172,16 @@ export default function ApprovalOverlay({ agentTaskId, approval, rememberChoice,
           )}
 
           {/* Agent task text */}
-          <div style={{ marginBottom: 'var(--padding-m)' }}>
+          <div className="approval-section">
             <div
-              className="command-display"
-              style={!commandExpanded && isLong ? { maxHeight: 60, overflow: 'hidden' } : undefined}
+              className={!commandExpanded && isLong ? 'command-display command-display--collapsed' : 'command-display'}
             >
               {commandText}
             </div>
             {isLong && (
               <button
+                className="approval-link-button"
                 onClick={() => setCommandExpanded(!commandExpanded)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--primary)',
-                  cursor: 'pointer',
-                  fontSize: 'var(--font-size-status-small)',
-                  padding: 'var(--padding-xs) 0',
-                }}
               >
                 {commandExpanded ? 'Show less' : 'Show more'}
               </button>
@@ -219,38 +190,17 @@ export default function ApprovalOverlay({ agentTaskId, approval, rememberChoice,
 
           {/* Expandable script preview */}
           {scriptContent && (
-            <div style={{ marginBottom: 'var(--padding-m)' }}>
+            <div className="approval-section">
               <button
+                className="approval-link-button approval-link-button--toggle"
                 onClick={() => setScriptExpanded(!scriptExpanded)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--primary)',
-                  cursor: 'pointer',
-                  fontSize: 'var(--font-size-status-small)',
-                  padding: 'var(--padding-xs) 0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                }}
               >
-                <span style={{
-                  display: 'inline-block',
-                  transform: scriptExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                  transition: 'transform 0.15s ease',
-                }}>&#9654;</span>
+                <span className={scriptExpanded ? 'approval-link-button__arrow approval-link-button__arrow--open' : 'approval-link-button__arrow'}>&#9654;</span>
                 {`View full script (${scriptLineCount} lines)`}
               </button>
               {scriptExpanded && (
                 <div
-                  className="command-display"
-                  style={{
-                    maxHeight: 300,
-                    overflowY: 'auto',
-                    whiteSpace: 'pre-wrap',
-                    fontSize: 'var(--font-size-status-small)',
-                    marginTop: 'var(--padding-xs)',
-                  }}
+                  className="command-display approval-script-preview"
                 >
                   {scriptContent}
                 </div>
@@ -259,69 +209,42 @@ export default function ApprovalOverlay({ agentTaskId, approval, rememberChoice,
           )}
 
           {isBrowserSensitiveFill && needsUserEntry && (
-            <div style={{ marginBottom: 'var(--padding-m)' }}>
-              <label
-                style={{
-                  display: 'block',
-                  fontSize: 'var(--font-size-status-small)',
-                  color: 'var(--text-secondary)',
-                  marginBottom: 'var(--padding-xs)',
-                }}
-              >
+            <div className="approval-section">
+              <label className="approval-field-label">
                 Sensitive value
               </label>
               <input
+                className="approval-sensitive-input"
                 type="password"
                 value={sensitiveValue}
                 onChange={e => setSensitiveValue(e.target.value)}
                 autoComplete="off"
-                style={{
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  padding: 'var(--padding-s)',
-                  borderRadius: 'var(--corner-radius-small)',
-                  border: '1px solid var(--border)',
-                  background: 'var(--surface)',
-                  color: 'var(--text-primary)',
-                }}
               />
             </div>
           )}
 
           {/* Reason */}
-          <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--font-size-footnote)' }}>
+          <p className="approval-reason">
             {approval.reason}
           </p>
 
           {/* Pattern */}
           {approval.generalized_pattern && (
-            <p style={{
-              color: 'var(--text-tertiary)',
-              fontSize: 'var(--font-size-status-small)',
-              marginTop: 'var(--padding-s)',
-            }}>
+            <p className="approval-pattern">
               Pattern: {approval.generalized_pattern}
             </p>
           )}
 
           {/* Risk warning */}
           {approval.risk_level === 'high' && (
-            <div style={{
-              marginTop: 'var(--padding-m)',
-              padding: 'var(--padding-s)',
-              background: 'rgba(255, 0, 0, 0.05)',
-              borderRadius: 'var(--corner-radius-small)',
-              border: '1px solid rgba(255, 0, 0, 0.2)',
-              fontSize: 'var(--font-size-status-small)',
-              color: 'var(--error-base)',
-            }}>
+            <div className="approval-high-risk-notice">
               This command may cause permanent changes
             </div>
           )}
 
           {/* Remember choice */}
           {!isProviderPermission && (
-            <label className="checkbox-row" style={{ marginTop: 'var(--padding-m)' }}>
+            <label className="checkbox-row approval-remember">
               <input
                 type="checkbox"
                 checked={remember}

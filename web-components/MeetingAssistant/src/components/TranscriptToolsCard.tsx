@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import ReasoningModelPicker, { type SharedReasoningModel } from '../../../shared/ReasoningModelPicker';
+import { formatClockSeconds } from '@shared/formatClockSeconds';
 import type { MeetingUIStateDTO } from '../bridge/types';
 import { setAutomation, setPostProcessingModel, startPostProcessing } from '../bridge/meetingBridge';
 
@@ -217,14 +218,7 @@ export default function TranscriptToolsCard({ ui }: { ui: MeetingUIStateDTO }) {
 
 function formatSecondsWithClock(seconds: number): string {
   const normalizedSeconds = Math.max(0, seconds);
-  const totalSeconds = Math.round(normalizedSeconds);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const remainingSeconds = totalSeconds % 60;
-  const clock = hours > 0
-    ? `${hours}:${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`
-    : `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
-  return `${normalizedSeconds.toFixed(1)}s (${clock})`;
+  return `${normalizedSeconds.toFixed(1)}s (${formatClockSeconds(Math.round(normalizedSeconds))})`;
 }
 
 function formatETA(seconds: number): string {

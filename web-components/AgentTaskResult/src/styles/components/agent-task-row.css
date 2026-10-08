@@ -1,0 +1,111 @@
+/* Agent Task sidebar row (AgentTaskRow.tsx). Compound selectors beat the single-class base rules in shell-and-sidebar.css, the way the former inline styles did. */
+.sidebar-row.agent-task-row {
+  position: relative;
+  overflow: hidden;
+}
+
+.agent-task-row__slide {
+  position: relative;
+  transition: transform 0.15s ease;
+}
+
+.agent-task-row__trash {
+  position: absolute;
+  top: 0;
+  right: calc(-1 * var(--padding-s));
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--error-base);
+  padding: 0 2px;
+  display: flex;
+  align-items: center;
+  z-index: 1;
+}
+
+.agent-detach-btn.agent-task-row__detach {
+  top: 0;
+  right: calc(-1 * var(--padding-s));
+}
+
+.agent-detach-btn.agent-task-row__detach--below-trash {
+  top: 14px;
+}
+
+.agent-task-row__main {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-s);
+}
+
+.agent-task-row__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.row-title.agent-task-row__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.agent-task-row__origin-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.agent-task-row__title-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Three classes so it beats `.sidebar-row.selected .row-preview`, as the former inline color did. */
+.sidebar-row .row-preview.agent-task-row__preview--warning {
+  color: var(--warning-base);
+}
+
+.agent-task-row__alert-icon {
+  flex-shrink: 0;
+}
+
+.unread-badge.agent-task-row__unread {
+  width: 8px;
+  height: 8px;
+  font-size: 0;
+}
+
+.row-meta.agent-task-row__meta {
+  margin-left: 14px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.agent-task-row__meta-line {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-xs);
+}
+
+.agent-task-row__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.agent-task-row__meta-item--thread {
+  color: color-mix(in srgb, var(--secondary) 80%, transparent);
+}
+
+.overlay-card.agent-task-row__cancel-card {
+  max-width: 320px;
+}
+
+.action-btn.action-btn--neutral {
+  background: var(--background-secondary);
+  color: var(--text-primary);
+}

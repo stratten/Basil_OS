@@ -1,0 +1,98 @@
+/* Detail blocks inside the command, AppleScript, provider, and browser approval card (ApprovalOverlay.tsx). Compound selectors beat the single-class base rules in overlays-and-approvals.css, the way the former inline styles did. */
+.approval-section {
+  margin-bottom: var(--padding-m);
+}
+
+/* The accent has no theme token; it is named here so the one literal is easy to find. */
+.approval-tag {
+  --approval-tag-accent: rgb(147 130 220);
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: var(--corner-radius-small);
+  background: color-mix(in srgb, var(--approval-tag-accent) 15%, transparent);
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-small);
+}
+
+.command-display.command-display--collapsed {
+  max-height: 60px;
+  overflow: hidden;
+}
+
+.approval-link-button {
+  background: none;
+  border: none;
+  color: var(--primary);
+  cursor: pointer;
+  font-size: var(--font-size-status-small);
+  padding: var(--padding-xs) 0;
+}
+
+.approval-link-button--toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.approval-link-button__arrow {
+  display: inline-block;
+  transform: rotate(0deg);
+  transition: transform 0.15s ease;
+}
+
+.approval-link-button__arrow--open {
+  transform: rotate(90deg);
+}
+
+.command-display.approval-script-preview {
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  font-size: var(--font-size-status-small);
+  margin-top: var(--padding-xs);
+}
+
+.approval-field-label {
+  display: block;
+  font-size: var(--font-size-status-small);
+  color: var(--text-secondary);
+  margin-bottom: var(--padding-xs);
+}
+
+/* The former inline styles pointed at two custom properties that no theme defines (named border and surface), so the sensitive-value field rendered with no border or background. */
+.approval-sensitive-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--padding-s);
+  border-radius: var(--corner-radius-small);
+  border: var(--border-thin) solid var(--separator-color);
+  background: var(--background-primary);
+  color: var(--text-primary);
+}
+
+.approval-reason {
+  color: var(--text-secondary);
+  font-size: var(--font-size-footnote);
+}
+
+.approval-pattern {
+  color: var(--text-tertiary);
+  font-size: var(--font-size-status-small);
+  margin-top: var(--padding-s);
+}
+
+/* The accent has no theme token; it is named here so the one literal is easy to find. */
+.approval-high-risk-notice {
+  --approval-high-risk-accent: rgb(255 0 0);
+  margin-top: var(--padding-m);
+  padding: var(--padding-s);
+  background: color-mix(in srgb, var(--approval-high-risk-accent) 5%, transparent);
+  border-radius: var(--corner-radius-small);
+  border: 1px solid color-mix(in srgb, var(--approval-high-risk-accent) 20%, transparent);
+  font-size: var(--font-size-status-small);
+  color: var(--error-base);
+}
+
+.checkbox-row.approval-remember {
+  margin-top: var(--padding-m);
+}

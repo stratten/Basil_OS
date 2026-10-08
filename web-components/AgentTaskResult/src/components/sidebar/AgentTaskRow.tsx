@@ -120,8 +120,7 @@ function AgentTaskRowImpl({
   return (
     <>
       <div
-        className={`sidebar-row ${isSelected ? 'selected' : ''}`}
-        style={{ position: 'relative', overflow: 'hidden' }}
+        className={`sidebar-row agent-task-row ${isSelected ? 'selected' : ''}`}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         onContextMenu={onContextMenu ? (event) => onContextMenu(event, id) : undefined}
@@ -141,11 +140,8 @@ function AgentTaskRowImpl({
         )}
 
         <div
-          style={{
-            transform: revealDelete.offset > 0 ? `translateX(-${revealDelete.offset}px)` : undefined,
-            transition: 'transform 0.15s ease',
-            position: 'relative',
-          }}
+          className="agent-task-row__slide"
+          style={revealDelete.offset > 0 ? { transform: `translateX(-${revealDelete.offset}px)` } : undefined}
           role="button"
           tabIndex={0}
           aria-label={`${title}${rowPreview ? `. ${rowPreview}` : ''}`}
@@ -156,13 +152,8 @@ function AgentTaskRowImpl({
         >
           {showTrash && onRequestDelete && (
             <button
+              className="agent-task-row__trash"
               onClick={(e) => { e.stopPropagation(); e.preventDefault(); onRequestDelete(id); }}
-              style={{
-                position: 'absolute', top: 0, right: 'calc(-1 * var(--padding-s))',
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: 'var(--error-base)', padding: '0 2px',
-                display: 'flex', alignItems: 'center', zIndex: 1,
-              }}
               title="Delete task"
             >
               <TrashIcon size={10} />
@@ -171,8 +162,7 @@ function AgentTaskRowImpl({
 
           {hovered && onDetach && (
             <button
-              className="agent-detach-btn"
-              style={{ top: showTrash ? 14 : 0, right: 'calc(-1 * var(--padding-s))' }}
+              className={`agent-detach-btn agent-task-row__detach${showTrash ? ' agent-task-row__detach--below-trash' : ''}`}
               onClick={(e) => { e.stopPropagation(); e.preventDefault(); onDetach(id); }}
               onDoubleClick={(e) => e.stopPropagation()}
               title="Open in separate window"
@@ -182,7 +172,7 @@ function AgentTaskRowImpl({
             </button>
           )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--padding-s)' }}>
+          <div className="agent-task-row__main">
             {needsApproval && !isSelected ? (
               <span className="approval-attention" />
             ) : isProcessingLike ? (
@@ -198,39 +188,39 @@ function AgentTaskRowImpl({
             ) : (
               <StatusIcon status={status} resultSeverity={resultSeverity} size={8} />
             )}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="row-title" style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+            <div className="agent-task-row__text">
+              <div className="row-title agent-task-row__title">
                 {scheduledRunSourceTitle && (
                   <span
+                    className="agent-task-row__origin-icon"
                     title={`From schedule: ${scheduledRunSourceTitle}`}
                     aria-label={`From schedule: ${scheduledRunSourceTitle}`}
-                    style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}
                   >
                     <ScheduledRunIcon />
                   </span>
                 )}
                 {originSourceLabel && (
                   <span
+                    className="agent-task-row__origin-icon"
                     title={originSourceLabel}
                     aria-label={originSourceLabel}
-                    style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}
                   >
                     <ConversationOriginIcon />
                   </span>
                 )}
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                <span className="agent-task-row__title-text">
                   {title}
                 </span>
               </div>
               {needsApproval && !isSelected ? (
-                <div className="row-preview" style={{ color: 'var(--warning-base)' }}>Approval needed</div>
+                <div className="row-preview agent-task-row__preview--warning">Approval needed</div>
               ) : rowPreview ? (
-                <div className="row-preview" style={isPaused ? { color: 'var(--warning-base)' } : undefined}>{rowPreview}</div>
+                <div className={isPaused ? 'row-preview agent-task-row__preview--warning' : 'row-preview'}>{rowPreview}</div>
               ) : null}
             </div>
 
             {needsApproval && !isSelected ? (
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="var(--warning-base)" style={{ flexShrink: 0 }}>
+              <svg className="agent-task-row__alert-icon" width="12" height="12" viewBox="0 0 16 16" fill="var(--warning-base)">
                 <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm-.5 4.75v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0zM8 12a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/>
               </svg>
             ) : showCancel ? (
@@ -244,27 +234,24 @@ function AgentTaskRowImpl({
                 </svg>
               </button>
             ) : hasUnreadResult && !isSelected ? (
-              <div className="unread-badge" style={{ width: 8, height: 8, fontSize: 0 }} />
+              <div className="unread-badge agent-task-row__unread" />
             ) : null}
           </div>
 
           {(dateStr || fileCount > 0 || followUpCount > 0) && (
-            <div
-              className="row-meta"
-              style={{ marginLeft: 14, flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}
-            >
+            <div className="row-meta agent-task-row__meta">
               {(dateStr || fileCount > 0) && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--padding-xs)' }}>
+                <div className="agent-task-row__meta-line">
                   {dateStr && <span>{dateStr}</span>}
                   {fileCount > 0 && (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                    <span className="agent-task-row__meta-item">
                       <DocIcon /> {fileCount}
                     </span>
                   )}
                 </div>
               )}
               {followUpCount > 0 && (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, color: 'rgba(51, 85, 155, 0.8)' }}>
+                <span className="agent-task-row__meta-item agent-task-row__meta-item--thread">
                   <BranchIcon /> {followUpCount + 1} messages
                 </span>
               )}
@@ -275,16 +262,15 @@ function AgentTaskRowImpl({
 
       {showCancelConfirm && onCancel && (
         <div className="overlay-backdrop" onClick={() => setShowCancelConfirm(false)}>
-          <div className="overlay-card" onClick={e => e.stopPropagation()} style={{ maxWidth: 320 }}>
+          <div className="overlay-card agent-task-row__cancel-card" onClick={e => e.stopPropagation()}>
             <div className="overlay-title">Cancel this task?</div>
             <div className="overlay-body">
               This will stop the task and remove it from the active list. Any progress will be lost.
             </div>
             <div className="overlay-actions">
               <button
-                className="action-btn"
+                className="action-btn action-btn--neutral"
                 onClick={() => setShowCancelConfirm(false)}
-                style={{ background: 'var(--background-secondary)', color: 'var(--text-primary)' }}
               >
                 Keep
               </button>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { plainMarkdownText } from '@shared/plainMarkdownText';
+import { formatClockSeconds } from '@shared/formatClockSeconds';
 import type { MeetingActionProposalDTO } from '../bridge/types';
 import { MeetingMarkdown } from '../lib/markdown';
 import { dismissProposal, openProposalAgentTask, openProposalTodo, promoteAllProposalsToTodos, promoteProposalToTodo, restoreProposal, startProposalNow, updateProposal } from '../bridge/meetingBridge';
@@ -160,7 +161,7 @@ function ProposalCard({ proposal }: { proposal: MeetingActionProposalDTO }) {
                 <span>Transcript context</span>
                 {proposal.sourceTimestamp !== null && (
                   <time className="meeting-proposal-context-time" dateTime={`PT${proposal.sourceTimestamp}S`}>
-                    {formatTimestamp(proposal.sourceTimestamp)}
+                    {formatClockSeconds(proposal.sourceTimestamp, { padMinutes: true })}
                   </time>
                 )}
               </summary>
@@ -241,10 +242,6 @@ function compactStatus(proposal: MeetingActionProposalDTO): string | null {
   if (proposal.executionStatus === 'starting') return 'Starting';
   if (proposal.executionStatus === 'added_to_todos') return 'In To-Dos';
   return null;
-}
-
-function formatTimestamp(seconds: number): string {
-  return `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${Math.floor(seconds % 60).toString().padStart(2, '0')}`;
 }
 
 function CapabilityIcon({ capabilityType }: { capabilityType: string }) {

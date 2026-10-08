@@ -50,6 +50,7 @@ export default defineConfig({
       '../shared/markdownSafety.test.ts',
       '../shared/InlineDeleteConfirm.test.tsx',
       '../shared/inlineDeleteConfirm.contract.test.ts',
+      '../shared/formatClockSeconds.test.ts',
     ],
   },
 })

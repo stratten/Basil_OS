@@ -13,6 +13,11 @@ describe('TimerDisplay', () => {
     expect(screen.getByText('2:05')).toBeInTheDocument();
   });
 
+  it('switches to hours once the timer passes one hour', () => {
+    render(<TimerDisplay seconds={3725} />);
+    expect(screen.getByText('1:02:05')).toBeInTheDocument();
+  });
+
   it('clamps negative input to zero', () => {
     render(<TimerDisplay seconds={-4} />);
     expect(screen.getByText('0:00')).toBeInTheDocument();
