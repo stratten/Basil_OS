@@ -153,7 +153,7 @@ function applyWatch(state: CompanionTimelineState, event: TimelineEvent, payload
   if (watchState === 'triggered') {
     return { ...state, watches: replaceOrAppend(state.watches, { ...existing, last_triggered_at: event.meeting_time }) };
   }
-  if (watchState === 'cancelled') {
+  if (watchState === 'canceled') {
     return { ...state, watches: replaceOrAppend(state.watches, { ...existing, active: false }) };
   }
   return state;

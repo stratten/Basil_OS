@@ -62,7 +62,7 @@ describe('BackendLivenessNotice', () => {
     expect(container.innerHTML).toBe('');
   });
 
-  it('renders a labelled alert for stale and disconnected states', () => {
+  it('renders a labeled alert for stale and disconnected states', () => {
     act(() => root.render(<BackendLivenessNotice liveness="stale" />));
     expect(alert()?.textContent).toContain(BACKEND_STALE_MESSAGE);
     expect(alert()?.getAttribute('data-liveness')).toBe('stale');

@@ -588,7 +588,7 @@ class CompanionSession:
         watch = next((candidate for candidate in self._get_derived().watches if candidate.id == watch_id and candidate.active), None)
         if watch is None:
             return False
-        self._append("watch", self._latest_meeting_time, watch_event_payload(watch, "cancelled"))
+        self._append("watch", self._latest_meeting_time, watch_event_payload(watch, "canceled"))
         return True
 
     def attach_root(self, path_text: str) -> CompanionRoot:

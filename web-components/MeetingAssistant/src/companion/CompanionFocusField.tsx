@@ -9,7 +9,7 @@ interface CompanionFocusFieldProps {
   onSave: (next: string) => Promise<boolean>;
 }
 
-/** Where the user tells the Companion what to concentrate on. Built on the Analysis card's labelled instructions textarea; the text is saved when the field loses focus. */
+/** Where the user tells the Companion what to concentrate on. Built on the Analysis card's labeled instructions textarea; the text is saved when the field loses focus. */
 export default function CompanionFocusField({ value, onSave }: CompanionFocusFieldProps) {
   const inputId = useId();
   const [draft, setDraft] = useState(value);

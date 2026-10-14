@@ -215,5 +215,5 @@ async def cancel_companion_watch(
 ) -> CompanionAck:
     session = _live_session(runtime, meeting_id)
     if not session.cancel_watch(watch_id):
-        raise HTTPException(status_code=404, detail="That watch does not exist or was already cancelled.")
+        raise HTTPException(status_code=404, detail="That watch does not exist or was already canceled.")
     return CompanionAck()

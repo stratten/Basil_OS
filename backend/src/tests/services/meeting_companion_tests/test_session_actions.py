@@ -113,7 +113,7 @@ async def test_watch_fires_on_matching_line_records_trigger_and_respects_cooldow
 
 
 @pytest.mark.asyncio
-async def test_cancelled_watch_never_fires_and_cancel_is_idempotent(make_session):
+async def test_canceled_watch_never_fires_and_cancel_is_idempotent(make_session):
     harness = await started(make_session)
     watch = harness.session.create_watch("billing", "show me the endpoint")
     assert harness.session.cancel_watch(watch.id) is True

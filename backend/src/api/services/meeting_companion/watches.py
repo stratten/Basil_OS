@@ -74,7 +74,7 @@ def build_watch_created_payload(
 
 
 def watch_event_payload(watch: CompanionWatch, state: str) -> Dict[str, Any]:
-    """Payload for a ``triggered`` or ``cancelled`` watch event."""
+    """Payload for a ``triggered`` or ``canceled`` watch event."""
     return {
         "watch_id": watch.id,
         "state": state,

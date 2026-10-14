@@ -108,7 +108,7 @@ class _Accumulator:
             return
         if state == "triggered":
             self.watches[watch_id] = watch.model_copy(update={"last_triggered_at": event.meeting_time})
-        elif state == "cancelled":
+        elif state == "canceled":
             self.watches[watch_id] = watch.model_copy(update={"active": False})
 
     def _apply_source(self, event: TimelineEvent) -> None:
