@@ -223,7 +223,7 @@
 
 .companion-pane .meeting-transcript-icon-button[aria-pressed='true'] {
   background: var(--secondary);
-  color: #ffffff;
+  color: var(--background-primary);
 }
 
 .companion-drop-zone {
@@ -359,7 +359,7 @@
   align-self: flex-end;
   border-color: transparent;
   background: color-mix(in srgb, var(--primary) 85%, transparent);
-  color: #ffffff;
+  color: var(--background-primary);
 }
 
 .companion-chat-message--assistant {

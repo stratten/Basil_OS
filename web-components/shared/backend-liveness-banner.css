@@ -10,7 +10,7 @@
   max-width: 560px;
   margin: 0 auto;
   padding: 10px 14px;
-  border: 2px solid #000000;
+  border: var(--border-medium, 2px) solid var(--text-primary, CanvasText);
   border-radius: 10px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.35) inset;
   font-family: var(--font-family-medium, -apple-system, BlinkMacSystemFont, sans-serif);
@@ -21,13 +21,13 @@
 }
 
 .backend-liveness-banner--stale {
-  background: #ffc83d;
-  color: #000000;
+  background: color-mix(in srgb, var(--warning-base, #ffa500) 30%, var(--background-primary, Canvas));
+  color: var(--text-primary, CanvasText);
 }
 
 .backend-liveness-banner--disconnected {
-  background: #b3261e;
-  color: #ffffff;
+  background: color-mix(in srgb, var(--error-base, #b3261e) 30%, var(--background-primary, Canvas));
+  color: var(--text-primary, CanvasText);
 }
 
 .backend-liveness-banner__marker {
