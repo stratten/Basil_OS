@@ -58,19 +58,10 @@ final class AssistantOutputHistoryWindowController: NSWindowController, NSWindow
             defer: false
         )
 
-        window.level = .floating
-        window.collectionBehavior = [
-            .canJoinAllSpaces,
-            .fullScreenAuxiliary,
-            .ignoresCycle
-        ]
-        window.hidesOnDeactivate = false
-        window.hasShadow = false
-        window.alphaValue = 1.0
-        window.isOpaque = false
-        window.title = "\(BasilTeamIdentity.assistantSession.pairedName) History"
-        window.backgroundColor = NSColor.clear
-        window.isMovableByWindowBackground = true
+        window.configureFloatingWidget(
+            title: "\(BasilTeamIdentity.assistantSession.pairedName) History",
+            transparency: .clearWithoutShadow
+        )
         window.contentView = webView.webView
         window.minSize = Self.expandedMinSize
 

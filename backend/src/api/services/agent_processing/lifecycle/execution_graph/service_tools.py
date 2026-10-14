@@ -119,6 +119,9 @@ class ServiceToolFactory:
     # Reserve 10% of context for a single tool output (allows multiple tool calls + system prompt + user input)
     TOOL_OUTPUT_CONTEXT_FRACTION = 0.10
 
+    # Absolute ceiling for one tool result: a 1M-token window would otherwise allow ~100k tokens from a single call
+    TOOL_OUTPUT_MAX_CHARS = 60_000
+
     # Approximate characters per token (conservative estimate)
     CHARS_PER_TOKEN = 4
 
@@ -160,7 +163,10 @@ class ServiceToolFactory:
 
         # Calculate max tool output: 10% of context window in characters
         # e.g., 200K tokens → 20K tokens → 80K chars per tool output
-        self.max_tool_output_chars = int(context_tokens * self.TOOL_OUTPUT_CONTEXT_FRACTION * self.CHARS_PER_TOKEN)
+        self.max_tool_output_chars = min(
+            int(context_tokens * self.TOOL_OUTPUT_CONTEXT_FRACTION * self.CHARS_PER_TOKEN),
+            self.TOOL_OUTPUT_MAX_CHARS,
+        )
 
         self.logger.info(
             f"🔧 ServiceToolFactory initialized: context={context_tokens:,} tokens, "

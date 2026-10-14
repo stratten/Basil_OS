@@ -1,41 +1,45 @@
-import { cloneElement, useEffect, useMemo, useReducer, useState, type HTMLAttributes, type ReactElement } from 'react';
-import { registerEventHandler, reportReady, setSidebarCollapsed, toggleWindowCollapse } from './bridge/meetingBridge';
-import { applyMeetingBridgeEvent, initialMeetingState } from './state/meetingReducer';
+import { cloneElement, useEffect, useMemo, useState, type CSSProperties, type HTMLAttributes, type ReactElement } from 'react';
+import { setCompanionPaneExtent, setSidebarCollapsed, toggleWindowCollapse } from './bridge/meetingBridge';
+import { initialMeetingState } from './state/meetingReducer';
+import { useMeetingBridgeState } from './state/useMeetingBridgeState';
 import WindowChrome from './components/WindowChrome';
 import MeetingHistorySidebar from './components/MeetingHistorySidebar';
 import MeetingMetadataForm from './components/MeetingMetadataForm';
 import AudioSourceControls from './components/AudioSourceControls';
 import RecordingControls from './components/RecordingControls';
+import CollapsedRecordingActions from './components/CollapsedRecordingActions';
 import TranscriptPanel from './components/TranscriptPanel';
 import TranscriptToolsCard from './components/TranscriptToolsCard';
 import AnalysisCard from './components/AnalysisCard';
-import { applyMeetingHostFonts, applyMeetingHostTheme } from './lib/hostAppearance';
 import { CollapsedHistoryRail } from '../../shared/HistorySidebarControls';
 import CollapsibleSidebar from '@shared/CollapsibleSidebar';
 import AnimatedBubble from '../../shared/bubble/AnimatedBubble';
 import { useMeetingMeter } from './bridge/meetingMeterStore';
 import { useCollapseShortcut } from '@shared/useCollapseShortcut';
 import { useSettledExpand } from '@shared/useSettledExpand';
+import CompanionPane from './companion/CompanionPane';
+import CompanionRail from './companion/CompanionRail';
+import CompanionSetupPane from './companion/CompanionSetupPane';
+import { COMPANION_PANE_WIDTH, COMPANION_RAIL_WIDTH } from './companion/companionLayout';
+import { useEmbeddedCompanion } from './companion/useEmbeddedCompanion';
 
 export default function MeetingAssistantApp() {
-  const [state, dispatch] = useReducer(applyMeetingBridgeEvent, initialMeetingState);
+  const state = useMeetingBridgeState();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const isContentCollapsed = useSettledExpand(isCollapsed);
   const [embedded] = useState(
     () => document.documentElement.dataset.meetingAssistantEmbedded === 'true',
   );
 
-  useEffect(() => {
-    registerEventHandler((event) => dispatch(event));
-    reportReady();
-  }, []);
-
-  useEffect(() => {
-    applyMeetingHostTheme(state.theme);
-    applyMeetingHostFonts(state.fonts);
-  }, [state.theme, state.fonts]);
-
   const ui = state.ui;
+
+  const embeddedCompanion = useEmbeddedCompanion(ui);
+  const companionExtent = embeddedCompanion.extent;
+
+  // The host window grows by the Companion column's width (and shrinks back), so opening it never narrows the main column.
+  useEffect(() => {
+    if (!embedded) setCompanionPaneExtent(companionExtent);
+  }, [embedded, companionExtent]);
 
   const handleToggleCollapse = () => {
     const next = !isCollapsed;
@@ -85,7 +89,7 @@ export default function MeetingAssistantApp() {
             participants={ui.meetingParticipants}
             isViewingPastMeeting={ui.isViewingPastMeeting}
           />
-          <AudioSourceControls ui={ui} />
+          <AudioSourceControls ui={ui} companion={embeddedCompanion.switchProps} />
           <TranscriptPanel transcript={state.transcript} ui={ui} />
           <RecordingControls ui={ui} />
           {!ui.isRecording && (ui.hasRecordedAudio || ui.hasTranscription) && (
@@ -99,9 +103,38 @@ export default function MeetingAssistantApp() {
             </div>
           )}
         </div>
+        <CollapsibleSidebar
+          element="div"
+          side="end"
+          expanded={embeddedCompanion.expanded}
+          className="companion-collapsible"
+          style={{
+            '--basil-sidebar-expanded-width': `${COMPANION_PANE_WIDTH}px`,
+            '--basil-sidebar-collapsed-width': `${embeddedCompanion.hasRail ? COMPANION_RAIL_WIDTH : 0}px`,
+          } as CSSProperties}
+          collapsedContent={embeddedCompanion.hasRail ? <CompanionRail onExpand={embeddedCompanion.showPane} /> : null}
+        >
+          {embeddedCompanion.renderedKind === 'setup' && (
+            <CompanionSetupPane
+              controller={embeddedCompanion.companion}
+              globalSettings={embeddedCompanion.globalSettings}
+              onClose={embeddedCompanion.hidePane}
+            />
+          )}
+          {embeddedCompanion.renderedKind === 'recording' && (
+            <CompanionPane
+              ui={ui}
+              controller={embeddedCompanion.companion}
+              globalSettings={embeddedCompanion.globalSettings}
+              isTargetRecording={embeddedCompanion.isRecording}
+              variant="embedded"
+              onClose={embeddedCompanion.hidePane}
+            />
+          )}
+        </CollapsibleSidebar>
       </div>
     );
-  }, [state, ui]);
+  }, [state, ui, embeddedCompanion]);
 
   return (
     <div className={`basil-webkit-window-frame${embedded ? ' basil-webkit-window-frame--embedded' : ''}`}>
@@ -115,6 +148,7 @@ export default function MeetingAssistantApp() {
             isCollapsed={isCollapsed}
             onToggleCollapse={handleToggleCollapse}
             isRecording={Boolean(ui?.isRecording && !ui.isCapturePaused)}
+            collapsedActions={ui?.isRecording ? <CollapsedRecordingActions ui={ui} /> : undefined}
             bubble={<MeetingAudioBubble ui={ui} />}
             canCollapse
           />

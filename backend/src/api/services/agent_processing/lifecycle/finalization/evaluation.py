@@ -132,6 +132,7 @@ class FinalizerEvaluation:
     requested_item_count: Optional[int] = None
     delivered_item_count: Optional[int] = None
     truncation_prevents_verification: bool = False
+    pending_work: Optional[Dict[str, Any]] = None
 
 
 def _is_non_empty_string(value: Any) -> bool:
@@ -277,6 +278,8 @@ EVALUATION GUIDELINES:
 - Tool failures are evidence, not an automatic failure. If earlier tools failed but a later fallback verified the requested scope and satisfies the request, classify as success.
 - An internal retry or fallback that produced a complete, verified result is SUCCESS, not a warning. Do not downgrade it merely because an earlier attempt failed before a later one succeeded; that is a normal implementation detail with no user-visible consequence.
 - If a real residual gap remains after useful work was delivered, such as missing coverage, partial scope, an unverified side effect, or a required follow-up step, classify the result as partial. A failed-then-recovered attempt with no residual gap is success.
+- When FOLLOW-UP / CHAIN CONTEXT lists FOLLOW-UP CHECKS ALREADY SCHEDULED, the remaining step is already arranged and will resume this task automatically. Judge the work that scheduled check will finish as in progress, not as a residual gap. Classify partial only for gaps that no scheduled check covers, and classify success when everything else was delivered and the response tells the user what is pending.
+- PENDING WORK: set work_still_pending=true only when the tool output shows that work the agent started (a delegated agent run, a queued connector action, a build) is still running or queued, a later check would complete it, and no FOLLOW-UP CHECK is already scheduled. When true, pending_check_instructions must say exactly what a later turn should check and pending_check_delay_minutes must be a whole number from 5 to 1440. Otherwise set work_still_pending=false, pending_check_instructions to "", and pending_check_delay_minutes to null.
 - Use partial when some useful content was delivered but a meaningful part of the user's request remains incomplete.
 - Use failure only when the request was not delivered in a useful way.
 - A successful process exit or script "SUCCESS" string is not enough for a user-visible write. If structured tool output says a material write is unverified or failed, classify as partial or failure unless later tool evidence verifies the same intended outcome through any path.
@@ -322,7 +325,10 @@ Respond with ONLY a JSON object:
   "coverage_status": "complete" | "incomplete" | "not_applicable" | "indeterminate",
   "requested_item_count": number|null,
   "delivered_item_count": number|null,
-  "truncation_prevents_verification": true|false
+  "truncation_prevents_verification": true|false,
+  "work_still_pending": true/false,
+  "pending_check_instructions": "what a later turn should check; empty string when work_still_pending is false",
+  "pending_check_delay_minutes": number|null
 }}"""
 
 
@@ -343,6 +349,25 @@ def _extract_json_object(text: str) -> str:
             if depth == 0:
                 return text[start : i + 1]
     return text[start:]
+
+
+MIN_PENDING_CHECK_DELAY_MINUTES = 5
+MAX_PENDING_CHECK_DELAY_MINUTES = 1440
+DEFAULT_PENDING_CHECK_DELAY_MINUTES = 15
+MAX_PENDING_CHECK_INSTRUCTIONS_CHARS = 1000
+
+
+def parse_pending_work(evaluation: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Return the evaluator's pending-work declaration, or ``None`` when it declared none or gave no instructions."""
+    if evaluation.get("work_still_pending") is not True:
+        return None
+    instructions = str(evaluation.get("pending_check_instructions") or "").strip()[:MAX_PENDING_CHECK_INSTRUCTIONS_CHARS]
+    if not instructions:
+        return None
+    raw_delay = evaluation.get("pending_check_delay_minutes")
+    delay = raw_delay if isinstance(raw_delay, int) and not isinstance(raw_delay, bool) else DEFAULT_PENDING_CHECK_DELAY_MINUTES
+    delay = max(MIN_PENDING_CHECK_DELAY_MINUTES, min(MAX_PENDING_CHECK_DELAY_MINUTES, delay))
+    return {"instructions": instructions, "delay_minutes": delay}
 
 
 def parse_evaluation_response(llm_response: str) -> FinalizerEvaluation:
@@ -422,6 +447,7 @@ def parse_evaluation_response(llm_response: str) -> FinalizerEvaluation:
             else None
         ),
         truncation_prevents_verification=bool(evaluation.get("truncation_prevents_verification", False)),
+        pending_work=parse_pending_work(evaluation),
     )
 
 

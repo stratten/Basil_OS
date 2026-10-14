@@ -5,10 +5,10 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
-from datetime import datetime
 from typing import Any, Mapping, Optional
 
 from ..infrastructure.connection import get_sync_connection, run_write_transaction
+from api.core.utc_time import utc_now_naive_iso
 
 
 class ExecutionApprovalPersistenceError(RuntimeError):
@@ -31,9 +31,6 @@ class ExecutionApprovalRepository:
     def _get_connection(self) -> sqlite3.Connection:
         return get_sync_connection(self.db_path)
 
-    @staticmethod
-    def _utcnow() -> str:
-        return datetime.utcnow().isoformat()
 
     @staticmethod
     def _require_nonblank(value: str, field_name: str) -> str:
@@ -97,7 +94,7 @@ class ExecutionApprovalRepository:
         cleaned_reason = self._require_nonblank(reason, "reason")
         cleaned_pattern = self._require_nonblank(generalized_pattern, "generalized_pattern")
         approval_id = str(uuid.uuid4())
-        timestamp = self._utcnow()
+        timestamp = utc_now_naive_iso()
 
         def _body(conn: sqlite3.Connection) -> str:
             if not conn.execute(
@@ -224,7 +221,7 @@ class ExecutionApprovalRepository:
         if type(expected_revision) is not int:
             raise ExecutionApprovalPersistenceError("expected_revision must be an integer")
         next_status = "approved" if approved else "denied"
-        timestamp = self._utcnow()
+        timestamp = utc_now_naive_iso()
 
         def _body(conn: sqlite3.Connection) -> None:
             row = conn.execute(
@@ -309,7 +306,7 @@ class ExecutionApprovalRepository:
         clean_id = self._require_nonblank(approval_id, "approval_id")
         if type(expected_revision) is not int:
             raise ExecutionApprovalPersistenceError("expected_revision must be an integer")
-        timestamp = self._utcnow()
+        timestamp = utc_now_naive_iso()
 
         def _body(conn: sqlite3.Connection) -> None:
             row = conn.execute(
@@ -357,7 +354,7 @@ class ExecutionApprovalRepository:
     ) -> int:
         if not agent_task_ids:
             return 0
-        timestamp = self._utcnow()
+        timestamp = utc_now_naive_iso()
         placeholders = ",".join("?" * len(agent_task_ids))
 
         def _body(conn: sqlite3.Connection) -> int:

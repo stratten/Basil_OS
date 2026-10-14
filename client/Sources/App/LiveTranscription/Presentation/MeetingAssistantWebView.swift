@@ -18,6 +18,7 @@ final class MeetingAssistantWebView: NSObject, WKScriptMessageHandler, WKNavigat
     var onClose: (() -> Void)?
     var onMinimize: (() -> Void)?
     var onToggleCollapse: ((Bool) -> Void)?
+    var onCompanionPaneExtent: ((CGFloat) -> Void)?
     var onIntent: ((MeetingBridgeIntent, [String: Any]) -> Void)?
 
     override init() {
@@ -32,6 +33,9 @@ final class MeetingAssistantWebView: NSObject, WKScriptMessageHandler, WKNavigat
 
         super.init()
 
+        webView.onFilesDropped = { [weak self] paths in
+            self?.sendCompanionPaths(paths, source: "drop")
+        }
         configuration.userContentController.add(self, name: "meetingBridge")
         webView.navigationDelegate = self
         webView.setValue(false, forKey: "drawsBackground")
@@ -137,6 +141,7 @@ final class MeetingAssistantWebView: NSObject, WKScriptMessageHandler, WKNavigat
 
     func tearDown() {
         hasReceivedReady = false
+        (webView as? FirstClickWebView)?.onFilesDropped = nil
         webView.navigationDelegate = nil
         userContentController.removeScriptMessageHandler(forName: "meetingBridge")
     }

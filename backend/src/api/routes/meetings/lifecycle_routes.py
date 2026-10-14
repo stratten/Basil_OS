@@ -20,6 +20,7 @@ from .meeting_grouping import (
     load_all_raw_meetings,
 )
 from .models import MeetingInfo, MeetingMetadataUpdate, MeetingResponse
+from api.core.utc_time import utc_now_naive_iso_z
 
 
 logger = logging.getLogger(__name__)
@@ -85,7 +86,7 @@ async def start_meeting(meeting_info: MeetingInfo) -> Dict[str, str]:
             name=meeting_info.name,
             purpose=meeting_info.purpose,
             participants=meeting_info.participants or [],
-            start_time=datetime.utcnow().isoformat() + "Z",  # Add Z suffix to indicate UTC
+            start_time=utc_now_naive_iso_z(),  # Add Z suffix to indicate UTC
             audio_path=str(meeting_dir / "audio.wav"),
             transcript_path=str(meeting_dir / "transcript.json"),
             is_post_processed=False
@@ -178,7 +179,7 @@ async def stop_meeting(meeting_id: str) -> Dict[str, Any]:
         
         # Update end time if not already set
         if not metadata.end_time:
-            metadata.end_time = datetime.utcnow().isoformat() + "Z"  # Add Z suffix to indicate UTC
+            metadata.end_time = utc_now_naive_iso_z()  # Add Z suffix to indicate UTC
             
             # Calculate duration if we have both start and end times
             if metadata.start_time:

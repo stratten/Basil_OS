@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from api.core.runtime import safe_spawn
 import contextlib
 import json
 import logging
@@ -239,7 +240,7 @@ async def get_default_browser() -> str:
         plist_path = os.path.expanduser(
             "~/Library/Preferences/com.apple.LaunchServices/com.apple.launchservices.secure.plist"
         )
-        process = await asyncio.create_subprocess_exec(
+        process = await safe_spawn.create_subprocess_exec(
             "defaults",
             "read",
             plist_path,
@@ -426,7 +427,7 @@ async def run_applescript(applescript: str, timeout_s: float = 30.0) -> tuple[bo
         temp_file_path = temp_file.name
 
     try:
-        process = await asyncio.create_subprocess_exec(
+        process = await safe_spawn.create_subprocess_exec(
             "osascript",
             temp_file_path,
             stdout=asyncio.subprocess.PIPE,

@@ -1118,7 +1118,7 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
             "adaptive_thinking": {
                 "type": "adaptive",
                 "effort_levels": ["low", "medium", "high", "xhigh", "max"],
-                "default_effort": "high",
+                "default_effort": "medium",
                 # Request provider summaries for Basil's reasoning UI; empty signed adaptive-thinking blocks remain valid and adapter-normalized.
                 "default_display": "summarized",
             },
@@ -1287,7 +1287,7 @@ CLOUD_REASONING_MODELS: Dict[str, CloudReasoningConfig] = {
             "adaptive_thinking": {
                 "type": "adaptive",
                 "effort_levels": ["low", "medium", "high", "xhigh", "max"],
-                "default_effort": "high",
+                "default_effort": "medium",
                 # Request provider summaries for Basil's reasoning UI; empty signed adaptive-thinking blocks remain valid and adapter-normalized.
                 "default_display": "summarized",
             },

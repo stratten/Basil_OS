@@ -4,14 +4,7 @@ import json
 import sqlite3
 from typing import Any, Dict, List, Optional, Tuple
 
-
-def safe_json_loads(value: Optional[str]) -> Any:
-    if not value:
-        return {}
-    try:
-        return json.loads(value)
-    except Exception:
-        return {}
+from api.core.json_helpers import json_loads_or_empty as safe_json_loads  # noqa: F401
 
 
 def get_finalizer_envelope(result_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:

@@ -15,6 +15,7 @@ from api.services.agent_processing.lifecycle.execution_graph.tool_run_watchdog i
 )
 
 from .models import BaseModel, BaseTool
+from .tool_result_shaper import shape_tool_envelope
 
 
 def classify_error(error_value: Any) -> str:
@@ -250,7 +251,7 @@ def create_tool_function(
                             else {}
                         ),
                     }
-                    output_str = json.dumps(envelope, ensure_ascii=False)
+                    output_str = json.dumps(shape_tool_envelope(envelope), ensure_ascii=False, default=str)
                 # Prefer service-provided data dicts only when the result is not an ExecutionResult envelope.
                 elif hasattr(result, "data") and isinstance(getattr(result, "data"), dict):
                     output_str = json.dumps(getattr(result, "data"), ensure_ascii=False)
@@ -259,11 +260,17 @@ def create_tool_function(
                     output_str = json.dumps(json_safe(result), ensure_ascii=False)
                 elif hasattr(result, "result") and isinstance(getattr(result, "result"), (dict, list)):
                     output_str = json.dumps(json_safe(getattr(result, "result")), ensure_ascii=False)
-            except Exception:
-                pass
+            except Exception as serialization_error:
+                tool_logger.warning(
+                    f"Tool output serialization failed for {service_name}.{method_name}: "
+                    f"{type(serialization_error).__name__}: {serialization_error}"
+                )
 
             # Fallback string representation
             if output_str is None:
+                tool_logger.warning(
+                    f"Tool output for {service_name}.{method_name} was not JSON-serializable; falling back to str(result)"
+                )
                 output_str = str(result)
 
             # TRUNCATION: Prevent oversized tool outputs from exceeding context limits

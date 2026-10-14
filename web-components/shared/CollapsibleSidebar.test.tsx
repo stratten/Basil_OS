@@ -63,4 +63,16 @@ describe('CollapsibleSidebar', () => {
     expect(container.firstElementChild?.tagName).toBe('DIV');
     expect(container.firstElementChild?.hasAttribute('aria-label')).toBe(false);
   });
+
+  it('marks an end-edge sidebar so its layers anchor to the right', () => {
+    act(() => {
+      root.render(
+        <CollapsibleSidebar expanded={false} side="end" className="test-sidebar" collapsedContent={<button type="button">Show</button>}>
+          <button type="button">Hide</button>
+        </CollapsibleSidebar>,
+      );
+    });
+    const sidebar = container.querySelector<HTMLElement>('aside.basil-collapsible-sidebar')!;
+    expect(sidebar.className).toBe('basil-collapsible-sidebar basil-collapsible-sidebar--end is-collapsed test-sidebar');
+  });
 });

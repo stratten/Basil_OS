@@ -427,6 +427,38 @@ def test_replace_notes_then_accept_dismiss_complete_reopen_cancel_flow(client_an
     assert reopen_response.json()["completed_at"] is None
 
 
+def test_set_status_route_sets_any_status_and_rejects_malformed_and_stale_requests(client_and_service) -> None:
+    client, _ = client_and_service
+    created = client.post(
+        "/api/v1/todos/items", json={"title": "Manual status", "idempotency_key": "manual-status"},
+    ).json()
+    url = f"/api/v1/todos/items/{created['id']}/status"
+
+    done = client.put(url, json={"status": "completed", "expected_revision": created["revision"]})
+    assert done.status_code == 200
+    assert done.json()["status"] == "completed"
+    assert done.json()["completed_at"]
+
+    back = client.put(url, json={"status": "ready_for_review", "expected_revision": done.json()["revision"]})
+    assert back.status_code == 200
+    assert back.json()["status"] == "ready_for_review"
+    assert back.json()["completed_at"] is None
+
+    stale = client.put(url, json={"status": "open", "expected_revision": created["revision"]})
+    assert stale.status_code == 409
+    assert stale.json()["item"]["id"] == created["id"]
+
+    assert client.put(url, json={"status": "archived", "expected_revision": back.json()["revision"]}).status_code == 422
+    assert client.put(url, json={"status": "open"}).status_code == 422
+    assert client.put(
+        url, json={"status": "open", "expected_revision": back.json()["revision"], "extra": 1},
+    ).status_code == 422
+    missing = client.put(
+        "/api/v1/todos/items/does-not-exist/status", json={"status": "open", "expected_revision": 1},
+    )
+    assert missing.status_code == 404
+
+
 def test_reference_routes_add_deduplicate_and_remove_with_optimistic_revision(client_and_service) -> None:
     client, _ = client_and_service
     created = client.post(

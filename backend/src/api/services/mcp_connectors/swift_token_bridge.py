@@ -21,10 +21,10 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Any, Dict, Optional
 
 from api.services.websocket_connection_manager import broadcast_json_text
+from api.core.utc_time import utc_now_naive
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +105,7 @@ async def _ask_swift_for_credentials(
     requested) ``refresh_token``, and the user-facing ``message`` /
     ``user_action_required`` strings if the request failed.
     """
-    correlation_id = f"mcp-token-req-{connection_id}-{int(datetime.utcnow().timestamp() * 1000)}"
+    correlation_id = f"mcp-token-req-{connection_id}-{int(utc_now_naive().timestamp() * 1000)}"
     loop = asyncio.get_running_loop()
     future: asyncio.Future = loop.create_future()
     _token_response_waiters[correlation_id] = future

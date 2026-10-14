@@ -44,7 +44,7 @@ def compute_environment_signature(
 class _Entry:
     signature: str
     value: Any
-    created_at: float
+    last_used_at: float
 
 
 class WarmArtifactCache:
@@ -81,8 +81,9 @@ class WarmArtifactCache:
         if (
             entry is not None
             and entry.signature == signature
-            and (now - entry.created_at) < ttl_seconds
+            and (now - entry.last_used_at) < ttl_seconds
         ):
+            entry.last_used_at = now
             return entry.value, True
 
         lock = await self._lock_for(key)
@@ -92,12 +93,13 @@ class WarmArtifactCache:
             if (
                 entry is not None
                 and entry.signature == signature
-                and (now - entry.created_at) < ttl_seconds
+                and (now - entry.last_used_at) < ttl_seconds
             ):
+                entry.last_used_at = now
                 return entry.value, True
             value = await builder()
             self._entries[key] = _Entry(
-                signature=signature, value=value, created_at=time.monotonic()
+                signature=signature, value=value, last_used_at=time.monotonic()
             )
             return value, False
 

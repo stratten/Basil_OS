@@ -138,7 +138,11 @@ class TodoAgentTaskBridge:
             f"{attached_references}\n\n"
             f"{prior_investigation_handoff}\n\n"
             "Leave concrete evidence of what you did (files touched, messages sent, "
-            "research found) in your final result so the user can verify the work."
+            "research found) in your final result so the user can verify the work.\n\n"
+            "If a connector or delegated agent reports that the work you started is queued or still "
+            "running, do not report a partial result: wait with wait_before_checking_again for short "
+            "operations, or call schedule_agent_follow_up to check again later, and tell the user what "
+            "is pending and when you will check."
         )
         try:
             result = await self.agent_task_submission_service.process_agent_task_direct(

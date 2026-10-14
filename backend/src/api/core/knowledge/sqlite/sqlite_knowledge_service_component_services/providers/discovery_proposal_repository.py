@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from datetime import datetime
 import hashlib
-import json
 import sqlite3
 import uuid
 
 from ..infrastructure.connection import get_sync_connection, run_write_transaction
+from api.core.json_helpers import canonical_json as _canonical_json
+from api.core.json_helpers import load_json_array, load_json_object
+from api.core.utc_time import utc_now_naive_iso
 
 
 class ProviderDiscoveryProposalPersistenceError(RuntimeError):
@@ -43,45 +44,12 @@ def _require_mapping_sequence(value: object, field_name: str) -> list[dict[str, 
     ]
 
 
-def _canonical_json(value: object) -> str:
-    return json.dumps(
-        value,
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-    )
-
-
 def _load_json_array(raw: object, field_name: str) -> list[object]:
-    if not isinstance(raw, str):
-        raise ProviderDiscoveryProposalPersistenceError(f"{field_name} is missing")
-    try:
-        value = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise ProviderDiscoveryProposalPersistenceError(
-            f"{field_name} contains invalid JSON"
-        ) from exc
-    if not isinstance(value, list):
-        raise ProviderDiscoveryProposalPersistenceError(
-            f"{field_name} must contain a JSON array"
-        )
-    return value
+    return load_json_array(raw, field_name, ProviderDiscoveryProposalPersistenceError)
 
 
 def _load_json_object(raw: object, field_name: str) -> dict[str, object]:
-    if not isinstance(raw, str):
-        raise ProviderDiscoveryProposalPersistenceError(f"{field_name} is missing")
-    try:
-        value = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise ProviderDiscoveryProposalPersistenceError(
-            f"{field_name} contains invalid JSON"
-        ) from exc
-    if not isinstance(value, dict):
-        raise ProviderDiscoveryProposalPersistenceError(
-            f"{field_name} must contain a JSON object"
-        )
-    return dict(value)
+    return load_json_object(raw, field_name, ProviderDiscoveryProposalPersistenceError)
 
 
 def _row_to_proposal(
@@ -184,7 +152,7 @@ class ProviderDiscoveryProposalRepository:
             _canonical_json(fingerprint_payload).encode("utf-8")
         ).hexdigest()
         proposal_id = str(uuid.uuid4())
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = utc_now_naive_iso()
 
         def _create_or_get(conn: sqlite3.Connection) -> tuple[sqlite3.Row, bool]:
             task_row = conn.execute(

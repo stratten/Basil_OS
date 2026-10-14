@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from datetime import datetime
 import hashlib
-import json
 import sqlite3
 import uuid
 
 from ..infrastructure.connection import get_sync_connection, run_write_transaction
+from api.core.json_helpers import canonical_json as _canonical_json
+from api.core.json_helpers import load_json_array
+from api.core.utc_time import utc_now_naive_iso
 
 
 class ProviderTargetAuthorizationPersistenceError(RuntimeError):
@@ -39,24 +40,8 @@ def _optional_nonblank(value: object, field_name: str) -> str | None:
     return _require_nonblank(value, field_name)
 
 
-def _canonical_json(value: object) -> str:
-    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-
-
 def _load_json_array(raw: object, field_name: str) -> list[object]:
-    if not isinstance(raw, str):
-        raise ProviderTargetAuthorizationPersistenceError(f"{field_name} is missing")
-    try:
-        value = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise ProviderTargetAuthorizationPersistenceError(
-            f"{field_name} contains invalid JSON"
-        ) from exc
-    if not isinstance(value, list):
-        raise ProviderTargetAuthorizationPersistenceError(
-            f"{field_name} must contain a JSON array"
-        )
-    return value
+    return load_json_array(raw, field_name, ProviderTargetAuthorizationPersistenceError)
 
 
 def _row_to_authorization(row: sqlite3.Row, *, idempotent_replay: bool) -> dict[str, object]:
@@ -250,7 +235,7 @@ class ProviderTargetAuthorizationRepository:
             [_require_nonblank(path, "reference_paths entry") for path in reference_paths]
         )
         serialized_choices = _canonical_json([dict(item) for item in choice_snapshot])
-        created_at = datetime.utcnow().isoformat()
+        created_at = utc_now_naive_iso()
         new_id = str(uuid.uuid4())
 
         def write(conn: sqlite3.Connection) -> tuple[sqlite3.Row, bool]:

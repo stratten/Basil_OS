@@ -12,6 +12,7 @@ import os
 import sys
 import logging
 import subprocess
+from api.core.runtime import safe_spawn
 
 # Use the exact same logger setup as other audio modules
 from ...core.logging.api_logger import setup_api_logger
@@ -121,7 +122,7 @@ def _verify_ffmpeg_bundle_structure():
                 
                 # Try to get file type
                 try:
-                    result = subprocess.run(['file', ffmpeg_exe_path], 
+                    result = safe_spawn.run(['file', ffmpeg_exe_path], 
                                           capture_output=True, text=True, timeout=5)
                     logger.info(f"  File type: {result.stdout.strip()}")
                 except Exception as fe:

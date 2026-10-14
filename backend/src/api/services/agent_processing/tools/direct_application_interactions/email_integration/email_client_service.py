@@ -19,6 +19,7 @@ Operations are split into domain mixins:
 import asyncio
 import logging
 import subprocess
+from api.core.runtime import safe_spawn
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 
@@ -241,7 +242,7 @@ class EmailClientService(EmailRetrievalMixin, EmailCompositionMixin, EmailOrgani
     async def _verify_client_availability(self, client: EmailClient) -> bool:
         """Verify that an email client is actually installed and available."""
         try:
-            result = subprocess.run(
+            result = safe_spawn.run(
                 ["mdfind", f"kMDItemCFBundleIdentifier == '{client.bundle_id}'"],
                 capture_output=True,
                 text=True,

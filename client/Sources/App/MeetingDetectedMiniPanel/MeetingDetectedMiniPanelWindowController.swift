@@ -157,17 +157,7 @@ final class MeetingDetectedMiniPanelWindowController: NSObject, NSWindowDelegate
             backing: .buffered,
             defer: false
         )
-        panel.title = "Meeting/Call Detected"
-        panel.level = .floating
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
-        panel.isFloatingPanel = true
-        panel.hidesOnDeactivate = false
-        panel.becomesKeyOnlyIfNeeded = true
-        panel.worksWhenModal = true
-        panel.hasShadow = false
-        panel.isOpaque = false
-        panel.backgroundColor = .clear
-        panel.isMovableByWindowBackground = true
+        panel.configureMiniPanel(title: "Meeting/Call Detected", transparency: .clearWithoutShadow)
         panel.delegate = self
 
         let host = MeetingDetectedMiniPanelWebView()

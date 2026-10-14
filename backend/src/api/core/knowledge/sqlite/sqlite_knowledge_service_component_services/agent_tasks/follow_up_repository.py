@@ -5,10 +5,10 @@ from __future__ import annotations
 import asyncio
 import sqlite3
 import uuid
-from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, TypeVar
 
 from ..infrastructure.connection import run_read_transaction, run_write_transaction_async
+from api.core.utc_time import utc_now_iso_seconds
 
 MAX_PENDING_FOLLOW_UPS_PER_ROOT = 5
 MAX_TOTAL_FOLLOW_UPS_PER_ROOT = 50
@@ -24,10 +24,6 @@ T = TypeVar("T")
 
 class FollowUpLimitExceeded(ValueError):
     """Raised when a task chain already holds the maximum number of follow-ups."""
-
-
-def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
 def _row_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
@@ -56,7 +52,7 @@ class AgentTaskFollowUpRepository:
         due_at: str,
     ) -> Dict[str, Any]:
         follow_up_id = str(uuid.uuid4())
-        now = utc_now_iso()
+        now = utc_now_iso_seconds()
 
         def _body(conn: sqlite3.Connection) -> Dict[str, Any]:
             pending = conn.execute(
@@ -112,6 +108,35 @@ class AgentTaskFollowUpRepository:
 
         return await self._read(_body)
 
+    async def earliest_pending_due_by_root(self, root_task_ids: List[str]) -> Dict[str, str]:
+        """Map each given chain root to the due time of its soonest still-scheduled follow-up."""
+        roots = [root for root in dict.fromkeys(root_task_ids) if root]
+        if not roots:
+            return {}
+
+        def _body(conn: sqlite3.Connection) -> Dict[str, str]:
+            placeholders = ",".join("?" for _ in roots)
+            rows = conn.execute(
+                "SELECT root_task_id, MIN(due_at) AS due_at FROM agent_task_follow_ups "
+                f"WHERE status = 'scheduled' AND root_task_id IN ({placeholders}) GROUP BY root_task_id",
+                roots,
+            ).fetchall()
+            return {row["root_task_id"]: row["due_at"] for row in rows}
+
+        return await self._read(_body)
+
+    async def all_pending_due_by_root(self) -> Dict[str, str]:
+        """Map every chain root that still has a scheduled follow-up to its soonest due time."""
+
+        def _body(conn: sqlite3.Connection) -> Dict[str, str]:
+            rows = conn.execute(
+                "SELECT root_task_id, MIN(due_at) AS due_at FROM agent_task_follow_ups "
+                "WHERE status = 'scheduled' GROUP BY root_task_id"
+            ).fetchall()
+            return {row["root_task_id"]: row["due_at"] for row in rows}
+
+        return await self._read(_body)
+
     async def claim_due_follow_ups(self, *, now_iso: str, limit: int = 5) -> List[Dict[str, Any]]:
         """Atomically move due ``scheduled`` rows to ``dispatching`` and return them."""
 
@@ -135,7 +160,7 @@ class AgentTaskFollowUpRepository:
         return await self._write("agent_follow_up_claim", _body)
 
     async def mark_submitted(self, follow_up_id: str, *, follow_up_agent_task_id: str) -> bool:
-        now = utc_now_iso()
+        now = utc_now_iso_seconds()
 
         def _body(conn: sqlite3.Connection) -> bool:
             return bool(
@@ -150,7 +175,7 @@ class AgentTaskFollowUpRepository:
     async def finish_without_submission(self, follow_up_id: str, *, status: str, error_message: str) -> bool:
         if status not in _FINISH_STATUSES:
             raise ValueError(f"Unsupported follow-up finish status: {status!r}")
-        now = utc_now_iso()
+        now = utc_now_iso_seconds()
 
         def _body(conn: sqlite3.Connection) -> bool:
             return bool(
@@ -163,7 +188,7 @@ class AgentTaskFollowUpRepository:
         return await self._write("agent_follow_up_finish", _body)
 
     async def defer_follow_up(self, follow_up_id: str, *, due_at: str, reason: str) -> bool:
-        now = utc_now_iso()
+        now = utc_now_iso_seconds()
 
         def _body(conn: sqlite3.Connection) -> bool:
             return bool(
@@ -176,7 +201,7 @@ class AgentTaskFollowUpRepository:
         return await self._write("agent_follow_up_defer", _body)
 
     async def cancel_pending_for_root(self, root_task_id: str, *, reason: str) -> int:
-        now = utc_now_iso()
+        now = utc_now_iso_seconds()
 
         def _body(conn: sqlite3.Connection) -> int:
             return int(
@@ -190,7 +215,7 @@ class AgentTaskFollowUpRepository:
 
     async def recover_interrupted_dispatches(self) -> int:
         """Return rows a previous process claimed but never finished to ``scheduled``."""
-        now = utc_now_iso()
+        now = utc_now_iso_seconds()
 
         def _body(conn: sqlite3.Connection) -> int:
             return int(

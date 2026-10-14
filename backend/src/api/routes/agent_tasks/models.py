@@ -215,6 +215,17 @@ class AgentTaskHistoryResponse(BaseModel):
     has_more: bool
 
 
+class PendingFollowUpItem(BaseModel):
+    """Soonest still-scheduled follow-up check for one Agent Task chain."""
+    root_task_id: str
+    due_at: str
+
+
+class PendingFollowUpsResponse(BaseModel):
+    """Every Agent Task chain that is currently waiting on a scheduled follow-up check."""
+    follow_ups: List[PendingFollowUpItem] = []
+
+
 class AgentTaskArtifactPreviewResponse(BaseModel):
     """Selected preview capability for one local Agent Task artifact."""
 

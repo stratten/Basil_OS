@@ -28,21 +28,12 @@ final class ReactBrowserAutomationSettingsWebView: NSObject {
 
     func callJS(_ function: String, args: Any...) {
         guard args.count == 1 else { return }
-        webView.callAsyncJavaScript(
-            "\(function)(event)",
-            arguments: ["event": args[0]],
-            in: nil,
-            in: .page
-        ) { result in
-            if case .failure(let error) = result {
-                #if DEBUG
-                DevLogger.shared.error(
-                    "[BROWSER_AUTOMATION_SETTINGS_WEB] callAsyncJavaScript failed for \(function): \(error)",
-                    context: "ReactBrowserAutomationSettingsWebView"
-                )
-                #endif
-            }
-        }
+        webView.callBasilEventHandler(
+            function,
+            event: args[0],
+            logTag: "BROWSER_AUTOMATION_SETTINGS_WEB",
+            logContext: "ReactBrowserAutomationSettingsWebView"
+        )
     }
 
     func tearDown() {

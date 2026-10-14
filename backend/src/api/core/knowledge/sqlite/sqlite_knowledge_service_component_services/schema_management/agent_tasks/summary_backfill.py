@@ -5,16 +5,9 @@ import logging
 import sqlite3
 from typing import Any, Dict, List, Optional, Tuple
 
+from api.core.json_helpers import json_loads_or_empty as safe_json_loads  # noqa: F401
+
 logger = logging.getLogger(__name__)
-
-
-def safe_json_loads(value: Optional[str]) -> Any:
-    if not value:
-        return {}
-    try:
-        return json.loads(value)
-    except Exception:
-        return {}
 
 
 def get_finalizer_envelope(result_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:

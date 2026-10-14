@@ -8,7 +8,7 @@ This replaces the primitive regex-based approach with intelligent analysis.
 import json
 import logging
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from api.core.utc_time import utc_now_naive_iso_z
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +63,7 @@ class StyleAnalyzer:
                 'style_attributes': style_analysis,
                 'confidence': confidence,
                 'sample_count': len(samples),
-                'analyzed_at': datetime.utcnow().isoformat() + "Z"
+                'analyzed_at': utc_now_naive_iso_z()
             }
         except Exception as e:
             self.logger.error(f"Error during LLM analysis: {e}", exc_info=True)
@@ -246,7 +246,7 @@ ANALYSIS GUIDELINES:
             },
             'confidence': confidence * 0.5,  # Lower confidence for fallback
             'sample_count': sample_count,
-            'analyzed_at': datetime.utcnow().isoformat() + "Z"
+            'analyzed_at': utc_now_naive_iso_z()
         }
     
     def _calculate_confidence(self, sample_count: int) -> float:
@@ -289,5 +289,5 @@ ANALYSIS GUIDELINES:
             },
             'confidence': 0.0,
             'sample_count': 0,
-            'analyzed_at': datetime.utcnow().isoformat() + "Z"
+            'analyzed_at': utc_now_naive_iso_z()
         }

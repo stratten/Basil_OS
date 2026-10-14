@@ -71,20 +71,8 @@ final class TranscriptionWindowController: NSObject, NSWindowDelegate, Appearanc
             backing: .buffered,
             defer: false
         )
-        panel.title = "Transcription"
-        panel.level = .floating
-        panel.collectionBehavior = [
-            .canJoinAllSpaces,
-            .fullScreenAuxiliary,
-            .stationary,
-            .ignoresCycle
-        ]
-        panel.isFloatingPanel = true
-        panel.hidesOnDeactivate = false
-        panel.becomesKeyOnlyIfNeeded = true
-        panel.worksWhenModal = true
+        panel.configureMiniPanel(title: "Transcription")
         print("📢 Setting window delegate")
-        panel.isMovableByWindowBackground = true
         #if DEBUG
         DevLogger.shared.info("📢 Setting window delegate", context: "TranscriptionWindowController")
         #endif

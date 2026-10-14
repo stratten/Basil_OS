@@ -17,6 +17,7 @@ from ..sqlite.sqlite_knowledge_service_component_services.infrastructure.connect
     get_async_connection,
 )
 from .contact_context import normalize_email_address
+from api.core.utc_time import utc_now_naive_iso_z
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +104,7 @@ class ContactsManager:
             
             # Create new contact
             contact_id = str(uuid.uuid4())
-            now = datetime.utcnow().isoformat() + "Z"
+            now = utc_now_naive_iso_z()
             
             await conn.execute(
                 """
@@ -172,7 +173,7 @@ class ContactsManager:
             raise ValueError(f"Invalid contact email: {contact_email}")
 
         async with self._get_connection() as conn:
-            now = datetime.utcnow().isoformat() + "Z"
+            now = utc_now_naive_iso_z()
             await conn.execute(
                 """
                 UPDATE contact_relationships 

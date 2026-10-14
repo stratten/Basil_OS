@@ -20,9 +20,7 @@ final class AudioFileUploadWindowController: NSWindowController, NSWindowDelegat
             backing: .buffered,
             defer: false
         )
-        window.title = "Upload Audio File"
-        window.isReleasedWhenClosed = true
-        window.isMovableByWindowBackground = true
+        window.configureCustomChromeWindow(title: "Upload Audio File", releasedWhenClosed: true)
         window.contentMinSize = minimumWindowSize
         window.contentMaxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         window.center()

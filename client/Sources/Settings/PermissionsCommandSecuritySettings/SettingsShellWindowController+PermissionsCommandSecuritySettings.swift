@@ -155,12 +155,12 @@ extension SettingsShellWindowController {
             webView.sendIntentResult(requestId: requestId, status: "error", message: "The Settings window is unavailable.")
             return
         }
-        let alert = NSAlert()
-        alert.messageText = "Remove Whitelisted Command?"
-        alert.informativeText = "This command pattern will no longer be auto-approved. You can re-add it later if needed."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Remove")
-        alert.addButton(withTitle: "Cancel")
+        let alert = NSAlert(
+            title: "Remove Whitelisted Command?",
+            message: "This command pattern will no longer be auto-approved. You can re-add it later if needed.",
+            style: .warning,
+            buttons: ["Remove", "Cancel"]
+        )
 
         alert.beginSheetModal(for: window) { [weak self] response in
             guard response == .alertFirstButtonReturn else {

@@ -6,10 +6,10 @@ import hashlib
 import json
 import uuid
 from collections.abc import Mapping
-from datetime import datetime
 from typing import Any
 
 from ..infrastructure.connection import get_sync_connection, run_write_transaction
+from api.core.utc_time import utc_now_naive_iso
 
 _MAX_METADATA_BYTES = 8_000
 
@@ -68,7 +68,7 @@ class ProviderRuntimeEvidenceRepository:
         fingerprint = hashlib.sha256(
             f"{profile_id}\0{executable}\0{version}\0{major}\0{kind}".encode("utf-8")
         ).hexdigest()
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = utc_now_naive_iso()
 
         def write(conn: Any) -> Any:
             existing = conn.execute(

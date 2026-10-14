@@ -150,6 +150,12 @@ async def startup_event():
         except OSError as credential_error:
             logger.error(f"🚨 Backend credentials could not be prepared: {credential_error}", exc_info=True)
         logger.info("🔄 Startup event: beginning initialization")
+        try:
+            from .core.runtime.event_loop_watchdog import start_event_loop_watchdog
+
+            await start_event_loop_watchdog()
+        except Exception as watchdog_error:
+            logger.warning(f"Startup: event-loop watchdog could not start: {watchdog_error}")
         global model_manager, model_downloader
 
         # Reconcile the meeting transcript search index with on-disk meetings so
@@ -525,6 +531,19 @@ async def startup_event():
         except Exception as e:
             logger.error(f"Startup: Failed to initialize Meeting Detection runtime: {e}", exc_info=True)
         
+        # Initialize the live Meeting Companion runtime (observes recorders; a session only starts when enabled)
+        logger.info("Startup: Initializing Meeting Companion runtime...")
+        try:
+            from .services.meeting_companion.runtime import initialize_meeting_companion_runtime
+
+            if validation_runtime_profile is None:
+                await initialize_meeting_companion_runtime()
+                logger.info("Startup: Meeting Companion runtime initialized successfully")
+            else:
+                logger.info("Startup: Meeting Companion runtime disabled for validation runtime")
+        except Exception as e:
+            logger.error(f"Startup: Failed to initialize Meeting Companion runtime: {e}", exc_info=True)
+
         # Log system information
         logger.info(f"Startup: Application '{settings.APP_NAME}' version {settings.API_VERSION}")
         logger.info(f"Python version: {sys.version}")
@@ -760,6 +779,12 @@ async def shutdown_event():
     """Perform cleanup tasks on application shutdown."""
     logger.info("💤 Shutdown event: beginning cleanup")
     try:
+        from .core.runtime.event_loop_watchdog import stop_event_loop_watchdog
+
+        await stop_event_loop_watchdog()
+    except Exception as exc:
+        logger.warning("Shutdown: Error stopping the event-loop watchdog: %s", exc)
+    try:
         from .dependencies import _local_preview_registry as _preview_registry_snapshot
         from .services.agent_processing.tools.direct_application_interactions.local_web_preview.local_preview_server_launcher import (
             LocalPreviewServerLauncher,
@@ -826,6 +851,15 @@ async def shutdown_event():
         logger.info("Shutdown: Ambient Suggestion runtime cleaned up successfully.")
     except Exception as e:
         logger.error(f"🚨 Shutdown: Error cleaning up Ambient Suggestion runtime: {e}", exc_info=True)
+
+    # Cleanup Meeting Companion runtime (flushes and closes any live Companion sessions)
+    logger.info("Shutdown: Cleaning up Meeting Companion runtime...")
+    try:
+        from .services.meeting_companion.runtime import cleanup_meeting_companion_runtime
+        await cleanup_meeting_companion_runtime()
+        logger.info("Shutdown: Meeting Companion runtime cleaned up successfully.")
+    except Exception as e:
+        logger.error(f"Shutdown: Error cleaning up Meeting Companion runtime: {e}", exc_info=True)
 
     # Cleanup Meeting Detection runtime
     logger.info("Shutdown: Cleaning up Meeting Detection runtime...")

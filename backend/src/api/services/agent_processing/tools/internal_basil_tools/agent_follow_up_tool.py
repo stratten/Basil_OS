@@ -12,6 +12,7 @@ from typing import Any, Callable, List, Optional, Tuple
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
+from api.services.agent_follow_ups.follow_up_events import notify_follow_ups_changed
 from api.services.agent_processing.shared.agent_runtime_context import get_current_agent_context
 from api.services.agent_processing.shared.workflow_budget_pause import (
     current_pausable_deadline,
@@ -162,6 +163,7 @@ def create_agent_follow_up_tools(
             )
         except FollowUpLimitExceeded as exc:
             return _json({"success": False, "error": str(exc)})
+        await notify_follow_ups_changed([root_id])
         return _json(
             {
                 "success": True,
@@ -178,6 +180,7 @@ def create_agent_follow_up_tools(
             return _json({"success": False, "error": "No active Agent Task."})
         detail = (reason or "").strip() or "no reason given"
         canceled = await get_repository().cancel_pending_for_root(root_id, reason=f"Canceled by the agent: {detail}")
+        await notify_follow_ups_changed([root_id])
         return _json({"success": True, "canceled_follow_ups": canceled})
 
     tools: List[StructuredTool] = [

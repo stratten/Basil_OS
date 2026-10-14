@@ -45,15 +45,7 @@ final class SetupAssistantResumeToastWindowController: NSObject, NSWindowDelegat
             backing: .buffered,
             defer: false
         )
-        panel.title = "Resume Setup"
-        panel.level = .floating
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
-        panel.isFloatingPanel = true
-        panel.hidesOnDeactivate = false
-        panel.becomesKeyOnlyIfNeeded = true
-        panel.worksWhenModal = true
-        panel.isReleasedWhenClosed = false
-        panel.isMovableByWindowBackground = true
+        panel.configureMiniPanel(title: "Resume Setup", ignoresWindowCycling: false, releasedWhenClosed: false)
         panel.delegate = self
         panel.alphaValue = 0
 

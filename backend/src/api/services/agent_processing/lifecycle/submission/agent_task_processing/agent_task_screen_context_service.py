@@ -10,6 +10,7 @@ Handles screen context capture for agent tasks, including:
 import asyncio
 import logging
 import subprocess
+from api.core.runtime import safe_spawn
 from typing import Dict, Any
 from pathlib import Path
 
@@ -136,7 +137,7 @@ class AgentTaskScreenContextService:
         """
         try:
             # Use macOS-specific method to get active app
-            result = subprocess.run([
+            result = safe_spawn.run([
                 'osascript', '-e', 
                 'tell application "System Events" to get name of first application process whose frontmost is true'
             ], capture_output=True, text=True, timeout=5)

@@ -22,18 +22,12 @@ final class ReactAppearanceThemesWebView: NSObject {
 
     func callJS(_ function: String, args: Any...) {
         guard args.count == 1 else { return }
-        webView.callAsyncJavaScript(
-            "\(function)(event)",
-            arguments: ["event": args[0]],
-            in: nil,
-            in: .page
-        ) { result in
-            if case .failure(let error) = result {
-                #if DEBUG
-                DevLogger.shared.error("[APPEARANCE_THEMES_WEB] callAsyncJavaScript failed for \(function): \(error)", context: "ReactAppearanceThemesWebView")
-                #endif
-            }
-        }
+        webView.callBasilEventHandler(
+            function,
+            event: args[0],
+            logTag: "APPEARANCE_THEMES_WEB",
+            logContext: "ReactAppearanceThemesWebView"
+        )
     }
 
     func tearDown() {

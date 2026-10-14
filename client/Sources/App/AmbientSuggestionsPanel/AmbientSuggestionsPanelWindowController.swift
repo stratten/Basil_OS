@@ -54,14 +54,7 @@ final class AmbientSuggestionsPanelWindowController: NSObject, NSWindowDelegate,
             backing: .buffered,
             defer: false
         )
-        panel.title = "Proactive Suggestions"
-        panel.level = .floating
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
-        panel.isFloatingPanel = true
-        panel.hidesOnDeactivate = false
-        panel.becomesKeyOnlyIfNeeded = true
-        panel.worksWhenModal = true
-        panel.isMovableByWindowBackground = true
+        panel.configureMiniPanel(title: "Proactive Suggestions")
         panel.delegate = self
         panel.minSize = expandedMinSize
         panel.contentMinSize = expandedMinSize

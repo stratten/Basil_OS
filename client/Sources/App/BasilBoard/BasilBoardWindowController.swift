@@ -105,13 +105,10 @@ final class BasilBoardWindowController: NSObject, NSWindowDelegate, AppearanceRe
             backing: .buffered,
             defer: false
         )
-        newPanel.title = Self.windowTitle(forDetachedTabId: detachedTabId)
-        newPanel.isReleasedWhenClosed = false
-        newPanel.level = .floating
-        newPanel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
-        newPanel.hidesOnDeactivate = false
-        newPanel.alphaValue = 1.0
-        newPanel.isMovableByWindowBackground = true
+        newPanel.configureFloatingWidget(
+            title: Self.windowTitle(forDetachedTabId: detachedTabId),
+            releasedWhenClosed: false
+        )
         newPanel.minSize = Self.minimumWindowSize(forDetachedTabId: detachedTabId)
         newPanel.delegate = self
         keyboardShortcuts = WindowKeyboardShortcuts(window: newPanel)

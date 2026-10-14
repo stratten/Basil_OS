@@ -13,6 +13,7 @@ from ..personalization_models import (
 from ..sqlite.sqlite_knowledge_service_component_services.infrastructure.connection import (
     get_async_connection,
 )
+from api.core.utc_time import utc_now_naive, utc_now_naive_iso_z
 
 logger = logging.getLogger(__name__)
 
@@ -60,8 +61,8 @@ class ProfileManager:
                     default_formality=row["default_formality"],
                     default_tone=row["default_tone"],
                     custom_instructions=row["custom_instructions"],
-                    created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else datetime.utcnow(),
-                    updated_at=datetime.fromisoformat(row["updated_at"]) if row["updated_at"] else datetime.utcnow(),
+                    created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else utc_now_naive(),
+                    updated_at=datetime.fromisoformat(row["updated_at"]) if row["updated_at"] else utc_now_naive(),
                     profile_version=row["profile_version"]
                 )
             return None
@@ -74,7 +75,7 @@ class ProfileManager:
         """Create or update user profile."""
         async with self._get_connection() as conn:
             existing = await self.get_user_profile(user_id)
-            now = datetime.utcnow().isoformat() + "Z"
+            now = utc_now_naive_iso_z()
             if existing:
                 await conn.execute(
                     """

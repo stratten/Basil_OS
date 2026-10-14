@@ -141,18 +141,12 @@ final class AssistantSessionWebView: NSObject {
 
     func callJS(_ function: String, args: Any...) {
         guard args.count == 1 else { return }
-        webView.callAsyncJavaScript(
-            "\(function)(event)",
-            arguments: ["event": args[0]],
-            in: nil,
-            in: .page
-        ) { result in
-            if case .failure(let error) = result {
-                #if DEBUG
-                DevLogger.shared.error("[ASSISTANT_SESSION_WEB] callAsyncJavaScript failed for \(function): \(error)", context: "AssistantSessionWebView")
-                #endif
-            }
-        }
+        webView.callBasilEventHandler(
+            function,
+            event: args[0],
+            logTag: "ASSISTANT_SESSION_WEB",
+            logContext: "AssistantSessionWebView"
+        )
     }
 
     func showNativeModelPicker(

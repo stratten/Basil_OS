@@ -4,6 +4,7 @@ Provides dynamic AppleScript generation and execution for unlimited macOS automa
 """
 
 import asyncio
+from api.core.runtime import safe_spawn
 import contextlib
 import re
 import subprocess
@@ -442,7 +443,7 @@ class GenericAppleScriptService:
             try:
                 # Execute AppleScript using osascript
                 # Extended timeout to allow for permission dialogs
-                process = await asyncio.create_subprocess_exec(
+                process = await safe_spawn.create_subprocess_exec(
                     'osascript', temp_file_path,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE

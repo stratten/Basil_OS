@@ -1,0 +1,444 @@
+/* The Companion pane only arranges existing Notetaker pieces: .meeting-record-button, .meeting-transcript-icon-button, .meeting-section-heading, .meeting-status-row, .meeting-analysis-model-row, .meeting-participant-chip, .meeting-metadata-name-input, .meeting-analysis-custom-instructions and .meeting-history-load-more-error. Colors, type sizes, radii and spacing come from those classes and the shared tokens. */
+
+.companion-pane {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-left: 1px solid var(--separator-color);
+  background: var(--background-primary);
+  color: var(--text-primary);
+}
+
+.companion-pane--detached {
+  flex: 1 1 auto;
+  height: 100%;
+  border-left: 0;
+}
+
+.companion-detached-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+
+.companion-detached-body[hidden] {
+  display: none;
+}
+
+.companion-pane > .meeting-tools-header,
+.companion-pane > .meeting-status-row,
+.companion-pane > .meeting-analysis-model-row,
+.companion-pane > .meeting-history-load-more-error {
+  padding-left: var(--padding-m);
+  padding-right: var(--padding-m);
+}
+
+.companion-pane > .meeting-tools-header {
+  margin-bottom: 0;
+  padding-top: var(--padding-s);
+  padding-bottom: var(--padding-xs);
+}
+
+.companion-pane > .meeting-analysis-model-row {
+  margin-top: var(--padding-xs);
+}
+
+.companion-status-row .meeting-transcription-state {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.companion-notice-row .meeting-status-message {
+  white-space: normal;
+}
+
+.companion-pane > .meeting-history-load-more-error {
+  padding-top: var(--padding-xs);
+  padding-bottom: 0;
+}
+
+.companion-scroll {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--padding-m);
+  min-height: 160px;
+  overflow-y: auto;
+  padding: var(--padding-s) var(--padding-m);
+}
+
+.companion-state-note {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-small);
+}
+
+.companion-off {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--padding-m);
+}
+
+.companion-off p {
+  margin: 0;
+  font-size: var(--font-size-callout);
+  line-height: 1.45;
+}
+
+.companion-feed,
+.companion-sources,
+.companion-watches {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-s);
+}
+
+.companion-feed .meeting-section-heading,
+.companion-sources .meeting-section-heading,
+.companion-watches .meeting-section-heading {
+  margin: 0;
+}
+
+.companion-feed .meeting-history-load-more-button {
+  align-self: flex-start;
+  margin: 0;
+}
+
+.companion-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--padding-s);
+  padding: 10px var(--padding-m);
+  border: 1px solid var(--field-border);
+  border-radius: var(--corner-radius-medium);
+  background: var(--background-primary);
+  box-shadow: var(--shadow-light);
+}
+
+.companion-notice p {
+  margin: 0;
+  font-size: var(--font-size-callout);
+}
+
+.companion-notice strong {
+  font-family: var(--font-family-medium);
+  font-weight: 400;
+}
+
+.companion-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--padding-s) 10px;
+  border: 1px solid var(--field-border);
+  border-radius: var(--corner-radius-medium);
+  background: var(--background-secondary);
+  color: var(--text-primary);
+}
+
+.companion-item.is-pinned {
+  border-color: var(--primary);
+}
+
+.companion-item-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--padding-s);
+}
+
+.companion-item-kind {
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+  font-weight: 400;
+}
+
+.companion-item-body {
+  overflow-wrap: anywhere;
+  font-size: var(--font-size-callout);
+  line-height: 1.45;
+}
+
+.companion-item-body > :first-child {
+  margin-top: 0;
+}
+
+.companion-item-body > :last-child {
+  margin-bottom: 0;
+}
+
+.companion-item-note {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-small);
+}
+
+.companion-citations summary {
+  color: var(--secondary);
+  cursor: pointer;
+  font-size: var(--font-size-status-small);
+}
+
+.companion-citations ul {
+  margin: 6px 0 0;
+  padding-left: var(--padding-l);
+}
+
+.companion-citation-path {
+  overflow-wrap: anywhere;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-code-small);
+}
+
+.companion-citation-excerpt {
+  max-height: 120px;
+  margin: 4px 0 6px;
+  padding: 6px var(--padding-s);
+  overflow: auto;
+  border: 1px solid var(--field-border);
+  border-radius: var(--corner-radius-small);
+  background: var(--background-primary);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-code-small);
+  white-space: pre;
+}
+
+.companion-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.companion-item-dismiss {
+  margin-left: auto;
+}
+
+.companion-pane .meeting-transcript-icon-button[aria-pressed='true'] {
+  background: var(--secondary);
+  color: #ffffff;
+}
+
+.companion-drop-zone {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--padding-s);
+  padding: var(--padding-s) var(--padding-m);
+  border: 1px dashed var(--field-border);
+  border-radius: var(--corner-radius-medium);
+}
+
+.companion-drop-zone p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-small);
+}
+
+.companion-drop-zone.is-over {
+  border-style: solid;
+  border-color: var(--secondary);
+  background: color-mix(in srgb, var(--secondary) 10%, transparent);
+}
+
+.companion-chip-list,
+.companion-watch-list {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.companion-chip-list {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.companion-chip-name {
+  max-width: 180px;
+}
+
+.meeting-participant-chip.is-pending {
+  border-style: dashed;
+}
+
+.companion-watch-list {
+  flex-direction: column;
+  gap: 6px;
+}
+
+.companion-watch {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--padding-s);
+  padding: 6px var(--padding-s);
+  border: 1px solid var(--field-border);
+  border-radius: var(--corner-radius-medium);
+  background: var(--background-secondary);
+}
+
+.companion-watch-copy {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.companion-wrap {
+  white-space: normal;
+}
+
+.companion-watch-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.companion-chat {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 36%;
+  padding: var(--padding-s) var(--padding-m) var(--padding-m);
+  border-top: 1px solid var(--separator-color);
+}
+
+.companion-chat .meeting-section-heading {
+  margin: 0;
+}
+
+.companion-chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  max-height: 96px;
+  overflow-y: auto;
+}
+
+.companion-chat-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.companion-chat-input.meeting-analysis-custom-instructions {
+  flex: 1 1 auto;
+  width: auto;
+  min-height: 36px;
+  max-height: 96px;
+  margin: 0;
+  padding: 6px var(--padding-s);
+  font-size: var(--font-size-callout);
+}
+
+.companion-chat-message {
+  padding: 6px var(--padding-s);
+  border: 1px solid var(--field-border);
+  border-radius: var(--corner-radius-medium);
+  overflow-wrap: anywhere;
+  font-size: var(--font-size-callout);
+}
+
+.companion-chat-message p {
+  margin: 0;
+}
+
+.companion-chat-message--user {
+  align-self: flex-end;
+  border-color: transparent;
+  background: color-mix(in srgb, var(--primary) 85%, transparent);
+  color: #ffffff;
+}
+
+.companion-chat-message--assistant {
+  align-self: flex-start;
+  background: var(--background-secondary);
+}
+
+.companion-chat-message.is-error {
+  border-color: var(--error-base);
+}
+
+.companion-chat-message.is-pending,
+.companion-chat-message.is-streaming {
+  border-style: dashed;
+}
+
+.companion-chat-continue {
+  margin-top: 6px;
+}
+
+.companion-toggle {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--padding-s);
+  white-space: nowrap;
+}
+
+/* On a screen too small for the window to grow by the Companion's width, the main column can end up narrower than microphone + picker + switch; wrap the switch to its own line rather than clipping it. */
+.meeting-audio-source-section {
+  flex-wrap: wrap;
+  row-gap: var(--padding-xs);
+}
+
+/* tools-analysis.css loads after the base switch rules and gives every switch a 10px vertical margin. */
+.companion-toggle .meeting-switch-control {
+  margin: 0;
+}
+
+.companion-auto-enable .meeting-switch-control {
+  margin: 0;
+  font-size: var(--font-size-status-small);
+}
+
+/* The right-edge Companion sidebar reuses the History sidebar's collapsible, header and rail; its glyphs are the History ones mirrored, and the rail's divider moves to the inner (left) side. */
+.companion-mirrored-symbol {
+  transform: scaleX(-1);
+}
+
+.companion-rail {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  border-left: 1px solid var(--separator-color);
+  background: var(--background-primary);
+}
+
+.companion-rail .shared-history-rail {
+  flex: 0 0 40px;
+  width: 40px;
+  background: transparent;
+  border-right: 0;
+}
+
+.companion-pane-header {
+  flex: 0 0 auto;
+}
+
+.companion-focus {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-xs);
+  padding: 0 var(--padding-m) var(--padding-s);
+}
+
+.companion-focus-input {
+  min-height: 56px;
+  resize: vertical;
+}

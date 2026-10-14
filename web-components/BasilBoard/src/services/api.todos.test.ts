@@ -14,6 +14,7 @@ import {
   listTodoItems,
   promoteMeetingProposalToTodo,
   reopenTodoItem,
+  setTodoItemStatus,
   removeTodoReference,
   replaceTodoNotes,
   updateTodoItem,
@@ -122,6 +123,15 @@ describe('To-Do API client', () => {
     const [url, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(url).toBe(`http://127.0.0.1:9999/api/v1/todos/items/t1/${segment}`);
     expect(JSON.parse(init.body)).toEqual({ expected_revision: 3 });
+  });
+
+  it('setTodoItemStatus PUTs the status and expected_revision to /items/{id}/status', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(jsonResponse({ id: 'a/b' }));
+    await setTodoItemStatus('a/b', 'ready_for_review', 4);
+    const [url, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toBe('http://127.0.0.1:9999/api/v1/todos/items/a%2Fb/status');
+    expect(init.method).toBe('PUT');
+    expect(JSON.parse(init.body)).toEqual({ status: 'ready_for_review', expected_revision: 4 });
   });
 
   it('launchTodoWorker POSTs only expected_revision and decodes the exact Agent Task id', async () => {

@@ -7,7 +7,6 @@ import hashlib
 import json
 import logging
 import os
-from datetime import datetime, timezone
 from typing import Any, Dict, List, Literal, Optional
 
 from .models import (
@@ -26,18 +25,19 @@ from .repository import (
     TodoRepository,
     TodoRevisionConflict,
 )
+from api.core.utc_time import utc_now_iso
 
 logger = logging.getLogger(__name__)
+
+_MANUAL_TODO_STATUSES = frozenset({
+    "candidate", "open", "in_progress", "ready_for_review", "completed", "dismissed", "canceled",
+})
 
 _ACTIVE_AGENT_TASK_STATUSES = frozenset({
     "capturing", "routing", "processing", "awaiting_user_input",
     "awaiting_provider_delegation", "awaiting_delegated_agents",
     "needs_clarification", "paused",
 })
-
-
-def _utc_now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 class TodoConflictError(Exception):
@@ -60,9 +60,10 @@ class TodoTransitionError(Exception):
 
 
 class TodoService:
-    def __init__(self, *, repository: TodoRepository, agent_task_service: Any):
+    def __init__(self, *, repository: TodoRepository, agent_task_service: Any, follow_up_repository: Any = None):
         self.repository = repository
         self.agent_task_service = agent_task_service
+        self.follow_up_repository = follow_up_repository
 
     # === Hydration and listing ===
 
@@ -97,6 +98,21 @@ class TodoService:
             raw = status_by_id.get(item.id)
             item.agent_status = TodoAgentStatusSummary(**raw) if raw else None
 
+    async def _attach_next_follow_ups(self, agent_tasks: List[Any], attempts: List[Any]) -> None:
+        """Mark attempts whose task chain still has a scheduled follow-up check; a lookup failure only hides the waiting state."""
+        if self.follow_up_repository is None or not agent_tasks:
+            return
+        root_by_attempt = {
+            task.id: str(getattr(task, "root_task_id", None) or task.id) for task in agent_tasks
+        }
+        try:
+            due_by_root = await self.follow_up_repository.earliest_pending_due_by_root(list(root_by_attempt.values()))
+        except Exception:
+            logger.exception("Could not load pending follow-ups for To-Do worker attempts")
+            return
+        for attempt in attempts:
+            attempt.next_follow_up_at = due_by_root.get(root_by_attempt.get(attempt.agent_task_id, ""))
+
     async def get_agent_statuses_for_ids(self, todo_ids: List[str]) -> Dict[str, Optional[TodoAgentStatusSummary]]:
         """Lightweight bulk re-fetch used by the sidebar's live WebSocket refresh
         (`GET /api/v1/todos/agent-status`) without re-running the full sort/filter query."""
@@ -125,10 +141,9 @@ class TodoService:
         detail = await self.repository.get_todo_item_detail(todo_id)
         if detail is None:
             raise TodoNotFoundError(todo_id)
-        detail.worker_attempts = [
-            agent_task_to_work_attempt(agent_task)
-            for agent_task in await self.agent_task_service.list_agent_tasks_by_origin("todo", todo_id, True)
-        ]
+        agent_tasks = await self.agent_task_service.list_agent_tasks_by_origin("todo", todo_id, True)
+        detail.worker_attempts = [agent_task_to_work_attempt(agent_task) for agent_task in agent_tasks]
+        await self._attach_next_follow_ups(agent_tasks, detail.worker_attempts)
         detail.attention.needs_attention = any(attempt.attention for attempt in detail.worker_attempts)
         if detail.attention.needs_attention:
             detail.attention.reason = "A worker task needs your input or clarification."
@@ -205,6 +220,36 @@ class TodoService:
         await self._assert_status_and_revision(todo_id, expected_revision, {"open", "in_progress"})
         return await self._transition(todo_id, expected_revision, {"status": "canceled"}, "canceled", "user", None)
 
+    async def set_status(self, todo_id: str, expected_revision: int, status: str) -> TodoItemDetail:
+        """Manual override: any status may be chosen. The automatic worker sync will not undo it
+        for Agent Tasks that already existed (their IDs are recorded on the status_set event)."""
+        if status not in _MANUAL_TODO_STATUSES:
+            raise TodoTransitionError(f"Unknown To-Do status: {status}.")
+        detail = await self.get_item_detail(todo_id)
+        if detail.revision != expected_revision:
+            raise TodoConflictError(todo_id, detail)
+        if detail.status == status:
+            return detail
+        fields: Dict[str, Any] = {"status": status}
+        if status == "completed":
+            fields["completed_at"] = detail.completed_at or utc_now_iso()
+        elif detail.status == "completed":
+            fields["completed_at"] = None
+        workers = await self.agent_task_service.list_agent_tasks_by_origin("todo", todo_id, True)
+        return await self._transition(
+            todo_id,
+            expected_revision,
+            fields,
+            "status_set",
+            "user",
+            None,
+            {
+                "from": detail.status,
+                "to": status,
+                "acknowledged_agent_task_ids": [worker.id for worker in workers],
+            },
+        )
+
     async def delete_todo_item(self, todo_id: str, expected_revision: int) -> None:
         detail = await self.get_item_detail(todo_id)
         active_workers = await self.agent_task_service.list_agent_tasks_by_origin("todo", todo_id, False)
@@ -237,7 +282,7 @@ class TodoService:
         return await self._transition(
             todo_id,
             expected_revision,
-            {"status": "completed", "completed_at": detail.completed_at or _utc_now_iso()},
+            {"status": "completed", "completed_at": detail.completed_at or utc_now_iso()},
             "completed",
             "user",
             None,
@@ -387,6 +432,8 @@ class TodoService:
             return detail
 
         workers = await self.agent_task_service.list_agent_tasks_by_origin("todo", todo_id, True)
+        acknowledged = await self.repository.list_acknowledged_worker_ids(todo_id)
+        workers = [worker for worker in workers if worker.id not in acknowledged]
         if not workers:
             return detail
         statuses = [worker.status for worker in workers]

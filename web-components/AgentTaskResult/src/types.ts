@@ -653,6 +653,7 @@ export type WSEventType =
   | 'agent_task_word_detected'
   | 'agent_task_silence_progress'
   | 'agent_task_outcome_update'
+  | 'agent_task_follow_up_changed'
   | 'step_progress_update'
   | 'dynamic_step_added'
   | 'dynamic_step_updated'

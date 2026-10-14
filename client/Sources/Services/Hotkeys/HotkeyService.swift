@@ -557,9 +557,7 @@ final class HotkeyService: ObservableObject {
     
     private func requestInputMonitoringPermission() {
         DispatchQueue.main.async {
-            let alert = NSAlert()
-            alert.messageText = "Input Monitoring Permission Required"
-            alert.informativeText = """
+            let message = """
             Basil needs Input Monitoring permission to detect global hotkeys.
             
             Please grant permission in:
@@ -567,18 +565,12 @@ final class HotkeyService: ObservableObject {
             
             After granting permission, restart Basil for changes to take effect.
             """
-            alert.alertStyle = .warning
-            alert.addButton(withTitle: "Open System Settings")
-            alert.addButton(withTitle: "Continue Without Hotkeys")
-            
-            let response = alert.runModal()
-            
-            if response == .alertFirstButtonReturn {
-                // Open System Settings to Input Monitoring
-                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent") {
-                    NSWorkspace.shared.open(url)
-                }
-            }
+            NSAlert.runSystemSettingsPrompt(
+                title: "Input Monitoring Permission Required",
+                message: message,
+                declineTitle: "Continue Without Hotkeys",
+                pane: .inputMonitoring
+            )
         }
     }
 } 

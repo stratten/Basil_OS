@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
 from enum import Enum
+from api.core.utc_time import utc_now_naive
 
 
 class FormalityLevel(str, Enum):
@@ -83,8 +84,8 @@ class UserProfile(BaseModel):
     )
     
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now_naive)
+    updated_at: datetime = Field(default_factory=utc_now_naive)
     profile_version: int = Field(default=1, description="Profile version for migrations")
     
     class Config:
@@ -120,8 +121,8 @@ class CommunicationStyleProfile(BaseModel):
     sample_count: int = Field(0, description="Number of samples analyzed")
     
     # Timestamps
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now_naive)
+    updated_at: datetime = Field(default_factory=utc_now_naive)
     last_used_at: Optional[datetime] = Field(None, description="Last time this style was used")
     
     class Config:
@@ -152,7 +153,7 @@ class WritingSample(BaseModel):
     edit_distance: Optional[int] = Field(None, description="Levenshtein distance if edited")
     
     # Timestamps
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now_naive)
     
     class Config:
         use_enum_values = True
@@ -188,8 +189,8 @@ class ContactRelationship(BaseModel):
     notes: Optional[str] = Field(None, description="Optional notes about this contact")
     
     # Timestamps
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now_naive)
+    updated_at: datetime = Field(default_factory=utc_now_naive)
     
     class Config:
         use_enum_values = True
@@ -209,8 +210,8 @@ class UserSignature(BaseModel):
     is_primary: bool = Field(False, description="Whether this is the primary signature")
     
     # Detection metadata
-    first_seen: datetime = Field(default_factory=datetime.utcnow)
-    last_seen: datetime = Field(default_factory=datetime.utcnow)
+    first_seen: datetime = Field(default_factory=utc_now_naive)
+    last_seen: datetime = Field(default_factory=utc_now_naive)
     occurrence_count: int = Field(1, description="Number of times seen")
     confidence: float = Field(1.0, ge=0.0, le=1.0, description="Confidence in detection")
 
@@ -248,8 +249,8 @@ class PersonalizationInsight(BaseModel):
     derived_from: str = Field(description="Source: writing_samples, feedback_analysis, pattern_recognition, manual")
     
     # Timestamps
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now_naive)
+    updated_at: datetime = Field(default_factory=utc_now_naive)
     
     class Config:
         use_enum_values = True
@@ -345,8 +346,8 @@ class ContactIdentityObservation(BaseModel):
     raw_evidence: Optional[str] = Field(None, description="Short verbatim snippet supporting the candidate")
 
     occurrence_count: int = Field(1, description="How many times this candidate has been observed")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    last_seen_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now_naive)
+    last_seen_at: datetime = Field(default_factory=utc_now_naive)
 
     class Config:
         use_enum_values = True

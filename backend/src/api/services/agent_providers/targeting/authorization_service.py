@@ -35,6 +35,7 @@ from .authorization_support import (
     _require_nonblank,
 )
 from .checkpoint_payloads import ProviderTargetAuthorizationCheckpointFactory
+from api.core.utc_time import utc_now_naive
 
 
 class ProviderTargetAuthorizationService:
@@ -53,7 +54,7 @@ class ProviderTargetAuthorizationService:
         self._authorizations = authorization_repository
         self._profiles = provider_profile_repository
         self._agent_tasks = agent_task_service
-        self._now = now or datetime.utcnow
+        self._now = now or utc_now_naive
         self._selection_validator = ProviderTargetSelectionValidator(provider_profile_repository)
         self._checkpoint_factory = ProviderTargetAuthorizationCheckpointFactory()
 

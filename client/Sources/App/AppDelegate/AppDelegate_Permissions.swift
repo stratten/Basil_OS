@@ -60,27 +60,19 @@ extension AppDelegate {
     
     @MainActor
     private func showScreenRecordingPermissionAlert() {
-        let alert = NSAlert()
-        alert.messageText = "Screen Recording Permission Required"
-        alert.informativeText = """
+        let message = """
         Basil needs screen recording permission to capture window content for suggestions.
         
         Please grant permission in System Settings > Privacy & Security > Screen & System Audio Recording.
         
         After granting permission, you may need to restart Basil.
         """
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Open System Settings")
-        alert.addButton(withTitle: "Continue Without Permission")
-        
-        let response = alert.runModal()
-        
-        if response == .alertFirstButtonReturn {
-            // Open System Settings to Screen Recording
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
-                NSWorkspace.shared.open(url)
-            }
-        }
+        NSAlert.runSystemSettingsPrompt(
+            title: "Screen Recording Permission Required",
+            message: message,
+            declineTitle: "Continue Without Permission",
+            pane: .screenRecording
+        )
         // Don't terminate the app - let user continue even without permission
     }
     
@@ -199,9 +191,7 @@ extension AppDelegate {
     
     @MainActor
     private func showAccessibilityRestartAlert() {
-        let alert = NSAlert()
-        alert.messageText = "App Restart Required"
-        alert.informativeText = """
+        let message = """
         If you've already granted Accessibility permission in System Settings but are still seeing this error, macOS requires the app to be restarted after granting accessibility permission.
         
         This is a normal macOS security requirement.
@@ -215,24 +205,18 @@ extension AppDelegate {
         • Find "BasilClient" in the list and enable it
         • Then restart the app
         """
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "Open System Settings")
-        alert.addButton(withTitle: "I'll Restart Manually")
-        
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            // Open System Settings to Accessibility panel
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-                NSWorkspace.shared.open(url)
-            }
-        }
+        NSAlert.runSystemSettingsPrompt(
+            title: "App Restart Required",
+            message: message,
+            style: .informational,
+            declineTitle: "I'll Restart Manually",
+            pane: .accessibility
+        )
     }
 
     @MainActor
     private func showAccessibilityPermissionAlert() {
-        let alert = NSAlert()
-        alert.messageText = "Accessibility Permission Required"
-        alert.informativeText = """
+        let message = """
         Basil requires Accessibility permission to:
         • Capture screen content for suggestions
         • Simulate keystrokes for text insertion
@@ -243,17 +227,13 @@ extension AppDelegate {
         
         Note: After granting permission, you'll need to restart the app.
         """
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "Open System Settings")
-        alert.addButton(withTitle: "Continue Without Permission")
-        
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            // Open System Settings to Accessibility panel
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-                NSWorkspace.shared.open(url)
-            }
-        }
+        NSAlert.runSystemSettingsPrompt(
+            title: "Accessibility Permission Required",
+            message: message,
+            style: .informational,
+            declineTitle: "Continue Without Permission",
+            pane: .accessibility
+        )
     }
 
     @MainActor

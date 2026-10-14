@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import json
 from typing import Any, Dict, Literal, Mapping, MutableMapping, TypedDict
 from uuid import uuid4
+from api.core.utc_time import utc_now_iso
 
 
 AgentTimelineState = Literal[
@@ -82,7 +82,7 @@ class AgentTimelineEntry(TypedDict, total=False):
 
 def timeline_timestamp() -> str:
     """Return an explicit UTC timestamp suitable for persisted activity entries."""
-    return datetime.now(timezone.utc).isoformat()
+    return utc_now_iso()
 
 
 def safe_timeline_id(prefix: str, value: Any = None) -> str:

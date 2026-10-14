@@ -23,6 +23,8 @@ from .models import (
     AgentTaskHistoryResponse,
     AgentTaskListItem,
     AgentTaskPresentationSummaryResponse,
+    PendingFollowUpItem,
+    PendingFollowUpsResponse,
 )
 from .projections.artifact_presentation import build_agent_task_presentation_summary
 from .utils import (
@@ -235,6 +237,24 @@ async def _delegated_provider_report_cards(
             exc.__class__.__name__,
         )
         return []
+
+
+@router.get("/follow-ups/pending", response_model=PendingFollowUpsResponse, summary="Get Pending Follow-Up Checks")
+async def get_pending_follow_ups(
+    knowledge_service: SQLiteKnowledgeService = Depends(get_sqlite_knowledge_service)
+) -> PendingFollowUpsResponse:
+    """List the Agent Task chains that are waiting on a scheduled follow-up check and when each is due."""
+    try:
+        due_by_root = await knowledge_service.agent_task_follow_up_repository.all_pending_due_by_root()
+        return PendingFollowUpsResponse(
+            follow_ups=[
+                PendingFollowUpItem(root_task_id=root_task_id, due_at=due_at)
+                for root_task_id, due_at in sorted(due_by_root.items(), key=lambda item: item[1])
+            ]
+        )
+    except Exception as e:
+        logger.error(f"Error getting pending follow-ups: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error retrieving pending follow-ups: {str(e)}")
 
 
 @router.get("/{agent_task_id}", response_model=AgentTaskDetailResponse, summary="Get AgentTask Details")

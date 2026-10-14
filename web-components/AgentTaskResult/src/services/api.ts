@@ -127,6 +127,14 @@ export async function searchAgentTasks(
   return request('GET', `/api/v1/agent-tasks/agent-task-history/search?${params}`);
 }
 
+export interface PendingFollowUpsResponse {
+  follow_ups: Array<{ root_task_id: string; due_at: string }>;
+}
+
+export async function getPendingFollowUps(): Promise<PendingFollowUpsResponse> {
+  return request('GET', '/api/v1/agent-tasks/follow-ups/pending');
+}
+
 export async function getAgentTaskDetail(agentTaskId: string): Promise<AgentTaskDetail> {
   return request('GET', `/api/v1/agent-tasks/${agentTaskId}`);
 }

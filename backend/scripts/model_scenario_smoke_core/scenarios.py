@@ -103,7 +103,7 @@ class ScenarioOutcome:
 
 TOOL_FAMILY_SCENARIO_IDS = (
     "tool_file", "tool_email", "tool_browser", "tool_vision", "tool_shell",
-    "tool_automation", "tool_external", "tool_memory", "tool_schedule",
+    "tool_automation", "tool_external", "tool_memory", "tool_schedule", "tool_follow_up",
     "tool_activity", "tool_recall", "tool_iterative",
 )
 MIXED_TOOL_SCENARIO_IDS = (

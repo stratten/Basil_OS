@@ -7,6 +7,7 @@ from enum import Enum
 from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from api.core.utc_time import utc_now_naive
 
 
 class SetupAssistantPhase(str, Enum):
@@ -232,7 +233,7 @@ class SetupDiscoveryFact(BaseModel):
     kind: SetupDiscoveryFactKind
     value: str
     confidence: float = Field(ge=0.0, le=1.0)
-    collected_at: datetime = Field(default_factory=datetime.utcnow)
+    collected_at: datetime = Field(default_factory=utc_now_naive)
     requires_permission: Optional[SetupPermissionKind] = None
     user_visible_summary: str = Field(min_length=1)
     metadata: Dict[str, str] = Field(default_factory=dict)
@@ -243,7 +244,7 @@ class SetupInterviewAnswer(BaseModel):
     question_kind: str = Field(min_length=1)
     selected_option_ids: List[str] = Field(default_factory=list)
     freeform_text: Optional[str] = None
-    answered_at: datetime = Field(default_factory=datetime.utcnow)
+    answered_at: datetime = Field(default_factory=utc_now_naive)
 
 
 class SetupActionAuditMetadata(BaseModel):
@@ -281,7 +282,7 @@ class SetupAgentChatMessage(BaseModel):
     id: str = Field(min_length=1)
     role: SetupAgentMessageRole
     content: str = Field(min_length=1)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now_naive)
 
 
 class SetupAgentModelMetadata(BaseModel):
@@ -350,7 +351,7 @@ class SetupCalibrationEvent(BaseModel):
     kind: SetupCalibrationEventKind
     user_visible_label: str = Field(min_length=1)
     inferred_technical_depth: Optional[SetupTechnicalDepth] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now_naive)
 
 
 class SetupToolDefinition(BaseModel):
@@ -505,7 +506,7 @@ class SetupInlineVisual(BaseModel):
 class SetupAgentEvent(BaseModel):
     kind: SetupAgentEventKind
     payload: Dict[str, Any] = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now_naive)
 
 
 class SetupTechnicalDepthProposal(BaseModel):

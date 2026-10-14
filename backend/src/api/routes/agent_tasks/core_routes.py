@@ -40,6 +40,7 @@ from api.services.agent_processing.tools.direct_application_interactions.local_w
     validate_preview_url,
 )
 from .utils import build_retry_context
+from api.core.utc_time import utc_now_naive_iso
 
 logger = logging.getLogger(__name__)
 
@@ -537,7 +538,7 @@ async def retry_agent_task(
                 *(agent_task_record.result_data or {}).get("previous_attempts", []),
                 retry_context,
             ],
-            "retry_started_at": datetime.utcnow().isoformat(),
+            "retry_started_at": utc_now_naive_iso(),
         }
 
         model_override = (request or RetryAgentTaskRequest()).model_id
@@ -559,7 +560,7 @@ async def retry_agent_task(
                 **(agent_task_record.result_data or {}),
                 "retry_reset": {
                     "previous_status": agent_task_record.status,
-                    "reset_at": datetime.utcnow().isoformat(),
+                    "reset_at": utc_now_naive_iso(),
                 },
             }
             await knowledge_service.agent_task_service.update_agent_task_status(

@@ -324,7 +324,9 @@ final class MeetingBridgePublisher {
             microphoneInputRecoveryState: microphoneRecoveryStateString(viewModel.microphoneInputRecoveryState),
             microphoneInputRecoveryMessage: microphoneRecoveryMessage(viewModel.microphoneInputRecoveryState),
             isCapturePaused: viewModel.isCapturePaused,
-            isLiveTranscriptionEnabled: viewModel.sessionLiveTranscriptionEnabled
+            isLiveTranscriptionEnabled: viewModel.sessionLiveTranscriptionEnabled,
+            companionApiPort: APIClient.shared.currentPort,
+            recordingMeetingId: viewModel.isRecording ? viewModel.currentMeetingId : nil
         )
     }
 

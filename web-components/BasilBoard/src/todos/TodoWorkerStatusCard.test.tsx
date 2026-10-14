@@ -109,6 +109,36 @@ describe('TodoWorkerStatusCard', () => {
     expect(document.querySelector('.todo-worker-status-card-outcome img')).toBeNull();
   });
 
+  it('renders a warning result with headings, a list, a link and long text through the shared markdown renderer', async () => {
+    const longLine = 'verylongunbrokenwordwithoutspaces'.repeat(12);
+    render(
+      <TodoWorkerStatusCard
+        attempt={attempt({
+          status: 'completed',
+          result_severity: 'warning',
+          result_summary: `## What was confirmed\n\n- Item one\n- Item two\n\n[Details](https://example.test/d)\n\n${longLine}`,
+        })}
+      />,
+    );
+
+    const card = screen.getByRole('status');
+    expect(card).toHaveClass('todo-worker-status-card--warning');
+    const outcome = card.querySelector('.todo-worker-status-card-outcome')!;
+    expect(outcome.querySelector('.home-markdown.home-markdown-task')).not.toBeNull();
+    expect(screen.getByRole('heading', { name: 'What was confirmed' }).tagName).toBe('H2');
+    expect(screen.getAllByRole('listitem')).toHaveLength(2);
+    expect(outcome.textContent).toContain(longLine);
+    await userEvent.click(screen.getByRole('link', { name: 'Details' }));
+    expect(bridgeMocks.openExternalUrl).toHaveBeenCalledWith('https://example.test/d');
+    expect(outcome.querySelector('[style]')).toBeNull();
+  });
+
+  it('shows no result section for an empty result message', () => {
+    render(<TodoWorkerStatusCard attempt={attempt({ status: 'completed', result_summary: '' })} />);
+
+    expect(document.querySelector('.todo-worker-status-card-outcome-row')).toBeNull();
+  });
+
   it('collapses long result previews until the user expands them', async () => {
     render(
       <TodoWorkerStatusCard
@@ -151,5 +181,85 @@ describe('TodoWorkerStatusCard', () => {
     rerender(<TodoWorkerStatusCard attempt={attempt()} liveState={{}} />);
     expect(screen.queryByText(longActivity)).not.toBeInTheDocument();
     expect(screen.getByText('Paprika task in progress')).toBeInTheDocument();
+  });
+
+  it.each(['capturing', 'routing', 'processing', 'awaiting_provider_delegation', 'awaiting_delegated_agents'])(
+    'mirrors the Agent Task sidebar pulsing dots while %s',
+    (status) => {
+      const { container } = render(<TodoWorkerStatusCard attempt={attempt({ status })} />);
+
+      expect(container.querySelectorAll('.todo-worker-status-card-indicator .pulsing-dots span')).toHaveLength(3);
+      expect(container.querySelector('.todo-worker-status-card-icon')).toBeNull();
+    },
+  );
+
+  it('mirrors the sidebar paused glyph instead of the dots when paused', () => {
+    const { container } = render(<TodoWorkerStatusCard attempt={attempt({ status: 'paused' })} />);
+
+    expect(container.querySelector('.todo-worker-status-card-indicator svg[aria-label="Paused"]')).not.toBeNull();
+    expect(container.querySelector('.pulsing-dots')).toBeNull();
+  });
+
+  it('mirrors the sidebar awaiting-input glyph for needs-attention tasks', () => {
+    const { container } = render(<TodoWorkerStatusCard attempt={attempt({ status: 'awaiting_user_input', attention: true })} />);
+
+    expect(container.querySelector('.todo-worker-status-card-indicator svg')).not.toBeNull();
+    expect(container.querySelector('.pulsing-dots')).toBeNull();
+  });
+
+  it('keeps the result icon for terminal tasks and a static neutral icon for unrecognized statuses', () => {
+    const terminal = render(<TodoWorkerStatusCard attempt={attempt({ status: 'completed', result_summary: 'Done.' })} />);
+    expect(terminal.container.querySelector('.todo-worker-status-card-icon')).toHaveTextContent('✓');
+    expect(terminal.container.querySelector('.todo-worker-status-card-indicator')).toBeNull();
+    terminal.unmount();
+
+    const unknown = render(<TodoWorkerStatusCard attempt={attempt({ status: 'mystery_state' })} />);
+    expect(unknown.container.querySelector('.todo-worker-status-card-icon')).toHaveTextContent('⋯');
+    expect(unknown.container.querySelector('.pulsing-dots')).toBeNull();
+  });
+  it('shows a waiting state with the next check time instead of a partial result when a follow-up is scheduled', () => {
+    const { container } = render(
+      <TodoWorkerStatusCard
+        attempt={attempt({
+          status: 'completed',
+          result_severity: 'warning',
+          result_summary: 'The delegated agent is still running.',
+          next_follow_up_at: '2026-10-12T12:30:00+00:00',
+        })}
+      />,
+    );
+
+    expect(screen.getByRole('status', { name: 'Waiting to check again' })).toBeInTheDocument();
+    expect(screen.queryByText('Partial result')).not.toBeInTheDocument();
+    expect(screen.getByText(/Paprika will check again automatically at .+\./)).toBeInTheDocument();
+    expect(container.querySelector('.todo-worker-status-card--waiting')).not.toBeNull();
+    const icon = container.querySelector('.todo-worker-status-card-icon');
+    expect(icon).not.toHaveTextContent('↻');
+    expect(icon?.querySelector('span[style*="mask-image"]')).not.toBeNull();
+    expect(screen.getByText('The delegated agent is still running.')).toBeInTheDocument();
+  });
+
+  it('still announces the waiting state when the next check time cannot be parsed', () => {
+    render(<TodoWorkerStatusCard attempt={attempt({ status: 'completed', next_follow_up_at: 'not-a-date' })} />);
+
+    expect(screen.getByText('Paprika will check again automatically.')).toBeInTheDocument();
+  });
+
+  it('ignores a scheduled follow-up on a canceled task and shows the normal terminal label without one', () => {
+    const canceled = render(
+      <TodoWorkerStatusCard attempt={attempt({ status: 'canceled', next_follow_up_at: '2026-10-12T12:30:00+00:00' })} />,
+    );
+    expect(screen.getByRole('status', { name: 'Paprika task canceled' })).toBeInTheDocument();
+    canceled.unmount();
+
+    render(<TodoWorkerStatusCard attempt={attempt({ status: 'completed', result_severity: 'warning', next_follow_up_at: null })} />);
+    expect(screen.getByRole('status', { name: 'Partial result' })).toBeInTheDocument();
+  });
+
+  it('does not show the waiting state while the task is still running', () => {
+    render(<TodoWorkerStatusCard attempt={attempt({ status: 'processing', next_follow_up_at: '2026-10-12T12:30:00+00:00' })} />);
+
+    expect(screen.getByText('Paprika task in progress')).toBeInTheDocument();
+    expect(screen.queryByText('Waiting to check again')).not.toBeInTheDocument();
   });
 });

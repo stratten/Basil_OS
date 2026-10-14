@@ -433,3 +433,36 @@ async def test_remove_reference_requires_current_revision_and_existing_reference
     )
     assert removed.references == []
     assert removed.revision == 3
+
+
+@pytest.mark.asyncio
+async def test_list_acknowledged_worker_ids_unions_status_set_events_and_ignores_malformed_payloads(
+    repo: TodoRepository,
+) -> None:
+    detail, _ = await _create(repo)
+    assert await repo.list_acknowledged_worker_ids(detail.id) == set()
+    await repo.append_todo_event(
+        todo_id=detail.id, event_kind="status_set", actor_kind="user", actor_id=None,
+        payload={"acknowledged_agent_task_ids": ["a", "b"]},
+    )
+    await repo.append_todo_event(
+        todo_id=detail.id, event_kind="status_set", actor_kind="user", actor_id=None,
+        payload={"acknowledged_agent_task_ids": ["b", "c", 7], "from": "open"},
+    )
+    await repo.append_todo_event(
+        todo_id=detail.id, event_kind="status_set", actor_kind="user", actor_id=None,
+        payload={"acknowledged_agent_task_ids": "not-a-list"},
+    )
+    await repo.append_todo_event(
+        todo_id=detail.id, event_kind="worker_active", actor_kind="system", actor_id=None,
+        payload={"acknowledged_agent_task_ids": ["ignored"]},
+    )
+    conn = sqlite3.connect(repo.db_path)
+    conn.execute(
+        "UPDATE todo_events SET payload_json = 'not json' WHERE todo_id = ? AND payload_json LIKE '%not-a-list%'",
+        (detail.id,),
+    )
+    conn.commit()
+    conn.close()
+    assert await repo.list_acknowledged_worker_ids(detail.id) == {"a", "b", "c"}
+    assert await repo.list_acknowledged_worker_ids("another-todo") == set()

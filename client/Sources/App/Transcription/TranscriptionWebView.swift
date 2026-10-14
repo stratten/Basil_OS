@@ -303,18 +303,12 @@ final class TranscriptionWebView: NSObject {
     }
 
     func callJS(_ function: String, event: Any) {
-        webView.callAsyncJavaScript(
-            "\(function)(event)",
-            arguments: ["event": event],
-            in: nil,
-            in: .page
-        ) { result in
-            if case .failure(let error) = result {
-                #if DEBUG
-                DevLogger.shared.error("[TRANSCRIPTION_WIDGET_WEB] JS eval error for \(function): \(error)", context: "TranscriptionWebView")
-                #endif
-            }
-        }
+        webView.callBasilEventHandler(
+            function,
+            event: event,
+            logTag: "TRANSCRIPTION_WIDGET_WEB",
+            logContext: "TranscriptionWebView"
+        )
     }
 
     func markReadyFromReact() {

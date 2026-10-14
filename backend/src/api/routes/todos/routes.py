@@ -17,6 +17,7 @@ from ...services.todos.models import (
     PromoteMeetingProposalRequest,
     RemoveTodoReferenceRequest,
     ReplaceTodoNotesRequest,
+    SetTodoStatusRequest,
     TodoStatus,
     TodoWorkerLaunchResponse,
     UpdateTodoItemRequest,
@@ -227,6 +228,18 @@ async def reopen_item(todo_id: str, body: ExpectedRevisionRequest, todo_service=
 async def cancel_item(todo_id: str, body: ExpectedRevisionRequest, todo_service=Depends(get_todo_service)):
     try:
         return await todo_service.cancel(todo_id, body.expected_revision)
+    except TodoConflictError as exc:
+        return _conflict(exc)
+    except TodoTransitionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except TodoNotFoundError:
+        raise HTTPException(status_code=404, detail=f"To-Do {todo_id} not found")
+
+
+@router.put("/items/{todo_id}/status")
+async def set_item_status(todo_id: str, body: SetTodoStatusRequest, todo_service=Depends(get_todo_service)):
+    try:
+        return await todo_service.set_status(todo_id, body.expected_revision, body.status)
     except TodoConflictError as exc:
         return _conflict(exc)
     except TodoTransitionError as exc:

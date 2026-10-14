@@ -26,6 +26,8 @@ import { TurnLabel } from './result/TurnLabel';
 import { resolveTurnStatus } from './result/turnPresentation';
 import { agentTaskRunLabel } from './run/agentTaskRunFocus';
 import { RunStatusCard } from './run/RunStatusCard';
+import { FollowUpWaitingNotice } from './run/FollowUpWaitingNotice';
+import { usePendingFollowUps } from '../store/pendingFollowUps';
 import { deriveRunPhase, isActivityInCard, showsRunStatusCard } from './run/runPhase';
 import { prefersReducedMotion, type RunNavigationRequest } from './run/runNavigation';
 import { useRunNavigationScroll } from './run/useRunNavigationScroll';
@@ -131,6 +133,10 @@ export default function ResultContent({
   const activityInCard = isActivityInCard(phase);
   const showInlineCompletedActivity = hasActivity && !activityInCard;
   const showStatusCard = activityInCard || showsRunStatusCard(phase);
+  const pendingFollowUps = usePendingFollowUps();
+  const nextFollowUpAt = phase.kind === 'working' || phase.kind === 'awaiting'
+    ? undefined
+    : pendingFollowUps[agentTask.rootTaskId || agentTask.agentTaskId] ?? pendingFollowUps[agentTask.agentTaskId];
   const onJumpToLatestContent = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -448,6 +454,8 @@ export default function ResultContent({
           onContinue={onContinue}
         />
       )}
+
+      {nextFollowUpAt && <FollowUpWaitingNotice dueAt={nextFollowUpAt} />}
     </div>
   );
 }

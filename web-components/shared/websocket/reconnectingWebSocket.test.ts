@@ -253,11 +253,107 @@ describe('ReconnectingWebSocket', () => {
     const socket = latestSocket();
     socket.simulateOpen();
     expect(manager.send({ type: 'x' })).toBe(true);
-    expect(socket.sent).toEqual([JSON.stringify({ type: 'x' })]);
+    expect(socket.sent).toEqual([JSON.stringify({ type: 'subscribe_backend_heartbeat' }), JSON.stringify({ type: 'x' })]);
 
     socket.send = () => {
       throw new Error('closed mid-send');
     };
     expect(manager.send({ type: 'y' })).toBe(false);
+  });
+  describe('backend liveness', () => {
+    const heartbeat = () => JSON.stringify({ event_type: 'backend_heartbeat', sent_at: 1, loop_lag_ms: 0 });
+
+    function collect(manager: TestSocket): string[] {
+      const states: string[] = [];
+      manager.subscribeLiveness((state) => states.push(state));
+      return states;
+    }
+
+    it('subscribes to heartbeats on every open and does not forward them to event handlers', () => {
+      const manager = new TestSocket();
+      const handler = vi.fn();
+      manager.subscribe(handler);
+      manager.connect('ws://test/ws');
+      const socket = latestSocket();
+      socket.simulateOpen();
+
+      expect(socket.sent).toEqual([JSON.stringify({ type: 'subscribe_backend_heartbeat' })]);
+      socket.simulateMessage(heartbeat());
+      socket.simulateMessage(JSON.stringify({ event_type: 'other', value: 1 }));
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(handler).toHaveBeenCalledWith({ event_type: 'other', value: 1 });
+    });
+
+    it('reports connecting, live, stale, and live again as heartbeats stop and resume', () => {
+      const manager = new TestSocket();
+      const states = collect(manager);
+      manager.connect('ws://test/ws');
+      const socket = latestSocket();
+      socket.simulateOpen();
+      socket.simulateMessage(heartbeat());
+      expect(states).toEqual(['connecting', 'live']);
+
+      vi.advanceTimersByTime(9_000);
+      expect(states).toEqual(['connecting', 'live']);
+      vi.advanceTimersByTime(2_000);
+      expect(states).toEqual(['connecting', 'live', 'stale']);
+
+      socket.simulateMessage(heartbeat());
+      expect(states).toEqual(['connecting', 'live', 'stale', 'live']);
+      manager.disconnect();
+    });
+
+    it('never reports stale for a backend that has not sent any heartbeat on this connection', () => {
+      const manager = new TestSocket();
+      const states = collect(manager);
+      manager.connect('ws://test/ws');
+      latestSocket().simulateOpen();
+
+      vi.advanceTimersByTime(60_000);
+      expect(states).toEqual(['connecting', 'live']);
+      manager.disconnect();
+    });
+
+    it('reports disconnected when the socket closes and clears heartbeat history on reconnect', () => {
+      const manager = new TestSocket();
+      const states = collect(manager);
+      manager.connect('ws://test/ws');
+      const first = latestSocket();
+      first.simulateOpen();
+      first.simulateMessage(heartbeat());
+      first.close();
+      expect(states).toEqual(['connecting', 'live', 'disconnected']);
+
+      vi.advanceTimersByTime(2_000);
+      const second = latestSocket();
+      second.simulateOpen();
+      expect(states[states.length - 1]).toBe('live');
+      vi.advanceTimersByTime(60_000);
+      expect(states[states.length - 1]).toBe('live');
+      manager.disconnect();
+    });
+
+    it('reports disconnected when the first connection attempt fails', () => {
+      const manager = new TestSocket();
+      const states = collect(manager);
+      manager.connect('ws://test/ws');
+      latestSocket().close();
+      expect(states).toEqual(['connecting', 'disconnected']);
+      manager.disconnect();
+    });
+
+    it('stops its timer on disconnect and replays the current state to new subscribers', () => {
+      const manager = new TestSocket();
+      manager.connect('ws://test/ws');
+      const socket = latestSocket();
+      socket.simulateOpen();
+      socket.simulateMessage(heartbeat());
+      manager.disconnect();
+
+      expect(vi.getTimerCount()).toBe(0);
+      const late: string[] = [];
+      manager.subscribeLiveness((state) => late.push(state));
+      expect(late).toEqual(['disconnected']);
+    });
   });
 });

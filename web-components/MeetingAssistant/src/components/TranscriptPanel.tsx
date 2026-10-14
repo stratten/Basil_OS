@@ -3,6 +3,7 @@ import type { AudioSourceKindDTO, TranscriptLineDTO } from '../bridge/types';
 import { useCopiedFlag } from '@shared/useCopyFeedback';
 import { copyText } from '../bridge/meetingBridge';
 import { buildTranscriptRows, formatTranscriptForCopy, formatTranscriptTimestamp } from '../lib/transcriptFormatting';
+import { CheckIcon, CloseIcon, CopyIcon } from './MeetingIcons';
 
 export { buildTranscriptRows };
 
@@ -217,18 +218,6 @@ function SearchIcon() {
   return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true"><circle cx="6.8" cy="6.8" r="4.2" /><path d="m10 10 3.2 3.2" strokeLinecap="round" /></svg>;
 }
 
-function CopyIcon() {
-  return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.2" /><path d="M10.5 5.5V3.8A1.3 1.3 0 0 0 9.2 2.5H3.8A1.3 1.3 0 0 0 2.5 3.8v5.4A1.3 1.3 0 0 0 3.8 10.5H5.5" /></svg>;
-}
-
-function CheckIcon() {
-  return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="m3 8.2 3.1 3.1L13 4.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-}
-
 function ChevronIcon({ direction }: { direction: 'up' | 'down' }) {
   return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true"><path d={direction === 'up' ? 'm4 10 4-4 4 4' : 'm4 6 4 4 4-4'} strokeLinecap="round" strokeLinejoin="round" /></svg>;
-}
-
-function CloseIcon() {
-  return <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="currentColor" /><path d="m5.8 5.8 4.4 4.4m0-4.4-4.4 4.4" fill="none" stroke="white" strokeWidth="1.2" strokeLinecap="round" /></svg>;
 }

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import sqlite3
 import uuid
-from datetime import datetime
 from typing import Any
 
 from ..infrastructure.connection import get_sync_connection, run_write_transaction
@@ -19,6 +18,7 @@ from .records import (
     _row_to_run,
 )
 from .validation import _json_dump_object, _require_nonblank
+from api.core.utc_time import utc_now_naive_iso
 
 ALLOWED_RUN_TRANSITIONS = {
     "created": {"failed", "canceled"},
@@ -69,10 +69,6 @@ ACTIVE_RECONCILIATION_STATUSES = {
 }
 
 
-def utcnow() -> str:
-    return datetime.utcnow().isoformat()
-
-
 class ProviderRunRepository:
     """Creation, reconciliation, and transition persistence for provider runs."""
 
@@ -113,7 +109,7 @@ class ProviderRunRepository:
         profile_id = _require_nonblank(provider_profile_id, "provider_profile_id")
         grant_id = _require_nonblank(workspace_grant_id, "workspace_grant_id")
         run_id = str(uuid.uuid4())
-        timestamp = utcnow()
+        timestamp = utc_now_naive_iso()
         def _create(conn: sqlite3.Connection) -> sqlite3.Row:
             _require_enabled_profile(conn, profile_id)
             _require_active_grant_for_profile(
@@ -233,7 +229,7 @@ class ProviderRunRepository:
                 "interrupted-run finalization must transition to failed or interrupted"
             )
         cleaned_reason = _require_nonblank(terminal_reason, "terminal_reason")
-        timestamp = utcnow()
+        timestamp = utc_now_naive_iso()
         def _finalize(conn: sqlite3.Connection) -> sqlite3.Row:
             row = conn.execute(
                 "SELECT * FROM provider_runs WHERE id = ?",
@@ -329,7 +325,7 @@ class ProviderRunRepository:
         fingerprint = None
         if launch_fingerprint is not None:
             fingerprint = _require_nonblank(launch_fingerprint, "launch_fingerprint")
-        timestamp = utcnow()
+        timestamp = utc_now_naive_iso()
         with get_sync_connection(self.db_path) as conn:
             row = conn.execute(
                 "SELECT * FROM provider_runs WHERE id = ?",
@@ -426,7 +422,7 @@ class ProviderRunRepository:
             event_id = last_provider_event_id
             if event_id is not None:
                 event_id = _require_nonblank(event_id, "last_provider_event_id")
-            timestamp = utcnow()
+            timestamp = utc_now_naive_iso()
             terminal_at = timestamp if next_status in TERMINAL_RUN_STATUSES else None
             updated = conn.execute(
                 """

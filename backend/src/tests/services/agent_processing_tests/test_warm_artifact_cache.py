@@ -188,3 +188,28 @@ def _async_val(value):
     async def builder():
         return value
     return builder
+
+
+@pytest.mark.asyncio
+async def test_ttl_is_idle_not_absolute(monkeypatch):
+    from api.services.agent_processing.lifecycle.runtime import warm_artifact_cache as module
+
+    clock = {"now": 1000.0}
+    monkeypatch.setattr(module.time, "monotonic", lambda: clock["now"])
+    cache = WarmArtifactCache()
+    builds = {"n": 0}
+
+    async def builder():
+        builds["n"] += 1
+        return builds["n"]
+
+    for step in (0, 200, 400, 600):
+        clock["now"] = 1000.0 + step
+        value, hit = await cache.get_or_build(key="k", signature="s", builder=builder, ttl_seconds=300.0)
+        assert hit is (step != 0)
+    assert builds["n"] == 1
+
+    clock["now"] += 301.0
+    value, hit = await cache.get_or_build(key="k", signature="s", builder=builder, ttl_seconds=300.0)
+    assert hit is False
+    assert builds["n"] == 2

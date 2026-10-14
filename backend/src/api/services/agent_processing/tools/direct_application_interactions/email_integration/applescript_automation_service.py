@@ -14,6 +14,7 @@ Key Features:
 """
 
 import asyncio
+from api.core.runtime import safe_spawn
 import contextlib
 import logging
 import time
@@ -266,7 +267,7 @@ class AppleScriptAutomationService:
             logger.info(f"🔧 Creating subprocess for osascript...")
 
             # Create subprocess to execute AppleScript
-            process = await asyncio.create_subprocess_exec(
+            process = await safe_spawn.create_subprocess_exec(
                 "osascript", "-e", script,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE

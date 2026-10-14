@@ -10,6 +10,8 @@ import {
   toggleRecording,
 } from '../bridge/meetingBridge';
 import { useMeetingMeter } from '../bridge/meetingMeterStore';
+import MeetingSwitch from './MeetingSwitch';
+import { CancelCircleIcon, PauseCircleIcon, PlayCircleIcon, PlusCircleIcon, RecordCircleIcon, StopCircleIcon } from './MeetingIcons';
 
 interface RecordingControlsProps {
   ui: MeetingUIStateDTO;
@@ -94,10 +96,14 @@ function RecordingControls({ ui }: RecordingControlsProps) {
                 Cancel
               </button>
             </div>
-            <StatusRow ui={ui} />
-            <RecordingIndicators ui={ui} />
+            <div className="meeting-recording-status-cluster">
+              <div className="meeting-recording-status-stack">
+                <StatusRow ui={ui} />
+                <LiveTranscriptionSwitch enabled={ui.isLiveTranscriptionEnabled} />
+              </div>
+              <RecordingIndicators ui={ui} />
+            </div>
           </div>
-          <LiveTranscriptionSwitch enabled={ui.isLiveTranscriptionEnabled} />
           {isConfirmingCancel && (
             <div className="meeting-cancel-confirmation" role="alertdialog" aria-labelledby="meeting-cancel-confirmation-message">
               <p id="meeting-cancel-confirmation-message">Discard this recording? The audio and transcript captured since you pressed Start or Resume will be deleted.</p>
@@ -126,13 +132,7 @@ function RecordingControls({ ui }: RecordingControlsProps) {
 }
 
 function LiveTranscriptionSwitch({ enabled }: { enabled: boolean }) {
-  return (
-    <label className="meeting-switch-control meeting-live-transcription-switch">
-      <span>Live Transcribe</span>
-      <input type="checkbox" checked={enabled} onChange={(event) => setLiveTranscription(event.target.checked)} />
-      <span className="meeting-switch-track" aria-hidden="true" />
-    </label>
-  );
+  return <MeetingSwitch label="Live Transcribe" checked={enabled} onChange={setLiveTranscription} className="meeting-live-transcription-switch" />;
 }
 
 function StatusRow({ ui }: { ui: MeetingUIStateDTO }) {
@@ -214,30 +214,6 @@ function formatTranscriptionState(state: MeetingUIStateDTO['transcriptionState']
     case 'transcribing': return 'Transcribing';
     default: return '';
   }
-}
-
-function RecordCircleIcon() {
-  return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true"><circle cx="8" cy="8" r="5.7" /><circle cx="8" cy="8" r="2.4" fill="currentColor" stroke="none" /></svg>;
-}
-
-function StopCircleIcon() {
-  return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true"><circle cx="8" cy="8" r="5.7" /><rect x="5.5" y="5.5" width="5" height="5" rx=".5" fill="currentColor" stroke="none" /></svg>;
-}
-
-function PlayCircleIcon() {
-  return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true"><circle cx="8" cy="8" r="5.7" /><path d="m6.5 5.3 4.3 2.7-4.3 2.7V5.3Z" fill="currentColor" stroke="none" /></svg>;
-}
-
-function PlusCircleIcon() {
-  return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true"><circle cx="8" cy="8" r="5.7" /><path d="M8 5v6M5 8h6" strokeLinecap="round" /></svg>;
-}
-
-function PauseCircleIcon() {
-  return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true"><circle cx="8" cy="8" r="5.7" /><path d="M6.6 5.6v4.8M9.4 5.6v4.8" strokeLinecap="round" /></svg>;
-}
-
-function CancelCircleIcon() {
-  return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true"><circle cx="8" cy="8" r="5.7" /><path d="m5.9 5.9 4.2 4.2m0-4.2-4.2 4.2" strokeLinecap="round" /></svg>;
 }
 
 function ClockIcon() {

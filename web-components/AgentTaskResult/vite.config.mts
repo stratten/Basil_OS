@@ -26,6 +26,7 @@ export default defineConfig({
       '../shared/webTheme.test.ts',
       '../shared/paletteFixtures.test.ts',
       '../shared/websocket/reconnectingWebSocket.test.ts',
+      '../shared/BackendLivenessBanner.test.tsx',
       '../shared/vite/basilContentSecurityPolicy.test.ts',
       '../shared/usePresenceTransition.test.tsx',
       '../shared/PresenceRegion.test.tsx',

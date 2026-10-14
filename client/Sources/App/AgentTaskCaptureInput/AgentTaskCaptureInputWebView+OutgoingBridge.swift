@@ -32,26 +32,11 @@ extension AgentTaskCaptureInputWebView {
     }
 
     func callJS(_ function: String, args: Any...) {
-        guard let argsData = args.map({ value -> String? in
-            if let data = try? JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed]),
-               let str = String(data: data, encoding: .utf8) {
-                return str
-            }
-            return nil
-        }) as [String?]?, argsData.allSatisfy({ $0 != nil }) else {
-            #if DEBUG
-            DevLogger.shared.error("[AgentTaskCaptureInputWebView] Failed to serialize JS call arguments for \(function)", context: "AgentTaskCapture")
-            #endif
-            return
-        }
-        let joinedArgs = argsData.compactMap { $0 }.joined(separator: ", ")
-        let script = "\(function)(\(joinedArgs));"
-        webView.evaluateJavaScript(script) { [weak self] _, error in
-            if let error = error {
-                #if DEBUG
-                DevLogger.shared.error("[AgentTaskCaptureInputWebView \(self?.instanceId ?? "?")] JS eval error: \(error)", context: "AgentTaskCapture")
-                #endif
-            }
-        }
+        webView.callBasilFunction(
+            function,
+            args: args,
+            logTag: "AgentTaskCaptureInputWebView \(instanceId)",
+            logContext: "AgentTaskCapture"
+        )
     }
 }

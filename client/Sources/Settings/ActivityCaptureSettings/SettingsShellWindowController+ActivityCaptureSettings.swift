@@ -149,24 +149,22 @@ extension SettingsShellWindowController {
     }
 
     private static func makeClearActivityCaptureBacklogConfirmationAlert() -> NSAlert {
-        let alert = NSAlert()
-        alert.messageText = "Clear Backlog"
-        alert.informativeText = "Are you sure you want to clear all pending and failed captures? This action cannot be undone."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Cancel")
-        let clearButton = alert.addButton(withTitle: "Clear Backlog")
-        clearButton.hasDestructiveAction = true
-        return alert
+        NSAlert(
+            title: "Clear Backlog",
+            message: "Are you sure you want to clear all pending and failed captures? This action cannot be undone.",
+            style: .warning,
+            buttons: ["Cancel", "Clear Backlog"],
+            destructiveButtonIndex: 1
+        )
     }
 
     private static func makeClearAllCapturesConfirmationAlert() -> NSAlert {
-        let alert = NSAlert()
-        alert.messageText = "Clear All Captures"
-        alert.informativeText = "Are you sure you want to clear all captures? This deletes every stored capture file and cannot be undone."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Cancel")
-        let clearButton = alert.addButton(withTitle: "Clear All Captures")
-        clearButton.hasDestructiveAction = true
-        return alert
+        NSAlert(
+            title: "Clear All Captures",
+            message: "Are you sure you want to clear all captures? This deletes every stored capture file and cannot be undone.",
+            style: .warning,
+            buttons: ["Cancel", "Clear All Captures"],
+            destructiveButtonIndex: 1
+        )
     }
 }

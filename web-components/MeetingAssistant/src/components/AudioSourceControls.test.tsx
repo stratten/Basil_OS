@@ -58,4 +58,42 @@ describe('AudioSourceControls', () => {
     expect(screen.getByRole('checkbox', { name: 'Microphone' })).toBeDisabled();
     expect(screen.getByRole('combobox', { name: 'Audio Source' })).toBeDisabled();
   });
+
+  describe('Companion switch', () => {
+    const companion = { enabled: false, busy: false, paneHidden: true, onChange: vi.fn(), onShowPane: vi.fn(), error: null, onDismissError: vi.fn() };
+
+    it('sits right after the audio source picker and responds even when the source controls are locked by a recording', async () => {
+      const user = userEvent.setup();
+      companion.onChange.mockReset();
+      const { container } = render(<AudioSourceControls ui={{ ...ui, isRecording: true }} companion={companion} />);
+      expect(screen.getByRole('combobox', { name: 'Audio Source' })).toBeDisabled();
+      const toggle = screen.getByRole('checkbox', { name: 'Companion' });
+      expect(toggle).toBeEnabled();
+      const pickerBlock = container.querySelector('.meeting-system-audio-picker') as HTMLElement;
+      expect(pickerBlock.nextElementSibling).toBe(container.querySelector('.companion-toggle'));
+      await user.click(toggle);
+      expect(companion.onChange).toHaveBeenCalledWith(true);
+    });
+
+    it('is offered before any recording and when system audio is unavailable', () => {
+      render(<AudioSourceControls ui={{ ...ui, isSystemAudioAvailable: false }} companion={companion} />);
+      expect(screen.getByRole('checkbox', { name: 'Companion' })).toBeEnabled();
+    });
+
+    it('is absent without Companion props, and is disabled only while busy', () => {
+      const { rerender } = render(<AudioSourceControls ui={ui} />);
+      expect(screen.queryByRole('checkbox', { name: 'Companion' })).toBeNull();
+      rerender(<AudioSourceControls ui={ui} companion={{ ...companion, busy: true }} />);
+      expect(screen.getByRole('checkbox', { name: 'Companion' })).toBeDisabled();
+    });
+
+    it('reports a failed switch action beside the switch with a dismiss action', async () => {
+      const user = userEvent.setup();
+      const onDismissError = vi.fn();
+      render(<AudioSourceControls ui={ui} companion={{ ...companion, error: 'Companion enable failed (500)', onDismissError }} />);
+      expect(screen.getByRole('alert')).toHaveTextContent('Companion enable failed (500)');
+      await user.click(screen.getByRole('button', { name: 'Dismiss' }));
+      expect(onDismissError).toHaveBeenCalledTimes(1);
+    });
+  });
 });

@@ -5,6 +5,7 @@ import type {
   HomeTurnResponse,
   MeetingListItem,
   TodoItemDetail,
+  TodoStatus,
   TodoWorkerLaunchResponse,
   TodoWorkspaceHydration,
 } from '../contracts';
@@ -197,6 +198,17 @@ export function cancelTodoItem(todoId: string, expectedRevision: number): Promis
   return requestJson<TodoItemDetail>(`/api/v1/todos/items/${encodeURIComponent(todoId)}/cancel`, {
     method: 'POST',
     body: JSON.stringify({ expected_revision: expectedRevision }),
+  });
+}
+
+export function setTodoItemStatus(
+  todoId: string,
+  status: TodoStatus,
+  expectedRevision: number,
+): Promise<TodoItemDetail> {
+  return requestJson<TodoItemDetail>(`/api/v1/todos/items/${encodeURIComponent(todoId)}/status`, {
+    method: 'PUT',
+    body: JSON.stringify({ status, expected_revision: expectedRevision }),
   });
 }
 

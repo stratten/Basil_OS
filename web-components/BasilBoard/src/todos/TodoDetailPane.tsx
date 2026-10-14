@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type ClipboardEvent, type CSSProperties } from 'react';
-import type { TodoItemDetail } from '../contracts';
+import { useEffect, useRef, useState, type ClipboardEvent, type FocusEvent, type KeyboardEvent } from 'react';
+import type { TodoItemDetail, TodoStatus } from '../contracts';
 import RichTextComposer from '../../../shared/RichTextComposer';
+import TokenizedSelect from '../../../shared/TokenizedSelect';
 import {
   pickTodoReferenceFiles,
   registerTodoReferenceFilesPickedHandler,
@@ -10,43 +11,39 @@ import { isTodoDueDateOverdue } from './todoDates';
 import TodoDeleteConfirmation from './TodoDeleteConfirmation';
 import TodoWorkerStatusCard from './TodoWorkerStatusCard';
 import type { TodoWorkerLiveState } from './useTodoWorkerProgress';
-import { plainMarkdownText } from '@shared/plainMarkdownText';
-
-const todoEditPencilURL = new URL('../../../shared/assets/native-symbols/assistant-pencil.png', import.meta.url).href;
-const todoEditPencilStyle: CSSProperties = {
-  width: 14,
-  height: 14,
-  display: 'block',
-  backgroundColor: 'currentColor',
-  WebkitMaskImage: `url("${todoEditPencilURL}")`,
-  WebkitMaskPosition: 'center',
-  WebkitMaskRepeat: 'no-repeat',
-  WebkitMaskSize: 'contain',
-  maskImage: `url("${todoEditPencilURL}")`,
-  maskPosition: 'center',
-  maskRepeat: 'no-repeat',
-  maskSize: 'contain',
-};
+import useAutosaveField, { type AutosaveStatus } from './useAutosaveField';
 
 interface TodoDetailPaneProps {
   item: TodoItemDetail | null;
-  onSaveDetails: (title: string, description: string) => Promise<void>;
-  onSaveNotes: (notes: string) => Promise<void>;
-  onSaveDueDate: (dueAt: string | null) => Promise<void>;
-  onSaveCompletedDate: (completedAt: string | null) => Promise<void>;
+  onSaveTitle: (title: string) => Promise<boolean>;
+  onSaveDescription: (description: string) => Promise<boolean>;
+  onSaveNotes: (notes: string) => Promise<boolean>;
+  onSaveDueDate: (dueAt: string | null) => Promise<boolean>;
+  onSaveCompletedDate: (completedAt: string | null) => Promise<boolean>;
+  onSetStatus: (status: TodoStatus) => Promise<unknown>;
   onAddReference: (path: string) => Promise<void | TodoItemDetail>;
   onRemoveReference: (referenceId: string) => Promise<void | TodoItemDetail>;
-  onAccept: () => Promise<void>;
-  onDismiss: () => Promise<void>;
-  onComplete: () => Promise<void>;
-  onReopen: () => Promise<void>;
-  onCancel: () => Promise<void>;
-  onDelete: () => Promise<void>;
-  onLaunchWorker: () => Promise<void>;
+  onAccept: () => Promise<unknown>;
+  onDismiss: () => Promise<unknown>;
+  onComplete: () => Promise<unknown>;
+  onReopen: () => Promise<unknown>;
+  onCancel: () => Promise<unknown>;
+  onDelete: () => Promise<unknown>;
+  onLaunchWorker: () => Promise<unknown>;
   workerProgress: Record<string, TodoWorkerLiveState>;
   onRefreshAfterConflict: () => void;
   conflictMessage: string | null;
 }
+
+const TODO_STATUS_OPTIONS: Array<{ value: TodoStatus; label: string }> = [
+  { value: 'candidate', label: 'Candidate' },
+  { value: 'open', label: 'Open' },
+  { value: 'in_progress', label: 'In progress' },
+  { value: 'ready_for_review', label: 'Ready for review' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'dismissed', label: 'Dismissed' },
+  { value: 'canceled', label: 'Canceled' },
+];
 
 function referenceBasename(path: string): string {
   const trimmedPath = path.replace(/\/+$/, '');
@@ -54,27 +51,56 @@ function referenceBasename(path: string): string {
   return segments[segments.length - 1] || path;
 }
 
-function formatTodoStatus(status: string): string {
-  return status === 'canceled' ? 'Canceled' : status.replace(/_/g, ' ');
-}
-
 function formatTodoDate(value: string): string {
   return new Date(value).toLocaleDateString();
 }
 
+/** Stored rich text with the browser's empty-editor placeholders (`<br>`, empty blocks) collapsed to nothing. */
+function normalizeRichField(value: string): string {
+  const sanitized = sanitizeRichText(value);
+  const container = document.createElement('div');
+  container.innerHTML = sanitized;
+  const hasText = (container.textContent ?? '').trim().length > 0;
+  const hasStructure = container.querySelector('ul, ol, pre') !== null;
+  return hasText || hasStructure ? sanitized : '';
+}
+
+function normalizeTitle(value: string): string {
+  return value.trim();
+}
+
+function aggregateSaveStatus(statuses: AutosaveStatus[]): AutosaveStatus {
+  if (statuses.includes('error')) return 'error';
+  if (statuses.includes('saving')) return 'saving';
+  if (statuses.includes('saved')) return 'saved';
+  return 'idle';
+}
+
+const SAVE_STATUS_LABELS: Record<AutosaveStatus, string> = {
+  idle: '',
+  saving: 'Saving…',
+  saved: 'Saved',
+  error: 'Not saved. Click away or press Enter to retry.',
+};
+
+function forcePlainTextPaste(event: ClipboardEvent<HTMLDivElement>): void {
+  event.preventDefault();
+  document.execCommand('insertText', false, event.clipboardData.getData('text/plain'));
+}
+
+function setEditorHtml(editor: HTMLDivElement | null, value: string): void {
+  if (editor) editor.innerHTML = sanitizeRichText(value);
+}
+
 export default function TodoDetailPane({
-  item, onSaveDetails, onSaveNotes, onSaveDueDate, onSaveCompletedDate, onAddReference, onRemoveReference,
+  item, onSaveTitle, onSaveDescription, onSaveNotes, onSaveDueDate, onSaveCompletedDate, onSetStatus,
+  onAddReference, onRemoveReference,
   onAccept, onDismiss, onComplete, onReopen, onCancel, onDelete, onLaunchWorker, workerProgress, onRefreshAfterConflict, conflictMessage,
 }: TodoDetailPaneProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [draftTitle, setDraftTitle] = useState(item?.title ?? '');
-  const [draftDescriptionHtml, setDraftDescriptionHtml] = useState(() => sanitizeRichText(item?.description ?? ''));
-  const [draftNotesHtml, setDraftNotesHtml] = useState(() => sanitizeRichText(item?.notes ?? ''));
   const descriptionEditorRef = useRef<HTMLDivElement>(null);
   const notesEditorRef = useRef<HTMLDivElement>(null);
   const [referenceError, setReferenceError] = useState<string | null>(null);
-  const [savingDetails, setSavingDetails] = useState(false);
-  const [savingNotes, setSavingNotes] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<TodoStatus | null>(null);
   const [savingDueDate, setSavingDueDate] = useState(false);
   const [savingCompletedDate, setSavingCompletedDate] = useState(false);
   const [isEditingDueDate, setIsEditingDueDate] = useState(false);
@@ -84,31 +110,45 @@ export default function TodoDetailPane({
   const [confirmingDeletion, setConfirmingDeletion] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  const itemId = item?.id ?? '';
+  const title = useAutosaveField({
+    itemId,
+    serverValue: item?.title ?? '',
+    normalize: normalizeTitle,
+    isValid: (value) => value.length > 0,
+    save: onSaveTitle,
+  });
+  const description = useAutosaveField({
+    itemId,
+    serverValue: item?.description ?? '',
+    normalize: normalizeRichField,
+    save: onSaveDescription,
+    onProgrammaticChange: (value) => setEditorHtml(descriptionEditorRef.current, value),
+  });
+  const notes = useAutosaveField({
+    itemId,
+    serverValue: item?.notes ?? '',
+    normalize: normalizeRichField,
+    save: onSaveNotes,
+    onProgrammaticChange: (value) => setEditorHtml(notesEditorRef.current, value),
+  });
+  const saveStatus = aggregateSaveStatus([
+    title.status, description.status, notes.status,
+  ]);
+
   useEffect(() => {
-    setIsEditing(false);
-    setDraftTitle(item?.title ?? '');
-    setDraftDescriptionHtml(sanitizeRichText(item?.description ?? ''));
-    setDraftNotesHtml(sanitizeRichText(item?.notes ?? ''));
-    if (notesEditorRef.current) notesEditorRef.current.innerHTML = sanitizeRichText(item?.notes ?? '');
+    // The rich editors are uncontrolled; seed them whenever a different To-Do is shown.
+    setEditorHtml(descriptionEditorRef.current, item?.description ?? '');
+    setEditorHtml(notesEditorRef.current, item?.notes ?? '');
+    setPendingStatus(null);
+    setIsEditingDueDate(false);
+    setIsEditingCompletedDate(false);
     setReferenceError(null);
     setConfirmingDeletion(false);
     setDeleting(false);
-    setIsEditingDueDate(false);
-    setIsEditingCompletedDate(false);
-  }, [item?.id, item?.title, item?.description, item?.notes]);
-
-  useEffect(() => {
-    if (isEditing && descriptionEditorRef.current) {
-      descriptionEditorRef.current.innerHTML = draftDescriptionHtml;
-    }
-    // The editor is only mounted in edit mode; it must be seeded when that mode opens.
+    // Only the identity of the To-Do re-seeds the editors; later server updates flow through useAutosaveField.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditing]);
-
-  function forcePlainTextPaste(event: ClipboardEvent<HTMLDivElement>): void {
-    event.preventDefault();
-    document.execCommand('insertText', false, event.clipboardData.getData('text/plain'));
-  }
+  }, [item?.id]);
 
   async function addReferencePaths(rawPaths: string[]): Promise<void> {
     const paths = [...new Set(rawPaths.map((path) => path.trim()).filter(Boolean))];
@@ -138,66 +178,72 @@ export default function TodoDetailPane({
     return <div className="todo-detail-pane todo-detail-pane--empty">Select a To-Do to see its details.</div>;
   }
 
-  const isDirty = draftNotesHtml !== sanitizeRichText(item.notes);
-  const isDetailDirty = draftTitle.trim() !== item.title || draftDescriptionHtml !== sanitizeRichText(item.description);
   const isTerminal = ['completed', 'dismissed', 'canceled'].includes(item.status);
 
-  async function saveDetails(): Promise<void> {
-    if (!draftTitle.trim() || !isDetailDirty || savingDetails) return;
-    setSavingDetails(true);
-    try {
-      await onSaveDetails(draftTitle.trim(), sanitizeRichText(draftDescriptionHtml));
-      setIsEditing(false);
-    } finally {
-      setSavingDetails(false);
+  function handleTitleKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      event.currentTarget.blur();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      title.revert();
+      event.currentTarget.blur();
     }
   }
 
-  async function saveNotes(): Promise<void> {
-    if (!isDirty || savingNotes) return;
-    setSavingNotes(true);
-    try {
-      await onSaveNotes(sanitizeRichText(draftNotesHtml));
-    } finally {
-      setSavingNotes(false);
-    }
+  function richFieldBlurHandler(field: typeof description) {
+    return (event: FocusEvent<HTMLDivElement>) => {
+      if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return;
+      field.onBlur();
+    };
   }
 
-  function cancelEdit(): void {
-    if (!item) return;
-    setDraftTitle(item.title);
-    const description = sanitizeRichText(item.description);
-    setDraftDescriptionHtml(description);
-    if (descriptionEditorRef.current) descriptionEditorRef.current.innerHTML = description;
-    setIsEditing(false);
+  function richFieldKeyDown(field: typeof description) {
+    return (event: KeyboardEvent<HTMLDivElement>) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      field.revert();
+      (event.target as HTMLElement).blur();
+    };
+  }
+
+  async function changeStatus(nextStatus: TodoStatus): Promise<void> {
+    setPendingStatus(nextStatus);
+    try {
+      await onSetStatus(nextStatus);
+    } finally {
+      setPendingStatus(null);
+    }
   }
 
   return (
     <div className="todo-detail-pane">
       <header className="todo-detail-header">
         <div className="todo-detail-header-main">
-          {isEditing ? (
-            <input
-              className="todo-detail-title-input"
-              value={draftTitle}
-              onChange={(event) => setDraftTitle(event.target.value)}
-              maxLength={240}
-              aria-label="To-Do title"
+          <input
+            className="todo-detail-title-input"
+            value={title.draft}
+            onChange={(event) => title.setDraft(event.target.value)}
+            onFocus={title.onFocus}
+            onBlur={title.onBlur}
+            onKeyDown={handleTitleKeyDown}
+            maxLength={240}
+            aria-label="To-Do title"
+          />
+          <div className="todo-detail-status-row">
+            <TokenizedSelect
+              className="todo-detail-status"
+              ariaLabel="Status"
+              value={pendingStatus ?? item.status}
+              options={TODO_STATUS_OPTIONS}
+              disabled={pendingStatus !== null}
+              onValueChange={(nextStatus) => void changeStatus(nextStatus)}
             />
-          ) : (
-            <h2 className="todo-detail-title">{plainMarkdownText(item.title)}</h2>
-          )}
-          <span className="todo-detail-status">{formatTodoStatus(item.status)}</span>
+            <span className="todo-detail-save-status" role="status" aria-live="polite" data-state={saveStatus}>
+              {SAVE_STATUS_LABELS[saveStatus]}
+            </span>
+          </div>
         </div>
-        <button
-          type="button"
-          className="todo-detail-edit-toggle"
-          onClick={() => (isEditing ? cancelEdit() : setIsEditing(true))}
-          aria-label={isEditing ? 'Cancel edit' : 'Edit To-Do'}
-          title={isEditing ? 'Cancel edit' : 'Edit To-Do'}
-        >
-          {isEditing ? 'Cancel edit' : <span aria-hidden="true" style={todoEditPencilStyle} />}
-        </button>
       </header>
       <section className="todo-detail-dates">
         <div className="todo-detail-date-group">
@@ -312,83 +358,56 @@ export default function TodoDetailPane({
           </div>
         )}
       </section>
-      {isEditing && (
-        <section className="todo-detail-edit-form" aria-label="Edit To-Do">
-          <label>
-            Description
-            <RichTextComposer
-              editorRef={descriptionEditorRef}
-              className="todo-detail-rich-text-composer todo-detail-description-composer"
-              disabled={savingDetails}
-              placeholder="Describe this To-Do"
-              submitDisabled={!draftTitle.trim() || !isDetailDirty || savingDetails}
-              onDraftChange={() => {}}
-              onHtmlChange={setDraftDescriptionHtml}
-              onPaste={forcePlainTextPaste}
-              onSubmit={() => void saveDetails()}
-              editorAriaLabel="To-Do description"
-              showActions={false}
-            />
-          </label>
-          <div className="todo-detail-edit-actions">
-            <button
-              type="button"
-              disabled={!draftTitle.trim() || !isDetailDirty || savingDetails}
-              onClick={() => void saveDetails()}
-            >
-              Save changes
-            </button>
-            <button type="button" disabled={savingDetails} onClick={cancelEdit}>
-              Discard
-            </button>
-          </div>
-        </section>
-      )}
       {conflictMessage && (
         <div className="todo-detail-conflict" role="alert">
           <p>{conflictMessage}</p>
           <button type="button" onClick={onRefreshAfterConflict}>Refresh latest</button>
         </div>
       )}
-      {!isEditing && (item.description ? (
-        <div className="todo-detail-description" dangerouslySetInnerHTML={{ __html: sanitizeRichText(item.description) }} />
-      ) : (
-        <p className="todo-detail-description">No description.</p>
-      ))}
+      <section className="todo-detail-description-section">
+        <h3>Description</h3>
+        <div
+          className="todo-detail-field"
+          onFocus={description.onFocus}
+          onBlur={richFieldBlurHandler(description)}
+        >
+          <RichTextComposer
+            editorRef={descriptionEditorRef}
+            className="todo-detail-rich-text-composer todo-detail-description-composer"
+            disabled={false}
+            placeholder="Describe this To-Do"
+            submitDisabled={false}
+            onDraftChange={() => {}}
+            onHtmlChange={description.setDraft}
+            onPaste={forcePlainTextPaste}
+            onKeyDown={richFieldKeyDown(description)}
+            onSubmit={() => void description.commit()}
+            editorAriaLabel="To-Do description"
+            showActions={false}
+          />
+        </div>
+      </section>
       <section className="todo-detail-notes">
         <h3>Notes</h3>
-        <RichTextComposer
-          editorRef={notesEditorRef}
-          className="todo-detail-rich-text-composer"
-          disabled={savingNotes}
-          placeholder="Add notes"
-          submitDisabled={!isDirty || savingNotes}
-          onDraftChange={() => {}}
-          onHtmlChange={setDraftNotesHtml}
-          onPaste={forcePlainTextPaste}
-          onSubmit={() => void saveNotes()}
-          editorAriaLabel="To-Do notes"
-          showActions={false}
-        />
-        <div className="todo-detail-notes-actions">
-          <button
-            type="button"
-            disabled={!isDirty || savingNotes}
-            onClick={() => void saveNotes()}
-          >
-            Save notes
-          </button>
-          <button
-            type="button"
-            disabled={!isDirty}
-            onClick={() => {
-              const notes = sanitizeRichText(item.notes);
-              setDraftNotesHtml(notes);
-              if (notesEditorRef.current) notesEditorRef.current.innerHTML = notes;
-            }}
-          >
-            Discard
-          </button>
+        <div
+          className="todo-detail-field"
+          onFocus={notes.onFocus}
+          onBlur={richFieldBlurHandler(notes)}
+        >
+          <RichTextComposer
+            editorRef={notesEditorRef}
+            className="todo-detail-rich-text-composer"
+            disabled={false}
+            placeholder="Add notes"
+            submitDisabled={false}
+            onDraftChange={() => {}}
+            onHtmlChange={notes.setDraft}
+            onPaste={forcePlainTextPaste}
+            onKeyDown={richFieldKeyDown(notes)}
+            onSubmit={() => void notes.commit()}
+            editorAriaLabel="To-Do notes"
+            showActions={false}
+          />
         </div>
       </section>
       <section className="todo-detail-references">

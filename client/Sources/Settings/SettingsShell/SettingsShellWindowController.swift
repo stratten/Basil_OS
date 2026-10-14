@@ -361,9 +361,7 @@ final class SettingsShellWindowController: NSWindowController, NSWindowDelegate,
             backing: .buffered,
             defer: false
         )
-        window.title = "Settings"
-        window.isReleasedWhenClosed = false
-        window.isMovableByWindowBackground = true
+        window.configureCustomChromeWindow(title: "Settings", releasedWhenClosed: false)
         window.contentView = appearanceWebView.webView
         WebKitWindowChromeAppearance.apply(to: window)
         window.contentMinSize = NSSize(width: 1000, height: 700)

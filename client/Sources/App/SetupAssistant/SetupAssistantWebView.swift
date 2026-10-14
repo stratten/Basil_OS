@@ -196,8 +196,7 @@ struct SetupAssistantWebView: NSViewRepresentable {
         }
 
         private func openSystemSettings(payload: [String: Any]?) {
-            let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy")!
-            NSWorkspace.shared.open(url)
+            SystemSettingsPrivacyPane.general.open()
             DevLogger.shared.info("[SetupAssistantWebView] Opened System Settings for \(payload?["kind"] ?? "privacy")", context: "SetupAssistant")
         }
 

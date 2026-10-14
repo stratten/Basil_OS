@@ -23,16 +23,11 @@ final class DetachedConversationThreadWindowController: NSObject, NSWindowDelega
             backing: .buffered,
             defer: false
         )
-        window.title = "Conversation"
-        window.isReleasedWhenClosed = false
         // Matches every other detached document-style window in the app
         // (e.g. DetachedAgentTaskWindowController): without `.floating`, this
         // window sits at the default level and renders behind the other
         // (floating) Basil windows, appearing stuck-behind and unclickable.
-        window.level = .floating
-        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
-        window.hidesOnDeactivate = false
-        window.isMovableByWindowBackground = true
+        window.configureFloatingWidget(title: "Conversation", releasedWhenClosed: false)
         window.minSize = NSSize(width: 400, height: 300)
         window.delegate = self
 

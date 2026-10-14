@@ -16,6 +16,7 @@ from api.routes.setup_assistant.models import (
     SetupDiscoveryResponse,
     SetupDiscoverySource,
 )
+from api.core.utc_time import utc_now_naive
 
 
 class SetupAssistantDiscoveryService:
@@ -30,7 +31,7 @@ class SetupAssistantDiscoveryService:
         from api.core.preferences.preferences_io import load_preferences
         from api.routes.onboarding import STARTER_MODELS
 
-        collected_at = datetime.utcnow()
+        collected_at = utc_now_naive()
         facts: List[SetupDiscoveryFact] = []
         preferences = load_preferences()
 
@@ -285,7 +286,7 @@ class SetupAssistantDiscoveryService:
             get_transcription_models,
         )
 
-        collected_at = datetime.utcnow()
+        collected_at = utc_now_naive()
         facts: List[SetupDiscoveryFact] = []
         hardware_profile = HardwareCapabilityService().get_profile()
 
@@ -332,7 +333,7 @@ class SetupAssistantDiscoveryService:
             EmailClientService,
         )
 
-        collected_at = datetime.utcnow()
+        collected_at = utc_now_naive()
         facts: List[SetupDiscoveryFact] = []
         service = EmailClientService()
         detected_clients = await service.detect_email_clients()
@@ -368,7 +369,7 @@ class SetupAssistantDiscoveryService:
         from api.core.preferences.preferences_io import load_preferences
         from api.routes.connections.models import STARTER_SERVERS
 
-        collected_at = datetime.utcnow()
+        collected_at = utc_now_naive()
         preferences = load_preferences()
         registered_by_url = {
             connection.server_url: connection
@@ -418,7 +419,7 @@ class SetupAssistantDiscoveryService:
             EmailSearchCriteria,
         )
 
-        collected_at = datetime.utcnow()
+        collected_at = utc_now_naive()
         facts: List[SetupDiscoveryFact] = []
         service = EmailClientService()
         await service.initialize()
@@ -432,7 +433,7 @@ class SetupAssistantDiscoveryService:
             folder="sent",
             limit=bounded_limit,
             search_criteria=EmailSearchCriteria(
-                date_from=datetime.utcnow() - timedelta(days=bounded_days),
+                date_from=utc_now_naive() - timedelta(days=bounded_days),
                 folder="sent",
             ),
             client_name=primary_client.name,

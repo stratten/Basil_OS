@@ -216,11 +216,12 @@ final class StatusBarWindowCoordinator {
             NSEvent.removeMonitor(testMonitor!)
         }
         print("🧪 Test key monitor started - press keys for 15 seconds to test!")
-        let alert = NSAlert()
-        alert.messageText = "Key Monitoring Test Started"
-        alert.informativeText = "A temporary key monitor has been started. Press keys (including Escape) for the next 15 seconds to test monitoring."
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "OK")
+        let alert = NSAlert(
+            title: "Key Monitoring Test Started",
+            message: "A temporary key monitor has been started. Press keys (including Escape) for the next 15 seconds to test monitoring.",
+            style: .informational,
+            buttons: ["OK"]
+        )
         alert.runModal()
     }
 

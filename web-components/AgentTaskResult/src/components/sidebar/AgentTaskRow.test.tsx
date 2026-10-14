@@ -45,6 +45,38 @@ describe('AgentTaskRow paused status', () => {
   });
 });
 
+describe('AgentTaskRow active-status indicator', () => {
+  function markupFor(status: string): string {
+    return renderToStaticMarkup(
+      <AgentTaskRow
+        id="task-1"
+        title="Count to thirty"
+        status={status}
+        fileCount={0}
+        followUpCount={0}
+        hasUnreadResult={false}
+        isSelected={false}
+        onSelect={vi.fn()}
+      />
+    );
+  }
+
+  it.each(['processing', 'routing', 'capturing'])('shows the pulsing dots while %s', (status) => {
+    expect(markupFor(status)).toContain('class="pulsing-dots"');
+  });
+
+  it('shows the paused and awaiting-input glyphs instead of the dots', () => {
+    expect(markupFor('paused')).toContain('aria-label="Paused"');
+    expect(markupFor('paused')).not.toContain('pulsing-dots');
+    expect(markupFor('awaitingInput')).not.toContain('pulsing-dots');
+    expect(markupFor('awaitingInput')).toContain('fill="var(--warning-base)"');
+  });
+
+  it('uses the result icon, not the dots, for finished tasks', () => {
+    expect(markupFor('completed')).not.toContain('pulsing-dots');
+  });
+});
+
 describe('AgentTaskRow detached-window action', () => {
   it('renders the selectable row as an accessible button', () => {
     const markup = renderRow();
@@ -211,5 +243,60 @@ describe('AgentTaskRow inline delete confirmation', () => {
     } finally {
       act(() => root.unmount());
     }
+  });
+});
+
+describe('AgentTaskRow scheduled follow-up state', () => {
+  const dueSoon = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+
+  function markupFor(overrides: { status?: string; nextFollowUpAt?: string; preview?: string; needsApproval?: boolean }): string {
+    return renderToStaticMarkup(
+      <AgentTaskRow
+        id="task-1"
+        title="Watch the deploy"
+        status={overrides.status ?? 'completed'}
+        preview={overrides.preview}
+        nextFollowUpAt={overrides.nextFollowUpAt}
+        needsApproval={overrides.needsApproval}
+        fileCount={0}
+        followUpCount={0}
+        hasUnreadResult={false}
+        isSelected={false}
+        onSelect={vi.fn()}
+      />
+    );
+  }
+
+  it('shows the shared circular arrow and the check time instead of the result preview', () => {
+    const markup = markupFor({ nextFollowUpAt: dueSoon, preview: 'Waiting on work that is still running 2026-10-12T14:01:36+00:00' });
+    expect(markup).toContain('agent-task-row__waiting-icon');
+    expect(markup).toContain('aria-label="Waiting to check again"');
+    expect(markup).toContain('agent-task-row__preview--waiting');
+    expect(markup).toContain('Checks again');
+    expect(markup).not.toContain('2026-10-12T14:01:36');
+    expect(markup).toContain('mask-image');
+  });
+
+  it('says the check is imminent once the due time has passed', () => {
+    const markup = markupFor({ nextFollowUpAt: new Date(Date.now() - 1000).toISOString() });
+    expect(markup).toContain('Checking again soon');
+  });
+
+  it('keeps the normal row when no follow-up is scheduled', () => {
+    const markup = markupFor({ preview: 'All done' });
+    expect(markup).not.toContain('agent-task-row__waiting-icon');
+    expect(markup).toContain('All done');
+  });
+
+  it('lets an actively running turn use its running indicator instead of the waiting state', () => {
+    const markup = markupFor({ status: 'processing', nextFollowUpAt: dueSoon });
+    expect(markup).not.toContain('agent-task-row__waiting-icon');
+    expect(markup).not.toContain('Checks again');
+  });
+
+  it('keeps the approval signal ahead of the waiting icon', () => {
+    const markup = markupFor({ nextFollowUpAt: dueSoon, needsApproval: true });
+    expect(markup).toContain('approval-attention');
+    expect(markup).not.toContain('agent-task-row__waiting-icon');
   });
 });

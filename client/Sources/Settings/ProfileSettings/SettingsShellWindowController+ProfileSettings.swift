@@ -86,13 +86,12 @@ extension SettingsShellWindowController {
     }
 
     static func makeClearProfileConfirmationAlert() -> NSAlert {
-        let alert = NSAlert()
-        alert.messageText = "Delete All Personalization Data?"
-        alert.informativeText = "This permanently deletes your profile, writing samples, communication style, and contact relationships. This cannot be undone."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Cancel")
-        let deleteButton = alert.addButton(withTitle: "Delete Everything")
-        deleteButton.hasDestructiveAction = true
-        return alert
+        NSAlert(
+            title: "Delete All Personalization Data?",
+            message: "This permanently deletes your profile, writing samples, communication style, and contact relationships. This cannot be undone.",
+            style: .warning,
+            buttons: ["Cancel", "Delete Everything"],
+            destructiveButtonIndex: 1
+        )
     }
 }

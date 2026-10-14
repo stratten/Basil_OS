@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import sqlite3
-from datetime import datetime, timezone
 from typing import Any, Callable, Dict, Optional, Sequence, TypeVar
 
 from ..infrastructure.connection import run_read_transaction, run_write_transaction_async
+from api.core.utc_time import utc_now_iso_seconds
 
 _COLUMNS = (
     "agent_task_id, root_task_id, model_family, model_id, format_version, "
@@ -15,10 +15,6 @@ _COLUMNS = (
 )
 
 T = TypeVar("T")
-
-
-def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
 class AgentConversationThreadRepository:
@@ -44,7 +40,7 @@ class AgentConversationThreadRepository:
         message_count: int,
         messages_json: str,
     ) -> None:
-        now = utc_now_iso()
+        now = utc_now_iso_seconds()
 
         def _body(conn: sqlite3.Connection) -> None:
             conn.execute(

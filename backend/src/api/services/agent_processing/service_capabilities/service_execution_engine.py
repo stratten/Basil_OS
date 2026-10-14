@@ -61,25 +61,13 @@ class ServiceExecutionEngine:
     Works with any service that can be registered and provides a clean execution interface.
     """
     
-    def __init__(self, service_capability_analyzer: Optional[ServiceCapabilityAnalyzer] = None, 
-                 cached_capabilities: Optional[Dict[str, Any]] = None):
+    def __init__(self, service_capability_analyzer: Optional[ServiceCapabilityAnalyzer] = None):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.service_capability_analyzer = service_capability_analyzer
-        self.cached_capabilities = cached_capabilities  # Store cached capabilities to avoid redundant discovery
-        
+
         # Clean service registry
         self.services: Dict[str, Any] = {}
 
-    def set_cached_capabilities(self, cached_capabilities: Dict[str, Any]) -> None:
-        """
-        Set cached service capabilities to avoid redundant discovery during execution.
-        
-        Args:
-            cached_capabilities: Pre-cached service capabilities from planning phase
-        """
-        self.cached_capabilities = cached_capabilities
-        self.logger.debug(f"🔧 Injected cached capabilities for {len(cached_capabilities)} services")
-        
     def register_service(self, service_name: str, service_instance: Any) -> None:
         """
         Register a service instance for execution.
@@ -165,7 +153,7 @@ class ServiceExecutionEngine:
                     method=method_name
                 )
             
-            # Validate method exists and parameters if capability analyzer available
+            # Confirm the method exists on the registered instance
             validated_method, validated_params = await self._validate_execution(
                 service_name, method_name, parameters, service_instance
             )
@@ -256,37 +244,13 @@ class ServiceExecutionEngine:
         """Capture a completed real invocation without changing its result."""
         await capture_normalized_service_result(result, parameters, self.logger)
     
-    async def _validate_execution(self, service_name: str, method_name: str, 
+    async def _validate_execution(self, service_name: str, method_name: str,
                                 parameters: Dict[str, Any], service_instance: Any) -> Tuple[str, Dict[str, Any]]:
-        """
-        Validate method exists and parameters are correct.
-        
-        Returns:
-            Tuple of (validated_method_name, validated_parameters)
-        """
-        try:
-            # If we have a capability analyzer, use it for validation with cached capabilities
-            if self.service_capability_analyzer:
-                validated_method, validated_params = self.service_capability_analyzer.validate_service_method(
-                    service_name, method_name, parameters, self.cached_capabilities
-                )
-                return validated_method, validated_params
-            
-            # Fallback: basic method existence check
-            if not hasattr(service_instance, method_name):
-                available_methods = [
-                    m for m in dir(service_instance) 
-                    if not m.startswith('_') and callable(getattr(service_instance, m))
-                ]
-                raise Exception(f"Method '{method_name}' not found. Available: {available_methods}")
-            
-            return method_name, parameters
-            
-        except Exception as e:
-            self.logger.warning(f"Validation failed: {e}")
-            # Return original values if validation fails
-            return method_name, parameters
-    
+        """Check the method exists on the registered instance; the call itself reports a missing method as an error."""
+        if not hasattr(service_instance, method_name):
+            self.logger.warning(f"Method '{method_name}' not found on service '{service_name}'")
+        return method_name, parameters
+
     async def _call_service_method(self, service_instance: Any, method_name: str, 
                                  parameters: Dict[str, Any]) -> Any:
         """

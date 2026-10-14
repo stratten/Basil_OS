@@ -143,11 +143,12 @@ final class AgentTaskLocalWebPreviewWindowController {
     }
 
     private func presentValidationAlert(_ message: String) {
-        let alert = NSAlert()
-        alert.messageText = "Validation fixture unavailable"
-        alert.informativeText = message
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "OK")
+        let alert = NSAlert(
+            title: "Validation fixture unavailable",
+            message: message,
+            style: .warning,
+            buttons: ["OK"]
+        )
         alert.runModal()
     }
 }
@@ -318,18 +319,11 @@ private final class AgentTaskLocalWebPreviewWindowHost: NSObject, WKScriptMessag
             backing: .buffered,
             defer: false
         )
-        window.title = displayName ?? URL(string: targetUrl)?.lastPathComponent ?? "Local Web Preview"
+        window.configureFloatingWidget(
+            title: displayName ?? URL(string: targetUrl)?.lastPathComponent ?? "Local Web Preview",
+            releasedWhenClosed: false
+        )
         window.minSize = NSSize(width: 480, height: 360)
-        window.isReleasedWhenClosed = false
-        window.level = .floating
-        window.collectionBehavior = [
-            .canJoinAllSpaces,
-            .fullScreenAuxiliary,
-            .ignoresCycle
-        ]
-        window.hidesOnDeactivate = false
-        window.alphaValue = 1.0
-        window.isMovableByWindowBackground = true
         window.contentView = webView
         WebKitWindowChromeAppearance.apply(to: window)
         window.delegate = self
@@ -406,23 +400,15 @@ private final class AgentTaskLocalWebPreviewWindowHost: NSObject, WKScriptMessag
     }
 
     private func callJS(_ function: String, args: Any...) {
-        guard let argsData = args.map({ value -> String? in
-            if let data = try? JSONSerialization.data(withJSONObject: value),
-               let str = String(data: data, encoding: .utf8) {
-                return str
+        webView.callBasilFunction(
+            function,
+            args: args,
+            logTag: "AgentTaskLocalWebPreviewWindow",
+            logContext: "AgentTaskCapture",
+            onFailure: { [weak self] message in
+                self?.appendConsoleEvidence(level: "native", message: message)
             }
-            return nil
-        }) as? [String] else { return }
-
-        let argsString = argsData.joined(separator: ", ")
-        let js = "\(function)(\(argsString))"
-        webView.evaluateJavaScript(js) { [weak self] _, error in
-            guard let error else { return }
-            self?.appendConsoleEvidence(
-                level: "native",
-                message: "JavaScript call \(function) failed: \(error.localizedDescription)"
-            )
-        }
+        )
     }
 
     private func appendConsoleEvidence(level: String, message: String) {
@@ -678,15 +664,11 @@ private final class AgentTaskLocalWebPreviewWindowHost: NSObject, WKScriptMessag
     }
 
     private func colorToHex(_ color: NSColor) -> String {
-        guard let rgbColor = color.usingColorSpace(.sRGB) else { return "#000000" }
-        let r = Int(rgbColor.redComponent * 255)
-        let g = Int(rgbColor.greenComponent * 255)
-        let b = Int(rgbColor.blueComponent * 255)
-        return String(format: "#%02X%02X%02X", r, g, b)
+        AestheticWebPayload.colorToHex(color)
     }
 
     private func colorToHex(_ color: SwiftUI.Color) -> String {
-        colorToHex(NSColor(color))
+        AestheticWebPayload.colorToHex(color)
     }
 
     nonisolated func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {

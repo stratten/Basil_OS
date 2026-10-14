@@ -4,11 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Optional, Union
-
-
-def utc_now_naive() -> datetime:
-    """Return the current UTC time without tzinfo, matching SQLite CURRENT_TIMESTAMP values."""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+from api.core.utc_time import utc_now_naive  # noqa: F401
 
 
 def utc_iso_timestamp(value: Union[str, datetime, None]) -> Optional[str]:

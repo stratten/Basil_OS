@@ -120,3 +120,39 @@ describe('buildHistoryItems preserveHistoryOrder', () => {
     expect(rows.map(r => r.id)).toEqual(['newer-incidental', 'older-relevant']);
   });
 });
+
+describe('buildHistoryItems pending follow-up due time', () => {
+  it('attaches the due time to a live row by its chain root and to a history row by id', () => {
+    const agent = createAgentState('task-live', 'Watch the deploy');
+    agent.rootTaskId = 'root-live';
+    const rows = buildHistoryItems({
+      ...buildArgs([agent]),
+      history: [
+        {
+          id: 'root-history',
+          original_prompt: 'Earlier task',
+          timestamp: '2026-10-01T00:00:00Z',
+          status: 'completed',
+          file_count: 0,
+          follow_up_count: 0,
+        },
+        {
+          id: 'root-none',
+          original_prompt: 'Unrelated task',
+          timestamp: '2026-10-01T00:00:00Z',
+          status: 'completed',
+          file_count: 0,
+          follow_up_count: 0,
+        },
+      ],
+      pendingFollowUps: {
+        'root-live': '2026-10-12T15:00:00+00:00',
+        'root-history': '2026-10-12T16:00:00+00:00',
+      },
+    });
+
+    expect(rows.find(row => row.id === 'task-live')?.nextFollowUpAt).toBe('2026-10-12T15:00:00+00:00');
+    expect(rows.find(row => row.id === 'root-history')?.nextFollowUpAt).toBe('2026-10-12T16:00:00+00:00');
+    expect(rows.find(row => row.id === 'root-none')?.nextFollowUpAt).toBeUndefined();
+  });
+});

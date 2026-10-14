@@ -2,13 +2,12 @@ import AppKit
 
 enum ModelsSettingsAlertFactory {
     static func makeDeleteModelConfirmationAlert(modelName: String, modelSize: Int64?) -> NSAlert {
-        let alert = NSAlert()
-        alert.messageText = "Delete \"\(modelName)\"?"
-        alert.informativeText = informativeText(modelSize: modelSize)
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Delete")
-        alert.addButton(withTitle: "Cancel")
-        return alert
+        NSAlert(
+            title: "Delete \"\(modelName)\"?",
+            message: informativeText(modelSize: modelSize),
+            style: .warning,
+            buttons: ["Delete", "Cancel"]
+        )
     }
 
     static func informativeText(modelSize: Int64?) -> String {

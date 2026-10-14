@@ -39,15 +39,8 @@ final class MeetingAnalysisWebWindowController: NSObject, NSWindowDelegate {
             backing: .buffered,
             defer: false
         )
-        window.title = "Meeting Analysis"
+        window.configureFloatingWidget(title: "Meeting Analysis", transparency: .clearWithoutShadow)
         window.minSize = NSSize(width: 520, height: 420)
-        window.level = .floating
-        window.hidesOnDeactivate = false
-        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
-        window.isOpaque = false
-        window.backgroundColor = .clear
-        window.hasShadow = false
-        window.isMovableByWindowBackground = true
         window.delegate = self
 
         let meetingWebView = MeetingAssistantWebView()

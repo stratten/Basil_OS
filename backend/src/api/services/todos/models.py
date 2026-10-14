@@ -59,6 +59,7 @@ class TodoWorkAttempt(BaseModel):
     outcome: Optional[str] = None
     result_severity: Optional[str] = None
     attention: bool = False
+    next_follow_up_at: Optional[str] = None
 
 
 class TodoAttention(BaseModel):
@@ -258,6 +259,14 @@ class ExpectedRevisionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     expected_revision: int = Field(ge=1)
+
+
+class SetTodoStatusRequest(BaseModel):
+    """Manual status override: the user may pick any status from the detail pane."""
+    model_config = ConfigDict(extra="forbid")
+
+    expected_revision: int = Field(ge=1)
+    status: TodoStatus
 
 
 class LaunchTodoWorkerRequest(BaseModel):

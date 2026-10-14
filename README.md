@@ -79,7 +79,7 @@ Run the narrowest relevant validation for a change, such as `poetry run pytest`,
 
 Community builds use `build/scripts/build_app.sh --ad-hoc`. Signing, notarization, update feeds, artifact upload, and DMG publication require release-owner credentials and can change external systems; they are not routine contributor operations.
 
-Every push to `main` also produces a signed, notarized build with a GitHub build-provenance attestation, published as the `main-latest` pre-release. [Verifying repository builds](docs/verifying-builds.md) explains how to confirm that a download matches the code in this repository.
+Every push to `main` also produces a signed, notarized build with a GitHub build-provenance attestation, published as the `main-latest` pre-release; those builds update themselves through Sparkle from this repository's `update-feed` release. [Verifying repository builds](docs/verifying-builds.md) explains how to confirm that a download matches the code in this repository.
 
 ## Contributing and support
 

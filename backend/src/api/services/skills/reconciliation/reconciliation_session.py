@@ -21,8 +21,8 @@ from __future__ import annotations
 import threading
 import uuid
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+from api.core.utc_time import utc_now_iso
 
 
 # Session lifecycle states.
@@ -43,10 +43,6 @@ KIND_DELETE_SAVED_SKILL = "delete_saved_skill"
 DECISION_PENDING = "pending"
 DECISION_ACCEPTED = "accepted"
 DECISION_REJECTED = "rejected"
-
-
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 @dataclass
@@ -161,7 +157,7 @@ class ReconciliationSessionStore:
                 raise RuntimeError(
                     "A reconciliation session is already active; close its window first."
                 )
-            now = _now()
+            now = utc_now_iso()
             self._session = ReconciliationSession(
                 id=f"recon-{uuid.uuid4().hex}",
                 status=STATUS_ANALYZING,
@@ -191,7 +187,7 @@ class ReconciliationSessionStore:
             if self._session is None:
                 raise RuntimeError("No reconciliation session is active.")
             self._session.actions.append(action)
-            self._session.updated_at = _now()
+            self._session.updated_at = utc_now_iso()
 
     def set_action_decision(
         self,
@@ -211,7 +207,7 @@ class ReconciliationSessionStore:
             action.decision = decision
             if user_edited is not None:
                 action.user_edited = user_edited
-            self._session.updated_at = _now()
+            self._session.updated_at = utc_now_iso()
             return action
 
     def update_progress(
@@ -230,14 +226,14 @@ class ReconciliationSessionStore:
                 self._session.progress["processed"] = processed
             if total is not None:
                 self._session.progress["total"] = total
-            self._session.updated_at = _now()
+            self._session.updated_at = utc_now_iso()
 
     def set_status(self, status: str) -> None:
         with self._lock:
             if self._session is None:
                 return
             self._session.status = status
-            self._session.updated_at = _now()
+            self._session.updated_at = utc_now_iso()
 
     def set_commit_report(self, report: Dict[str, Any]) -> None:
         with self._lock:
@@ -245,14 +241,14 @@ class ReconciliationSessionStore:
                 return
             self._session.commit_report = report
             self._session.status = STATUS_COMMITTED
-            self._session.updated_at = _now()
+            self._session.updated_at = utc_now_iso()
 
     def append_error(self, message: str) -> None:
         with self._lock:
             if self._session is None:
                 return
             self._session.errors.append(message)
-            self._session.updated_at = _now()
+            self._session.updated_at = utc_now_iso()
 
     def clear(self) -> None:
         with self._lock:

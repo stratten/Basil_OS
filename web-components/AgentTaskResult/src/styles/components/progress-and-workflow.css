@@ -610,3 +610,36 @@
     animation-duration: 0.01ms !important;
   }
 }
+
+/* Scheduled follow-up notice: the task is waiting on a durable check, not finished. */
+.follow-up-waiting-notice {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-s);
+  padding: calc(var(--padding-xs) + 2px) var(--padding-s);
+  background: color-mix(in srgb, var(--primary) 8%, var(--background-primary));
+}
+
+.follow-up-waiting-notice__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: var(--primary);
+}
+
+.follow-up-waiting-notice__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.follow-up-waiting-notice__title {
+  color: var(--primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+}
+
+.follow-up-waiting-notice__detail {
+  color: var(--text-primary);
+  font-size: var(--font-size-status-small);
+  overflow-wrap: anywhere;
+}

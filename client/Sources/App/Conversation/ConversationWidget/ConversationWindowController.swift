@@ -55,18 +55,12 @@ final class ConversationWindowController: NSObject, NSWindowDelegate, Appearance
         )
 
         // Configure window behavior
-        window.title = "Conversation"
-        window.level = .floating
-        window.collectionBehavior = [
-            .canJoinAllSpaces,     // Show on all spaces
-            .fullScreenAuxiliary,   // Proper fullscreen behavior
-            .stationary,            // Don't move when switching spaces
-            .ignoresCycle           // Don't include in window cycling
-        ]
-
-        // Modern window behavior settings
-        window.isReleasedWhenClosed = false
-        window.isMovableByWindowBackground = true // Allow dragging by background
+        // Floats on all spaces, stays put when switching spaces, is excluded from window cycling, and drags by its background.
+        window.configureFloatingWidget(
+            title: "Conversation",
+            releasedWhenClosed: false,
+            includesStationary: true
+        )
 
         // Set up delegate to track window changes
         window.delegate = self

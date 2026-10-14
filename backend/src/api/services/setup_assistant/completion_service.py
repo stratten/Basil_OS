@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
+from api.core.utc_time import utc_now_naive_iso
 
 
 SETUP_ASSISTANT_STATE_FILE = Path.home() / ".config" / "basil" / "setup_assistant_state.json"
@@ -58,7 +58,7 @@ class SetupAssistantCompletionService:
         SETUP_ASSISTANT_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
         state = {
             "completed": True,
-            "completed_at": datetime.utcnow().isoformat(),
+            "completed_at": utc_now_naive_iso(),
             "configured": configured,
             "skipped": skipped,
             "deferred": deferred,
@@ -85,7 +85,7 @@ class SetupAssistantCompletionService:
         """Record a Skip-for-now exit. Leaves completed=false and surfaces the resume reminder."""
 
         SETUP_ASSISTANT_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-        now_iso = datetime.utcnow().isoformat()
+        now_iso = utc_now_naive_iso()
         state = {
             "completed": False,
             "completed_at": None,

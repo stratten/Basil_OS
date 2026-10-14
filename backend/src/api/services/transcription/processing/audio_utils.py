@@ -11,6 +11,7 @@ import numpy as np
 import soundfile as sf
 import logging
 import subprocess
+from api.core.runtime import safe_spawn
 import tempfile
 
 from ....core.logging.api_logger import setup_api_logger
@@ -76,7 +77,7 @@ async def convert_audio_to_wav(input_path: str) -> str:
 
         # Use ffmpeg to convert to WAV format with 16kHz sample rate (expected by Whisper)
         try:
-            result = subprocess.run(
+            result = safe_spawn.run(
                 [
                     "ffmpeg",
                     "-y",  # Overwrite output file if it exists

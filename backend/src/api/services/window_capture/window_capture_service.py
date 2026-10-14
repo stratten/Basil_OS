@@ -4,6 +4,7 @@ import subprocess
 import os
 from datetime import datetime
 import asyncio
+from api.core.runtime import safe_spawn
 from pathlib import Path
 import pwd
 import logging
@@ -133,7 +134,7 @@ end tell"""
         """
         try:
             logger.info(f"Attempting fallback full screen capture to {output_path}")
-            proc = await asyncio.create_subprocess_exec(
+            proc = await safe_spawn.create_subprocess_exec(
                 "screencapture", "-x", output_path,
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
@@ -170,7 +171,7 @@ end tell"""
             os.chmod(script_path, 0o755)
 
             # Execute script using osascript
-            proc = await asyncio.create_subprocess_exec(
+            proc = await safe_spawn.create_subprocess_exec(
                 "osascript", str(script_path), stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
 
@@ -264,7 +265,7 @@ end tell"""
 
             # Execute script using osascript
             logger.info(f"[{capture_id}] Executing AppleScript")
-            proc = await asyncio.create_subprocess_exec(
+            proc = await safe_spawn.create_subprocess_exec(
                 "osascript", str(script_path), stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
 
@@ -379,7 +380,7 @@ end tell"""
 
             os.chmod(script_path, 0o755)
 
-            proc = await asyncio.create_subprocess_exec(
+            proc = await safe_spawn.create_subprocess_exec(
                 "osascript", str(script_path), stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
 

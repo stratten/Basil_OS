@@ -11,6 +11,7 @@ from ..personalization_models import UserSignature
 from ..sqlite.sqlite_knowledge_service_component_services.infrastructure.connection import (
     get_async_connection,
 )
+from api.core.utc_time import utc_now_naive_iso_z
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,7 @@ class SignaturesManager:
             )
             row = await cursor.fetchone()
             
-            now = datetime.utcnow().isoformat() + "Z"
+            now = utc_now_naive_iso_z()
             
             if row:
                 # Update occurrence count and last seen

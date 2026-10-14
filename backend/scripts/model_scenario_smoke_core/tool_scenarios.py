@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import shutil
+import sqlite3
 import tempfile
 import uuid
 from dataclasses import dataclass, field
@@ -168,6 +169,16 @@ async def _cleanup_scheduled_tasks(sandbox: ScenarioSandbox) -> None:
         text = f"{task.get('agent_task_text') or ''} {task.get('title') or ''}"
         if marker in text:
             await service.delete_scheduled_agent_task(task["id"])
+
+
+async def _cleanup_follow_ups(sandbox: ScenarioSandbox) -> None:
+    """Cancel the pending follow-up the scenario created so it cannot fire later."""
+    with sqlite3.connect(str(get_sqlite_knowledge_service().db_path)) as connection:
+        connection.execute(
+            "UPDATE agent_task_follow_ups SET status = 'canceled', error_message = 'smoke cleanup' "
+            "WHERE status = 'scheduled' AND instructions LIKE ?",
+            (f"%{sandbox.marker}%",),
+        )
 
 
 async def run_tool_scenario(candidate: ModelCandidate, spec: ToolScenarioSpec) -> ScenarioOutcome:
@@ -354,6 +365,16 @@ TOOL_SCENARIO_SPECS: dict[str, ToolScenarioSpec] = {
         ),
         expected_service_methods=(("direct_tool", "create_scheduled_agent_task_from_prompt"),),
         cleanup=_cleanup_scheduled_tasks,
+    ),
+    "tool_follow_up": ToolScenarioSpec(
+        scenario_id="tool_follow_up",
+        family="follow_up",
+        build_prompt=lambda sandbox: (
+            f"Check back on this in two days: schedule a follow-up check whose instructions say "
+            f"follow-up-{sandbox.marker}. Do not perform the check now."
+        ),
+        expected_service_methods=(("direct_tool", "schedule_agent_follow_up"),),
+        cleanup=_cleanup_follow_ups,
     ),
     "tool_activity": ToolScenarioSpec(
         scenario_id="tool_activity",

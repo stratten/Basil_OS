@@ -27,6 +27,10 @@ from ..finalization.evaluation import (
     LOCAL_EVALUATOR_TIMEOUT_SECONDS,
     VERIFIER_THINKING_ITERATION,
 )
+from ..finalization.pending_work_follow_up import (
+    apply_waiting_state,
+    schedule_follow_up_for_pending_work,
+)
 from ..finalization.result_finalizer_tool import finalize_agent_task_result
 
 logger = logging.getLogger(__name__)
@@ -218,6 +222,15 @@ async def _run_outcome_verification(
         )
         return
 
+    pending_work = refined.pop("pending_work", None)
+    if isinstance(pending_work, dict):
+        follow_up = await schedule_follow_up_for_pending_work(
+            root_task_id=root_task_id,
+            source_agent_task_id=agent_task_id,
+            pending_work=pending_work,
+        )
+        if follow_up is not None:
+            apply_waiting_state(refined, follow_up)
     mark_verification_status(refined, "resolved")
     await reasoning.close()
     await _persist_refined_outcome(agent_task_id, refined, reasoning.segment())

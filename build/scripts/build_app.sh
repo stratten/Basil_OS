@@ -268,6 +268,11 @@ if [ -n "$SPARKLE_FEED_URL" ]; then
     fi
     /usr/libexec/PlistBuddy -c "Add :SUFeedURL string $SPARKLE_FEED_URL" "$CLIENT_INFO_PLIST"
     /usr/libexec/PlistBuddy -c "Add :SUPublicEDKey string $SPARKLE_PUBLIC_ED_KEY" "$CLIENT_INFO_PLIST"
+    if [ "${BASIL_SPARKLE_REQUIRE_SIGNED_FEED:-}" = "1" ]; then
+        /usr/libexec/PlistBuddy -c "Add :SURequireSignedFeed bool true" "$CLIENT_INFO_PLIST"
+        /usr/libexec/PlistBuddy -c "Add :SUVerifyUpdateBeforeExtraction bool true" "$CLIENT_INFO_PLIST"
+        log "✅ Sparkle will require a signed feed and verify each update before extraction"
+    fi
     log "✅ Configured Sparkle updates for this release build"
 else
     log "ℹ️ Sparkle automatic updates are disabled for this build"

@@ -27,21 +27,12 @@ final class ReactTranscriptionSettingsWebView: NSObject {
 
     func callJS(_ function: String, args: Any...) {
         guard args.count == 1 else { return }
-        webView.callAsyncJavaScript(
-            "\(function)(event)",
-            arguments: ["event": args[0]],
-            in: nil,
-            in: .page
-        ) { result in
-            if case .failure(let error) = result {
-                #if DEBUG
-                DevLogger.shared.error(
-                    "[TRANSCRIPTION_SETTINGS_WEB] callAsyncJavaScript failed for \(function): \(error)",
-                    context: "ReactTranscriptionSettingsWebView"
-                )
-                #endif
-            }
-        }
+        webView.callBasilEventHandler(
+            function,
+            event: args[0],
+            logTag: "TRANSCRIPTION_SETTINGS_WEB",
+            logContext: "ReactTranscriptionSettingsWebView"
+        )
     }
 
     func tearDown() {

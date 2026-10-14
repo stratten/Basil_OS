@@ -2,7 +2,6 @@
 
 import json
 import logging
-from datetime import datetime
 from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
@@ -19,6 +18,7 @@ from api.services.whisper_live_core.post_processing.transcript_merger import (
 
 from .models import PostProcessingConfig, RetranscribeWindowConfig
 from .state import active_post_processing
+from api.core.utc_time import utc_now_naive_iso_z
 
 
 logger = logging.getLogger(__name__)
@@ -166,7 +166,7 @@ async def start_post_processing(meeting_id: str, config: PostProcessingConfig) -
             "last_progress": None,
             "last_error": None,
             "websocket_connected": False,
-            "started_at": datetime.utcnow().isoformat() + "Z"
+            "started_at": utc_now_naive_iso_z()
         }
         
         logger.info(f"Queued post-processing for meeting {meeting_id} with model {config.model}")
@@ -258,7 +258,7 @@ async def post_processing_status(websocket: WebSocket, meeting_id: str):
             active_post_processing[meeting_id].update({
                 "progress": progress,
                 "last_progress": payload,
-                "last_progress_at": datetime.utcnow().isoformat() + "Z",
+                "last_progress_at": utc_now_naive_iso_z(),
                 "stage": stage,
                 "message": message,
             })
@@ -301,7 +301,7 @@ async def post_processing_status(websocket: WebSocket, meeting_id: str):
                 "status": "complete",
                 "progress": 1.0,
                 "last_progress": completion_payload,
-                "completed_at": datetime.utcnow().isoformat() + "Z",
+                "completed_at": utc_now_naive_iso_z(),
             })
 
             # Send completion message
@@ -332,7 +332,7 @@ async def post_processing_status(websocket: WebSocket, meeting_id: str):
                 "status": "error",
                 "last_error": str(e),
                 "last_progress": error_payload,
-                "error_at": datetime.utcnow().isoformat() + "Z",
+                "error_at": utc_now_naive_iso_z(),
             })
             try:
                 await websocket.send_json(error_payload)
@@ -352,7 +352,7 @@ async def post_processing_status(websocket: WebSocket, meeting_id: str):
             active_post_processing[meeting_id].update({
                 "status": "client_disconnected",
                 "websocket_connected": False,
-                "disconnected_at": datetime.utcnow().isoformat() + "Z",
+                "disconnected_at": utc_now_naive_iso_z(),
             })
     except Exception as e:
         logger.error(f"Error in post-processing WebSocket: {e}", exc_info=True)
@@ -368,5 +368,5 @@ async def post_processing_status(websocket: WebSocket, meeting_id: str):
                 "status": "websocket_error",
                 "last_error": str(e),
                 "websocket_connected": False,
-                "error_at": datetime.utcnow().isoformat() + "Z",
+                "error_at": utc_now_naive_iso_z(),
             })

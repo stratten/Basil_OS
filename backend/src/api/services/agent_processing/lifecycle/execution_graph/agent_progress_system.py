@@ -68,6 +68,8 @@ class PlanningState:
     agent_messages: Optional[List[Dict[str, Any]]] = None
     agent_pending_tool_call_id: Optional[str] = None
     agent_resume_input: Optional[str] = None
+    # Exact system prompt the paused loop used; reused verbatim on resume so the provider's prompt cache still matches
+    agent_system_prompt_text: Optional[str] = None
 
 
 class LiveProgressCallbackHandler(BaseCallbackHandler):

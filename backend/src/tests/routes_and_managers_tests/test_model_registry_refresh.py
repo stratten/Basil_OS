@@ -374,7 +374,7 @@ def test_latest_anthropic_registry_entries_drive_request_parameter_omissions() -
 
 def test_always_thinking_anthropic_models_request_adaptive_thinking_only() -> None:
     expected_default_effort = {
-        "claude-sonnet-5-5": "high",
+        "claude-sonnet-5-5": "medium",
         "claude-opus-5-5": "medium",
         "claude-fable-5-1": "high",
         "claude-opus-5": "high",

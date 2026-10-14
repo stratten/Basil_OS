@@ -11,6 +11,7 @@ interface WindowChromeProps {
   onToggleCollapse: () => void;
   isRecording: boolean;
   trailing?: ReactNode;
+  collapsedActions?: ReactNode;
   bubble?: ReactNode;
   hideWindowControls?: boolean;
   canCollapse?: boolean;
@@ -25,6 +26,7 @@ export default function WindowChrome({
   onToggleCollapse,
   isRecording,
   trailing,
+  collapsedActions,
   bubble,
   hideWindowControls = false,
   canCollapse = true,
@@ -89,6 +91,7 @@ export default function WindowChrome({
         </span>
       </div>
       {!isCollapsed && trailing}
+      {isCollapsed && collapsedActions}
       {bubble && (
         <div className="meeting-window-status-bubble" aria-hidden="true">
           {bubble}

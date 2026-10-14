@@ -20,6 +20,7 @@ import {
   WarningIcon,
 } from './sidebar/SidebarIcons';
 import { buildHistoryItems, buildScheduledItems, isActiveStatus } from './sidebar/sidebarItemBuilders';
+import { usePendingFollowUps } from '../store/pendingFollowUps';
 import { mapDetailToDisplayable } from './sidebar/sidebarUtils';
 
 const HISTORY_PAGE_SIZE = 300;
@@ -321,6 +322,7 @@ export default function Sidebar({
   }, []);
 
   const isSearchActive = searchQuery.trim().length > 0;
+  const pendingFollowUps = usePendingFollowUps();
 
   const historyItems: AgentTaskRowProps[] = buildHistoryItems({
     allAgents,
@@ -338,6 +340,7 @@ export default function Sidebar({
     getAgentRootTaskId: (agentTaskId) => agentStore.getAgent(agentTaskId)?.rootTaskId,
     openContextMenuForId,
     preserveHistoryOrder: isSearchActive,
+    pendingFollowUps,
   });
 
   const deleteScheduledAgentTask = useCallback((scheduledAgentTaskId: string) => {

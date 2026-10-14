@@ -204,35 +204,20 @@ final class AmbientSuggestionsPanelWebView: NSObject, WKScriptMessageHandler, WK
     }
 
     private func callJS(_ function: String, args: Any...) {
-        let argsData = args.compactMap { value -> String? in
-            if let data = try? JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed]),
-               let str = String(data: data, encoding: .utf8) {
-                return str
-            }
-            return nil
-        }
-        let js = "\(function)(\(argsData.joined(separator: ", ")))"
-        webView.evaluateJavaScript(js) { _, error in
-            if let error = error {
-                DevLogger.shared.error("[AmbientSuggestionsPanelWebView] JS eval error: \(error)", context: "AmbientSuggestions")
-            }
-        }
-    }
-
-    private func colorToHex(_ color: NSColor) -> String {
-        guard let rgbColor = color.usingColorSpace(.sRGB) else {
-            return "#000000"
-        }
-        return String(
-            format: "#%02X%02X%02X",
-            Int(rgbColor.redComponent * 255),
-            Int(rgbColor.greenComponent * 255),
-            Int(rgbColor.blueComponent * 255)
+        webView.callBasilFunction(
+            function,
+            args: args,
+            logTag: "AmbientSuggestionsPanelWebView",
+            logContext: "AmbientSuggestions"
         )
     }
 
+    private func colorToHex(_ color: NSColor) -> String {
+        AestheticWebPayload.colorToHex(color)
+    }
+
     private func colorToHex(_ color: SwiftUI.Color) -> String {
-        colorToHex(NSColor(color))
+        AestheticWebPayload.colorToHex(color)
     }
 
     private func colorToRgbTriplet(_ color: NSColor) -> String {

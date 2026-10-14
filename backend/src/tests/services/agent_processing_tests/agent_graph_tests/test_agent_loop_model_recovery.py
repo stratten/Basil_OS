@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
@@ -352,3 +354,72 @@ async def test_overflow_on_a_thread_uses_three_levels_before_stopping():
     assert response.content.startswith("Stopped: this task needed more context than")
     assert flags.context_window_exceeded["compaction_attempts"] == THREAD_COMPACTION_LEVEL
     assert flags.terminal() is True
+
+
+def _tool_message(call_id: str, text: str, name: str = "some_tool") -> ToolMessage:
+    return ToolMessage(content=text, tool_call_id=call_id, name=name)
+
+
+def test_apply_routine_elision_keeps_ids_and_replaces_only_listed_results():
+    from api.services.agent_processing.lifecycle.execution_graph.agent_loop_model_recovery import (
+        ELIDED_RESULT_HEAD_CHARS,
+        apply_routine_elision,
+    )
+
+    big = "A" * 5000
+    messages = [_tool_message("keep", big), _tool_message("drop", big)]
+
+    out = apply_routine_elision(messages, {"drop"})
+
+    assert out[0].content == big
+    assert out[1].tool_call_id == "drop"
+    assert out[1].name == "some_tool"
+    assert out[1].content.startswith(f"[Earlier result trimmed: first {ELIDED_RESULT_HEAD_CHARS} characters follow]")
+    assert "A" * ELIDED_RESULT_HEAD_CHARS in out[1].content
+    assert f"[{5000 - ELIDED_RESULT_HEAD_CHARS} characters omitted; call the tool again if you need them.]" in out[1].content
+    assert messages[1].content == big
+
+
+def test_elision_candidates_protect_recent_results_loaders_and_questions():
+    from api.services.agent_processing.lifecycle.execution_graph import agent_loop_model_recovery as module
+
+    big = "B" * 5000
+    messages = [
+        _tool_message("loader", big, "load_tool_family"),
+        _tool_message("question", big, "request_user_input"),
+        _tool_message("old", big),
+        *[_tool_message(f"recent-{n}", big) for n in range(module.ROUTINE_KEEP_RECENT_RESULTS)],
+    ]
+
+    ids = [message.tool_call_id for message in module._elision_candidates(messages, set())]
+
+    assert ids == ["old"]
+
+
+def test_routine_elision_fires_once_past_the_trigger_and_stays_frozen(monkeypatch):
+    from api.services.agent_processing.lifecycle.execution_graph import agent_loop_model_recovery as module
+
+    monkeypatch.setattr(module, "ROUTINE_COMPACTION_TRIGGER_TOKENS", 2_000)
+    middleware = module.ModelRecoveryMiddleware(module.AgentRunFlags())
+    big = "C" * 9000
+    messages = [_tool_message(f"call-{n}", big) for n in range(10)]
+    request = SimpleNamespace(messages=messages, tools=[], system_prompt="", system_message=None, override=lambda **kw: SimpleNamespace(**{**vars(request), **kw}))
+
+    middleware._elide_routinely(request)
+    first = set(middleware._elided_call_ids)
+    middleware._elide_routinely(request)
+
+    assert first == {f"call-{n}" for n in range(10 - module.ROUTINE_KEEP_RECENT_RESULTS)}
+    assert middleware._elided_call_ids == first
+
+
+def test_routine_elision_is_idle_below_the_trigger():
+    from api.services.agent_processing.lifecycle.execution_graph import agent_loop_model_recovery as module
+
+    middleware = module.ModelRecoveryMiddleware(module.AgentRunFlags())
+    messages = [_tool_message(f"call-{n}", "short result " * 100) for n in range(10)]
+    request = SimpleNamespace(messages=messages, tools=[], system_prompt="", system_message=None)
+
+    middleware._elide_routinely(request)
+
+    assert middleware._elided_call_ids == set()

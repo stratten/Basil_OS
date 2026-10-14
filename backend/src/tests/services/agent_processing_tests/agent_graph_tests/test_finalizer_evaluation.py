@@ -101,3 +101,25 @@ def test_prompt_treats_established_nonexistence_in_research_as_success():
     assert "RESEARCH THAT ESTABLISHES THE EXACT THING DOES NOT EXIST IS SUCCESS" in prompt
     assert "a finding about the world, not a residual gap" in prompt
     assert "This does not apply when the agent stopped early" in prompt
+
+
+def test_prompt_carries_scheduled_follow_up_rule_and_block():
+    from api.services.agent_processing.lifecycle.finalization.pending_follow_up_context import (
+        render_pending_follow_up_context,
+    )
+
+    block = render_pending_follow_up_context(
+        [{"status": "scheduled", "due_at": "2026-10-12T15:00:00+00:00", "instructions": "Check the delegated agent run."}]
+    )
+    prompt = build_evaluation_prompt(
+        original_prompt="Complete this To-Do.",
+        self_assessment="Started delegated work.",
+        full_agent_output="The delegated agent is still working; I will check again at 3 PM.",
+        max_output_chars=50000,
+        steps=[{"service": "external", "method": "call_tool", "success": True}],
+        tool_error_history=None,
+        evaluation_context=block,
+    )
+    assert "FOLLOW-UP CHECKS ALREADY SCHEDULED" in prompt
+    assert "Check the delegated agent run." in prompt
+    assert "classify success when everything else was delivered" in prompt

@@ -79,10 +79,12 @@ final class AssistantOutputHistoryWebView: NSObject {
     }
 
     private func callJS(with dict: [String: Any]) {
-        guard JSONSerialization.isValidJSONObject(dict),
-              let data = try? JSONSerialization.data(withJSONObject: dict),
-              let json = String(data: data, encoding: .utf8) else { return }
-        webView.evaluateJavaScript("window.basilAssistantOutputHistory && window.basilAssistantOutputHistory.onEvent(\(json))")
+        webView.callBasilFunction(
+            "window.basilAssistantOutputHistory && window.basilAssistantOutputHistory.onEvent",
+            args: [dict],
+            logTag: "AssistantOutputHistoryWebView",
+            logContext: "AssistantOutputHistory"
+        )
     }
 
     fileprivate func handleScriptMessage(_ message: WKScriptMessage) {

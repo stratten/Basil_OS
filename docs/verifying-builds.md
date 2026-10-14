@@ -4,7 +4,7 @@ Every push to `main` builds Basil on GitHub-hosted macOS runners, signs and nota
 
 ## Who this is for
 
-Use a repository build if you want a ready-to-run app but also want to confirm what it was built from. If you would rather build Basil yourself, follow [Getting started](getting-started.md). If you want automatic updates, use the release from the website instead.
+Use a repository build if you want a ready-to-run app but also want to confirm what it was built from. If you would rather build Basil yourself, follow [Getting started](getting-started.md). If you would rather follow the release owner's separately scheduled releases than the newest code on `main`, use the release from the website instead.
 
 ## What you need
 
@@ -57,11 +57,20 @@ The script confirms the notarization ticket, the Developer ID signature, Gatekee
 - Builds are not reproducible. Building the same commit yourself will not produce an identical file, because signing timestamps, notarization tickets, and Homebrew package versions differ between runs. The attestation ties the file to the workflow and commit; it does not let you re-derive the same bytes.
 - Homebrew packages and Python wheels are fetched at build time. The workflow pins the Python runtime, FFmpeg source, Poetry lock file, and npm lock files, but Homebrew formulas follow the runner's current versions.
 - The attestation describes how the file was made. It is not a security review of the code.
+- Automatic updates are verified by the repository's EdDSA update key, whose private half lives as a secret in the protected `release-build` environment. Anyone who obtained that secret could sign an update that Basil would accept, so the key is only as safe as that environment.
+
+## Updates
+
+Repository builds update themselves through Sparkle, the same mechanism the website build uses, but from this repository instead of from the website. Each build contains the address of this repository's `update-feed` release (`https://github.com/<owner>/<repository>/releases/download/update-feed/appcast.xml`) and the public half of the repository's update signing key. The feed is signed, Basil refuses a feed whose signature does not verify, and Basil verifies each update's signature before unpacking it. Choose Check for Updates in the Basil menu to check at any time, and you can skip any update.
+
+The update signing key is separate from the key the website build uses. Its private half is a secret in this repository's protected `release-build` environment and is available only to the workflow that builds `main`. The public key is printed in the notes of every `main-latest` release and by `build/scripts/verify_release_artifact.sh`, so you can compare the key inside your copy with the published one.
+
+An update is checked by that signing key, not individually with `gh attestation verify`. The file an update installs is the same file that is attested on the `main-latest` release, so you can still download that release and follow the steps above to check it by hand.
 
 ## Repository builds and website builds
 
-Both are signed with the same Developer ID and use the same bundle identifier, so macOS treats them as the same app and they share settings and data. Install only one at a time.
+Both are signed with the same Developer ID and use the same bundle identifier, so macOS treats them as the same app and they share settings and data. Install only one at a time: a repository build updates from the repository's feed and a website build from the website's feed, so having both installed lets each replace the other.
 
-Repository builds do not check for updates. To move to a newer build, download the current `main-latest` release again and verify it. Website builds update themselves through Sparkle and are released on a separate schedule; they are built by the release owner rather than by this workflow, so the steps on this page do not apply to them.
+Website builds update themselves through the website's feed and are released on a separate schedule; they are built by the release owner rather than by this workflow, so the steps on this page do not apply to them. Repository builds update from this repository as described in [Updates](#updates).
 
 `main-latest` follows the newest code on `main`, which can include changes that have not reached a website release yet. Those changes can upgrade Basil's stored data, so moving from a repository build back to an older website release is not supported; wait for a website release at least as new as your repository build.

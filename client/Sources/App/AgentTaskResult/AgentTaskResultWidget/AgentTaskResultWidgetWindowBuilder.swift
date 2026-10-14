@@ -105,16 +105,7 @@ extension AgentTaskResultWidgetController {
         // full close cycle and crashes on the second release. Match
         // `ConversationWindowController`'s pattern and let ARC be the
         // sole owner.
-        newPanel.isReleasedWhenClosed = false
-        newPanel.level = .floating
-        newPanel.collectionBehavior = [
-            .canJoinAllSpaces,
-            .fullScreenAuxiliary,
-            .ignoresCycle
-        ]
-        newPanel.hidesOnDeactivate = false
-        newPanel.alphaValue = 1.0
-        newPanel.isMovableByWindowBackground = true
+        newPanel.configureFloatingWidget(releasedWhenClosed: false)
         // `standaloneInitialSize` intentionally starts the history window at
         // the compact width even though the history sidebar is pre-expanded.
         // Do not immediately impose the expanded-sidebar minimum here:

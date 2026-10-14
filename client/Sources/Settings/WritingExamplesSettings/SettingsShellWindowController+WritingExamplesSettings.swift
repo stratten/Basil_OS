@@ -252,27 +252,25 @@ extension SettingsShellWindowController {
     }
 
     static func makeDeleteSampleConfirmationAlert() -> NSAlert {
-        let alert = NSAlert()
-        alert.messageText = "Delete Writing Sample"
-        alert.informativeText = "Are you sure you want to delete this writing sample? This action cannot be undone."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Cancel")
-        let deleteButton = alert.addButton(withTitle: "Delete")
-        deleteButton.hasDestructiveAction = true
-        return alert
+        NSAlert(
+            title: "Delete Writing Sample",
+            message: "Are you sure you want to delete this writing sample? This action cannot be undone.",
+            style: .warning,
+            buttons: ["Cancel", "Delete"],
+            destructiveButtonIndex: 1
+        )
     }
 
     static func makeDeleteAllSamplesConfirmationAlert(filter: ReactWritingExamplesFilter) -> NSAlert {
-        let alert = NSAlert()
-        alert.messageText = "Delete All Writing Samples"
         let label = filterDisplayName(filter)
-        alert.informativeText = filter == .all
-            ? "Are you sure you want to delete all writing samples? This action cannot be undone."
-            : "Are you sure you want to delete all \(label) samples? This action cannot be undone."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Cancel")
-        let deleteButton = alert.addButton(withTitle: "Delete All")
-        deleteButton.hasDestructiveAction = true
-        return alert
+        return NSAlert(
+            title: "Delete All Writing Samples",
+            message: filter == .all
+                ? "Are you sure you want to delete all writing samples? This action cannot be undone."
+                : "Are you sure you want to delete all \(label) samples? This action cannot be undone.",
+            style: .warning,
+            buttons: ["Cancel", "Delete All"],
+            destructiveButtonIndex: 1
+        )
     }
 }

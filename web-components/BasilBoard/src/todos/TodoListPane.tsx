@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { StatusIcon } from '@agent-task/components/sidebar/SidebarIcons';
+import AgentTaskActiveIndicator from '@shared/AgentTaskActiveIndicator';
+import { agentTaskIndicatorStatus } from './agentTaskIndicatorStatus';
 import type { TodoItemSummary } from '../contracts';
 import { useHistoryRowRevealDelete } from '../../../shared/useHistoryRowRevealDelete';
 import type { TodoSortBy } from '../services/api';
@@ -203,6 +205,7 @@ function TodoListRow({
   onConfirmDelete,
 }: TodoListRowProps) {
   const isDeleteDisabled = item.agent_status?.is_active === true;
+  const agentIndicatorStatus = item.agent_status ? agentTaskIndicatorStatus(item.agent_status.status) : null;
   const revealDelete = useHistoryRowRevealDelete({ enabled: !isDeleteDisabled && !isPendingDelete });
   const requestDelete = () => {
     if (isDeleteDisabled) return;
@@ -256,11 +259,15 @@ function TodoListRow({
                 className="todo-list-item-agent-status"
                 title={`Paprika task ${item.agent_status.is_active ? 'in progress' : item.agent_status.status}`}
               >
-                <StatusIcon
-                  status={item.agent_status.status}
-                  resultSeverity={item.agent_status.result_severity ?? undefined}
-                  size={8}
-                />
+                {agentIndicatorStatus ? (
+                  <AgentTaskActiveIndicator status={agentIndicatorStatus} />
+                ) : (
+                  <StatusIcon
+                    status={item.agent_status.status}
+                    resultSeverity={item.agent_status.result_severity ?? undefined}
+                    size={8}
+                  />
+                )}
               </span>
             )}
           </span>

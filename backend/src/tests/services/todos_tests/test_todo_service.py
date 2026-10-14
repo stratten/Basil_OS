@@ -656,3 +656,165 @@ async def test_reconcile_all_nonterminal_todo_workers_returns_count_of_reconcile
     reconciled_b = await service.get_item_detail(open_b.id)
     assert reconciled_a.status == "in_progress"
     assert reconciled_b.status == "ready_for_review"
+
+
+_ALL_TODO_STATUSES = (
+    "candidate", "open", "in_progress", "ready_for_review", "completed", "dismissed", "canceled",
+)
+
+
+async def _create_with_status(service: TodoService, status: str, title: str = "Manual status"):
+    detail, _created = await service.repository.create_todo_item_with_source(
+        title=title, description="", notes="", responsibility="unspecified", priority="normal",
+        due_at=None, status=status, created_by_kind="system", created_by_id=None,
+        idempotency_key=None, idempotency_payload_hash=None, source_kind=None, source_id=None,
+        source_locator=None, source_excerpt="",
+    )
+    return detail
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("target", _ALL_TODO_STATUSES)
+@pytest.mark.parametrize("start", _ALL_TODO_STATUSES)
+async def test_set_status_allows_every_from_to_pair(service: TodoService, start: str, target: str) -> None:
+    detail = await _create_with_status(service, start)
+    updated = await service.set_status(detail.id, detail.revision, target)
+    assert updated.status == target
+    if start == target:
+        assert updated.revision == detail.revision
+    else:
+        assert updated.revision == detail.revision + 1
+    if start == target:
+        return
+    if target == "completed":
+        assert updated.completed_at is not None
+    else:
+        assert updated.completed_at is None
+
+
+@pytest.mark.asyncio
+async def test_set_status_keeps_an_existing_completed_date_and_clears_it_when_leaving_completed(
+    service: TodoService,
+) -> None:
+    detail = await service.create_manual_todo(
+        title="Historical", description="", notes="", responsibility="user", priority="normal", due_at=None,
+        idempotency_key=None, payload_for_hash={},
+    )
+    completed = await service.complete(detail.id, detail.revision)
+    historical = await service.update_fields(completed.id, completed.revision, {"completed_at": "2025-12-24T09:30:00Z"})
+    same = await service.set_status(historical.id, historical.revision, "completed")
+    assert same.completed_at == "2025-12-24T09:30:00Z"
+    reopened = await service.set_status(same.id, same.revision, "ready_for_review")
+    assert reopened.completed_at is None
+    again = await service.set_status(reopened.id, reopened.revision, "completed")
+    assert again.completed_at is not None and again.completed_at != "2025-12-24T09:30:00Z"
+
+
+@pytest.mark.asyncio
+async def test_set_status_rejects_stale_revisions_and_unknown_statuses(service: TodoService) -> None:
+    detail = await _create_with_status(service, "open")
+    with pytest.raises(TodoConflictError):
+        await service.set_status(detail.id, detail.revision + 5, "completed")
+    with pytest.raises(TodoTransitionError, match="Unknown To-Do status"):
+        await service.set_status(detail.id, detail.revision, "archived")
+    with pytest.raises(TodoNotFoundError):
+        await service.set_status("does-not-exist", 1, "open")
+
+
+@pytest.mark.asyncio
+async def test_set_status_overrides_the_active_worker_guard_and_records_the_acknowledged_workers(
+    service: TodoService, agent_tasks: FakeAgentTaskService,
+) -> None:
+    detail = await _create_with_status(service, "open")
+    agent_tasks.tasks.append(FakeAgentTask(id="w-live", status="processing", origin_type="todo", origin_id=detail.id))
+    completed = await service.set_status(detail.id, detail.revision, "completed")
+    assert completed.status == "completed"
+    assert await service.repository.list_acknowledged_worker_ids(detail.id) == {"w-live"}
+
+
+@pytest.mark.asyncio
+async def test_a_manual_status_sticks_against_workers_that_already_existed(
+    service: TodoService, agent_tasks: FakeAgentTaskService,
+) -> None:
+    detail = await _create_with_status(service, "open")
+    agent_tasks.tasks.append(FakeAgentTask(id="w-old", status="completed", origin_type="todo", origin_id=detail.id))
+    ready = await service.reconcile_todo_from_worker_tasks(detail.id)
+    assert ready.status == "ready_for_review"
+
+    reopened = await service.set_status(ready.id, ready.revision, "open")
+    assert reopened.status == "open"
+    assert (await service.reconcile_todo_from_worker_tasks(detail.id)).status == "open"
+    assert await service.reconcile_all_nonterminal_todo_workers() == 1
+    assert (await service.get_item_detail(detail.id)).status == "open"
+
+    agent_tasks.tasks.append(FakeAgentTask(id="w-new", status="processing", origin_type="todo", origin_id=detail.id))
+    assert (await service.reconcile_todo_from_worker_tasks(detail.id)).status == "in_progress"
+    agent_tasks.tasks[-1].status = "completed"
+    assert (await service.reconcile_todo_from_worker_tasks(detail.id)).status == "ready_for_review"
+
+
+@pytest.mark.asyncio
+async def test_a_manual_candidate_status_is_not_flipped_by_an_old_completed_worker(
+    service: TodoService, agent_tasks: FakeAgentTaskService,
+) -> None:
+    detail = await _create_with_status(service, "ready_for_review")
+    agent_tasks.tasks.append(FakeAgentTask(id="w-done", status="completed", origin_type="todo", origin_id=detail.id))
+    candidate = await service.set_status(detail.id, detail.revision, "candidate")
+    assert (await service.reconcile_todo_from_worker_tasks(detail.id)).status == "candidate"
+    assert candidate.status == "candidate"
+
+
+class _FakeFollowUpRepository:
+    def __init__(self, due_by_root=None, error=None):
+        self.due_by_root = due_by_root or {}
+        self.error = error
+        self.requested = []
+
+    async def earliest_pending_due_by_root(self, root_task_ids):
+        self.requested.append(list(root_task_ids))
+        if self.error:
+            raise self.error
+        return {root: due for root, due in self.due_by_root.items() if root in root_task_ids}
+
+
+async def _detail_with_worker(tmp_path: Path, agent_tasks: FakeAgentTaskService, follow_ups):
+    service = TodoService(
+        repository=TodoRepository(str(tmp_path / "todo_follow_ups.db")),
+        agent_task_service=agent_tasks,
+        follow_up_repository=follow_ups,
+    )
+    detail = await service.create_manual_todo(
+        title="Chase request", description="", notes="", responsibility="agent",
+        priority="normal", due_at=None, idempotency_key=None, payload_for_hash={},
+    )
+    agent_tasks.tasks.append(
+        FakeAgentTask(id="wa-1", status="completed", origin_type="todo", origin_id=detail.id, title="Worker")
+    )
+    return await service.get_item_detail(detail.id)
+
+
+@pytest.mark.asyncio
+async def test_worker_attempt_carries_the_next_scheduled_follow_up(tmp_path: Path, agent_tasks: FakeAgentTaskService) -> None:
+    follow_ups = _FakeFollowUpRepository({"wa-1": "2026-10-12T12:30:00+00:00"})
+    fetched = await _detail_with_worker(tmp_path, agent_tasks, follow_ups)
+    assert fetched.worker_attempts[0].next_follow_up_at == "2026-10-12T12:30:00+00:00"
+    assert follow_ups.requested == [["wa-1"]]
+
+
+@pytest.mark.asyncio
+async def test_worker_attempt_without_a_pending_follow_up_has_no_waiting_time(tmp_path: Path, agent_tasks: FakeAgentTaskService) -> None:
+    fetched = await _detail_with_worker(tmp_path, agent_tasks, _FakeFollowUpRepository())
+    assert fetched.worker_attempts[0].next_follow_up_at is None
+
+
+@pytest.mark.asyncio
+async def test_follow_up_lookup_failure_does_not_break_the_detail(tmp_path: Path, agent_tasks: FakeAgentTaskService) -> None:
+    fetched = await _detail_with_worker(tmp_path, agent_tasks, _FakeFollowUpRepository(error=RuntimeError("locked")))
+    assert len(fetched.worker_attempts) == 1
+    assert fetched.worker_attempts[0].next_follow_up_at is None
+
+
+@pytest.mark.asyncio
+async def test_service_without_a_follow_up_repository_leaves_attempts_unchanged(tmp_path: Path, agent_tasks: FakeAgentTaskService) -> None:
+    fetched = await _detail_with_worker(tmp_path, agent_tasks, None)
+    assert fetched.worker_attempts[0].next_follow_up_at is None

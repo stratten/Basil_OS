@@ -145,6 +145,7 @@ export interface TodoWorkAttempt {
   outcome?: string | null;
   result_severity?: string | null;
   attention: boolean;
+  next_follow_up_at?: string | null;
 }
 
 export interface TodoItemDetail extends TodoItemSummary {

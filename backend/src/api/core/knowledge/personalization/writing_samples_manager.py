@@ -18,6 +18,7 @@ from ..personalization_models import (
 from ..sqlite.sqlite_knowledge_service_component_services.infrastructure.connection import (
     get_async_connection,
 )
+from api.core.utc_time import utc_now_naive_iso_z
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +108,7 @@ class WritingSamplesManager:
             
             # Create new sample
             sample_id = str(uuid.uuid4())
-            now = datetime.utcnow().isoformat() + "Z"
+            now = utc_now_naive_iso_z()
             
             await conn.execute(
                 """

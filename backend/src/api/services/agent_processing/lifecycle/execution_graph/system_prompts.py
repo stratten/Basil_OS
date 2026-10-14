@@ -7,7 +7,7 @@ Centralizing prompts here makes them easier to maintain and version.
 
 from datetime import datetime
 import logging
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from api.services.memory.memory_service import get_memory_service
 from api.services.skills.skill_service import get_skill_service
@@ -151,6 +151,7 @@ PATH QUALITY REQUIREMENTS (CRITICAL):
 TOOL ETIQUETTE (CROSS-TOOL GUARDRAILS):
 This section is the canonical home for behavioral rules that apply across multiple tool families. If a future principle applies to more than one tool family, add it here rather than duplicating it inside per-service execution_principles arrays.
 - FILE DELETION SAFETY: The words "remove" or "delete" alone do NOT mean permanent deletion. Default to safe deletion (move to Trash) using `mv <file> ~/.Trash/`, the file_service trash path, or AppleScript `tell application "Finder" to delete POSIX file "<path>"`. ONLY use `rm`, file_service permanent-delete, or equivalent irreversible operations when the user explicitly says "permanently delete", "delete forever", "remove permanently", or similar unambiguous language. When in doubt, use Trash — users expect deleted files to be recoverable unless explicitly told otherwise.
+- ASYNCHRONOUS WORK IS NOT A PARTIAL RESULT: When a tool, connector, or delegated agent reports that work you started is queued, running, or otherwise not finished yet, the work is still in progress and is not a gap to hand back to the user. Use `wait_before_checking_again` when it should finish within a few minutes, then check again; use `schedule_agent_follow_up` when the check belongs minutes to days later, then finish this turn by telling the user what is pending and when you will check. Hand work back as unfinished only after waiting or scheduling is not possible or has already been tried.
 
 EXAMPLES:
 - Shell (file creation): STEP_START: Creating file → [shell_service with bash -lc "echo 'content' > '/path/file.txt'"] → STEP_COMPLETE: Successfully created file 'file.txt' at '/path/file.txt'
@@ -177,9 +178,7 @@ Cleanup Reporting:
 - If cleanup fails, report the error but proceed to finalize if the main task succeeded.
 
 CRITICAL SYSTEM INFORMATION:
-- Current date: {current_date}
-- Current time: {current_time}
-- When user says "today", they mean: {current_date}
+- The current date and time are given in the RUNTIME CONTEXT block at the top of the turn's first user message.
 - Your user's identity: {user_identity}
 
 REFLECTION CHECKPOINT (before you stop this turn):
@@ -262,7 +261,7 @@ def _record_prompt_section_telemetry(
     working_memory_context: str,
     skill_catalog_context: str,
     screen_context_context: str,
-    preloaded_skill_section: str,
+    preloaded_skill_section: str = "",
 ) -> None:
     """Record section sizes for the assembled system prompt."""
     global LAST_PROMPT_SECTION_TELEMETRY
@@ -420,34 +419,29 @@ def build_screen_context_prompt_section() -> str:
 
 def get_agent_system_prompt(
     user_profile_context: str = "",
-    communication_context_section: str = "",
     custom_instructions_section: str = "",
-    preloaded_skill_section: str = "",
 ) -> str:
     """
-    Return the formatted system prompt with current date/time and user identity injected.
-    
+    Return the formatted system prompt with the user identity injected.
+
+    The prompt is deliberately free of anything that changes from turn to turn (clock, communication
+    context, preselected skill) so the provider's prompt cache keeps matching across resumes and turns.
+    Those live in ``build_turn_runtime_context``, which belongs at the top of the turn's first user message.
+
     Args:
         user_profile_context: Pre-formatted string describing the user's identity
             (name, email, company, etc.). Empty string if no profile is available.
-        communication_context_section: Optional relationship-aware context for
-            communication tasks.
-        preloaded_skill_section: Optional SKILL.md body selected before execution.
-    
+        custom_instructions_section: The user's standing communication instructions.
+
     Returns:
         Formatted system prompt string ready for use in agent execution.
     """
-    current_date = datetime.now().strftime('%A, %B %d, %Y')
-    current_time = datetime.now().strftime('%H:%M:%S %Z')
     working_memory_context = build_working_memory_prompt_section()
     skill_catalog_context = build_skill_catalog_prompt_section()
     screen_context_context = build_screen_context_prompt_section()
-    
-    base_prompt = (
-        AGENT_SYSTEM_PROMPT_TEMPLATE
-        .replace("{current_date}", current_date)
-        .replace("{current_time}", current_time)
-        .replace("{user_identity}", user_profile_context or "Not available")
+
+    base_prompt = AGENT_SYSTEM_PROMPT_TEMPLATE.replace(
+        "{user_identity}", user_profile_context or "Not available"
     )
     _record_prompt_section_telemetry(
         base_prompt=base_prompt,
@@ -455,6 +449,39 @@ def get_agent_system_prompt(
         working_memory_context=working_memory_context,
         skill_catalog_context=skill_catalog_context,
         screen_context_context=screen_context_context,
-        preloaded_skill_section=preloaded_skill_section,
     )
-    return f"{base_prompt}{communication_context_section}{custom_instructions_section}{working_memory_context}{skill_catalog_context}{screen_context_context}{preloaded_skill_section}"
+    return f"{base_prompt}{custom_instructions_section}{working_memory_context}{skill_catalog_context}{screen_context_context}"
+
+
+RUNTIME_CONTEXT_START = "RUNTIME CONTEXT (captured when this turn started"
+RUNTIME_CONTEXT_END = "[END RUNTIME CONTEXT]"
+
+
+def build_turn_runtime_context(
+    *,
+    communication_context_section: str = "",
+    preloaded_skill_section: str = "",
+    now: Optional[datetime] = None,
+) -> str:
+    """Return the per-turn block that carries the clock, communication context, and preselected skill."""
+    moment = now or datetime.now().astimezone()
+    current_date = moment.strftime("%A, %B %d, %Y")
+    current_time = moment.strftime("%H:%M:%S %Z")
+    return (
+        f"{RUNTIME_CONTEXT_START}; it does not update during the run):\n"
+        f"- Current date: {current_date}\n"
+        f"- Current time: {current_time}\n"
+        f"- When the user says \"today\", they mean: {current_date}\n"
+        f"{communication_context_section}{preloaded_skill_section}\n"
+        f"{RUNTIME_CONTEXT_END}"
+    )
+
+
+def strip_runtime_context(text: str) -> str:
+    """Remove a leading runtime-context block so synthesis sees only the user's request."""
+    if not text.startswith(RUNTIME_CONTEXT_START):
+        return text
+    marker_index = text.find(RUNTIME_CONTEXT_END)
+    if marker_index < 0:
+        return text
+    return text[marker_index + len(RUNTIME_CONTEXT_END):].lstrip("\n")

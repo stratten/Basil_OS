@@ -10,6 +10,7 @@ import hashlib
 import json
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
+from api.core.utc_time import utc_now_iso  # noqa: F401
 
 TITLE_MAX_CHARS = 200
 SUMMARY_MAX_CHARS = 500
@@ -56,11 +57,6 @@ def _parse_datetime(value: Any) -> Optional[datetime]:
         except ValueError:
             continue
     return None
-
-
-def utc_now_iso() -> str:
-    """Current time as a UTC ISO-8601 string."""
-    return datetime.now(timezone.utc).isoformat()
 
 
 def truncate(text: Optional[str], limit: int) -> Optional[str]:

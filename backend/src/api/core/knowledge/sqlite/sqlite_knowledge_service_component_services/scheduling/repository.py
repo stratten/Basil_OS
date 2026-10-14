@@ -21,8 +21,8 @@ import sqlite3
 
 from ..infrastructure.connection import get_sync_connection
 import uuid
-from datetime import datetime
 from typing import Any, Dict, List, Optional
+from api.core.utc_time import utc_now_naive_iso
 
 logger = logging.getLogger(__name__)
 
@@ -466,7 +466,7 @@ class ScheduledAgentTaskRepository:
                 WHERE status IN ('scheduled', 'running')
                   AND scheduled_for < ?
                 """,
-                (datetime.utcnow().isoformat(), now_iso),
+                (utc_now_naive_iso(), now_iso),
             )
             conn.commit()
             return cursor.rowcount
@@ -507,7 +507,7 @@ class ScheduledAgentTaskRepository:
                 WHERE scheduled_agent_task_id = ?
                   AND status = 'scheduled'
                 """,
-                (datetime.utcnow().isoformat(), scheduled_agent_task_id),
+                (utc_now_naive_iso(), scheduled_agent_task_id),
             )
             conn.commit()
             return cursor.rowcount

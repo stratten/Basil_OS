@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import sqlite3
 import uuid
-from datetime import datetime
 from typing import Any, Optional
 
 from ..infrastructure.connection import get_sync_connection, run_write_transaction
+from api.core.utc_time import utc_now_naive_iso
 
 
 class ManagedFileHistoryPersistenceError(RuntimeError):
@@ -30,9 +30,6 @@ class ManagedFileHistoryRepository:
     def _get_connection(self) -> sqlite3.Connection:
         return get_sync_connection(self.db_path)
 
-    @staticmethod
-    def _utcnow() -> str:
-        return datetime.utcnow().isoformat()
 
     @staticmethod
     def _require_nonblank(value: str, field_name: str) -> str:
@@ -89,7 +86,7 @@ class ManagedFileHistoryRepository:
         restores_change_id: Optional[str] = None,
     ) -> dict[str, Any]:
         change_id = str(uuid.uuid4())
-        timestamp = self._utcnow()
+        timestamp = utc_now_naive_iso()
 
         def _body(conn: sqlite3.Connection) -> None:
             conn.execute(
@@ -131,7 +128,7 @@ class ManagedFileHistoryRepository:
         post_image_size_bytes: int,
     ) -> dict[str, Any]:
         clean_id = self._require_nonblank(change_id, "change_id")
-        timestamp = self._utcnow()
+        timestamp = utc_now_naive_iso()
 
         def _body(conn: sqlite3.Connection) -> None:
             updated = conn.execute(
@@ -166,7 +163,7 @@ class ManagedFileHistoryRepository:
         """Finalize a change and advance its durable head atomically."""
         clean_id = self._require_nonblank(change_id, "change_id")
         clean_path = self._require_nonblank(canonical_path, "canonical_path")
-        timestamp = self._utcnow()
+        timestamp = utc_now_naive_iso()
 
         def _body(conn: sqlite3.Connection) -> None:
             updated = conn.execute(
@@ -217,7 +214,7 @@ class ManagedFileHistoryRepository:
 
     def mark_reverted(self, change_id: str) -> None:
         clean_id = self._require_nonblank(change_id, "change_id")
-        timestamp = self._utcnow()
+        timestamp = utc_now_naive_iso()
 
         def _body(conn: sqlite3.Connection) -> None:
             conn.execute(
@@ -233,7 +230,7 @@ class ManagedFileHistoryRepository:
 
     def _transition_terminal(self, change_id: str, next_state: str, error_message: str) -> dict[str, Any]:
         clean_id = self._require_nonblank(change_id, "change_id")
-        timestamp = self._utcnow()
+        timestamp = utc_now_naive_iso()
 
         def _body(conn: sqlite3.Connection) -> None:
             updated = conn.execute(
@@ -276,7 +273,7 @@ class ManagedFileHistoryRepository:
     def upsert_head(self, canonical_path: str, change_id: str, sha256_digest: str) -> None:
         clean_path = self._require_nonblank(canonical_path, "canonical_path")
         clean_id = self._require_nonblank(change_id, "change_id")
-        timestamp = self._utcnow()
+        timestamp = utc_now_naive_iso()
 
         def _body(conn: sqlite3.Connection) -> None:
             conn.execute(
@@ -335,7 +332,7 @@ class ManagedFileHistoryRepository:
 
     def upsert_blob_ref(self, sha256_digest: str, byte_size: int) -> None:
         clean_digest = self._require_nonblank(sha256_digest, "sha256_digest")
-        timestamp = self._utcnow()
+        timestamp = utc_now_naive_iso()
 
         def _body(conn: sqlite3.Connection) -> None:
             conn.execute(
@@ -354,7 +351,7 @@ class ManagedFileHistoryRepository:
 
     def decrement_blob_ref(self, sha256_digest: str) -> None:
         clean_digest = self._require_nonblank(sha256_digest, "sha256_digest")
-        timestamp = self._utcnow()
+        timestamp = utc_now_naive_iso()
 
         def _body(conn: sqlite3.Connection) -> None:
             conn.execute(

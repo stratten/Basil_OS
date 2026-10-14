@@ -28,6 +28,7 @@ from api.services.agent_providers.profiles.launch_validation import (
     ProviderLaunchValidationError,
     ProviderLaunchValidationService,
 )
+from api.core.utc_time import utc_now_naive
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +85,7 @@ class ProviderTargetDelegationService:
         self._agent_tasks = agent_task_service
         self._submission_service = submission_service
         self._delegated_agent_runs = delegated_agent_repository
-        self._now = now or datetime.utcnow
+        self._now = now or utc_now_naive
 
     async def delegate_authorization(
         self,

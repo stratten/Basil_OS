@@ -74,9 +74,7 @@ final class TranscriptionBridgeController {
                 Task { await self?.viewModel.swapTranscriptionModel(to: modelId) }
             }
         case "openSystemMicrophoneSettings":
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") {
-                NSWorkspace.shared.open(url)
-            }
+            SystemSettingsPrivacyPane.microphone.open()
         case "showErrorPopover":
             guard let error = viewModel.error, !error.isEmpty else { return }
             showErrorPopover(error)

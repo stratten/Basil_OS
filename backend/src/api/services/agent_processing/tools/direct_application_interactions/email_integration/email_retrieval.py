@@ -11,6 +11,7 @@ from datetime import datetime
 
 from .email_models import EmailData, EmailDataList, EmailSearchCriteria, EmailClient
 from .email_tool_contracts import normalize_email_search_criteria
+from .mail_app.mailbox_resolution import ACCOUNT_FOLDER_SEPARATOR, AccountMailboxResolver
 
 if TYPE_CHECKING:
     from .applescript_automation_service import AppleScriptAutomationService
@@ -24,6 +25,16 @@ class EmailRetrievalMixin:
     applescript_service: 'AppleScriptAutomationService'
 
     def _get_client_by_name(self, client_name: Optional[str] = None) -> Optional[EmailClient]: ...
+
+    async def _resolve_mail_folder(self, selected_client: EmailClient, folder: str) -> str:
+        """Map a conventional name such as "Account / Sent Mail" to the account's real mailbox name."""
+        if selected_client.name not in {"Mail", "Mail.app"} or ACCOUNT_FOLDER_SEPARATOR not in folder:
+            return folder
+        resolver = getattr(self, "_account_mailbox_resolver", None)
+        if resolver is None:
+            resolver = AccountMailboxResolver(lambda: self.get_folders(selected_client.name))
+            self._account_mailbox_resolver = resolver
+        return await resolver.resolve(folder)
 
     async def _run_with_email_read_timeout(self, operation):
         """Use a longer AppleScript timeout only for potentially expensive read/search operations."""
@@ -73,6 +84,7 @@ class EmailRetrievalMixin:
         
         try:
             if selected_client.automation_method == "applescript":
+                folder = await self._resolve_mail_folder(selected_client, folder)
                 emails = await self._run_with_email_read_timeout(
                     lambda: self._get_emails_via_applescript(selected_client, folder, limit, search_criteria)
                 )
@@ -167,6 +179,7 @@ class EmailRetrievalMixin:
             logger.warning(f"⚠️ Email metadata is not supported for {selected_client.automation_method}")
             return []
 
+        folder = await self._resolve_mail_folder(selected_client, folder)
         emails = await self._run_with_email_read_timeout(
             lambda: self.applescript_service.get_email_metadata_via_applescript(
                 selected_client.name,
@@ -216,6 +229,7 @@ class EmailRetrievalMixin:
             return []
 
         bounded_ids = [str(email_id).strip() for email_id in email_ids if str(email_id).strip()][:25]
+        folder = await self._resolve_mail_folder(selected_client, folder)
         return await self.applescript_service.expand_email_details_via_applescript(
             selected_client.name,
             bounded_ids,

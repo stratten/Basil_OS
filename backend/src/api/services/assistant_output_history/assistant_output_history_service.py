@@ -13,12 +13,12 @@ AssistantSession rows.
 
 import json
 import logging
-from datetime import datetime
 from typing import Optional, Dict, Any
 
 from api.core.knowledge.sqlite.sqlite_knowledge_service_component_services.infrastructure.connection import (
     get_sync_connection,
 )
+from api.core.utc_time import utc_now_naive_iso
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +132,7 @@ class AssistantOutputHistoryService:
                 {
                     "instruction": instruction,
                     "output": output,
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": utc_now_naive_iso(),
                 }
             )
             new_count = (row["refinement_count"] or 0) + 1

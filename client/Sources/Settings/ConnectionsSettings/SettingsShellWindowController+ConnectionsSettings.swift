@@ -270,12 +270,12 @@ extension SettingsShellWindowController {
             webView.sendIntentResult(requestId: requestId, status: "error", message: "That connection no longer exists.")
             return
         }
-        let alert = NSAlert()
-        alert.messageText = "Remove \(connection.friendlyName)?"
-        alert.informativeText = "Basil will no longer be able to use this connection's tools. You can add it again later."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Remove")
-        alert.addButton(withTitle: "Cancel")
+        let alert = NSAlert(
+            title: "Remove \(connection.friendlyName)?",
+            message: "Basil will no longer be able to use this connection's tools. You can add it again later.",
+            style: .warning,
+            buttons: ["Remove", "Cancel"]
+        )
 
         alert.beginSheetModal(for: window) { [weak self] response in
             guard response == .alertFirstButtonReturn else {
@@ -464,12 +464,12 @@ extension SettingsShellWindowController {
             return
         }
         guard let profile = findProviderProfile(profileId, expectedRevision: expectedRevision, requestId: requestId, webView: webView) else { return }
-        let alert = NSAlert()
-        alert.messageText = "Remove \(profile.displayName)?"
-        alert.informativeText = "This removes the profile from future provider catalog eligibility. Historical provider runs are preserved, no provider process is stopped, and no local files are deleted."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Remove")
-        alert.addButton(withTitle: "Cancel")
+        let alert = NSAlert(
+            title: "Remove \(profile.displayName)?",
+            message: "This removes the profile from future provider catalog eligibility. Historical provider runs are preserved, no provider process is stopped, and no local files are deleted.",
+            style: .warning,
+            buttons: ["Remove", "Cancel"]
+        )
 
         alert.beginSheetModal(for: window) { [weak self] response in
             guard response == .alertFirstButtonReturn else {
@@ -591,12 +591,12 @@ extension SettingsShellWindowController {
             webView.sendIntentResult(requestId: requestId, status: "error", message: "This workspace authorization was changed elsewhere. Reload and try again.")
             return
         }
-        let alert = NSAlert()
-        alert.messageText = "Revoke \(grant.workspaceLabel)?"
-        alert.informativeText = "This revokes future workspace authorization, preserves history, and does not delete local files."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Revoke")
-        alert.addButton(withTitle: "Cancel")
+        let alert = NSAlert(
+            title: "Revoke \(grant.workspaceLabel)?",
+            message: "This revokes future workspace authorization, preserves history, and does not delete local files.",
+            style: .warning,
+            buttons: ["Revoke", "Cancel"]
+        )
 
         alert.beginSheetModal(for: window) { [weak self] response in
             guard response == .alertFirstButtonReturn else {

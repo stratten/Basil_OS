@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import random
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Optional
@@ -35,6 +37,13 @@ TRANSIENT_RETRIES = 2
 MAX_COMPACTION_LEVEL = 2
 THREAD_COMPACTION_LEVEL = 3
 _RECENT_TOOL_RESULTS_BY_LEVEL = {1: 3, 2: 1, 3: 1}
+
+# Routine elision keeps long runs affordable well before the overflow-driven compaction levels apply
+ROUTINE_COMPACTION_TRIGGER_TOKENS = 100_000
+ROUTINE_KEEP_RECENT_RESULTS = 6
+ELIDED_RESULT_HEAD_CHARS = 400
+# The tool surface is rebuilt from these results, and a pending question must keep its answer intact
+_NEVER_ELIDED_TOOLS = frozenset({"load_tool_family", "request_user_input"})
 
 
 @dataclass
@@ -110,11 +119,73 @@ def compact_messages(
     return compacted
 
 
+def _elided_text(message: ToolMessage) -> str:
+    original = message_text(message.content)
+    head = original[:ELIDED_RESULT_HEAD_CHARS]
+    omitted = max(0, len(original) - len(head))
+    return (
+        f"[Earlier result trimmed: first {ELIDED_RESULT_HEAD_CHARS} characters follow]\n{head}\n"
+        f"[{omitted} characters omitted; call the tool again if you need them.]"
+    )
+
+
+def apply_routine_elision(messages: list[BaseMessage], elided_call_ids: set[str]) -> list[BaseMessage]:
+    """Request-only copy with the already-elided tool results replaced by their heads."""
+    if not elided_call_ids:
+        return messages
+    return [
+        message.model_copy(update={"content": _elided_text(message)})
+        if isinstance(message, ToolMessage) and message.tool_call_id in elided_call_ids
+        else message
+        for message in messages
+    ]
+
+
+def _elision_candidates(messages: list[BaseMessage], already_elided: set[str]) -> list[ToolMessage]:
+    tool_messages = [message for message in messages if isinstance(message, ToolMessage)]
+    older = tool_messages[:-ROUTINE_KEEP_RECENT_RESULTS] if len(tool_messages) > ROUTINE_KEEP_RECENT_RESULTS else []
+    return [
+        message
+        for message in older
+        if message.tool_call_id not in already_elided
+        and (message.name or "") not in _NEVER_ELIDED_TOOLS
+        and len(message_text(message.content)) > ELIDED_RESULT_HEAD_CHARS * 2
+    ]
+
+
 def _system_text(request: Any) -> str:
     system_message = getattr(request, "system_message", None)
     if system_message is not None:
         return message_text(getattr(system_message, "content", ""))
     return str(getattr(request, "system_prompt", None) or "")
+
+
+def _tool_fingerprint_part(tool: Any) -> str:
+    if isinstance(tool, dict):
+        return json.dumps(tool, sort_keys=True, default=str)
+    schema = getattr(tool, "args_schema", None)
+    try:
+        schema_text = json.dumps(schema.model_json_schema(), sort_keys=True, default=str) if schema is not None and hasattr(schema, "model_json_schema") else str(schema)
+    except Exception:
+        schema_text = str(schema)
+    return f"{getattr(tool, 'name', '')}|{getattr(tool, 'description', '')}|{schema_text}"
+
+
+def prefix_fingerprint(request: Any) -> str:
+    """Short hash of what the provider caches first: the system prompt and the bound tool definitions."""
+    digest = hashlib.sha256()
+    digest.update(_system_text(request).encode("utf-8", errors="replace"))
+    for tool in list(getattr(request, "tools", None) or []):
+        digest.update(b"\x1f")
+        digest.update(_tool_fingerprint_part(tool).encode("utf-8", errors="replace"))
+    return digest.hexdigest()[:12]
+
+
+def _cache_read_tokens(message: Any) -> Optional[int]:
+    usage = getattr(message, "usage_metadata", None) or {}
+    details = usage.get("input_token_details") or {}
+    value = details.get("cache_read")
+    return value if isinstance(value, int) else None
 
 
 def _last_ai_message(response: Any) -> Any:
@@ -154,14 +225,47 @@ class ModelRecoveryMiddleware(AgentMiddleware):
         self.backoff_base_seconds = 1.0
         self._overflow_tokens: tuple[Optional[int], Optional[int]] = (None, None)
         self._tool_chars_cache: dict[str, int] = {}
+        self._previous_prefix: Optional[str] = None
+        self._elided_call_ids: set[str] = set()
+
+    def _elide_routinely(self, request: ModelRequest) -> None:
+        """Once the prompt passes the trigger, elide every older result in one batch so the cached prefix changes rarely."""
+        system_text = _system_text(request)
+        tools = list(getattr(request, "tools", None) or [])
+        messages = list(request.messages)
+        tokens_before = estimate_prompt_tokens(
+            apply_routine_elision(messages, self._elided_call_ids),
+            system_text=system_text,
+            tools=tools,
+            tool_chars_cache=self._tool_chars_cache,
+        )
+        if tokens_before <= ROUTINE_COMPACTION_TRIGGER_TOKENS:
+            return
+        candidates = _elision_candidates(messages, self._elided_call_ids)
+        if not candidates:
+            return
+        self._elided_call_ids.update(message.tool_call_id for message in candidates)
+        tokens_after = estimate_prompt_tokens(
+            apply_routine_elision(messages, self._elided_call_ids),
+            system_text=system_text,
+            tools=tools,
+            tool_chars_cache=self._tool_chars_cache,
+        )
+        logger.info(
+            "routine-elision count=%s tokens_before=%s tokens_after=%s",
+            len(candidates),
+            tokens_before,
+            tokens_after,
+        )
 
     def _compacted(self, request: ModelRequest) -> ModelRequest:
+        elided = apply_routine_elision(list(request.messages), self._elided_call_ids)
         if self.compaction_level == 0:
-            return request
+            return request.override(messages=elided) if self._elided_call_ids else request
         actual_tokens, max_tokens = self._overflow_tokens
         return request.override(
             messages=compact_messages(
-                list(request.messages),
+                elided,
                 self.compaction_level,
                 actual_tokens=actual_tokens,
                 max_tokens=max_tokens,
@@ -228,6 +332,7 @@ class ModelRecoveryMiddleware(AgentMiddleware):
     ) -> Any:
         transient_attempts = 0
         empty_retried = False
+        self._elide_routinely(request)
         self._compact_proactively(request)
         while True:
             try:
@@ -274,7 +379,21 @@ class ModelRecoveryMiddleware(AgentMiddleware):
                 raise
             self.completed_model_calls += 1
             try:
-                logger.info(f"🔬 PIPELINE: model returned — {_llm_output_log_fields(_last_ai_message(response))}")
+                last_ai = _last_ai_message(response)
+                prefix = prefix_fingerprint(request)
+                logger.info(
+                    f"🔬 PIPELINE: model returned — {_llm_output_log_fields(last_ai)}, prefix={prefix}"
+                )
+                if self._previous_prefix is not None and _cache_read_tokens(last_ai) == 0:
+                    if prefix == self._previous_prefix:
+                        logger.warning("Prompt cache miss with an unchanged prefix (likely cache TTL expiry)")
+                    else:
+                        logger.warning(
+                            "Prompt cache miss: prefix changed since the previous call (%s -> %s)",
+                            self._previous_prefix,
+                            prefix,
+                        )
+                self._previous_prefix = prefix
             except Exception as log_error:
                 logger.debug("Model output logging failed: %s", log_error)
             return response

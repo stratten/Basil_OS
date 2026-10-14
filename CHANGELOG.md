@@ -6,6 +6,7 @@ Write one bullet per line, starting with `- `, in plain language for people usin
 
 ## Unreleased
 
+- Builds downloaded from GitHub now update themselves through Sparkle from the repository's own update feed, the same way the website build does, and every update is checked against a dedicated signing key
 - Home in the Basil Board is now a single centered input that sends your request where it belongs: questions open in Chats with the message already sent, and tasks open in Agents, or in the task window if it is already open
 - After Home routes a request, a short notice says where it went and lets you correct it with one click, such as Send as agent task instead or Answer in a chat instead
 - Home now lists your last few requests as simple links that reopen the chat or task, instead of a history sidebar and transcript

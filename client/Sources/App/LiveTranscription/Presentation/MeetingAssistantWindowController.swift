@@ -19,6 +19,11 @@ final class MeetingAssistantWindowController: NSObject, NSWindowDelegate, Appear
     private var presentationToken: MeetingPresentationToken?
     private var collapseController: WindowCollapseController?
     private var sidebarStateCancellable: AnyCancellable?
+    /// Width the window has actually grown by for the Companion; less than the width the web view asked for only when the screen ran out of room.
+    private var companionGrowth: CGFloat = 0
+
+    /// Matches the web sidebar transition (`collapsible-sidebar.css`: 400ms, cubic-bezier(0.2, 0.8, 0.2, 1)) so the window edge and the column move together.
+    private static let companionResizeDuration: TimeInterval = 0.4
 
     var onClosed: (() -> Void)?
     var isVisible: Bool { panel != nil }
@@ -43,18 +48,10 @@ final class MeetingAssistantWindowController: NSObject, NSWindowDelegate, Appear
             backing: .buffered,
             defer: false
         )
-        panel.title = Self.windowTitle
-        panel.level = .floating
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
+        panel.configureFloatingWidget(title: Self.windowTitle, transparency: .clearWithoutShadow)
         panel.isFloatingPanel = true
-        panel.hidesOnDeactivate = false
         panel.becomesKeyOnlyIfNeeded = false
         panel.worksWhenModal = true
-        panel.hasShadow = false
-        panel.alphaValue = 1.0
-        panel.isOpaque = false
-        panel.backgroundColor = NSColor.clear
-        panel.isMovableByWindowBackground = true
         panel.delegate = self
         applySidebarMinimumSize(to: panel, sidebarCollapsed: coordinator.viewModel?.isSidebarCollapsed ?? false)
 
@@ -64,6 +61,7 @@ final class MeetingAssistantWindowController: NSObject, NSWindowDelegate, Appear
         meetingWebView.onClose = { [weak self] in self?.close() }
         meetingWebView.onMinimize = { [weak self] in self?.panel?.miniaturize(nil) }
         meetingWebView.onToggleCollapse = { [weak self] collapsed in self?.applyCollapse(collapsed) }
+        meetingWebView.onCompanionPaneExtent = { [weak self] extent in self?.applyCompanionPaneExtent(extent) }
 
         let token = coordinator.attachWebPresentation(
             sink: { [weak meetingWebView] event in
@@ -108,6 +106,40 @@ final class MeetingAssistantWindowController: NSObject, NSWindowDelegate, Appear
         collapseController?.setCollapsed(collapsed)
     }
 
+    /// Grows (or shrinks) the window's right edge by the Companion column's width, so the main column never gets narrower. While the window is compact the request is ignored, and the next report reconciles against the real growth.
+    private func applyCompanionPaneExtent(_ extent: CGFloat) {
+        guard collapseController?.isCollapsed != true, let panel else { return }
+        let previousGrowth = companionGrowth
+        let baseMinimumWidth = LiveTranscriptionLayoutPolicy.panelMinimumSize(
+            sidebarCollapsed: coordinator.viewModel?.isSidebarCollapsed ?? false
+        ).width
+        let visibleFrame = (panel.screen ?? NSScreen.main)?.visibleFrame ?? panel.frame
+        let resized = LiveTranscriptionLayoutPolicy.companionResizedFrame(
+            frame: panel.frame,
+            delta: extent - previousGrowth,
+            visibleFrame: visibleFrame,
+            minimumWidth: baseMinimumWidth
+        )
+        let newGrowth = max(previousGrowth + resized.achievedDelta, 0)
+        guard resized.frame != panel.frame else {
+            companionGrowth = newGrowth
+            applySidebarMinimumSize(sidebarCollapsed: coordinator.viewModel?.isSidebarCollapsed ?? false)
+            return
+        }
+        // Lower the floor first when shrinking and raise it only once the window is wide enough when growing, so the floor never exceeds the frame mid-animation.
+        companionGrowth = min(previousGrowth, newGrowth)
+        applySidebarMinimumSize(sidebarCollapsed: coordinator.viewModel?.isSidebarCollapsed ?? false)
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = Self.companionResizeDuration
+            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.8, 0.2, 1)
+            panel.animator().setFrame(resized.frame, display: true)
+        } completionHandler: { [weak self] in
+            guard let self else { return }
+            self.companionGrowth = newGrowth
+            self.applySidebarMinimumSize(sidebarCollapsed: self.coordinator.viewModel?.isSidebarCollapsed ?? false)
+        }
+    }
+
     private func close() {
         guard let panel else { return }
         panel.close()
@@ -122,7 +154,7 @@ final class MeetingAssistantWindowController: NSObject, NSWindowDelegate, Appear
         to panel: NSPanel,
         sidebarCollapsed: Bool
     ) {
-        let minimumSize = LiveTranscriptionLayoutPolicy.panelMinimumSize(sidebarCollapsed: sidebarCollapsed)
+        let minimumSize = LiveTranscriptionLayoutPolicy.panelMinimumSize(sidebarCollapsed: sidebarCollapsed, companionExtent: companionGrowth)
         panel.minSize = minimumSize
         panel.contentMinSize = minimumSize
         guard !sidebarCollapsed, panel.frame.width < minimumSize.width else { return }
@@ -135,7 +167,8 @@ final class MeetingAssistantWindowController: NSObject, NSWindowDelegate, Appear
         guard collapseController?.isCollapsed != true else { return frameSize }
         return LiveTranscriptionLayoutPolicy.constrainedExpandedSize(
             frameSize,
-            sidebarCollapsed: coordinator.viewModel?.isSidebarCollapsed ?? false
+            sidebarCollapsed: coordinator.viewModel?.isSidebarCollapsed ?? false,
+            companionExtent: companionGrowth
         )
     }
 
@@ -161,6 +194,7 @@ final class MeetingAssistantWindowController: NSObject, NSWindowDelegate, Appear
         meetingWebView = nil
         sidebarStateCancellable = nil
         collapseController = nil
+        companionGrowth = 0
         panel = nil
         onClosed?()
     }

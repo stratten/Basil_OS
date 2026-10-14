@@ -78,6 +78,7 @@ _CLEARED_AGENT_LOOP_FIELDS: Dict[str, Any] = {
     "agent_messages": None,
     "agent_pending_tool_call_id": None,
     "agent_resume_input": None,
+    "agent_system_prompt_text": None,
 }
 
 
@@ -87,6 +88,7 @@ def _paused_agent_loop_fields(pause_request: BaseException) -> Dict[str, Any]:
         "agent_messages": getattr(pause_request, "basil_agent_messages", None),
         "agent_pending_tool_call_id": getattr(pause_request, "basil_tool_call_id", None),
         "agent_resume_input": None,
+        "agent_system_prompt_text": getattr(pause_request, "basil_system_prompt_text", None),
     }
 
 

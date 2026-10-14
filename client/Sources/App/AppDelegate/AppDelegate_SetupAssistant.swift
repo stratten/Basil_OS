@@ -62,9 +62,7 @@ extension AppDelegate {
             backing: .buffered,
             defer: false
         )
-        window.title = "Basil Setup Assistant"
-        window.isReleasedWhenClosed = false
-        window.isMovableByWindowBackground = true
+        window.configureCustomChromeWindow(title: "Basil Setup Assistant", releasedWhenClosed: false)
         window.contentView = NSHostingView(
             rootView: setupAssistantView
                 .preferredColorScheme(.light)
@@ -187,11 +185,12 @@ extension AppDelegate {
             backing: .buffered,
             defer: false
         )
-        window.title = isReturningUserCheck
-            ? "Welcome Back"
-            : (autoPresented ? "Basil Permissions Required" : "Basil Permissions Setup")
-        window.isReleasedWhenClosed = false
-        window.isMovableByWindowBackground = true
+        window.configureCustomChromeWindow(
+            title: isReturningUserCheck
+                ? "Welcome Back"
+                : (autoPresented ? "Basil Permissions Required" : "Basil Permissions Setup"),
+            releasedWhenClosed: false
+        )
         window.contentView = NSHostingView(
             rootView: permissionsView
                 .preferredColorScheme(.light)
@@ -261,11 +260,12 @@ extension AppDelegate {
     /// only when the packaged web assets themselves cannot be found/loaded.
     @MainActor
     private func showSetupPermissionsLoadFailureAlert() {
-        let alert = NSAlert()
-        alert.alertStyle = .warning
-        alert.messageText = "Basil couldn't load its setup screen."
-        alert.informativeText = "Try restarting the app. If this keeps happening, reinstalling Basil may help."
-        alert.addButton(withTitle: "OK")
+        let alert = NSAlert(
+            title: "Basil couldn't load its setup screen.",
+            message: "Try restarting the app. If this keeps happening, reinstalling Basil may help.",
+            style: .warning,
+            buttons: ["OK"]
+        )
         alert.runModal()
     }
 

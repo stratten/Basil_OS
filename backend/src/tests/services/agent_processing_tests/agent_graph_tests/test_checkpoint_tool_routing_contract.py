@@ -72,7 +72,6 @@ def test_system_prompt_section_telemetry_tracks_assembled_prompt(monkeypatch, ca
     working_memory_context = "\n\nWORKING MEMORY:\nnone\n"
     skill_catalog_context = "\n\nSAVED SKILL CATALOG:\nnone\n"
     screen_context_context = "\n\nSCREEN CONTEXT:\nnone\n"
-    preloaded_skill_section = "\n\nSELECTED SAVED SKILL:\nbody\n"
     custom_instructions_section = "\n\nCUSTOM INSTRUCTIONS:\nbe terse\n"
 
     monkeypatch.setattr(
@@ -95,7 +94,6 @@ def test_system_prompt_section_telemetry_tracks_assembled_prompt(monkeypatch, ca
         prompt = system_prompts.get_agent_system_prompt(
             user_profile_context="Test User",
             custom_instructions_section=custom_instructions_section,
-            preloaded_skill_section=preloaded_skill_section,
         )
 
     telemetry = system_prompts.get_last_prompt_section_telemetry()
@@ -104,7 +102,6 @@ def test_system_prompt_section_telemetry_tracks_assembled_prompt(monkeypatch, ca
         + len(working_memory_context)
         + len(skill_catalog_context)
         + len(screen_context_context)
-        + len(preloaded_skill_section)
     )
 
     assert telemetry["base_chars"] == expected_base_chars
@@ -112,7 +109,7 @@ def test_system_prompt_section_telemetry_tracks_assembled_prompt(monkeypatch, ca
     assert telemetry["working_memory_chars"] == len(working_memory_context)
     assert telemetry["skill_catalog_chars"] == len(skill_catalog_context)
     assert telemetry["screen_context_chars"] == len(screen_context_context)
-    assert telemetry["preloaded_skill_chars"] == len(preloaded_skill_section)
+    assert telemetry["preloaded_skill_chars"] == 0
     assert telemetry["total_chars"] == len(prompt)
     assert telemetry["total_tokens_est"] == len(prompt) // 4
     assert "[AgentTelemetry] prompt-sections" in caplog.text

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import ExpandableClamp from '@shared/ExpandableClamp'
 import { useCopiedFlag } from '@shared/useCopyFeedback'
 import type { TranscriptionModelOptionFields, TranscriptionRecordFields } from '../types'
 
@@ -109,10 +110,10 @@ export function TranscriptionHistoryItem({
           </>
         ) : isPending ? (
           <p className="transcription-settings-hint">Transcribing… text will appear here when the model finishes.</p>
-        ) : showFullText ? (
-          <p className="transcription-history-item-text-full">{record.displayText}</p>
         ) : (
-          <p className="transcription-history-item-text-preview">{record.displayText}</p>
+          <ExpandableClamp expanded={showFullText}>
+            <p className="transcription-history-item-text">{record.displayText}</p>
+          </ExpandableClamp>
         )}
       </div>
 

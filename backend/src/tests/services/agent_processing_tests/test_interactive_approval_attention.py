@@ -390,3 +390,76 @@ async def test_approval_wait_pauses_the_workflow_budget(monkeypatch):
 
     assert await request == (True, False, "exact")
     assert deadline.is_paused is False
+
+
+@pytest.mark.asyncio
+async def test_decision_from_a_service_without_a_websocket_manager_still_releases_the_waiter(monkeypatch):
+    """The decide route lazily builds `ExecutionApprovalService()` with no websocket manager, which used to raise after the durable approval committed and leave the task waiting forever."""
+    from api.services.agent_processing.tools.safety import ExecutionApprovalService
+
+    repository = _Repository()
+    websocket = _WebSocket()
+    _patch_waiting_manager(monkeypatch, repository, AsyncMock())
+    manager = InteractiveApprovalManager(
+        websocket_manager=websocket,
+        generalizer=SimpleNamespace(generalize_command=lambda command: command),
+    )
+    decision = ExecutionApprovalDecision(needs_approval=True, reason="Not whitelisted", risk_level="low")
+    request = asyncio.create_task(
+        manager.request_approval(command="pwd", decision=decision, context={"agent_task_id": "task-1"})
+    )
+    await websocket.published.wait()
+
+    await ExecutionApprovalService().handle_approval_response(
+        approval_id="approval-1",
+        approved=True,
+        agent_task_id="task-1",
+        expected_revision=0,
+    )
+
+    assert await asyncio.wait_for(request, timeout=2) == (True, False, "exact")
+
+
+@pytest.mark.asyncio
+async def test_broadcast_falls_back_to_connected_clients_without_a_websocket_manager(monkeypatch):
+    sent: list[dict] = []
+
+    async def _fake_broadcast_json_text(payload, *, log=None):
+        sent.append(payload)
+        return 1
+
+    monkeypatch.setattr(interactive_approval, "broadcast_json_text", _fake_broadcast_json_text)
+    generalizer = SimpleNamespace(generalize_command=lambda command: command)
+    websocket = _WebSocket()
+
+    await InteractiveApprovalManager(websocket_manager=None, generalizer=generalizer)._broadcast({"event_type": "a"})
+    await InteractiveApprovalManager(websocket_manager=websocket, generalizer=generalizer)._broadcast({"event_type": "b"})
+
+    assert sent == [{"event_type": "a"}]
+    assert websocket.events == [{"event_type": "b"}]
+
+
+@pytest.mark.asyncio
+async def test_failed_resolution_bookkeeping_still_releases_the_waiting_run(monkeypatch):
+    repository = _Repository()
+    websocket = _WebSocket()
+    _patch_waiting_manager(monkeypatch, repository, AsyncMock())
+    manager = InteractiveApprovalManager(
+        websocket_manager=websocket,
+        generalizer=SimpleNamespace(generalize_command=lambda command: command),
+    )
+    decision = ExecutionApprovalDecision(needs_approval=True, reason="Not whitelisted", risk_level="low")
+    request = asyncio.create_task(
+        manager.request_approval(command="pwd", decision=decision, context={"agent_task_id": "task-1"})
+    )
+    await websocket.published.wait()
+    monkeypatch.setattr(interactive_approval, "persist_timeline_entry", AsyncMock(side_effect=RuntimeError("timeline unavailable")))
+
+    await manager.handle_approval_response(
+        approval_id="approval-1",
+        approved=False,
+        agent_task_id="task-1",
+        expected_revision=0,
+    )
+
+    assert await asyncio.wait_for(request, timeout=2) == (False, False, "exact")

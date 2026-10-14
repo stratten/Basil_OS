@@ -2,7 +2,6 @@
 
 import json
 import logging
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Type
 
@@ -20,6 +19,7 @@ from .migrations import (
     migrate_zettel_source_catalog_in_data,
     normalize_auth_preference_in_data,
 )
+from api.core.utc_time import utc_now_naive
 
 
 def initialize_default_hotkeys(preferences: Any, logger: logging.Logger) -> None:
@@ -202,7 +202,7 @@ def _preserve_unreadable_preferences_file(settings_file: Path, logger: logging.L
     """
     if not settings_file.exists():
         return
-    timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    timestamp = utc_now_naive().strftime("%Y%m%dT%H%M%SZ")
     backup_path = settings_file.with_name(f"{settings_file.name}.unreadable-{timestamp}.bak")
     try:
         backup_path.write_bytes(settings_file.read_bytes())

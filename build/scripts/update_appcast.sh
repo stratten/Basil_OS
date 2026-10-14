@@ -26,8 +26,18 @@ print_error() { echo -e "${RED}[APPCAST]${NC} $1"; }
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# Sparkle tools
-SPARKLE_SIGN_TOOL="$ROOT_DIR/client/.build/artifacts/sparkle/Sparkle/bin/sign_update"
+# Sparkle tools. BASIL_SPARKLE_SIGN_TOOL overrides the tool path (build/scripts/test_update_appcast.sh uses a stub).
+SPARKLE_SIGN_TOOL="${BASIL_SPARKLE_SIGN_TOOL:-$ROOT_DIR/client/.build/artifacts/sparkle/Sparkle/bin/sign_update}"
+# When set, this private EdDSA key text is piped to sign_update on stdin instead of read from the login Keychain. CI uses this; the key is never written to disk.
+SPARKLE_PRIVATE_KEY="${BASIL_SPARKLE_PRIVATE_KEY:-}"
+
+sparkle_sign() {
+    if [ -n "$SPARKLE_PRIVATE_KEY" ]; then
+        printf '%s' "$SPARKLE_PRIVATE_KEY" | "$SPARKLE_SIGN_TOOL" --ed-key-file - "$@"
+    else
+        "$SPARKLE_SIGN_TOOL" "$@"
+    fi
+}
 
 # Defaults
 APPCAST_FILE=""
@@ -38,6 +48,7 @@ DOWNLOAD_URL=""
 RELEASE_NOTES=""
 MIN_SYSTEM_VERSION="13.0"
 APPCAST_URL=""
+SIGN_FEED=false
 
 print_usage() {
     echo "Usage: $0 [options]"
@@ -54,6 +65,7 @@ print_usage() {
     echo "  --release-notes TEXT  Release notes (plain text, wrapped in HTML)"
     echo "  --appcast PATH        Path to appcast.xml (default: build/appcast.xml)"
     echo "  --min-os VERSION      Minimum macOS version (default: 13.0)"
+    echo "  --sign-feed           EdDSA-sign the finished appcast (new appcast files only; pair with SURequireSignedFeed in the app)"
     echo "  -h, --help            Show this help message"
     echo ""
     echo "Example:"
@@ -94,6 +106,10 @@ while [[ $# -gt 0 ]]; do
         --min-os)
             MIN_SYSTEM_VERSION="$2"
             shift 2
+            ;;
+        --sign-feed)
+            SIGN_FEED=true
+            shift
             ;;
         -h|--help)
             print_usage
@@ -137,6 +153,11 @@ if [ ! -f "$DMG_PATH" ]; then
     exit 1
 fi
 
+if [ "$SIGN_FEED" = true ] && [ -f "$APPCAST_FILE" ]; then
+    print_error "--sign-feed only supports creating a new appcast; remove $APPCAST_FILE first."
+    exit 1
+fi
+
 # Without --release-notes, use BASIL_RELEASE_NOTES_FILE when set, otherwise this version's CHANGELOG.md section
 if [ -z "$RELEASE_NOTES" ]; then
     RELEASE_NOTES_FILE="${BASIL_RELEASE_NOTES_FILE:-}"
@@ -167,7 +188,7 @@ if [ ! -f "$SPARKLE_SIGN_TOOL" ]; then
 fi
 
 print_status "Signing DMG with EdDSA key..."
-SIGN_OUTPUT=$("$SPARKLE_SIGN_TOOL" "$DMG_PATH" 2>&1)
+SIGN_OUTPUT=$(sparkle_sign "$DMG_PATH" 2>&1)
 
 # The sign_update tool outputs: sparkle:edSignature="..." length="..."
 # Extract the edSignature value
@@ -275,6 +296,15 @@ $NEW_ITEM
 EOF
     
     print_success "New appcast created with version $VERSION."
+fi
+
+if [ "$SIGN_FEED" = true ]; then
+    print_status "Signing the appcast feed with the EdDSA key..."
+    if ! sparkle_sign "$APPCAST_FILE" > /dev/null; then
+        print_error "Failed to sign the appcast feed."
+        exit 1
+    fi
+    print_success "Appcast feed signed."
 fi
 
 print_success "Appcast file: $APPCAST_FILE"

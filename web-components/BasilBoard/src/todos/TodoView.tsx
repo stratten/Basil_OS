@@ -18,6 +18,7 @@ import {
   reopenTodoItem,
   removeTodoReference,
   replaceTodoNotes,
+  setTodoItemStatus,
   type TodoSortBy,
   updateTodoItem,
 } from '../services/api';
@@ -308,16 +309,36 @@ export default function TodoView({ originNavigation }: TodoViewProps) {
     await refreshList({ quiet: true });
   }
 
-  async function withConflictHandling(action: () => Promise<TodoItemDetail>) {
+  async function withConflictHandling(action: () => Promise<TodoItemDetail>): Promise<boolean> {
     try {
       const updated = await action();
-      setCurrentDetail(updated);
+      if (detailRef.current?.id === updated.id) setCurrentDetail(updated);
       setSelectedItemsById((current) => current[updated.id] ? { ...current, [updated.id]: updated } : current);
       setConflictMessage(null);
       await refreshList({ quiet: true });
+      return true;
     } catch (err) {
       setConflictMessage(err instanceof Error ? err.message : 'That change could not be applied. It may be stale.');
+      return false;
     }
+  }
+
+  // Autosaves from several fields (and the status select) can overlap. Running them one at a time, and
+  // reading the revision from detailRef when each one is sent, keeps every save on the latest revision.
+  const saveQueueRef = useRef<Promise<unknown>>(Promise.resolve());
+
+  function enqueueTask<T>(task: () => Promise<T>): Promise<T> {
+    const next = saveQueueRef.current.then(task, task);
+    saveQueueRef.current = next.catch(() => undefined);
+    return next;
+  }
+
+  function enqueueSave(todoId: string, action: (current: TodoItemDetail) => Promise<TodoItemDetail>): Promise<boolean> {
+    return enqueueTask(async () => {
+      const current = detailRef.current;
+      if (!current || current.id !== todoId) return false;
+      return withConflictHandling(() => action(current));
+    });
   }
 
   async function withReferenceConflictHandling(action: () => Promise<TodoItemDetail>): Promise<TodoItemDetail> {
@@ -426,15 +447,22 @@ export default function TodoView({ originNavigation }: TodoViewProps) {
             setConflictMessage(null);
           });
         }}
-        onSaveDetails={(title, description) => withConflictHandling(() => updateTodoItem(
-          detail!.id,
-          { expected_revision: detail!.revision, title, description },
+        onSaveTitle={(title) => enqueueSave(detail!.id, (current) => updateTodoItem(
+          current.id,
+          { expected_revision: current.revision, title },
         ))}
-        onSaveNotes={(notes) => withConflictHandling(() => replaceTodoNotes(detail!.id, notes, detail!.revision))}
-        onSaveDueDate={(dueAt) => withConflictHandling(() => updateTodoItem(detail!.id, { expected_revision: detail!.revision, due_at: dueAt }))}
-        onSaveCompletedDate={(completedAt) => withConflictHandling(() => updateTodoItem(
-          detail!.id,
-          { expected_revision: detail!.revision, completed_at: completedAt },
+        onSaveDescription={(description) => enqueueSave(detail!.id, (current) => updateTodoItem(
+          current.id,
+          { expected_revision: current.revision, description },
+        ))}
+        onSaveNotes={(notes) => enqueueSave(detail!.id, (current) => replaceTodoNotes(current.id, notes, current.revision))}
+        onSaveDueDate={(dueAt) => enqueueSave(detail!.id, (current) => updateTodoItem(
+          current.id,
+          { expected_revision: current.revision, due_at: dueAt },
+        ))}
+        onSaveCompletedDate={(completedAt) => enqueueSave(detail!.id, (current) => updateTodoItem(
+          current.id,
+          { expected_revision: current.revision, completed_at: completedAt },
         ))}
         onAddReference={(path) => {
           const currentDetail = detailRef.current;
@@ -446,13 +474,26 @@ export default function TodoView({ originNavigation }: TodoViewProps) {
           if (!currentDetail) return Promise.resolve();
           return withReferenceConflictHandling(() => removeTodoReference(currentDetail.id, referenceId, currentDetail.revision));
         }}
-        onAccept={() => withConflictHandling(() => acceptTodoCandidate(detail!.id, detail!.revision))}
-        onDismiss={() => withConflictHandling(() => dismissTodoCandidate(detail!.id, detail!.revision))}
-        onComplete={() => withConflictHandling(() => completeTodoItem(detail!.id, detail!.revision))}
-        onReopen={() => withConflictHandling(() => reopenTodoItem(detail!.id, detail!.revision))}
-        onCancel={() => withConflictHandling(() => cancelTodoItem(detail!.id, detail!.revision))}
-        onDelete={async () => { await deleteTodoFromView(detail!.id, detail!.revision); }}
-        onLaunchWorker={() => launchWorkerFromTodo(detail!.id, detail!.revision)}
+        onAccept={() => enqueueSave(detail!.id, (current) => acceptTodoCandidate(current.id, current.revision))}
+        onDismiss={() => enqueueSave(detail!.id, (current) => dismissTodoCandidate(current.id, current.revision))}
+        onComplete={() => enqueueSave(detail!.id, (current) => completeTodoItem(current.id, current.revision))}
+        onReopen={() => enqueueSave(detail!.id, (current) => reopenTodoItem(current.id, current.revision))}
+        onCancel={() => enqueueSave(detail!.id, (current) => cancelTodoItem(current.id, current.revision))}
+        onSetStatus={(status) => enqueueSave(detail!.id, (current) => setTodoItemStatus(current.id, status, current.revision))}
+        onDelete={() => {
+          const todoId = detail!.id;
+          return enqueueTask(async () => {
+            const current = detailRef.current;
+            if (current?.id === todoId) await deleteTodoFromView(current.id, current.revision);
+          });
+        }}
+        onLaunchWorker={() => {
+          const todoId = detail!.id;
+          return enqueueTask(async () => {
+            const current = detailRef.current;
+            if (current?.id === todoId) await launchWorkerFromTodo(current.id, current.revision);
+          });
+        }}
         workerProgress={workerProgress}
       />
       <TodoWorkspacePane

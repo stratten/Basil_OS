@@ -22,7 +22,9 @@ from api.services.agent_processing.lifecycle.execution_graph.service_tooling.opt
     register_optional_tools,
 )
 from api.services.agent_processing.lifecycle.execution_graph.service_tooling.tool_family_catalog import (
+    BASELINE_FALLBACK_FAMILY_NAMES,
     family_names_for_tool_name,
+    select_core_tools,
 )
 from api.services.agent_processing.lifecycle.execution_graph.workflow_deadline import WorkflowDeadline
 from api.services.agent_processing.lifecycle.submission.agent_task_submission_service import (
@@ -282,9 +284,19 @@ def test_registry_adds_follow_up_tools_and_respects_child_constraints():
     assert f"follow_up.{CANCEL_TOOL_NAME}" not in constrained
 
 
-def test_follow_up_tools_belong_to_the_schedule_family():
-    for name in (WAIT_TOOL_NAME, SCHEDULE_TOOL_NAME, CANCEL_TOOL_NAME, "create_scheduled_agent_task_from_prompt"):
-        assert family_names_for_tool_name(name) == ["schedule"]
+def test_follow_up_tools_belong_to_the_baseline_follow_up_family():
+    for name in (WAIT_TOOL_NAME, SCHEDULE_TOOL_NAME, CANCEL_TOOL_NAME):
+        assert family_names_for_tool_name(name) == ["follow_up"]
+    assert "follow_up" in BASELINE_FALLBACK_FAMILY_NAMES
+    assert family_names_for_tool_name("create_scheduled_agent_task_from_prompt") == ["schedule"]
+    assert "schedule" not in BASELINE_FALLBACK_FAMILY_NAMES
+
+
+def test_follow_up_tools_are_on_the_first_pass_core_surface():
+    tools = [SimpleNamespace(name=name, description=name, args_schema=None) for name in (WAIT_TOOL_NAME, SCHEDULE_TOOL_NAME, CANCEL_TOOL_NAME, "create_scheduled_agent_task_from_prompt")]
+    loader = SimpleNamespace(name="load_tool_family", description="loader", args_schema=None)
+    surfaced = {item.name for item in select_core_tools(tools, loader)}
+    assert surfaced == {"load_tool_family", WAIT_TOOL_NAME, SCHEDULE_TOOL_NAME, CANCEL_TOOL_NAME}
 
 
 class _FollowUpRepository:

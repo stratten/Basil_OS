@@ -28,6 +28,8 @@ from api.services.agent_processing.lifecycle.submission.fast_lane_intent_gate im
     evaluate_fast_lane_intent,
     resolve_fast_lane_reasoning_model,
 )
+from api.core.utc_time import utc_now_naive_iso
+from api.services.agent_follow_ups.follow_up_events import notify_follow_ups_changed
 
 logger = logging.getLogger(__name__)
 
@@ -579,6 +581,7 @@ class AgentTaskSubmissionService:
         if callable(cancel_follow_ups):
             try:
                 await cancel_follow_ups(root_task_id, reason="Task chain canceled")
+                await notify_follow_ups_changed([root_task_id])
             except Exception:
                 logger.exception("Failed to cancel scheduled follow-ups for canceled chain %s", root_task_id)
 
@@ -646,7 +649,7 @@ class AgentTaskSubmissionService:
         cancellation_payload = {
             "canceled": True,
             "cancellation_reason": reason,
-            "canceled_at": datetime.utcnow().isoformat(),
+            "canceled_at": utc_now_naive_iso(),
         }
         active_task_ids = [
             task.id for task in chain if task.status in active_statuses

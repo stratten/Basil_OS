@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import sqlite3
 import uuid
-from datetime import datetime
 from pathlib import Path
 
 from ..infrastructure.connection import get_sync_connection, run_write_transaction
@@ -23,10 +22,7 @@ from .validation import (
     _validate_routing_hints,
     _validate_workspace_label,
 )
-
-
-def utcnow() -> str:
-    return datetime.utcnow().isoformat()
+from api.core.utc_time import utc_now_naive_iso
 
 
 class ProviderProfileRepository:
@@ -67,7 +63,7 @@ class ProviderProfileRepository:
                 f"unsupported initial profile status {initial_status!r}"
             )
         profile_id = str(uuid.uuid4())
-        timestamp = utcnow()
+        timestamp = utc_now_naive_iso()
         with get_sync_connection(self.db_path) as conn:
             conn.execute(
                 """
@@ -131,7 +127,7 @@ class ProviderProfileRepository:
         profile_id = _require_nonblank(provider_profile_id, "provider_profile_id")
         if status not in self.PROFILE_STATUSES:
             raise ProviderRunPersistenceError(f"unsupported profile status {status!r}")
-        timestamp = utcnow()
+        timestamp = utc_now_naive_iso()
         with get_sync_connection(self.db_path) as conn:
             row = _get_profile_row(conn, profile_id)
             if row is None:
@@ -174,7 +170,7 @@ class ProviderProfileRepository:
         )
         cleaned_description = _validate_optional_description(description)
         cleaned_routing_hints = _validate_routing_hints(routing_hints)
-        timestamp = utcnow()
+        timestamp = utc_now_naive_iso()
 
         def _update(conn: sqlite3.Connection) -> sqlite3.Row:
             row = _get_profile_row(conn, profile_id)
@@ -232,7 +228,7 @@ class ProviderProfileRepository:
         revision = _require_nonnegative_revision(expected_revision)
         if next_status not in self.PROFILE_STATUSES:
             raise ProviderRunPersistenceError(f"unsupported profile status {next_status!r}")
-        timestamp = utcnow()
+        timestamp = utc_now_naive_iso()
 
         def _update(conn: sqlite3.Connection) -> sqlite3.Row:
             row = _get_profile_row(conn, profile_id)
@@ -301,7 +297,7 @@ class ProviderProfileRepository:
         )
         cleaned_description = _validate_optional_description(description)
         cleaned_routing_hints = _validate_routing_hints(routing_hints)
-        timestamp = utcnow()
+        timestamp = utc_now_naive_iso()
 
         def _grant(conn: sqlite3.Connection) -> sqlite3.Row:
             profile = _get_profile_row(conn, profile_id)
@@ -382,7 +378,7 @@ class ProviderProfileRepository:
         cleaned_label = _validate_workspace_label(workspace_label)
         cleaned_description = _validate_optional_description(description)
         cleaned_routing_hints = _validate_routing_hints(routing_hints)
-        timestamp = utcnow()
+        timestamp = utc_now_naive_iso()
 
         def _update(conn: sqlite3.Connection) -> sqlite3.Row:
             profile = _get_profile_row(conn, profile_id)
@@ -450,7 +446,7 @@ class ProviderProfileRepository:
         profile_id = _require_nonblank(provider_profile_id, "provider_profile_id")
         grant_id = _require_nonblank(workspace_grant_id, "workspace_grant_id")
         revision = _require_nonnegative_revision(expected_revision)
-        timestamp = utcnow()
+        timestamp = utc_now_naive_iso()
 
         def _revoke(conn: sqlite3.Connection) -> sqlite3.Row:
             profile = _get_profile_row(conn, profile_id)
@@ -502,7 +498,7 @@ class ProviderProfileRepository:
 
     async def revoke_workspace_grant(self, workspace_grant_id: str) -> dict[str, object]:
         grant_id = _require_nonblank(workspace_grant_id, "workspace_grant_id")
-        timestamp = utcnow()
+        timestamp = utc_now_naive_iso()
         with get_sync_connection(self.db_path) as conn:
             row = _get_grant_row(conn, grant_id)
             if row is None:

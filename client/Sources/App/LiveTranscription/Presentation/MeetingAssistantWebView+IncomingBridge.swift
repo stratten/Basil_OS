@@ -19,8 +19,8 @@ extension MeetingAssistantWebView {
             return
         }
 
-        // `closeWindow`, `minimizeWindow`, `toggleWindowCollapse`, and
-        // `chromeHeight` are handled here because they are pure
+        // `closeWindow`, `minimizeWindow`, `toggleWindowCollapse`,
+        // `chromeHeight`, and `setCompanionPaneExtent` are handled here because they are pure
         // chrome concerns of this host;
         // every other intent is forwarded, still typed, to the coordinator via
         // `onIntent`, which validates domain-specific fields (e.g. resolving a
@@ -52,6 +52,16 @@ extension MeetingAssistantWebView {
                 return
             }
             updateDragAreaHeight(CGFloat(height))
+        case .setCompanionPaneExtent:
+            guard let width = (dict["width"] as? NSNumber)?.doubleValue,
+                  width.isFinite,
+                  width >= 0 else {
+                return
+            }
+            onCompanionPaneExtent?(CGFloat(width))
+        case .pickCompanionFolder:
+            // Native open panel owned by this host; no shared state, so it is not forwarded to the coordinator.
+            presentCompanionFolderPicker()
         default:
             onIntent?(intent, dict)
         }

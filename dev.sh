@@ -368,6 +368,11 @@ if [ ! -f "$STAGED_MEETING_ANALYSIS_ENTRY" ]; then
     echo "❌ ERROR: Asset build reported success but $STAGED_MEETING_ANALYSIS_ENTRY is missing."
     exit 1
 fi
+STAGED_MEETING_COMPANION_ENTRY="Sources/Resources/MeetingAssistantWebAssets/src/entries/meeting-companion.html"
+if [ ! -f "$STAGED_MEETING_COMPANION_ENTRY" ]; then
+    echo "❌ ERROR: Asset build reported success but $STAGED_MEETING_COMPANION_ENTRY is missing."
+    exit 1
+fi
 STAGED_ASSISTANT_SESSION_DIR="Sources/Resources/AssistantSessionWebAssets/assets"
 if [ ! -d "$STAGED_ASSISTANT_SESSION_DIR" ] || [ -z "$(ls -A "$STAGED_ASSISTANT_SESSION_DIR" 2>/dev/null)" ]; then
     echo "❌ ERROR: Asset build reported success but $STAGED_ASSISTANT_SESSION_DIR is empty/missing."

@@ -48,12 +48,10 @@ final class DetachedAgentTaskWindowController: NSObject, NSWindowDelegate {
             backing: .buffered,
             defer: false
         )
-        panel.title = BasilTeamIdentity.agentTask.pairedName
-        panel.isReleasedWhenClosed = false
-        panel.level = .floating
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
-        panel.hidesOnDeactivate = false
-        panel.isMovableByWindowBackground = true
+        panel.configureFloatingWidget(
+            title: BasilTeamIdentity.agentTask.pairedName,
+            releasedWhenClosed: false
+        )
         panel.minSize = NSSize(width: 400, height: 300)
         panel.delegate = self
 

@@ -9,7 +9,6 @@ import logging
 import time
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple, Callable
-from datetime import datetime
 
 from .meeting_analysis_models import (
     AnalysisMode,
@@ -39,6 +38,7 @@ from api.dependencies import get_model_service
 from api.core.models.model_types import ModelCapability
 from api.core.models.model_invocation import StructuredModelOutputError
 from api.core.models.reasoning.model_runtime_profile import resolve_runtime_model_profile
+from api.core.utc_time import utc_now_naive
 
 logger = logging.getLogger(__name__)
 
@@ -548,7 +548,7 @@ class MeetingAnalyzer:
         
         return MeetingAnalysisResult(
             meeting_id=self.meeting_id,
-            analyzed_at=datetime.utcnow(),
+            analyzed_at=utc_now_naive(),
             model_used=model_name,
             fallback_model_used=self.fallback_model_used,
             requested_modes=modes,
@@ -584,7 +584,7 @@ class MeetingAnalyzer:
         """Save analysis results to disk with timestamped filename."""
         try:
             # Generate timestamp for filename
-            timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+            timestamp = utc_now_naive().strftime('%Y%m%d_%H%M%S')
             filename = f"analysis_{timestamp}.json"
             self.saved_analysis_filename = filename
             analysis_path = self.meeting_dir / filename

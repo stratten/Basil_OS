@@ -7,11 +7,27 @@ declare global {
     basilMeetingAssistant?: {
       onEvent: (event: MeetingBridgeEvent) => void;
       onMeter: (payload: MeetingMeterPayload) => void;
+      onFilesDropped?: (payload: FilesDroppedPayload) => void;
     };
   }
 }
 
 const PROTOCOL_VERSION = 4;
+
+export interface FilesDroppedPayload {
+  paths: string[];
+  source: 'drop' | 'picker';
+}
+
+const filesDroppedListeners = new Set<(payload: FilesDroppedPayload) => void>();
+
+function deliverFilesDropped(payload: FilesDroppedPayload) {
+  if (!payload || !Array.isArray(payload.paths)) return;
+  const paths = payload.paths.filter((path): path is string => typeof path === 'string' && path !== '');
+  if (paths.length === 0) return;
+  const source = payload.source === 'picker' ? 'picker' : 'drop';
+  for (const listener of Array.from(filesDroppedListeners)) listener({ paths, source });
+}
 
 let eventCallback: ((event: MeetingBridgeEvent) => void) | null = null;
 const pendingEvents: MeetingBridgeEvent[] = [];
@@ -27,6 +43,9 @@ function installGlobalHandlers() {
     },
     onMeter: (payload: MeetingMeterPayload) => {
       publishMeetingMeter(payload);
+    },
+    onFilesDropped: (payload: FilesDroppedPayload) => {
+      deliverFilesDropped(payload);
     },
   };
 }
@@ -232,4 +251,25 @@ export function dismissProposal(proposalId: string) {
 
 export function restoreProposal(proposalId: string) {
   postToSwift({ type: 'restoreProposal', proposalId });
+}
+
+export function pickCompanionFolder() {
+  postToSwift({ type: 'pickCompanionFolder' });
+}
+
+export function openCompanionWindow() {
+  postToSwift({ type: 'openCompanionWindow' });
+}
+
+/** Tells the native window how wide the Companion column is (0 when absent) so it grows to the right by that much instead of narrowing the main column. */
+export function setCompanionPaneExtent(width: number) {
+  postToSwift({ type: 'setCompanionPaneExtent', width });
+}
+
+/** Registers a listener for filesystem paths delivered by a native drop or the folder picker; returns the unsubscribe function. */
+export function subscribeFilesDropped(listener: (payload: FilesDroppedPayload) => void): () => void {
+  filesDroppedListeners.add(listener);
+  return () => {
+    filesDroppedListeners.delete(listener);
+  };
 }

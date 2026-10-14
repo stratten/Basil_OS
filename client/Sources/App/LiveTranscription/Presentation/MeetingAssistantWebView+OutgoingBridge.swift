@@ -17,17 +17,11 @@ extension MeetingAssistantWebView {
 
     func callJS(_ function: String, args: Any...) {
         guard args.count == 1 else { return }
-        webView.callAsyncJavaScript(
-            "\(function)(event)",
-            arguments: ["event": args[0]],
-            in: nil,
-            in: .page
-        ) { result in
-            if case .failure(let error) = result {
-                #if DEBUG
-                DevLogger.shared.error("[MeetingAssistantWebView \(self.instanceId)] JS eval error: \(error)", context: "LiveTranscription")
-                #endif
-            }
-        }
+        webView.callBasilEventHandler(
+            function,
+            event: args[0],
+            logTag: "MeetingAssistantWebView \(instanceId)",
+            logContext: "LiveTranscription"
+        )
     }
 }

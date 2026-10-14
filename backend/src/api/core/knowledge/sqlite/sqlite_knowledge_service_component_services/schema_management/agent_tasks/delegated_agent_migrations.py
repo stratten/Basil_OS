@@ -5,9 +5,9 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
-from datetime import datetime
 
 from .delegated_agent_schema import get_delegated_agent_schema_statements
+from api.core.utc_time import utc_now_naive_iso
 
 
 def _rebuild_v1_delegated_tables(conn: sqlite3.Connection) -> None:
@@ -22,7 +22,7 @@ def _rebuild_v1_delegated_tables(conn: sqlite3.Connection) -> None:
         legacy_runs = conn.execute("SELECT * FROM delegated_agent_runs_legacy").fetchall()
         legacy_turn_count = conn.execute("SELECT COUNT(*) FROM delegated_agent_turns_legacy").fetchone()[0]
         legacy_outcome_count = conn.execute("SELECT COUNT(*) FROM delegated_agent_outcomes_legacy").fetchone()[0]
-        now = datetime.utcnow().isoformat()
+        now = utc_now_naive_iso()
         for row in legacy_runs:
             conn.execute(
                 """

@@ -151,16 +151,11 @@ final class AgentTaskCaptureInputWindowController: NSObject, NSWindowDelegate, A
             backing: .buffered,
             defer: false
         )
-        newPanel.title = BasilTeamIdentity.agentTask.displayName
-        newPanel.level = .floating
-        newPanel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
-        newPanel.isReleasedWhenClosed = false
-        newPanel.hidesOnDeactivate = false
-        newPanel.hasShadow = false
-        newPanel.alphaValue = 1.0
-        newPanel.isOpaque = false
-        newPanel.backgroundColor = .clear
-        newPanel.isMovableByWindowBackground = true
+        newPanel.configureFloatingWidget(
+            title: BasilTeamIdentity.agentTask.displayName,
+            releasedWhenClosed: false,
+            transparency: .clearWithoutShadow
+        )
         newPanel.minSize = initialSize
         newPanel.contentMinSize = initialSize
         newPanel.delegate = self

@@ -272,7 +272,8 @@ build_one_bundle \
     "$PROJECT_ROOT/web-components/MeetingAssistant" \
     "$PROJECT_ROOT/client/Sources/Resources/MeetingAssistantWebAssets" \
     "src/entries/meeting-assistant.html" \
-    "src/entries/meeting-analysis.html"
+    "src/entries/meeting-analysis.html" \
+    "src/entries/meeting-companion.html"
 
 build_one_bundle \
     "$PROJECT_ROOT/web-components/AssistantSession" \

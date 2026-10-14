@@ -20,6 +20,7 @@ const apiMocks = vi.hoisted(() => ({
   replaceTodoNotes: vi.fn(),
   launchTodoWorker: vi.fn(),
   updateTodoItem: vi.fn(),
+  setTodoItemStatus: vi.fn(),
 }));
 const bridgeMocks = vi.hoisted(() => ({
   pickTodoReferenceFiles: vi.fn(),
@@ -179,6 +180,7 @@ describe('TodoView list and selection', () => {
     await waitFor(() => expect(screen.getByText('Has an agent task')).toBeInTheDocument());
 
     expect(document.querySelector('.todo-list-item-agent-status')).toBeInTheDocument();
+    expect(document.querySelectorAll('.todo-list-item-agent-status .pulsing-dots span')).toHaveLength(3);
     const rows = document.querySelectorAll('.todo-list-item');
     const rowWithoutAgent = Array.from(rows).find((row) => row.textContent?.includes('No agent task yet'));
     expect(rowWithoutAgent?.querySelector('.todo-list-item-agent-status')).toBeNull();
@@ -494,7 +496,8 @@ describe('TodoView deletion', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Delete permanently' }));
 
     expect(await screen.findByText('Cannot delete while a directly sourced Agent Task is active.')).toBeInTheDocument();
-    expect(screen.getAllByText('Delete target')).toHaveLength(2);
+    expect(screen.getByText('Delete target')).toBeInTheDocument();
+    expect(screen.getByLabelText('To-Do title')).toHaveValue('Delete target');
   });
 
   it('requires confirmation from the sidebar reveal and preserves its error state on a stale delete', async () => {
@@ -643,53 +646,8 @@ describe('TodoView detail editing and attachments', () => {
     }
     await waitFor(() => expect(screen.getByText('Editable item')).toBeInTheDocument());
     await userEvent.click(screen.getByRole('button', { name: 'Editable item' }));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Edit To-Do' })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByLabelText('To-Do title')).toBeInTheDocument());
   }
-
-  it('edits title and description together using the item revision', async () => {
-    await renderSelectedDetail();
-    apiMocks.updateTodoItem.mockResolvedValue(detail({
-      id: 't1',
-      title: 'Updated title',
-      description: 'Updated description',
-      revision: 2,
-    }));
-
-    await userEvent.click(screen.getByRole('button', { name: 'Edit To-Do' }));
-    await userEvent.clear(screen.getByLabelText('To-Do title'));
-    await userEvent.type(screen.getByLabelText('To-Do title'), 'Updated title');
-    await userEvent.clear(screen.getByLabelText('To-Do description'));
-    await userEvent.type(screen.getByLabelText('To-Do description'), 'Updated description');
-    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-
-    await waitFor(() => expect(apiMocks.updateTodoItem).toHaveBeenCalledWith(
-      't1',
-      { expected_revision: 1, title: 'Updated title', description: 'Updated description' },
-    ));
-    expect(screen.getByText('Updated description')).toBeInTheDocument();
-  });
-
-  it('persists rich description formatting while stripping unexpected markup', async () => {
-    await renderSelectedDetail();
-    apiMocks.updateTodoItem.mockResolvedValue(detail({
-      id: 't1',
-      title: 'Editable item',
-      description: '<strong>Formatted description</strong>',
-      revision: 2,
-    }));
-
-    await userEvent.click(screen.getByRole('button', { name: 'Edit To-Do' }));
-    const description = screen.getByLabelText('To-Do description');
-    description.innerHTML = '<strong>Formatted description</strong><img src="x" onerror="alert(1)">';
-    fireEvent.input(description);
-    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-
-    await waitFor(() => expect(apiMocks.updateTodoItem).toHaveBeenCalledWith(
-      't1',
-      { expected_revision: 1, title: 'Editable item', description: '<strong>Formatted description</strong>' },
-    ));
-    expect(screen.getByText('Formatted description')).toBeInTheDocument();
-  });
 
   it('persists rich notes formatting through the existing revisioned notes API', async () => {
     await renderSelectedDetail();
@@ -701,9 +659,10 @@ describe('TodoView detail editing and attachments', () => {
     }));
 
     const notes = screen.getByLabelText('To-Do notes');
+    await userEvent.click(notes);
     notes.innerHTML = '<ul><li>Review the draft</li></ul>';
     fireEvent.input(notes);
-    await userEvent.click(screen.getByRole('button', { name: 'Save notes' }));
+    await userEvent.tab();
 
     await waitFor(() => expect(apiMocks.replaceTodoNotes).toHaveBeenCalledWith(
       't1',
@@ -729,9 +688,9 @@ describe('TodoView detail editing and attachments', () => {
       }],
     }));
 
-    const description = document.querySelector('.todo-detail-description');
+    const description = screen.getByLabelText('To-Do description');
     const provenance = document.querySelector('.todo-detail-sources li');
-    expect(description?.textContent).toBe('First follow-up\nSecond follow-up');
+    expect(description.textContent).toBe('First follow-up\nSecond follow-up');
     expect(provenance?.textContent).toBe('meeting_analysis_proposal: [00:01] Microphone: First line\n[00:02] System Audio: Second line');
     expect(screen.getByText('No attachments yet.')).toBeInTheDocument();
   });

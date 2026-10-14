@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Any
 
 from ..infrastructure.connection import get_sync_connection, run_write_transaction
+from api.core.utc_time import utc_now_naive, utc_now_naive_iso
 
 _ACTIVE_STATUSES = {
     "admitted",
@@ -28,10 +29,6 @@ _MAX_TEXT_BYTES = 8_000
 
 class DelegatedAgentReservationConflictError(RuntimeError):
     """Raised when durable reservation or admission preconditions are not met."""
-
-
-def _now() -> str:
-    return datetime.utcnow().isoformat()
 
 
 def _require_id(value: object, field_name: str) -> str:
@@ -133,7 +130,7 @@ class DelegatedAgentReservationRepository:
                 id, delegated_agent_run_id, revision, event_kind, event_data_json, created_at
             ) VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (str(uuid.uuid4()), delegated_agent_run_id, revision, event_kind, encoded, _now()),
+            (str(uuid.uuid4()), delegated_agent_run_id, revision, event_kind, encoded, utc_now_naive_iso()),
         )
 
     async def reserve_child_agent_task(
@@ -155,7 +152,7 @@ class DelegatedAgentReservationRepository:
         _, assessment_json = _strategic_assessment(strategic_assessment)
         if len(dependency_ids) != len(set(dependency_ids)):
             raise DelegatedAgentReservationConflictError("delegated dependencies contain duplicates")
-        timestamp = _now()
+        timestamp = utc_now_naive_iso()
 
         def write(conn: sqlite3.Connection) -> sqlite3.Row:
             parent = conn.execute("SELECT root_task_id FROM agent_tasks WHERE id = ?", (parent_id,)).fetchone()
@@ -218,7 +215,7 @@ class DelegatedAgentReservationRepository:
         if len(supplied_dependencies) != len(set(supplied_dependencies)):
             raise DelegatedAgentReservationConflictError("delegated dependencies contain duplicates")
         dependency_ids = sorted(supplied_dependencies)
-        timestamp = _now()
+        timestamp = utc_now_naive_iso()
         run_id = str(uuid.uuid4())
 
         def write(conn: sqlite3.Connection) -> sqlite3.Row | dict[str, Any]:
@@ -327,7 +324,7 @@ class DelegatedAgentReservationRepository:
         if len(supplied_dependencies) != len(set(supplied_dependencies)):
             raise DelegatedAgentReservationConflictError("delegated dependencies contain duplicates")
         dependency_ids = sorted(supplied_dependencies)
-        timestamp = _now()
+        timestamp = utc_now_naive_iso()
         run_id = str(uuid.uuid4())
         relation_id = str(uuid.uuid4())
 
@@ -345,7 +342,7 @@ class DelegatedAgentReservationRepository:
             if (
                 authority["selected_provider_profile_id"] != profile_id
                 or authority["selected_workspace_grant_id"] != grant_id
-                or datetime.fromisoformat(str(authority["expires_at"])) <= datetime.utcnow()
+                or datetime.fromisoformat(str(authority["expires_at"])) <= utc_now_naive()
             ):
                 raise DelegatedAgentReservationConflictError("provider authorization selection is not current")
             existing_relation = conn.execute(
@@ -440,7 +437,7 @@ class DelegatedAgentReservationRepository:
 
     async def _set_reservation_status(self, child_agent_task_id: str, status: str) -> dict[str, Any]:
         child_id = _require_id(child_agent_task_id, "child_agent_task_id")
-        timestamp = _now()
+        timestamp = utc_now_naive_iso()
 
         def write(conn: sqlite3.Connection) -> sqlite3.Row:
             row = conn.execute(

@@ -50,7 +50,7 @@ from .service_tooling.tool_call_repetition_guard import (
     wrap_tools_with_repetition_guard,
 )
 from .service_tooling.tool_input_normalization import normalize_structured_tool_args_schemas
-from .system_prompts import get_agent_system_prompt
+from .system_prompts import build_turn_runtime_context, get_agent_system_prompt, strip_runtime_context
 from .workflow_deadline import deadline_evidence, deadline_from_context
 
 logger = api_logger.getChild("agent_loop_runner")
@@ -100,10 +100,25 @@ class AgentDriveOutcome:
 def build_system_prompt(request: AgentRunRequest) -> str:
     return get_agent_system_prompt(
         user_profile_context=request.user_profile_context,
-        communication_context_section=request.communication_context_section,
         custom_instructions_section=request.custom_instructions_section,
+    )
+
+
+def build_runtime_context(request: AgentRunRequest) -> str:
+    """The per-turn block (clock, communication context, preselected skill) that stays out of the cached system prompt."""
+    return build_turn_runtime_context(
+        communication_context_section=request.communication_context_section,
         preloaded_skill_section=request.selected_skill_section,
     )
+
+
+def resolve_system_prompt_text(request: AgentRunRequest) -> str:
+    """Reuse the prompt saved at pause when resuming so the provider's cached prefix still matches; otherwise build it."""
+    state = request.state
+    stored = getattr(state, "agent_system_prompt_text", None)
+    if getattr(state, "agent_resume_input", None) is not None and isinstance(stored, str) and stored:
+        return stored
+    return build_system_prompt(request)
 
 
 def prepare_agent_tools(tools: Sequence[Any]) -> list[Any]:
@@ -238,7 +253,12 @@ def _initial_families(context: Optional[dict[str, Any]]) -> list[str]:
     return []
 
 
-def _initial_messages(state: Any, prior_thread: Any = None, langchain_llm: Any = None) -> list[BaseMessage]:
+def _initial_messages(
+    state: Any,
+    prior_thread: Any = None,
+    langchain_llm: Any = None,
+    runtime_context: str = "",
+) -> list[BaseMessage]:
     resume_input = getattr(state, "agent_resume_input", None)
     if resume_input is not None:
         seeded = seed_resumed_messages(
@@ -255,12 +275,15 @@ def _initial_messages(state: Any, prior_thread: Any = None, langchain_llm: Any =
         if isinstance(context, dict):
             context[CONVERSATION_THREAD_SEEDED_KEY] = True
         logger.info("🧵 Continuing the previous turn's conversation with %s message(s)", len(prior_messages))
-    return [*prior_messages, mark_turn_input(HumanMessage(content=format_chain_context(state)))]
+    turn_text = format_chain_context(state)
+    if runtime_context:
+        turn_text = f"{runtime_context}\n\n{turn_text}"
+    return [*prior_messages, mark_turn_input(HumanMessage(content=turn_text))]
 
 
 def _synthesis_input(messages: Sequence[BaseMessage]) -> str:
     """The current request, preceded by a short recap when earlier turns are in the conversation."""
-    text = turn_input_text(messages)
+    text = strip_runtime_context(turn_input_text(messages))
     index = turn_input_index(messages)
     if not index:
         return text
@@ -281,8 +304,13 @@ async def run_agent_loop(request: AgentRunRequest) -> AgentRunResult:
         initial_families=_initial_families(context),
         context=context,
     )
-    system_prompt_text = build_system_prompt(request)
-    messages = _initial_messages(state, request.prior_thread, request.langchain_llm)
+    system_prompt_text = resolve_system_prompt_text(request)
+    messages = _initial_messages(
+        state,
+        request.prior_thread,
+        request.langchain_llm,
+        runtime_context=build_runtime_context(request),
+    )
     final_input = _synthesis_input(messages)
     await emit_activity_phase(
         state,
@@ -371,6 +399,10 @@ async def run_agent_loop(request: AgentRunRequest) -> AgentRunResult:
             )
         except asyncio.CancelledError:
             _stop_live_tool_runs(request.live_callbacks)
+            raise
+        except Exception as pause_error:
+            if is_pause_request(pause_error):
+                pause_error.basil_system_prompt_text = system_prompt_text
             raise
         finally:
             reset_current_agent_context(runtime_context_token)

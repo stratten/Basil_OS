@@ -9,6 +9,8 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, Optional
 
+from .follow_up_events import notify_follow_ups_changed
+
 logger = logging.getLogger(__name__)
 
 FOLLOW_UP_POLL_SECONDS = 30.0
@@ -101,6 +103,8 @@ class AgentFollowUpScheduler:
                 )
                 outcome = "failed"
             counts[outcome] += 1
+        if claimed:
+            await notify_follow_ups_changed(str(item.get("root_task_id") or "") for item in claimed)
         return counts
 
     async def _dispatch(self, follow_up: Dict[str, Any], now: datetime) -> str:

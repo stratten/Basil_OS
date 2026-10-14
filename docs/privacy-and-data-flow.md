@@ -58,6 +58,10 @@ Calendar and Contacts access is optional. Calendar data can enrich or gate detec
 
 MCP connections and ACP provider profiles have their own provider-specific authorization flows. Connecting a service does not authorize every possible action through it, and disconnecting a service stops future use through that Basil configuration but does not revoke authorization already granted at the provider. Revoke provider-side access separately when appropriate.
 
+## Update checks
+
+Basil checks for updates through Sparkle. A website build requests Basil's website feed, and a build downloaded from this repository requests the `update-feed` release on GitHub. Each check is an ordinary HTTPS request, so the server sees your IP address and the user agent Sparkle sends, which names Basil and its version. Basil does not enable Sparkle's system-profile reporting. If you accept an update, Basil downloads the new app from the same host and checks its signature before installing it. Choose Check for Updates in the Basil menu to check on demand.
+
 ## Local storage
 
 The following locations are used by the current desktop/backend implementation. They can contain private information and should be included in any backup, deletion, or incident-response decision. These are application roots, not a promise that every capability writes to every location on every use.

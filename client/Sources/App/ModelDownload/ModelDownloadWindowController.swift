@@ -36,25 +36,9 @@ final class ModelDownloadWindowController: NSObject, NSWindowDelegate, Appearanc
             defer: false
         )
         
-        panel.title = "Model Downloads"
-        panel.level = .floating
-        panel.collectionBehavior = [
-            .canJoinAllSpaces,
-            .fullScreenAuxiliary,
-            .stationary,
-            .ignoresCycle
-        ]
-        
-        panel.isFloatingPanel = true
-        panel.hidesOnDeactivate = false
-        panel.becomesKeyOnlyIfNeeded = true
-        panel.worksWhenModal = true
-        panel.hasShadow = false // Widget has its own shadow
-        panel.alphaValue = 1.0
-        panel.isOpaque = false
-        panel.backgroundColor = NSColor.clear
-        panel.isMovableByWindowBackground = true
-        
+        // No system shadow (the widget draws its own).
+        panel.configureMiniPanel(title: "Model Downloads", transparency: .clearWithoutShadow)
+
         panel.delegate = self
         
         let webViewHost = ModelDownloadMiniPanelWebView()

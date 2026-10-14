@@ -33,6 +33,10 @@ vi.mock('../services/websocket', () => ({
     connect: vi.fn(),
     disconnect: vi.fn(),
     onConnect: vi.fn(),
+    subscribeLiveness: (handler: (state: string) => void) => {
+      handler('live');
+      return () => undefined;
+    },
     subscribe: (handler: (event: Record<string, unknown>) => void) => {
       testState.eventHandler = handler;
       return () => undefined;

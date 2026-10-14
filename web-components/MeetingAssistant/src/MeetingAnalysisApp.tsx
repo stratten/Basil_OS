@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useReducer, useState } from 'react';
-import { copyText, exportAnalysis, registerEventHandler, reportReady, toggleWindowCollapse, viewAnalysis } from './bridge/meetingBridge';
-import { applyMeetingBridgeEvent, initialMeetingState } from './state/meetingReducer';
+import { useEffect, useMemo, useState } from 'react';
+import { copyText, exportAnalysis, toggleWindowCollapse, viewAnalysis } from './bridge/meetingBridge';
+import { useMeetingBridgeState } from './state/useMeetingBridgeState';
 import AnalysisResults from './components/AnalysisResults';
 import { useCollapseShortcut } from '@shared/useCollapseShortcut';
 import { useCopiedFlag } from '@shared/useCopyFeedback';
 import { useSettledExpand } from '@shared/useSettledExpand';
 import WindowChrome from './components/WindowChrome';
-import { applyMeetingHostFonts, applyMeetingHostTheme } from './lib/hostAppearance';
 import {
   analysisExportFilename,
   buildAnalysisExportText,
@@ -16,21 +15,11 @@ import {
 } from './lib/analysisModes';
 
 export default function MeetingAnalysisApp() {
-  const [state, dispatch] = useReducer(applyMeetingBridgeEvent, initialMeetingState);
+  const state = useMeetingBridgeState();
   const [tab, setTab] = useState<AnalysisModeId | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const isContentCollapsed = useSettledExpand(isCollapsed);
   const [copied, flashCopied] = useCopiedFlag();
-
-  useEffect(() => {
-    registerEventHandler((event) => dispatch(event));
-    reportReady();
-  }, []);
-
-  useEffect(() => {
-    applyMeetingHostTheme(state.theme);
-    applyMeetingHostFonts(state.fonts);
-  }, [state.theme, state.fonts]);
 
   const result = state.analysisResult;
   const analysisKey = result ? `${result.filename ?? ''}:${result.analyzedAt}` : '';

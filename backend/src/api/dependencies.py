@@ -203,6 +203,7 @@ def get_todo_service():
     return TodoService(
         repository=TodoRepository(sqlite_service.db_path),
         agent_task_service=sqlite_service,
+        follow_up_repository=sqlite_service.agent_task_follow_up_repository,
     )
 
 

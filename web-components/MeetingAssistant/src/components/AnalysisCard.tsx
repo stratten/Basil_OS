@@ -2,7 +2,8 @@ import { useState } from 'react';
 import PresenceRegion from '@shared/PresenceRegion';
 import { InlineDeleteConfirm } from '@shared/InlineDeleteConfirm';
 import NativeSymbolIcon, { type NativeSymbolName } from '../../../shared/NativeSymbolIcon';
-import ReasoningModelPicker, { type SharedReasoningModel } from '../../../shared/ReasoningModelPicker';
+import ReasoningModelPicker from '../../../shared/ReasoningModelPicker';
+import { groupedAnalysisModels } from '../lib/analysisModelOptions';
 import type { AnalysisMetadataEntryDTO, MeetingUIStateDTO } from '../bridge/types';
 import { deleteAnalysis, setAnalysisConfiguration, startAnalysis, viewAnalysis } from '../bridge/meetingBridge';
 
@@ -24,16 +25,7 @@ export default function AnalysisCard({ ui, analysisHistory }: { ui: MeetingUISta
   const justCompletedForDisplayedMeeting = ui.analysisJustCompleted
     && ui.activeAnalysisMeetingId !== null
     && ui.activeAnalysisMeetingId === ui.displayedMeetingWorkOwnerId;
-  const analysisModels = [
-    ...ui.localAnalysisModels,
-    ...(ui.useApiModelsForAnalysis ? ui.apiAnalysisModels : []),
-  ];
-  const groupedAnalysisModels: SharedReasoningModel[] = analysisModels.map((model) => ({
-    id: model.id,
-    name: model.name,
-    display_name: model.displayName,
-    category: model.category,
-  }));
+  const analysisModelOptions = groupedAnalysisModels(ui);
   const toggleMode = (modeId: string) => {
     const next = ui.selectedAnalysisModes.includes(modeId)
       ? ui.selectedAnalysisModes.filter((mode) => mode !== modeId)
@@ -59,7 +51,7 @@ export default function AnalysisCard({ ui, analysisHistory }: { ui: MeetingUISta
         <label className="meeting-analysis-model-row">
           <span>Reasoning Model:</span>
           <ReasoningModelPicker
-            models={groupedAnalysisModels}
+            models={analysisModelOptions}
             selectedModelId={ui.selectedAnalysisModelId ?? undefined}
             disabled={ui.isAnalyzing || ui.isLoadingAnalysisModels}
             ariaLabel="Reasoning model"

@@ -639,6 +639,8 @@ class AudioProcessor:
                     current_silence=self.current_silence
                 )
                 state = await self.get_current_state()
+                if self.meeting_recorder is not None:
+                    self.meeting_recorder.transcription_lag_seconds = float(state.remaining_time_transcription or 0.0)
 
                 buffer_transcription_text = state.buffer_transcription.text if state.buffer_transcription else ''
 

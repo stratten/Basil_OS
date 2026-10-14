@@ -14,6 +14,7 @@ vi.mock('./bridge/meetingBridge', () => ({
   }),
   reportReady: vi.fn(),
   setSidebarCollapsed: vi.fn(),
+  setCompanionPaneExtent: vi.fn(),
   toggleWindowCollapse: vi.fn(),
   toggleRecording: vi.fn(),
   resumeMeeting: vi.fn(),
@@ -36,13 +37,14 @@ vi.mock('./lib/hostAppearance', () => ({
 }));
 
 vi.mock('./components/WindowChrome', () => ({
-  default: ({ isCollapsed, onToggleCollapse, bubble, hideWindowControls, canCollapse, subtitle, isRecording }: { isCollapsed: boolean; onToggleCollapse: () => void; bubble?: ReactNode; hideWindowControls?: boolean; canCollapse?: boolean; subtitle?: string; isRecording?: boolean }) => (
+  default: ({ isCollapsed, onToggleCollapse, bubble, collapsedActions, hideWindowControls, canCollapse, subtitle, isRecording }: { isCollapsed: boolean; onToggleCollapse: () => void; bubble?: ReactNode; collapsedActions?: ReactNode; hideWindowControls?: boolean; canCollapse?: boolean; subtitle?: string; isRecording?: boolean }) => (
     <>
       <output data-testid="window-chrome-props">{JSON.stringify({ hideWindowControls: hideWindowControls ?? false, canCollapse: canCollapse ?? true })}</output>
       <output data-testid="window-chrome-subtitle" data-recording={String(isRecording ?? false)}>{subtitle ?? ''}</output>
       {canCollapse !== false && (
         <button type="button" onClick={onToggleCollapse}>{isCollapsed ? 'Expand' : 'Collapse'}</button>
       )}
+      {isCollapsed && collapsedActions}
       {bubble}
     </>
   ),
@@ -173,6 +175,46 @@ describe('MeetingAssistantApp collapse retention', () => {
   });
 });
 
+describe('MeetingAssistantApp collapsed recording controls', () => {
+  function connect(ui: MeetingBridgeEvent['ui']) {
+    capturedEventHandler = null;
+    render(<MeetingAssistantApp />);
+    act(() => {
+      capturedEventHandler!({
+        type: 'snapshot',
+        revision: 0,
+        selectionGeneration: 0,
+        protocolVersion: 4,
+        ui,
+        transcript: [],
+        history: [],
+        analysisHistory: [],
+        proposals: [],
+      });
+    });
+  }
+
+  it('offers Pause and End only while collapsed and recording', () => {
+    connect(minimalUI);
+    expect(screen.queryByRole('button', { name: 'End recording' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse' }));
+    expect(screen.getByRole('button', { name: 'Pause recording' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'End recording' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand' }));
+    expect(screen.queryByRole('button', { name: 'End recording' })).toBeNull();
+  });
+
+  it('shows no collapsed recording controls when nothing is recording', () => {
+    connect({ ...minimalUI, isRecording: false });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse' }));
+    expect(screen.queryByRole('button', { name: 'Pause recording' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'End recording' })).toBeNull();
+  });
+});
+
 describe('MeetingAssistantApp meter render isolation', () => {
   it('updates only the isolated bubble from a meter frame, leaving the connected transcript subtree unrendered', () => {
     transcriptRenderCount = 0;
@@ -239,6 +281,33 @@ describe('MeetingAssistantApp paused capture presentation', () => {
     expect(pausedBubble).toHaveTextContent('0');
     expect(screen.getByTestId('window-chrome-subtitle')).toHaveTextContent('Paused · 00:05');
     expect(screen.getByTestId('window-chrome-subtitle')).toHaveAttribute('data-recording', 'false');
+  });
+});
+
+describe('MeetingAssistantApp Companion sidebar', () => {
+  it('sits on the right edge as an end-side collapsible that reports no width while there is nothing to show', async () => {
+    const { setCompanionPaneExtent } = await import('./bridge/meetingBridge');
+    capturedEventHandler = null;
+    render(<MeetingAssistantApp />);
+    act(() => {
+      capturedEventHandler!({
+        type: 'snapshot',
+        revision: 0,
+        selectionGeneration: 0,
+        protocolVersion: 4,
+        ui: { ...minimalUI },
+        transcript: [],
+        history: [],
+        analysisHistory: [],
+        proposals: [],
+      });
+    });
+    const sidebar = document.querySelector<HTMLElement>('.companion-collapsible')!;
+    expect(sidebar).toHaveClass('basil-collapsible-sidebar', 'basil-collapsible-sidebar--end', 'is-collapsed');
+    expect(sidebar.style.getPropertyValue('--basil-sidebar-collapsed-width')).toBe('0px');
+    expect(sidebar.style.getPropertyValue('--basil-sidebar-expanded-width')).toBe('340px');
+    expect(sidebar.previousElementSibling).toHaveClass('meeting-main-column');
+    expect(setCompanionPaneExtent).toHaveBeenLastCalledWith(0);
   });
 });
 

@@ -40,6 +40,11 @@
   pointer-events: auto;
 }
 
+.basil-collapsible-sidebar--end > .basil-collapsible-sidebar__layer {
+  right: 0;
+  left: auto;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .basil-collapsible-sidebar,
   .basil-collapsible-sidebar__layer {

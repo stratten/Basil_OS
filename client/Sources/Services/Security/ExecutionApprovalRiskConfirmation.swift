@@ -61,12 +61,12 @@ enum ExecutionApprovalRiskConfirmation {
 
     @MainActor
     static func presentAlert(_ prompt: ExecutionApprovalRiskPrompt) -> Bool {
-        let alert = NSAlert()
-        alert.alertStyle = .critical
-        alert.messageText = prompt.title
-        alert.informativeText = prompt.message
-        alert.addButton(withTitle: "Cancel")
-        alert.addButton(withTitle: "Allow")
+        let alert = NSAlert(
+            title: prompt.title,
+            message: prompt.message,
+            style: .critical,
+            buttons: ["Cancel", "Allow"]
+        )
         NSApp.activate(ignoringOtherApps: true)
         return alert.runModal() == .alertSecondButtonReturn
     }

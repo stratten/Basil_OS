@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
 from api.core.models.gpu_manager import GPUManager
+from api.core.runtime import safe_spawn
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +69,7 @@ class HardwareCapabilityService:
         self,
         gpu_manager_factory: Callable[[], GPUManager] = GPUManager,
         module_available: Optional[Callable[[str], bool]] = None,
-        subprocess_run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+        subprocess_run: Callable[..., subprocess.CompletedProcess[str]] = safe_spawn.run,
     ) -> None:
         self._gpu_manager_factory = gpu_manager_factory
         self._module_available = module_available or self._default_module_available

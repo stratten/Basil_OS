@@ -10,8 +10,8 @@ import sqlite3
 
 from ..infrastructure.connection import get_sync_connection, run_write_transaction
 import uuid
-from datetime import datetime
 from typing import Any, Mapping, Sequence
+from api.core.utc_time import utc_now_naive_iso
 
 
 class ProviderInteractionPersistenceError(RuntimeError):
@@ -34,9 +34,6 @@ class ProviderInteractionRepository:
     def _get_connection(self) -> sqlite3.Connection:
         return get_sync_connection(self.db_path)
 
-    @staticmethod
-    def _utcnow() -> str:
-        return datetime.utcnow().isoformat()
 
     @staticmethod
     def _require_nonblank(value: str, field_name: str) -> str:
@@ -98,7 +95,7 @@ class ProviderInteractionRepository:
         root_id = self._require_nonblank(root_task_id, "root_task_id")
         cleaned_message = self._require_nonblank(message, "message")
         interaction_id = str(uuid.uuid4())
-        timestamp = self._utcnow()
+        timestamp = utc_now_naive_iso()
         def _create(conn: sqlite3.Connection) -> sqlite3.Row:
             if not conn.execute(
                 "SELECT 1 FROM provider_runs WHERE id = ?", (run_id,)
@@ -186,7 +183,7 @@ class ProviderInteractionRepository:
         clean_id = self._require_nonblank(interaction_id, "interaction_id")
         if type(expected_revision) is not int:
             raise ProviderInteractionPersistenceError("expected_revision must be an integer")
-        timestamp = self._utcnow()
+        timestamp = utc_now_naive_iso()
         values_json = self._json_dump(dict(submitted_values)) if submitted_values is not None else None
         with self._get_connection() as conn:
             row = conn.execute(
@@ -256,7 +253,7 @@ class ProviderInteractionRepository:
     async def supersede_pending_for_run(self, provider_run_id: str) -> int:
         """Mark all pending interactions, including `provider_permission` rows, superseded when a provider run ends."""
         run_id = self._require_nonblank(provider_run_id, "provider_run_id")
-        timestamp = self._utcnow()
+        timestamp = utc_now_naive_iso()
         with self._get_connection() as conn:
             updated = conn.execute(
                 """
@@ -305,7 +302,7 @@ class ProviderInteractionRepository:
             "subject": normalized_summary["subject"],
         }
         interaction_id = str(uuid.uuid4())
-        timestamp = self._utcnow()
+        timestamp = utc_now_naive_iso()
         def _create_permission(conn: sqlite3.Connection) -> sqlite3.Row:
             run = conn.execute(
                 "SELECT agent_task_id, root_task_id FROM provider_runs WHERE id = ?", (run_id,)
@@ -387,7 +384,7 @@ class ProviderInteractionRepository:
         task_id = self._require_nonblank(agent_task_id, "agent_task_id")
         if type(expected_revision) is not int:
             raise ProviderInteractionPersistenceError("expected_revision must be an integer")
-        timestamp = self._utcnow()
+        timestamp = utc_now_naive_iso()
         values_json = self._json_dump(dict(submitted_values)) if submitted_values is not None else None
         with self._get_connection() as conn:
             row = conn.execute(

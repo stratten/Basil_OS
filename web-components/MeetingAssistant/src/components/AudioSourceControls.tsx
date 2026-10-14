@@ -1,12 +1,20 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { MeetingUIStateDTO } from '../bridge/types';
 import { setAudioSource } from '../bridge/meetingBridge';
+import CompanionToggle, { type CompanionToggleProps } from '../companion/CompanionToggle';
+
+export interface AudioSourceCompanionProps extends CompanionToggleProps {
+  /** The last failed switch action; the Companion pane can be hidden, so the failure is reported here beside the switch. */
+  error: string | null;
+  onDismissError: () => void;
+}
 
 interface AudioSourceControlsProps {
   ui: MeetingUIStateDTO;
+  companion?: AudioSourceCompanionProps;
 }
 
-export default function AudioSourceControls({ ui }: AudioSourceControlsProps) {
+export default function AudioSourceControls({ ui, companion }: AudioSourceControlsProps) {
   const disabled = ui.isRecording || ui.isViewingPastMeeting;
   const [isAudioSourceMenuOpen, setIsAudioSourceMenuOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
@@ -40,6 +48,7 @@ export default function AudioSourceControls({ ui }: AudioSourceControlsProps) {
   };
 
   return (
+    <>
     <section className="meeting-audio-source-section">
       <label className="meeting-audio-toggle">
         <MicrophoneIcon />
@@ -131,6 +140,8 @@ export default function AudioSourceControls({ ui }: AudioSourceControlsProps) {
         <p className="meeting-audio-unavailable">System audio capture is unavailable on this Mac.</p>
       )}
 
+      {companion && <CompanionToggle {...companion} />}
+
       {ui.microphoneInputRecoveryState !== 'idle' && (
         <p className="meeting-audio-recovery-notice" role="alert">
           {ui.microphoneInputRecoveryState === 'reconnecting'
@@ -139,6 +150,13 @@ export default function AudioSourceControls({ ui }: AudioSourceControlsProps) {
         </p>
       )}
     </section>
+    {companion?.error && (
+      <div className="meeting-history-load-more-error" role="alert">
+        <span>{companion.error}</span>
+        <button type="button" onClick={companion.onDismissError}>Dismiss</button>
+      </div>
+    )}
+    </>
   );
 }
 

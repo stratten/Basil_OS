@@ -17,7 +17,6 @@ save-sample endpoint and not reused elsewhere.
 
 import logging
 import re
-from datetime import datetime
 from typing import Any, Dict, Optional
 
 from fastapi import HTTPException
@@ -32,6 +31,7 @@ from api.core.knowledge.personalization.session_sample_context import (
     map_session_context_type,
     resolve_session_recipient,
 )
+from api.core.utc_time import utc_now_naive
 
 logger = logging.getLogger(__name__)
 
@@ -174,8 +174,8 @@ async def _detect_and_store_signature(
                     signature_create = UserSignatureCreate(
                         signature_text=signature_text,
                         context="work",  # Default context
-                        first_seen=datetime.utcnow(),
-                        last_seen=datetime.utcnow(),
+                        first_seen=utc_now_naive(),
+                        last_seen=utc_now_naive(),
                         occurrence_count=1,
                         confidence=1.0,
                     )

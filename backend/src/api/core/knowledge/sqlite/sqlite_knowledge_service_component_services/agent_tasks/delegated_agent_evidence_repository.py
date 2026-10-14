@@ -6,11 +6,11 @@ import json
 import sqlite3
 import uuid
 from collections.abc import Mapping
-from datetime import datetime
 from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any
 
 from ..infrastructure.connection import get_sync_connection, run_write_transaction
+from api.core.utc_time import utc_now_naive_iso
 
 MAX_SUMMARY_BYTES = 2_000
 MAX_STRUCTURED_DATA_BYTES = 4_000
@@ -25,10 +25,6 @@ VERIFICATION_STATES = frozenset({"pending", "verified", "verification_mismatch",
 
 class DelegatedAgentEvidenceError(RuntimeError):
     """Raised when evidence is malformed, foreign, or contradictory."""
-
-
-def _now() -> str:
-    return datetime.utcnow().isoformat()
 
 
 def _require_text(value: object, field_name: str, maximum_bytes: int) -> str:
@@ -140,7 +136,7 @@ class DelegatedAgentEvidenceRepository:
             raise DelegatedAgentEvidenceError("provenance is unsupported")
         if clean_verification not in VERIFICATION_STATES:
             raise DelegatedAgentEvidenceError("verification_state is unsupported")
-        timestamp = _now()
+        timestamp = utc_now_naive_iso()
 
         def write(conn: sqlite3.Connection) -> tuple[sqlite3.Row, bool]:
             run = conn.execute("SELECT id FROM delegated_agent_runs WHERE id = ?", (run_id,)).fetchone()

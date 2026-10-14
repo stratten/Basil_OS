@@ -8,7 +8,6 @@ import base64
 import json
 import sqlite3
 import uuid
-from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from ...core.knowledge.sqlite.sqlite_knowledge_service_component_services.infrastructure.connection import (
@@ -16,6 +15,7 @@ from ...core.knowledge.sqlite.sqlite_knowledge_service_component_services.infras
 )
 from .models import TodoItemDetail, TodoItemSummary, TodoSource, TodoWorkspaceHydration
 from .records import row_to_todo_detail, row_to_todo_source, row_to_todo_summary
+from api.core.utc_time import utc_now_iso
 
 DEFAULT_TODO_WORKSPACE_PAGE_LIMIT = 50
 MAX_TODO_WORKSPACE_PAGE_LIMIT = 200
@@ -154,7 +154,7 @@ class TodoRepository:
                     return detail, False
 
             todo_id = str(uuid.uuid4())
-            now = _utc_now_iso()
+            now = utc_now_iso()
             conn.execute(
                 """
                 INSERT INTO todo_items (
@@ -428,6 +428,30 @@ class TodoRepository:
         finally:
             conn.close()
 
+    async def list_acknowledged_worker_ids(self, todo_id: str) -> set[str]:
+        """Agent Task IDs the user had already seen when they last set a status by hand."""
+        return await asyncio.to_thread(self._list_acknowledged_worker_ids_sync, todo_id)
+
+    def _list_acknowledged_worker_ids_sync(self, todo_id: str) -> set[str]:
+        conn = self._connection()
+        try:
+            rows = conn.execute(
+                "SELECT payload_json FROM todo_events WHERE todo_id = ? AND event_kind = 'status_set'",
+                (todo_id,),
+            ).fetchall()
+        finally:
+            conn.close()
+        acknowledged: set[str] = set()
+        for row in rows:
+            try:
+                payload = json.loads(row["payload_json"] or "{}")
+            except (TypeError, ValueError):
+                continue
+            ids = payload.get("acknowledged_agent_task_ids") if isinstance(payload, dict) else None
+            if isinstance(ids, list):
+                acknowledged.update(item for item in ids if isinstance(item, str))
+        return acknowledged
+
     # === Update with optimistic concurrency ===
 
     async def update_todo_item_with_expected_revision(
@@ -448,7 +472,7 @@ class TodoRepository:
         try:
             conn.execute("BEGIN IMMEDIATE")
             set_clause = ", ".join(f"{key} = ?" for key in fields.keys())
-            params = [*fields.values(), _utc_now_iso(), todo_id, expected_revision]
+            params = [*fields.values(), utc_now_iso(), todo_id, expected_revision]
             cursor = conn.execute(
                 f"UPDATE todo_items SET {set_clause}, updated_at = ?, revision = revision + 1 "
                 f"WHERE id = ? AND revision = ?",
@@ -465,7 +489,7 @@ class TodoRepository:
                 (
                     str(uuid.uuid4()), todo_id, event_kind, actor_kind, actor_id,
                     json.dumps(event_payload if event_payload is not None else fields, default=str),
-                    _utc_now_iso(),
+                    utc_now_iso(),
                 ),
             )
             detail = self._get_todo_item_detail_sync_locked(conn, todo_id)
@@ -526,7 +550,7 @@ class TodoRepository:
                 detail = self._get_todo_item_detail_sync_locked(conn, todo_id)
                 conn.commit()
                 return detail
-            now = _utc_now_iso()
+            now = utc_now_iso()
             conn.execute(
                 """
                 INSERT INTO todo_references (id, todo_id, path, created_by_kind, created_by_id, created_at)
@@ -653,14 +677,14 @@ class TodoRepository:
                 appended = appended[-12000:]
             conn.execute(
                 "UPDATE todo_items SET notes = ?, updated_at = ?, revision = revision + 1 WHERE id = ?",
-                (appended, _utc_now_iso(), todo_id),
+                (appended, utc_now_iso(), todo_id),
             )
             conn.execute(
                 """
                 INSERT INTO todo_events (id, todo_id, event_kind, actor_kind, actor_id, payload_json, created_at)
                 VALUES (?, ?, 'workspace_note_appended', ?, ?, ?, ?)
                 """,
-                (str(uuid.uuid4()), todo_id, actor_kind, actor_id, json.dumps({"note": note_markdown}), _utc_now_iso()),
+                (str(uuid.uuid4()), todo_id, actor_kind, actor_id, json.dumps({"note": note_markdown}), utc_now_iso()),
             )
             detail = self._get_todo_item_detail_sync_locked(conn, todo_id)
             conn.commit()
@@ -688,7 +712,7 @@ class TodoRepository:
                 INSERT INTO todo_events (id, todo_id, event_kind, actor_kind, actor_id, payload_json, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (str(uuid.uuid4()), todo_id, event_kind, actor_kind, actor_id, json.dumps(payload, default=str), _utc_now_iso()),
+                (str(uuid.uuid4()), todo_id, event_kind, actor_kind, actor_id, json.dumps(payload, default=str), utc_now_iso()),
             )
             conn.commit()
         except Exception:
@@ -721,7 +745,7 @@ class TodoRepository:
             SET updated_at = ?, revision = revision + 1
             WHERE id = ? AND revision = ?
             """,
-            (_utc_now_iso(), todo_id, expected_revision),
+            (utc_now_iso(), todo_id, expected_revision),
         )
         if cursor.rowcount == 0:
             raise TodoRevisionConflict(todo_id)
@@ -748,13 +772,9 @@ class TodoRepository:
                 actor_kind,
                 actor_id,
                 json.dumps(payload, default=str),
-                _utc_now_iso(),
+                utc_now_iso(),
             ),
         )
-
-
-def _utc_now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 _TODO_SORT_DEFAULT_DIRECTION = {

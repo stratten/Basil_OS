@@ -1,4 +1,5 @@
 import asyncio
+from api.core.runtime import safe_spawn
 import logging
 from enum import Enum
 from typing import Optional, Callable
@@ -66,7 +67,7 @@ class FFmpegManager:
                 "pipe:1"
             ]
 
-            self.process = await asyncio.create_subprocess_exec(
+            self.process = await safe_spawn.create_subprocess_exec(
                 *cmd,
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,

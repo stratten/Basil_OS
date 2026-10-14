@@ -4,6 +4,8 @@ import { useSettledExpand } from '@shared/useSettledExpand';
 import { useReconciliationBridge } from './app/useReconciliationBridge';
 import { store } from './app/reconciliationStore';
 import { closeWorkspace, collapseWorkspace, expandWorkspace, minimizeWorkspace } from './services/bridge';
+import { BackendLivenessBanner } from '@shared/BackendLivenessBanner';
+import { wsManager } from './services/websocket';
 import { Header } from './components/Header';
 import { ProgressBanner } from './components/ProgressBanner';
 import { ActionList } from './components/ActionList';
@@ -152,6 +154,7 @@ export default function App() {
         )}
       </div>
     </div>
+      <BackendLivenessBanner socket={wsManager} />
     </div>
   );
 }

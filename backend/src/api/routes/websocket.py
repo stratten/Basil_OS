@@ -22,7 +22,12 @@ from ..services.wake_word import WakeWordService
 from datetime import datetime, timedelta
 from ..core.knowledge.query.activity_summarizer import generate_activity_summary
 from enum import Enum
-from api.services.websocket_connection_manager import active_connections, add_connection, remove_connection
+from api.services.websocket_connection_manager import (
+    active_connections,
+    add_connection,
+    remove_connection,
+    subscribe_heartbeat,
+)
 from api.services.transcription.local_model import model_unload_state
 from .websocket_routes.transcription import (
     paste_transcribed_text,
@@ -274,6 +279,9 @@ async def websocket_endpoint(
                                         "message": f"Failed to cancel agent_task: {str(e)}"
                                     })
                                 
+                            elif msg_data.get("type") == "subscribe_backend_heartbeat":
+                                subscribe_heartbeat(websocket)
+
                             elif msg_data.get("type") == "mcp_token_response":
                                 # Swift client returning the access token (and
                                 # optionally the refresh token, when the

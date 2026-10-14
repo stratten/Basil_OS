@@ -37,9 +37,7 @@ final class PowerUserGuideWindowController: NSObject, NSWindowDelegate, Appearan
             backing: .buffered,
             defer: false
         )
-        window.title = "Basil's Capabilities"
-        window.isReleasedWhenClosed = false
-        window.isMovableByWindowBackground = true
+        window.configureCustomChromeWindow(title: "Basil's Capabilities", releasedWhenClosed: false)
         window.contentMinSize = Self.minimumWindowSize
         window.contentMaxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         window.delegate = self

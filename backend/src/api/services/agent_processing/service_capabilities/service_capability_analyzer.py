@@ -385,56 +385,6 @@ class ServiceCapabilityAnalyzer:
         
         return capabilities
     
-    def validate_service_method(self, service_name: str, method: str, 
-                               parameters: Dict[str, Any], cached_services: Optional[Dict[str, Any]] = None) -> Tuple[str, Dict[str, Any]]:
-        """
-        Validate service method before execution and suggest corrections if needed.
-        
-        Args:
-            service_name: Name of the service
-            method: Method name to validate
-            parameters: Method parameters
-            cached_services: Pre-cached service capabilities (preferred) or None to discover fresh
-            
-        Returns:
-            Tuple of (corrected_method_name, validated_parameters)
-        """
-        try:
-            # Use cached capabilities if provided, otherwise discover fresh (fallback)
-            if cached_services is not None:
-                services = cached_services
-                self.logger.debug(f"🔧 Using cached capabilities for {service_name}.{method}")
-            else:
-                self.logger.info(f"🔧 Discovering fresh capabilities for {service_name}.{method} (no cache provided)")
-                services = self.discover_available_services()
-            
-            if service_name not in services:
-                self.logger.warning(f"🔧 Service {service_name} not found")
-                return method, parameters
-            
-            service_info = services[service_name]
-            capabilities = service_info.get("capabilities", {})
-            methods = capabilities.get("methods", {})
-            
-            if method in methods:
-                # Method exists - validate parameters
-                self.logger.info(f"✅ METHOD VALIDATED: {service_name}.{method}")
-                return method, parameters
-            else:
-                # Method doesn't exist - try to find correct method
-                available_methods = list(methods.keys())
-                self.logger.warning(f"🔧 METHOD CORRECTION NEEDED: {service_name}.{method}")
-                self.logger.warning(f"🔧 AVAILABLE METHODS: {available_methods}")
-                
-                # Method name correction was removed - return as-is
-                self.logger.error(f"❌ METHOD NOT FOUND: {method} in {available_methods}")
-                return method, parameters
-                    
-        except Exception as e:
-            self.logger.warning(f"Method validation failed: {e}")
-            return method, parameters
-    
-
     def get_object_construction_info(self, param_type: str, cached_services: Dict[str, Any]) -> str:
         """
         Get object construction information for complex parameter types.

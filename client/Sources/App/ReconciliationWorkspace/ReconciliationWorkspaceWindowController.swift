@@ -28,9 +28,7 @@ final class ReconciliationWorkspaceWindowController: NSWindowController, NSWindo
             backing: .buffered,
             defer: false
         )
-        window.title = "Skill Reconciliation"
-        window.isReleasedWhenClosed = false
-        window.isMovableByWindowBackground = true
+        window.configureCustomChromeWindow(title: "Skill Reconciliation", releasedWhenClosed: false)
         window.minSize = NSSize(width: 740, height: 520)
         window.contentView = hostingView
         WebKitWindowChromeAppearance.apply(to: window)

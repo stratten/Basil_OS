@@ -34,6 +34,7 @@ from .bounds import (
     MAX_VERSIONS_PER_FILE,
 )
 from .eligibility import evaluate_eligibility
+from api.core.utc_time import utc_now_naive
 
 
 class ManagedFileHistoryService:
@@ -333,7 +334,7 @@ class ManagedFileHistoryService:
         if head is None:
             return
         versions = self._repository.list_retained_versions(canonical_path)
-        now = datetime.utcnow()
+        now = utc_now_naive()
         kept_count = 0
         for version in versions:
             if version["id"] == head["current_change_id"]:

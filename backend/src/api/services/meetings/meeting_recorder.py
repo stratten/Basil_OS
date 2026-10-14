@@ -6,11 +6,11 @@ import json
 import logging
 import math
 from pathlib import Path
-from datetime import datetime
 from typing import Optional, Dict, List, Any
 from dataclasses import dataclass, asdict
 
 from . import meeting_recording_registry
+from api.core.utc_time import utc_now_naive_iso_z
 
 logger = logging.getLogger(__name__)
 
@@ -161,7 +161,7 @@ class MeetingRecorder:
             name=meeting_name,
             purpose=purpose,
             participants=participants or [],
-            start_time=datetime.utcnow().isoformat() + "Z",  # Add Z suffix to indicate UTC
+            start_time=utc_now_naive_iso_z(),  # Add Z suffix to indicate UTC
             audio_path=str(self.audio_path),
             transcript_path=str(self.transcript_path),
             session_id=self.session_id,
@@ -262,7 +262,7 @@ class MeetingRecorder:
             self.metadata = MeetingMetadata(
                 id=self.meeting_id,
                 name=meeting_name,
-                start_time=datetime.utcnow().isoformat() + "Z",
+                start_time=utc_now_naive_iso_z(),
                 audio_path=str(self.audio_path),
                 transcript_path=str(self.transcript_path),
                 session_id=self.session_id,
@@ -402,6 +402,7 @@ class MeetingRecorder:
                 if s.get("is_interim", False) == False or s["start"] >= offset_end or s["end"] <= offset_start
             ]
             self.transcript_segments.append(segment)
+            meeting_recording_registry.notify_segment(self, segment)
             
             # Log every 10 segments
             if len(self.transcript_segments) % 10 == 0:
@@ -437,7 +438,7 @@ class MeetingRecorder:
             
             # Update metadata
             if self.metadata:
-                self.metadata.end_time = datetime.utcnow().isoformat() + "Z"  # Add Z suffix to indicate UTC
+                self.metadata.end_time = utc_now_naive_iso_z()  # Add Z suffix to indicate UTC
                 self.metadata.duration_seconds = duration_seconds
                 self._save_metadata()
             

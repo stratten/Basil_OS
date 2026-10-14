@@ -53,6 +53,9 @@ class MailAppService:
     def organize_emails_receipt_script(self, operation: EmailOperation) -> str:
         return self.operation_receipt_scripts.organize_emails_receipt_script(operation)
 
+    def verify_locations_script(self, checks: list[dict[str, str]]) -> str:
+        return self.operation_receipt_scripts.verify_locations_script(checks)
+
     def get_folders_script(self) -> str:
         return self.scripts.get_folders_script()
 

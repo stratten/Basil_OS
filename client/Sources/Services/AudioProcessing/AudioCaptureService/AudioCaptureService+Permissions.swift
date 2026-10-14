@@ -86,20 +86,13 @@ extension AudioCaptureService {
         self.error = "Microphone access required. Click here to open System Settings."
         self.permissionGranted = false
         
-        // Create an alert to guide the user
-        let alert = NSAlert()
-        alert.messageText = "Microphone Access Required"
-        alert.informativeText = "Basil needs microphone access to transcribe audio. Would you like to open System Settings to grant access?"
-        alert.alertStyle = NSAlert.Style.warning
-        alert.addButton(withTitle: "Open System Settings")
-        alert.addButton(withTitle: "Cancel")
-        
-        if alert.runModal() == .alertFirstButtonReturn {
-            // Open System Settings directly to the Privacy & Security > Microphone section
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") {
-                NSWorkspace.shared.open(url)
-            }
-        }
+        // Guide the user to the Privacy & Security > Microphone section
+        NSAlert.runSystemSettingsPrompt(
+            title: "Microphone Access Required",
+            message: "Basil needs microphone access to transcribe audio. Would you like to open System Settings to grant access?",
+            declineTitle: "Cancel",
+            pane: .microphone
+        )
     }
 }
 

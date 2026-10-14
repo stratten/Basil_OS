@@ -10,6 +10,7 @@ import type {
   AgentTaskPresentationSummary,
 } from '../artifacts/artifactContract';
 import ResultContent from './ResultContent';
+import { resetPendingFollowUpsForTests } from '../store/pendingFollowUps';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -29,6 +30,8 @@ const apiMocks = vi.hoisted(() => ({
   }),
   saveAgentTaskAsSkill: vi.fn(),
   submitAgentTaskFeedback: vi.fn(),
+  isApiReady: vi.fn().mockReturnValue(false),
+  getPendingFollowUps: vi.fn().mockResolvedValue({ follow_ups: [] }),
 }));
 
 vi.mock('../services/api', () => apiMocks);
@@ -403,6 +406,61 @@ describe('ResultContent artifact integration', () => {
     expect(markup).toContain('delegated-provider-work-chip--working');
     expect(markup).not.toContain('supervision due');
     expect(markup).not.toContain('run-private-1');
+  });
+});
+
+describe('ResultContent scheduled follow-up notice', () => {
+  async function renderWithPending(task: DisplayableAgentTask, pending: Array<{ root_task_id: string; due_at: string }>) {
+    resetPendingFollowUpsForTests();
+    apiMocks.isApiReady.mockReturnValue(true);
+    apiMocks.getPendingFollowUps.mockResolvedValue({ follow_ups: pending });
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(<ResultContent agentTask={task} onRetry={() => {}} onContinue={() => {}} />);
+    });
+    return { container, cleanup: () => { act(() => root.unmount()); container.remove(); } };
+  }
+
+  afterEach(() => {
+    apiMocks.isApiReady.mockReturnValue(false);
+    apiMocks.getPendingFollowUps.mockResolvedValue({ follow_ups: [] });
+    resetPendingFollowUpsForTests();
+  });
+
+  it('shows the waiting notice for a settled task whose chain has a scheduled follow-up', async () => {
+    const due = new Date(Date.now() + 3_600_000).toISOString();
+    const { container, cleanup } = await renderWithPending(completedTask, [{ root_task_id: 'task-1', due_at: due }]);
+    expect(container.querySelector('[data-testid="follow-up-waiting-notice"]')?.textContent).toContain('Waiting to check again');
+    cleanup();
+  });
+
+  it('matches by the chain root when the displayed turn is a later follow-up', async () => {
+    const due = new Date(Date.now() + 3_600_000).toISOString();
+    const { container, cleanup } = await renderWithPending(
+      { ...completedTask, agentTaskId: 'turn-2', rootTaskId: 'root-9' },
+      [{ root_task_id: 'root-9', due_at: due }],
+    );
+    expect(container.querySelector('[data-testid="follow-up-waiting-notice"]')).not.toBeNull();
+    cleanup();
+  });
+
+  it('shows no notice when another chain is the one waiting', async () => {
+    const due = new Date(Date.now() + 3_600_000).toISOString();
+    const { container, cleanup } = await renderWithPending(completedTask, [{ root_task_id: 'other', due_at: due }]);
+    expect(container.querySelector('[data-testid="follow-up-waiting-notice"]')).toBeNull();
+    cleanup();
+  });
+
+  it('shows no notice while the task is actively working', async () => {
+    const due = new Date(Date.now() + 3_600_000).toISOString();
+    const { container, cleanup } = await renderWithPending(
+      { ...completedTask, status: 'processing' },
+      [{ root_task_id: 'task-1', due_at: due }],
+    );
+    expect(container.querySelector('[data-testid="follow-up-waiting-notice"]')).toBeNull();
+    cleanup();
   });
 });
 

@@ -20,7 +20,7 @@ def test_get_thinking_request_config_adaptive_sonnet_5():
     # display is registry-driven (default_display) and must be threaded inside the
     # thinking dict so langchain-anthropic can round-trip thinking blocks while streaming.
     assert cfg["thinking"] == {"type": "adaptive", "display": "summarized"}
-    assert cfg["effort"] == "high"
+    assert cfg["effort"] == "medium"
     assert cfg["omit_sampling"] is True
 
 
@@ -69,7 +69,7 @@ def test_create_langchain_anthropic_adaptive_thinking_sonnet_5():
         kwargs = ctor.call_args.kwargs
         assert kwargs["model"] == "claude-sonnet-5"
         assert kwargs["thinking"] == {"type": "adaptive", "display": "summarized"}
-        assert kwargs["effort"] == "high"
+        assert kwargs["effort"] == "medium"
         assert "temperature" not in kwargs
 
 
@@ -79,5 +79,5 @@ def test_claude_model_apply_thinking_to_api_params():
     api_params = {"model": "claude-sonnet-5", "messages": [], "max_tokens": 4096, "temperature": 0.7}
     model._apply_thinking_to_api_params(api_params)
     assert api_params["thinking"] == {"type": "adaptive", "display": "summarized"}
-    assert api_params["output_config"] == {"effort": "high"}
+    assert api_params["output_config"] == {"effort": "medium"}
     assert "temperature" not in api_params

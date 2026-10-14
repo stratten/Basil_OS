@@ -9,11 +9,10 @@ raw transcript. This module owns that local, per-meeting sidecar ledger.
 from __future__ import annotations
 
 import json
-import os
-import tempfile
 from pathlib import Path
 from typing import Any, Dict, List
 
+from .atomic_json import atomic_write_json
 from .windowed_retranscription import splice_segments
 
 LEDGER_FILENAME = "windowed_retranscription_upgrades.json"
@@ -43,7 +42,7 @@ def record_window_upgrade(
             "segments": [_normalize_segment(segment) for segment in segments],
         }
     )
-    _atomic_write_json(get_upgrade_ledger_path(meeting_dir), ledger)
+    atomic_write_json(get_upgrade_ledger_path(meeting_dir), ledger)
 
 
 def apply_recorded_window_upgrades(
@@ -80,7 +79,7 @@ def finalize_recorded_window_upgrades(meeting_id: str) -> Dict[str, Any]:
         raise ValueError(f"Transcript for meeting {meeting_id} must be a JSON object")
 
     upgraded = apply_recorded_window_upgrades(meeting_dir, transcript)
-    _atomic_write_json(transcript_path, upgraded)
+    atomic_write_json(transcript_path, upgraded)
     return upgraded
 
 
@@ -129,21 +128,3 @@ def _normalize_segment(segment: Dict[str, Any]) -> Dict[str, Any]:
         "text": str(segment.get("text", "")).strip(),
         "speaker": segment.get("speaker"),
     }
-
-
-def _atomic_write_json(path: Path, value: Dict[str, Any]) -> None:
-    """Atomically write JSON within the target directory."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, temporary_path = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
-    try:
-        with os.fdopen(fd, "w") as temporary_file:
-            json.dump(value, temporary_file, indent=2)
-            temporary_file.flush()
-            os.fsync(temporary_file.fileno())
-        os.replace(temporary_path, path)
-    except Exception:
-        try:
-            os.unlink(temporary_path)
-        except OSError:
-            pass
-        raise

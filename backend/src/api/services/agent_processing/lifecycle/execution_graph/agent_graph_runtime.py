@@ -143,6 +143,16 @@ class BasilCheckpointSerde:
 
 # === GRAPH BUILDERS ===
 
+def route_graph_entry(state: PlanningState) -> str:
+    """A resumed run already analyzed its request; it only rebuilds the non-serializable services and tools."""
+    return "plan_capabilities" if state.agent_resume_input is not None else "analyze_request"
+
+
+def route_after_create_tools(state: PlanningState) -> str:
+    """A resumed run keeps its earlier skill selection, so it goes straight back to the agent loop."""
+    return "execute_todos_with_tools" if state.agent_resume_input is not None else "consider_skills"
+
+
 @asynccontextmanager
 async def _open_tool_enhanced_graph(
     checkpoint_path: str = AGENT_CHECKPOINT_DATABASE_PATH,
@@ -172,10 +182,17 @@ async def _open_tool_enhanced_graph(
     graph.add_node("consider_skills", _timed_node("consider_skills", _node_consider_skills))
     graph.add_node("execute_todos_with_tools", _timed_node("execute_todos_with_tools", _node_execute_todos_with_tools))
 
-    graph.set_entry_point("analyze_request")
+    graph.set_conditional_entry_point(
+        route_graph_entry,
+        {"analyze_request": "analyze_request", "plan_capabilities": "plan_capabilities"},
+    )
     graph.add_edge("analyze_request", "plan_capabilities")
     graph.add_edge("plan_capabilities", "create_tools")
-    graph.add_edge("create_tools", "consider_skills")
+    graph.add_conditional_edges(
+        "create_tools",
+        route_after_create_tools,
+        {"consider_skills": "consider_skills", "execute_todos_with_tools": "execute_todos_with_tools"},
+    )
     graph.add_edge("consider_skills", "execute_todos_with_tools")
 
     checkpoint_database_path = os.path.expanduser(checkpoint_path)

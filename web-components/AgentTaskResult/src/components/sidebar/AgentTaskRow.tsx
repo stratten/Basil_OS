@@ -2,6 +2,8 @@ import { memo, useState } from 'react';
 import type { KeyboardEvent, MouseEvent } from 'react';
 import { useHistoryRowRevealDelete } from '@shared/useHistoryRowRevealDelete';
 import { InlineDeleteConfirm } from '@shared/InlineDeleteConfirm';
+import AgentTaskActiveIndicator from '@shared/AgentTaskActiveIndicator';
+import NativeSymbolIcon from '@shared/NativeSymbolIcon';
 import {
   BranchIcon,
   ConversationOriginIcon,
@@ -12,6 +14,7 @@ import {
   TrashIcon,
 } from './SidebarIcons';
 import { formatHistoryTimestamp, useDateDisplayStyle } from '../../app/dateDisplay';
+import { describeFollowUpDue } from '../../app/followUpTime';
 
 export interface AgentTaskRowProps {
   id: string;
@@ -47,6 +50,9 @@ export interface AgentTaskRowProps {
   // Conversation turn. The value is a fixed display label (not the
   // conversation's title — no per-row conversation lookup is performed).
   originSourceLabel?: string;
+  // ISO due time of this task's soonest scheduled follow-up check. While it is
+  // set and the task is not actively running, the row shows a waiting state.
+  nextFollowUpAt?: string;
 }
 
 function AgentTaskRowImpl({
@@ -69,6 +75,7 @@ function AgentTaskRowImpl({
   onContextMenu,
   scheduledRunSourceTitle,
   originSourceLabel,
+  nextFollowUpAt,
   isPendingDelete,
   onConfirmDelete,
   onCancelDeleteRequest,
@@ -76,13 +83,13 @@ function AgentTaskRowImpl({
   const [hovered, setHovered] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const isActive = ['processing', 'routing', 'capturing', 'awaitingInput', 'paused'].includes(status);
-  const isProcessingLike = status === 'processing' || status === 'routing' || status === 'capturing';
   const showCancel = isActive && hovered && !isSelected && !!onCancel;
   const showTrash = !isActive && hovered && !!onRequestDelete;
   const revealDelete = useHistoryRowRevealDelete({ enabled: !isActive && !!onRequestDelete });
 
   const isPaused = status === 'paused';
-  const rowPreview = isPaused ? 'Paused' : currentStep || preview;
+  const followUpDue = nextFollowUpAt && !isActive ? describeFollowUpDue(nextFollowUpAt) : null;
+  const rowPreview = isPaused ? 'Paused' : followUpDue ? followUpDue.rowText : currentStep || preview;
 
   const dateDisplayStyle = useDateDisplayStyle();
   const dateStr = timestamp ? formatHistoryTimestamp(timestamp, dateDisplayStyle) : '';
@@ -175,16 +182,19 @@ function AgentTaskRowImpl({
           <div className="agent-task-row__main">
             {needsApproval && !isSelected ? (
               <span className="approval-attention" />
-            ) : isProcessingLike ? (
-              <div className="pulsing-dots"><span /><span /><span /></div>
-            ) : status === 'awaitingInput' ? (
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="var(--warning-base)">
-                <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm-.5 4.75v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-1.5 0zM8 12a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/>
-              </svg>
-            ) : status === 'paused' ? (
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="var(--warning-base)" fillRule="evenodd" aria-label="Paused">
-                <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zM6 4.75a.75.75 0 0 0-.75.75v5a.75.75 0 0 0 1.5 0v-5A.75.75 0 0 0 6 4.75zm4 0a.75.75 0 0 0-.75.75v5a.75.75 0 0 0 1.5 0v-5a.75.75 0 0 0-.75-.75z"/>
-              </svg>
+            ) : isActive ? (
+              <AgentTaskActiveIndicator
+                status={status === 'awaitingInput' || status === 'paused' ? status : 'processing'}
+              />
+            ) : followUpDue ? (
+              <span
+                className="agent-task-row__waiting-icon"
+                role="img"
+                aria-label="Waiting to check again"
+                title="Waiting to check again"
+              >
+                <NativeSymbolIcon name="refresh" size={11} />
+              </span>
             ) : (
               <StatusIcon status={status} resultSeverity={resultSeverity} size={8} />
             )}
@@ -215,7 +225,7 @@ function AgentTaskRowImpl({
               {needsApproval && !isSelected ? (
                 <div className="row-preview agent-task-row__preview--warning">Approval needed</div>
               ) : rowPreview ? (
-                <div className={isPaused ? 'row-preview agent-task-row__preview--warning' : 'row-preview'}>{rowPreview}</div>
+                <div className={isPaused ? 'row-preview agent-task-row__preview--warning' : followUpDue ? 'row-preview agent-task-row__preview--waiting' : 'row-preview'}>{rowPreview}</div>
               ) : null}
             </div>
 

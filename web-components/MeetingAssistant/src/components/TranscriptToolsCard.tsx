@@ -4,6 +4,7 @@ import ReasoningModelPicker, { type SharedReasoningModel } from '../../../shared
 import { formatClockSeconds } from '@shared/formatClockSeconds';
 import type { MeetingUIStateDTO } from '../bridge/types';
 import { setAutomation, setPostProcessingModel, startPostProcessing } from '../bridge/meetingBridge';
+import MeetingSwitch from './MeetingSwitch';
 
 const AUTOMATION_POPOVER_THEME_PROPERTIES = [
   '--background-primary',
@@ -143,8 +144,8 @@ export default function TranscriptToolsCard({ ui }: { ui: MeetingUIStateDTO }) {
             >
               <h3>Automation (this recording)</h3>
               <p>Seeded from your saved defaults. Changes here apply only to the current recording.</p>
-              <SwitchControl label="Auto-retranscribe on stop" checked={ui.sessionAutoRetranscribeOnStop} onChange={(checked) => setAutomation({ autoRetranscribeOnStop: checked })} />
-              <SwitchControl label="Auto-analyze on complete" checked={ui.sessionAutoAnalyzeOnComplete} onChange={(checked) => setAutomation({ autoAnalyzeOnComplete: checked })} />
+              <MeetingSwitch label="Auto-retranscribe on stop" checked={ui.sessionAutoRetranscribeOnStop} onChange={(checked) => setAutomation({ autoRetranscribeOnStop: checked })} />
+              <MeetingSwitch label="Auto-analyze on complete" checked={ui.sessionAutoAnalyzeOnComplete} onChange={(checked) => setAutomation({ autoAnalyzeOnComplete: checked })} />
               {ui.sessionAutoAnalyzeOnComplete && (
                 <div className="meeting-automation-analysis-options">
                   <fieldset>
@@ -155,7 +156,7 @@ export default function TranscriptToolsCard({ ui }: { ui: MeetingUIStateDTO }) {
                   <fieldset>
                     <legend>Modes</legend>
                     {automationModes.map(([mode, label]) => (
-                      <SwitchControl key={mode} label={label} checked={ui.sessionAutoAnalyzeModes.includes(mode)} onChange={(checked) => toggleAutomationMode(mode, checked)} />
+                      <MeetingSwitch key={mode} label={label} checked={ui.sessionAutoAnalyzeModes.includes(mode)} onChange={(checked) => toggleAutomationMode(mode, checked)} />
                     ))}
                   </fieldset>
                   <label className="meeting-automation-instructions">Custom instructions (optional)<textarea value={ui.sessionAutoAnalyzeCustomInstructions} onChange={(event) => setAutomation({ autoAnalyzeCustomInstructions: event.target.value })} /></label>
@@ -226,10 +227,6 @@ function formatETA(seconds: number): string {
   const minutes = Math.floor(totalSeconds / 60);
   const remainingSeconds = totalSeconds % 60;
   return minutes > 0 ? `${minutes}m ${remainingSeconds}s` : `${remainingSeconds}s`;
-}
-
-function SwitchControl({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
-  return <label className="meeting-switch-control"><span>{label}</span><input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} /><span className="meeting-switch-track" aria-hidden="true" /></label>;
 }
 
 function AutomationIcon() {

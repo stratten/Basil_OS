@@ -295,3 +295,87 @@ async def test_schedule_outcome_verification_skips_when_canceled():
 
     mock_finalize.assert_not_awaited()
     ws_manager.broadcast.assert_not_awaited()
+
+
+async def _run_verification_with(refined, *, follow_up):
+    mock_finalize = AsyncMock(return_value=refined)
+    mock_update = AsyncMock()
+    mock_get_task = AsyncMock(return_value=SimpleNamespace(result_data={}, execution_timeline=[]))
+    mock_knowledge = SimpleNamespace(
+        agent_task_service=SimpleNamespace(
+            _queries=SimpleNamespace(get_agent_task=mock_get_task),
+            update_agent_task_status=mock_update,
+        )
+    )
+    ws_manager = SimpleNamespace(broadcast=AsyncMock())
+    schedule = AsyncMock(return_value=follow_up)
+    with patch(
+        "api.services.agent_processing.lifecycle.execution_graph.async_finalizer.finalize_agent_task_result",
+        new=mock_finalize,
+    ), patch(
+        "api.services.agent_processing.lifecycle.execution_graph.async_finalizer.schedule_follow_up_for_pending_work",
+        new=schedule,
+    ), patch("api.dependencies.get_sqlite_knowledge_service", return_value=mock_knowledge):
+        schedule_outcome_verification(
+            inputs=_sample_inputs(),
+            llm_model=MagicMock(),
+            ws_manager=ws_manager,
+            agent_task_id="task-123",
+            root_task_id="root-1",
+            previous_task_id=None,
+            cancel_event=None,
+        )
+        await asyncio.sleep(0.05)
+    return schedule, mock_update, ws_manager
+
+
+def _pending_partial_envelope():
+    return {
+        "success": False,
+        "outcome": "partial",
+        "outcome_reason": "A check is still needed.",
+        "summary_text": "Partial result: A check is still needed.\n\nThe delegated agent is running.",
+        "result_payload": {"outcome": "partial", "outcome_reason": "A check is still needed.", "files": []},
+        "pending_work": {"instructions": "Check the run.", "delay_minutes": 15},
+    }
+
+
+@pytest.mark.asyncio
+async def test_pending_work_verdict_schedules_a_follow_up_and_resolves_as_waiting():
+    follow_up = {"due_at": "2026-10-12T12:30:00+00:00", "instructions": "Check the run."}
+    schedule, mock_update, ws_manager = await _run_verification_with(_pending_partial_envelope(), follow_up=follow_up)
+
+    schedule.assert_awaited_once()
+    assert schedule.await_args.kwargs["root_task_id"] == "root-1"
+    assert schedule.await_args.kwargs["pending_work"] == {"instructions": "Check the run.", "delay_minutes": 15}
+
+    stored = mock_update.await_args.kwargs["result_data"]["finalizer_result"]
+    assert "pending_work" not in stored
+    assert stored["success"] is True
+    assert stored["result_payload"]["outcome"] == "success"
+    assert mock_update.await_args.kwargs["status"] == "completed"
+
+    message = ws_manager.broadcast.await_args.args[0]
+    assert message["success"] is True
+    assert message["outcome"] == "success"
+    assert not message["result"].startswith("Partial result")
+    assert message["result_payload"]["pending_follow_up_due_at"] == "2026-10-12T12:30:00+00:00"
+
+
+@pytest.mark.asyncio
+async def test_pending_work_verdict_stays_partial_when_nothing_could_be_scheduled():
+    schedule, mock_update, ws_manager = await _run_verification_with(_pending_partial_envelope(), follow_up=None)
+
+    schedule.assert_awaited_once()
+    stored = mock_update.await_args.kwargs["result_data"]["finalizer_result"]
+    assert "pending_work" not in stored
+    assert stored["success"] is False
+    assert stored["result_payload"]["outcome"] == "partial"
+    assert ws_manager.broadcast.await_args.args[0]["result"].startswith("Partial result")
+
+
+@pytest.mark.asyncio
+async def test_verdict_without_pending_work_never_schedules():
+    refined = {"success": True, "summary_text": "Done.", "result_payload": {"outcome": "success", "files": []}}
+    schedule, _update, _ws = await _run_verification_with(refined, follow_up=None)
+    schedule.assert_not_awaited()

@@ -12,6 +12,7 @@ from api.core.services.model_service import get_model_service
 from api.services.capture.manual.capture_handler import CaptureHandler
 from api.services.capture.shared.work_context import derive_work_context
 from api.services.image_processing.image_models import raise_if_analysis_unusable
+from api.core.utc_time import utc_now_naive
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -228,7 +229,7 @@ async def process_captured_image(
         raise_if_analysis_unusable(processing_result)
 
         # Store the processed results
-        timestamp = datetime.utcnow()
+        timestamp = utc_now_naive()
         processed_filename = f"processed_{timestamp.strftime('%Y%m%d_%H%M%S')}_{request.app_name}.json"
         processed_path = handler.storage.get_processed_path(processed_filename)
         

@@ -10,6 +10,7 @@ import logging
 import os
 import shutil
 import subprocess
+from api.core.runtime import safe_spawn
 from pathlib import Path
 from typing import Optional, Dict, Any, Set, Tuple, List
 from datetime import datetime
@@ -480,7 +481,7 @@ class ImageProcessor:
                     if "TESSDATA_PREFIX" in sub_env:
                         del sub_env["TESSDATA_PREFIX"]
 
-                process = subprocess.run(
+                process = safe_spawn.run(
                     [tesseract_cmd_path, "--version"],
                     capture_output=True,
                     text=True,

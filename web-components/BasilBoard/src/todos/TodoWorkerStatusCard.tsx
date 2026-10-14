@@ -1,30 +1,17 @@
-import { useEffect, useMemo, useState, type MouseEvent } from 'react';
-import { marked } from 'marked';
-import { openExistingAgentTaskWidget, openExternalUrl } from '../services/bridge';
+import { useEffect, useState } from 'react';
+import { openExistingAgentTaskWidget } from '../services/bridge';
+import HomeMarkdown from '../home/HomeMarkdown';
 import type { TodoWorkAttempt } from '../contracts';
 import type { TodoWorkerLiveState } from './useTodoWorkerProgress';
 import { plainMarkdownText } from '@shared/plainMarkdownText';
-import {
-  BASIC_MARKDOWN_TAGS,
-  escapeHtmlText,
-  externalLinkTarget,
-  normalizeMarkdownBullets,
-  sanitizeMarkdownHtml,
-} from '@shared/markdownSafety';
+import AgentTaskActiveIndicator from '@shared/AgentTaskActiveIndicator';
+import NativeSymbolIcon from '../components/NativeSymbolIcon';
+import { agentTaskIndicatorStatus } from './agentTaskIndicatorStatus';
 
 interface TodoWorkerStatusCardProps {
   attempt: TodoWorkAttempt;
   liveState?: TodoWorkerLiveState;
 }
-
-const ACTIVE_STATUSES = new Set([
-  'capturing',
-  'routing',
-  'processing',
-  'awaiting_provider_delegation',
-  'awaiting_delegated_agents',
-  'paused',
-]);
 
 const ATTENTION_STATUSES = new Set([
   'awaiting_user_input',
@@ -87,6 +74,15 @@ function iconForSeverity(severity: CardSeverity): string {
   }
 }
 
+const WAITING_LABEL = 'Waiting to check again';
+
+function formatNextCheck(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const moment = new Date(value);
+  if (Number.isNaN(moment.getTime())) return undefined;
+  return moment.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+}
+
 function resultMessage(liveState: TodoWorkerLiveState | undefined, attempt: TodoWorkAttempt): string | undefined {
   return liveState?.detail?.result_message
     ?? liveState?.detail?.error_message
@@ -94,41 +90,29 @@ function resultMessage(liveState: TodoWorkerLiveState | undefined, attempt: Todo
     ?? undefined;
 }
 
-function renderResultMarkdown(content: string): string {
-  const normalized = normalizeMarkdownBullets(content);
-  try {
-    return sanitizeMarkdownHtml(marked.parse(normalized, { breaks: true, gfm: true }) as string, BASIC_MARKDOWN_TAGS);
-  } catch {
-    return `<p>${escapeHtmlText(normalized)}</p>`;
-  }
-}
-
 export default function TodoWorkerStatusCard({ attempt, liveState }: TodoWorkerStatusCardProps) {
   const status = liveState?.detail?.status ?? attempt.status;
-  const isActive = ACTIVE_STATUSES.has(status);
   const needsAttention = attempt.attention || ATTENTION_STATUSES.has(status);
   const activity = liveState?.latestActivity;
   const severity = severityForStatus(status, liveState, attempt);
   const isTerminal = TERMINAL_STATUSES.has(status);
+  const indicatorStatus = isTerminal ? null : needsAttention ? 'awaitingInput' : agentTaskIndicatorStatus(status);
   const outcome = isTerminal ? resultMessage(liveState, attempt) : undefined;
   const title = plainMarkdownText(liveState?.detail?.title ?? attempt.title) || attempt.agent_task_id;
-  const statusClassSuffix = isTerminal ? severity : status;
-  const label = needsAttention ? 'Paprika task needs your input' : isTerminal ? labelForSeverity(severity) : labelForActiveStatus(status);
+  const isWaiting = isTerminal && status !== 'canceled' && Boolean(attempt.next_follow_up_at);
+  const nextCheck = isWaiting ? formatNextCheck(attempt.next_follow_up_at) : undefined;
+  const statusClassSuffix = isWaiting ? 'waiting' : isTerminal ? severity : status;
+  const label = needsAttention
+    ? 'Paprika task needs your input'
+    : isWaiting
+      ? WAITING_LABEL
+      : isTerminal ? labelForSeverity(severity) : labelForActiveStatus(status);
   const [isOutcomeExpanded, setIsOutcomeExpanded] = useState(false);
-  const outcomeHtml = useMemo(() => outcome ? renderResultMarkdown(outcome) : '', [outcome]);
   const isOutcomeLong = (outcome?.length ?? 0) > RESULT_PREVIEW_EXPAND_THRESHOLD;
 
   useEffect(() => {
     setIsOutcomeExpanded(false);
   }, [outcome]);
-
-  function handleOutcomeLinkClick(event: MouseEvent<HTMLDivElement>): void {
-    const anchor = (event.target as HTMLElement).closest('a');
-    const href = externalLinkTarget(anchor?.getAttribute('href'), { allowMailto: true });
-    if (!href) return;
-    event.preventDefault();
-    openExternalUrl(href);
-  }
 
   return (
     <article
@@ -136,13 +120,24 @@ export default function TodoWorkerStatusCard({ attempt, liveState }: TodoWorkerS
       role={needsAttention ? 'alert' : 'status'}
       aria-label={label}
     >
-      <span className={`todo-worker-status-card-icon${isActive ? ' is-spinning' : ''}`} aria-hidden="true">
-        {isTerminal ? iconForSeverity(severity) : '⋯'}
-      </span>
+      {indicatorStatus ? (
+        <span className="todo-worker-status-card-indicator" aria-hidden="true">
+          <AgentTaskActiveIndicator status={indicatorStatus} />
+        </span>
+      ) : (
+        <span className="todo-worker-status-card-icon" aria-hidden="true">
+          {isWaiting ? <NativeSymbolIcon name="refresh" size={12} /> : isTerminal ? iconForSeverity(severity) : '⋯'}
+        </span>
+      )}
       <div className="todo-worker-status-card-body">
         <span className="todo-worker-status-card-title">{title}</span>
         <span className="todo-worker-status-card-label">{label}</span>
         {activity && !isTerminal ? <span className="todo-worker-status-card-activity">{activity}</span> : null}
+        {isWaiting ? (
+          <span className="todo-worker-status-card-activity">
+            {nextCheck ? `Paprika will check again automatically at ${nextCheck}.` : 'Paprika will check again automatically.'}
+          </span>
+        ) : null}
       </div>
       <button
         type="button"
@@ -153,11 +148,9 @@ export default function TodoWorkerStatusCard({ attempt, liveState }: TodoWorkerS
       </button>
       {outcome ? (
         <div className="todo-worker-status-card-outcome-row">
-          <div
-            className={`todo-worker-status-card-outcome${isOutcomeLong && !isOutcomeExpanded ? ' is-truncated' : ''}`}
-            dangerouslySetInnerHTML={{ __html: outcomeHtml }}
-            onClick={handleOutcomeLinkClick}
-          />
+          <div className={`todo-worker-status-card-outcome${isOutcomeLong && !isOutcomeExpanded ? ' is-truncated' : ''}`}>
+            <HomeMarkdown content={outcome} variant="task" />
+          </div>
           {isOutcomeLong ? (
             <button
               type="button"

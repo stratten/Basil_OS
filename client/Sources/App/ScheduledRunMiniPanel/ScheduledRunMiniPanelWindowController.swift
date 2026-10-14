@@ -123,23 +123,7 @@ final class ScheduledRunMiniPanelWindowController: NSObject, NSWindowDelegate, A
             defer: false
         )
 
-        panel.title = "Scheduled Runs"
-        panel.level = .floating
-        panel.collectionBehavior = [
-            .canJoinAllSpaces,
-            .fullScreenAuxiliary,
-            .stationary,
-            .ignoresCycle,
-        ]
-        panel.isFloatingPanel = true
-        panel.hidesOnDeactivate = false
-        panel.becomesKeyOnlyIfNeeded = true
-        panel.worksWhenModal = true
-        panel.hasShadow = false
-        panel.alphaValue = 1.0
-        panel.isOpaque = false
-        panel.backgroundColor = NSColor.clear
-        panel.isMovableByWindowBackground = true
+        panel.configureMiniPanel(title: "Scheduled Runs", transparency: .clearWithoutShadow)
         panel.delegate = self
 
         let host = ScheduledRunMiniPanelWebView()

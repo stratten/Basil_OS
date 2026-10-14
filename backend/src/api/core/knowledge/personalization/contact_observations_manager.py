@@ -24,6 +24,7 @@ from ..sqlite.sqlite_knowledge_service_component_services.infrastructure.connect
     get_async_connection,
 )
 from .contact_context import normalize_email_address
+from api.core.utc_time import utc_now_naive_iso
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +111,7 @@ class ContactObservationsManager:
                 (user_id, normalized_email, observation.source_app_name),
             )
             existing = await cursor.fetchone()
-            now = datetime.utcnow().isoformat()
+            now = utc_now_naive_iso()
 
             if existing:
                 new_confidence = max(

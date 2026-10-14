@@ -109,12 +109,12 @@ extension SettingsShellWindowController {
             rejectSkillsRequest(requestId: requestId, message: "That saved skill is no longer available.")
             return
         }
-        let alert = NSAlert()
-        alert.messageText = "Delete \"\(skill.title)\"?"
-        alert.informativeText = "This removes the saved skill. This cannot be undone."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Delete Skill")
-        alert.addButton(withTitle: "Cancel")
+        let alert = NSAlert(
+            title: "Delete \"\(skill.title)\"?",
+            message: "This removes the saved skill. This cannot be undone.",
+            style: .warning,
+            buttons: ["Delete Skill", "Cancel"]
+        )
         let response = alert.runModal()
         guard response == .alertFirstButtonReturn else {
             skillsWebView?.sendIntentResult(requestId: requestId, status: "success", message: nil)

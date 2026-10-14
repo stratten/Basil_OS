@@ -146,6 +146,24 @@ describe('RecordingControls', () => {
     expect(bridge.toggleRecording).not.toHaveBeenCalled();
   });
 
+  it('stacks the status above the live transcription switch, left of the indicators, while recording', () => {
+    const { container } = render(<RecordingControls ui={recordingUi} />);
+    const toggle = screen.getByRole('checkbox', { name: 'Live Transcribe' });
+    const switchLabel = toggle.closest('label');
+    const stack = container.querySelector('.meeting-recording-status-stack');
+    const cluster = container.querySelector('.meeting-recording-status-cluster');
+    const status = container.querySelector('.meeting-status-row');
+    const indicators = container.querySelector('.meeting-recording-indicators');
+    const actions = container.querySelector('.meeting-recording-actions');
+
+    expect(stack).not.toBeNull();
+    expect(switchLabel?.parentElement).toBe(stack);
+    expect(status?.nextElementSibling).toBe(switchLabel);
+    expect(stack?.nextElementSibling).toBe(indicators);
+    expect(indicators?.parentElement).toBe(cluster);
+    expect(actions?.contains(switchLabel)).toBe(false);
+  });
+
   it('lets the user choose record-only before starting', () => {
     render(<RecordingControls ui={{ ...ui, isLiveTranscriptionEnabled: false }} />);
     const toggle = screen.getByRole('checkbox', { name: 'Live Transcribe' });

@@ -76,14 +76,13 @@ extension SettingsShellWindowController {
     }
 
     private func performPermissionsApplicationOpenSystemSettings(requestId: String?, kind: String) {
-        guard let path = Self.permissionsApplicationSystemSettingsPath(for: kind),
-              let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(path)") else {
+        guard let pane = SystemSettingsPrivacyPane(permissionKind: kind) else {
             if let requestId, let webView = permissionsApplicationWebView {
                 webView.sendIntentResult(requestId: requestId, status: "error", message: "Unrecognized permission kind.")
             }
             return
         }
-        guard NSWorkspace.shared.open(url) else {
+        guard pane.open() else {
             if let requestId, let webView = permissionsApplicationWebView {
                 webView.sendIntentResult(requestId: requestId, status: "error", message: "Unable to open System Settings.")
             }
@@ -93,17 +92,6 @@ extension SettingsShellWindowController {
             Task { @MainActor [weak self] in
                 await self?.refreshPermissionsApplicationSnapshot(requestId: requestId)
             }
-        }
-    }
-
-    private static func permissionsApplicationSystemSettingsPath(for kind: String) -> String? {
-        switch kind {
-        case "microphone": return "Privacy_Microphone"
-        case "accessibility": return "Privacy_Accessibility"
-        case "input_monitoring": return "Privacy_ListenEvent"
-        case "apple_events": return "Privacy_Automation"
-        case "screen_recording": return "Privacy_ScreenCapture"
-        default: return nil
         }
     }
 }

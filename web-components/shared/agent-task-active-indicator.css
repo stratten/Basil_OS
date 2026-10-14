@@ -1,0 +1,31 @@
+/* Pulsing dots — matches Swift's HStack of 3 circles with alternating opacity */
+.pulsing-dots {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: 16px;
+  flex-shrink: 0;
+}
+
+.pulsing-dots span {
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--secondary);
+  animation: pulse-dot 0.8s ease-in-out infinite alternate;
+}
+
+.pulsing-dots span:nth-child(2) { animation-delay: 0.15s; }
+.pulsing-dots span:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes pulse-dot {
+  from { opacity: 0.4; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulsing-dots span {
+    animation: none;
+  }
+}

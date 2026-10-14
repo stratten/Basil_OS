@@ -51,6 +51,7 @@ export default defineConfig({
       '../shared/InlineDeleteConfirm.test.tsx',
       '../shared/inlineDeleteConfirm.contract.test.ts',
       '../shared/formatClockSeconds.test.ts',
+      '../shared/ExpandableClamp.test.tsx',
     ],
   },
 })

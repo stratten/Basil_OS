@@ -305,15 +305,7 @@
   padding: 8px 10px;
 }
 
-.transcription-history-item-text-preview {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  margin: 0;
-  overflow: hidden;
-}
-
-.transcription-history-item-text-full {
+.transcription-history-item-text {
   margin: 0;
   white-space: pre-wrap;
 }

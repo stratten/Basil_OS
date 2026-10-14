@@ -24,6 +24,7 @@ from api.services.conversation.conversation_agent_turn_lifecycle import (
     clear_conversation_agent_attention,
     publish_conversation_agent_attention,
 )
+from api.services.websocket_connection_manager import broadcast_json_text
 
 from .approval_override import resolve_tool_execution_settings
 from .models import ExecutionApprovalDecision
@@ -45,6 +46,16 @@ class InteractiveApprovalManager:
     def __init__(self, websocket_manager, generalizer):
         self.websocket_manager = websocket_manager
         self.generalizer = generalizer
+
+    async def _broadcast(self, event: Dict[str, Any]) -> None:
+        """Send an event to the connected clients.
+
+        The decision route can build its service without a websocket manager, so resolution events fall back to the process-wide connection set instead of dereferencing a missing manager.
+        """
+        if self.websocket_manager is not None:
+            await self.websocket_manager.broadcast(event)
+        else:
+            await broadcast_json_text(event, log=logger)
 
     async def request_approval(
         self,
@@ -367,37 +378,42 @@ class InteractiveApprovalManager:
                 remember_choice=remember,
                 pattern_type=pattern_type,
             )
+            # The durable decision is committed, so the waiting run must be released even if the bookkeeping below fails; otherwise the approval can never be decided again (it is no longer pending) and the run waits forever.
             try:
-                await clear_conversation_agent_attention(task_id, approval_id)
-            except Exception:
-                logger.exception(
-                    "Failed to clear execution approval attention for %s",
-                    approval_id,
-                )
+                try:
+                    await clear_conversation_agent_attention(task_id, approval_id)
+                except Exception:
+                    logger.exception(
+                        "Failed to clear execution approval attention for %s",
+                        approval_id,
+                    )
 
-            await persist_timeline_entry(
-                task_id,
-                {
-                    "id": (
-                        f"approval-granted-{approval_id}"
-                        if approved
-                        else f"approval-denied-{approval_id}"
-                    ),
-                    "type": "activity",
-                    "title": "Approval granted" if approved else "Approval denied",
-                    "phase": "approval_waiting",
-                    "state": "completed" if approved else "failed",
-                    "timestamp": time.time(),
-                },
-            )
-            await record_user_interaction_resolved(
-                task_id,
-                interaction_id=approval_id,
-                status="approved" if approved else "denied",
-                broadcast=self.websocket_manager.broadcast,
-            )
-            if not future.done():
-                future.set_result((approved, remember, pattern_type))
+                await persist_timeline_entry(
+                    task_id,
+                    {
+                        "id": (
+                            f"approval-granted-{approval_id}"
+                            if approved
+                            else f"approval-denied-{approval_id}"
+                        ),
+                        "type": "activity",
+                        "title": "Approval granted" if approved else "Approval denied",
+                        "phase": "approval_waiting",
+                        "state": "completed" if approved else "failed",
+                        "timestamp": time.time(),
+                    },
+                )
+                await record_user_interaction_resolved(
+                    task_id,
+                    interaction_id=approval_id,
+                    status="approved" if approved else "denied",
+                    broadcast=self._broadcast,
+                )
+            except Exception:
+                logger.exception("Failed to record the resolution of execution approval %s", approval_id)
+            finally:
+                if not future.done():
+                    future.set_result((approved, remember, pattern_type))
         finally:
             InteractiveApprovalManager._processing_approvals.discard(approval_id)
 

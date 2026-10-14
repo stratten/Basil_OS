@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 from api.core.knowledge.sqlite.sqlite_knowledge_service_component_services.agent_tasks.service import (
@@ -21,6 +21,7 @@ from api.services.agent_providers.catalog.catalog_service import (
     ProviderCatalogService,
     ProviderCatalogUnavailableError,
 )
+from api.core.utc_time import utc_now_naive
 
 PROPOSAL_TTL_SECONDS = 900
 MAX_PROVIDER_CANDIDATES = 4
@@ -575,7 +576,7 @@ class ProviderTargetProposalService:
         await self._validate_provider_candidates(cleaned_candidates)
         self._validate_service_candidates(cleaned_services)
         expires_at = (
-            datetime.utcnow() + timedelta(seconds=PROPOSAL_TTL_SECONDS)
+            utc_now_naive() + timedelta(seconds=PROPOSAL_TTL_SECONDS)
         ).isoformat()
         return await self._proposals.create_or_get_proposal(
             agent_task_id=task_id,

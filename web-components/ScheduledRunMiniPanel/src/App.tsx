@@ -11,6 +11,7 @@ import {
   requestResize,
 } from './services/bridge';
 import { wsManager } from './services/websocket';
+import { BackendLivenessBanner } from '@shared/BackendLivenessBanner';
 import * as api from './services/api';
 import ScheduledRunRow from './components/ScheduledRunRow';
 import { applyHostTheme } from './app/themeBootstrap';
@@ -488,6 +489,7 @@ export default function App() {
         ))}
       </div>
       </div>
+      <BackendLivenessBanner socket={wsManager} />
     </div>
   );
 }

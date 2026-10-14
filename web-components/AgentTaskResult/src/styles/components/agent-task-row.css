@@ -68,6 +68,27 @@
   color: var(--warning-base);
 }
 
+/* Same specificity trick as the warning preview so the selected-row preview color does not win. */
+.sidebar-row .row-preview.agent-task-row__preview--waiting {
+  color: var(--primary);
+  font-family: var(--font-family-medium);
+}
+
+.agent-task-row__waiting-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  color: var(--primary);
+}
+
+/* A selected row is filled with the primary color, so the waiting accents switch to white there. */
+.sidebar-row.selected .row-preview.agent-task-row__preview--waiting,
+.sidebar-row.selected .agent-task-row__waiting-icon {
+  color: white;
+}
+
 .agent-task-row__alert-icon {
   flex-shrink: 0;
 }

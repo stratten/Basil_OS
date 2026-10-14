@@ -178,21 +178,28 @@ FAMILY_DEFINITIONS: tuple[ToolFamilyDefinition, ...] = (
     ),
     ToolFamilyDefinition(
         name="schedule",
-        purpose="Create scheduled Basil agent tasks, wait briefly before checking something again, or come back to this task later with a durable follow-up check.",
-        when_to_load="Load when Basil itself needs to run an agent task later or on a recurrence, when this task must wait for something to finish or change before checking again, or when this task should resume later (minutes to days) to re-check a result.",
+        purpose="Create scheduled Basil agent tasks that run later or on a recurrence.",
+        when_to_load="Load when Basil itself needs to run an agent task later or on a recurrence. To wait for something to finish or to re-check this task later, use the always-available follow_up tools instead.",
+        tool_names=("create_scheduled_agent_task_from_prompt",),
+        examples=("run this every morning", "schedule recurring agent work"),
+        routing_hints=("future agent work", "recurring schedules"),
+        risk_class="future tool execution",
+    ),
+    ToolFamilyDefinition(
+        name="follow_up",
+        purpose="Wait briefly and check again, or resume this same task later with a durable follow-up check when a started operation is still running.",
+        when_to_load="Already available at startup. Use wait_before_checking_again for work that should finish within minutes and schedule_agent_follow_up when the check belongs minutes to days later, instead of reporting a partial result for work that is queued or still running.",
         tool_names=(
-            "create_scheduled_agent_task_from_prompt",
             "wait_before_checking_again",
             "schedule_agent_follow_up",
             "cancel_agent_follow_ups",
         ),
         examples=(
-            "run this every morning",
-            "schedule recurring agent work",
             "wait for a build to finish and check again",
             "check back on this in an hour",
+            "a delegated agent is still working",
         ),
-        routing_hints=("future agent work", "waiting and re-checking", "follow-up checks", "recurring schedules"),
+        routing_hints=("waiting and re-checking", "follow-up checks", "queued or running asynchronous work"),
         risk_class="future tool execution",
     ),
     ToolFamilyDefinition(
@@ -259,6 +266,12 @@ BASELINE_FALLBACK_FAMILY_NAMES: frozenset[str] = frozenset(
         # CORE_TOOL_NAMES + tools whose family is in this set).
         "recall",
         "retrieval",
+        # Asynchronous work (a delegated agent, a queued connector action, a
+        # build) is discovered mid-run, after the first family selection. The
+        # wait and follow-up tools must already be on the surface at that
+        # moment, or the model has no way to wait or resume later and reports
+        # a partial result for work that is simply still running.
+        "follow_up",
     }
 )
 

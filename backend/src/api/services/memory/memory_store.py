@@ -7,13 +7,12 @@ written or promoted.
 
 from __future__ import annotations
 
-import os
-import tempfile
 import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional
 
+from api.core.atomic_text import atomic_write_text
 from api.core.config.api_settings import settings
 
 
@@ -187,23 +186,7 @@ class MemoryStore:
             raise MemoryFileBackpressureError(file_name, cap_bytes, attempted_bytes)
 
     def _write_file_atomic(self, path: Path, content: str) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        fd, temporary_path = tempfile.mkstemp(
-            prefix=f".{path.name}.",
-            suffix=".tmp",
-            dir=str(path.parent),
-            text=True,
-        )
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as temporary_file:
-                temporary_file.write(content)
-                temporary_file.flush()
-                os.fsync(temporary_file.fileno())
-            os.replace(temporary_path, path)
-        finally:
-            temporary = Path(temporary_path)
-            if temporary.exists():
-                temporary.unlink()
+        atomic_write_text(path, content)
 
 
 _memory_store_singleton: Optional[MemoryStore] = None

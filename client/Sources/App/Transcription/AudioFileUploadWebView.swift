@@ -10,7 +10,7 @@ final class AudioFileUploadWebView: NSObject {
 
     private(set) var hasReceivedReadyAck = false
     private var initRetryGeneration = UUID()
-    private var pendingInitJSON: String?
+    private var pendingInitEvent: [String: Any]?
 
     override init() {
         let configuration = BasilWebViewConfigurationFactory.makeConfiguration()
@@ -48,16 +48,13 @@ final class AudioFileUploadWebView: NSObject {
         webView.loadFileURL(htmlURL, allowingReadAccessTo: webAssetsFolder)
     }
 
-    func callJS(_ function: String, jsonArgs: [String]) {
-        let argsString = jsonArgs.joined(separator: ",")
-        let js = "\(function)(\(argsString))"
-        webView.evaluateJavaScript(js) { _, error in
-            #if DEBUG
-            if let error {
-                DevLogger.shared.error("[AUDIO_UPLOAD_WEB] evaluateJavaScript failed for \(function): \(error)", context: "AudioFileUploadWebView")
-            }
-            #endif
-        }
+    func callJS(_ function: String, args: Any...) {
+        webView.callBasilFunction(
+            function,
+            args: args,
+            logTag: "AUDIO_UPLOAD_WEB",
+            logContext: "AudioFileUploadWebView"
+        )
     }
 
     func markReadyFromReact() {
@@ -66,17 +63,17 @@ final class AudioFileUploadWebView: NSObject {
         onReady?()
     }
 
-    func sendInitWhenReady(jsonPayload: String, maxRetries: Int = 20, interval: TimeInterval = 0.35) {
+    func sendInitWhenReady(event: [String: Any], maxRetries: Int = 20, interval: TimeInterval = 0.35) {
         let generation = UUID()
         initRetryGeneration = generation
-        pendingInitJSON = jsonPayload
+        pendingInitEvent = event
         attemptSendInit(generation: generation, remainingRetries: maxRetries, interval: interval)
     }
 
     private func attemptSendInit(generation: UUID, remainingRetries: Int, interval: TimeInterval) {
         guard generation == initRetryGeneration else { return }
-        guard let payload = pendingInitJSON else { return }
-        callJS("window.basilAudioFileUpload && window.basilAudioFileUpload.onEvent", jsonArgs: [payload])
+        guard let event = pendingInitEvent else { return }
+        callJS("window.basilAudioFileUpload && window.basilAudioFileUpload.onEvent", args: event)
         if hasReceivedReadyAck { return }
         guard remainingRetries > 0 else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + interval) { [weak self] in
@@ -94,7 +91,7 @@ extension AudioFileUploadWebView: WKNavigationDelegate {
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
         hasReceivedReadyAck = false
         initRetryGeneration = UUID()
-        pendingInitJSON = nil
+        pendingInitEvent = nil
     }
 }
 

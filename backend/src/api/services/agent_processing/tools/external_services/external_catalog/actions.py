@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any, Dict, Optional
 
 from .approval import request_external_catalog_user_approval
@@ -30,6 +29,7 @@ from .schema_guard import (
     ensure_tool_schema_surfaced,
     mark_tools_surfaced,
 )
+from api.core.utc_time import utc_now_naive
 
 
 async def _reject_if_known_needs_reconnect(
@@ -40,12 +40,12 @@ async def _reject_if_known_needs_reconnect(
     """Fail fast for a connection already marked ``needs_reconnect``, so a dead token never triggers a Keychain read or a doomed remote call. Reconnect or Check Status clears the mark."""
     if getattr(record, "last_connection_status", None) != "needs_reconnect":
         return None
-    started_at = datetime.utcnow()
+    started_at = utc_now_naive()
     envelope = make_external_catalog_needs_reconnect(record.friendly_name)
     await record_external_catalog_audit(
         record=record, tool_name=tool_name, arguments=arguments,
         classification="error", envelope=envelope,
-        started_at=started_at, completed_at=datetime.utcnow(),
+        started_at=started_at, completed_at=utc_now_naive(),
     )
     return envelope
 
@@ -80,14 +80,14 @@ async def describe_external_catalog_server(connection_id: str) -> Dict[str, Any]
     if needs_reconnect_envelope is not None:
         return needs_reconnect_envelope
 
-    started_at = datetime.utcnow()
+    started_at = utc_now_naive()
     token_outcome = await resolve_external_catalog_access_token(connection_id)
     if not token_outcome.access_token:
         envelope = make_external_catalog_auth_unavailable(token_outcome)
         await record_external_catalog_audit(
             record=record, tool_name="describe_server", arguments={"connection_id": connection_id},
             classification="error", envelope=envelope,
-            started_at=started_at, completed_at=datetime.utcnow(),
+            started_at=started_at, completed_at=utc_now_naive(),
         )
         return envelope
 
@@ -120,7 +120,7 @@ async def describe_external_catalog_server(connection_id: str) -> Dict[str, Any]
     await record_external_catalog_audit(
         record=record, tool_name="describe_server", arguments={"connection_id": connection_id},
         classification=classification, envelope=envelope,
-        started_at=started_at, completed_at=datetime.utcnow(),
+        started_at=started_at, completed_at=utc_now_naive(),
     )
     if envelope.get("ok"):
         result = envelope["result"]
@@ -162,14 +162,14 @@ async def call_external_catalog_tool(
         return schema_guard_envelope
 
     policy = record.tool_policies.get(tool_name, default_external_catalog_policy_for_tool(record, tool_name))
-    started_at = datetime.utcnow()
+    started_at = utc_now_naive()
 
     if policy == "never_allow":
         envelope = make_external_catalog_permission_denied(tool_name, "Policy is 'never_allow'.")
         await record_external_catalog_audit(
             record=record, tool_name=tool_name, arguments=arguments,
             classification="denied", envelope=envelope,
-            started_at=started_at, completed_at=datetime.utcnow(),
+            started_at=started_at, completed_at=utc_now_naive(),
         )
         return envelope
 
@@ -180,7 +180,7 @@ async def call_external_catalog_tool(
             await record_external_catalog_audit(
                 record=record, tool_name=tool_name, arguments=arguments,
                 classification="denied", envelope=envelope,
-                started_at=started_at, completed_at=datetime.utcnow(),
+                started_at=started_at, completed_at=utc_now_naive(),
             )
             return envelope
 
@@ -190,7 +190,7 @@ async def call_external_catalog_tool(
         await record_external_catalog_audit(
             record=record, tool_name=tool_name, arguments=arguments,
             classification="error", envelope=envelope,
-            started_at=started_at, completed_at=datetime.utcnow(),
+            started_at=started_at, completed_at=utc_now_naive(),
         )
         return envelope
     client = get_external_catalog_mcp_client()
@@ -233,6 +233,6 @@ async def call_external_catalog_tool(
     await record_external_catalog_audit(
         record=record, tool_name=tool_name, arguments=arguments,
         classification=classification, envelope=envelope,
-        started_at=started_at, completed_at=datetime.utcnow(),
+        started_at=started_at, completed_at=utc_now_naive(),
     )
     return envelope

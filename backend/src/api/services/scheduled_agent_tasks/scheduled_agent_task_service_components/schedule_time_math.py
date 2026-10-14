@@ -29,12 +29,9 @@ from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from typing import Any, Dict, Optional, Tuple
 from zoneinfo import ZoneInfo
+from api.core.utc_time import utc_now  # noqa: F401
 
 logger = logging.getLogger(__name__)
-
-
-def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
 
 
 @lru_cache(maxsize=1)

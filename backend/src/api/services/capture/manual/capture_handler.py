@@ -3,7 +3,6 @@
 import asyncio
 import json
 import logging
-from datetime import datetime
 from typing import Optional, Dict, Any
 from pathlib import Path
 import time
@@ -19,6 +18,7 @@ from api.services.image_processing.image_processing_service import ImageProcesso
 from api.services.capture.shared.work_context import derive_work_context
 from api.services.window_capture.window_capture_service import WindowCaptureService
 from api.settings import Settings, get_settings
+from api.core.utc_time import utc_now_naive, utc_now_naive_iso_z
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +85,7 @@ class CaptureHandler:
             raise_if_analysis_unusable(processing_result)
 
             # Save processed results
-            timestamp = datetime.utcnow()
+            timestamp = utc_now_naive()
             processed_filename = f"processed_{timestamp.strftime('%Y%m%d_%H%M%S')}_{app_name}.json"
             processed_path = self.storage.get_processed_path(processed_filename)
             self.logger.info(f"[{process_id}] Saving results to {processed_path}")
@@ -148,7 +148,7 @@ class CaptureHandler:
             self.logger.error(f"[{process_id}] Error in capture and process: {e}", exc_info=True)
             return {
                 "error": str(e),
-                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "timestamp": utc_now_naive_iso_z(),
                 "success": False,
                 "process_id": process_id
             }
@@ -194,7 +194,7 @@ class CaptureHandler:
             Dictionary with recent activities
         """
         try:
-            now = datetime.utcnow()
+            now = utc_now_naive()
             activities = await self.knowledge_base.search_activities(
                 time_range={
                     "start": now.replace(hour=0, minute=0, second=0, microsecond=0),

@@ -29,7 +29,6 @@ The router does NOT own:
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -90,6 +89,7 @@ from .metadata_routes import register_metadata_routes
 from .reconnect_support import load_reconnect_target, reauthorize_connection
 from .slack_routes import register_slack_routes
 from .status_routes import register_status_routes
+from api.core.utc_time import utc_now_naive
 
 logger = logging.getLogger(__name__)
 
@@ -470,7 +470,7 @@ async def refresh_tools(connection_id: str, request: Request) -> ConnectionDTO:
     # would produce -- so record that here instead of leaving the status
     # stuck at "not checked yet" until the user manually clicks "Check
     # Status" right after they just finished authorizing it.
-    now = datetime.utcnow()
+    now = utc_now_naive()
     record.last_tool_refresh_at = now
     record.last_connection_check_at = now
     record.last_connection_status = STATUS_HEALTHY

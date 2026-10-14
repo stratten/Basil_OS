@@ -7,6 +7,7 @@ import type {
 } from './contracts';
 import { hydrateBasilBoard, configureApiBaseUrl, submitHomeTurn, websocketUrl } from './services/api';
 import { basilBoardWebSocket } from './services/websocket';
+import { BackendLivenessBanner } from '../../shared/BackendLivenessBanner';
 import {
   notifyReady,
   registerAgentTaskOriginNavigationHandler,
@@ -113,6 +114,7 @@ export default function App() {
       ) : (
         <BasilBoardShell tabs={hydration.tabs} originNavigation={originNavigation} />
       )}
+      <BackendLivenessBanner socket={basilBoardWebSocket} />
     </HomeRuntimeContext.Provider>
   );
 }

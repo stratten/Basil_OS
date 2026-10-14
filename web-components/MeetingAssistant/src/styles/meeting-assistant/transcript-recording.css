@@ -208,6 +208,7 @@
 .meeting-active-recording-row {
   width: 100%;
   align-items: flex-start;
+  flex-wrap: wrap;
 }
 
 .meeting-recording-actions,
@@ -223,12 +224,37 @@
   flex-wrap: nowrap;
 }
 
-/* The top margin matches the indicator padding so the status centers on the clock line. */
-.meeting-active-recording-row > .meeting-status-row {
+/* The cluster is a two-column block: the status and Live Transcribe stack on the left, the clock and meters on the right. */
+.meeting-recording-status-cluster {
+  display: flex;
   flex: 0 1 auto;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+  margin-left: auto;
+}
+
+/* The vertical padding matches the indicator padding so the status centers on the clock line and the switch on the last meter. */
+.meeting-recording-status-stack {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 4px;
+  min-width: 0;
+  padding: 4px 0;
+}
+
+.meeting-recording-status-stack > .meeting-status-row {
   min-width: 0;
   min-height: 16px;
-  margin: 4px 0 0 auto;
+  justify-content: flex-end;
+}
+
+/* tools-analysis.css loads after this file and gives every switch a 10px vertical margin, so the stack needs its own higher-specificity reset. */
+.meeting-recording-status-stack > .meeting-live-transcription-switch {
+  margin: 0;
 }
 
 /* While recording, the status message already states whether audio is being transcribed. */
@@ -245,8 +271,16 @@
 }
 
 @media (max-width: 620px) {
-  .meeting-active-recording-row > .meeting-status-row {
+  .meeting-recording-status-cluster {
     margin-left: 0;
+  }
+
+  .meeting-recording-status-stack {
+    align-items: flex-start;
+  }
+
+  .meeting-recording-status-stack > .meeting-status-row {
+    justify-content: flex-start;
   }
 
   .meeting-active-recording-row .meeting-status-message {
@@ -267,9 +301,13 @@
 }
 
 .meeting-live-transcription-switch {
-  justify-content: flex-start;
+  justify-content: flex-end;
   gap: 8px;
   margin: 0;
+}
+
+.meeting-recording-button-row .meeting-live-transcription-switch {
+  justify-content: flex-start;
 }
 
 .meeting-cancel-confirmation {

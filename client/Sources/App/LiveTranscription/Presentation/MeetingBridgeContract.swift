@@ -432,6 +432,10 @@ struct MeetingUIStateDTO: Codable, Equatable {
     var microphoneInputRecoveryMessage: String?
     var isCapturePaused: Bool
     var isLiveTranscriptionEnabled: Bool
+    /// Loopback backend port for the Companion web client (`APIClient.shared.currentPort`); 0 or less means unavailable.
+    var companionApiPort: Int
+    /// The meeting being recorded right now (microphone id, else system-audio id); nil when not recording.
+    var recordingMeetingId: String?
 }
 
 // MARK: - Outbound event envelope (Swift -> React)
@@ -561,4 +565,7 @@ enum MeetingBridgeIntent: String {
     case promoteAllProposalsToTodos
     case dismissProposal // { proposalId: String }
     case restoreProposal // { proposalId: String }
+    case pickCompanionFolder // {}
+    case openCompanionWindow // {}
+    case setCompanionPaneExtent // { width: Double }
 }

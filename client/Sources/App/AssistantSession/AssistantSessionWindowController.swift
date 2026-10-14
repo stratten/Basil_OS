@@ -327,18 +327,8 @@ final class AssistantSessionWindowController: NSWindowController, NSWindowDelega
         )
         
         // Configure borderless window properties
-        window.level = .floating
-        window.collectionBehavior = [
-            .canJoinAllSpaces,
-            .fullScreenAuxiliary,
-            .ignoresCycle
-        ]
-        window.hidesOnDeactivate = false
-        window.hasShadow = false // Widget has its own shadow
-        window.alphaValue = 1.0
-        window.isOpaque = false
-        window.backgroundColor = NSColor.clear
-        window.isMovableByWindowBackground = true  // Allow dragging the window by its background
+        // No system shadow (the widget draws its own) and draggable by its background.
+        window.configureFloatingWidget(transparency: .clearWithoutShadow)
 
         let controller = AssistantSessionWindowController(window: window, viewModel: viewModel)
         let webView = AssistantSessionWebView()

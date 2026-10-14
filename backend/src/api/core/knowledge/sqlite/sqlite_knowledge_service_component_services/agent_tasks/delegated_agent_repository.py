@@ -6,7 +6,6 @@ import json
 import sqlite3
 import uuid
 from collections.abc import Mapping
-from datetime import datetime
 from typing import Any
 
 from ..infrastructure.connection import get_sync_connection, run_write_transaction
@@ -14,6 +13,7 @@ from .delegated_agent_reservation_repository import (
     DelegatedAgentReservationConflictError,
     DelegatedAgentReservationRepository,
 )
+from api.core.utc_time import utc_now_naive_iso
 
 
 _ACTIVE_STATUSES = {
@@ -37,10 +37,6 @@ class DelegatedAgentConflictError(RuntimeError):
 
 class DelegatedAgentPersistenceError(RuntimeError):
     """Raised when delegated-agent durable data is malformed."""
-
-
-def _now() -> str:
-    return datetime.utcnow().isoformat()
 
 
 def _require_id(value: object, field_name: str) -> str:
@@ -138,7 +134,7 @@ class DelegatedAgentRepository:
                 revision,
                 _bounded_text(event_kind, "event_kind"),
                 _json_object(event_data, "event_data"),
-                _now(),
+                utc_now_naive_iso(),
             ),
         )
 
@@ -265,7 +261,7 @@ class DelegatedAgentRepository:
         if next_status not in _ACTIVE_STATUSES | _TERMINAL_STATUSES:
             raise DelegatedAgentPersistenceError("next_status is unsupported")
         run_id = _require_id(delegated_agent_run_id, "delegated_agent_run_id")
-        timestamp = _now()
+        timestamp = utc_now_naive_iso()
 
         def write(conn: sqlite3.Connection) -> sqlite3.Row:
             row = conn.execute("SELECT * FROM delegated_agent_runs WHERE id = ?", (run_id,)).fetchone()
@@ -314,7 +310,7 @@ class DelegatedAgentRepository:
 
         run_id = _require_id(delegated_agent_run_id, "delegated_agent_run_id")
         instruction = _bounded_text(controller_instruction, "controller_instruction")
-        timestamp = _now()
+        timestamp = utc_now_naive_iso()
 
         def write(conn: sqlite3.Connection) -> sqlite3.Row:
             run = conn.execute("SELECT * FROM delegated_agent_runs WHERE id = ?", (run_id,)).fetchone()
@@ -393,7 +389,7 @@ class DelegatedAgentRepository:
         run_id = _require_id(delegated_agent_run_id, "delegated_agent_run_id")
         clean_turn_id = _require_id(turn_id, "turn_id")
         response_json = _json_object(terminal_response, "terminal_response")
-        timestamp = _now()
+        timestamp = utc_now_naive_iso()
 
         def write(conn: sqlite3.Connection) -> sqlite3.Row:
             run = conn.execute("SELECT * FROM delegated_agent_runs WHERE id = ?", (run_id,)).fetchone()
@@ -459,7 +455,7 @@ class DelegatedAgentRepository:
         run_id = _require_id(delegated_agent_run_id, "delegated_agent_run_id")
         summary_text = _bounded_text(summary, "summary")
         receipt_json = _json_object({"items": receipt_references}, "receipt_references")
-        timestamp = _now()
+        timestamp = utc_now_naive_iso()
 
         def write(conn: sqlite3.Connection) -> sqlite3.Row:
             run = conn.execute("SELECT * FROM delegated_agent_runs WHERE id = ?", (run_id,)).fetchone()

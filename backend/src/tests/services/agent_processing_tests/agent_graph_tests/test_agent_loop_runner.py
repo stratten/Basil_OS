@@ -434,7 +434,8 @@ async def test_prior_thread_seeds_the_conversation_and_scopes_the_result():
     sent = model.calls[0]
     assert [message.content for message in sent[1:5]] == [message.content for message in prior]
     assert is_turn_input(sent[-1])
-    assert sent[-1].content == TASK_TEXT
+    assert sent[-1].content.startswith("RUNTIME CONTEXT")
+    assert sent[-1].content.endswith(TASK_TEXT)
     assert state.context[CONVERSATION_THREAD_SEEDED_KEY] is True
     assert run.intermediate_steps == []
     assert run.agent_output == "It was amber."
@@ -471,3 +472,54 @@ async def test_scripting_floor_ignores_tool_calls_from_earlier_turns():
 
     assert len(model.calls) == 1
     assert run.agent_output == "Answered from memory."
+
+
+@pytest.mark.asyncio
+async def test_pause_carries_the_system_prompt_and_resume_reuses_it_verbatim(runner_seams, monkeypatch):
+    async def ask(text: str = "") -> str:
+        raise CheckpointRequest({"prompt": "Which color?"})
+
+    tools = [_tool("request_user_input", ask)]
+    first_model = ScriptedChatModel(
+        responses=[AIMessage(content="Asking.", tool_calls=[_call("request_user_input", "call-ask", text="Which color?")])]
+    )
+    with pytest.raises(CheckpointRequest) as paused:
+        await runner.run_agent_loop(_request(first_model, _state(tools)))
+    assert paused.value.basil_system_prompt_text == "You are Basil."
+
+    monkeypatch.setattr(runner, "get_agent_system_prompt", lambda **_kwargs: "A different, rebuilt prompt.")
+    second_model = ScriptedChatModel(responses=[AIMessage(content="Painted it blue.")])
+    resumed_state = _state(
+        tools,
+        agent_messages=paused.value.basil_agent_messages,
+        agent_pending_tool_call_id=paused.value.basil_tool_call_id,
+        agent_resume_input="Blue",
+        agent_system_prompt_text=paused.value.basil_system_prompt_text,
+    )
+
+    run = await runner.run_agent_loop(_request(second_model, resumed_state))
+
+    assert run.system_prompt_text == "You are Basil."
+    assert second_model.calls[0][0].content == "You are Basil."
+
+
+@pytest.mark.asyncio
+async def test_resume_without_a_stored_prompt_builds_one(runner_seams):
+    tools = [_tool("request_user_input")]
+    state = _state(tools, agent_messages=None, agent_resume_input="Blue", agent_system_prompt_text=None)
+    model = ScriptedChatModel(responses=[AIMessage(content="Done.")])
+
+    run = await runner.run_agent_loop(_request(model, state))
+
+    assert run.system_prompt_text == "You are Basil."
+
+
+@pytest.mark.asyncio
+async def test_new_turn_puts_the_runtime_context_in_the_first_human_message(runner_seams, monkeypatch):
+    monkeypatch.setattr(runner, "build_turn_runtime_context", lambda **_kwargs: "RUNTIME CONTEXT BLOCK")
+    model = ScriptedChatModel(responses=[AIMessage(content="Done.")])
+
+    await runner.run_agent_loop(_request(model, _state([_tool("request_user_input")])))
+
+    human = [message for message in model.calls[0] if isinstance(message, HumanMessage)][0]
+    assert human.content == f"RUNTIME CONTEXT BLOCK\n\n{TASK_TEXT}"

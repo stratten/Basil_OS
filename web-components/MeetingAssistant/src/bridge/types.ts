@@ -335,6 +335,10 @@ export interface MeetingUIStateDTO {
   microphoneInputRecoveryMessage: string | null;
   isCapturePaused: boolean;
   isLiveTranscriptionEnabled: boolean;
+  /** Loopback backend port for the Companion client; 0 or absent means unavailable. */
+  companionApiPort?: number;
+  /** The meeting being recorded right now (microphone id, else system-audio id); null or absent when not recording. */
+  recordingMeetingId?: string | null;
 }
 
 export type MeetingSearchTermModeDTO = 'and' | 'or';
@@ -437,4 +441,7 @@ export type MeetingBridgeIntent =
   | { type: 'openProposalAgentTask'; agentTaskId: string }
   | { type: 'promoteAllProposalsToTodos' }
   | { type: 'dismissProposal'; proposalId: string }
-  | { type: 'restoreProposal'; proposalId: string };
+  | { type: 'restoreProposal'; proposalId: string }
+  | { type: 'pickCompanionFolder' }
+  | { type: 'openCompanionWindow' }
+  | { type: 'setCompanionPaneExtent'; width: number };

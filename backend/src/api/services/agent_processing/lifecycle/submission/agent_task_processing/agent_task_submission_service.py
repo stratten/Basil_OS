@@ -6,8 +6,8 @@ import asyncio
 import logging
 import time
 import uuid
-from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
+from api.core.utc_time import utc_now_naive_iso
 
 
 class AgentTaskSubmissionService:
@@ -183,7 +183,7 @@ class AgentTaskSubmissionService:
                     result_data={
                         "canceled": True,
                         "cancellation_reason": "User canceled",
-                        "canceled_at": datetime.utcnow().isoformat(),
+                        "canceled_at": utc_now_naive_iso(),
                     },
                 )
                 self.logger.info(

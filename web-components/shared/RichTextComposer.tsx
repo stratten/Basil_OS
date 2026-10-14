@@ -420,7 +420,12 @@ export default function RichTextComposer({
         </ToolbarButton>
         {toolbarEnd ? <span className="rich-text-composer-toolbar-end">{toolbarEnd}</span> : null}
       </div>
-      <div className="rich-text-composer-editor-shell">
+      <div
+        className="rich-text-composer-editor-shell"
+        // A click inside the editor must never be forwarded by an ancestor <label> to the first labelable
+        // descendant (the Bold button). Caret placement happens on mousedown, so this does not affect typing.
+        onClick={(event) => event.preventDefault()}
+      >
         <div
           ref={editorRef}
           className={['rich-text-composer-editor', editorClassName].filter(Boolean).join(' ')}

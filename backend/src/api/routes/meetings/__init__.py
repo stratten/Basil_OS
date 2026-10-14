@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from .analysis_routes import router as analysis_router
+from .companion_routes import router as companion_router
 from .lifecycle_routes import router as lifecycle_router
 from .live_transcription_routes import router as live_transcription_router
 from .post_processing_routes import router as post_processing_router
@@ -14,6 +15,9 @@ router = APIRouter()
 # the catch-all GET /meetings/{meeting_id} (which would otherwise treat
 # "search" as a meeting id).
 router.include_router(search_router, prefix="/meetings", tags=["meetings"])
+# Register the Companion router BEFORE lifecycle so literal paths such as
+# /meetings/companion/settings are never captured by /meetings/{meeting_id} routes.
+router.include_router(companion_router, prefix="/meetings", tags=["meetings"])
 router.include_router(lifecycle_router, prefix="/meetings", tags=["meetings"])
 router.include_router(post_processing_router, prefix="/meetings", tags=["meetings"])
 router.include_router(analysis_router, prefix="/meetings", tags=["meetings"])

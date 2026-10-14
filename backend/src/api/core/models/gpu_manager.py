@@ -3,6 +3,7 @@
 import platform
 import os
 import subprocess
+from api.core.runtime import safe_spawn
 import logging
 from typing import Dict, Any, Optional, List
 
@@ -66,7 +67,7 @@ class GPUManager:
         try:
             # Check if Metal is available
             # This is a simple check - ideally we would check more thoroughly
-            result = subprocess.run(
+            result = safe_spawn.run(
                 ["sysctl", "-n", "hw.memsize"], 
                 capture_output=True, 
                 text=True, 

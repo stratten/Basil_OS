@@ -348,6 +348,32 @@ describe('RichTextComposer', () => {
     });
   });
 
+  it('default-prevents clicks inside the editor so an ancestor label cannot press Bold', () => {
+    const execCommand = vi.fn().mockReturnValue(true);
+    Object.defineProperty(document, 'execCommand', { configurable: true, value: execCommand });
+    const editorRef = createRef<HTMLDivElement>();
+    render(
+      <label>
+        Wrapped
+        <RichTextComposer
+          editorRef={editorRef}
+          disabled={false}
+          placeholder="Write"
+          submitDisabled={false}
+          onDraftChange={vi.fn()}
+          onSubmit={vi.fn()}
+          showActions={false}
+        />
+      </label>,
+    );
+
+    const notPrevented = fireEvent.click(editorRef.current!);
+
+    expect(notPrevented).toBe(false);
+    expect(execCommand).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Bold' })).not.toHaveClass('is-active');
+  });
+
   it('renders optional controls without Conversation-only controls and disables editing', () => {
     renderComposer({
       disabled: true,

@@ -64,9 +64,7 @@ final class ProfileEditorWindowController: NSWindowController, NSWindowDelegate,
             backing: .buffered,
             defer: false
         )
-        window.title = request.title
-        window.isReleasedWhenClosed = false
-        window.isMovableByWindowBackground = true
+        window.configureCustomChromeWindow(title: request.title, releasedWhenClosed: false)
         window.contentView = hostingView
         WebKitWindowChromeAppearance.apply(to: window)
         window.center()

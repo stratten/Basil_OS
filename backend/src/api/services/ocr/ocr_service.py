@@ -8,6 +8,7 @@ import logging
 import os
 import shutil
 import subprocess
+from api.core.runtime import safe_spawn
 from typing import Dict, Any, Optional
 from pathlib import Path
 
@@ -348,7 +349,7 @@ class OCRService:
                     if "TESSDATA_PREFIX" in sub_env:
                         del sub_env["TESSDATA_PREFIX"]
 
-                process = subprocess.run(
+                process = safe_spawn.run(
                     [tesseract_cmd_path, "--version"], 
                     capture_output=True,
                     text=True,

@@ -14,6 +14,7 @@ from .mail_app.operation_receipt_parser import (
     MailOperationReceiptParseError,
     parse_mail_operation_receipts,
 )
+from .mail_app.post_move_verification import settle_attempted_receipts
 from api.services.agent_processing.shared.material_operation_receipts import (
     LedgerEntityReference,
     MaterialOperationEnvelope,
@@ -199,7 +200,21 @@ class EmailOrganizationMixin:
             envelope = parse_mail_operation_receipts(str(result.data or ""), operation)
         except MailOperationReceiptParseError as exc:
             return _failed_envelope(operation, str(exc))
+        if operation.operation in ("move", "delete"):
+            envelope = await settle_attempted_receipts(
+                envelope,
+                build_script=self.applescript_service.mail_app_service.verify_locations_script,
+                run_script=self._run_mail_verification_script,
+            )
         return envelope.to_tool_result_fields()
+
+    async def _run_mail_verification_script(self, script: str) -> tuple[bool, Any, str]:
+        """Execute one read-only Mail verification script and return (success, data, error)."""
+        result = await self.applescript_service.execute_applescript(
+            script,
+            "verify Mail message locations by RFC message id",
+        )
+        return bool(result.success), result.data, str(result.error or "")
 
     async def _get_folders_via_applescript(self, selected_client: EmailClient) -> List[str]:
         """Get folders using AppleScript automation."""

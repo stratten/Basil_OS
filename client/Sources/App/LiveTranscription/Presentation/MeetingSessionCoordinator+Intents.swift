@@ -354,7 +354,12 @@ extension MeetingSessionCoordinator {
         case .restoreProposal:
             guard let proposalId = payload["proposalId"] as? String else { return }
             bridgePublisher?.restoreProposal(proposalId: proposalId)
-        case .exportAnalysis, .reactReady, .closeWindow, .minimizeWindow, .toggleWindowCollapse, .chromeHeight:
+        case .openCompanionWindow:
+            showCompanionWindow()
+        case .pickCompanionFolder:
+            // Answered by the presenting web view's native open panel before it could reach this handler.
+            break
+        case .exportAnalysis, .reactReady, .closeWindow, .minimizeWindow, .toggleWindowCollapse, .chromeHeight, .setCompanionPaneExtent:
             // exportAnalysis's native save-panel side effect and every window
             // chrome intent (including chrome height) are handled by the
             // presentation host before reaching this shared handler; `exportAnalysis` still arrives

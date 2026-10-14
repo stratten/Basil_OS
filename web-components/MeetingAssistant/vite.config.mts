@@ -13,6 +13,7 @@ export default defineConfig({
       input: {
         'meeting-assistant': resolve(import.meta.dirname, 'src/entries/meeting-assistant.html'),
         'meeting-analysis': resolve(import.meta.dirname, 'src/entries/meeting-analysis.html'),
+        'meeting-companion': resolve(import.meta.dirname, 'src/entries/meeting-companion.html'),
       },
       output: {
         assetFileNames: 'assets/meeting-[name]-[hash][extname]',

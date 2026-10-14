@@ -32,6 +32,8 @@ interface BuildHistoryItemsArgs {
   // the backend's relevance-tiered search order. Defaults to false so
   // normal chronological browsing is unaffected.
   preserveHistoryOrder?: boolean;
+  // Due time (ISO) of each chain root's soonest scheduled follow-up check.
+  pendingFollowUps?: Readonly<Record<string, string>>;
 }
 
 export function buildHistoryItems({
@@ -50,6 +52,7 @@ export function buildHistoryItems({
   getAgentRootTaskId,
   openContextMenuForId,
   preserveHistoryOrder = false,
+  pendingFollowUps = {},
 }: BuildHistoryItemsArgs): AgentTaskRowProps[] {
   const historyItems: AgentTaskRowProps[] = [
     ...allAgents.map((agent): AgentTaskRowProps => {
@@ -91,6 +94,7 @@ export function buildHistoryItems({
         originSourceLabel: agent.originType === 'conversation'
           ? 'From Conversation'
           : undefined,
+        nextFollowUpAt: pendingFollowUps[rootId] ?? pendingFollowUps[agent.agentTaskId],
       };
     }),
     ...history
@@ -133,6 +137,7 @@ export function buildHistoryItems({
         originSourceLabel: item.origin_type === 'conversation'
           ? 'From Conversation'
           : undefined,
+        nextFollowUpAt: pendingFollowUps[item.id],
       })),
   ];
 

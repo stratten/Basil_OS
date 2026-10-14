@@ -2,7 +2,6 @@
 
 import json
 import logging
-from datetime import datetime
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
@@ -11,6 +10,7 @@ from api.services.meetings.meeting_recorder import MeetingRecorder
 
 from .models import MeetingAnalysisConfig, ProposalOutcomeUpdate
 from .state import active_analysis
+from api.core.utc_time import utc_now_naive_iso_z
 
 
 logger = logging.getLogger(__name__)
@@ -61,7 +61,7 @@ async def start_meeting_analysis(meeting_id: str, config: MeetingAnalysisConfig)
             "custom_instructions": config.custom_instructions,
             "status": "queued",
             "progress": 0.0,
-            "started_at": datetime.utcnow().isoformat() + "Z"
+            "started_at": utc_now_naive_iso_z()
         }
         
         logger.info(

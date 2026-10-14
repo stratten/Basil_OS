@@ -4,6 +4,7 @@ import time
 import numpy as np
 import logging
 import subprocess
+from api.core.runtime import safe_spawn
 import os
 import sys
 from typing import Optional # Added for type hinting
@@ -93,7 +94,7 @@ class WakeWordAudioCapturer:
         
         # Test FFmpeg executable before using it
         try:
-            result = subprocess.run([self._ffmpeg_path, '-version'], 
+            result = safe_spawn.run([self._ffmpeg_path, '-version'], 
                                   capture_output=True, text=True, timeout=10)
             logger.info(f"🔍 [FFMPEG_DEBUG] FFmpeg version check successful:")
             logger.info(f"🔍 [FFMPEG_DEBUG] FFmpeg stdout: {result.stdout[:200]}...")
@@ -104,7 +105,7 @@ class WakeWordAudioCapturer:
 
         # Test audio device listing
         try:
-            result = subprocess.run([self._ffmpeg_path, '-f', 'avfoundation', '-list_devices', 'true', '-i', ''], 
+            result = safe_spawn.run([self._ffmpeg_path, '-f', 'avfoundation', '-list_devices', 'true', '-i', ''], 
                                   capture_output=True, text=True, timeout=10)
             logger.info(f"🔍 [FFMPEG_DEBUG] Audio device listing:")
             logger.info(f"🔍 [FFMPEG_DEBUG] Device list stdout: {result.stdout}")

@@ -17,6 +17,7 @@ from ..sqlite.sqlite_knowledge_service_component_services.infrastructure.connect
     get_async_connection,
 )
 from .style_analyzer import StyleAnalyzer
+from api.core.utc_time import utc_now_naive, utc_now_naive_iso_z
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +99,7 @@ class CommunicationStyleManager:
             Saved profile
         """
         async with self._get_connection() as conn:
-            now = datetime.utcnow().isoformat() + "Z"
+            now = utc_now_naive_iso_z()
             style_attrs_json = style.style_attributes.model_dump_json()
             
             # Check if exists
@@ -212,8 +213,8 @@ class CommunicationStyleManager:
             style_attributes=style_attrs,
             confidence=analysis_result['confidence'],
             sample_count=analysis_result['sample_count'],
-            created_at=existing_profile.created_at if existing_profile else datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=existing_profile.created_at if existing_profile else utc_now_naive(),
+            updated_at=utc_now_naive(),
             last_used_at=None
         )
         

@@ -197,38 +197,20 @@ final class ScheduledRunMiniPanelWebView: NSObject, WKScriptMessageHandler, WKNa
     }
 
     private func callJS(_ function: String, args: Any...) {
-        guard let argsData = args.map({ value -> String? in
-            if let data = try? JSONSerialization.data(withJSONObject: value),
-               let str = String(data: data, encoding: .utf8) {
-                return str
-            }
-            return nil
-        }) as? [String] else { return }
-
-        let argsString = argsData.joined(separator: ", ")
-        let js = "\(function)(\(argsString))"
-
-        webView.evaluateJavaScript(js) { _, error in
-            if let error = error {
-                #if DEBUG
-                DevLogger.shared.error("[ScheduledRunMiniPanelWebView] JS eval error: \(error)", context: "ScheduledRunMiniPanel")
-                #endif
-            }
-        }
+        webView.callBasilFunction(
+            function,
+            args: args,
+            logTag: "ScheduledRunMiniPanelWebView",
+            logContext: "ScheduledRunMiniPanel"
+        )
     }
 
     private func colorToHex(_ color: NSColor) -> String {
-        guard let rgbColor = color.usingColorSpace(.sRGB) else {
-            return "#000000"
-        }
-        let r = Int(rgbColor.redComponent * 255)
-        let g = Int(rgbColor.greenComponent * 255)
-        let b = Int(rgbColor.blueComponent * 255)
-        return String(format: "#%02X%02X%02X", r, g, b)
+        AestheticWebPayload.colorToHex(color)
     }
 
     private func colorToHex(_ color: SwiftUI.Color) -> String {
-        return colorToHex(NSColor(color))
+        AestheticWebPayload.colorToHex(color)
     }
 
     /// Returns the color's sRGB components as a comma-separated triplet

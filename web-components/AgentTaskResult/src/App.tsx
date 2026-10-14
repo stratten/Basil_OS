@@ -24,6 +24,8 @@ import { useAgentStatusReporting } from './app/useAgentStatusReporting';
 import { useResultWidgetSizing } from './app/useResultWidgetSizing';
 import { useCollapseShortcut } from '@shared/useCollapseShortcut';
 import { AgentTaskResultBody } from './app/AgentTaskResultBody';
+import { BackendLivenessBanner } from '@shared/BackendLivenessBanner';
+import { wsManager } from './services/websocket';
 import { effectiveRootId, isDisplaySourceDetached } from './app/detachedPresentation';
 import { beginRunningAgentCancellation } from './app/runningAgentCancellation';
 import { deriveRunPhase } from './components/run/runPhase';
@@ -386,6 +388,7 @@ export default function App() {
   }, [latestForOwner]);
 
   return (
+    <>
     <AgentTaskResultBody
       rootRef={rootRef}
       embedded={embedded}
@@ -461,5 +464,7 @@ export default function App() {
       validationRunRequest={validationRunRequest}
       validationManagedHistoryRestoreRequestId={validationManagedHistoryRestoreRequestId}
     />
+    <BackendLivenessBanner socket={wsManager} />
+    </>
   );
 }

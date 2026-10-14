@@ -594,10 +594,7 @@ class WindowCaptureService: ObservableObject {
         DevLogger.shared.info("🔧 Opening Accessibility settings for user to grant permission", context: "WindowCaptureService")
         #endif
         
-        // Try the modern System Settings URL first (macOS 13+)
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-            NSWorkspace.shared.open(url)
-        }
+        SystemSettingsPrivacyPane.accessibility.open()
     }
     
     /// Opens System Settings to the screen recording pane when permission is denied
@@ -606,10 +603,7 @@ class WindowCaptureService: ObservableObject {
         DevLogger.shared.info("🔧 Opening Screen Recording settings for user to grant permission", context: "WindowCaptureService")
         #endif
         
-        // Try the modern System Settings URL first (macOS 13+)
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenRecording") {
-            NSWorkspace.shared.open(url)
-        }
+        SystemSettingsPrivacyPane.screenRecording.open()
     }
 }
 

@@ -24,6 +24,7 @@ from api.services.mcp_connectors.slack_token_service import (
     validate_slack_access_token,
 )
 from api.services.mcp_connectors.swift_token_bridge import _request_access_token_from_swift
+from api.core.utc_time import utc_now_naive
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +88,7 @@ def mark_connection_needs_reconnect(connection_id: str, message: str) -> bool:
     for record in prefs.connections.mcp_connections:
         if record.id != connection_id:
             continue
-        record.last_connection_check_at = datetime.utcnow()
+        record.last_connection_check_at = utc_now_naive()
         record.last_connection_status = STATUS_NEEDS_RECONNECT
         record.last_connection_status_message = message
         save_preferences(prefs)
@@ -100,7 +101,7 @@ async def _check_slack_status(
     *,
     slack_coordinator: SlackPKCECoordinator,
 ) -> ConnectionStatusCheckResult:
-    checked_at = datetime.utcnow()
+    checked_at = utc_now_naive()
     token_outcome = await _request_access_token_from_swift(record.id)
     if not token_outcome.access_token:
         return ConnectionStatusCheckResult(
@@ -163,7 +164,7 @@ async def _check_generic_mcp_status(
     mcp_client: MCPClientService,
     oauth_coordinator: OAuthCoordinator,
 ) -> ConnectionStatusCheckResult:
-    checked_at = datetime.utcnow()
+    checked_at = utc_now_naive()
     token_outcome = await _request_access_token_from_swift(record.id)
     if not token_outcome.access_token:
         return ConnectionStatusCheckResult(

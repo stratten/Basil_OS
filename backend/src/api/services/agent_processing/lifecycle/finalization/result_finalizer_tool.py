@@ -70,6 +70,7 @@ from .evaluation import (
     evaluate_finalizer_with_llm,
     has_failed_steps as _has_failed_steps,
 )
+from .pending_follow_up_context import pending_follow_up_context
 from .summary_payload import (
     apply_context_only_followup_override,
     apply_plausibility_doubt_override,
@@ -149,6 +150,7 @@ async def finalize_agent_task_result(
     technical_reason = ""
     llm_reasoning = ""
     should_retry = False
+    pending_work: Optional[Dict[str, Any]] = None
     failure_basis = ""
     has_tool_errors = bool(tool_error_history)
     has_failed_steps = _has_failed_steps(steps)
@@ -161,6 +163,9 @@ async def finalize_agent_task_result(
         run_notes = await user_run_notes_context(agent_task_id)
         if run_notes:
             evaluation_context = f"{run_notes}\n\n{evaluation_context}" if evaluation_context else run_notes
+        follow_up_block = await pending_follow_up_context(agent_task_id)
+        if follow_up_block:
+            evaluation_context = f"{follow_up_block}\n\n{evaluation_context}" if evaluation_context else follow_up_block
         evaluation = await evaluate_finalizer_with_llm(
             llm_model=llm_model,
             original_prompt=original_prompt,
@@ -183,6 +188,7 @@ async def finalize_agent_task_result(
             llm_reasoning = evaluation.llm_reasoning
             should_retry = evaluation.should_retry
             failure_basis = evaluation.failure_basis
+            pending_work = evaluation.pending_work
             if (
                 evaluation.coverage_status == "incomplete"
                 or evaluation.truncation_prevents_verification
@@ -430,7 +436,7 @@ async def finalize_agent_task_result(
         coverage_metrics=coverage_metrics,
     )
 
-    return build_result_envelope(
+    envelope = build_result_envelope(
         success=success,
         summary_text=summary_text,
         result_payload=result_payload,
@@ -441,6 +447,10 @@ async def finalize_agent_task_result(
         validation_issues=validation_issues,
         metrics=metrics,
     )
+    if pending_work and outcome == "partial":
+        # Transient hand-off for the async verifier; it is removed before the envelope is persisted or broadcast.
+        envelope["pending_work"] = pending_work
+    return envelope
 
 
 def _detect_explicit_numbered_coverage(

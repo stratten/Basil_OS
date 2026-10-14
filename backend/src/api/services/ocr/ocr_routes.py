@@ -6,6 +6,7 @@ from typing import Dict, Any
 import logging
 import os
 import asyncio
+from api.core.runtime import safe_spawn
 import subprocess
 from pathlib import Path
 from datetime import datetime
@@ -180,7 +181,7 @@ async def capture_and_extract_text() -> OCRResult:
 
         # Execute script using osascript
         logger.info("🖥️ Executing AppleScript for screen capture...")
-        proc = await asyncio.create_subprocess_exec(
+        proc = await safe_spawn.create_subprocess_exec(
             "osascript", str(script_path), 
             stdout=subprocess.PIPE, 
             stderr=subprocess.PIPE
@@ -233,7 +234,7 @@ async def capture_and_extract_text() -> OCRResult:
             
             try:
                 # Execute fallback full screen capture
-                fallback_proc = await asyncio.create_subprocess_exec(
+                fallback_proc = await safe_spawn.create_subprocess_exec(
                     "screencapture", "-x", fallback_path,
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE
                 )

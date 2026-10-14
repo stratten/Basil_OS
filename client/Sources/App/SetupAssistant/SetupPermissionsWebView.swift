@@ -367,27 +367,9 @@ struct SetupPermissionsWebView: NSViewRepresentable {
 
         private func openSystemSettings(payload: [String: Any]?) {
             let kind = payload?["kind"] as? String
-            let path = systemSettingsPath(for: kind)
-            let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(path)")!
-            NSWorkspace.shared.open(url)
+            let pane = kind.flatMap(SystemSettingsPrivacyPane.init(permissionKind:)) ?? .general
+            pane.open()
             DevLogger.shared.info("[SetupPermissionsWebView] Opened System Settings for \(kind ?? "privacy")", context: "SetupAssistant")
-        }
-
-        private func systemSettingsPath(for kind: String?) -> String {
-            switch kind {
-            case "microphone":
-                return "Privacy_Microphone"
-            case "accessibility":
-                return "Privacy_Accessibility"
-            case "input_monitoring":
-                return "Privacy_ListenEvent"
-            case "apple_events":
-                return "Privacy_Automation"
-            case "screen_recording":
-                return "Privacy_ScreenCapture"
-            default:
-                return "Privacy"
-            }
         }
     }
 }

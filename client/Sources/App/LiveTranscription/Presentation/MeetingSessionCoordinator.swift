@@ -42,6 +42,7 @@ final class MeetingSessionCoordinator {
 
     private var webWindowController: MeetingAssistantWindowController?
     private var analysisWebWindowController: MeetingAnalysisWebWindowController?
+    private var companionWebWindowController: MeetingCompanionWebWindowController?
 
     init(initializationOperations: MeetingSessionInitializationOperations = .live) {
         self.initializationOperations = initializationOperations
@@ -205,6 +206,24 @@ final class MeetingSessionCoordinator {
         analysisWebWindowController = controller
         controller.onClosed = { [weak self] in
             self?.analysisWebWindowController = nil
+        }
+        return controller
+    }
+
+    /// Opens (or focuses) the detached Companion window. It attaches as its own web presentation, so it shares the live session without owning it.
+    func showCompanionWindow() {
+        _ = ensureSession()
+        companionWindowController().show()
+    }
+
+    private func companionWindowController() -> MeetingCompanionWebWindowController {
+        if let companionWebWindowController {
+            return companionWebWindowController
+        }
+        let controller = MeetingCompanionWebWindowController(coordinator: self)
+        companionWebWindowController = controller
+        controller.onClosed = { [weak self] in
+            self?.companionWebWindowController = nil
         }
         return controller
     }
