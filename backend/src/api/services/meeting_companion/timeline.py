@@ -74,6 +74,8 @@ class _Accumulator:
             self._apply_watch(event)
         elif event.kind == "source":
             self._apply_source(event)
+        elif event.kind == "proposal":
+            self._apply_proposal(payload)
         elif event.kind == "status":
             self.status = dict(payload)
         elif event.kind == "error":
@@ -110,6 +112,24 @@ class _Accumulator:
             self.watches[watch_id] = watch.model_copy(update={"last_triggered_at": event.meeting_time})
         elif state == "canceled":
             self.watches[watch_id] = watch.model_copy(update={"active": False})
+
+    def _apply_proposal(self, payload: Dict[str, Any]) -> None:
+        item = self.items.get(str(payload["item_id"]))
+        state = payload["state"]
+        if item is None or item.proposal is None or state not in ("started", "handed_off", "dismissed", "failed"):
+            return
+        if item.proposal.state in ("started", "handed_off", "dismissed"):
+            return
+        updates: Dict[str, Any] = {"state": state, "error": str(payload.get("error") or "The action could not be started.") if state == "failed" else None}
+        for key in ("todo_id", "agent_task_id"):
+            if payload.get(key):
+                updates[key] = str(payload[key])
+        if state == "started" and payload.get("auto"):
+            updates["auto_started"] = True
+        item_updates: Dict[str, Any] = {"proposal": item.proposal.model_copy(update=updates)}
+        if state == "dismissed":
+            item_updates.update({"dismissed": True, "pinned": False})
+        self.items[item.id] = item.model_copy(update=item_updates)
 
     def _apply_source(self, event: TimelineEvent) -> None:
         payload = event.payload
@@ -159,6 +179,7 @@ def stored_status(derived: DerivedState, settings: CompanionSettings) -> Compani
         focus=status.get("focus", settings.focus),
         capacity="ok",
         capacity_reason=None,
+        investigate=settings.investigate,
     )
 
 

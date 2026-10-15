@@ -111,19 +111,23 @@ type AgentTaskListResponse = {
 export async function listAgentTasks(
   limit = 50,
   offset = 0,
-  status?: string
+  status?: string,
+  options: { archived?: boolean } = {}
 ): Promise<AgentTaskListResponse> {
   const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
   if (status) params.set('status', status);
+  if (options.archived) params.set('archived', 'true');
   return request('GET', `/api/v1/agent-tasks/history?${params}`);
 }
 
 export async function searchAgentTasks(
   query: string,
   limit = 50,
-  offset = 0
+  offset = 0,
+  options: { archived?: boolean } = {}
 ): Promise<AgentTaskListResponse> {
   const params = new URLSearchParams({ query, limit: String(limit), offset: String(offset) });
+  if (options.archived) params.set('archived', 'true');
   return request('GET', `/api/v1/agent-tasks/agent-task-history/search?${params}`);
 }
 
@@ -175,6 +179,14 @@ export async function getArtifactRevision(
 
 export async function deleteAgentTask(agentTaskId: string): Promise<{ success: boolean }> {
   return request('DELETE', `/api/v1/agent-tasks/${agentTaskId}?cascade=true`);
+}
+
+export async function archiveAgentTask(agentTaskId: string): Promise<{ success: boolean }> {
+  return request('POST', `/api/v1/agent-tasks/${agentTaskId}/archive`);
+}
+
+export async function unarchiveAgentTask(agentTaskId: string): Promise<{ success: boolean }> {
+  return request('POST', `/api/v1/agent-tasks/${agentTaskId}/unarchive`);
 }
 
 // Approval

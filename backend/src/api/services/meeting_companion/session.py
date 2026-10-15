@@ -18,8 +18,13 @@ from .conversation_state import ConversationState
 from .evaluator import CompanionEvaluator, EvaluationOutcome, EvaluationRequest
 from .event_log import CompanionEventLog
 from .gate import Gate, GateConfig, GateDecision
+from .investigator.coordinator import InvestigationCoordinator, InvestigationHost
+from .investigator.models import InvestigationRejected
+from .investigator.runner import CompanionInvestigator
+from .investigator.triggers import parse_investigation_request
 from .models import (
     CapacityState,
+    CompanionItem,
     CompanionMode,
     CompanionRoot,
     CompanionSettings,
@@ -31,6 +36,7 @@ from .models import (
     TimelineEvent,
     TurnRole,
 )
+from .proposals import DEFAULT_POLICY, ProposalDecision, ProposalLauncher, ProposalPolicy, auto_start_proposal, decide_proposal
 from .store import resolve_anchor_meeting_dir
 from .timeline import DerivedState, build_snapshot, reduce_timeline
 from .utterances import SessionClock, UtteranceAssembler
@@ -86,11 +92,15 @@ class CompanionSession:
         broadcast: Callable[[Dict[str, Any]], Awaitable[Any]],
         event_log: Optional[CompanionEventLog] = None,
         chat_service: Optional[CompanionChatService] = None,
+        investigator: Optional[CompanionInvestigator] = None,
+        proposal_policy: Callable[[], ProposalPolicy] = lambda: DEFAULT_POLICY,
+        proposal_launcher: Optional[ProposalLauncher] = None,
         gate_config: Optional[GateConfig] = None,
         directory_resolver: Callable[[str], Path] = resolve_anchor_meeting_dir,
         mode_explicit: bool = True,
         model_explicit: bool = True,
         focus_explicit: bool = True,
+        investigate_explicit: bool = True,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self.session_key = session_key
@@ -98,11 +108,14 @@ class CompanionSession:
         self._mode_explicit = mode_explicit
         self._model_explicit = model_explicit
         self._focus_explicit = focus_explicit
+        self._investigate_explicit = investigate_explicit
         self._evaluator = evaluator
         self._context = context
         self._capacity_guard = capacity_guard
         self._broadcast_fn = broadcast
         self._directory_resolver = directory_resolver
+        self._proposal_policy = proposal_policy
+        self._proposal_launcher = proposal_launcher
         self._clock = clock
         self._gate = Gate(gate_config)
         self._conversation = ConversationState()
@@ -135,6 +148,28 @@ class CompanionSession:
         self._last_status_broadcast_at = float("-inf")
         self._last_error_at: Dict[str, float] = {}
         self._anchor_cache: Optional[Tuple[float, Path]] = None
+        self._investigations = InvestigationCoordinator(
+            investigator,
+            InvestigationHost(
+                settings=lambda: self.settings,
+                context=context,
+                capacity=lambda: self._capacity,
+                closed=lambda: self._closed,
+                latest_meeting_time=lambda: self._latest_meeting_time,
+                window_turns=self._gate.window,
+                conversation_state=lambda: self._conversation.text,
+                shown_texts=lambda: [item.text for item in self._get_derived().items][-6:],
+                model_provider=evaluator.model_for,
+                append=self._append,
+                spawn=self._spawn,
+                record_error=self._record_error,
+                status_changed=self._investigation_status_changed,
+                proposal_policy=lambda: self._proposal_policy(),
+                items=lambda: list(self._get_derived().items),
+                watch_for=self._active_watch,
+                auto_start=self._auto_start_proposal,
+            ),
+        )
         self._event_log.subscribe(self._on_event)
 
     # ------------------------------------------------------------------ identity and status
@@ -169,6 +204,8 @@ class CompanionSession:
             latest_meeting_time=round(self._latest_meeting_time, 3),
             transcription_lag_seconds=round(self._lag_seconds, 1),
             evaluating=self._evaluating,
+            investigating=self._investigations.active_count,
+            investigate=self.settings.investigate,
         )
 
     def _status_payload(self) -> Dict[str, Any]:
@@ -223,8 +260,11 @@ class CompanionSession:
                 self.settings.model_id = stored.model_id
             if not self._focus_explicit:
                 self.settings.focus = stored.focus
+            if not self._investigate_explicit:
+                self.settings.investigate = stored.investigate
         self._derived = None
         events = self._event_log.events()
+        self._investigations.restore(events)
         self._latest_meeting_time = max(self._latest_meeting_time, max((event.meeting_time for event in events), default=0.0))
         restored = False
         for root in list(self._get_derived().roots):
@@ -381,6 +421,8 @@ class CompanionSession:
             self._capacity = assessment.state
             self._capacity_reason = assessment.reason
             self._append("status", self._latest_meeting_time, self._status_payload())
+            if self._capacity == "paused":
+                self._investigations.cancel_all()
             await self._broadcast_status(now, force=True)
         if not self._evaluating:
             decision = self._gate.decide(
@@ -458,6 +500,22 @@ class CompanionSession:
             self._append("item", stamped.transcript_range.end, {"item": stamped.model_dump(mode="json")})
         if decision.watch is not None:
             self._append("watch", self._latest_meeting_time, watch_event_payload(decision.watch, "triggered"))
+        self._escalate_research(decision, outcome)
+
+    def _escalate_research(self, decision: GateDecision, outcome: EvaluationOutcome) -> None:
+        """Hand a question the fast path could not answer to the investigator; a refusal is silent for automatic origins."""
+        research = outcome.research
+        if research is None or outcome.items:
+            return
+        try:
+            self._investigations.request(
+                research.question,
+                origin="watch" if decision.watch is not None else "unanswered",
+                source_turn_ids=[turn.id for turn in decision.new_turns],
+                watch_id=decision.watch.id if decision.watch is not None else None,
+            )
+        except (InvestigationRejected, ValueError, RuntimeError) as refusal:
+            logger.info("Companion did not investigate for %s: %s", self.session_key, refusal)
 
     async def _run_prefetch(self, now: float) -> None:
         try:
@@ -542,6 +600,7 @@ class CompanionSession:
         mode: Optional[CompanionMode] = None,
         model_id: Union[str, None, _Unset] = UNSET,
         focus: Optional[str] = None,
+        investigate: Optional[bool] = None,
     ) -> CompanionSettings:
         """Change the mode, model and/or focus mid-meeting; records one status event when anything changed."""
         changed = False
@@ -561,6 +620,12 @@ class CompanionSession:
                 self.settings.focus = cleaned_focus
                 self._focus_explicit = True
                 changed = True
+        if investigate is not None and investigate != self.settings.investigate:
+            self.settings.investigate = investigate
+            self._investigate_explicit = True
+            if not investigate:
+                self._investigations.cancel_all()
+            changed = True
         if changed:
             self._append("status", self._latest_meeting_time, self._status_payload())
             self._spawn(self._broadcast_status(self._clock(), force=True))
@@ -625,6 +690,73 @@ class CompanionSession:
             self._spawn(self._context.rebuild_vocabulary())
         return True
 
+    # ------------------------------------------------------------------ investigations
+
+    def request_investigation(self, question: str) -> str:
+        """Start an explicit investigation; raises ``InvestigationRejected`` or ``ValueError`` with a user-facing reason."""
+        return self._investigations.request(question, origin="explicit")
+
+    def cancel_investigation(self, investigation_id: str) -> bool:
+        return self._investigations.cancel(investigation_id)
+
+    def _investigation_status_changed(self) -> None:
+        self._spawn(self._broadcast_status(self._clock(), force=True))
+
+    def _reply_to_investigation_request(self, question: str, assistant_id: str) -> None:
+        try:
+            self._investigations.request(question, origin="chat")
+            reply = f"Looking into: {question}. I will add what I find to the feed."
+            status = "complete"
+        except (InvestigationRejected, ValueError, RuntimeError) as refusal:
+            reply = str(refusal)
+            status = "error"
+        self._record_assistant_message(assistant_id, reply, truncated=False, status=status)
+
+    # ------------------------------------------------------------------ proposals
+
+    def _append_proposal_event(self, payload: Dict[str, Any]) -> None:
+        self._append("proposal", self._latest_meeting_time, payload)
+
+    def _active_watch(self, watch_id: str) -> Optional[CompanionWatch]:
+        return next((watch for watch in self._get_derived().watches if watch.id == watch_id and watch.active), None)
+
+    def _auto_start_proposal(self, item: CompanionItem, watch: CompanionWatch) -> None:
+        """Spawn the automatic start; it re-checks at the last moment that the card is still waiting, the action is still allowed and the watch is still active."""
+
+        def still_allowed() -> bool:
+            current = next((candidate for candidate in self._get_derived().items if candidate.id == item.id), None)
+            return (
+                not self._closed
+                and current is not None
+                and not current.dismissed
+                and current.proposal is not None
+                and current.proposal.state == "proposed"
+                and current.proposal.action in self._proposal_policy().auto_capabilities
+                and self._active_watch(watch.id) is not None
+            )
+
+        self._spawn(
+            auto_start_proposal(
+                session_key=self.session_key,
+                item=item,
+                watch=watch,
+                launcher=self._proposal_launcher,
+                append=self._append_proposal_event,
+                still_allowed=still_allowed,
+            )
+        )
+
+    async def decide_proposal(self, item_id: str, decision: str) -> ProposalDecision:
+        """Approve or dismiss a proposal card; raises ``ProposalNotFound`` or ``ProposalRejected`` with a user-facing reason."""
+        item = next((candidate for candidate in self._get_derived().items if candidate.id == item_id), None)
+        return await decide_proposal(
+            session_key=self.session_key,
+            item=item,
+            decision=decision,
+            launcher=self._proposal_launcher,
+            append=self._append_proposal_event,
+        )
+
     # ------------------------------------------------------------------ chat
 
     def submit_chat(self, text: str) -> str:
@@ -649,8 +781,11 @@ class CompanionSession:
         try:
             async with self._chat_lock:
                 watch_request = parse_watch_request(text)
+                investigation_question = parse_investigation_request(text) if watch_request is None else None
                 if watch_request is not None:
                     self._reply_to_watch_request(watch_request, assistant_id)
+                elif investigation_question is not None:
+                    self._reply_to_investigation_request(investigation_question, assistant_id)
                 else:
                     await self._answer_chat(text, user_id, assistant_id, pieces)
         except asyncio.CancelledError:
@@ -720,6 +855,7 @@ class CompanionSession:
             return
         self._closed = True
         self.settings.enabled = final_enabled
+        self._investigations.cancel_all()
         for task in (self._loop_task, self._evaluation_task, self._prefetch_task):
             if task is not None and not task.done():
                 task.cancel()

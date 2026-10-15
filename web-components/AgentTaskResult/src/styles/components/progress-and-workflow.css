@@ -417,8 +417,10 @@
 
 .execution-activity-dock-jump {
   display: block;
-  width: calc(100% - (2 * var(--padding-s)));
+  width: fit-content;
+  max-width: calc(100% - (2 * var(--padding-s)));
   margin: var(--padding-xs) var(--padding-s);
+  padding: 0 var(--padding-m);
   min-height: 28px;
   border: var(--border-thin) solid var(--separator-color);
   border-radius: var(--corner-radius-small);

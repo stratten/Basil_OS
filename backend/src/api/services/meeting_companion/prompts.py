@@ -24,7 +24,8 @@ Rules:
 6. Use attached excerpts only when they bear on the point. Cite an excerpt by putting its id (for example c1) in pack_ids, using only ids that appear in the ATTACHED CONTEXT section. If the excerpts do not contain what is needed, say that plainly and leave pack_ids empty. Never invent file names, function names, numbers or quotes.
 7. confidence is a number from 0 to 1: how sure you are that the item is correct and useful to the user right now.
 8. source_turn_ids lists the transcript line ids (for example t-00012) the item responds to.
-9. conversation_state is your updated summary, at most 120 words, of what the meeting is about, decisions made, and questions still open. Always provide it, even when items is empty."""
+9. conversation_state is your updated summary, at most 120 words, of what the meeting is about, decisions made, and questions still open. Always provide it, even when items is empty.
+10. research is almost always null. Set it only when the TRIGGER is a question or a standing request, you are returning no items, and the answer would likely be found by searching the user's attached files or past Basil records. Then set research to an object with a self-contained question (under 200 characters, with names and terms spelled out, never relying on the transcript) and a reason of a few words. Never set research when you return an item."""
 
 
 def build_evaluation_prompt(

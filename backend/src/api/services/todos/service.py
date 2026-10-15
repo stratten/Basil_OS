@@ -195,6 +195,21 @@ class TodoService:
         )
         return detail
 
+    async def create_todo_from_companion_proposal(
+        self, *, session_key: str, proposal_id: str, title: str, description: str, excerpt: str,
+        responsibility: str, system_created: bool,
+    ) -> TodoItemDetail:
+        normalized_title = _bound_meeting_proposal_title(title)
+        detail, _created = await self.repository.create_todo_item_with_source(
+            title=normalized_title, description=description, notes="", responsibility=responsibility, priority="normal",
+            due_at=None, status="open", created_by_kind="system" if system_created else "user", created_by_id=None,
+            idempotency_key=None, idempotency_payload_hash=None,
+            source_kind="meeting_companion_proposal", source_id=f"{session_key}:{proposal_id}",
+            source_locator={"session_key": session_key, "proposal_id": proposal_id},
+            source_excerpt=excerpt,
+        )
+        return detail
+
     # === User transitions ===
 
     async def accept_candidate(self, todo_id: str, expected_revision: int) -> TodoItemDetail:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from typing import Any, Awaitable, Callable, Dict, Optional
 
 from api.core.models.model_invocation import (
@@ -11,6 +12,21 @@ from api.core.models.model_invocation import (
     call_model_with_schema,
 )
 from api.core.models.reasoning.streaming_contract import resolve_generation_budget
+
+from .meeting_analysis_concurrency import (
+    LOCAL_MODEL_CONCURRENCY,
+    AnalysisCallLimiter,
+    gather_cancel_on_error,
+)
+from .meeting_analysis_events import ITEM_STREAM_MODELS, AnalysisItemSink
+from .meeting_analysis_item_stream import IncrementalItemsParser
+from .meeting_analysis_narrowing import narrow_transcript_for_suggestions
+from .meeting_analysis_timing import (
+    AnalysisCallLabel,
+    AnalysisCallTiming,
+    AnalysisTimingRecorder,
+    describe_model_id,
+)
 
 from .meeting_analysis_coverage import (
     build_analysis_coverage_plan,
@@ -65,12 +81,25 @@ def _formatted_line_timestamp(line: str) -> float:
 class MeetingAnalysisExecutor:
     """Run a mode once or map/reduce it over every transcript chunk."""
 
-    def __init__(self, meeting_id: str, prompt_builder: MeetingAnalysisPromptBuilder):
+    def __init__(
+        self,
+        meeting_id: str,
+        prompt_builder: MeetingAnalysisPromptBuilder,
+        *,
+        timing_recorder: Optional[AnalysisTimingRecorder] = None,
+        call_limiter: Optional[AnalysisCallLimiter] = None,
+        item_sink: Optional[AnalysisItemSink] = None,
+    ):
         self.meeting_id = meeting_id
         self.prompt_builder = prompt_builder
         self.enforcement_modes: set[str] = set()
         self.safety_omissions: list[AnalysisSafetyOmission] = []
         self._refusal_localization_calls = 0
+        self._timing_recorder = timing_recorder
+        self._call_limiter = call_limiter or AnalysisCallLimiter(
+            LOCAL_MODEL_CONCURRENCY
+        )
+        self._item_sink = item_sink
 
     async def _call_schema_with_transient_retry(
         self,
@@ -79,14 +108,21 @@ class MeetingAnalysisExecutor:
         prompt: str,
         response_model: type[AnalysisContractModel],
         max_tokens: int,
+        label: Optional[AnalysisCallLabel] = None,
+        stream_factory: Optional[
+            Callable[[], Awaitable[Callable[[str], Awaitable[None]]]]
+        ] = None,
     ) -> Any:
         """Replay one transient structured request without accepting partial output."""
         try:
-            return await call_model_with_schema(
-                model,
+            return await self._timed_schema_call(
+                model=model,
                 prompt=prompt,
                 response_model=response_model,
                 max_tokens=max_tokens,
+                label=label,
+                attempt=1,
+                stream_factory=stream_factory,
             )
         except StructuredModelOutputError as error:
             if not error.retryable:
@@ -95,12 +131,124 @@ class MeetingAnalysisExecutor:
                 "Retrying transient meeting-analysis call: %s",
                 error.category,
             )
-            return await call_model_with_schema(
-                model,
+            return await self._timed_schema_call(
+                model=model,
                 prompt=prompt,
                 response_model=response_model,
                 max_tokens=max_tokens,
+                label=label,
+                attempt=2,
+                stream_factory=stream_factory,
             )
+
+    async def _timed_schema_call(
+        self,
+        *,
+        model: Any,
+        prompt: str,
+        response_model: type[AnalysisContractModel],
+        max_tokens: int,
+        label: Optional[AnalysisCallLabel],
+        attempt: int,
+        stream_factory: Optional[
+            Callable[[], Awaitable[Callable[[str], Awaitable[None]]]]
+        ] = None,
+    ) -> Any:
+        """Make one limiter-bounded structured call and record how long it took."""
+        queued_at = time.monotonic()
+        async with self._call_limiter.slot():
+            started = time.monotonic()
+            started_offset = (
+                self._timing_recorder.offset() if self._timing_recorder else 0.0
+            )
+            try:
+                stream_kwargs: Dict[str, Any] = {}
+                if stream_factory is not None:
+                    stream_kwargs["on_text_delta"] = await stream_factory()
+                response = await call_model_with_schema(
+                    model,
+                    prompt=prompt,
+                    response_model=response_model,
+                    max_tokens=max_tokens,
+                    **stream_kwargs,
+                )
+            except Exception as error:
+                self._record_call(
+                    label=label,
+                    model=model,
+                    prompt=prompt,
+                    max_tokens=max_tokens,
+                    attempt=attempt,
+                    queued_seconds=started - queued_at,
+                    started_offset=started_offset,
+                    duration_seconds=time.monotonic() - started,
+                    response=None,
+                    error=error,
+                )
+                raise
+            self._record_call(
+                label=label,
+                model=model,
+                prompt=prompt,
+                max_tokens=max_tokens,
+                attempt=attempt,
+                queued_seconds=started - queued_at,
+                started_offset=started_offset,
+                duration_seconds=time.monotonic() - started,
+                response=response,
+                error=None,
+            )
+            return response
+
+    def _record_call(
+        self,
+        *,
+        label: Optional[AnalysisCallLabel],
+        model: Any,
+        prompt: str,
+        max_tokens: int,
+        attempt: int,
+        queued_seconds: float,
+        started_offset: float,
+        duration_seconds: float,
+        response: Any,
+        error: Optional[Exception],
+    ) -> None:
+        """Append one call to the run's timing recorder; never raises."""
+        if self._timing_recorder is None or label is None:
+            return
+        try:
+            output_tokens: Optional[int] = None
+            value = getattr(response, "value", None)
+            if value is not None and hasattr(value, "model_dump_json"):
+                output_tokens = estimate_model_tokens(value.model_dump_json(), model)
+            self._timing_recorder.record_call(
+                AnalysisCallTiming(
+                    mode=label.mode,
+                    kind=label.kind,
+                    chunk_index=label.chunk_index,
+                    chunk_total=label.chunk_total,
+                    attempt=attempt,
+                    model_id=describe_model_id(model),
+                    max_tokens=max_tokens,
+                    estimated_input_tokens=estimate_model_tokens(prompt, model),
+                    estimated_output_tokens=output_tokens,
+                    provider_usage=getattr(response, "usage", None),
+                    queued_seconds=round(queued_seconds, 3),
+                    started_offset_seconds=round(started_offset, 3),
+                    duration_seconds=round(duration_seconds, 3),
+                    finish_reason=getattr(response, "finish_reason", None),
+                    enforcement=getattr(response, "enforcement", None),
+                    outcome="ok" if error is None else "error",
+                    error_category=(
+                        None
+                        if error is None
+                        else str(getattr(error, "category", "internal"))
+                    ),
+                )
+            )
+        except Exception:
+            logger.warning("Could not record analysis call timing", exc_info=True)
 
     async def analyze_mode(
         self,
@@ -121,9 +269,16 @@ class MeetingAnalysisExecutor:
             custom_instructions,
             prior_results,
         )
+        analysis_transcript = transcript
+        if mode == AnalysisMode.SUGGESTED_ACTIONS:
+            analysis_transcript = narrow_transcript_for_suggestions(
+                transcript,
+                prior_results.get(AnalysisMode.ACTION_ITEMS.value),
+                model,
+            )
         plan = build_analysis_coverage_plan(
             model=model,
-            transcript=transcript,
+            transcript=analysis_transcript,
             prompt_without_transcript=empty_prompt,
         )
         generation_budget = resolve_generation_budget(
@@ -143,8 +298,12 @@ class MeetingAnalysisExecutor:
             [(chunk.first_segment_index, chunk.last_segment_index) for chunk in plan.chunks],
         )
 
-        results: list[AnalysisContractModel] = []
-        for chunk in plan.chunks:
+        completed_chunks = 0
+
+        async def analyze_one_chunk(
+            chunk: TranscriptChunk,
+        ) -> list[AnalysisContractModel]:
+            nonlocal completed_chunks
             chunk_results = await self._analyze_chunk_with_refusal_recovery(
                 mode=mode,
                 chunk=chunk,
@@ -157,17 +316,27 @@ class MeetingAnalysisExecutor:
             )
             for chunk_result in chunk_results:
                 validate_analysis_timestamps(chunk_result, transcript)
-            results.extend(chunk_results)
+            completed_chunks += 1
             if progress_callback is not None and plan.requires_reduction:
                 await progress_callback(
                     {
-                        "stage_progress": chunk.index / (chunk.total + 1),
+                        "stage_progress": completed_chunks / (chunk.total + 1),
                         "message": (
                             f"Analyzing {mode.value.replace('_', ' ')}: "
-                            f"chunk {chunk.index} of {chunk.total}"
+                            f"chunk {completed_chunks} of {chunk.total}"
                         ),
                     }
                 )
+            return chunk_results
+
+        chunk_result_groups = await gather_cancel_on_error(
+            [analyze_one_chunk(chunk) for chunk in plan.chunks]
+        )
+        results: list[AnalysisContractModel] = [
+            chunk_result
+            for chunk_results in chunk_result_groups
+            for chunk_result in chunk_results
+        ]
 
         if not results:
             raise StructuredModelOutputError(
@@ -308,14 +477,59 @@ class MeetingAnalysisExecutor:
             custom_instructions,
             prior_results,
         ) + build_chunk_analysis_instruction(mode, chunk)
-        response = await self._call_schema_with_transient_retry(
-            model=model,
-            prompt=prompt,
-            response_model=response_model,
-            max_tokens=max_tokens,
+        stream_factory = (
+            self._build_stream_factory(mode)
+            if self._should_stream_items(mode, chunk)
+            else None
         )
+        try:
+            response = await self._call_schema_with_transient_retry(
+                model=model,
+                prompt=prompt,
+                response_model=response_model,
+                max_tokens=max_tokens,
+                label=AnalysisCallLabel(
+                    mode=mode.value,
+                    kind="chunk",
+                    chunk_index=chunk.index,
+                    chunk_total=chunk.total,
+                ),
+                stream_factory=stream_factory,
+            )
+        except Exception:
+            if stream_factory is not None and self._item_sink is not None:
+                await self._item_sink.reset(mode)
+            raise
         self.enforcement_modes.add(response.enforcement)
         return response.value
+
+    def _should_stream_items(self, mode: AnalysisMode, chunk: TranscriptChunk) -> bool:
+        """Stream only observed, single-call, item-shaped modes."""
+        return (
+            self._item_sink is not None
+            and self._item_sink.enabled
+            and mode in ITEM_STREAM_MODELS
+            and chunk.total == 1
+        )
+
+    def _build_stream_factory(
+        self, mode: AnalysisMode
+    ) -> Callable[[], Awaitable[Callable[[str], Awaitable[None]]]]:
+        """Return a per-attempt factory so every retry starts with a fresh parser."""
+        sink = self._item_sink
+
+        async def factory() -> Callable[[str], Awaitable[None]]:
+            assert sink is not None
+            await sink.begin_attempt(mode)
+            parser = IncrementalItemsParser()
+
+            async def on_text_delta(text: str) -> None:
+                for element in parser.feed(text):
+                    await sink.emit_element(mode, element)
+
+            return on_text_delta
+
+        return factory
 
     @staticmethod
     def _local_recovery_result(
@@ -397,6 +611,7 @@ class MeetingAnalysisExecutor:
                     prompt=reduction_prompt,
                     response_model=response_model,
                     max_tokens=generation_budget.effective_output_tokens,
+                    label=AnalysisCallLabel(mode=mode.value, kind="reduction"),
                 )
                 self.enforcement_modes.add(response.enforcement)
                 next_level.append(response.value)

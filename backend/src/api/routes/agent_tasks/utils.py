@@ -263,6 +263,24 @@ def extract_original_model_id(agent_task_record) -> Optional[str]:
     return None
 
 
+def extract_model_used(result_data) -> Optional[str]:
+    """Return the model that answered a run, from result_data.model_used.
+
+    Graph runs persist the workflow result under result_data["data"] while the
+    fast lane writes the value at the top level, so both shapes are read (the
+    same dual lookup _get_finalizer_payload_files uses for the finalizer)."""
+    if not isinstance(result_data, dict):
+        return None
+    candidates = [result_data.get("model_used")]
+    nested_data = result_data.get("data")
+    if isinstance(nested_data, dict):
+        candidates.append(nested_data.get("model_used"))
+    for candidate in candidates:
+        if isinstance(candidate, str) and candidate.strip():
+            return candidate
+    return None
+
+
 def build_retry_context(agent_task_record) -> Dict[str, Any]:
     """Build compact, durable context for the next retry attempt."""
     result_data = agent_task_record.result_data or {}

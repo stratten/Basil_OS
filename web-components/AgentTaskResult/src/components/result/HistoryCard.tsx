@@ -13,6 +13,7 @@ import { formatHistoryTimestamp, useDateDisplayStyle } from '../../app/dateDispl
 import AgentTaskOriginChip from '../request/AgentTaskOriginChip';
 import RequestDisplay from '../request/RequestDisplay';
 import { plainMarkdownText } from '../../../../shared/plainMarkdownText';
+import { ModelUsedLabel } from './ModelUsedLabel';
 
 export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSelectDetail }: {
   item: AgentTaskHistoryItem;
@@ -153,6 +154,7 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
               <span className="history-card__result-heading-text">
                 {hasError ? 'Partial Result:' : 'Result:'}
               </span>
+              <ModelUsedLabel className="result-model-label" modelId={item.modelUsed} />
             </div>
             {histParsed.technicalSteps.length > 0 &&
               !(item.executionTimeline?.length || item.executionSteps?.length) && (

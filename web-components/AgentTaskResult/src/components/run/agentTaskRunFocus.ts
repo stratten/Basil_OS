@@ -19,6 +19,7 @@ export interface AgentTaskRunFocusSummary {
   hasVerifiedArtifactOutput?: boolean;
   structuredFiles: StructuredFile[];
   executionTimeline: TimelineEntry[];
+  modelUsed?: string;
 }
 
 export function agentTaskRunLabel(turnIndex: number): string {
@@ -55,6 +56,7 @@ export function deriveAgentTaskRunFocusSummaries(
     hasVerifiedArtifactOutput: hasVerifiedArtifactOutput(item.files, item.executionTimeline || []),
     structuredFiles: item.files,
     executionTimeline: item.executionTimeline || [],
+    modelUsed: item.modelUsed,
   }));
   const ordinal = historicalRuns.length + 1;
 
@@ -79,6 +81,7 @@ export function deriveAgentTaskRunFocusSummaries(
       ),
       structuredFiles: displaySource.structuredFiles,
       executionTimeline: displaySource.executionTimeline,
+      modelUsed: displaySource.modelUsed ?? displaySource.originalModelId,
     },
   ];
 }

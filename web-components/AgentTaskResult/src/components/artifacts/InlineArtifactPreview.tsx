@@ -261,6 +261,8 @@ export function InlineArtifactPreview({
   const canOpenBrowserPreview = canOpenStaticLocalWebPreview(renderState.artifact);
   const canRenderMarkdown = previewPresentation?.renderMode === 'markdown'
     && Boolean(renderState.payload?.content);
+  const canRenderImage = previewPresentation?.renderMode === 'image'
+    && Boolean(renderState.payload?.dataUrl);
   const canRenderLiveHtml = previewPresentation?.renderMode === 'live_html'
     && Boolean(path)
     && Boolean(agentTaskId);
@@ -309,7 +311,13 @@ export function InlineArtifactPreview({
         className="inline-artifact-preview-body"
         onOutgoingTransitionComplete={completeOutgoingPreview}
       >
-        {canRenderMarkdown ? (
+        {canRenderImage ? (
+          <img
+            className="inline-artifact-preview-image"
+            src={renderState.payload?.dataUrl}
+            alt={renderState.artifact.displayName}
+          />
+        ) : canRenderMarkdown ? (
           <MarkdownRenderer content={renderState.payload?.content || ''} />
         ) : canRenderLiveHtml ? (
           <LiveHtmlPreviewSurface {...liveHtmlPreview} displayName={renderState.artifact.displayName} />

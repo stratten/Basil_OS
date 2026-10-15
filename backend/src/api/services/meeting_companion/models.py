@@ -8,13 +8,18 @@ from pydantic import BaseModel, ConfigDict, Field
 
 COMPANION_SCHEMA_VERSION = 1
 
-ItemKind = Literal["insight", "suggestion", "answer", "context_note"]
+ItemKind = Literal["insight", "suggestion", "answer", "context_note", "proposal"]
 FeedbackAction = Literal["dismissed", "pinned", "unpinned", "copied", "useful", "not_useful"]
 CompanionMode = Literal["active", "passive"]
-TimelineKind = Literal["item", "retrieval", "feedback", "chat", "watch", "source", "status", "error"]
+TimelineKind = Literal["item", "retrieval", "feedback", "chat", "watch", "source", "status", "error", "proposal"]
 TurnRole = Literal["self", "other"]
 CapacityState = Literal["ok", "deferred", "paused"]
 RootKind = Literal["folder", "file"]
+ProposalAction = Literal["todo", "agent_task", "assistant_session"]
+AutoProposalAction = Literal["todo", "agent_task"]
+ProposalAuthority = Literal["review", "watch"]
+ProposalState = Literal["proposed", "started", "handed_off", "dismissed", "failed"]
+ProposalMode = Literal["suggestion_only", "auto_execute"]
 
 
 class CompanionTurn(BaseModel):
@@ -46,6 +51,21 @@ class FileCitation(BaseModel):
     excerpt: str
 
 
+class ProposalInfo(BaseModel):
+    """A follow-up action the investigator proposes, and what became of it. ``authority`` is ``watch`` only when the investigation came from a watch the user created."""
+
+    proposal_id: str
+    action: ProposalAction
+    title: str
+    instruction: str
+    authority: ProposalAuthority = "review"
+    state: ProposalState = "proposed"
+    todo_id: Optional[str] = None
+    agent_task_id: Optional[str] = None
+    error: Optional[str] = None
+    auto_started: bool = False
+
+
 class CompanionItem(BaseModel):
     """One Companion output shown in the feed."""
 
@@ -62,6 +82,10 @@ class CompanionItem(BaseModel):
     pinned: bool = False
     dismissed: bool = False
     latency_ms: Optional[int] = None
+    researched: bool = False
+    investigation_id: Optional[str] = None
+    evidence_count: int = 0
+    proposal: Optional[ProposalInfo] = None
 
 
 class TimelineEvent(BaseModel):
@@ -116,6 +140,7 @@ class CompanionSettings(BaseModel):
     mode: CompanionMode = "active"
     model_id: Optional[str] = None
     focus: str = ""
+    investigate: bool = True
 
 
 class CompanionGlobalSettings(BaseModel):
@@ -125,6 +150,9 @@ class CompanionGlobalSettings(BaseModel):
     default_mode: CompanionMode = "active"
     screen_share_note_dismissed: bool = False
     next_focus: str = ""
+    proposal_mode: ProposalMode = "suggestion_only"
+    proposal_capabilities: List[ProposalAction] = Field(default_factory=lambda: ["todo", "agent_task", "assistant_session"])
+    auto_execute_capabilities: List[AutoProposalAction] = Field(default_factory=list)
 
 
 class CompanionStatus(BaseModel):
@@ -140,6 +168,8 @@ class CompanionStatus(BaseModel):
     latest_meeting_time: float = 0.0
     transcription_lag_seconds: float = 0.0
     evaluating: bool = False
+    investigating: int = 0
+    investigate: bool = True
 
 
 class CompanionSnapshot(BaseModel):

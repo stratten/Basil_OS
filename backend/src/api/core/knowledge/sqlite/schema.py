@@ -298,6 +298,7 @@ def get_schema_statements() -> List[str]:
             file_count INTEGER DEFAULT 0,
             latest_status TEXT,
             latest_agent_task_id TEXT,
+            archived_at TIMESTAMP,  -- Root rows only: when the user archived the whole chain; NULL means not archived
             
             -- User feedback
             user_rating INTEGER CHECK (user_rating BETWEEN 1 AND 5),

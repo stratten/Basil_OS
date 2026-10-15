@@ -1,5 +1,5 @@
-import { applyTimelineEvent, emptyTimelineState, timelineStateFromSnapshot, type CompanionTimelineState } from './companionReducer';
-import { EMPTY_COMPANION_STATUS, type CompanionSnapshot, type CompanionStatus, type TimelineEvent } from './types';
+import { applyProposalUpdate, applyTimelineEvent, emptyTimelineState, timelineStateFromSnapshot, type CompanionTimelineState } from './companionReducer';
+import { EMPTY_COMPANION_STATUS, type CompanionProposalResult, type CompanionSnapshot, type CompanionStatus, type TimelineEvent } from './types';
 
 export const MAX_BUFFERED_EVENTS = 500;
 
@@ -36,7 +36,9 @@ export type CompanionStoreAction =
   | { type: 'event'; event: TimelineEvent }
   | { type: 'status'; status: Partial<CompanionStatus> }
   | { type: 'chatDelta'; messageId: string; textDelta: string }
-  | { type: 'chatPending'; messageId: string };
+  | { type: 'chatPending'; messageId: string }
+  /** The backend's answer to an approve or dismiss click; also the only update a finished meeting gets, because it has no live event stream. */
+  | { type: 'proposalResult'; itemId: string; result: CompanionProposalResult };
 
 function withoutKeys(record: Record<string, string>, keys: string[]): Record<string, string> {
   if (keys.length === 0) return record;
@@ -114,6 +116,16 @@ export function companionStoreReducer(state: CompanionStoreState, action: Compan
     case 'chatPending':
       if (state.timeline.chat.some((message) => message.id === action.messageId) || action.messageId in state.drafts) return state;
       return { ...state, pendingAssistantIds: [...state.pendingAssistantIds, action.messageId] };
+    case 'proposalResult': {
+      const items = applyProposalUpdate(state.timeline.items, {
+        item_id: action.itemId,
+        state: action.result.state,
+        todo_id: action.result.todo_id,
+        agent_task_id: action.result.agent_task_id,
+        error: action.result.error,
+      });
+      return items === state.timeline.items ? state : { ...state, timeline: { ...state.timeline, items } };
+    }
     default:
       return state;
   }

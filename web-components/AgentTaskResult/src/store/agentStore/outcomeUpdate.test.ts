@@ -281,3 +281,29 @@ describe('AgentStore outcome verification updates', () => {
     expect(store.getAgent('root-1')?.currentStep).toBe('Canceled');
   });
 });
+
+describe('AgentStore model used from the live result event', () => {
+  it('records the answering model carried by agent_task_result', () => {
+    const store = makeStoreWithAgent();
+
+    dispatch(store, {
+      event_type: 'agent_task_result',
+      agent_task_id: 'task-1',
+      success: true,
+      result: 'Answer text',
+      model_used: 'gpt-5-mini',
+    });
+
+    expect(store.getAgent('task-1')?.modelUsed).toBe('gpt-5-mini');
+  });
+
+  it('leaves the model unset when the result event carries none or a non-text value', () => {
+    const store = makeStoreWithAgent();
+
+    dispatch(store, { event_type: 'agent_task_result', agent_task_id: 'task-1', success: true, result: 'Answer text' });
+    expect(store.getAgent('task-1')?.modelUsed).toBeUndefined();
+
+    dispatch(store, { event_type: 'agent_task_result', agent_task_id: 'task-1', success: true, result: 'Answer text', model_used: 7 });
+    expect(store.getAgent('task-1')?.modelUsed).toBeUndefined();
+  });
+});

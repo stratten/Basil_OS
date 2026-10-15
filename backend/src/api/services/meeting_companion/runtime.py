@@ -14,7 +14,20 @@ from .capacity import LagCapacityGuard, recorder_lag_provider
 from .chat import CompanionChatService
 from .context_service import ContextService
 from .evaluator import CompanionEvaluator
-from .models import CompanionGlobalSettings, CompanionMode, CompanionSettings, CompanionSnapshot, TurnRole
+from .investigator.runner import CompanionInvestigator
+from .models import (
+    AutoProposalAction,
+    CompanionGlobalSettings,
+    CompanionMode,
+    CompanionSettings,
+    CompanionSnapshot,
+    CompanionStatus,
+    ProposalAction,
+    ProposalMode,
+    TurnRole,
+)
+from .proposal_launcher import TodoProposalLauncher
+from .proposals import DEFAULT_POLICY, ProposalLauncher, ProposalPolicy, policy_from_settings
 from .session import UNSET, CompanionSession
 from .store import CompanionGlobalSettingsStore, resolve_anchor_meeting_dir
 
@@ -64,6 +77,8 @@ class MeetingCompanionRuntime:
         global_store: Optional[CompanionGlobalSettingsStore] = None,
         evaluator: Optional[CompanionEvaluator] = None,
         chat_service: Optional[CompanionChatService] = None,
+        investigator: Optional[CompanionInvestigator] = None,
+        proposal_launcher: Optional[ProposalLauncher] = None,
         broadcast: Optional[Broadcast] = None,
         directory_resolver: Callable[[str], Any] = resolve_anchor_meeting_dir,
         recorders: Optional[Callable[[], List[Any]]] = None,
@@ -72,6 +87,9 @@ class MeetingCompanionRuntime:
         self._global_store = global_store or CompanionGlobalSettingsStore()
         self._evaluator = evaluator or CompanionEvaluator()
         self._chat_service = chat_service
+        self._investigator = investigator or CompanionInvestigator()
+        self._proposal_launcher: ProposalLauncher = proposal_launcher or TodoProposalLauncher()
+        self._proposal_policy: ProposalPolicy = DEFAULT_POLICY
         self._broadcast: Broadcast = broadcast or broadcast_to_clients
         self._directory_resolver = directory_resolver
         self._recorders = recorders or meeting_recording_registry.active_recorders
@@ -221,13 +239,23 @@ class MeetingCompanionRuntime:
             existing_segments=list(getattr(recorder, "transcript_segments", []) or []),
         )
 
-    async def _create_session(self, key: str, *, mode: Optional[CompanionMode], model_id: Any, focus: Optional[str] = None) -> CompanionSession:
+    async def _create_session(
+        self,
+        key: str,
+        *,
+        mode: Optional[CompanionMode],
+        model_id: Any,
+        focus: Optional[str] = None,
+        investigate: Optional[bool] = None,
+    ) -> CompanionSession:
         global_settings = await asyncio.to_thread(self._global_store.load)
+        self._proposal_policy = policy_from_settings(global_settings)
         settings = CompanionSettings(
             enabled=True,
             mode=mode or global_settings.default_mode,
             model_id=None if model_id is UNSET else (model_id or None),
             focus=(focus or "").strip(),
+            investigate=True if investigate is None else investigate,
         )
         session = CompanionSession(
             session_key=key,
@@ -237,10 +265,14 @@ class MeetingCompanionRuntime:
             capacity_guard=LagCapacityGuard(recorder_lag_provider(self._recorders)),
             broadcast=self._broadcast,
             chat_service=self._chat_service,
+            investigator=self._investigator,
+            proposal_policy=lambda: self._proposal_policy,
+            proposal_launcher=self._proposal_launcher,
             directory_resolver=self._directory_resolver,
             mode_explicit=mode is not None,
             model_explicit=model_id is not UNSET,
             focus_explicit=focus is not None,
+            investigate_explicit=investigate is not None,
             clock=self._clock,
         )
         self._sessions[key] = session
@@ -256,6 +288,10 @@ class MeetingCompanionRuntime:
 
     # ------------------------------------------------------------------ public API used by routes
 
+    def live_statuses(self) -> List[CompanionStatus]:
+        """The status of every live Companion session, for the resource advisor."""
+        return [session.status() for session in list(self._sessions.values())]
+
     def session_for(self, meeting_id: str) -> Optional[CompanionSession]:
         return next((session for session in self._sessions.values() if meeting_id in session.meeting_ids()), None)
 
@@ -270,16 +306,17 @@ class MeetingCompanionRuntime:
         mode: Optional[CompanionMode] = None,
         model_id: Any = UNSET,
         focus: Optional[str] = None,
+        investigate: Optional[bool] = None,
     ) -> CompanionSession:
         async with self._lifecycle_lock:
             existing = self.session_for(meeting_id)
             if existing is not None:
-                existing.update_settings(mode=mode, model_id=model_id, focus=focus)
+                existing.update_settings(mode=mode, model_id=model_id, focus=focus, investigate=investigate)
                 return existing
             recorder = next((candidate for candidate in self._recorders() if getattr(candidate, "meeting_id", None) == meeting_id), None)
             if recorder is None:
                 raise CompanionNotLive(meeting_id)
-            return await self._create_session(session_key_for(meeting_id, recorder), mode=mode, model_id=model_id, focus=focus)
+            return await self._create_session(session_key_for(meeting_id, recorder), mode=mode, model_id=model_id, focus=focus, investigate=investigate)
 
     async def disable(self, meeting_id: str) -> bool:
         async with self._lifecycle_lock:
@@ -289,6 +326,10 @@ class MeetingCompanionRuntime:
             self._sessions.pop(session.session_key, None)
             await session.close(final_enabled=False)
             return True
+
+    @property
+    def proposal_launcher(self) -> ProposalLauncher:
+        return self._proposal_launcher
 
     def get_global_settings(self) -> CompanionGlobalSettings:
         return self._global_store.load()
@@ -300,6 +341,9 @@ class MeetingCompanionRuntime:
         default_mode: Optional[CompanionMode] = None,
         screen_share_note_dismissed: Optional[bool] = None,
         next_focus: Optional[str] = None,
+        proposal_mode: Optional[ProposalMode] = None,
+        proposal_capabilities: Optional[List[ProposalAction]] = None,
+        auto_execute_capabilities: Optional[List[AutoProposalAction]] = None,
     ) -> CompanionGlobalSettings:
         changes: Dict[str, Any] = {}
         if auto_enable is not None:
@@ -310,8 +354,15 @@ class MeetingCompanionRuntime:
             changes["screen_share_note_dismissed"] = screen_share_note_dismissed
         if next_focus is not None:
             changes["next_focus"] = next_focus.strip()
+        if proposal_mode is not None:
+            changes["proposal_mode"] = proposal_mode
+        if proposal_capabilities is not None:
+            changes["proposal_capabilities"] = list(dict.fromkeys(proposal_capabilities))
+        if auto_execute_capabilities is not None:
+            changes["auto_execute_capabilities"] = list(dict.fromkeys(auto_execute_capabilities))
         updated = self._global_store.load().model_copy(update=changes)
         self._global_store.save(updated)
+        self._proposal_policy = policy_from_settings(updated)
         return updated
 
 

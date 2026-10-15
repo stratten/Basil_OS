@@ -79,6 +79,61 @@ describe('hydrateAgentFromBackend checkpoint recovery', () => {
     });
   });
 
+  it('does not restore a checkpoint the user just answered when hydration still reads awaiting input', async () => {
+    agentStore.registerAgent('answered-task');
+    agentStore.showCheckpoint('answered-task', { checkpoint_id: 'period-choice', prompt: 'Which period?', input_type: 'data' });
+    agentStore.markCheckpointResumeProcessing('answered-task', 'Resuming...');
+    vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
+      id: 'answered-task',
+      checkpoint_data: { checkpoint_id: 'period-choice', prompt: 'Which period?', input_type: 'selection', options: ['A', 'B'] },
+    }));
+
+    const outcome = await hydrateAgentFromBackend('answered-task');
+
+    expect(outcome).toBe('hydrated');
+    expect(agentStore.getAgent('answered-task')).toMatchObject({
+      status: 'processing',
+      showCheckpointPrompt: false,
+      currentCheckpoint: undefined,
+      isCheckpointResumePending: true,
+    });
+  });
+
+  it('restores a checkpoint normally once a live event has confirmed the resume', async () => {
+    agentStore.registerAgent('confirmed-task');
+    agentStore.showCheckpoint('confirmed-task', { checkpoint_id: 'first', prompt: 'First?', input_type: 'data' });
+    agentStore.markCheckpointResumeProcessing('confirmed-task', 'Resuming...');
+    agentStore.handleWSEvent({ event_type: 'agent_task_streaming', agent_task_id: 'confirmed-task', partial_result: 'Working' });
+    expect(agentStore.getAgent('confirmed-task')?.isCheckpointResumePending).toBe(false);
+    vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
+      id: 'confirmed-task',
+      checkpoint_data: { checkpoint_id: 'second', prompt: 'Second?', input_type: 'selection', options: ['A', 'B'] },
+    }));
+
+    hydrateAgentFromBackend('confirmed-task');
+
+    await vi.waitFor(() => {
+      const agent = agentStore.getAgent('confirmed-task');
+      expect(agent?.status).toBe('awaitingInput');
+      expect(agent?.currentCheckpoint?.checkpoint_id).toBe('second');
+    });
+  });
+
+  it('brings the card back and clears the pending flag when the submit fails', () => {
+    agentStore.registerAgent('failed-submit-task');
+    const checkpoint = { checkpoint_id: 'retry-me', prompt: 'Which?', input_type: 'data' as const };
+    agentStore.showCheckpoint('failed-submit-task', checkpoint);
+    agentStore.markCheckpointResumeProcessing('failed-submit-task', 'Resuming...');
+
+    agentStore.showCheckpoint('failed-submit-task', checkpoint);
+
+    expect(agentStore.getAgent('failed-submit-task')).toMatchObject({
+      isCheckpointResumePending: false,
+      showCheckpointPrompt: true,
+      status: 'awaitingInput',
+    });
+  });
+
   it('restores a live provider form after its WebSocket event was missed', async () => {
     agentStore.registerAgent('provider-task');
     vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({

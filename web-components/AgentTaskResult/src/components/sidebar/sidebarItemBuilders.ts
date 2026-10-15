@@ -7,6 +7,9 @@ export function isActiveStatus(s: string): boolean {
   return ['processing', 'routing', 'capturing', 'awaitingInput', 'paused'].includes(s);
 }
 
+// Backend statuses of a chain that is still running or waiting; the backend refuses to archive these.
+const UNARCHIVABLE_BACKEND_STATUSES = ['capturing', 'routing', 'processing', 'awaiting_user_input', 'needs_clarification', 'paused'];
+
 interface BuildHistoryItemsArgs {
   allAgents: AgentState[];
   history: AgentTaskListItem[];
@@ -21,6 +24,9 @@ interface BuildHistoryItemsArgs {
   selectAgent: (agentTaskId: string) => void;
   handleSelectHistoryId: (id: string) => void;
   requestDeleteId: (id: string) => void;
+  // Archives (or, with archiveLabel 'Unarchive', restores) a row's chain; only rows that are not running offer it.
+  archiveAgentTask?: (id: string) => void;
+  archiveLabel?: 'Archive' | 'Unarchive';
   detachAgentTask: (rootTaskId: string) => void;
   cancelAgentTask: (agentTaskId: string) => void;
   getAgentRootTaskId: (agentTaskId: string) => string | undefined;
@@ -47,6 +53,8 @@ export function buildHistoryItems({
   selectAgent,
   handleSelectHistoryId,
   requestDeleteId,
+  archiveAgentTask,
+  archiveLabel,
   detachAgentTask,
   cancelAgentTask,
   getAgentRootTaskId,
@@ -90,6 +98,8 @@ export function buildHistoryItems({
         onDetach: detachAgentTask,
         onCancel: active ? cancelAgentTask : undefined,
         onRequestDelete: !active ? requestDeleteId : undefined,
+        onArchive: !active ? archiveAgentTask : undefined,
+        archiveLabel,
         onContextMenu: openContextMenuForId,
         originSourceLabel: agent.originType === 'conversation'
           ? 'From Conversation'
@@ -126,6 +136,8 @@ export function buildHistoryItems({
         onSelect: handleSelectHistoryId,
         onDetach: detachAgentTask,
         onRequestDelete: requestDeleteId,
+        onArchive: UNARCHIVABLE_BACKEND_STATUSES.includes(item.status) ? undefined : archiveAgentTask,
+        archiveLabel,
         onContextMenu: openContextMenuForId,
         // Surface the scheduled-run provenance to the row itself so it can
         // render the clock badge inline next to the title. Falls back to a

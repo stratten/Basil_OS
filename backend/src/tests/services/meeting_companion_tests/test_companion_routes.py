@@ -54,14 +54,14 @@ async def test_companion_router_is_registered_before_the_lifecycle_catch_all(hom
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/meetings/companion/settings")
         assert response.status_code == 200
-        assert set(response.json()) == {"auto_enable", "default_mode", "screen_share_note_dismissed", "next_focus"}
+        assert set(response.json()) == {"auto_enable", "default_mode", "screen_share_note_dismissed", "next_focus", "proposal_mode", "proposal_capabilities", "auto_execute_capabilities"}
     await env.runtime.shutdown()
 
 
 @pytest.mark.asyncio
 async def test_global_settings_roundtrip_and_validation(home, runtime_factory):
     env = runtime_factory()
-    base = {"auto_enable": False, "default_mode": "active", "screen_share_note_dismissed": False, "next_focus": ""}
+    base = {"auto_enable": False, "default_mode": "active", "screen_share_note_dismissed": False, "next_focus": "", "proposal_mode": "suggestion_only", "proposal_capabilities": ["todo", "agent_task", "assistant_session"], "auto_execute_capabilities": []}
     async with client_for(env) as client:
         assert (await client.get("/meetings/companion/settings")).json() == base
         updated = await client.put("/meetings/companion/settings", json={"auto_enable": True, "default_mode": "passive"})

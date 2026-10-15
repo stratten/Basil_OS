@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
+from api.services.document_reading import COMPANION_LIMITS, DocumentReadLimits, DocumentTextCache, is_document_path
+
 from .context_pack import ContextExcerpt, ContextPack
 from .similarity import STOPWORDS
 
@@ -41,7 +43,7 @@ DENY_EXTENSIONS = frozenset(
         ".zip", ".gz", ".tar", ".tgz", ".bz2", ".xz", ".7z", ".rar", ".dmg", ".pkg", ".iso",
         ".woff", ".woff2", ".ttf", ".otf", ".eot", ".so", ".dylib", ".a", ".o", ".dll", ".exe",
         ".class", ".jar", ".pyc", ".pyo", ".bin", ".dat", ".onnx", ".gguf", ".safetensors", ".pt",
-        ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".key", ".numbers", ".pages",
+        ".doc", ".xls", ".ppt", ".key",
     }
 )
 SENSITIVE_HOME_SUBPATHS = (
@@ -132,6 +134,11 @@ class SearchLimits:
     max_excerpt_chars: int = 1200
     max_manifest_files: int = 20_000
     manifest_ttl_seconds: float = 60.0
+    document_limits: DocumentReadLimits = COMPANION_LIMITS
+    document_cold_seconds: float = 1.2
+    max_warm_documents: int = 60
+    warm_budget_seconds: float = 20.0
+    warm_document_seconds: float = 8.0
 
 
 @dataclass(frozen=True)
@@ -140,6 +147,20 @@ class FileEntry:
     path: Path
     size: int
     mtime: float
+
+
+READ_FILE_MAX_BYTES = 1_000_000
+
+
+@dataclass(frozen=True)
+class AttachedFileText:
+    """The result of reading one attached file: ``ok``, ``not_found`` (not a member of any attached root) or ``unreadable``."""
+
+    status: str
+    display_path: str = ""
+    text: str = ""
+    truncated: bool = False
+    detail: str = ""
 
 
 @dataclass
@@ -167,15 +188,22 @@ def _pattern_for_query(query: str) -> Optional[str]:
     words = query_words(query)
     if not words or len("".join(words)) < 4:
         return None
-    return "[_\\-\\s.]?".join(re.escape(word) for word in words)
+    return "[_\\-\\s.|]{0,3}".join(re.escape(word) for word in words)
 
 
 class ContextSearchService:
-    def __init__(self, limits: Optional[SearchLimits] = None, clock: Callable[[], float] = time.monotonic) -> None:
+    def __init__(
+        self,
+        limits: Optional[SearchLimits] = None,
+        clock: Callable[[], float] = time.monotonic,
+        documents: Optional[DocumentTextCache] = None,
+    ) -> None:
         self.limits = limits or SearchLimits()
         self._clock = clock
         self._lock = threading.RLock()
         self._roots: Dict[str, _RootState] = {}
+        self._documents = documents if documents is not None else DocumentTextCache()
+        self._generation = 0
 
     def add_root(self, root_id: str, resolved_path: Path, kind: str, display_name: str) -> None:
         gitignore = GitignoreFilter.from_root(resolved_path) if kind == "folder" else GitignoreFilter([])
@@ -184,7 +212,11 @@ class ContextSearchService:
 
     def remove_root(self, root_id: str) -> None:
         with self._lock:
-            self._roots.pop(root_id, None)
+            removed = self._roots.pop(root_id, None)
+            if removed is not None:
+                self._generation += 1
+        if removed is not None:
+            self._documents.retain_under(self.root_paths())
 
     def has_roots(self) -> bool:
         with self._lock:
@@ -205,6 +237,7 @@ class ContextSearchService:
         """Search every attached root for ``queries`` within the limits; never raises for ordinary I/O problems."""
         active = limits or self.limits
         started = self._clock()
+        generation = self._current_generation()
         pack = ContextPack(queries=list(queries))
         patterns = [(index, _pattern_for_query(query)) for index, query in enumerate(queries)]
         patterns = [(index, pattern) for index, pattern in patterns if pattern]
@@ -228,11 +261,11 @@ class ContextSearchService:
             if self._clock() - started > active.time_budget_seconds or total_bytes >= active.max_total_bytes:
                 pack.budget_exhausted = True
                 break
-            text = read_entry_text(entry, active.max_file_bytes)
+            text, counted_bytes = self._entry_text(entry, path_score, active, started)
             if text is None:
                 continue
             pack.scanned_files += 1
-            total_bytes += entry.size
+            total_bytes += counted_bytes
             collected.extend(_excerpts_from_text(text, entry, state, path_score, combined, active))
         collected.sort(key=lambda scored: -scored[0])
         per_file: Dict[str, int] = {}
@@ -257,7 +290,107 @@ class ContextSearchService:
                 break
         pack.excerpts = chosen
         pack.duration_ms = int((self._clock() - started) * 1000)
+        self._reconcile_documents(generation)
         return pack
+
+    def _current_generation(self) -> int:
+        with self._lock:
+            return self._generation
+
+    def _reconcile_documents(self, generation: int) -> None:
+        """Drop cached text for sources detached while a search or warm-up was running."""
+        if self._current_generation() != generation:
+            self._documents.retain_under(self.root_paths())
+
+    def _entry_text(
+        self, entry: FileEntry, path_score: int, limits: SearchLimits, started: float
+    ) -> Tuple[Optional[str], int]:
+        """Text and the byte cost it counts against the scan budget, from disk or from the document cache."""
+        if not is_document_path(entry.path):
+            return read_entry_text(entry, limits.max_file_bytes), entry.size
+        remaining = limits.time_budget_seconds - (self._clock() - started)
+        cold_ok = path_score >= 1 and remaining > 0.2
+        result = self._documents.read(
+            entry.path,
+            entry.size,
+            entry.mtime,
+            limits.document_limits,
+            deadline_seconds=min(limits.document_cold_seconds, max(remaining, 0.0)),
+            cold_ok=cold_ok,
+        )
+        if result is None or not result.usable:
+            return None, 0
+        return result.text, len(result.text)
+
+    def warm_documents(self) -> int:
+        """Read the newest attached documents into the cache within the warm-up budget; returns how many have text."""
+        limits = self.limits
+        started = self._clock()
+        generation = self._current_generation()
+        with self._lock:
+            states = list(self._roots.values())
+        entries = [entry for state in states for entry in self._manifest(state, started) if is_document_path(entry.path)]
+        entries.sort(key=lambda candidate: -candidate.mtime)
+        warmed = 0
+        for entry in entries[: limits.max_warm_documents]:
+            remaining = limits.warm_budget_seconds - (self._clock() - started)
+            if remaining <= 0 or self._current_generation() != generation:
+                break
+            result = self._documents.read(
+                entry.path,
+                entry.size,
+                entry.mtime,
+                limits.document_limits,
+                deadline_seconds=min(remaining, limits.warm_document_seconds),
+                cold_ok=True,
+            )
+            if result is not None and result.usable:
+                warmed += 1
+        self._reconcile_documents(generation)
+        return warmed
+
+    def read_attached_file(self, display_path: str, *, deadline_seconds: float = 8.0) -> AttachedFileText:
+        """Full text of one attached file by the path a search showed; only manifest members resolve."""
+        wanted = (display_path or "").strip().replace("\\", "/").strip("/")
+        if not wanted:
+            return AttachedFileText(status="not_found")
+        with self._lock:
+            states = list(self._roots.values())
+        now = self._clock()
+        for state in states:
+            if state.kind == "file":
+                if wanted != state.display_name:
+                    continue
+                relative = state.path.name
+            else:
+                prefix = f"{state.display_name}/"
+                if not wanted.startswith(prefix):
+                    continue
+                relative = wanted[len(prefix) :]
+            entry = next((candidate for candidate in self._manifest(state, now) if candidate.rel == relative), None)
+            if entry is None:
+                continue
+            canonical = state.display_name if state.kind == "file" else f"{state.display_name}/{entry.rel}"
+            return self._read_entry(entry, canonical, deadline_seconds)
+        return AttachedFileText(status="not_found")
+
+    def _read_entry(self, entry: FileEntry, display_path: str, deadline_seconds: float) -> AttachedFileText:
+        if is_document_path(entry.path):
+            result = self._documents.read(
+                entry.path,
+                entry.size,
+                entry.mtime,
+                self.limits.document_limits,
+                deadline_seconds=deadline_seconds,
+                cold_ok=True,
+            )
+            if result is None or not result.usable:
+                return AttachedFileText(status="unreadable", display_path=display_path, detail=result.status if result is not None else "unreadable")
+            return AttachedFileText(status="ok", display_path=display_path, text=result.text, truncated=result.truncated)
+        text = read_entry_text(entry, READ_FILE_MAX_BYTES)
+        if text is None:
+            return AttachedFileText(status="unreadable", display_path=display_path, detail="binary or larger than 1 MB")
+        return AttachedFileText(status="ok", display_path=display_path, text=text)
 
     def _manifest(self, state: _RootState, now: float) -> List[FileEntry]:
         with self._lock:

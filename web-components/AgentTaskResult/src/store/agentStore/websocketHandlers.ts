@@ -76,6 +76,8 @@ export class AgentStore extends BlockerEventAgentStore {
       a.status = 'processing';
       a.errorMessage = undefined;
       a.isRetryPending = false;
+      // A live event proves the resume was accepted, so durable reads are trustworthy again.
+      a.isCheckpointResumePending = false;
       if (isActiveExecutionEvent) {
         // A real execution event is authoritative evidence that a previously
         // shown checkpoint is no longer awaiting input. This self-heals a
@@ -242,6 +244,8 @@ export class AgentStore extends BlockerEventAgentStore {
       }
       case 'checkpoint_resumed':
         this.markCheckpointResumeProcessing(agentTaskId, event.message as string || 'Resumed');
+        // The backend confirming the resume ends the delivery window that the local submit opened.
+        this.updateAgent(agentTaskId, a => { a.isCheckpointResumePending = false; });
         this.recordVisibleProgressUpdate(agentTaskId, event.message as string || 'Resumed', true, false);
         break;
       case 'session_context_info':
@@ -361,6 +365,7 @@ export class AgentStore extends BlockerEventAgentStore {
         })).filter(file => Boolean(file.path))
       : [];
     const error = event.error as string | undefined;
+    this.updateModelUsed(agentTaskId, typeof event.model_used === 'string' ? event.model_used : undefined);
     const outcome =
       (event.outcome as string | undefined) ||
       (resultPayload?.outcome as string | undefined);

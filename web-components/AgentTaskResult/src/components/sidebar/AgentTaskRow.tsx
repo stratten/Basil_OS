@@ -33,6 +33,9 @@ export interface AgentTaskRowProps {
   onDetach?: (id: string) => void;
   onCancel?: (id: string) => void;
   onRequestDelete?: (id: string) => void;
+  // Archive (or, in the Archived view, restore) this row's chain. Offered only for rows that are not running.
+  onArchive?: (id: string) => void;
+  archiveLabel?: 'Archive' | 'Unarchive';
   onContextMenu?: (e: MouseEvent, id: string) => void;
   // When true, this row is mid-delete-confirmation: instead of its normal
   // content, it renders a compact inline "Delete this task?" prompt
@@ -55,6 +58,9 @@ export interface AgentTaskRowProps {
   nextFollowUpAt?: string;
 }
 
+// Archive and Delete are revealed side by side, 60px each.
+const SWIPE_ACTION_WIDTH_WITH_ARCHIVE = 120;
+
 function AgentTaskRowImpl({
   id,
   title,
@@ -72,6 +78,8 @@ function AgentTaskRowImpl({
   onDetach,
   onCancel,
   onRequestDelete,
+  onArchive,
+  archiveLabel = 'Archive',
   onContextMenu,
   scheduledRunSourceTitle,
   originSourceLabel,
@@ -85,7 +93,10 @@ function AgentTaskRowImpl({
   const isActive = ['processing', 'routing', 'capturing', 'awaitingInput', 'paused'].includes(status);
   const showCancel = isActive && hovered && !isSelected && !!onCancel;
   const showTrash = !isActive && hovered && !!onRequestDelete;
-  const revealDelete = useHistoryRowRevealDelete({ enabled: !isActive && !!onRequestDelete });
+  const revealDelete = useHistoryRowRevealDelete({
+    enabled: !isActive && !!onRequestDelete,
+    actionWidth: onArchive ? SWIPE_ACTION_WIDTH_WITH_ARCHIVE : undefined,
+  });
 
   const isPaused = status === 'paused';
   const followUpDue = nextFollowUpAt && !isActive ? describeFollowUpDue(nextFollowUpAt) : null;
@@ -133,6 +144,18 @@ function AgentTaskRowImpl({
         onContextMenu={onContextMenu ? (event) => onContextMenu(event, id) : undefined}
         onWheel={revealDelete.handleWheel}
       >
+        {revealDelete.isOpen && onArchive && (
+          <button
+            className="swipe-archive-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              revealDelete.close();
+              onArchive(id);
+            }}
+          >
+            {archiveLabel}
+          </button>
+        )}
         {revealDelete.isOpen && onRequestDelete && (
           <button
             className="swipe-delete-btn"

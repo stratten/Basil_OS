@@ -602,4 +602,73 @@ describe('InlineArtifactPreview', () => {
       view.cleanup();
     }
   });
+
+  describe('image payloads', () => {
+    const pngDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    const imageArtifact = () => artifact({
+      artifactId: 'artifact-chart',
+      displayName: 'chart.png',
+      localPath: '/private/reports/chart.png',
+    });
+    const imagePayload = (dataUrl: string | undefined, error?: string): FilePreviewPayload => ({
+      requestId: 'preview-image',
+      path: '/private/reports/chart.png',
+      name: 'chart.png',
+      kind: error ? 'unsupported' : 'image',
+      ...(dataUrl ? { dataUrl } : {}),
+      ...(error ? { error } : {}),
+    });
+
+    it('renders an img carrying the data URL with the display name as alt text', async () => {
+      const transport = fakeTransport();
+      (transport.previewFile as ReturnType<typeof vi.fn>).mockResolvedValueOnce(imagePayload(pngDataUrl));
+      const view = mount(imageArtifact(), 'standalone', transport);
+
+      try {
+        await flushPreview();
+        const image = view.container.querySelector<HTMLImageElement>('img.inline-artifact-preview-image');
+        expect(image?.getAttribute('src')).toBe(pngDataUrl);
+        expect(image?.getAttribute('alt')).toBe('chart.png');
+        expect(view.container.textContent).toContain('Image Preview');
+      } finally {
+        view.cleanup();
+      }
+    });
+
+    it('shows the native message instead of an image when the payload carries an error', async () => {
+      const transport = fakeTransport();
+      (transport.previewFile as ReturnType<typeof vi.fn>).mockResolvedValueOnce(imagePayload(undefined, 'This image could not be opened for preview.'));
+      const view = mount(imageArtifact(), 'standalone', transport);
+
+      try {
+        await flushPreview();
+        expect(view.container.querySelector('img')).toBeNull();
+        expect(view.container.textContent).toContain('This image could not be opened for preview.');
+      } finally {
+        view.cleanup();
+      }
+    });
+
+    it('replaces the image source when a live update arrives for the same request', async () => {
+      const transport = fakeTransport();
+      let updateHandler: ((payload: FilePreviewPayload) => void) | undefined;
+      (transport.registerFilePreviewUpdateHandler as ReturnType<typeof vi.fn>).mockImplementation(handler => {
+        updateHandler = handler;
+        return () => {};
+      });
+      (transport.previewFile as ReturnType<typeof vi.fn>).mockResolvedValueOnce(imagePayload(pngDataUrl));
+      const view = mount(imageArtifact(), 'standalone', transport);
+
+      try {
+        await flushPreview();
+        const updatedUrl = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+        act(() => {
+          updateHandler?.(imagePayload(updatedUrl));
+        });
+        expect(view.container.querySelector('img.inline-artifact-preview-image')?.getAttribute('src')).toBe(updatedUrl);
+      } finally {
+        view.cleanup();
+      }
+    });
+  });
 });

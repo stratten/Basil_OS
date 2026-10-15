@@ -45,10 +45,8 @@ export function presentRunStatus(run: AgentTaskRunFocusSummary): RunStatusPresen
   if (isVerifiedContinuityNote) {
     return { label: 'Completed with note', tone: 'note' };
   }
-  // A partial run that wrote documents stays red below: an unverified write
-  // genuinely needs attention, whereas a document-free partial delivered
-  // useful content with a residual gap.
-  if (run.outcome === 'partial' && run.documentCount === 0) {
+  // A partial outcome is never red: the run delivered useful content with a residual gap, whether or not it wrote documents and whether or not those are verified.
+  if (run.outcome === 'partial') {
     return { label: 'Partial result', tone: 'partial' };
   }
   if (run.taskStatus === 'failed') {
@@ -68,6 +66,8 @@ export function runAttention(
   run: AgentTaskRunFocusSummary,
   overview: AgentRunOverviewPresentation,
 ): RunAttention | null {
+  // A run the user stopped is already explained by its status dot and run card, so it gets no attention badge.
+  if (run.taskStatus === 'canceled') return null;
   const status = presentRunStatus(run);
   if (status.tone === 'failed') return { kind: 'failed', label: 'Needs attention' };
   const hasUnansweredExchange = overview.stages.some(

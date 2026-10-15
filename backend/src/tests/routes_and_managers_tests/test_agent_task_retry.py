@@ -40,6 +40,7 @@ async def test_retry_retires_pending_approval_before_returning_task_to_routing()
         get_agent_task=AsyncMock(return_value=task),
         clear_agent_task_execution_timeline=AsyncMock(),
         update_agent_task_status=AsyncMock(),
+        unarchive_agent_task_chain=AsyncMock(return_value="ok"),
     )
     approval_repository = SimpleNamespace(
         list_pending_approvals_for_agent_task=AsyncMock(return_value=[approval]),
@@ -67,6 +68,7 @@ async def test_retry_retires_pending_approval_before_returning_task_to_routing()
         ["task-1"],
     )
     assert pending_future.cancelled() is True
+    agent_task_service.unarchive_agent_task_chain.assert_awaited_once_with("task-1")
     assert agent_task_service.update_agent_task_status.await_args_list[0].kwargs["status"] == "failed"
     assert agent_task_service.update_agent_task_status.await_args_list[1].kwargs["status"] == "routing"
 
@@ -86,6 +88,7 @@ async def test_retry_persists_model_id_override_into_accumulated_artifacts() -> 
         get_agent_task=AsyncMock(return_value=task),
         clear_agent_task_execution_timeline=AsyncMock(),
         update_agent_task_status=AsyncMock(),
+        unarchive_agent_task_chain=AsyncMock(return_value="ok"),
     )
     approval_repository = SimpleNamespace(
         list_pending_approvals_for_agent_task=AsyncMock(return_value=[]),
@@ -130,6 +133,7 @@ async def test_retry_without_model_override_leaves_accumulated_artifacts_untouch
         get_agent_task=AsyncMock(return_value=task),
         clear_agent_task_execution_timeline=AsyncMock(),
         update_agent_task_status=AsyncMock(),
+        unarchive_agent_task_chain=AsyncMock(return_value="ok"),
     )
     approval_repository = SimpleNamespace(
         list_pending_approvals_for_agent_task=AsyncMock(return_value=[]),

@@ -9,6 +9,7 @@ from ...infrastructure.connection import get_sync_connection, get_async_connecti
 
 from .....models import AgentTask
 from . import context_updates, create_update, revision_repository
+from .archive_operations import ArchiveOutcome, set_chain_archived_async
 from .delete_operations import delete_agent_task
 from .mappers import (
     build_agent_task_data_dict,
@@ -298,3 +299,11 @@ class AgentTaskMutations:
     async def delete_agent_task(self, agent_task_id: str, cascade: bool = True) -> bool:
         """Delete a agent_task by ID."""
         return await delete_agent_task(self.db_path, agent_task_id, cascade)
+
+    async def archive_agent_task_chain(self, agent_task_id: str) -> ArchiveOutcome:
+        """Archive the chain containing the task; returns "ok", "not_found" or "active"."""
+        return await set_chain_archived_async(self.db_path, agent_task_id, True)
+
+    async def unarchive_agent_task_chain(self, agent_task_id: str) -> ArchiveOutcome:
+        """Un-archive the chain containing the task; returns "ok" or "not_found"."""
+        return await set_chain_archived_async(self.db_path, agent_task_id, False)

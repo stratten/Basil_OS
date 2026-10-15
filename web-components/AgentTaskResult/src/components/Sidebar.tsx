@@ -12,6 +12,7 @@ import NativeSymbolIcon from '../../../shared/NativeSymbolIcon';
 import { AgentTaskRow } from './sidebar/AgentTaskRow';
 import type { AgentTaskRowProps } from './sidebar/AgentTaskRow';
 import {
+  ArchiveBoxIcon,
   CalendarIcon,
   MicrophoneIcon,
   OpenInSeparateWindowIcon,
@@ -85,8 +86,10 @@ export default function Sidebar({
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyDeepSearching, setHistoryDeepSearching] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'history' | 'scheduled'>('history');
+  const [viewMode, setViewMode] = useState<'history' | 'scheduled' | 'archived'>('history');
   const [searchQuery, setSearchQuery] = useState('');
+  // Root ids archived during this session. buildHistoryItems merges live store agents into the Tasks list unconditionally, so these are filtered out of it until the chain becomes active again.
+  const [sessionArchivedRootIds, setSessionArchivedRootIds] = useState<Set<string>>(() => new Set());
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const historyRequestSeqRef = useRef(0);
 
@@ -100,6 +103,7 @@ export default function Sidebar({
     item: AgentTaskListItem;
     rootTaskId?: string;
     canDelete?: boolean;
+    canArchive?: boolean;
   } | null>(null);
 
   const activeIds = new Set(allAgents.map(a => a.agentTaskId));
@@ -108,13 +112,15 @@ export default function Sidebar({
     if (!canLoadData || !api.isApiReady()) return;
 
     const requestSeq = ++historyRequestSeqRef.current;
+    const isArchivedView = viewMode === 'archived';
+    // The Archived view lists only backend results; live store agents never merge into it.
     const filterVisibleHistory = (agentTasks: AgentTaskListItem[]) =>
-      agentTasks.filter(c => !activeIds.has(c.id));
+      isArchivedView ? agentTasks : agentTasks.filter(c => !activeIds.has(c.id));
 
     setHistoryLoading(true);
     setHistoryError(null);
     try {
-      const result = await api.listAgentTasks(HISTORY_PAGE_SIZE, 0);
+      const result = await api.listAgentTasks(HISTORY_PAGE_SIZE, 0, undefined, { archived: isArchivedView });
       if (requestSeq !== historyRequestSeqRef.current) return;
 
       const visibleAgentTasks = filterVisibleHistory(result.agentTasks);
@@ -129,7 +135,7 @@ export default function Sidebar({
         setHistoryLoading(false);
       }
     }
-  }, [activeIds, canLoadData]);
+  }, [activeIds, canLoadData, viewMode]);
 
   const loadScheduled = useCallback(async () => {
     if (!canLoadData || !api.isApiReady()) return;
@@ -150,10 +156,10 @@ export default function Sidebar({
   useEffect(() => {
     if (!isExpanded) return;
     if (!canLoadData) return;
-    if (viewMode === 'history') {
-      loadHistory();
-    } else {
+    if (viewMode === 'scheduled') {
       loadScheduled();
+    } else {
+      loadHistory();
     }
   }, [isExpanded, viewMode, canLoadData]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -205,10 +211,11 @@ export default function Sidebar({
 
     searchTimerRef.current = setTimeout(() => {
       setHistoryDeepSearching(true);
-      api.searchAgentTasks(trimmed, HISTORY_PAGE_SIZE, 0)
+      const isArchivedView = viewMode === 'archived';
+      api.searchAgentTasks(trimmed, HISTORY_PAGE_SIZE, 0, { archived: isArchivedView })
         .then(result => {
           if (requestSeq !== historyRequestSeqRef.current) return;
-          setHistory(result.agentTasks.filter(c => !activeIds.has(c.id)));
+          setHistory(isArchivedView ? result.agentTasks : result.agentTasks.filter(c => !activeIds.has(c.id)));
         })
         .catch(err => {
           if (requestSeq === historyRequestSeqRef.current) {
@@ -242,6 +249,20 @@ export default function Sidebar({
     const item = history.find(historyItem => historyItem.id === id);
     if (item) void handleSelectHistory(item);
   }, [handleSelectHistory, history]);
+
+  const switchViewMode = (next: 'history' | 'scheduled' | 'archived') => {
+    if (next === viewMode) return;
+    // Invalidate any in-flight list or search so a slow response cannot repopulate the previous view.
+    historyRequestSeqRef.current += 1;
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    setSearchQuery('');
+    setHistoryDeepSearching(false);
+    setHistoryError(null);
+    setHistory([]);
+    setLoadedHistory([]);
+    setContextMenu(null);
+    setViewMode(next);
+  };
 
   const handleNewAgent = () => {
     if (viewMode === 'scheduled') {
@@ -292,6 +313,7 @@ export default function Sidebar({
       item,
       rootTaskId: agent?.rootTaskId,
       canDelete: agent ? !isActiveStatus(agent.status) : true,
+      canArchive: agent ? !isActiveStatus(agent.status) : !isLiveAgentTaskStatus(item.status),
     });
   }, [itemForAgentId]);
 
@@ -321,13 +343,61 @@ export default function Sidebar({
     setPendingDeleteId(null);
   }, []);
 
+  const archiveChain = useCallback(async (id: string) => {
+    const rootId = agentStore.getAgent(id)?.rootTaskId || id;
+    try {
+      await api.archiveAgentTask(id);
+      setHistory(prev => prev.filter(h => h.id !== id && h.id !== rootId));
+      setLoadedHistory(prev => prev.filter(h => h.id !== id && h.id !== rootId));
+      setSessionArchivedRootIds(prev => new Set(prev).add(rootId));
+      setContextMenu(null);
+    } catch (err) {
+      console.error('[Sidebar] Archive failed:', err);
+    }
+  }, []);
+
+  const unarchiveChain = useCallback(async (id: string) => {
+    try {
+      await api.unarchiveAgentTask(id);
+      setHistory(prev => prev.filter(h => h.id !== id));
+      setLoadedHistory(prev => prev.filter(h => h.id !== id));
+      setSessionArchivedRootIds(prev => {
+        if (!prev.has(id)) return prev;
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      setContextMenu(null);
+    } catch (err) {
+      console.error('[Sidebar] Unarchive failed:', err);
+    }
+  }, []);
+
+  // A chain archived this session returns to Tasks the moment its agent becomes active again (for example a follow-up submitted from an open detail view).
+  useEffect(() => {
+    if (sessionArchivedRootIds.size === 0) return;
+    const reactivated = allAgents.filter(agent =>
+      isActiveStatus(agent.status) && sessionArchivedRootIds.has(agent.rootTaskId || agent.agentTaskId));
+    if (reactivated.length === 0) return;
+    setSessionArchivedRootIds(prev => {
+      const next = new Set(prev);
+      reactivated.forEach(agent => next.delete(agent.rootTaskId || agent.agentTaskId));
+      return next;
+    });
+  }, [allAgents, sessionArchivedRootIds]);
+
   const isSearchActive = searchQuery.trim().length > 0;
   const pendingFollowUps = usePendingFollowUps();
 
+  const isArchivedView = viewMode === 'archived';
+  const visibleAgents = isArchivedView
+    ? []
+    : allAgents.filter(agent => !sessionArchivedRootIds.has(agent.rootTaskId || agent.agentTaskId));
+
   const historyItems: AgentTaskRowProps[] = buildHistoryItems({
-    allAgents,
+    allAgents: visibleAgents,
     history,
-    activeIds,
+    activeIds: isArchivedView ? new Set<string>() : activeIds,
     detachedRoots: detachedRootsElsewhere ?? new Set<string>(),
     selectedId,
     viewedAgentTaskId,
@@ -335,6 +405,8 @@ export default function Sidebar({
     selectAgent,
     handleSelectHistoryId,
     requestDeleteId: requestDelete,
+    archiveAgentTask: isArchivedView ? unarchiveChain : archiveChain,
+    archiveLabel: isArchivedView ? 'Unarchive' : 'Archive',
     detachAgentTask: detachAgentTaskById,
     cancelAgentTask,
     getAgentRootTaskId: (agentTaskId) => agentStore.getAgent(agentTaskId)?.rootTaskId,
@@ -356,7 +428,7 @@ export default function Sidebar({
     deleteScheduledAgentTask,
   });
 
-  const unifiedItems: AgentTaskRowProps[] = viewMode === 'history'
+  const unifiedItems: AgentTaskRowProps[] = viewMode !== 'scheduled'
     ? historyItems.map(item => ({
         ...item,
         isPendingDelete: item.id === pendingDeleteId,
@@ -384,17 +456,29 @@ export default function Sidebar({
         inert={!isExpanded ? '' : undefined}
       >
       <div className="sidebar-header">
-        <span className="sidebar-header-title">{viewMode === 'history' ? 'Tasks' : 'Scheduled'}</span>
+        <span className="sidebar-header-title">
+          {viewMode === 'history' ? 'Tasks' : viewMode === 'scheduled' ? 'Scheduled' : 'Archived'}
+        </span>
         <div style={{ display: 'flex', gap: 'var(--padding-xs)' }}>
+          <button className="sidebar-toggle-btn" onClick={handleNewAgent} title="Start new agent">
+            {viewMode !== 'scheduled' ? <PlusCircleIcon /> : <span style={{ fontSize: 14, lineHeight: 1 }}>+</span>}
+          </button>
           <button
             className="sidebar-toggle-btn"
-            onClick={() => setViewMode(viewMode === 'history' ? 'scheduled' : 'history')}
-            title={viewMode === 'history' ? 'View scheduled tasks' : 'View task history'}
+            onClick={() => switchViewMode(viewMode === 'scheduled' ? 'history' : 'scheduled')}
+            title={viewMode === 'scheduled' ? 'View task history' : 'View scheduled tasks'}
+            aria-pressed={viewMode === 'scheduled'}
           >
             <CalendarIcon />
           </button>
-          <button className="sidebar-toggle-btn" onClick={handleNewAgent} title="Start new agent">
-            {viewMode === 'history' ? <PlusCircleIcon /> : <span style={{ fontSize: 14, lineHeight: 1 }}>+</span>}
+          <button
+            className="sidebar-toggle-btn"
+            onClick={() => switchViewMode(viewMode === 'archived' ? 'history' : 'archived')}
+            title={viewMode === 'archived' ? 'Back to tasks' : 'Archived'}
+            aria-label={viewMode === 'archived' ? 'Back to tasks' : 'Archived'}
+            aria-pressed={viewMode === 'archived'}
+          >
+            <ArchiveBoxIcon />
           </button>
           <button className="sidebar-toggle-btn" onClick={onToggle} title="Hide task history">
             <AgentTaskSidebarToggleIcon />
@@ -406,12 +490,12 @@ export default function Sidebar({
         <input
           className="sidebar-search-input"
           type="text"
-          placeholder={viewMode === 'history' ? 'Search tasks...' : 'Search scheduled...'}
+          placeholder={viewMode === 'history' ? 'Search tasks...' : viewMode === 'archived' ? 'Search archived...' : 'Search scheduled...'}
           value={searchQuery}
           onChange={e => {
             const value = e.target.value;
             setSearchQuery(value);
-            if (viewMode === 'history') {
+            if (viewMode !== 'scheduled') {
               handleSearch(value);
             } else {
               const lowered = value.toLowerCase();
@@ -426,7 +510,7 @@ export default function Sidebar({
       </div>
 
       <div className="sidebar-list" style={{ flex: 1 }}>
-        {viewMode === 'history' && historyDeepSearching && !historyLoading && (
+        {viewMode !== 'scheduled' && historyDeepSearching && !historyLoading && (
           <div style={{ padding: '6px 12px', fontSize: 11, color: 'var(--text-secondary)' }}>
             Searching full history...
           </div>
@@ -434,7 +518,7 @@ export default function Sidebar({
         {historyLoading && (
           <div className="empty-state">
             <div className="loading-spinner" />
-            <span>{viewMode === 'history' ? 'Loading tasks...' : 'Loading scheduled jobs...'}</span>
+            <span>{viewMode === 'scheduled' ? 'Loading scheduled jobs...' : viewMode === 'archived' ? 'Loading archived tasks...' : 'Loading tasks...'}</span>
           </div>
         )}
         {historyError && (
@@ -447,7 +531,7 @@ export default function Sidebar({
         {!historyLoading && !historyError && unifiedItems.length === 0 && (
           <div className="empty-state">
             <MicrophoneIcon size={24} />
-            <span>{viewMode === 'history' ? 'No tasks yet' : 'No scheduled tasks'}</span>
+            <span>{viewMode === 'scheduled' ? 'No scheduled tasks' : viewMode === 'archived' ? 'No archived tasks' : 'No tasks yet'}</span>
           </div>
         )}
         {unifiedItems.map(item => (
@@ -471,6 +555,18 @@ export default function Sidebar({
             <OpenInSeparateWindowIcon size={10} />
             <span>Open in separate window</span>
           </button>
+          {contextMenu.canArchive !== false && (
+            <button
+              className="context-menu-item"
+              onClick={() => {
+                const target = contextMenu.rootTaskId ?? contextMenu.item.id;
+                void (isArchivedView ? unarchiveChain(target) : archiveChain(target));
+              }}
+            >
+              <ArchiveBoxIcon size={10} />
+              <span>{isArchivedView ? 'Unarchive' : 'Archive'}</span>
+            </button>
+          )}
           {contextMenu.canDelete !== false && (
             <button
               className="context-menu-item danger"

@@ -31,6 +31,7 @@ export default defineConfig({
       '../shared/usePresenceTransition.test.tsx',
       '../shared/PresenceRegion.test.tsx',
       '../shared/CrossfadeStack.test.tsx',
+      '../shared/useHistoryRowRevealDelete.test.tsx',
       '../shared/bubble/*.test.ts',
       '../shared/plainMarkdownText.test.ts',
       '../shared/tooltip/*.test.tsx',

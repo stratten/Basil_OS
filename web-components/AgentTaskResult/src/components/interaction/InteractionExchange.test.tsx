@@ -29,7 +29,7 @@ describe('InteractionExchange', () => {
     expect(markup).toContain('class="interaction-exchange is-answered"');
     expect(markup).toContain('Basil asked');
     expect(markup).toContain('<strong>La Fantaisie</strong>');
-    expect(markup).toContain('interaction-exchange-response is-answer');
+    expect(markup).toContain('interaction-turn is-user is-answer');
     expect(markup).toContain('You answered');
     expect(markup).toContain('La Fantaisie in the 9th');
   });
@@ -47,7 +47,7 @@ describe('InteractionExchange', () => {
 
     expect(markup).toContain('<pre class="interaction-exchange-command">rm -rf **build**</pre>');
     expect(markup).toContain('Basil asked to run');
-    expect(markup).toContain('interaction-exchange-response is-negative');
+    expect(markup).toContain('interaction-turn is-user is-negative');
     expect(markup).toContain('You declined');
   });
 
@@ -109,6 +109,60 @@ describe('InteractionExchange', () => {
       .toContain('You closed this without answering');
     expect(renderToStaticMarkup(<InteractionExchange interaction={{ ...answered, status: 'unrecorded', response: undefined }} />))
       .toContain('Your answer was not recorded for this task');
+  });
+});
+
+describe('InteractionExchange speakers', () => {
+  const note: UserInteraction = {
+    ...answered,
+    id: 'note',
+    entryId: 'user_interaction_note',
+    kind: 'guidance',
+    status: 'resolved',
+    prompt: 'Also include the `Spotlight` setting',
+    response: undefined,
+    respondedAt: '2026-10-04T23:44:00+00:00',
+  };
+
+  function speakers(markup: string): string[] {
+    return Array.from(markup.matchAll(/data-speaker="(app|user)"/g)).map(match => match[1]);
+  }
+
+  it('puts the app first and you second when Basil asks and you answer', () => {
+    expect(speakers(renderToStaticMarkup(<InteractionExchange interaction={answered} />))).toEqual(['app', 'user']);
+    const approval = renderToStaticMarkup(
+      <InteractionExchange interaction={{ ...answered, kind: 'approval', status: 'approved', prompt: 'ls', response: undefined }} />,
+    );
+    expect(speakers(approval)).toEqual(['app', 'user']);
+    expect(approval.indexOf('interaction-exchange-command')).toBeLessThan(approval.indexOf('interaction-turn is-user'));
+    expect(approval).toContain('interaction-turn is-app is-neutral');
+  });
+
+  it('shows a note you sent as your turn, then Basil acknowledging it as the app turn', () => {
+    const markup = renderToStaticMarkup(<InteractionExchange interaction={note} />);
+
+    expect(speakers(markup)).toEqual(['user', 'app']);
+    expect(markup.indexOf('interaction-turn is-user')).toBeLessThan(markup.indexOf('interaction-turn is-app'));
+    expect(markup).toContain('interaction-turn is-user is-neutral');
+    expect(markup).toContain('interaction-turn is-app is-answer');
+  });
+
+  it('marks an undelivered or waiting note on the app turn', () => {
+    const waiting = renderToStaticMarkup(<InteractionExchange interaction={{ ...note, status: 'waiting', respondedAt: undefined }} />);
+    expect(waiting).toContain('interaction-turn is-app is-waiting');
+    expect(waiting).toContain('interaction-exchange-waiting-dot');
+    const canceled = renderToStaticMarkup(<InteractionExchange interaction={{ ...note, status: 'canceled' }} />);
+    expect(canceled).toContain('interaction-turn is-app is-negative');
+    expect(canceled).toContain('Not delivered: the run finished first');
+  });
+
+  it('shows a pause and its resume as two user turns, and a pause stopped by the run ending as user then app', () => {
+    const pause: UserInteraction = { ...note, id: 'pause', entryId: 'user_interaction_pause', kind: 'pause', prompt: 'Paused at your request' };
+
+    expect(speakers(renderToStaticMarkup(<InteractionExchange interaction={pause} />))).toEqual(['user', 'user']);
+    const stopped = renderToStaticMarkup(<InteractionExchange interaction={{ ...pause, status: 'canceled' }} />);
+    expect(speakers(stopped)).toEqual(['user', 'app']);
+    expect(stopped).toContain('Stopped while paused');
   });
 });
 

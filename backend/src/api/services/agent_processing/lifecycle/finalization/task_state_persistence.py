@@ -81,7 +81,8 @@ async def _store_execution_context(
     final_envelope: Optional[Dict],
     thinking_history: Optional[List[Dict]] = None,
     progress_steps: Optional[List[Dict]] = None,
-    execution_timeline: Optional[List[Dict]] = None
+    execution_timeline: Optional[List[Dict]] = None,
+    model_used: Optional[str] = None,
 ) -> None:
     """Store complete agent execution context in database."""
     if not agent_task_id:
@@ -104,6 +105,9 @@ async def _store_execution_context(
             "finalizer_result": final_envelope if final_envelope else None,
             "thinking_history": normalize_thinking_history(thinking_history),
         }
+        # The model that answered this run; history and detail routes read it so the UI can label each turn after a reload.
+        if isinstance(model_used, str) and model_used:
+            agent_execution_data["model_used"] = model_used
         if final_envelope and isinstance(final_envelope, dict):
             summary = final_envelope.get("summary_text")
             if summary:

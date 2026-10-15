@@ -221,6 +221,68 @@
   margin-left: auto;
 }
 
+/* A researched answer says so with a one pixel outline in the secondary color; a card never gets an accent stripe. */
+.companion-badge {
+  padding: 1px 6px;
+  border: 1px solid var(--secondary);
+  border-radius: var(--corner-radius-small);
+  color: var(--secondary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+}
+
+.companion-item .meeting-history-load-more-button,
+.companion-investigation-notice .meeting-history-load-more-button {
+  margin: 0;
+}
+
+.companion-proposal-title {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+}
+
+.companion-proposal-approve {
+  padding: 6px var(--padding-m);
+  font-size: var(--font-size-callout);
+}
+
+.companion-proposal-error {
+  margin: 0;
+  padding: 6px var(--padding-s);
+  border: 1px solid var(--error-base);
+  border-radius: var(--corner-radius-small);
+  color: var(--text-primary);
+  font-size: var(--font-size-status-small);
+}
+
+.companion-investigation-notice {
+  align-items: center;
+}
+
+.companion-investigation-notice .meeting-status-message {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.companion-proposal-settings,
+.companion-research-switch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-xs);
+}
+
+.companion-proposal-settings .meeting-section-heading {
+  margin: 0;
+}
+
+.companion-research-switch .meeting-switch-control,
+.companion-proposal-settings .meeting-switch-control {
+  margin: 0;
+  font-size: var(--font-size-status-small);
+}
+
 .companion-pane .meeting-transcript-icon-button[aria-pressed='true'] {
   background: var(--secondary);
   color: var(--background-primary);

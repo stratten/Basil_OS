@@ -8,6 +8,7 @@ export function companionStatusLabel(status: CompanionStatus): { label: string; 
   if (!status.enabled) return { label: 'Off', tone: 'off' };
   if (status.capacity === 'paused') return { label: 'Paused', tone: 'warn' };
   if (status.capacity === 'deferred') return { label: 'Slowed', tone: 'warn' };
+  if ((status.investigating ?? 0) > 0) return { label: 'Investigating', tone: 'busy' };
   if (status.evaluating) return { label: 'Thinking', tone: 'busy' };
   if (status.mode === 'passive') return { label: 'Standing by', tone: 'on' };
   return { label: 'Listening', tone: 'on' };

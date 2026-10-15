@@ -23,6 +23,7 @@ import { saveAgentTaskAsSkill, submitAgentTaskFeedback } from '../services/api';
 import { DelegatedProviderReportCards } from './artifacts/DelegatedProviderReportCards';
 import PresenceRegion from '@shared/PresenceRegion';
 import { TurnLabel } from './result/TurnLabel';
+import { ModelUsedLabel } from './result/ModelUsedLabel';
 import { resolveTurnStatus } from './result/turnPresentation';
 import { agentTaskRunLabel } from './run/agentTaskRunFocus';
 import { RunStatusCard } from './run/RunStatusCard';
@@ -330,6 +331,7 @@ export default function ResultContent({
 
           <div className="result-header" data-run-section="result">
             <span className="result-label">{resultIsPartial ? 'Partial Result:' : 'Result:'}</span>
+            <ModelUsedLabel className="result-model-label" modelId={agentTask.modelUsed ?? agentTask.originalModelId} />
             {resultIsProvisional && (
               <span className="result-fallback-badge result-provisional-badge" title="This result is shown while Basil checks it against your request">
                 Provisional

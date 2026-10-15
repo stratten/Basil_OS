@@ -25,6 +25,7 @@ from api.routes.agent_tasks.projections.artifact_presentation import (
 )
 from api.routes.agent_tasks.utils import (
     extract_checkpoint_data,
+    extract_model_used,
     extract_result_data,
 )
 from api.services.skills import skill_service as skill_service_module
@@ -455,6 +456,84 @@ def test_detail_route_leaves_model_id_none_when_never_overridden():
     detail = asyncio.run(get_agent_task_details(root.id, knowledge_service=SimpleNamespace(agent_task_service=AgentTaskService())))
 
     assert detail.model_id is None
+
+
+def test_detail_route_exposes_the_model_that_answered_each_run():
+    root = SimpleNamespace(
+        id="root-answered",
+        original_prompt="Summarize the report",
+        transcribed_prompt="Summarize the report",
+        display_prompt_markdown=None,
+        title=None,
+        origin_type=None,
+        origin_id=None,
+        timestamp=datetime(2026, 1, 1),
+        status="completed",
+        result_data={"success": True, "data": {"model_used": "claude-sonnet-4"}},
+        app_name=None,
+        window_title=None,
+        root_task_id=None,
+        previous_task_id=None,
+        accumulated_artifacts=None,
+        execution_timeline=[],
+        operation_parameters=None,
+    )
+    follow_up = SimpleNamespace(
+        id="follow-up-answered",
+        original_prompt="And the appendix?",
+        display_prompt_markdown=None,
+        timestamp=datetime(2026, 1, 1),
+        status="completed",
+        result_data={"files": [], "model_used": "local-qwen-3.5"},
+        root_task_id="root-answered",
+        previous_task_id="root-answered",
+        chain_sequence_number=1,
+        accumulated_artifacts=None,
+        execution_timeline=[],
+        operation_parameters=None,
+    )
+    unrecorded = SimpleNamespace(
+        id="follow-up-unrecorded",
+        original_prompt="One more thing",
+        display_prompt_markdown=None,
+        timestamp=datetime(2026, 1, 1),
+        status="completed",
+        result_data={"files": []},
+        root_task_id="root-answered",
+        previous_task_id="follow-up-answered",
+        chain_sequence_number=2,
+        accumulated_artifacts=None,
+        execution_timeline=[],
+        operation_parameters=None,
+    )
+
+    class AgentTaskService:
+        async def get_agent_task(self, agent_task_id):
+            return root
+
+        async def get_agent_task_chain(self, agent_task_id):
+            return [root, follow_up, unrecorded]
+
+    detail = asyncio.run(get_agent_task_details(root.id, knowledge_service=SimpleNamespace(agent_task_service=AgentTaskService())))
+
+    assert detail.model_used == "claude-sonnet-4"
+    assert detail.model_id is None
+    assert [item.model_used for item in detail.follow_ups] == ["local-qwen-3.5", None]
+
+
+def test_extract_model_used_reads_the_graph_and_fast_lane_storage_shapes():
+    assert extract_model_used({"data": {"model_used": "gpt-5-mini"}}) == "gpt-5-mini"
+    assert extract_model_used({"model_used": "local-qwen-3.5"}) == "local-qwen-3.5"
+    assert extract_model_used({"model_used": "top", "data": {"model_used": "nested"}}) == "top"
+
+
+def test_extract_model_used_ignores_missing_blank_and_malformed_values():
+    assert extract_model_used(None) is None
+    assert extract_model_used("not a dict") is None
+    assert extract_model_used({}) is None
+    assert extract_model_used({"model_used": "   ", "data": {"model_used": ""}}) is None
+    assert extract_model_used({"model_used": 7, "data": "text"}) is None
+    assert extract_model_used({"model_used": None, "data": {"model_used": "nested"}}) == "nested"
 
 
 def test_extract_checkpoint_data_excludes_stale_or_malformed_payloads():

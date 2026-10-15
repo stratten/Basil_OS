@@ -300,3 +300,54 @@ describe('AgentTaskRow scheduled follow-up state', () => {
     expect(markup).not.toContain('agent-task-row__waiting-icon');
   });
 });
+
+describe('AgentTaskRow archive action', () => {
+  function swipeOpenRow(props: { onArchive?: (id: string) => void; archiveLabel?: 'Archive' | 'Unarchive'; status?: string }) {
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    act(() => {
+      root.render(
+        <AgentTaskRow
+          id="task-1"
+          title="Review the launch behavior"
+          status={props.status ?? 'completed'}
+          fileCount={0}
+          followUpCount={0}
+          hasUnreadResult={false}
+          isSelected={false}
+          onSelect={vi.fn()}
+          onRequestDelete={vi.fn()}
+          onArchive={props.onArchive}
+          archiveLabel={props.archiveLabel}
+        />,
+      );
+    });
+    const row = container.querySelector<HTMLElement>('.sidebar-row > div');
+    act(() => {
+      row?.dispatchEvent(new WheelEvent('wheel', { deltaX: 130, deltaY: 0, bubbles: true }));
+    });
+    return { container, unmount: () => act(() => root.unmount()) };
+  }
+
+  it('reveals Archive beside Delete after a swipe and archives by row id', () => {
+    const onArchive = vi.fn();
+    const { container, unmount } = swipeOpenRow({ onArchive });
+    const button = container.querySelector<HTMLButtonElement>('.swipe-archive-btn');
+    expect(button?.textContent).toContain('Archive');
+    act(() => button?.click());
+    expect(onArchive).toHaveBeenCalledWith('task-1');
+    unmount();
+  });
+
+  it('labels the action Unarchive in the Archived view', () => {
+    const { container, unmount } = swipeOpenRow({ onArchive: vi.fn(), archiveLabel: 'Unarchive' });
+    expect(container.querySelector('.swipe-archive-btn')?.textContent).toContain('Unarchive');
+    unmount();
+  });
+
+  it('renders no archive action when no callback is supplied', () => {
+    const { container, unmount } = swipeOpenRow({});
+    expect(container.querySelector('.swipe-archive-btn')).toBeNull();
+    unmount();
+  });
+});

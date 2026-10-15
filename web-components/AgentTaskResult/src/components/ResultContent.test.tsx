@@ -193,6 +193,38 @@ describe('ResultContent completed activity history', () => {
   });
 });
 
+describe('ResultContent model label', () => {
+  function modelLabelFor(task: DisplayableAgentTask): string | null {
+    return new DOMParser()
+      .parseFromString(renderToStaticMarkup(
+        <ResultContent agentTask={task} onRetry={() => {}} onContinue={() => {}} />,
+      ), 'text/html')
+      .querySelector('.result-model-label')
+      ?.textContent ?? null;
+  }
+
+  it('shows the recorded answering model after the Result label', () => {
+    const markup = renderToStaticMarkup(
+      <ResultContent agentTask={{ ...completedTask, modelUsed: 'gpt-5-mini' }} onRetry={() => {}} onContinue={() => {}} />,
+    );
+
+    expect(markup.indexOf('Result:')).toBeLessThan(markup.indexOf('result-model-label'));
+    expect(modelLabelFor({ ...completedTask, modelUsed: 'gpt-5-mini' })).toBe('gpt-5-mini');
+  });
+
+  it('shows nothing for a run that recorded no model and had no override', () => {
+    expect(modelLabelFor(completedTask)).toBeNull();
+  });
+
+  it('falls back to the explicit override for a run that predates the recording', () => {
+    expect(modelLabelFor({ ...completedTask, originalModelId: 'local-qwen-3.5' })).toBe('local-qwen-3.5');
+  });
+
+  it('prefers the recorded model over the override', () => {
+    expect(modelLabelFor({ ...completedTask, modelUsed: 'gpt-5-mini', originalModelId: 'local-qwen-3.5' })).toBe('gpt-5-mini');
+  });
+});
+
 describe('ResultContent artifact integration', () => {
   it('keeps the lightweight file link after the user-facing result', () => {
     const markup = renderToStaticMarkup(

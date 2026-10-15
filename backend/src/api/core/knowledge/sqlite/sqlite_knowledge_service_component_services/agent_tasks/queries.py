@@ -103,6 +103,7 @@ class AgentTaskQueries:
             "follow_up_count": row["follow_up_count"] or 0,
             "origin_type": row["origin_type"] if "origin_type" in row.keys() else None,
             "origin_id": row["origin_id"] if "origin_id" in row.keys() else None,
+            "archived_at": row["archived_at"] if "archived_at" in row.keys() else None,
             "result_data": self._parse_result_data(row["result_data"]) if "result_data" in row.keys() else {},
         }
 
@@ -249,15 +250,21 @@ class AgentTaskQueries:
         self,
         limit: int = 50,
         offset: int = 0,
-        status_filter: Optional[str] = None
+        status_filter: Optional[str] = None,
+        archived: Optional[bool] = None,
     ) -> List[Dict[str, Any]]:
-        """List root task summaries using only denormalized sidebar fields."""
+        """List root task summaries using only denormalized sidebar fields.
+
+        ``archived`` None returns every chain, True only archived chains and False only unarchived ones."""
         conditions: List[str] = ["COALESCE(root.root_task_id, root.id) = root.id"]
         params: List[Any] = []
 
         if status_filter:
             conditions.append("COALESCE(root.latest_status, root.status) = ?")
             params.append(status_filter)
+
+        if archived is not None:
+            conditions.append("root.archived_at IS NOT NULL" if archived else "root.archived_at IS NULL")
 
         params.extend([limit, offset])
         with self._get_connection() as conn:
@@ -274,6 +281,7 @@ class AgentTaskQueries:
                     root.app_name,
                     root.origin_type,
                     root.origin_id,
+                    root.archived_at,
                     COALESCE(root.follow_up_count, 0) AS follow_up_count,
                     latest.result_data AS result_data
                 FROM agent_tasks root
@@ -448,16 +456,19 @@ class AgentTaskQueries:
         status: Optional[str] = None,
         app_name: Optional[str] = None,
         limit: int = 50,
-        offset: int = 0
+        offset: int = 0,
+        archived: Optional[bool] = None,
     ) -> List[Dict[str, Any]]:
-        """Search root task summaries using the maintained FTS document."""
+        """Search root task summaries using the maintained FTS document.
+
+        ``archived`` None searches every chain, True only archived chains and False only unarchived ones."""
         if not query or not query.strip():
-            return await self.list_recent_agent_task_summaries(limit, offset, status)
+            return await self.list_recent_agent_task_summaries(limit, offset, status, archived)
 
         search_tokens = self._search_tokens(query)
         fts_query = self._format_fts_query(query)
         if not fts_query or not search_tokens:
-            return await self.list_recent_agent_task_summaries(limit, offset, status)
+            return await self.list_recent_agent_task_summaries(limit, offset, status, archived)
 
         like_params = [f"%{self._escape_like_token(token)}%" for token in search_tokens]
         substring_conditions = [
@@ -492,6 +503,9 @@ class AgentTaskQueries:
             conditions.append("root.app_name = ?")
             params.append(app_name)
 
+        if archived is not None:
+            conditions.append("root.archived_at IS NOT NULL" if archived else "root.archived_at IS NULL")
+
         params.extend([limit, offset])
 
         with self._get_connection() as conn:
@@ -517,6 +531,7 @@ class AgentTaskQueries:
                     root.app_name,
                     root.origin_type,
                     root.origin_id,
+                    root.archived_at,
                     COALESCE(root.follow_up_count, 0) AS follow_up_count,
                     latest.result_data AS result_data,
                     CASE

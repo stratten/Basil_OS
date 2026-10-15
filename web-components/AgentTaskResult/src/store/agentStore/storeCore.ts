@@ -255,6 +255,7 @@ export class AgentStoreCore {
       // the main and detached components.
       if (status === 'completed' || status === 'failed') {
         a.isRetryPending = false;
+        a.isCheckpointResumePending = false;
         a.showApprovalPrompt = false;
         a.approvalRequests = [];
         a.showCheckpointPrompt = false;
@@ -276,6 +277,7 @@ export class AgentStoreCore {
       a.showCheckpointPrompt = false;
       a.currentCheckpoint = undefined;
       a.inlineCheckpoint = undefined;
+      a.isCheckpointResumePending = true;
     });
   }
 
@@ -313,6 +315,13 @@ export class AgentStoreCore {
     if (!reasoningFallbackModelUsed) return;
     this.updateAgent(agentTaskId, a => {
       a.reasoningFallbackModelUsed = reasoningFallbackModelUsed;
+    });
+  }
+
+  updateModelUsed(agentTaskId: string, modelUsed: string | undefined) {
+    if (!modelUsed) return;
+    this.updateAgent(agentTaskId, a => {
+      a.modelUsed = modelUsed;
     });
   }
 

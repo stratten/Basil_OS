@@ -644,6 +644,25 @@ select.sidebar-search-input {
   justify-content: center;
 }
 
+/* Swipe-to-archive button, revealed beside Delete (Archive on the left of Delete). */
+.swipe-archive-btn {
+  position: absolute;
+  right: 60px;
+  top: 0;
+  bottom: 0;
+  width: 60px;
+  background: var(--secondary);
+  color: var(--background-primary);
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Inline "Delete this task?" confirmation, rendered in place of a row's normal content (no modal/backdrop). The label, buttons, and layout come from shared/inline-delete-confirm.css; the row only has to override its own pointer cursor. */
 .sidebar-row--confirm-delete {
   cursor: default;

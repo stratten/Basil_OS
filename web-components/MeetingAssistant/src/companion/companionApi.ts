@@ -2,6 +2,8 @@ import type {
   CompanionFeedbackAction,
   CompanionGlobalSettings,
   CompanionMode,
+  CompanionProposalDecision,
+  CompanionProposalResult,
   CompanionRoot,
   CompanionSnapshot,
   CompanionStatus,
@@ -70,10 +72,7 @@ export function fetchGlobalSettings(port: number): Promise<CompanionGlobalSettin
   return request<CompanionGlobalSettings>(port, '/meetings/companion/settings');
 }
 
-export function updateGlobalSettings(
-  port: number,
-  body: { auto_enable?: boolean; default_mode?: CompanionMode; screen_share_note_dismissed?: boolean; next_focus?: string },
-): Promise<CompanionGlobalSettings> {
+export function updateGlobalSettings(port: number, body: Partial<CompanionGlobalSettings>): Promise<CompanionGlobalSettings> {
   return request<CompanionGlobalSettings>(port, '/meetings/companion/settings', { method: 'PUT', body: JSON.stringify(body) });
 }
 
@@ -96,7 +95,7 @@ export function disableCompanion(port: number, meetingId: string): Promise<Compa
 export function patchCompanionSettings(
   port: number,
   meetingId: string,
-  body: { model_id?: string | null; mode?: CompanionMode; focus?: string },
+  body: { model_id?: string | null; mode?: CompanionMode; focus?: string; investigate?: boolean },
 ): Promise<CompanionStatus> {
   return request<CompanionStatus>(port, `${meetingPath(meetingId)}/settings`, { method: 'PATCH', body: JSON.stringify(body) });
 }
@@ -119,6 +118,26 @@ export function sendCompanionFeedback(
     method: 'POST',
     body: JSON.stringify({ action }),
   });
+}
+
+export function decideCompanionProposal(
+  port: number,
+  meetingId: string,
+  itemId: string,
+  decision: CompanionProposalDecision,
+): Promise<CompanionProposalResult> {
+  return request<CompanionProposalResult>(port, `${meetingPath(meetingId)}/items/${encodeURIComponent(itemId)}/proposal`, {
+    method: 'POST',
+    body: JSON.stringify({ decision }),
+  });
+}
+
+export function startCompanionInvestigation(port: number, meetingId: string, question: string): Promise<{ investigation_id: string }> {
+  return request<{ investigation_id: string }>(port, `${meetingPath(meetingId)}/investigations`, { method: 'POST', body: JSON.stringify({ question }) });
+}
+
+export function cancelCompanionInvestigation(port: number, meetingId: string, investigationId: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(port, `${meetingPath(meetingId)}/investigations/${encodeURIComponent(investigationId)}`, { method: 'DELETE' });
 }
 
 export function sendCompanionChat(port: number, meetingId: string, text: string): Promise<{ message_id: string }> {

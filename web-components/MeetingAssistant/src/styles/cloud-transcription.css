@@ -1,0 +1,133 @@
+/* The cloud transcription control arranges existing Notetaker pieces: .meeting-record-button, .meeting-status-message, .meeting-switch-control, .meeting-metadata-name-input and .meeting-history-load-more-error. Colors, type sizes, radii and spacing come from the shared tokens. */
+
+.meeting-cloud {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--padding-s);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.meeting-cloud-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--padding-xs);
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--padding-xs) var(--padding-m);
+  border: 2px solid var(--separator-color);
+  border-radius: var(--corner-radius-medium);
+  background: var(--background-primary);
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+  cursor: pointer;
+}
+
+.meeting-cloud-chip:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.meeting-cloud-chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meeting-cloud-dot {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--text-primary);
+  border-radius: 50%;
+  background: var(--background-primary);
+}
+
+.meeting-cloud-chip--on,
+.meeting-cloud-chip--connecting {
+  border-color: var(--primary);
+}
+
+.meeting-cloud-chip--on .meeting-cloud-dot,
+.meeting-cloud-chip--connecting .meeting-cloud-dot {
+  border-color: var(--primary);
+}
+
+.meeting-cloud-chip--streaming {
+  border-color: var(--success-base);
+}
+
+.meeting-cloud-chip--streaming .meeting-cloud-dot {
+  border-color: var(--success-base);
+  background: var(--success-base);
+}
+
+.meeting-cloud-chip--fallback {
+  border-color: var(--warning-base);
+}
+
+.meeting-cloud-chip--fallback .meeting-cloud-dot {
+  border-color: var(--warning-base);
+  background: var(--warning-base);
+}
+
+.meeting-cloud-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-s);
+  width: 100%;
+  max-height: 360px;
+  padding: var(--padding-s) var(--padding-m);
+  overflow-y: auto;
+  border: 1px solid var(--primary);
+  border-radius: var(--corner-radius-medium);
+  background: var(--background-primary);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-light);
+}
+
+.meeting-cloud-disclosure {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--font-size-callout);
+}
+
+.meeting-cloud-acknowledge,
+.meeting-cloud-section label {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--padding-xs);
+  overflow-wrap: anywhere;
+  font-size: var(--font-size-callout);
+}
+
+.meeting-cloud-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-xs);
+  min-width: 0;
+  margin: 0;
+  padding: var(--padding-s);
+  border: 1px solid var(--separator-color);
+  border-radius: var(--corner-radius-medium);
+}
+
+.meeting-cloud-section legend {
+  padding: 0 var(--padding-xs);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+}
+
+.meeting-cloud-key-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--padding-s);
+}
+
+.meeting-cloud-key-row .meeting-metadata-name-input {
+  flex: 1 1 180px;
+  min-width: 0;
+}

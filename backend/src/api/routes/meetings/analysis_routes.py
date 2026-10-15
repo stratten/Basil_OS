@@ -149,12 +149,17 @@ async def meeting_analysis_status(websocket: WebSocket, meeting_id: str):
             except Exception as e:
                 logger.error(f"Error sending analysis progress update: {e}")
         
+        async def event_callback(event: Dict[str, Any]):
+            """Forward provisional item events; clients that ignore them are unaffected."""
+            await websocket.send_json(event)
+
         # Run analysis
         try:
             result = await analyzer.analyze(
                 modes=modes,
                 custom_instructions=custom_instructions,
-                progress_callback=progress_callback
+                progress_callback=progress_callback,
+                event_callback=event_callback,
             )
             
             # Send completion message with full results. Include the saved

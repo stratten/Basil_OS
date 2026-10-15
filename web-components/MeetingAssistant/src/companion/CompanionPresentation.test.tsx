@@ -83,6 +83,10 @@ function makeController(state: Partial<CompanionStoreState>): CompanionControlle
     createWatch: vi.fn(async () => true),
     cancelWatch: vi.fn(async () => true),
     setFocus: vi.fn(async () => true),
+    decideProposal: vi.fn(async () => null),
+    investigate: vi.fn(async () => true),
+    stopInvestigations: vi.fn(async () => true),
+    setInvestigate: vi.fn(async () => true),
   };
 }
 
@@ -92,8 +96,9 @@ function message(id: string, role: ChatMessage['role'], text: string, overrides:
 
 beforeEach(() => {
   vi.clearAllMocks();
-  api.fetchGlobalSettings.mockResolvedValue({ auto_enable: false, default_mode: 'active', screen_share_note_dismissed: false });
-  api.updateGlobalSettings.mockResolvedValue({ auto_enable: false, default_mode: 'active', screen_share_note_dismissed: true });
+  const proposalDefaults = { proposal_mode: 'suggestion_only', proposal_capabilities: ['todo', 'agent_task', 'assistant_session'], auto_execute_capabilities: [] };
+  api.fetchGlobalSettings.mockResolvedValue({ auto_enable: false, default_mode: 'active', screen_share_note_dismissed: false, ...proposalDefaults });
+  api.updateGlobalSettings.mockResolvedValue({ auto_enable: false, default_mode: 'active', screen_share_note_dismissed: true, ...proposalDefaults });
 });
 
 describe('CompanionPane reply-time readout and screen-share note', () => {

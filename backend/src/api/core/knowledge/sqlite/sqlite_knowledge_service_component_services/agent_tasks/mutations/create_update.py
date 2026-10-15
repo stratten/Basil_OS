@@ -9,6 +9,7 @@ from typing import Any, Dict, Optional
 from api.services.agent_processing.shared.serialization import convert_to_serializable_dict
 
 from ...infrastructure.connection import run_write_transaction_async
+from .archive_operations import clear_chain_archive_flag
 from .root_summary import recompute_root_summary, root_task_id_for_agent_task
 
 logger = logging.getLogger(__name__)
@@ -75,6 +76,9 @@ async def store_agent_task(
                 origin_id,
             ),
         )
+        if resolved_root_task_id != agent_task_id:
+            # New work on an archived chain returns it to the main list.
+            clear_chain_archive_flag(conn, resolved_root_task_id)
         recompute_root_summary(conn, resolved_root_task_id)
         logger.info("Stored agent_task %s with status '%s'", agent_task_id, status)
         return {

@@ -4,6 +4,7 @@ import type { AgentRunOverviewPresentation } from './agentRunPresentation';
 import type { AgentTaskRunFocusSummary } from './agentTaskRunFocus';
 import { deriveAgentRunMapTurns, RUN_STATUS_TONE_CLASS } from './agentRunMapPresentation';
 import { EMPTY_RUN_ARTIFACTS, RunCard } from './RunCard';
+import { ModelUsedLabel } from '../result/ModelUsedLabel';
 import { navigationTargetForStage, type RunNavigationTarget } from './runNavigation';
 
 interface AgentRunMapProps {
@@ -126,6 +127,7 @@ export function AgentRunMap({
               )}
               {isExpanded && (
                 <div className="agent-run-map-turn-body" id={bodyId}>
+                  <ModelUsedLabel className="agent-run-map-model" modelId={turn.run.modelUsed} prefix="Model:" />
                   <RunCard
                     ariaLabel={`${turn.run.label} overview`}
                     artifacts={isFocused ? artifacts : EMPTY_RUN_ARTIFACTS}

@@ -37,20 +37,7 @@ final class NativeArtifactFilePreviewCoordinator {
     // MARK: - Incoming request handling
 
     func previewKind(forExtension fileExtension: String) -> String {
-        switch fileExtension.lowercased() {
-        case "md", "markdown":
-            return "markdown"
-        case "html", "htm":
-            return "htmlSource"
-        case "js", "ts", "tsx", "py", "swift", "sh", "sql", "css", "json", "yaml", "yml", "xml":
-            return "code"
-        case "txt", "log", "csv":
-            return "text"
-        case "pdf":
-            return "pdf"
-        default:
-            return "unsupported"
-        }
+        FilePreviewKindResolver.kind(forExtension: fileExtension)
     }
 
     func handleFilePreviewRequest(requestId: String, path: String) {
@@ -104,6 +91,29 @@ final class NativeArtifactFilePreviewCoordinator {
                     name: name,
                     kind: "pdf"
                 )
+                return
+            }
+
+            if requestedKind == "image" {
+                switch FilePreviewKindResolver.imageDataURL(at: url) {
+                case .success(let dataURL):
+                    sendFilePreviewPayload(
+                        requestId: requestId,
+                        path: posixPath,
+                        name: name,
+                        kind: "image",
+                        dataUrl: dataURL
+                    )
+                    startTextPreviewObservation(requestId: requestId, path: posixPath, kind: "image")
+                case .failure(let failure):
+                    sendFilePreviewPayload(
+                        requestId: requestId,
+                        path: posixPath,
+                        name: name,
+                        kind: "unsupported",
+                        error: failure.userMessage
+                    )
+                }
                 return
             }
 
@@ -172,6 +182,7 @@ final class NativeArtifactFilePreviewCoordinator {
         name: String,
         kind: String,
         content: String? = nil,
+        dataUrl: String? = nil,
         error: String? = nil
     ) {
         var payload: [String: Any] = [
@@ -181,6 +192,7 @@ final class NativeArtifactFilePreviewCoordinator {
             "kind": kind,
         ]
         if let content { payload["content"] = content }
+        if let dataUrl { payload["dataUrl"] = dataUrl }
         if let error { payload["error"] = error }
         emit("onFilePreviewReady", payload)
     }
@@ -190,6 +202,7 @@ final class NativeArtifactFilePreviewCoordinator {
         path: String,
         kind: String,
         content: String?,
+        dataUrl: String? = nil,
         error: String?
     ) {
         let url = URL(fileURLWithPath: path)
@@ -200,6 +213,7 @@ final class NativeArtifactFilePreviewCoordinator {
             "kind": kind,
         ]
         if let content { payload["content"] = content }
+        if let dataUrl { payload["dataUrl"] = dataUrl }
         if let error { payload["error"] = error }
         emit("onFilePreviewUpdated", payload)
     }
@@ -221,7 +235,7 @@ final class NativeArtifactFilePreviewCoordinator {
     }
 
     private func startTextPreviewObservation(requestId: String, path: String, kind: String) {
-        guard ["markdown", "text", "code", "htmlSource"].contains(kind) else { return }
+        guard ["markdown", "text", "code", "htmlSource", "image"].contains(kind) else { return }
         clearCurrentFilePreview()
 
         let url = URL(fileURLWithPath: path)
@@ -275,6 +289,17 @@ final class NativeArtifactFilePreviewCoordinator {
             nativePreviewOverlay?.replaceDocument(document)
             activeFilePreviewRevision = currentRevision
             sendFilePreviewUpdate(requestId: requestId, path: url.path, kind: kind, content: nil, error: nil)
+            return
+        }
+
+        if kind == "image" {
+            // A failed re-encode (file mid-write, replaced by a non-image) keeps the last good image and leaves the revision unchanged so the next change retries.
+            guard case .success(let dataURL) = FilePreviewKindResolver.imageDataURL(at: url),
+                  AgentTaskPreviewFileRevision(url: url) == currentRevision else {
+                return
+            }
+            activeFilePreviewRevision = currentRevision
+            sendFilePreviewUpdate(requestId: requestId, path: url.path, kind: kind, content: nil, dataUrl: dataURL, error: nil)
             return
         }
 

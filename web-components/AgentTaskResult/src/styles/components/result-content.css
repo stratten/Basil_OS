@@ -158,6 +158,15 @@
   border: 1px solid var(--border-subtle);
 }
 
+.result-model-label {
+  font-size: var(--font-size-caption);
+  color: var(--text-primary);
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  overflow-wrap: anywhere;
+}
+
 .result-provisional-badge {
   color: var(--text-primary);
   border-color: var(--processing-base);

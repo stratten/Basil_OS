@@ -10,10 +10,13 @@ import Sidebar, { isLiveAgentTaskStatus } from './Sidebar';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
-const { listAgentTasks, getAgentTaskDetail, deleteAgentTask } = vi.hoisted(() => ({
+const { listAgentTasks, getAgentTaskDetail, deleteAgentTask, archiveAgentTask, unarchiveAgentTask, searchAgentTasks } = vi.hoisted(() => ({
   listAgentTasks: vi.fn(),
   getAgentTaskDetail: vi.fn(),
   deleteAgentTask: vi.fn(),
+  archiveAgentTask: vi.fn(),
+  unarchiveAgentTask: vi.fn(),
+  searchAgentTasks: vi.fn(),
 }));
 
 // Mutable holder so individual tests can control the agent list returned by
@@ -30,6 +33,9 @@ const { allAgentsRef, getAgentMock, stableSelectAgent } = vi.hoisted(() => ({
 }));
 
 vi.mock('../services/api', () => ({
+  archiveAgentTask,
+  unarchiveAgentTask,
+  searchAgentTasks,
   deleteAgentTask,
   getAgentTaskDetail,
   isApiReady: () => true,
@@ -94,6 +100,12 @@ describe('Sidebar', () => {
     agentTaskRowRenderCounts.clear();
     deleteAgentTask.mockReset();
     deleteAgentTask.mockResolvedValue({ success: true });
+    archiveAgentTask.mockReset();
+    archiveAgentTask.mockResolvedValue({ success: true });
+    unarchiveAgentTask.mockReset();
+    unarchiveAgentTask.mockResolvedValue({ success: true });
+    listAgentTasks.mockReset();
+    searchAgentTasks.mockReset();
   });
 
   it('routes every nonterminal backend task status through live hydration', () => {
@@ -322,6 +334,136 @@ describe('Sidebar', () => {
       expect(deleteAgentTask).toHaveBeenCalledWith('history-task-1');
       expect(container.querySelector('.sidebar-row--confirm-delete')).toBeNull();
       expect(container.querySelector('.sidebar-row')).toBeNull();
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+    }
+  });
+
+  it('archives a finished history row from the context menu and moves it to the Archived view, where it can be unarchived', async () => {
+    const task = {
+      id: 'history-task-1',
+      original_prompt: 'Summarize the quarterly report',
+      timestamp: '2026-08-12T19:00:00.000Z',
+      status: 'completed',
+      result_preview: 'Done',
+      file_count: 0,
+      follow_up_count: 0,
+    };
+    listAgentTasks.mockImplementation(async (_limit: number, _offset: number, _signal: unknown, options?: { archived?: boolean }) => (
+      options?.archived
+        ? { agentTasks: [{ ...task, archived_at: '2026-08-13T10:00:00Z' }], total_count: 1, has_more: false }
+        : { agentTasks: [task], total_count: 1, has_more: false }
+    ));
+    const container = document.createElement('div');
+    const root = createRoot(container);
+
+    try {
+      await act(async () => {
+        root.render(
+          <Sidebar
+            isExpanded
+            canLoadData
+            onToggle={() => {}}
+            onViewHistoricalAgentTask={() => {}}
+            onViewAgentTask={() => {}}
+            onViewScheduledAgentTask={() => {}}
+            onCreateScheduledAgentTask={() => {}}
+          />,
+        );
+      });
+      await vi.waitFor(() => {
+        expect(container.querySelector('.sidebar-row')).not.toBeNull();
+      });
+      expect(listAgentTasks).toHaveBeenLastCalledWith(expect.any(Number), 0, undefined, { archived: false });
+
+      act(() => {
+        container.querySelector<HTMLElement>('.sidebar-row')?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+      });
+      await vi.waitFor(() => {
+        expect(container.querySelector('.context-menu')).not.toBeNull();
+      });
+      const archiveItem = Array.from(container.querySelectorAll<HTMLButtonElement>('.context-menu-item'))
+        .find(button => button.textContent?.includes('Archive'));
+      expect(archiveItem).toBeDefined();
+
+      await act(async () => {
+        archiveItem?.click();
+      });
+      expect(archiveAgentTask).toHaveBeenCalledWith('history-task-1');
+      expect(container.querySelector('.sidebar-row')).toBeNull();
+
+      await act(async () => {
+        container.querySelector<HTMLButtonElement>('button[aria-label="Archived"]')?.click();
+      });
+      await vi.waitFor(() => {
+        expect(container.querySelector('.sidebar-row')).not.toBeNull();
+      });
+      expect(listAgentTasks).toHaveBeenLastCalledWith(expect.any(Number), 0, undefined, { archived: true });
+      expect(container.querySelector('.sidebar-header-title')?.textContent).toBe('Archived');
+
+      act(() => {
+        container.querySelector<HTMLElement>('.sidebar-row')?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+      });
+      await vi.waitFor(() => {
+        expect(container.querySelector('.context-menu')).not.toBeNull();
+      });
+      const unarchiveItem = Array.from(container.querySelectorAll<HTMLButtonElement>('.context-menu-item'))
+        .find(button => button.textContent?.includes('Unarchive'));
+      expect(unarchiveItem).toBeDefined();
+      await act(async () => {
+        unarchiveItem?.click();
+      });
+      expect(unarchiveAgentTask).toHaveBeenCalledWith('history-task-1');
+      expect(container.querySelector('.sidebar-row')).toBeNull();
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+    }
+  });
+
+  it('does not offer Archive for a running history row', async () => {
+    listAgentTasks.mockResolvedValue({
+      agentTasks: [{
+        id: 'running-task',
+        original_prompt: 'Run the provider fixture',
+        timestamp: '2026-08-12T19:00:00.000Z',
+        status: 'processing',
+        result_preview: '',
+        file_count: 0,
+        follow_up_count: 0,
+      }],
+      total_count: 1,
+      has_more: false,
+    });
+    const container = document.createElement('div');
+    const root = createRoot(container);
+
+    try {
+      await act(async () => {
+        root.render(
+          <Sidebar
+            isExpanded
+            canLoadData
+            onToggle={() => {}}
+            onViewHistoricalAgentTask={() => {}}
+            onViewAgentTask={() => {}}
+            onViewScheduledAgentTask={() => {}}
+            onCreateScheduledAgentTask={() => {}}
+          />,
+        );
+      });
+      await vi.waitFor(() => {
+        expect(container.querySelector('.sidebar-row')).not.toBeNull();
+      });
+      act(() => {
+        container.querySelector<HTMLElement>('.sidebar-row')?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+      });
+      await vi.waitFor(() => {
+        expect(container.querySelector('.context-menu')).not.toBeNull();
+      });
+      const labels = Array.from(container.querySelectorAll('.context-menu-item')).map(el => el.textContent);
+      expect(labels.some(label => label?.includes('Archive'))).toBe(false);
     } finally {
       await act(async () => root.unmount());
       container.remove();

@@ -38,6 +38,22 @@ describe('HistoryCard reasoning trace', () => {
   });
 });
 
+describe('HistoryCard model label', () => {
+  it('names the model beside the Result heading only when one was recorded', () => {
+    const withModel = renderToStaticMarkup(
+      <HistoryCard item={historyItem({ modelUsed: 'gpt-5-mini' })} isExpanded onToggle={() => {}} />,
+    );
+    const withoutModel = renderToStaticMarkup(
+      <HistoryCard item={historyItem()} isExpanded onToggle={() => {}} />,
+    );
+
+    expect(withModel).toContain('result-model-label');
+    expect(withModel).toContain('gpt-5-mini');
+    expect(withModel.indexOf('Result:')).toBeLessThan(withModel.indexOf('result-model-label'));
+    expect(withoutModel).not.toContain('result-model-label');
+  });
+});
+
 describe('HistoryCard status and run details', () => {
   const finalizerResult = 'The report is complete.\n\n• Active app at request: Pages\n\n• Steps: 2/2 completed';
 

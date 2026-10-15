@@ -92,6 +92,16 @@ describe('meetingBridge', () => {
     expect(postMessage).toHaveBeenCalledWith({ type: 'openProposalAgentTask', agentTaskId: 'agent-1' });
   });
 
+  it('posts the approved Companion Assistant Session hand-off through the WebKit handler', async () => {
+    const postMessage = vi.fn();
+    (window as any).webkit = { messageHandlers: { meetingBridge: { postMessage } } };
+    const bridge = await import('./meetingBridge');
+
+    bridge.openCompanionAssistantSession('Talk through the renewal options.', 'The renewal date is 3 March.');
+
+    expect(postMessage).toHaveBeenCalledWith({ type: 'openCompanionAssistantSession', instruction: 'Talk through the renewal options.', contextText: 'The renewal date is 3 March.' });
+  });
+
   it('delivers events immediately once a handler is registered', async () => {
     const bridge = await import('./meetingBridge');
     const received: MeetingBridgeEvent[] = [];

@@ -32,6 +32,8 @@ describe('companionStatusLabel', () => {
     expect(companionStatusLabel(status({ live: true, enabled: false }))).toEqual({ label: 'Off', tone: 'off' });
     expect(companionStatusLabel(status({ live: true, enabled: true, capacity: 'paused' }))).toEqual({ label: 'Paused', tone: 'warn' });
     expect(companionStatusLabel(status({ live: true, enabled: true, capacity: 'deferred' }))).toEqual({ label: 'Slowed', tone: 'warn' });
+    expect(companionStatusLabel(status({ live: true, enabled: true, investigating: 1 }))).toEqual({ label: 'Investigating', tone: 'busy' });
+    expect(companionStatusLabel(status({ live: true, enabled: true, investigating: 1, capacity: 'paused' }))).toEqual({ label: 'Paused', tone: 'warn' });
     expect(companionStatusLabel(status({ live: true, enabled: true, evaluating: true }))).toEqual({ label: 'Thinking', tone: 'busy' });
     expect(companionStatusLabel(status({ live: true, enabled: true, mode: 'passive' }))).toEqual({ label: 'Standing by', tone: 'on' });
     expect(companionStatusLabel(status({ live: true, enabled: true }))).toEqual({ label: 'Listening', tone: 'on' });

@@ -2,19 +2,24 @@ import { useState } from 'react';
 import ReasoningModelPicker from '../../../shared/ReasoningModelPicker';
 import type { MeetingUIStateDTO } from '../bridge/types';
 import { setAnalysisConfiguration } from '../bridge/meetingBridge';
+import MeetingSwitch from '../components/MeetingSwitch';
 import { PlayCircleIcon } from '../components/MeetingIcons';
 import { groupedAnalysisModels } from '../lib/analysisModelOptions';
 import CompanionAutoEnable from './CompanionAutoEnable';
 import CompanionChat from './CompanionChat';
 import CompanionFocusField from './CompanionFocusField';
 import CompanionPaneHeader from './CompanionPaneHeader';
+import CompanionInvestigationNotice from './CompanionInvestigationNotice';
 import CompanionItemCard from './CompanionItemCard';
+import CompanionProposalCard from './CompanionProposalCard';
+import CompanionProposalSettings from './CompanionProposalSettings';
 import CompanionScreenShareNote from './CompanionScreenShareNote';
 import CompanionSources from './CompanionSources';
 import CompanionToggle, { type CompanionToggleProps } from './CompanionToggle';
 import CompanionWatches from './CompanionWatches';
 import { selectFeedItems } from './companionReducer';
 import { companionLatencySummary, formatLatencySummary } from './companionLatency';
+import { canInvestigate, investigationQuestionFromItem, proposalContextText, unresolvedInvestigations } from './companionProposals';
 import { companionCapacityNotice, companionStatusLabel, type CompanionStatusTone } from './companionPaneState';
 import type { CompanionController } from './useCompanion';
 import type { CompanionGlobalSettingsController } from './useCompanionGlobalSettings';
@@ -69,9 +74,23 @@ export default function CompanionPane({ ui, controller, globalSettings, isTarget
     />
   );
 
-  const renderItem = (item: (typeof feed)[number]) => (
-    <CompanionItemCard key={item.id} item={item} watchTopic={item.watch_id ? watchTopics.get(item.watch_id) ?? null : null} onFeedback={controller.sendFeedback} />
-  );
+  const researchOn = controller.isEnabled && status.investigate;
+  const pendingInvestigations = unresolvedInvestigations(timeline);
+  const lastInvestigation = pendingInvestigations.length > 0 ? pendingInvestigations[pendingInvestigations.length - 1] : null;
+
+  const renderItem = (item: (typeof feed)[number]) =>
+    item.kind === 'proposal' ? (
+      <CompanionProposalCard key={item.id} item={item} contextText={proposalContextText(timeline.items, item)} onDecide={controller.decideProposal} />
+    ) : (
+      <CompanionItemCard
+        key={item.id}
+        item={item}
+        watchTopic={item.watch_id ? watchTopics.get(item.watch_id) ?? null : null}
+        onFeedback={controller.sendFeedback}
+        canInvestigate={researchOn && canInvestigate(item)}
+        onInvestigate={(target) => void controller.investigate(investigationQuestionFromItem(target))}
+      />
+    );
 
   const renderBody = () => {
     if (state.phase === 'loading' || state.phase === 'idle') {
@@ -95,6 +114,7 @@ export default function CompanionPane({ ui, controller, globalSettings, isTarget
           </button>
           {sources(true)}
           <CompanionAutoEnable {...globalSettings} />
+          <CompanionProposalSettings {...globalSettings} />
           {feed.length > 0 && <h3 className="meeting-section-heading">Earlier in this meeting</h3>}
           {feed.map(renderItem)}
         </div>
@@ -122,6 +142,12 @@ export default function CompanionPane({ ui, controller, globalSettings, isTarget
         </section>
         {sources(isTargetRecording)}
         <CompanionWatches watches={timeline.watches} canEdit={controller.isEnabled} onCreate={controller.createWatch} onCancel={controller.cancelWatch} />
+        {controller.isEnabled && isTargetRecording && (
+          <div className="companion-research-switch">
+            <MeetingSwitch label="Research questions in my sources" checked={status.investigate} onChange={(next) => void controller.setInvestigate(next)} />
+          </div>
+        )}
+        {isTargetRecording && <CompanionProposalSettings {...globalSettings} />}
         {controller.isEnabled && isTargetRecording && <CompanionFocusField value={status.focus} onSave={controller.setFocus} />}
       </>
     );
@@ -165,6 +191,7 @@ export default function CompanionPane({ ui, controller, globalSettings, isTarget
           <span className="meeting-status-message">{capacityNotice}</span>
         </div>
       )}
+      <CompanionInvestigationNotice running={status.investigating} question={lastInvestigation?.question || null} onStop={controller.stopInvestigations} />
       {controller.actionError && (
         <div className="meeting-history-load-more-error" role="alert">
           <span>{controller.actionError}</span>

@@ -175,10 +175,14 @@ def read_audio_window_live(
     Returns ``(frames, sample_rate, sample_width, channels)``; ``frames`` is
     empty when the requested range is empty or not yet available on disk.
     """
-    with wave.open(str(audio_path), "rb") as wav:
-        rate = wav.getframerate()
-        sample_width = wav.getsampwidth()
-        channels = wav.getnchannels()
+    try:
+        with wave.open(str(audio_path), "rb") as wav:
+            rate = wav.getframerate()
+            sample_width = wav.getsampwidth()
+            channels = wav.getnchannels()
+    except (EOFError, wave.Error):
+        # A track that has not written a complete header yet (for example a silent system-audio track) has no audio available.
+        return (b"", 0, 0, 0)
     if rate <= 0:
         return (b"", rate, sample_width, channels)
     block_align = sample_width * channels

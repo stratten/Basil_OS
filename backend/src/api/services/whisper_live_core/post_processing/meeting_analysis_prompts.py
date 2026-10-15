@@ -8,7 +8,14 @@ import json
 import logging
 from typing import Dict, Any, Optional, List
 
+from api.core.models.model_invocation import ANALYSIS_CACHE_BREAK, CACHE_BREAK_TOKEN
+
 logger = logging.getLogger(__name__)
+
+SHARED_ANALYSIS_PREAMBLE = (
+    "You are an expert meeting analyst. Read the meeting context and the "
+    "transcript below, then complete the analysis task that follows them."
+)
 
 
 class MeetingAnalysisPromptBuilder:
@@ -42,12 +49,8 @@ class MeetingAnalysisPromptBuilder:
         metadata_section = self._build_metadata_section(meeting_metadata)
         custom_section = self._build_custom_instructions_section(custom_instructions)
         
-        prompt = f"""You are an expert meeting analyst specializing in extracting actionable tasks and commitments.
-
-{metadata_section}
-
-TRANSCRIPT:
-{transcript}
+        shared_prefix = self._build_shared_prefix(metadata_section, transcript)
+        prompt = f"""{shared_prefix}You are an expert meeting analyst specializing in extracting actionable tasks and commitments.
 
 YOUR TASK:
 Extract all action items, tasks, commitments, and follow-up items mentioned in this meeting. For each action item, identify:
@@ -124,21 +127,17 @@ JSON OUTPUT:"""
             "- Ask for missing information when a task lacks recipients, dates, file names, permissions, or target apps."
         )
 
-        prompt = f"""You are Basil's meeting follow-up planner. You produce a review
+        shared_prefix = self._build_shared_prefix(metadata_section, transcript)
+        prompt = f"""{shared_prefix}You are Basil's meeting follow-up planner. You produce a review
 queue of durable To-Do candidates, not a list of every statement that sounds
 like a task. You do not execute anything yourself. Each candidate may be a
 tracking-only To-Do or may include a concrete agent action that the user can
 approve later.
 
-{metadata_section}
-
 {capabilities_section}
 
 EXTRACTED ACTION ITEMS:
 {action_items_json}
-
-TRANSCRIPT:
-{transcript}
 
 YOUR TASK:
 Classify each potential follow-up from the extracted action items and transcript.
@@ -277,12 +276,8 @@ JSON OUTPUT:"""
         metadata_section = self._build_metadata_section(meeting_metadata)
         custom_section = self._build_custom_instructions_section(custom_instructions)
         
-        prompt = f"""You are an expert meeting analyst specializing in creating concise, accurate meeting summaries.
-
-{metadata_section}
-
-TRANSCRIPT:
-{transcript}
+        shared_prefix = self._build_shared_prefix(metadata_section, transcript)
+        prompt = f"""{shared_prefix}You are an expert meeting analyst specializing in creating concise, accurate meeting summaries.
 
 YOUR TASK:
 Create a comprehensive yet concise summary of this meeting that captures:
@@ -347,12 +342,8 @@ JSON OUTPUT:"""
         metadata_section = self._build_metadata_section(meeting_metadata)
         custom_section = self._build_custom_instructions_section(custom_instructions)
         
-        prompt = f"""You are an expert meeting analyst specializing in identifying and documenting key decisions.
-
-{metadata_section}
-
-TRANSCRIPT:
-{transcript}
+        shared_prefix = self._build_shared_prefix(metadata_section, transcript)
+        prompt = f"""{shared_prefix}You are an expert meeting analyst specializing in identifying and documenting key decisions.
 
 YOUR TASK:
 Identify all significant decisions made during this meeting. For each decision:
@@ -413,12 +404,8 @@ JSON OUTPUT:"""
         metadata_section = self._build_metadata_section(meeting_metadata)
         custom_section = self._build_custom_instructions_section(custom_instructions)
         
-        prompt = f"""You are an expert meeting analyst specializing in extracting questions and answers.
-
-{metadata_section}
-
-TRANSCRIPT:
-{transcript}
+        shared_prefix = self._build_shared_prefix(metadata_section, transcript)
+        prompt = f"""{shared_prefix}You are an expert meeting analyst specializing in extracting questions and answers.
 
 YOUR TASK:
 Extract all significant questions asked during the meeting along with their answers. For each Q&A pair:
@@ -482,12 +469,8 @@ JSON OUTPUT:"""
         metadata_section = self._build_metadata_section(meeting_metadata)
         custom_section = self._build_custom_instructions_section(custom_instructions)
         
-        prompt = f"""You are an expert meeting analyst specializing in sentiment and engagement analysis.
-
-{metadata_section}
-
-TRANSCRIPT:
-{transcript}
+        shared_prefix = self._build_shared_prefix(metadata_section, transcript)
+        prompt = f"""{shared_prefix}You are an expert meeting analyst specializing in sentiment and engagement analysis.
 
 YOUR TASK:
 Analyze the overall sentiment, tone, and engagement level of this meeting. Provide:
@@ -560,12 +543,8 @@ JSON OUTPUT:"""
         """
         metadata_section = self._build_metadata_section(meeting_metadata)
         
-        prompt = f"""You are an expert meeting analyst helping with a custom analysis request.
-
-{metadata_section}
-
-TRANSCRIPT:
-{transcript}
+        shared_prefix = self._build_shared_prefix(metadata_section, transcript)
+        prompt = f"""{shared_prefix}You are an expert meeting analyst helping with a custom analysis request.
 
 CUSTOM ANALYSIS REQUEST:
 {custom_instructions}
@@ -636,6 +615,20 @@ JSON OUTPUT:"""
             return f"{identity_block}\n\n{context_section}"
         return context_section
     
+    def _build_shared_prefix(self, metadata_section: str, transcript: str) -> str:
+        """Build the byte-identical material every mode shares, ending at the cache break.
+
+        Everything before the break is identical across modes for the same transcript
+        range, so providers with prefix caching reuse it. The marker token is removed
+        from user-controlled text so it can never create a second break.
+        """
+        safe_metadata = metadata_section.replace(CACHE_BREAK_TOKEN, "")
+        safe_transcript = transcript.replace(CACHE_BREAK_TOKEN, "")
+        return (
+            f"{SHARED_ANALYSIS_PREAMBLE}\n\n{safe_metadata}\n\n"
+            f"TRANSCRIPT:\n{safe_transcript}{ANALYSIS_CACHE_BREAK}"
+        )
+
     def _build_custom_instructions_section(self, custom_instructions: Optional[str]) -> str:
         """Build custom instructions section if provided."""
         if not custom_instructions:

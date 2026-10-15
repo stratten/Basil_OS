@@ -156,3 +156,58 @@ describe('buildHistoryItems pending follow-up due time', () => {
     expect(rows.find(row => row.id === 'root-none')?.nextFollowUpAt).toBeUndefined();
   });
 });
+
+describe('buildHistoryItems archive wiring', () => {
+  const archive = (_id: string) => {};
+
+  function historyRow(id: string, status: string) {
+    return {
+      id,
+      original_prompt: `Prompt ${id}`,
+      timestamp: '2026-10-01T00:00:00Z',
+      status,
+      file_count: 0,
+      follow_up_count: 0,
+    };
+  }
+
+  it('offers archive on finished history rows and withholds it from running or waiting rows', () => {
+    const rows = buildHistoryItems({
+      ...buildArgs([]),
+      history: [
+        historyRow('done', 'completed'),
+        historyRow('failed', 'failed'),
+        historyRow('running', 'processing'),
+        historyRow('waiting', 'awaiting_user_input'),
+        historyRow('clarify', 'needs_clarification'),
+      ],
+      archiveAgentTask: archive,
+      archiveLabel: 'Unarchive',
+    });
+
+    const byId = Object.fromEntries(rows.map(row => [row.id, row]));
+    expect(byId.done.onArchive).toBe(archive);
+    expect(byId.done.archiveLabel).toBe('Unarchive');
+    expect(byId.failed.onArchive).toBe(archive);
+    expect(byId.running.onArchive).toBeUndefined();
+    expect(byId.waiting.onArchive).toBeUndefined();
+    expect(byId.clarify.onArchive).toBeUndefined();
+  });
+
+  it('offers archive on finished store agents only', () => {
+    const finished = createAgentState('finished-1', 'Done task');
+    finished.status = 'completed';
+    const running = createAgentState('running-1', 'Live task');
+    running.status = 'processing';
+
+    const rows = buildHistoryItems({
+      ...buildArgs([finished, running]),
+      archiveAgentTask: archive,
+      archiveLabel: 'Archive',
+    });
+
+    const byId = Object.fromEntries(rows.map(row => [row.id, row]));
+    expect(byId['finished-1'].onArchive).toBe(archive);
+    expect(byId['running-1'].onArchive).toBeUndefined();
+  });
+});

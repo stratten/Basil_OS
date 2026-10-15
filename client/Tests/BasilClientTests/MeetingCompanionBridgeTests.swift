@@ -50,6 +50,7 @@ final class MeetingCompanionBridgeTests: XCTestCase {
     func testCompanionIntentsAreInTheClosedList() {
         XCTAssertEqual(MeetingBridgeIntent(rawValue: "pickCompanionFolder"), .pickCompanionFolder)
         XCTAssertEqual(MeetingBridgeIntent(rawValue: "openCompanionWindow"), .openCompanionWindow)
+        XCTAssertEqual(MeetingBridgeIntent(rawValue: "openCompanionAssistantSession"), .openCompanionAssistantSession)
         XCTAssertEqual(MeetingBridgeIntent(rawValue: "setCompanionPaneExtent"), .setCompanionPaneExtent)
     }
 

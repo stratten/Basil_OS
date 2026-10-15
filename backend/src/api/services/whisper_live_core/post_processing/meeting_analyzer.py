@@ -4,6 +4,7 @@ Meeting analysis processor with LLM-powered analysis modes.
 Orchestrates analysis execution across multiple modes including action items,
 summaries, decisions, questions, sentiment, and custom analysis.
 """
+import asyncio
 import json
 import logging
 import time
@@ -25,7 +26,15 @@ from .meeting_analysis_context import (
     build_capability_digest,
     build_identity_block,
 )
+from .meeting_analysis_concurrency import (
+    LOCAL_MODEL_CONCURRENCY,
+    MODE_DEPENDENCIES,
+    AnalysisCallLimiter,
+    resolve_analysis_concurrency,
+)
+from .meeting_analysis_events import AnalysisItemSink
 from .meeting_analysis_executor import MeetingAnalysisExecutor
+from .meeting_analysis_timing import AnalysisTimingRecorder, summarize_report_for_log
 from .meeting_transcript_utils import (
     count_unique_speakers,
     get_transcript_duration,
@@ -97,7 +106,8 @@ class MeetingAnalyzer:
         self,
         modes: List[str],
         custom_instructions: Optional[str] = None,
-        progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None
+        progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
+        event_callback: Optional[Callable[[Dict[str, Any]], Any]] = None,
     ) -> MeetingAnalysisResult:
         """
         Perform analysis on the meeting transcript.
@@ -126,6 +136,14 @@ class MeetingAnalyzer:
             await self._load_transcript()
             await self._load_model()
             await self._load_identity_and_capabilities()
+            self._timing_recorder = AnalysisTimingRecorder()
+            self._call_limiter = AnalysisCallLimiter(
+                resolve_analysis_concurrency(self.model)
+            )
+            self._concurrency_at_start = self._call_limiter.limit
+            self._stage_progress_by_mode = {}
+            self._last_overall_progress = 0.0
+            self._fallback_lock_instance = asyncio.Lock()
             
             await self._send_progress(
                 progress_callback,
@@ -142,11 +160,41 @@ class MeetingAnalyzer:
             completed_modes: List[str] = []
             failed_modes: List[AnalysisModeFailure] = []
             self._safety_omissions = []
+            recorder = self._active_timing_recorder()
 
-            for mode in modes:
+            async def report_streamed_count(mode_value: str, count: int) -> None:
+                await self._send_progress(
+                    progress_callback,
+                    stage=f"analyzing_{mode_value}",
+                    stage_progress=self._active_stage_progress().get(mode_value, 0.0),
+                    completed_modes=completed_modes,
+                    total_modes=len(modes),
+                    message=(
+                        f"Analyzing {mode_value.replace('_', ' ')}: "
+                        f"{count} found so far..."
+                    ),
+                    current_mode=mode_value,
+                )
+
+            self._item_sink = AnalysisItemSink(
+                meeting_id=self.meeting_id,
+                event_callback=event_callback,
+                count_callback=report_streamed_count if progress_callback else None,
+            )
+
+            async def run_mode(
+                mode: str,
+                mode_tasks: Dict[str, "asyncio.Task[None]"],
+            ) -> None:
                 mode_enum = AnalysisMode(mode)
                 mode_label = mode_enum.value.replace("_", " ")
 
+                for dependency in MODE_DEPENDENCIES.get(mode, ()):
+                    dependency_task = mode_tasks.get(dependency)
+                    if dependency_task is not None:
+                        await asyncio.wait({dependency_task})
+
+                recorder.begin_mode(mode)
                 await self._send_progress(
                     progress_callback,
                     stage=f"analyzing_{mode}",
@@ -168,6 +216,7 @@ class MeetingAnalyzer:
                     )
                 except Exception as error:
                     failed_modes.append(self._build_mode_failure(mode_enum, error))
+                    recorder.end_mode(mode, "error")
                     logger.error(
                         "Failed to analyze mode %s: %s",
                         mode_enum.value,
@@ -183,10 +232,11 @@ class MeetingAnalyzer:
                         message=f"Failed {mode_label}; continuing with remaining analyses",
                         current_mode=mode,
                     )
-                    continue
+                    return
 
                 results[mode] = mode_result
                 completed_modes.append(mode)
+                recorder.end_mode(mode, "ok")
 
                 await self._send_progress(
                     progress_callback,
@@ -196,6 +246,20 @@ class MeetingAnalyzer:
                     total_modes=len(modes),
                     message=f"Completed {len(completed_modes)} of {len(modes)} analyses"
                 )
+
+            mode_tasks: Dict[str, "asyncio.Task[None]"] = {}
+            try:
+                for mode in modes:
+                    mode_tasks[mode] = asyncio.ensure_future(run_mode(mode, mode_tasks))
+                await asyncio.gather(*mode_tasks.values())
+            finally:
+                for task in mode_tasks.values():
+                    if not task.done():
+                        task.cancel()
+                await asyncio.gather(*mode_tasks.values(), return_exceptions=True)
+
+            results = {mode: results[mode] for mode in modes if mode in results}
+            failed_modes.sort(key=lambda failure: modes.index(failure.mode))
 
             # Stage 3: Combine results
             await self._send_progress(
@@ -216,6 +280,16 @@ class MeetingAnalyzer:
                 processing_time,
                 failed_modes,
                 self._safety_omissions,
+            )
+            analysis_result.timings = recorder.build_report(
+                concurrency_limit=getattr(
+                    self, "_concurrency_at_start", LOCAL_MODEL_CONCURRENCY
+                )
+            )
+            logger.info(
+                "Meeting analysis timings for %s: %s",
+                self.meeting_id,
+                summarize_report_for_log(analysis_result.timings),
             )
             
             # Save analysis to disk
@@ -435,8 +509,15 @@ class MeetingAnalyzer:
                     current_mode=mode.value,
                 )
 
-            executor = MeetingAnalysisExecutor(self.meeting_id, self.prompt_builder)
+            executor = MeetingAnalysisExecutor(
+                self.meeting_id,
+                self.prompt_builder,
+                timing_recorder=self._active_timing_recorder(),
+                call_limiter=self._active_call_limiter(),
+                item_sink=getattr(self, "_item_sink", None),
+            )
             try:
+                model_in_use = self.model
                 try:
                     result = await executor.analyze_mode(
                         mode=mode,
@@ -444,24 +525,14 @@ class MeetingAnalyzer:
                         meeting_metadata=self._build_meeting_metadata(),
                         custom_instructions=custom_instructions,
                         prior_results=prior_results or {},
-                        model=self.model,
+                        model=model_in_use,
                         progress_callback=chunk_progress,
                     )
                 except Exception as first_error:
-                    from api.services.model_usage_service import is_model_unreachable_error
-                    if self._any_mode_succeeded or not is_model_unreachable_error(first_error):
+                    if not await self._switch_to_local_fallback(
+                        first_error, failed_model=model_in_use
+                    ):
                         raise
-                    fallback_model = await ModelUsageService(get_model_service()).get_designated_local_fallback_model(
-                        {ModelCapability.REASONING}
-                    )
-                    if fallback_model is None:
-                        raise
-                    logger.warning(
-                        f"Reasoning model unreachable ({first_error}); retrying meeting analysis "
-                        f"once with local fallback model {fallback_model.model_name}"
-                    )
-                    self.model = fallback_model
-                    self.fallback_model_used = fallback_model.model_name
                     result = await executor.analyze_mode(
                         mode=mode,
                         transcript=self.transcript or {},
@@ -486,6 +557,72 @@ class MeetingAnalyzer:
                 f"Meeting analysis mode {mode.value} failed; refusing to save an incomplete analysis."
             ) from e
     
+    def _active_timing_recorder(self) -> AnalysisTimingRecorder:
+        """Return this run's recorder, creating one for direct callers of _analyze_mode."""
+        recorder = getattr(self, "_timing_recorder", None)
+        if recorder is None:
+            recorder = AnalysisTimingRecorder()
+            self._timing_recorder = recorder
+        return recorder
+
+    def _active_call_limiter(self) -> AnalysisCallLimiter:
+        """Return this run's call limiter, creating a serial one for direct callers."""
+        limiter = getattr(self, "_call_limiter", None)
+        if limiter is None:
+            limiter = AnalysisCallLimiter(LOCAL_MODEL_CONCURRENCY)
+            self._call_limiter = limiter
+        return limiter
+
+    def _active_stage_progress(self) -> Dict[str, float]:
+        """Latest stage progress of every mode that has reported in this run."""
+        progress = getattr(self, "_stage_progress_by_mode", None)
+        if progress is None:
+            progress = {}
+            self._stage_progress_by_mode = progress
+        return progress
+
+    def _active_fallback_lock(self) -> asyncio.Lock:
+        lock = getattr(self, "_fallback_lock_instance", None)
+        if lock is None:
+            lock = asyncio.Lock()
+            self._fallback_lock_instance = lock
+        return lock
+
+    async def _switch_to_local_fallback(
+        self,
+        first_error: Exception,
+        *,
+        failed_model: Any,
+    ) -> bool:
+        """Switch to the designated local model once; True when callers should retry.
+
+        Serialized so concurrent modes that fail on the same unreachable model switch
+        exactly once and the rest retry on the already-selected fallback. Never fires
+        after any mode has succeeded.
+        """
+        from api.services.model_usage_service import is_model_unreachable_error
+
+        if not is_model_unreachable_error(first_error):
+            return False
+        async with self._active_fallback_lock():
+            if self.model is not failed_model:
+                return True
+            if self._any_mode_succeeded:
+                return False
+            fallback_model = await ModelUsageService(
+                get_model_service()
+            ).get_designated_local_fallback_model({ModelCapability.REASONING})
+            if fallback_model is None:
+                return False
+            logger.warning(
+                f"Reasoning model unreachable ({first_error}); retrying meeting analysis "
+                f"once with local fallback model {fallback_model.model_name}"
+            )
+            self.model = fallback_model
+            self.fallback_model_used = fallback_model.model_name
+            self._active_call_limiter().set_limit(LOCAL_MODEL_CONCURRENCY)
+            return True
+
     def _build_meeting_metadata(self) -> Dict[str, Any]:
         """Build the shared prompt metadata for every analysis mode."""
         return {
@@ -634,11 +771,27 @@ class MeetingAnalyzer:
         if not callback:
             return
         
-        # Calculate overall progress
+        # Calculate overall progress across every mode in flight so concurrent
+        # modes can never move the bar backwards.
         completed_count = len(completed_modes)
-        mode_weight = 1.0 / total_modes if total_modes > 0 else 0.0
-        overall_progress = (completed_count * mode_weight) + (stage_progress * mode_weight)
+        stage_by_mode = self._active_stage_progress()
+        if stage.startswith("analyzing_"):
+            stage_by_mode[stage[len("analyzing_"):]] = stage_progress
+        in_flight_progress = sum(
+            value for mode, value in stage_by_mode.items() if mode not in completed_modes
+        )
+        overall_progress = (
+            (completed_count + in_flight_progress) / total_modes
+            if total_modes > 0
+            else 0.0
+        )
         overall_progress = min(1.0, max(0.0, overall_progress))
+        if stage == "complete":
+            overall_progress = 1.0
+        overall_progress = max(
+            overall_progress, getattr(self, "_last_overall_progress", 0.0)
+        )
+        self._last_overall_progress = overall_progress
         
         progress = AnalysisProgress(
             stage=stage,

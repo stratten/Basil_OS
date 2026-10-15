@@ -3,20 +3,46 @@
   flex-direction: column;
   gap: var(--padding-s);
   margin: 0 var(--padding-xs) var(--padding-m);
+}
+
+/* One side of an exchange. App turns sit on the left, user turns on the right, matching Conversations. */
+.interaction-turn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-xs);
+  max-width: 88%;
+  min-width: 0;
   padding: var(--padding-s) var(--padding-m);
   border: var(--border-thin) solid var(--secondary);
   border-radius: var(--corner-radius-medium, 8px);
+}
+
+.interaction-turn.is-app {
+  align-self: flex-start;
   background: var(--background-primary);
+  color: var(--text-primary);
   box-shadow: 0 2px 8px color-mix(in srgb, var(--secondary) 14%, transparent);
 }
 
-.interaction-exchange.is-waiting {
-  border-color: var(--warning-base);
-  box-shadow: 0 2px 10px color-mix(in srgb, var(--warning-base) 30%, transparent);
+.interaction-turn.is-user {
+  align-self: flex-end;
+  background: var(--secondary);
+  color: var(--background-primary);
 }
 
-.interaction-exchange-heading,
-.interaction-exchange-response-heading {
+.interaction-turn.is-waiting {
+  border-color: var(--warning-base);
+  background: color-mix(in srgb, var(--warning-base) 16%, var(--background-primary));
+  color: var(--text-primary);
+}
+
+.interaction-turn.is-negative {
+  border-color: var(--error-base);
+  background: var(--background-primary);
+  color: var(--error-base);
+}
+
+.interaction-turn-heading {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -25,18 +51,27 @@
   font-size: var(--font-size-status-small);
 }
 
-.interaction-exchange-glyph {
+.interaction-turn-glyph {
   display: inline-grid;
   width: 20px;
   height: 20px;
   flex: 0 0 20px;
   place-items: center;
   border-radius: 50%;
+}
+
+.interaction-turn.is-app .interaction-turn-glyph {
   background: var(--secondary);
   color: var(--background-primary);
 }
 
-.interaction-exchange-glyph svg {
+.interaction-turn.is-user .interaction-turn-glyph {
+  border: 2px solid var(--background-primary);
+  background: var(--secondary);
+  color: var(--background-primary);
+}
+
+.interaction-turn-glyph svg {
   width: 13px;
   height: 13px;
   fill: none;
@@ -46,7 +81,7 @@
   stroke-width: 2;
 }
 
-.interaction-exchange-asker {
+.interaction-turn.is-app .interaction-turn-label {
   color: var(--secondary);
 }
 
@@ -58,13 +93,19 @@
   opacity: 0.85;
 }
 
-.interaction-exchange-heading .interaction-exchange-time {
-  color: var(--text-primary);
+.interaction-turn.is-user a,
+.interaction-turn.is-user code,
+.interaction-turn.is-user .interaction-exchange-prompt {
+  color: inherit;
+}
+
+.interaction-turn.is-user code {
+  background: color-mix(in srgb, var(--background-primary) 22%, transparent);
 }
 
 .interaction-exchange-prompt {
   margin-top: var(--padding-xs);
-  color: var(--text-primary);
+  color: inherit;
   font-family: var(--font-family-light);
   font-size: var(--font-size-status-small);
   overflow-wrap: anywhere;
@@ -84,32 +125,6 @@
   white-space: pre-wrap;
   word-break: break-word;
   user-select: text;
-}
-
-.interaction-exchange-response {
-  align-self: flex-end;
-  max-width: 88%;
-  padding: 6px var(--padding-s);
-  border: var(--border-thin) solid var(--secondary);
-  border-radius: var(--corner-radius-medium, 8px) var(--corner-radius-medium, 8px) 2px var(--corner-radius-medium, 8px);
-  background: var(--background-primary);
-  color: var(--secondary);
-}
-
-.interaction-exchange-response.is-answer {
-  background: var(--secondary);
-  color: var(--background-primary);
-}
-
-.interaction-exchange-response.is-waiting {
-  border-color: var(--warning-base);
-  background: color-mix(in srgb, var(--warning-base) 16%, var(--background-primary));
-  color: var(--text-primary);
-}
-
-.interaction-exchange-response.is-negative {
-  border-color: var(--error-base);
-  color: var(--error-base);
 }
 
 .interaction-exchange-response-text {

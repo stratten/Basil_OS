@@ -13,6 +13,7 @@ import {
   requestResize,
   registerCaptureHandler,
   registerExpandChromeForTaskCompletionHandler,
+  registerFilesPickedHandler,
   registerShowScheduledAgentTaskHandler,
   registerValidationManagedHistoryRestoreHandler,
   registerValidationRunFocusHandler,
@@ -363,5 +364,44 @@ describe('file preview window bridge context', () => {
       agentTaskId: undefined,
       rootTaskId: undefined,
     });
+  });
+});
+
+describe('files picked handler registration', () => {
+  it('lets an outgoing surface unregister without clobbering the incoming surface', () => {
+    const outgoing = vi.fn();
+    const incoming = vi.fn();
+    const unregisterOutgoing = registerFilesPickedHandler(outgoing);
+    const unregisterIncoming = registerFilesPickedHandler(incoming);
+
+    unregisterOutgoing();
+    window.basilAgentTask?.onFilesPicked(['/tmp/report.png']);
+
+    expect(outgoing).not.toHaveBeenCalled();
+    expect(incoming).toHaveBeenCalledWith(['/tmp/report.png']);
+    unregisterIncoming();
+  });
+
+  it('clears the slot when the owner unregisters, leaving later picks as a safe no-op', () => {
+    const handler = vi.fn();
+    const unregister = registerFilesPickedHandler(handler);
+
+    unregister();
+
+    expect(() => window.basilAgentTask?.onFilesPicked(['/tmp/late.txt'])).not.toThrow();
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('treats a repeated unregister as harmless', () => {
+    const first = vi.fn();
+    const second = vi.fn();
+    const unregisterFirst = registerFilesPickedHandler(first);
+    unregisterFirst();
+    registerFilesPickedHandler(second);
+
+    unregisterFirst();
+    window.basilAgentTask?.onFilesPicked(['/tmp/a.txt']);
+
+    expect(second).toHaveBeenCalledWith(['/tmp/a.txt']);
   });
 });

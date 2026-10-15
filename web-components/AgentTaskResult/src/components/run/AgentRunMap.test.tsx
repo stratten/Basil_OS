@@ -11,6 +11,14 @@ import { EMPTY_RUN_ARTIFACTS } from './RunCard';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
+vi.mock('../../services/api', () => ({
+  getReasoningModels: vi.fn().mockResolvedValue({
+    models: [{ id: 'gpt-5-mini', name: 'gpt-5-mini', display_name: 'GPT-5 mini', provider: 'openai', category: 'api', is_api_model: true }],
+    current_model: 'gpt-5-mini',
+    api_models_enabled: true,
+  }),
+}));
+
 const rootRun: AgentTaskRunFocusSummary = {
   id: 'root',
   kind: 'root',
@@ -129,6 +137,22 @@ describe('AgentRunMap', () => {
     expect(view.querySelectorAll('.run-card')).toHaveLength(1);
   });
 
+  it('names the model on each expanded turn that recorded one', async () => {
+    const recorded = { ...followUpRun, modelUsed: 'gpt-5-mini' };
+    let view!: HTMLElement;
+    await act(async () => {
+      view = renderMap({ runs: [rootRun, recorded] });
+    });
+    expect(turnFor('Follow-up 1')?.querySelector('.agent-run-map-model')?.textContent).toBe('Model: GPT-5 mini');
+    expect(turnFor('Initial request')?.querySelector('.agent-run-map-model')).toBeNull();
+    expect(view.querySelectorAll('.agent-run-map-model')).toHaveLength(1);
+  });
+
+  it('shows no model line for an expanded turn without a recorded model', () => {
+    const view = renderMap();
+    expect(view.querySelector('.agent-run-map-model')).toBeNull();
+  });
+
   it('navigates to a turn when its header is clicked', () => {
     renderMap();
     act(() => {
@@ -162,6 +186,19 @@ describe('AgentRunMap', () => {
     renderMap();
     expect(turnFor('Initial request')?.querySelector('.agent-run-map-attention.is-failed')?.textContent).toBe('Needs attention');
     renderMap({ peekedRunIds: ['root'] });
+    expect(turnFor('Initial request')?.querySelector('.agent-run-map-attention')).toBeNull();
+  });
+
+  it('shows a calm note badge, not a failure, for a partial turn that produced documents', () => {
+    renderMap({ runs: [{ ...rootRun, outcome: 'partial', resultSeverity: 'warning', hasVerifiedArtifactOutput: false, documentCount: 2 }, followUpRun] });
+    const badge = turnFor('Initial request')?.querySelector('.agent-run-map-attention');
+    expect(badge?.classList.contains('is-note')).toBe(true);
+    expect(badge?.classList.contains('is-failed')).toBe(false);
+    expect(badge?.textContent).toBe('Partial result');
+  });
+
+  it('shows no attention badge for a turn the user stopped', () => {
+    renderMap({ runs: [{ ...rootRun, taskStatus: 'canceled', outcome: undefined }, followUpRun] });
     expect(turnFor('Initial request')?.querySelector('.agent-run-map-attention')).toBeNull();
   });
 

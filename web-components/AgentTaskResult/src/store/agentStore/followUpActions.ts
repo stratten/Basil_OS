@@ -42,6 +42,7 @@ export class FollowUpAgentStore extends AgentStoreCore {
       }
       a.currentTurnTaskId = followUpId;
       a.originalPrompt = '';
+      a.modelUsed = undefined;
       a.result = '';
       a.presentationSummary = undefined;
       a.delegatedProviderReportCards = [];
@@ -108,6 +109,7 @@ export class FollowUpAgentStore extends AgentStoreCore {
       outcome: agent.outcome,
       resultSeverity: agent.resultSeverity,
       status: agent.status,
+      modelUsed: agent.modelUsed ?? agent.originalModelId,
     };
   }
 

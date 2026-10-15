@@ -1,0 +1,113 @@
+.meeting-resource-advice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--padding-s);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.meeting-resource-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--padding-xs);
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--padding-xs) var(--padding-m);
+  border: 2px solid var(--primary);
+  border-radius: var(--corner-radius-medium);
+  background: var(--background-primary);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-light);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+  cursor: pointer;
+}
+
+.meeting-resource-chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meeting-resource-dot {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+.meeting-resource-chip--warning,
+.meeting-resource-item--warning {
+  border-color: var(--warning-base);
+}
+
+.meeting-resource-chip--warning .meeting-resource-dot {
+  background: var(--warning-base);
+}
+
+.meeting-resource-chip--critical,
+.meeting-resource-item--critical {
+  border-color: var(--error-base);
+}
+
+.meeting-resource-chip--critical .meeting-resource-dot {
+  background: var(--error-base);
+}
+
+.meeting-resource-chip:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.meeting-resource-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-s);
+  width: 100%;
+  max-height: 240px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.meeting-resource-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-xs);
+  padding: var(--padding-s) var(--padding-m);
+  border: 1px solid var(--primary);
+  border-left-width: 4px;
+  border-radius: var(--corner-radius-medium);
+  background: var(--background-primary);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-light);
+}
+
+.meeting-resource-item-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--padding-xs);
+}
+
+.meeting-resource-item-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--font-size-callout);
+}
+
+.meeting-resource-item-detail {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--font-size-callout);
+}
+
+.meeting-resource-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--padding-s);
+}

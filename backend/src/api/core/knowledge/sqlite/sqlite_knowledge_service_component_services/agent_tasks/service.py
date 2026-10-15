@@ -313,6 +313,14 @@ class AgentTaskService:
             True if deletion was successful, False if agent task not found.
         """
         return await self._mutations.delete_agent_task(agent_task_id, cascade)
+
+    async def archive_agent_task_chain(self, agent_task_id: str) -> str:
+        """Archive the whole chain containing the task ("ok", "not_found" or "active" while it is still running)."""
+        return await self._mutations.archive_agent_task_chain(agent_task_id)
+
+    async def unarchive_agent_task_chain(self, agent_task_id: str) -> str:
+        """Return the chain containing the task to the main list ("ok" or "not_found")."""
+        return await self._mutations.unarchive_agent_task_chain(agent_task_id)
     
     # === Queries (direct delegation, no events needed) ===
     
@@ -382,10 +390,11 @@ class AgentTaskService:
         self,
         limit: int = 50,
         offset: int = 0,
-        status_filter: Optional[str] = None
+        status_filter: Optional[str] = None,
+        archived: Optional[bool] = None,
     ) -> List[Dict[str, Any]]:
-        """List root task summaries using the lightweight sidebar query."""
-        return await self._queries.list_recent_agent_task_summaries(limit, offset, status_filter)
+        """List root task summaries using the lightweight sidebar query (``archived`` None means any)."""
+        return await self._queries.list_recent_agent_task_summaries(limit, offset, status_filter, archived)
 
     async def list_recent_conversation_task_summaries(
         self,
@@ -481,9 +490,10 @@ class AgentTaskService:
         status: Optional[str] = None,
         app_name: Optional[str] = None,
         limit: int = 50,
-        offset: int = 0
+        offset: int = 0,
+        archived: Optional[bool] = None,
     ) -> List[Dict[str, Any]]:
-        """Search root task summaries using the maintained FTS index."""
+        """Search root task summaries using the maintained FTS index (``archived`` None means any)."""
         return await self._queries.search_agent_task_summaries(
             query=query,
             start_date=start_date,
@@ -491,7 +501,8 @@ class AgentTaskService:
             status=status,
             app_name=app_name,
             limit=limit,
-            offset=offset
+            offset=offset,
+            archived=archived,
         )
 
     async def list_agent_tasks_by_origin(self, origin_type: str, origin_id: str, include_terminal: bool = True):

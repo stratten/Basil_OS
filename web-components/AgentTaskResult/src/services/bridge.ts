@@ -226,8 +226,12 @@ export function registerDetachedRootsHandler(cb: (rootTaskIds: string[]) => void
   }
 }
 
-export function registerFilesPickedHandler(cb: (paths: string[]) => void) {
+/** The most recent registration owns the slot; the returned unregister only clears it while it still does, so an outgoing surface cannot clobber the incoming one. */
+export function registerFilesPickedHandler(cb: (paths: string[]) => void): () => void {
   filesPickedCallback = cb;
+  return () => {
+    if (filesPickedCallback === cb) filesPickedCallback = null;
+  };
 }
 
 export function registerRequestFollowUpHandler(cb: () => void) {

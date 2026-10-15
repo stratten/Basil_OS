@@ -6,6 +6,7 @@ export type FilePreviewRenderMode =
   | 'live_html'
   | 'source'
   | 'native_pdf'
+  | 'image'
   | 'unsupported';
 
 export interface FilePreviewPresentation {
@@ -29,6 +30,8 @@ export function presentFilePreview(kind: FilePreviewKind | undefined): FilePrevi
       return { label: 'Text Preview', renderMode: 'source' };
     case 'pdf':
       return { label: 'PDF Preview', renderMode: 'native_pdf' };
+    case 'image':
+      return { label: 'Image Preview', renderMode: 'image' };
     case 'unsupported':
       return { label: 'File Preview', renderMode: 'unsupported' };
     default:

@@ -11,6 +11,7 @@ const KIND_LABELS: Record<CompanionItem['kind'], string> = {
   suggestion: 'Suggestion',
   answer: 'Answer',
   context_note: 'From your sources',
+  proposal: 'Proposed action',
 };
 
 export function formatItemTime(item: CompanionItem): string {
@@ -32,9 +33,12 @@ interface CompanionItemCardProps {
   item: CompanionItem;
   watchTopic: string | null;
   onFeedback: (itemId: string, action: CompanionFeedbackAction) => Promise<boolean>;
+  /** True when research is on and this note has not been researched yet. */
+  canInvestigate: boolean;
+  onInvestigate: (item: CompanionItem) => void;
 }
 
-function CompanionItemCard({ item, watchTopic, onFeedback }: CompanionItemCardProps) {
+function CompanionItemCard({ item, watchTopic, onFeedback, canInvestigate, onInvestigate }: CompanionItemCardProps) {
   const [copied, flashCopied] = useCopiedFlag();
   const [rating, setRating] = useState<'useful' | 'not_useful' | null>(null);
 
@@ -53,6 +57,7 @@ function CompanionItemCard({ item, watchTopic, onFeedback }: CompanionItemCardPr
     <article className={`companion-item companion-item--${item.kind}${item.pinned ? ' is-pinned' : ''}`} aria-label={`${KIND_LABELS[item.kind]} at ${formatItemTime(item)}`}>
       <header className="companion-item-header">
         <span className="companion-item-kind">{KIND_LABELS[item.kind]}</span>
+        {item.researched === true && <span className="companion-badge" title={item.evidence_count ? `Based on ${item.evidence_count} pieces of evidence` : 'Based on research'}>Researched</span>}
         {watchTopic !== null && <span className="meeting-status-message">Watch: {watchTopic}</span>}
         <span className="meeting-transcription-state" title="Where this happened in the meeting">{formatItemTime(item)}</span>
       </header>
@@ -87,6 +92,9 @@ function CompanionItemCard({ item, watchTopic, onFeedback }: CompanionItemCardPr
         <button type="button" className="meeting-transcript-icon-button" aria-label="Not helpful" title="Not helpful" aria-pressed={rating === 'not_useful'} onClick={() => rate('not_useful')}>
           <ThumbDownIcon filled={rating === 'not_useful'} />
         </button>
+        {canInvestigate && (
+          <button type="button" className="meeting-history-load-more-button" title="Look this up in your sources" onClick={() => onInvestigate(item)}>Investigate</button>
+        )}
         <button type="button" className="meeting-transcript-icon-button companion-item-dismiss" aria-label="Dismiss" title="Dismiss" onClick={() => void onFeedback(item.id, 'dismissed')}>
           <CloseIcon />
         </button>

@@ -27,6 +27,7 @@ from api.services.skills.skill_store import SkillBackpressureError
 from .revision_routes import router as revision_router
 from .models import (
     AgentTaskClarificationRequest,
+    ArchiveAgentTaskResponse,
     AgentTaskClarificationResponse,
     AgentTaskProcessingResponse,
     AgentTaskRequest,
@@ -241,11 +242,20 @@ async def process_agent_task(
         )
 
 
+async def _unarchive_chain_for_new_work(knowledge_service: SQLiteKnowledgeService, agent_task_id: str) -> None:
+    """New work on an archived chain returns it to the main list; a failure here must never block the work itself."""
+    try:
+        await knowledge_service.agent_task_service.unarchive_agent_task_chain(agent_task_id)
+    except Exception as unarchive_error:
+        logger.warning("Could not un-archive chain for %s before new work: %s", agent_task_id, unarchive_error)
+
+
 @router.post("/{agent_task_id}/clarifications", response_model=AgentTaskClarificationResponse, summary="Add Clarification to Existing AgentTask")
 async def add_clarification(
     agent_task_id: str,
     payload: AgentTaskClarificationRequest,
-    service: AgentTaskSubmissionService = Depends(get_agent_task_submission_service)
+    service: AgentTaskSubmissionService = Depends(get_agent_task_submission_service),
+    knowledge_service: SQLiteKnowledgeService = Depends(get_sqlite_knowledge_service),
 ) -> AgentTaskClarificationResponse:
     """
     Add clarification to an existing agent_task.
@@ -259,6 +269,7 @@ async def add_clarification(
         payload.agent_task_id = payload.agent_task_id or agent_task_id
 
         logger.info(f"Adding clarification to agent task {payload.agent_task_id}: '{payload.clarification_text}'")
+        await _unarchive_chain_for_new_work(knowledge_service, payload.agent_task_id)
 
         # Use the orchestrator's add_clarification method instead of creating a new agent task
         result = await service.add_clarification(
@@ -531,6 +542,7 @@ async def retry_agent_task(
             raise HTTPException(status_code=404, detail=f"AgentTask {agent_task_id} not found")
 
         logger.info(f"🔄 Retrying agent task {agent_task_id} from status '{agent_task_record.status}': '{agent_task_record.original_prompt[:50]}...'")
+        await _unarchive_chain_for_new_work(knowledge_service, agent_task_id)
         retry_context = build_retry_context(agent_task_record)
         retry_result_data = {
             "retry_context": retry_context,
@@ -607,6 +619,44 @@ async def retry_agent_task(
     except Exception as e:
         logger.error(f"Error retrying agent_task: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error retrying agent_task: {str(e)}")
+
+
+@router.post("/{agent_task_id}/archive", response_model=ArchiveAgentTaskResponse, summary="Archive AgentTask chain")
+async def archive_agent_task(
+    agent_task_id: str,
+    knowledge_service: SQLiteKnowledgeService = Depends(get_sqlite_knowledge_service),
+) -> ArchiveAgentTaskResponse:
+    """Archive the whole chain containing this task; running or awaiting-input chains are refused with 409."""
+    try:
+        outcome = await knowledge_service.agent_task_service.archive_agent_task_chain(agent_task_id)
+        if outcome == "not_found":
+            raise HTTPException(status_code=404, detail=f"AgentTask {agent_task_id} not found")
+        if outcome == "active":
+            raise HTTPException(status_code=409, detail="Stop the task before archiving it.")
+        return ArchiveAgentTaskResponse(success=True, message="Task archived")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error archiving agent_task: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error archiving agent_task: {str(e)}")
+
+
+@router.post("/{agent_task_id}/unarchive", response_model=ArchiveAgentTaskResponse, summary="Unarchive AgentTask chain")
+async def unarchive_agent_task(
+    agent_task_id: str,
+    knowledge_service: SQLiteKnowledgeService = Depends(get_sqlite_knowledge_service),
+) -> ArchiveAgentTaskResponse:
+    """Return the whole chain containing this task to the main list."""
+    try:
+        outcome = await knowledge_service.agent_task_service.unarchive_agent_task_chain(agent_task_id)
+        if outcome == "not_found":
+            raise HTTPException(status_code=404, detail=f"AgentTask {agent_task_id} not found")
+        return ArchiveAgentTaskResponse(success=True, message="Task unarchived")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error unarchiving agent_task: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error unarchiving agent_task: {str(e)}")
 
 
 @router.delete("/{agent_task_id}", response_model=DeleteAgentTaskResponse, summary="Delete AgentTask")

@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client';
 import MeetingAssistantApp from '../MeetingAssistantApp';
 import '../styles/meeting-assistant.css';
 import '../styles/companion.css';
+import '../styles/resource-advice.css';
+import '../styles/cloud-transcription.css';
 import '../styles/meeting-assistant-surface-finish.css';
 import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish';
 import { installBasilTooltips } from '@shared/tooltip/basilTooltip';

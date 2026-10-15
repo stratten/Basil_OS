@@ -3,9 +3,11 @@ import { ReconnectingWebSocket } from '@shared/websocket/reconnectingWebSocket';
 import {
   CompanionApiError,
   attachCompanionRoot,
+  cancelCompanionInvestigation,
   cancelCompanionWatch,
   companionSocketUrl,
   createCompanionWatch,
+  decideCompanionProposal,
   detachCompanionRoot,
   disableCompanion,
   enableCompanion,
@@ -13,11 +15,15 @@ import {
   patchCompanionSettings,
   sendCompanionChat,
   sendCompanionFeedback,
+  startCompanionInvestigation,
 } from './companionApi';
+import { unresolvedInvestigations } from './companionProposals';
 import { companionStoreReducer, initialCompanionStoreState, type CompanionStoreState } from './companionStore';
 import type {
   CompanionFeedbackAction,
   CompanionMode,
+  CompanionProposalDecision,
+  CompanionProposalResult,
   CompanionSocketEvent,
   CompanionStatus,
   TimelineEvent,
@@ -56,6 +62,14 @@ export interface CompanionController {
   sendChat: (text: string) => Promise<boolean>;
   createWatch: (topic: string, instruction: string) => Promise<boolean>;
   cancelWatch: (watchId: string) => Promise<boolean>;
+  /** Approves or dismisses a proposal card. Resolves with the backend's answer (a failed start is a normal answer with `state: 'failed'`), or null when the request itself failed, after which the Companion reloads so a stale card corrects itself. */
+  decideProposal: (itemId: string, decision: CompanionProposalDecision) => Promise<CompanionProposalResult | null>;
+  /** Asks the Companion to research a question; the answer arrives as a researched item. */
+  investigate: (question: string) => Promise<boolean>;
+  /** Asks every investigation that has started and produced no item yet to stop. */
+  stopInvestigations: () => Promise<boolean>;
+  /** The per-meeting switch; turning it off also stops running investigations. */
+  setInvestigate: (enabled: boolean) => Promise<boolean>;
 }
 
 function describeError(error: unknown): string {
@@ -276,6 +290,55 @@ export function useCompanion({ meetingId, port, selectedModelId, isRecording = f
     [guarded, port],
   );
 
+  const decideProposal = useCallback(
+    async (itemId: string, decision: CompanionProposalDecision): Promise<CompanionProposalResult | null> => {
+      if (meetingId === null || port <= 0) return null;
+      setActionError(null);
+      try {
+        const result = await decideCompanionProposal(port, meetingId, itemId, decision);
+        dispatch({ type: 'proposalResult', itemId, result });
+        return result;
+      } catch (error) {
+        setActionError(describeError(error));
+        void hydrateRef.current();
+        return null;
+      }
+    },
+    [meetingId, port],
+  );
+
+  const investigate = useCallback(
+    (question: string) =>
+      guarded(async (id) => {
+        await startCompanionInvestigation(port, id, question);
+      }),
+    [guarded, port],
+  );
+
+  const stopInvestigations = useCallback(
+    () =>
+      guarded(async (id) => {
+        for (const start of unresolvedInvestigations(state.timeline)) {
+          try {
+            await cancelCompanionInvestigation(port, id, start.id);
+          } catch (error) {
+            // A run that already ended answers 404; that is the outcome the user wanted.
+            if (!(error instanceof CompanionApiError && error.status === 404)) throw error;
+          }
+        }
+      }),
+    [guarded, port, state.timeline],
+  );
+
+  const setInvestigate = useCallback(
+    (enabled: boolean) =>
+      guarded(async (id) => {
+        const status = await patchCompanionSettings(port, id, { investigate: enabled });
+        dispatch({ type: 'status', status });
+      }),
+    [guarded, port],
+  );
+
   return {
     state,
     isLive,
@@ -295,5 +358,9 @@ export function useCompanion({ meetingId, port, selectedModelId, isRecording = f
     sendChat,
     createWatch,
     cancelWatch,
+    decideProposal,
+    investigate,
+    stopInvestigations,
+    setInvestigate,
   };
 }

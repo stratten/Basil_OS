@@ -268,6 +268,7 @@ private final class AgentTaskFilePreviewWindowHost: NSObject, WKScriptMessageHan
         name: String,
         kind: String,
         content: String? = nil,
+        dataUrl: String? = nil,
         error: String? = nil
     ) {
         var payload: [String: Any] = [
@@ -279,6 +280,9 @@ private final class AgentTaskFilePreviewWindowHost: NSObject, WKScriptMessageHan
         if let content = content {
             payload["content"] = content
         }
+        if let dataUrl = dataUrl {
+            payload["dataUrl"] = dataUrl
+        }
         if let error = error {
             payload["error"] = error
         }
@@ -289,7 +293,8 @@ private final class AgentTaskFilePreviewWindowHost: NSObject, WKScriptMessageHan
         requestId: String,
         path: String,
         kind: String,
-        content: String? = nil
+        content: String? = nil,
+        dataUrl: String? = nil
     ) {
         let url = URL(fileURLWithPath: path)
         var payload: [String: Any] = [
@@ -300,6 +305,9 @@ private final class AgentTaskFilePreviewWindowHost: NSObject, WKScriptMessageHan
         ]
         if let content {
             payload["content"] = content
+        }
+        if let dataUrl {
+            payload["dataUrl"] = dataUrl
         }
         callJS("window.basilAgentTask.onFilePreviewUpdated", args: payload)
     }
@@ -348,6 +356,17 @@ private final class AgentTaskFilePreviewWindowHost: NSObject, WKScriptMessageHan
             return
         }
 
+        if kind == "image" {
+            // A failed re-encode (file mid-write, replaced by a non-image) keeps the last good image and leaves the revision unchanged so the next change retries.
+            guard case .success(let dataURL) = FilePreviewKindResolver.imageDataURL(at: url),
+                  AgentTaskPreviewFileRevision(url: url) == currentRevision else {
+                return
+            }
+            activeFilePreviewRevision = currentRevision
+            sendFilePreviewUpdate(requestId: requestId, path: url.path, kind: kind, dataUrl: dataURL)
+            return
+        }
+
         guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
               ((attributes[.size] as? NSNumber)?.uint64Value ?? 0) <= maximumPreviewBytes,
               let content = try? String(contentsOf: url, encoding: .utf8),
@@ -359,20 +378,7 @@ private final class AgentTaskFilePreviewWindowHost: NSObject, WKScriptMessageHan
     }
 
     private func previewKind(forExtension fileExtension: String) -> String {
-        switch fileExtension.lowercased() {
-        case "md", "markdown":
-            return "markdown"
-        case "html", "htm":
-            return "htmlSource"
-        case "js", "ts", "tsx", "py", "swift", "sh", "sql", "css", "json", "yaml", "yml", "xml":
-            return "code"
-        case "txt", "log", "csv":
-            return "text"
-        case "pdf":
-            return "pdf"
-        default:
-            return "unsupported"
-        }
+        FilePreviewKindResolver.kind(forExtension: fileExtension)
     }
 
     private func handleFilePreviewRequest(requestId: String, path: String) {
@@ -434,6 +440,30 @@ private final class AgentTaskFilePreviewWindowHost: NSObject, WKScriptMessageHan
                     kind: "pdf"
                 )
                 startFilePreviewObservation(requestId: requestId, path: posixPath, kind: kind)
+                return
+            }
+
+            // Images are delivered as a data URL, so they use their own size cap instead of the text cap.
+            if kind == "image" {
+                switch FilePreviewKindResolver.imageDataURL(at: url) {
+                case .success(let dataURL):
+                    sendFilePreviewPayload(
+                        requestId: requestId,
+                        path: posixPath,
+                        name: name,
+                        kind: "image",
+                        dataUrl: dataURL
+                    )
+                    startFilePreviewObservation(requestId: requestId, path: posixPath, kind: kind)
+                case .failure(let failure):
+                    sendFilePreviewPayload(
+                        requestId: requestId,
+                        path: posixPath,
+                        name: name,
+                        kind: "unsupported",
+                        error: failure.userMessage
+                    )
+                }
                 return
             }
 

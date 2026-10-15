@@ -169,6 +169,34 @@ def test_read_audio_window_live_reads_past_stale_header(tmp_path: Path) -> None:
     assert samples[0] == (SAMPLE_RATE % 1000)
 
 
+@pytest.mark.parametrize("content", [b"", b"RIFF", b"RIFF\x24\x00\x00\x00WAVE", b"not a wav file at all, but long enough to read"])
+def test_read_audio_window_live_returns_empty_when_the_header_is_not_readable(tmp_path: Path, content: bytes) -> None:
+    # A track that never wrote audio (for example a silent system-audio track) can be empty or hold only part of a header.
+    wav_path = tmp_path / "audio.wav"
+    wav_path.write_bytes(content)
+
+    assert read_audio_window_live(wav_path, 0.0, 180.0) == (b"", 0, 0, 0)
+
+
+def test_transcribe_window_live_returns_no_segments_for_an_unreadable_header(tmp_path: Path) -> None:
+    import asyncio
+
+    wav_path = tmp_path / "audio.wav"
+    wav_path.write_bytes(b"")
+    calls = []
+
+    async def fake_runner(frames, rate, width, channels, duration, model_id, cb):
+        calls.append(len(frames))
+        return [{"start": 0.0, "end": duration, "text": "should not run"}]
+
+    segments = asyncio.run(
+        transcribe_window("m1", 0.0, 180.0, "fake-model", audio_path=wav_path, run_transcription=fake_runner, live=True)
+    )
+
+    assert segments == []
+    assert calls == []
+
+
 @pytest.mark.asyncio
 async def test_transcribe_window_live_uses_live_reader(tmp_path: Path) -> None:
     wav_path = tmp_path / "audio.wav"

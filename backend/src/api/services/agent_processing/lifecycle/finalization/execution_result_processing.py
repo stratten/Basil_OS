@@ -393,6 +393,11 @@ async def process_agent_result(
         final_envelope=final_envelope,
     )
 
+    # A local fallback model that took over wins over the configured reasoning model, matching WorkflowCoordinator's result attribute.
+    model_used = (state.context.get("reasoning_fallback_model_used") if state.context else None) or getattr(
+        getattr(coordinator, "_llm_model", None), "model_name", None
+    )
+
     await _store_execution_context(
         agent_task_id=agent_task_id,
         agent_output=agent_output,
@@ -403,7 +408,8 @@ async def process_agent_result(
         final_envelope=final_envelope,
         thinking_history=thinking_history,
         progress_steps=progress_steps,
-        execution_timeline=enriched_timeline
+        execution_timeline=enriched_timeline,
+        model_used=model_used if isinstance(model_used, str) and model_used else None,
     )
     
     _log_finalizer_debug(final_envelope, finalize_attempts)

@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchGlobalSettings, updateGlobalSettings } from './companionApi';
 import type { CompanionGlobalSettings } from './types';
 
-export type CompanionGlobalSettingsPatch = Partial<Pick<CompanionGlobalSettings, 'auto_enable' | 'default_mode' | 'screen_share_note_dismissed' | 'next_focus'>>;
+export type CompanionGlobalSettingsPatch = Partial<
+  Pick<CompanionGlobalSettings, 'auto_enable' | 'default_mode' | 'screen_share_note_dismissed' | 'next_focus' | 'proposal_mode' | 'proposal_capabilities' | 'auto_execute_capabilities'>
+>;
 
 export interface CompanionGlobalSettingsController {
   /** The saved global settings, or null while loading, without a backend port, or when the request failed. */

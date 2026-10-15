@@ -177,6 +177,20 @@ export function isApprovalLikeInteraction(interaction: Pick<UserInteraction, 'ki
   return interaction.kind === 'approval' || interaction.kind === 'provider_permission';
 }
 
+export type InteractionSpeaker = 'app' | 'user';
+
+/** A note you send or a pause you request starts with you; every other exchange starts with Basil, a command, or a provider. */
+export function interactionAskerSpeaker(interaction: Pick<UserInteraction, 'kind'>): InteractionSpeaker {
+  return interaction.kind === 'guidance' || interaction.kind === 'pause' ? 'user' : 'app';
+}
+
+/** Who produced the second half of the exchange: your answer, or Basil acknowledging your note or a stopped pause. */
+export function interactionResponseSpeaker(interaction: Pick<UserInteraction, 'kind' | 'status'>): InteractionSpeaker {
+  if (interaction.kind === 'guidance') return 'app';
+  if (interaction.kind === 'pause') return interaction.status === 'resolved' ? 'user' : 'app';
+  return 'user';
+}
+
 export function interactionAskerLabel(interaction: Pick<UserInteraction, 'kind'>): string {
   switch (interaction.kind) {
     case 'approval':

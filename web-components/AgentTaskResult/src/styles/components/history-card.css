@@ -145,6 +145,10 @@
 }
 
 .history-card__result-heading {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--padding-s);
   margin-bottom: 6px;
 }
 

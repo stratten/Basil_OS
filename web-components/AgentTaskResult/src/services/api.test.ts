@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getTodoOriginDetail, setBaseUrl, submitApprovalDecision } from './api';
+import { archiveAgentTask, getTodoOriginDetail, listAgentTasks, searchAgentTasks, setBaseUrl, submitApprovalDecision, unarchiveAgentTask } from './api';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -55,5 +55,43 @@ describe('getTodoOriginDetail', () => {
       'http://localhost:8123/api/v1/todos/items/todo%2Fa',
       expect.objectContaining({ method: 'GET' }),
     );
+  });
+});
+
+describe('archive API helpers', () => {
+  function stubFetch(payload: unknown) {
+    const fetchMock = vi.fn().mockImplementation(async () => new Response(
+      JSON.stringify(payload),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    ));
+    vi.stubGlobal('fetch', fetchMock);
+    setBaseUrl(8123);
+    return fetchMock;
+  }
+
+  it('omits the archived parameter by default and sends archived=true on request for history and search', async () => {
+    const fetchMock = stubFetch({ agentTasks: [], total_count: 0, has_more: false });
+
+    await listAgentTasks(25, 0);
+    await listAgentTasks(25, 0, undefined, { archived: true });
+    await searchAgentTasks('invoice', 25, 0);
+    await searchAgentTasks('invoice', 25, 0, { archived: true });
+
+    const urls = fetchMock.mock.calls.map(call => String(call[0]));
+    expect(urls[0]).not.toContain('archived');
+    expect(urls[1]).toContain('archived=true');
+    expect(urls[2]).not.toContain('archived');
+    expect(urls[3]).toContain('archived=true');
+    expect(urls[3]).toContain('query=invoice');
+  });
+
+  it('posts to the archive and unarchive routes of the chain', async () => {
+    const fetchMock = stubFetch({ success: true });
+
+    await archiveAgentTask('task-1');
+    await unarchiveAgentTask('task-1');
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, 'http://localhost:8123/api/v1/agent-tasks/task-1/archive', expect.objectContaining({ method: 'POST' }));
+    expect(fetchMock).toHaveBeenNthCalledWith(2, 'http://localhost:8123/api/v1/agent-tasks/task-1/unarchive', expect.objectContaining({ method: 'POST' }));
   });
 });

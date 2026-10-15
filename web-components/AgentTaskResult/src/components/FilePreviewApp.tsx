@@ -147,6 +147,7 @@ export default function FilePreviewApp() {
   const presentation = presentFilePreview(state.payload?.kind);
   const isVersionableKind = state.payload?.kind !== undefined
     && state.payload.kind !== 'pdf'
+    && state.payload.kind !== 'image'
     && state.payload.kind !== 'unsupported';
 
   const managed = useManagedVersionHistory({
@@ -265,6 +266,8 @@ export default function FilePreviewApp() {
           <MarkdownRenderer content={displayedContent} />
         ) : presentation.renderMode === 'native_pdf' ? (
           <div className="file-preview-window-pdf-placeholder" aria-hidden="true" />
+        ) : presentation.renderMode === 'image' && state.payload?.dataUrl ? (
+          <img className="file-preview-window-image" src={state.payload.dataUrl} alt={name} />
         ) : displayedContent !== undefined && (presentation.renderMode === 'source' || presentation.renderMode === 'markdown' || presentation.renderMode === 'live_html') ? (
           <pre className="file-preview-window-source"><code>{displayedContent}</code></pre>
         ) : (

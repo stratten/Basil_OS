@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState, type WheelEvent } from 'react
 
 interface HistoryRowRevealDeleteOptions {
   enabled: boolean;
+  /** Total width of the revealed action area in pixels; rows with two side-by-side actions pass a wider value. */
+  actionWidth?: number;
 }
 
 interface HistoryRowRevealDelete {
@@ -11,13 +13,15 @@ interface HistoryRowRevealDelete {
   close: () => void;
 }
 
-const ACTION_WIDTH = 60;
-const OPEN_THRESHOLD = 60;
-const MAX_OFFSET = 80;
+const DEFAULT_ACTION_WIDTH = 60;
+const OVERSHOOT = 20;
 
 export function useHistoryRowRevealDelete({
   enabled,
+  actionWidth = DEFAULT_ACTION_WIDTH,
 }: HistoryRowRevealDeleteOptions): HistoryRowRevealDelete {
+  const openThreshold = actionWidth;
+  const maxOffset = actionWidth + OVERSHOOT;
   const [offset, setOffset] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const accumulatedDeltaRef = useRef(0);
@@ -41,19 +45,19 @@ export function useHistoryRowRevealDelete({
     if (!enabled || Math.abs(event.deltaX) <= Math.abs(event.deltaY) || Math.abs(event.deltaX) < 2) return;
     event.stopPropagation();
     if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
-    accumulatedDeltaRef.current = Math.max(0, Math.min(MAX_OFFSET, accumulatedDeltaRef.current + event.deltaX));
-    if (accumulatedDeltaRef.current >= OPEN_THRESHOLD) {
-      accumulatedDeltaRef.current = ACTION_WIDTH;
-      setOffset(ACTION_WIDTH);
+    accumulatedDeltaRef.current = Math.max(0, Math.min(maxOffset, accumulatedDeltaRef.current + event.deltaX));
+    if (accumulatedDeltaRef.current >= openThreshold) {
+      accumulatedDeltaRef.current = actionWidth;
+      setOffset(actionWidth);
       setIsOpen(true);
       return;
     }
     setOffset(accumulatedDeltaRef.current);
     if (accumulatedDeltaRef.current === 0) setIsOpen(false);
     resetTimerRef.current = setTimeout(() => {
-      if (accumulatedDeltaRef.current < OPEN_THRESHOLD) close();
+      if (accumulatedDeltaRef.current < openThreshold) close();
     }, 300);
-  }, [close, enabled]);
+  }, [actionWidth, close, enabled, maxOffset, openThreshold]);
 
   return { isOpen, offset, handleWheel, close };
 }

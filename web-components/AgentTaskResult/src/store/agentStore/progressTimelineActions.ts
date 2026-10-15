@@ -168,6 +168,8 @@ export class ProgressTimelineAgentStore extends FollowUpAgentStore {
     agent.errorMessage = undefined;
     agent.status = 'processing';
     agent.isRetryPending = true;
+    agent.isCheckpointResumePending = false;
+    agent.modelUsed = undefined;
     agent.result = '';
     agent.presentationSummary = undefined;
     agent.delegatedProviderReportCards = [];
@@ -481,6 +483,7 @@ export class ProgressTimelineAgentStore extends FollowUpAgentStore {
       a.currentCheckpoint = checkpoint;
       a.showCheckpointPrompt = true;
       a.inlineCheckpoint = checkpoint;
+      a.isCheckpointResumePending = false;
       a.status = 'awaitingInput';
     });
   }

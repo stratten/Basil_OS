@@ -155,6 +155,17 @@
   background: var(--background-secondary);
 }
 
+.file-preview-window-image {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100vh - 12rem);
+  margin: 0 auto;
+  object-fit: contain;
+  border: var(--border-thin) solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  background: var(--background-primary);
+}
+
 .file-preview-window-markdown {
   max-width: 880px;
   margin: 0 auto;

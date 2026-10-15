@@ -218,9 +218,7 @@ button.agent-run-map-turn-toggle:focus-visible {
   padding: 1px 6px;
   border-radius: var(--corner-radius-small);
   font-family: var(--font-family-medium);
-  font-size: 0.7rem;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  font-size: var(--font-size-status-tiny);
 }
 
 .agent-run-map-attention.is-failed {
@@ -234,8 +232,9 @@ button.agent-run-map-turn-toggle:focus-visible {
 }
 
 .agent-run-map-attention.is-note {
-  background: color-mix(in srgb, var(--warning-base) 18%, transparent);
-  color: var(--warning-base);
+  border: var(--border-thin) solid var(--warning-base);
+  background: color-mix(in srgb, var(--warning-base) 22%, var(--background-primary));
+  color: var(--text-primary);
 }
 
 .agent-run-map-documents {
@@ -258,6 +257,14 @@ button.agent-run-map-turn-toggle:focus-visible {
 
 .agent-run-map-turn-body {
   padding: 0 0 var(--padding-xs) 24px;
+}
+
+.agent-run-map-model {
+  display: block;
+  margin-bottom: var(--padding-xs);
+  font-size: var(--font-size-caption);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
 }
 
 .agent-run-map .run-card {

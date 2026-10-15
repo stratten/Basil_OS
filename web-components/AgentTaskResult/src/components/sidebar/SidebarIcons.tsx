@@ -203,6 +203,16 @@ export function SidebarIcon() {
   );
 }
 
+export function ArchiveBoxIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.0" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+      <rect x="1.5" y="2.5" width="13" height="3.5" rx="1" />
+      <path d="M2.5 6v6.5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V6" />
+      <line x1="6.5" y1="9" x2="9.5" y2="9" />
+    </svg>
+  );
+}
+
 export function CalendarIcon({ size = 14 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.0" strokeLinecap="round" strokeLinejoin="round">

@@ -36,6 +36,7 @@ export function buildFollowUpHistoryFromViewedDetail(
       outcome: detail.outcome,
       resultSeverity: detail.resultSeverity,
       status: detail.status,
+      modelUsed: detail.modelUsed ?? detail.originalModelId,
     },
   ];
 }
@@ -67,6 +68,7 @@ export function buildDurableFollowUpHistoryBeforeActiveChild(
     outcome: detail.outcome,
     resultSeverity: detail.result_severity,
     status: detail.status,
+    modelUsed: detail.model_used ?? detail.model_id,
   }];
 
   for (const followUp of detail.follow_ups) {
@@ -87,6 +89,7 @@ export function buildDurableFollowUpHistoryBeforeActiveChild(
       outcome: followUp.outcome,
       resultSeverity: followUp.result_severity,
       status: followUp.status,
+      modelUsed: followUp.model_used ?? followUp.model_id,
     });
   }
 

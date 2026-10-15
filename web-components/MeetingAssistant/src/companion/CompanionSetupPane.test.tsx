@@ -21,7 +21,17 @@ function controller(overrides: Partial<CompanionController> = {}): CompanionCont
   } as unknown as CompanionController;
 }
 
-const loaded = { settings: { auto_enable: true, default_mode: 'active' as const, screen_share_note_dismissed: true, next_focus: '' }, update: vi.fn(async () => true), refresh: vi.fn(async () => undefined) };
+const loaded = {
+  settings: {
+    auto_enable: true,
+    default_mode: 'active' as const,
+    screen_share_note_dismissed: true,
+    next_focus: '',
+    proposal_mode: 'suggestion_only' as const,
+    proposal_capabilities: ['todo' as const, 'agent_task' as const, 'assistant_session' as const],
+    auto_execute_capabilities: [],
+  },
+  update: vi.fn(async () => true), refresh: vi.fn(async () => undefined) };
 
 describe('CompanionSetupPane', () => {
   it('says the Companion starts with the next recording and lets the folder picker queue sources', () => {

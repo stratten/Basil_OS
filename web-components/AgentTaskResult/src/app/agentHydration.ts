@@ -263,9 +263,20 @@ export function hydrateAgentFromBackend(agentTaskId: string): Promise<HydrationO
         });
         return 'hydrated';
       }
+      // A just-answered checkpoint can still read as awaiting input until the backend records the resume. Restoring it here would flash the answered card back during its exit transition.
+      if (
+        backendStatusToAgentStatus(turn.status) === 'awaitingInput'
+        && agentStore.getAgent(agentTaskId)?.isCheckpointResumePending === true
+      ) {
+        console.debug('[AgentTaskResult] Ignoring stale awaiting-input hydration while a checkpoint answer is being delivered', {
+          agentTaskId,
+        });
+        return 'hydrated';
+      }
       agentStore.updateAgentTaskTitle(agentTaskId, detail.title);
       agentStore.updateAgentOrigin(agentTaskId, detail.origin_type, detail.origin_id);
       agentStore.updateReasoningFallbackModelUsed(agentTaskId, turn.reasoning_fallback_model_used);
+      agentStore.updateModelUsed(agentTaskId, turn.model_used);
       agentStore.updateOriginalModelId(agentTaskId, turn.model_id);
       // A follow-up that was just submitted is not in the backend's follow_ups yet. Until it is, resetting the current turn to the root's id would give the new turn the same id as the first turn it was snapshotted from, and the run rail would draw turn 1 twice.
       const activeFollowUpId = agentStore.getActiveFollowUpId(agentTaskId);
@@ -518,6 +529,7 @@ export function hydrateActiveFollowUpChild(rootTaskId: string, childId: string):
         agentStore.setExecutionTimeline(rootTaskId, detail.execution_timeline);
       }
       agentStore.updateOriginalModelId(rootTaskId, detail.model_id);
+      agentStore.updateModelUsed(rootTaskId, detail.model_used);
       agentStore.clearActiveFollowUpTurn(rootTaskId, childId);
     })
     .catch((error) => {

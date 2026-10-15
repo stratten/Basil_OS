@@ -74,12 +74,9 @@ export default function RunControlComposer({ turnTaskId, mode, deliveredNoteIds 
     setError(null);
   }, [mode, turnTaskId]);
 
-  useEffect(() => {
-    registerFilesPickedHandler((paths) => {
-      setReferencePaths(previous => [...new Set([...previous, ...paths])].slice(0, MAX_ATTACHMENTS));
-    });
-    return () => registerFilesPickedHandler(() => {});
-  }, []);
+  useEffect(() => registerFilesPickedHandler((paths) => {
+    setReferencePaths(previous => [...new Set([...previous, ...paths])].slice(0, MAX_ATTACHMENTS));
+  }), []);
 
   const waitingNotes = pendingNotes.filter(pending => !deliveredNoteIds.has(pending.id));
   const hasNote = draft.trim().length > 0;

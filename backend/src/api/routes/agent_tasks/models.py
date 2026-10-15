@@ -202,10 +202,15 @@ class AgentTaskListItem(BaseModel):
     is_scheduled_run: bool = False
     scheduled_agent_task_id: Optional[str] = None
     scheduled_agent_task_title: Optional[str] = None
+    archived_at: Optional[datetime] = None  # Set when the chain is archived; NULL otherwise
 
     @field_serializer('timestamp')
     def serialize_timestamp(self, timestamp: datetime) -> str:
         return serialize_datetime_with_z(timestamp)
+
+    @field_serializer('archived_at')
+    def serialize_archived_at(self, archived_at: Optional[datetime]) -> Optional[str]:
+        return serialize_datetime_with_z(archived_at) if archived_at else None
 
 
 class AgentTaskHistoryResponse(BaseModel):
@@ -378,6 +383,7 @@ class AgentTaskChainItem(BaseModel):
     execution_timeline: Optional[List[Dict[str, Any]]] = None
     thinking_history: List[Dict[str, Any]] = []
     reasoning_fallback_model_used: Optional[str] = None
+    model_used: Optional[str] = None
     model_id: Optional[str] = None
 
     @field_serializer('timestamp')
@@ -412,6 +418,7 @@ class AgentTaskDetailResponse(BaseModel):
     thinking_history: List[Dict[str, Any]] = []
     checkpoint_data: Optional[Dict[str, Any]] = None
     reasoning_fallback_model_used: Optional[str] = None
+    model_used: Optional[str] = None
     model_id: Optional[str] = None
 
     @field_serializer('timestamp')
@@ -421,6 +428,12 @@ class AgentTaskDetailResponse(BaseModel):
 
 class DeleteAgentTaskResponse(BaseModel):
     """Response for agent_task deletion."""
+    success: bool
+    message: str
+
+
+class ArchiveAgentTaskResponse(BaseModel):
+    """Response for archiving or un-archiving an agent task chain."""
     success: bool
     message: str
 

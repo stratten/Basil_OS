@@ -199,6 +199,7 @@ class AgentTaskWorkflowResultService:
             success = workflow_result.get("overall_success", workflow_result.get("success", True))
             summary = workflow_result.get("summary") or workflow_result.get("workflow_result") or "Workflow completed"
             reasoning_fallback_model_used = workflow_result.get("reasoning_fallback_model_used")
+            model_used = workflow_result.get("model_used")
             thinking_history = workflow_result.get("thinking_history")
         else:
             execution_results = getattr(workflow_result, "execution_results", [])
@@ -212,6 +213,7 @@ class AgentTaskWorkflowResultService:
             success = getattr(workflow_result, "overall_success", getattr(workflow_result, "success", True))
             summary = getattr(workflow_result, "summary", None) or "Enhanced workflow completed successfully"
             reasoning_fallback_model_used = getattr(workflow_result, "reasoning_fallback_model_used", None)
+            model_used = getattr(workflow_result, "model_used", None)
             thinking_history = getattr(workflow_result, "thinking_history", None)
 
         result_data = {
@@ -223,6 +225,8 @@ class AgentTaskWorkflowResultService:
         }
         if reasoning_fallback_model_used:
             result_data["reasoning_fallback_model_used"] = reasoning_fallback_model_used
+        if isinstance(model_used, str) and model_used:
+            result_data["model_used"] = model_used
         if thinking_history:
             result_data["thinking_history"] = normalize_thinking_history(thinking_history)
 
@@ -276,6 +280,7 @@ class AgentTaskWorkflowResultService:
             payload=payload,
             root_task_id=getattr(request, "root_task_id", None),
             previous_task_id=getattr(request, "previous_task_id", None),
+            model_used=result_data.get("model_used"),
         )
         result_data["finalizer_broadcasted"] = True
         result_data["broadcast_payload"] = payload
@@ -303,6 +308,7 @@ class AgentTaskWorkflowResultService:
         payload: Any = None,
         root_task_id: str = None,
         previous_task_id: str = None,
+        model_used: str = None,
     ) -> None:
         """Send WebSocket result message to frontend in expected format."""
         self.logger.info(
@@ -334,6 +340,8 @@ class AgentTaskWorkflowResultService:
                 message_data["root_task_id"] = root_task_id
             if previous_task_id:
                 message_data["previous_task_id"] = previous_task_id
+            if isinstance(model_used, str) and model_used:
+                message_data["model_used"] = model_used
 
             self.logger.info("🔥 About to broadcast agent_task_result: %s", message_data)
             sent = await self.broadcast_agent_task_message(agent_task_id, message_data)

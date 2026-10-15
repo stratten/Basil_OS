@@ -15,6 +15,7 @@ from api.core.models.model_invocation import StructuredModelOutputError, call_mo
 
 from .context_pack import ContextPack
 from .conversation_state import format_transcript
+from .investigator.escalation import ResearchRequest, honored_research
 from .models import CompanionItem, CompanionMode, CompanionTurn, CompanionWatch, TranscriptRange
 from .prompts import build_evaluation_prompt
 from .similarity import content_tokens, jaccard, normalize_text
@@ -43,6 +44,7 @@ class EvaluatedItem(_Contract):
 class CompanionEvaluationResponse(_Contract):
     items: List[EvaluatedItem] = Field(default_factory=list)
     conversation_state: str = ""
+    research: Optional[ResearchRequest] = None
 
 
 @dataclass
@@ -70,6 +72,7 @@ class EvaluationOutcome:
     dropped: int = 0
     model_id: Optional[str] = None
     finish_reason: Optional[str] = None
+    research: Optional[ResearchRequest] = None
 
 
 def min_confidence_for(trigger: str) -> float:
@@ -233,6 +236,7 @@ class CompanionEvaluator:
             dropped=dropped,
             model_id=request.model_id,
             finish_reason=getattr(response, "finish_reason", None),
+            research=honored_research(response.value.research, trigger=request.trigger, item_count=len(items)),
         )
 
     def build_prompt(self, request: EvaluationRequest) -> str:

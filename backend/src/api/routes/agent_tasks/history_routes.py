@@ -30,6 +30,7 @@ from .projections.artifact_presentation import build_agent_task_presentation_sum
 from .utils import (
     derive_result_severity,
     extract_checkpoint_data,
+    extract_model_used,
     extract_original_model_id,
     extract_result_data,
     extract_result_outcome,
@@ -45,6 +46,7 @@ async def get_agent_task_history(
     limit: int = Query(50, ge=1, le=300, description="Maximum number of agent tasks to return"),
     offset: int = Query(0, ge=0, description="Number of agent tasks to skip for pagination"),
     status: Optional[str] = Query(None, description="Filter by status (e.g., 'completed')"),
+    archived: bool = Query(False, description="When true, return only archived chains; otherwise only chains that are not archived"),
     knowledge_service: SQLiteKnowledgeService = Depends(get_sqlite_knowledge_service)
 ) -> AgentTaskHistoryResponse:
     """
@@ -56,7 +58,8 @@ async def get_agent_task_history(
         summaries = await knowledge_service.agent_task_service.list_recent_agent_task_summaries(
             limit=limit + 1,  # Fetch one extra to check if there are more
             offset=offset,
-            status_filter=status
+            status_filter=status,
+            archived=archived,
         )
 
         # Check if there are more results
@@ -85,6 +88,7 @@ async def get_agent_task_history(
                 follow_up_count=summary.get("follow_up_count", 0),
                 origin_type=summary.get("origin_type"),
                 origin_id=summary.get("origin_id"),
+                archived_at=summary.get("archived_at"),
                 is_scheduled_run=agent_task_id in scheduled_mapping,
                 scheduled_agent_task_id=scheduled_mapping.get(agent_task_id, {}).get("scheduled_agent_task_id"),
                 scheduled_agent_task_title=scheduled_mapping.get(agent_task_id, {}).get("scheduled_agent_task_title"),
@@ -112,6 +116,7 @@ async def search_agent_task_history(
     days: Optional[int] = Query(None, ge=1, le=365, description="Only search within the last N days"),
     limit: int = Query(50, ge=1, le=300, description="Maximum number of results to return"),
     offset: int = Query(0, ge=0, description="Number of results to skip for pagination"),
+    archived: bool = Query(False, description="When true, search only archived chains; otherwise only chains that are not archived"),
     knowledge_service: SQLiteKnowledgeService = Depends(get_sqlite_knowledge_service)
 ) -> AgentTaskHistoryResponse:
     """
@@ -133,7 +138,8 @@ async def search_agent_task_history(
             status=status,
             app_name=app,
             limit=limit + 1,  # Fetch one extra to check if there are more
-            offset=offset
+            offset=offset,
+            archived=archived,
         )
 
         # Check if there are more results
@@ -162,6 +168,7 @@ async def search_agent_task_history(
                 follow_up_count=summary.get("follow_up_count", 0),
                 origin_type=summary.get("origin_type"),
                 origin_id=summary.get("origin_id"),
+                archived_at=summary.get("archived_at"),
                 is_scheduled_run=agent_task_id in scheduled_mapping,
                 scheduled_agent_task_id=scheduled_mapping.get(agent_task_id, {}).get("scheduled_agent_task_id"),
                 scheduled_agent_task_title=scheduled_mapping.get(agent_task_id, {}).get("scheduled_agent_task_title"),
@@ -339,6 +346,7 @@ async def get_agent_task_details(
                     chain_cmd.result_data.get("reasoning_fallback_model_used")
                     if isinstance(chain_cmd.result_data, dict) else None
                 ),
+                model_used=extract_model_used(chain_cmd.result_data),
                 model_id=extract_original_model_id(chain_cmd),
             ))
 
@@ -376,6 +384,7 @@ async def get_agent_task_details(
                 agent_task_record.result_data.get("reasoning_fallback_model_used")
                 if isinstance(agent_task_record.result_data, dict) else None
             ),
+            model_used=extract_model_used(agent_task_record.result_data),
             model_id=extract_original_model_id(agent_task_record),
         )
 

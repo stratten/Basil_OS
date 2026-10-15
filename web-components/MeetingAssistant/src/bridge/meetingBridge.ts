@@ -261,6 +261,16 @@ export function openCompanionWindow() {
   postToSwift({ type: 'openCompanionWindow' });
 }
 
+/** Opens an Assistant Session seeded with an approved Companion proposal; the native side validates and bounds both texts. */
+export function openCompanionAssistantSession(instruction: string, contextText: string) {
+  postToSwift({ type: 'openCompanionAssistantSession', instruction, contextText });
+}
+
+/** Opens the app Settings window; the user changes any setting there themselves. */
+export function openAppSettings() {
+  postToSwift({ type: 'openAppSettings' });
+}
+
 /** Tells the native window how wide the Companion column is (0 when absent) so it grows to the right by that much instead of narrowing the main column. */
 export function setCompanionPaneExtent(width: number) {
   postToSwift({ type: 'setCompanionPaneExtent', width });

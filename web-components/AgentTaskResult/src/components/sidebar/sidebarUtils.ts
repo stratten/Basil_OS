@@ -50,6 +50,7 @@ export function mapDetailToDisplayable(detail: AgentTaskDetail): DisplayableAgen
         outcome: detail.outcome,
         resultSeverity: detail.result_severity,
         status: mapBackendStatus(detail.status),
+        modelUsed: detail.model_used ?? detail.model_id,
       },
       ...detail.follow_ups.slice(0, -1).map(fu => ({
         id: fu.id,
@@ -68,6 +69,7 @@ export function mapDetailToDisplayable(detail: AgentTaskDetail): DisplayableAgen
         outcome: fu.outcome,
         resultSeverity: fu.result_severity,
         status: mapBackendStatus(fu.status),
+        modelUsed: fu.model_used ?? fu.model_id,
       })),
     ];
 
@@ -115,6 +117,7 @@ export function mapDetailToDisplayable(detail: AgentTaskDetail): DisplayableAgen
       checkpointAvailable: false,
       thinkingSegments: normalizePersistedThinkingSegments(mostRecent.thinking_history),
       originalModelId: mostRecent.model_id,
+      modelUsed: mostRecent.model_used,
     };
   }
 
@@ -156,6 +159,7 @@ export function mapDetailToDisplayable(detail: AgentTaskDetail): DisplayableAgen
     checkpointAvailable: false,
     thinkingSegments: normalizePersistedThinkingSegments(detail.thinking_history),
     originalModelId: detail.model_id,
+    modelUsed: detail.model_used,
   };
 }
 

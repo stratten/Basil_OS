@@ -436,6 +436,8 @@ struct MeetingUIStateDTO: Codable, Equatable {
     var companionApiPort: Int
     /// The meeting being recorded right now (microphone id, else system-audio id); nil when not recording.
     var recordingMeetingId: String?
+    /// macOS thermal pressure ("nominal" | "fair" | "serious" | "critical") for the resource advisor; absent from older payloads.
+    var thermalState: String?
 }
 
 // MARK: - Outbound event envelope (Swift -> React)
@@ -567,5 +569,7 @@ enum MeetingBridgeIntent: String {
     case restoreProposal // { proposalId: String }
     case pickCompanionFolder // {}
     case openCompanionWindow // {}
+    case openCompanionAssistantSession // { instruction: String, contextText: String }
+    case openAppSettings // {}
     case setCompanionPaneExtent // { width: Double }
 }

@@ -37,20 +37,13 @@ export default function AttachedFilesEditor({ paths, onChange }: Props) {
   const onChangeRef = useRef(onChange);
   useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
 
-  useEffect(() => {
-    registerFilesPickedHandler((picked) => {
-      const seen = new Set(pathsRef.current);
-      const additions = picked.filter(p => typeof p === 'string' && p && !seen.has(p));
-      if (additions.length === 0) return;
-      onChangeRef.current([...pathsRef.current, ...additions]);
-    });
-    return () => {
-      // Reset to a no-op rather than removing entirely; the bridge's
-      // registry is single-callback, so leaving it pointed at a no-op
-      // matches the "no consumer mounted" baseline state.
-      registerFilesPickedHandler(() => {});
-    };
-  }, []);
+  // The bridge's registry is single-callback; the returned unregister only clears it while this editor still owns it.
+  useEffect(() => registerFilesPickedHandler((picked) => {
+    const seen = new Set(pathsRef.current);
+    const additions = picked.filter(p => typeof p === 'string' && p && !seen.has(p));
+    if (additions.length === 0) return;
+    onChangeRef.current([...pathsRef.current, ...additions]);
+  }), []);
 
   const removeAt = (idx: number) => {
     onChange(paths.filter((_, i) => i !== idx));

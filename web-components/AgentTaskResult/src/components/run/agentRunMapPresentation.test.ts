@@ -39,9 +39,15 @@ describe('presentRunStatus', () => {
     expect(RUN_STATUS_TONE_CLASS[status.tone]).toBe('is-failed');
   });
 
-  it('does not treat an unverified output as a verified continuity note', () => {
+  it('does not treat an unverified output as a verified continuity note, and never presents it as red', () => {
     const status = presentRunStatus({ ...baseRun, taskStatus: 'failed', outcome: 'partial', resultSeverity: 'warning', documentCount: 1, hasVerifiedArtifactOutput: false });
-    expect(status.tone).toBe('failed');
+    expect(status).toEqual({ label: 'Partial result', tone: 'partial' });
+  });
+
+  it('presents a partial run that produced documents as amber partial with a note badge', () => {
+    const run = { ...baseRun, taskStatus: 'failed' as const, outcome: 'partial' as const, resultSeverity: 'warning' as const, documentCount: 2, hasVerifiedArtifactOutput: false };
+    expect(RUN_STATUS_TONE_CLASS[presentRunStatus(run).tone]).toBe('is-partial');
+    expect(runAttention(run, emptyOverview)).toEqual({ kind: 'note', label: 'Partial result' });
   });
 
   it('presents a document-free partial result as amber partial, not a red failure', () => {
@@ -74,6 +80,10 @@ describe('runAttention', () => {
     expect(runAttention({ ...baseRun, taskStatus: 'awaitingInput' }, emptyOverview)).toEqual({ kind: 'waiting', label: 'Waiting for you' });
     expect(runAttention({ ...baseRun, outcome: 'partial', resultSeverity: 'warning', hasVerifiedArtifactOutput: true }, emptyOverview)).toEqual({ kind: 'note', label: 'Note' });
     expect(runAttention(baseRun, emptyOverview)).toBeNull();
+  });
+
+  it('gives a run the user stopped no attention badge', () => {
+    expect(runAttention({ ...baseRun, taskStatus: 'canceled', isProcessing: false }, emptyOverview)).toBeNull();
   });
 
   it('flags an unanswered exchange even when the run status is not waiting', () => {

@@ -356,6 +356,19 @@ extension MeetingSessionCoordinator {
             bridgePublisher?.restoreProposal(proposalId: proposalId)
         case .openCompanionWindow:
             showCompanionWindow()
+        case .openCompanionAssistantSession:
+            guard let request = CompanionAssistantSessionRequest(payload: payload) else {
+                publishValidationError("companion_assistant_session_invalid", "That follow-up could not be opened.")
+                return
+            }
+            AssistantSessionWindowController.showFromSetupAssistant(
+                instruction: request.instruction,
+                contextText: request.contextText,
+                applicationName: "Notetaker Companion",
+                modelId: nil
+            )
+        case .openAppSettings:
+            SettingsShellWindowController.shared.show()
         case .pickCompanionFolder:
             // Answered by the presenting web view's native open panel before it could reach this handler.
             break

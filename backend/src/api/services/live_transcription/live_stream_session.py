@@ -31,6 +31,7 @@ _UNAVAILABLE = "unavailable"
 EngineProvider = Callable[[], Awaitable[Any]]
 ProcessorFactory = Callable[..., Any]
 ResultsForwarder = Callable[[Any], Awaitable[None]]
+CloudSessionFactory = Callable[..., Any]
 SendJson = Callable[[Dict[str, Any]], Awaitable[None]]
 
 
@@ -125,6 +126,7 @@ class LiveStreamSession:
         engine_provider: EngineProvider,
         processor_factory: ProcessorFactory,
         results_forwarder: ResultsForwarder,
+        cloud_factory: Optional[CloudSessionFactory] = None,
     ) -> None:
         self.meeting_recorder = meeting_recorder
         self.audio_source = audio_source
@@ -144,6 +146,10 @@ class LiveStreamSession:
         self._starting_processor: Any = None
         self._enable_task: Optional[asyncio.Task] = None
         self._retiring_tasks: Set[asyncio.Task] = set()
+        self._cloud_factory = cloud_factory
+        self._cloud: Any = None
+        self._failed_clouds: List[Any] = []
+        self._cloud_blocked = False
 
     @property
     def samples_received(self) -> int:
@@ -156,12 +162,19 @@ class LiveStreamSession:
     @property
     def uses_live_engine(self) -> bool:
         """True while this session transcribes live, is starting to, or is still draining a retired processor."""
+        if self._cloud is not None and self.processor is None and self._starting_processor is None:
+            return bool(self._retiring_tasks)
         return (
             self.processor is not None
             or self._live_requested
             or self._starting_processor is not None
             or bool(self._retiring_tasks)
         )
+
+    @property
+    def is_cloud_live(self) -> bool:
+        """True while a cloud transcription session is handling this socket's live transcript."""
+        return self._cloud is not None
 
     @property
     def supports_record_only(self) -> bool:
@@ -176,7 +189,9 @@ class LiveStreamSession:
         return outcome == _ENABLED
 
     async def _enable_live(self) -> str:
-        if self.processor is not None:
+        if self.processor is not None or self._cloud is not None:
+            return _ENABLED
+        if self._start_cloud():
             return _ENABLED
         engine = await self._engine_provider()
         if engine is None:
@@ -255,6 +270,7 @@ class LiveStreamSession:
     def disable_live(self) -> None:
         """Turn live transcription off mid-recording; audio keeps flowing to the recorder with no gap."""
         self._live_requested = False
+        self._retire_cloud()
         if not self.supports_record_only or self.processor is None:
             return
         processor = self.processor
@@ -302,6 +318,8 @@ class LiveStreamSession:
         self._pending_byte = combined[aligned:]
         if aligned:
             self._write_recorder(combined[:aligned])
+            if self._cloud is not None:
+                self._cloud.feed(combined[:aligned])
 
     def _write_recorder(self, pcm: bytes) -> None:
         if self.meeting_recorder is None or not pcm:
@@ -371,8 +389,67 @@ class LiveStreamSession:
                 self.disable_live()
         return control.kind
 
+    def _start_cloud(self) -> bool:
+        """Begin cloud transcription when the settings select it; False leaves the local engine path in charge."""
+        if self._cloud_factory is None or self._cloud_blocked or not self.supports_record_only:
+            return False
+        base_sample = (self.bytes_received - len(self._pending_byte)) // PCM_BYTES_PER_SAMPLE
+        cloud: Any = None
+
+        def on_failure(reason: str) -> None:
+            self._cloud_failed(cloud, reason)
+
+        try:
+            cloud = self._cloud_factory(
+                base_sample=base_sample,
+                timeline_for_sample=self.clock.timeline_seconds_for_sample,
+                meeting_recorder=self.meeting_recorder,
+                send_json=self._send_json,
+                on_failure=on_failure,
+            )
+        except Exception as error:
+            logger.error("Could not create the cloud transcription session: %s", error, exc_info=True)
+            return False
+        if cloud is None:
+            return False
+        self._cloud = cloud
+        cloud.start()
+        return True
+
+    def _cloud_failed(self, cloud: Any, reason: str) -> None:
+        """Cloud transcription ended abnormally: keep recording and hand live transcription to the local engine."""
+        if cloud is None or cloud is not self._cloud:
+            return
+        self._failed_clouds.append(cloud)
+        self._cloud = None
+        self._cloud_blocked = True
+        if self._live_requested:
+            self.request_live()
+
+    def _retire_cloud(self) -> None:
+        """Stop every cloud session of this socket in the background; audio keeps flowing to the recorder."""
+        clouds = [cloud for cloud in [self._cloud, *self._failed_clouds] if cloud is not None]
+        self._cloud = None
+        self._failed_clouds = []
+        for cloud in clouds:
+            task = asyncio.create_task(cloud.stop())
+            self._retiring_tasks.add(task)
+            task.add_done_callback(self._retiring_tasks.discard)
+
+    async def drain_cloud(self) -> None:
+        """Let cloud sessions return their last results; call before the recorder stops so late segments are kept."""
+        clouds = [cloud for cloud in [self._cloud, *self._failed_clouds] if cloud is not None]
+        self._cloud = None
+        self._failed_clouds = []
+        for cloud in clouds:
+            try:
+                await cloud.stop()
+            except Exception as error:
+                logger.error("Cloud transcription drain failed: %s", error, exc_info=True)
+
     async def cleanup(self) -> None:
         self._live_requested = False
+        await self.drain_cloud()
         pending: List[asyncio.Task] = []
         if self._enable_task is not None and not self._enable_task.done():
             self._enable_task.cancel()

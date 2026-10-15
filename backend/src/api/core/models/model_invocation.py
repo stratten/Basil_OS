@@ -16,9 +16,10 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import threading
 from dataclasses import dataclass
-from typing import Any, Callable, Generic, Literal, Optional, TypeVar
+from typing import Any, Awaitable, Callable, Generic, Literal, Optional, TypeVar
 
 from pydantic import BaseModel
 
@@ -32,6 +33,57 @@ from api.core.models.reasoning.model_runtime_profile import (
     resolve_runtime_model_profile,
 )
 from api.core.models.reasoning.streaming_contract import GenerationPurpose
+
+logger = logging.getLogger(__name__)
+
+ANALYSIS_CACHE_BREAK = "\n\n<<BASIL_CACHE_BREAK>>\n\n"
+CACHE_BREAK_TOKEN = ANALYSIS_CACHE_BREAK.strip()
+TextDeltaCallback = Callable[[str], Awaitable[None]]
+
+
+def split_cache_break(prompt: str) -> tuple[str, Optional[str]]:
+    """Split a prompt at the first cache-break marker into (stable prefix, task suffix)."""
+    if ANALYSIS_CACHE_BREAK not in prompt:
+        return prompt, None
+    prefix, _, suffix = prompt.partition(ANALYSIS_CACHE_BREAK)
+    return prefix, suffix
+
+
+def flatten_cache_break(prompt: str) -> str:
+    """Replace every cache-break marker with a plain blank line."""
+    return prompt.replace(ANALYSIS_CACHE_BREAK, "\n\n")
+
+
+async def _forward_text_delta(callback: TextDeltaCallback, text: str) -> None:
+    """Deliver one streamed delta; a failing consumer must never fail the model call."""
+    try:
+        await callback(text)
+    except Exception:
+        logger.warning("Streaming text-delta consumer failed", exc_info=True)
+
+
+def _extract_usage(response: Any) -> Optional[dict[str, int]]:
+    """Collect integer token counts a provider reports, ignoring anything else."""
+    usage = getattr(response, "usage", None)
+    if usage is None:
+        return None
+    counts: dict[str, int] = {}
+    for key in (
+        "input_tokens",
+        "output_tokens",
+        "prompt_tokens",
+        "completion_tokens",
+        "cache_creation_input_tokens",
+        "cache_read_input_tokens",
+    ):
+        value = getattr(usage, key, None)
+        if isinstance(value, int) and not isinstance(value, bool):
+            counts[key] = value
+    for details_name in ("prompt_tokens_details", "input_tokens_details"):
+        cached = getattr(getattr(usage, details_name, None), "cached_tokens", None)
+        if isinstance(cached, int) and not isinstance(cached, bool):
+            counts["cached_tokens"] = cached
+    return counts or None
 
 
 def supports_web_search(model: Any) -> bool:
@@ -147,6 +199,7 @@ class StructuredModelResponse(Generic[ResponseModelT]):
     value: ResponseModelT
     enforcement: StructuredOutputEnforcement
     finish_reason: Optional[str] = None
+    usage: Optional[dict[str, int]] = None
 
 
 class StructuredModelOutputError(RuntimeError):
@@ -174,28 +227,47 @@ async def call_model_with_schema(
     prompt: str,
     response_model: type[ResponseModelT],
     max_tokens: int,
+    on_text_delta: Optional[TextDeltaCallback] = None,
 ) -> StructuredModelResponse[ResponseModelT]:
-    """Generate one object-root response without prose/markdown extraction."""
+    """Generate one object-root response without prose/markdown extraction.
+
+    A prompt may contain ``ANALYSIS_CACHE_BREAK``; only Anthropic uses it (as an
+    explicit cache breakpoint), every other provider sees a blank line instead.
+    ``on_text_delta`` receives raw streamed JSON text where the provider supports
+    streaming and is silently unused elsewhere.
+    """
     profile = resolve_runtime_model_profile(model)
+    cache_prefix, cache_suffix = split_cache_break(prompt)
+    flat_prompt = flatten_cache_break(prompt)
     try:
         if profile.handler == "llama_cpp":
             return await _call_llama_cpp_with_schema(
-                model, prompt, response_model, max_tokens
+                model, flat_prompt, response_model, max_tokens
             )
         if profile.handler == "openai_api":
             return await _call_openai_with_schema(
-                model, prompt, response_model, max_tokens
+                model,
+                flat_prompt,
+                response_model,
+                max_tokens,
+                on_text_delta=on_text_delta,
             )
         if profile.handler == "anthropic_api":
             return await _call_anthropic_with_schema(
-                model, prompt, response_model, max_tokens
+                model,
+                flat_prompt,
+                response_model,
+                max_tokens,
+                cache_prefix=cache_prefix,
+                cache_suffix=cache_suffix,
+                on_text_delta=on_text_delta,
             )
         if profile.handler == "gemini_api":
             return await _call_gemini_with_schema(
-                model, prompt, response_model, max_tokens
+                model, flat_prompt, response_model, max_tokens
             )
         return await _call_strict_json_fallback(
-            model, prompt, response_model, max_tokens
+            model, flat_prompt, response_model, max_tokens
         )
     except StructuredModelOutputError:
         raise
@@ -271,6 +343,7 @@ async def _call_openai_with_schema(
     prompt: str,
     response_model: type[ResponseModelT],
     max_tokens: int,
+    on_text_delta: Optional[TextDeltaCallback] = None,
 ) -> StructuredModelResponse[ResponseModelT]:
     if getattr(model, "_async_client", None) is None:
         await model.load()
@@ -284,7 +357,14 @@ async def _call_openai_with_schema(
         }
         if reasoning_effort:
             kwargs["reasoning"] = {"effort": reasoning_effort}
-        response = await model._async_client.responses.parse(**kwargs)
+        if on_text_delta is not None:
+            async with model._async_client.responses.stream(**kwargs) as stream:
+                async for event in stream:
+                    if getattr(event, "type", None) == "response.output_text.delta":
+                        await _forward_text_delta(on_text_delta, event.delta)
+                response = await stream.get_final_response()
+        else:
+            response = await model._async_client.responses.parse(**kwargs)
         finish_reason = str(getattr(response, "status", None) or "completed")
         if finish_reason not in {"completed", "success"}:
             raise StructuredModelOutputError(
@@ -299,17 +379,26 @@ async def _call_openai_with_schema(
             value=response_model.model_validate(value),
             enforcement="openai_responses_parse",
             finish_reason=finish_reason,
+            usage=_extract_usage(response),
         )
 
-    response = await model._async_client.chat.completions.parse(
-        model=model.model_name,
-        messages=[
+    chat_kwargs: dict[str, Any] = {
+        "model": model.model_name,
+        "messages": [
             {"role": "system", "content": "Return the requested structured analysis."},
             {"role": "user", "content": prompt},
         ],
-        max_completion_tokens=min(max_tokens, model.max_output_tokens),
-        response_format=response_model,
-    )
+        "max_completion_tokens": min(max_tokens, model.max_output_tokens),
+        "response_format": response_model,
+    }
+    if on_text_delta is not None:
+        async with model._async_client.chat.completions.stream(**chat_kwargs) as stream:
+            async for event in stream:
+                if getattr(event, "type", None) == "content.delta":
+                    await _forward_text_delta(on_text_delta, event.delta)
+            response = await stream.get_final_completion()
+    else:
+        response = await model._async_client.chat.completions.parse(**chat_kwargs)
     choice = response.choices[0]
     finish_reason = str(choice.finish_reason or "unknown")
     _reject_incomplete_finish_reason(
@@ -325,6 +414,7 @@ async def _call_openai_with_schema(
         value=response_model.model_validate(value),
         enforcement="openai_chat_parse",
         finish_reason=finish_reason,
+        usage=_extract_usage(response),
     )
 
 
@@ -333,6 +423,9 @@ async def _call_anthropic_with_schema(
     prompt: str,
     response_model: type[ResponseModelT],
     max_tokens: int,
+    cache_prefix: Optional[str] = None,
+    cache_suffix: Optional[str] = None,
+    on_text_delta: Optional[TextDeltaCallback] = None,
 ) -> StructuredModelResponse[ResponseModelT]:
     if getattr(model, "_async_client", None) is None:
         await model.load()
@@ -343,6 +436,20 @@ async def _call_anthropic_with_schema(
         "temperature": model.temperature,
         "output_format": response_model,
     }
+    if cache_prefix and cache_suffix is not None:
+        api_params["messages"] = [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": cache_prefix,
+                        "cache_control": {"type": "ephemeral"},
+                    },
+                    {"type": "text", "text": cache_suffix},
+                ],
+            }
+        ]
     api_params = apply_request_parameter_omissions(
         api_params,
         get_omitted_request_parameters(model.model_name),
@@ -357,6 +464,9 @@ async def _call_anthropic_with_schema(
             response = stream.get_final_message()
     else:
         async with model._async_client.messages.stream(**api_params) as stream:
+            if on_text_delta is not None:
+                async for text in stream.text_stream:
+                    await _forward_text_delta(on_text_delta, text)
             response = await stream.get_final_message()
 
     finish_reason = str(getattr(response, "stop_reason", None) or "unknown")
@@ -384,6 +494,7 @@ async def _call_anthropic_with_schema(
         value=response_model.model_validate(value),
         enforcement="anthropic_output_format",
         finish_reason=finish_reason,
+        usage=_extract_usage(response),
     )
 
 

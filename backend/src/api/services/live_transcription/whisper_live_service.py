@@ -17,6 +17,8 @@ import os
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
+from api.services.meeting_cloud_asr.planner import cloud_transcription_available, create_cloud_session
+
 from .live_stream_session import (
     NATIVE_LIVE_TRANSCRIPTION_TYPE,
     NATIVE_STREAM_CLOCK_TYPE,
@@ -290,7 +292,10 @@ class WhisperLiveService:
             (params.get("live_transcription") or "true").lower() != "false"
         )
 
-        if live_transcription_requested and await self._ensure_live_engine() is None:
+        # A native PCM socket whose settings select cloud transcription does not need the local engine to start; if the cloud connection later fails the session falls back to the local engine.
+        use_cloud_transcription = is_pcm and live_transcription_requested and cloud_transcription_available()
+
+        if live_transcription_requested and not use_cloud_transcription and await self._ensure_live_engine() is None:
             if self.last_initialize_error:
                 logger.warning(
                     f"WhisperLive WebSocket refused; init failed with: {self.last_initialize_error}"
@@ -388,6 +393,7 @@ class WhisperLiveService:
             results_forwarder=lambda results_generator: self._handle_websocket_results(
                 websocket, results_generator, send_json=send_json
             ),
+            cloud_factory=create_cloud_session if is_pcm else None,
         )
 
         # Track this connection
@@ -446,6 +452,12 @@ class WhisperLiveService:
                 session.flush_pending_audio()
             except Exception as e:
                 logger.error(f"Error flushing pending audio: {e}", exc_info=True)
+
+            # Let cloud transcription return its last results before the recorder stops so none are dropped.
+            try:
+                await session.drain_cloud()
+            except Exception as e:
+                logger.error(f"Error draining cloud transcription: {e}", exc_info=True)
 
             # Stop meeting recording if active
             if meeting_recorder and meeting_recorder.is_recording:

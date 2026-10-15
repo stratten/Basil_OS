@@ -1,4 +1,4 @@
-export type FilePreviewKind = 'markdown' | 'text' | 'code' | 'htmlSource' | 'pdf' | 'unsupported';
+export type FilePreviewKind = 'markdown' | 'text' | 'code' | 'htmlSource' | 'pdf' | 'image' | 'unsupported';
 
 export interface FilePreviewPayload {
   requestId: string;
@@ -6,6 +6,8 @@ export interface FilePreviewPayload {
   name: string;
   kind: FilePreviewKind;
   content?: string;
+  /** Base64 `data:` URL carrying the file bytes; present only for kind `image`. */
+  dataUrl?: string;
   error?: string;
 }
 

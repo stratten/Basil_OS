@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Callable, List, Literal, Optional, Sequence, Tuple
 
 from .context_pack import ContextPack
-from .context_search import ContextSearchService
+from .context_search import AttachedFileText, ContextSearchService
 from .prefetch import PrefetchCache, derive_queries, queries_fingerprint
 from .symbol_vocabulary import SymbolVocabulary, build_symbol_vocabulary
 
@@ -65,10 +65,31 @@ class ContextService:
             logger.warning("Companion vocabulary build failed: %s", error, exc_info=True)
             return len(self._vocabulary)
         self._vocabulary = vocabulary
+        await self.warm_documents()
         return len(vocabulary)
+
+    async def warm_documents(self) -> int:
+        """Read attached PDFs and Office files into the text cache so the first live search finds them already extracted."""
+        if not self._search.has_roots():
+            return 0
+        try:
+            return await asyncio.to_thread(self._search.warm_documents)
+        except Exception as error:
+            logger.warning("Companion document warm-up failed: %s", error, exc_info=True)
+            return 0
 
     def derive(self, text: str) -> List[str]:
         return derive_queries(text, self._vocabulary)
+
+    async def read_file(self, display_path: str) -> AttachedFileText:
+        """Read one attached file by the path a search showed; never raises for ordinary I/O problems."""
+        if not self._search.has_roots():
+            return AttachedFileText(status="not_found")
+        try:
+            return await asyncio.to_thread(self._search.read_attached_file, display_path)
+        except Exception as error:
+            logger.warning("Companion file read failed: %s", error, exc_info=True)
+            return AttachedFileText(status="unreadable", detail="read failed")
 
     async def prefetch(self, recent_text: str) -> Optional[ContextLookup]:
         """Search ahead for the topic in ``recent_text``; ``None`` when there is nothing new to fetch."""

@@ -1,6 +1,7 @@
 import type {
   ChatMessage,
   CompanionItem,
+  CompanionProposalInfo,
   CompanionRoot,
   CompanionSnapshot,
   CompanionWatch,
@@ -10,7 +11,14 @@ import type {
 
 export const MAX_DERIVED_RETRIEVALS = 200;
 
-const ITEM_KINDS = new Set<string>(['insight', 'suggestion', 'answer', 'context_note']);
+const ITEM_KINDS = new Set<string>(['insight', 'suggestion', 'answer', 'context_note', 'proposal']);
+const PROPOSAL_ACTIONS = new Set<string>(['todo', 'agent_task', 'assistant_session']);
+const PROPOSAL_AUTHORITIES = new Set<string>(['review', 'watch']);
+const PROPOSAL_STATES = new Set<string>(['proposed', 'started', 'handed_off', 'dismissed', 'failed']);
+/** A decided proposal never changes again; `failed` stays open so a retry can still start it. */
+const FINAL_PROPOSAL_STATES = new Set<string>(['started', 'handed_off', 'dismissed']);
+const PROPOSAL_UPDATE_STATES = new Set<string>(['started', 'handed_off', 'dismissed', 'failed']);
+const DEFAULT_PROPOSAL_ERROR = 'The action could not be started.';
 const ROOT_KINDS = new Set<string>(['folder', 'file']);
 const CHAT_ROLES = new Set<string>(['user', 'assistant']);
 const CHAT_STATUSES = new Set<string>(['complete', 'error']);
@@ -61,6 +69,30 @@ function parseCitation(value: unknown): FileCitation | null {
   return { path: value.path, line_start: value.line_start, line_end: value.line_end, excerpt: value.excerpt };
 }
 
+function nullableText(value: unknown): string | null {
+  return typeof value === 'string' && value !== '' ? value : null;
+}
+
+function parseProposalInfo(value: unknown): CompanionProposalInfo | null {
+  if (!isRecord(value)) return null;
+  if (typeof value.proposal_id !== 'string' || typeof value.title !== 'string' || typeof value.instruction !== 'string') return null;
+  if (typeof value.action !== 'string' || !PROPOSAL_ACTIONS.has(value.action)) return null;
+  const authority = typeof value.authority === 'string' && PROPOSAL_AUTHORITIES.has(value.authority) ? value.authority : 'review';
+  const state = typeof value.state === 'string' && PROPOSAL_STATES.has(value.state) ? value.state : 'proposed';
+  return {
+    proposal_id: value.proposal_id,
+    action: value.action as CompanionProposalInfo['action'],
+    title: value.title,
+    instruction: value.instruction,
+    authority: authority as CompanionProposalInfo['authority'],
+    state: state as CompanionProposalInfo['state'],
+    todo_id: nullableText(value.todo_id),
+    agent_task_id: nullableText(value.agent_task_id),
+    error: nullableText(value.error),
+    auto_started: value.auto_started === true,
+  };
+}
+
 /** Structural validation of one item payload; returns null for anything the Python `CompanionItem` model would reject. */
 export function parseCompanionItem(value: unknown): CompanionItem | null {
   if (!isRecord(value)) return null;
@@ -73,6 +105,7 @@ export function parseCompanionItem(value: unknown): CompanionItem | null {
     ? value.citations.map(parseCitation).filter((citation): citation is FileCitation => citation !== null)
     : [];
   const turnIds = Array.isArray(range.turn_ids) ? range.turn_ids.filter((id): id is string => typeof id === 'string') : [];
+  const proposal = parseProposalInfo(value.proposal);
   return {
     id: value.id,
     kind: value.kind as CompanionItem['kind'],
@@ -87,6 +120,10 @@ export function parseCompanionItem(value: unknown): CompanionItem | null {
     pinned: value.pinned === true,
     dismissed: value.dismissed === true,
     ...(isFiniteNumber(value.latency_ms) && value.latency_ms >= 0 ? { latency_ms: Math.round(value.latency_ms) } : {}),
+    ...(value.researched === true ? { researched: true } : {}),
+    ...(typeof value.investigation_id === 'string' ? { investigation_id: value.investigation_id } : {}),
+    ...(isFiniteNumber(value.evidence_count) && value.evidence_count > 0 ? { evidence_count: Math.round(value.evidence_count) } : {}),
+    ...(proposal !== null ? { proposal } : {}),
   };
 }
 
@@ -104,6 +141,26 @@ function updateItem(items: CompanionItem[], itemId: string, patch: Partial<Compa
   const copy = items.slice();
   copy[index] = { ...items[index], ...patch };
   return copy;
+}
+
+/** The TypeScript twin of Python `_apply_proposal`: an update to an existing proposal item, ignored once the card is decided. Throws `MalformedEvent` when the item id is missing, like the other appliers. */
+export function applyProposalUpdate(items: CompanionItem[], payload: Record<string, unknown>): CompanionItem[] {
+  const itemId = requiredText(payload, 'item_id');
+  const state = payload.state;
+  const item = items.find((candidate) => candidate.id === itemId);
+  if (item === undefined || !item.proposal || typeof state !== 'string' || !PROPOSAL_UPDATE_STATES.has(state)) return items;
+  if (FINAL_PROPOSAL_STATES.has(item.proposal.state)) return items;
+  const todoId = nullableText(payload.todo_id);
+  const agentTaskId = nullableText(payload.agent_task_id);
+  const updated: CompanionProposalInfo = {
+    ...item.proposal,
+    state: state as CompanionProposalInfo['state'],
+    error: state === 'failed' ? nullableText(payload.error) ?? DEFAULT_PROPOSAL_ERROR : null,
+    ...(todoId !== null ? { todo_id: todoId } : {}),
+    ...(agentTaskId !== null ? { agent_task_id: agentTaskId } : {}),
+    ...(state === 'started' && payload.auto === true ? { auto_started: true } : {}),
+  };
+  return updateItem(items, itemId, { proposal: updated, ...(state === 'dismissed' ? { dismissed: true, pinned: false } : {}) });
 }
 
 function applyFeedback(state: CompanionTimelineState, payload: Record<string, unknown>): CompanionTimelineState {
@@ -199,6 +256,8 @@ function applyPayload(state: CompanionTimelineState, event: TimelineEvent): Comp
     }
     case 'feedback':
       return applyFeedback(state, payload);
+    case 'proposal':
+      return { ...state, items: applyProposalUpdate(state.items, payload) };
     case 'chat':
       return applyChat(state, event, payload);
     case 'watch':

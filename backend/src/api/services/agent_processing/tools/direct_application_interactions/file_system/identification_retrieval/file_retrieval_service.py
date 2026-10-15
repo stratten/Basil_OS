@@ -21,6 +21,8 @@ from ..file_models import (
     FileSearchCriteria, FileMetadata, FileContent, FileSearchResult,
     FileType, ContentEncoding, LLMFileRequest
 )
+from api.services.document_reading import AGENT_DEADLINE_SECONDS, AGENT_LIMITS, is_document_path, read_document_text
+
 from .search_subprocess import run_bounded_search_process
 
 logger = logging.getLogger(__name__)
@@ -259,7 +261,8 @@ class FileRetrievalService:
             if metadata.file_type == FileType.TEXT and encoding == ContentEncoding.UTF8_TEXT:
                 return await self._read_text_file(file_path, metadata)
             elif encoding == ContentEncoding.BASE64:
-                return await self._read_file_as_base64(file_path, metadata)
+                base64_content = await self._read_file_as_base64(file_path, metadata)
+                return await self._attach_document_text(base64_content, metadata)
             elif encoding == ContentEncoding.EXTRACTED_TEXT:
                 return await self._extract_text_content(file_path, metadata)
             else:
@@ -310,20 +313,50 @@ class FileRetrievalService:
             extraction_method="base64_encoding"
         )
     
+    async def _read_document_text(self, file_path: str, metadata: FileMetadata) -> Optional[FileContent]:
+        """Text of a PDF, Word, Excel, PowerPoint or iWork file from the shared reader; ``None`` when none could be read."""
+        if not is_document_path(file_path):
+            return None
+        result = await asyncio.to_thread(
+            read_document_text, file_path, AGENT_LIMITS, deadline_seconds=AGENT_DEADLINE_SECONDS
+        )
+        if not result.usable:
+            logger.info(f"No document text for {file_path}: {result.status} ({result.detail})")
+            return None
+        return FileContent(
+            file_path=file_path,
+            content_type=ContentEncoding.EXTRACTED_TEXT,
+            raw_content=result.text,
+            extracted_text=result.text,
+            metadata=metadata,
+            extraction_method=f"document_reader:{result.method}",
+        )
+
+    async def _attach_document_text(self, content: FileContent, metadata: FileMetadata) -> FileContent:
+        """Add extracted text beside a Base64 payload so models without native document support can still read it."""
+        if content.extracted_text or not is_document_path(content.file_path):
+            return content
+        extracted = await self._read_document_text(content.file_path, metadata)
+        if extracted is not None:
+            content.extracted_text = extracted.extracted_text
+        return content
+
     async def _extract_text_content(self, file_path: str, metadata: FileMetadata) -> Optional[FileContent]:
         """Extract text content from non-text files (PDF, Word, etc.)."""
         logger.info(f"📝 Extracting text from: {file_path}")
         
-        # This is a placeholder for future text extraction capabilities
-        # Could integrate with libraries like PyPDF2, python-docx, etc.
+        # Text comes from the shared document reader; Base64 remains the fallback when it finds none.
+        extracted = await self._read_document_text(file_path, metadata)
+        if extracted is not None:
+            return extracted
         
         if metadata.file_type == FileType.PDF:
-            # Future: Use PyPDF2 or pdfplumber
-            logger.warning(f"⚠️ PDF text extraction not yet implemented for {file_path}")
+            # The shared reader found no text (scanned or encrypted PDF), so keep the previous Base64 behavior.
+            logger.warning(f"⚠️ No text could be extracted from the PDF at {file_path}; falling back to Base64")
             return await self._read_file_as_base64(file_path, metadata)
         elif metadata.file_type == FileType.DOCUMENT:
-            # Future: Use python-docx for Word docs
-            logger.warning(f"⚠️ Document text extraction not yet implemented for {file_path}")
+            # The shared reader found no text (legacy .doc, .rtf or an empty file), so keep the previous Base64 behavior.
+            logger.warning(f"⚠️ No text could be extracted from the document at {file_path}; falling back to Base64")
             return await self._read_file_as_base64(file_path, metadata)
         else:
             # Default to Base64 for unsupported types

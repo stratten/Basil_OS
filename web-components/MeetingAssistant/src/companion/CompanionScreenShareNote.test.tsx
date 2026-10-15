@@ -3,7 +3,15 @@ import { describe, expect, it, vi } from 'vitest';
 import CompanionScreenShareNote from './CompanionScreenShareNote';
 import type { CompanionGlobalSettings } from './types';
 
-const settings = (dismissed: boolean | undefined): CompanionGlobalSettings => ({ auto_enable: false, default_mode: 'active', next_focus: '', screen_share_note_dismissed: dismissed as boolean });
+const settings = (dismissed: boolean | undefined): CompanionGlobalSettings => ({
+  auto_enable: false,
+  default_mode: 'active',
+  next_focus: '',
+  screen_share_note_dismissed: dismissed as boolean,
+  proposal_mode: 'suggestion_only',
+  proposal_capabilities: ['todo', 'agent_task', 'assistant_session'],
+  auto_execute_capabilities: [],
+});
 
 describe('CompanionScreenShareNote', () => {
   it('asks the shared settings controller to save the dismissal exactly once', () => {

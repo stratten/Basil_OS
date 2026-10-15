@@ -94,6 +94,7 @@ export default function TextFollowUp({
         executionTimeline: source.executionTimeline,
         stepDetails: source.stepDetails,
         errorMessage: source.errorMessage,
+        modelUsed: source.modelUsed ?? source.originalModelId,
       }
       : undefined;
 

@@ -165,6 +165,8 @@ export interface AgentTaskHistoryItem {
   outcome?: string;
   resultSeverity?: ResultSeverity;
   status?: AgentStatus | string;
+  // The model shown in this run's Result header: the recorded answering model, else the explicit override.
+  modelUsed?: string;
 }
 
 // A conversation turn for thread-style rendering
@@ -235,6 +237,9 @@ export interface DisplayableAgentTask {
   // user-designated local fallback model (see reasoning_fallback_model_used
   // on the backend AgentTaskDetailResponse/AgentTaskChainItem).
   reasoningFallbackModelUsed?: string;
+  // The model that actually answered this run (result_data.model_used on the
+  // backend). Undefined for runs that predate the recording.
+  modelUsed?: string;
   // The model_id captured in accumulated_artifacts at submission time for
   // this attempt (see model_id on the backend
   // AgentTaskDetailResponse/AgentTaskChainItem). Undefined means the
@@ -261,6 +266,10 @@ export interface AgentState extends DisplayableAgentTask {
    * in-flight evidence confirms the new attempt.
    */
   isRetryPending?: boolean;
+  /**
+   * The user just answered a checkpoint and the answer is still being delivered, so a stale durable read may still report awaiting input. Hydration must not restore the answered checkpoint until a live execution event, a new checkpoint, or a terminal status clears this.
+   */
+  isCheckpointResumePending?: boolean;
 
   // Approval state
   approvalRequests: ExecutionApprovalRequest[];
@@ -400,6 +409,8 @@ export interface AgentTaskListItem {
   is_scheduled_run?: boolean;
   scheduled_agent_task_id?: string;
   scheduled_agent_task_title?: string;
+  // Set when the whole chain has been archived; absent or null otherwise.
+  archived_at?: string | null;
 }
 
 export interface ScheduledAgentTask {
@@ -465,6 +476,7 @@ export interface AgentTaskDetail {
   thinking_history?: PersistedThinkingSegment[];
   checkpoint_data?: Record<string, unknown>;
   reasoning_fallback_model_used?: string;
+  model_used?: string;
   model_id?: string;
 }
 
@@ -487,6 +499,7 @@ export interface AgentTaskFollowUp {
   execution_timeline?: TimelineEntry[];
   thinking_history?: PersistedThinkingSegment[];
   reasoning_fallback_model_used?: string;
+  model_used?: string;
   model_id?: string;
 }
 

@@ -339,6 +339,8 @@ export interface MeetingUIStateDTO {
   companionApiPort?: number;
   /** The meeting being recorded right now (microphone id, else system-audio id); null or absent when not recording. */
   recordingMeetingId?: string | null;
+  /** macOS thermal pressure for the resource advisor; absent from older native clients. */
+  thermalState?: string | null;
 }
 
 export type MeetingSearchTermModeDTO = 'and' | 'or';
@@ -444,4 +446,6 @@ export type MeetingBridgeIntent =
   | { type: 'restoreProposal'; proposalId: string }
   | { type: 'pickCompanionFolder' }
   | { type: 'openCompanionWindow' }
+  | { type: 'openCompanionAssistantSession'; instruction: string; contextText: string }
+  | { type: 'openAppSettings' }
   | { type: 'setCompanionPaneExtent'; width: number };

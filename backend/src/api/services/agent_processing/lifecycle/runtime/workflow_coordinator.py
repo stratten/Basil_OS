@@ -435,6 +435,16 @@ class WorkflowCoordinator:
                     setattr(workflow_result, 'reasoning_fallback_model_used', fallback_model_used)
                 except Exception as _seterr:
                     self.logger.info(f"Failed to attach reasoning_fallback_model_used to result: {_seterr}")
+
+            # Record the model that actually answered (the local fallback when it
+            # took over, otherwise the configured reasoning model) so the UI can
+            # show it per run.
+            model_used = fallback_model_used or getattr(self._llm_model, "model_name", None)
+            if model_used:
+                try:
+                    setattr(workflow_result, 'model_used', model_used)
+                except Exception as _seterr:
+                    self.logger.info(f"Failed to attach model_used to result: {_seterr}")
             
             self.logger.info(f"✅ Tool-enhanced workflow finished: {workflow_result.todos_completed} todos completed")
             

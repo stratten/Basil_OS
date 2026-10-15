@@ -22,6 +22,9 @@ vi.mock('../services/bridge', () => ({
   pickFiles: mocks.pickFiles,
   registerFilesPickedHandler: (handler: (paths: string[]) => void) => {
     mocks.filesPicked = handler;
+    return () => {
+      if (mocks.filesPicked === handler) mocks.filesPicked = null;
+    };
   },
 }));
 
@@ -234,7 +237,7 @@ describe('RunControlComposer attachments', () => {
     expect(container.querySelector('.text-followup-references')?.textContent).toContain('Projects');
 
     act(() => root.render(<div />));
-    expect(() => mocks.filesPicked?.(['/tmp/late'])).not.toThrow();
+    expect(mocks.filesPicked).toBeNull();
   });
 });
 

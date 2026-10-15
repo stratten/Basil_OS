@@ -544,6 +544,21 @@ async def startup_event():
         except Exception as e:
             logger.error(f"Startup: Failed to initialize Meeting Companion runtime: {e}", exc_info=True)
 
+        # Start the resource advisor (idle until a recording is live)
+        logger.info("Startup: Initializing resource advisor...")
+        try:
+            from .routes.meetings.state import active_analysis
+            from .services.meeting_resources.service import initialize_resource_advisor
+            from .services.meeting_resources.snapshot_provider import analysis_jobs_running
+
+            if validation_runtime_profile is None:
+                await initialize_resource_advisor(analysis_running=lambda: analysis_jobs_running(active_analysis))
+                logger.info("Startup: Resource advisor started successfully")
+            else:
+                logger.info("Startup: Resource advisor disabled for validation runtime")
+        except Exception as e:
+            logger.error(f"Startup: Failed to start resource advisor: {e}", exc_info=True)
+
         # Log system information
         logger.info(f"Startup: Application '{settings.APP_NAME}' version {settings.API_VERSION}")
         logger.info(f"Python version: {sys.version}")
@@ -851,6 +866,15 @@ async def shutdown_event():
         logger.info("Shutdown: Ambient Suggestion runtime cleaned up successfully.")
     except Exception as e:
         logger.error(f"🚨 Shutdown: Error cleaning up Ambient Suggestion runtime: {e}", exc_info=True)
+
+    # Stop the resource advisor
+    logger.info("Shutdown: Stopping resource advisor...")
+    try:
+        from .services.meeting_resources.service import cleanup_resource_advisor
+        await cleanup_resource_advisor()
+        logger.info("Shutdown: Resource advisor stopped successfully.")
+    except Exception as e:
+        logger.error(f"Shutdown: Error stopping resource advisor: {e}", exc_info=True)
 
     # Cleanup Meeting Companion runtime (flushes and closes any live Companion sessions)
     logger.info("Shutdown: Cleaning up Meeting Companion runtime...")

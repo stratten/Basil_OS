@@ -181,6 +181,75 @@ describe('FilePreviewApp presentation policy', () => {
     }
   });
 
+  it('renders an image payload as a scaled image and never requests text version history', async () => {
+    const dataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    const view = await renderPreview({
+      requestId: 'file-preview-image',
+      path: '/private/reports/chart.png',
+      name: 'chart.png',
+      kind: 'image',
+      dataUrl,
+    });
+
+    try {
+      expect(view.container.textContent).toContain('Image Preview');
+      const image = view.container.querySelector<HTMLImageElement>('.file-preview-window-image');
+      expect(image?.getAttribute('src')).toBe(dataUrl);
+      expect(image?.getAttribute('alt')).toBe('chart.png');
+      expect(view.container.querySelector('.file-preview-window-source')).toBeNull();
+      expect(managedHistoryMocks.listManagedFileVersions).not.toHaveBeenCalled();
+    } finally {
+      view.cleanup();
+    }
+  });
+
+  it('swaps the image when native reports a matching update', async () => {
+    const view = await renderPreview({
+      requestId: 'file-preview-image-live',
+      path: '/private/reports/chart.png',
+      name: 'chart.png',
+      kind: 'image',
+      dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    });
+
+    try {
+      const updateHandlerCalls = bridgeMocks.registerFilePreviewUpdateHandler.mock.calls as unknown as Array<[(update: FilePreviewPayload) => void]>;
+      const updateHandler = updateHandlerCalls[updateHandlerCalls.length - 1]?.[0];
+      if (!updateHandler) throw new Error('Expected the native preview update handler to be registered.');
+
+      act(() => {
+        updateHandler({
+          requestId: 'file-preview-image-live',
+          path: '/private/reports/chart.png',
+          name: 'chart.png',
+          kind: 'image',
+          dataUrl: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=',
+        });
+      });
+
+      expect(view.container.querySelector('.file-preview-window-image')?.getAttribute('src')).toBe('data:image/gif;base64,R0lGODlhAQABAAAAACw=');
+    } finally {
+      view.cleanup();
+    }
+  });
+
+  it('shows the native message for an image that is too large or cannot be decoded', async () => {
+    const view = await renderPreview({
+      requestId: 'file-preview-image-error',
+      path: '/private/reports/huge.png',
+      name: 'huge.png',
+      kind: 'unsupported',
+      error: 'This image is too large to preview here. Use Open File.',
+    });
+
+    try {
+      expect(view.container.textContent).toContain('This image is too large to preview here. Use Open File.');
+      expect(view.container.querySelector('.file-preview-window-image')).toBeNull();
+    } finally {
+      view.cleanup();
+    }
+  });
+
   it('keeps the unsupported fallback branch for a ready unsupported payload', async () => {
     const view = await renderPreview(payload('unsupported'));
 

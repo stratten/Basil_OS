@@ -225,6 +225,7 @@ def migrate_agent_tasks_table(conn: sqlite3.Connection) -> None:
     provenance_columns = {
         "origin_type": "ALTER TABLE agent_tasks ADD COLUMN origin_type TEXT",
         "origin_id": "ALTER TABLE agent_tasks ADD COLUMN origin_id TEXT",
+        "archived_at": "ALTER TABLE agent_tasks ADD COLUMN archived_at TIMESTAMP",
     }
     for column_name, alter_sql in provenance_columns.items():
         if column_name not in vc_columns:
@@ -248,6 +249,12 @@ def migrate_agent_tasks_table(conn: sqlite3.Connection) -> None:
         """
         CREATE INDEX IF NOT EXISTS idx_agent_tasks_latest_status
         ON agent_tasks(latest_status)
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_agent_tasks_archived
+        ON agent_tasks(archived_at)
         """
     )
     ensure_agent_task_search_fts(conn)

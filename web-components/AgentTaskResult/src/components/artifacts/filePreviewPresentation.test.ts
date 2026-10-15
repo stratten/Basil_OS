@@ -12,6 +12,7 @@ const knownKinds: Array<[FilePreviewKind, string, FilePreviewRenderMode]> = [
   ['code', 'Code Preview', 'source'],
   ['text', 'Text Preview', 'source'],
   ['pdf', 'PDF Preview', 'native_pdf'],
+  ['image', 'Image Preview', 'image'],
   ['unsupported', 'File Preview', 'unsupported'],
 ];
 

@@ -1,5 +1,6 @@
 import CompanionFocusField from './CompanionFocusField';
 import CompanionPaneHeader from './CompanionPaneHeader';
+import CompanionProposalSettings from './CompanionProposalSettings';
 import CompanionScreenShareNote from './CompanionScreenShareNote';
 import CompanionSources from './CompanionSources';
 import type { CompanionController } from './useCompanion';
@@ -38,6 +39,7 @@ export default function CompanionSetupPane({ controller, globalSettings, onClose
           onRemoveRoot={controller.removeRoot}
           onRemovePending={controller.removePendingRoot}
         />
+        <CompanionProposalSettings {...globalSettings} />
       </div>
     </aside>
   );

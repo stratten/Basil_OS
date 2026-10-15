@@ -10,6 +10,9 @@ import {
   toggleRecording,
 } from '../bridge/meetingBridge';
 import { useMeetingMeter } from '../bridge/meetingMeterStore';
+import CloudTranscription from '../cloud/CloudTranscription';
+import { companionPort } from '../companion/companionTarget';
+import ResourceAdvice from '../resources/ResourceAdvice';
 import MeetingSwitch from './MeetingSwitch';
 import { CancelCircleIcon, PauseCircleIcon, PlayCircleIcon, PlusCircleIcon, RecordCircleIcon, StopCircleIcon } from './MeetingIcons';
 
@@ -104,6 +107,7 @@ function RecordingControls({ ui }: RecordingControlsProps) {
               <RecordingIndicators ui={ui} />
             </div>
           </div>
+          <ResourceAdvice port={companionPort(ui)} recording={ui.isRecording} thermalState={ui.thermalState} />
           {isConfirmingCancel && (
             <div className="meeting-cancel-confirmation" role="alertdialog" aria-labelledby="meeting-cancel-confirmation-message">
               <p id="meeting-cancel-confirmation-message">Discard this recording? The audio and transcript captured since you pressed Start or Resume will be deleted.</p>
@@ -127,6 +131,7 @@ function RecordingControls({ ui }: RecordingControlsProps) {
           <LiveTranscriptionSwitch enabled={ui.isLiveTranscriptionEnabled} />
         </div>
       )}
+      <CloudTranscription port={companionPort(ui)} />
     </section>
   );
 }

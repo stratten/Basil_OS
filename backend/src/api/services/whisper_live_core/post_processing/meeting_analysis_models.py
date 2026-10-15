@@ -12,6 +12,8 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .meeting_analysis_timing import AnalysisTimingReport
+
 
 class AnalysisMode(str, Enum):
     """Available analysis modes for meeting transcripts."""
@@ -346,6 +348,10 @@ class MeetingAnalysisResult(BaseModel):
     structured_output_enforcement: Dict[str, List[str]] = Field(
         default_factory=dict,
         description="Schema enforcement modes used by each completed analysis mode",
+    )
+    timings: Optional[AnalysisTimingReport] = Field(
+        default=None,
+        description="Per-call and per-mode timing for this run; absent in older saved analyses",
     )
     
     # Metadata

@@ -1,14 +1,17 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import type { ThinkingSegment } from '../../types';
 import MarkdownRenderer from '../MarkdownRenderer';
 import { ThinkingSegments, useReasoningFollowState } from '../result/ThinkingSections';
 import { formatHistoryTimestamp, useDateDisplayStyle } from '../../app/dateDisplay';
 import {
   interactionAskerLabel,
+  interactionAskerSpeaker,
   interactionResponseLabel,
+  interactionResponseSpeaker,
   isApprovalLikeInteraction,
   splitReasoningAroundInteractions,
   visibleInteractionResponse,
+  type InteractionSpeaker,
   type UserInteraction,
 } from './userInteractions';
 
@@ -16,6 +19,15 @@ export function SpeechBubbleGlyph() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M4.5 5.5h15v10h-8l-4.5 3.5v-3.5h-2.5z" />
+    </svg>
+  );
+}
+
+export function PersonGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="9" r="3.2" />
+      <path d="M5.5 19c.8-3.4 3.4-5 6.5-5s5.7 1.6 6.5 5" />
     </svg>
   );
 }
@@ -59,18 +71,16 @@ export function InteractionExchange({ interaction }: { interaction: UserInteract
   // While a pause is waiting, the run-control composer at the bottom is the only surface, so the transcript does not repeat it.
   if (interaction.kind === 'pause' && interaction.status === 'waiting') return null;
 
+  const askerSpeaker = interactionAskerSpeaker(interaction);
+  const responseSpeaker = interactionResponseSpeaker(interaction);
+
   return (
     <section
       className={`interaction-exchange is-${interaction.status}`}
       data-interaction-entry-id={interaction.entryId}
       aria-label={`${interactionAskerLabel(interaction)}. ${interactionResponseLabel(interaction)}`}
     >
-      <div className="interaction-exchange-ask">
-        <div className="interaction-exchange-heading">
-          <span className="interaction-exchange-glyph"><SpeechBubbleGlyph /></span>
-          <span className="interaction-exchange-asker">{interactionAskerLabel(interaction)}</span>
-          {askedTime && <span className="interaction-exchange-time">{askedTime}</span>}
-        </div>
+      <InteractionTurn speaker={askerSpeaker} tone="neutral" label={interactionAskerLabel(interaction)} time={askedTime}>
         {isApprovalLikeInteraction(interaction) ? (
           <pre className="interaction-exchange-command">{interaction.prompt}</pre>
         ) : (
@@ -78,18 +88,48 @@ export function InteractionExchange({ interaction }: { interaction: UserInteract
             <MarkdownRenderer content={interaction.prompt} />
           </div>
         )}
-      </div>
-      <div className={`interaction-exchange-response is-${tone}`}>
-        <div className="interaction-exchange-response-heading">
-          {tone === 'waiting' && <span className="interaction-exchange-waiting-dot" aria-hidden="true" />}
-          <span>{interactionResponseLabel(interaction)}</span>
-          {respondedTime && <span className="interaction-exchange-time">{respondedTime}</span>}
-        </div>
+      </InteractionTurn>
+      <InteractionTurn
+        speaker={responseSpeaker}
+        tone={tone}
+        label={interactionResponseLabel(interaction)}
+        time={respondedTime}
+        waiting={tone === 'waiting'}
+      >
         {responseText && (
           <div className="interaction-exchange-response-text">{responseText}</div>
         )}
-      </div>
+      </InteractionTurn>
     </section>
+  );
+}
+
+/** One side of an exchange: app turns sit on the left with the app glyph, user turns on the right with the person glyph. */
+function InteractionTurn({
+  speaker,
+  tone,
+  label,
+  time,
+  waiting = false,
+  children,
+}: {
+  speaker: InteractionSpeaker;
+  tone: 'answer' | 'waiting' | 'negative' | 'neutral';
+  label: string;
+  time: string;
+  waiting?: boolean;
+  children?: ReactNode;
+}) {
+  return (
+    <div className={`interaction-turn is-${speaker} is-${tone}`} data-speaker={speaker}>
+      <div className="interaction-turn-heading">
+        <span className="interaction-turn-glyph">{speaker === 'user' ? <PersonGlyph /> : <SpeechBubbleGlyph />}</span>
+        {waiting && <span className="interaction-exchange-waiting-dot" aria-hidden="true" />}
+        <span className="interaction-turn-label">{label}</span>
+        {time && <span className="interaction-exchange-time">{time}</span>}
+      </div>
+      {children}
+    </div>
   );
 }
 

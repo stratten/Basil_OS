@@ -472,6 +472,10 @@ class AgentTaskSubmissionService:
             "The fast-lane response generation failed; please try again."
         )
 
+        fast_lane_model_used = getattr(model, "model_name", None) if generation_succeeded else None
+        if not (isinstance(fast_lane_model_used, str) and fast_lane_model_used):
+            fast_lane_model_used = None
+
         try:
             await self.db_service.store_agent_task(
                 agent_task_id=cmd_id,
@@ -490,6 +494,7 @@ class AgentTaskSubmissionService:
                     "success": generation_succeeded,
                     "operation_type": "discussion",
                     "response": response_text,
+                    **({"model_used": fast_lane_model_used} if fast_lane_model_used else {}),
                     "finalizer_result": {
                         "success": generation_succeeded,
                         "summary_text": response_text,
@@ -525,6 +530,7 @@ class AgentTaskSubmissionService:
                 "success": generation_succeeded,
                 "result": response_text,
                 "operation": "discussion",
+                **({"model_used": fast_lane_model_used} if fast_lane_model_used else {}),
                 "timestamp": datetime.now().isoformat(),
             }
         )

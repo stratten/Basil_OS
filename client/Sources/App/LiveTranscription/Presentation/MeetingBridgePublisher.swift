@@ -173,6 +173,13 @@ final class MeetingBridgePublisher {
             }
             .store(in: &cancellables)
 
+        NotificationCenter.default.publisher(for: ProcessInfo.thermalStateDidChangeNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.reconcile()
+            }
+            .store(in: &cancellables)
+
         Publishers.CombineLatest(
             viewModel.microphoneAudioLevelPublisher,
             viewModel.systemAudioLevelPublisher
@@ -326,7 +333,8 @@ final class MeetingBridgePublisher {
             isCapturePaused: viewModel.isCapturePaused,
             isLiveTranscriptionEnabled: viewModel.sessionLiveTranscriptionEnabled,
             companionApiPort: APIClient.shared.currentPort,
-            recordingMeetingId: viewModel.isRecording ? viewModel.currentMeetingId : nil
+            recordingMeetingId: viewModel.isRecording ? viewModel.currentMeetingId : nil,
+            thermalState: MeetingThermalStateName.name(for: ProcessInfo.processInfo.thermalState)
         )
     }
 

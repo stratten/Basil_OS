@@ -5,6 +5,7 @@ Reads files from disk and transforms them into the appropriate format
 based on the target model's provider (Anthropic, OpenAI, Gemini, or local).
 """
 
+import asyncio
 import base64
 import logging
 import mimetypes
@@ -12,12 +13,15 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from api.services.document_reading import CONVERSATION_LIMITS, read_document_text
+
 logger = logging.getLogger(__name__)
 
 IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp", "bmp", "tiff"}
 PDF_EXTENSION = "pdf"
 TEXT_EXTENSIONS = {"txt", "md", "markdown", "csv", "json", "xml", "yaml", "yml", "log", "py", "js", "ts", "swift", "html", "css"}
 DOCX_EXTENSIONS = {"docx", "doc"}
+OFFICE_EXTENSIONS = {"xlsx", "xlsm", "pptx", "pages", "numbers", "key"}
 
 PROVIDER_ANTHROPIC = "anthropic"
 PROVIDER_OPENAI = "openai"
@@ -120,6 +124,10 @@ class DocumentProcessingService:
                     text_parts.append(f"--- {os.path.basename(path)} ---\n{text}")
             elif ext in DOCX_EXTENSIONS:
                 text = await self._extract_docx_text(path)
+                if text:
+                    text_parts.append(f"--- {os.path.basename(path)} ---\n{text}")
+            elif ext in OFFICE_EXTENSIONS:
+                text = await self._extract_office_text(path)
                 if text:
                     text_parts.append(f"--- {os.path.basename(path)} ---\n{text}")
             else:
@@ -271,8 +279,18 @@ class DocumentProcessingService:
             return await self._extract_pdf_text(path)
         elif ext in DOCX_EXTENSIONS:
             return await self._extract_docx_text(path)
+        elif ext in OFFICE_EXTENSIONS:
+            return await self._extract_office_text(path)
         else:
             return self._try_read_as_text(path)
+
+    async def _extract_office_text(self, path: str) -> Optional[str]:
+        """Extract text from an Excel, PowerPoint, Pages, Numbers or Keynote file with the shared reader."""
+        result = await asyncio.to_thread(read_document_text, path, CONVERSATION_LIMITS)
+        if not result.usable:
+            logger.warning(f"No text extracted from {path}: {result.status} ({result.detail})")
+            return None
+        return result.text
 
     async def _extract_pdf_text(self, path: str) -> Optional[str]:
         """Extract text from a PDF file."""

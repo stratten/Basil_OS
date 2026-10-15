@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { ThinkingSegment, TimelineEntry } from '../../types';
 import {
+  interactionAskerSpeaker,
+  interactionResponseSpeaker,
   interactionSummary,
   splitReasoningAroundInteractions,
   userInteractionsFromTimeline,
@@ -236,5 +238,30 @@ describe('interactionSummary', () => {
       .toEqual(['canceled', 'answered']);
     expect(userInteractionsFromTimeline(timeline, { runEnded: false }).map(interaction => interaction.status))
       .toEqual(['waiting', 'answered']);
+  });
+});
+
+describe('interaction speakers', () => {
+  const appInitiated = ['clarification', 'approval', 'credential', 'provider_target', 'command_input', 'provider_input', 'provider_permission'] as const;
+
+  it.each(appInitiated)('starts a %s exchange with the app and answers it as the user', kind => {
+    expect(interactionAskerSpeaker({ kind })).toBe('app');
+    for (const status of ['waiting', 'answered', 'approved', 'denied', 'dismissed', 'timed_out', 'canceled'] as const) {
+      expect(interactionResponseSpeaker({ kind, status })).toBe('user');
+    }
+  });
+
+  it('starts a note with the user and always acknowledges it as the app', () => {
+    expect(interactionAskerSpeaker({ kind: 'guidance' })).toBe('user');
+    for (const status of ['waiting', 'resolved', 'canceled'] as const) {
+      expect(interactionResponseSpeaker({ kind: 'guidance', status })).toBe('app');
+    }
+  });
+
+  it('starts a pause with the user and treats only the resume as the user', () => {
+    expect(interactionAskerSpeaker({ kind: 'pause' })).toBe('user');
+    expect(interactionResponseSpeaker({ kind: 'pause', status: 'resolved' })).toBe('user');
+    expect(interactionResponseSpeaker({ kind: 'pause', status: 'canceled' })).toBe('app');
+    expect(interactionResponseSpeaker({ kind: 'pause', status: 'waiting' })).toBe('app');
   });
 });

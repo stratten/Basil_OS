@@ -153,6 +153,34 @@ describe('AgentStore blocker handling', () => {
     expect(agent?.inlineCheckpoint).toBeUndefined();
   });
 
+  it('shows a new checkpoint that arrives after a resume and clears the pending flag', () => {
+    const store = makeStoreWithAgent();
+    store.showCheckpoint('task-1', { checkpoint_id: 'first', prompt: 'First?', input_type: 'data' });
+    store.markCheckpointResumeProcessing('task-1', 'Resuming...');
+    expect(store.getAgent('task-1')?.isCheckpointResumePending).toBe(true);
+
+    dispatch(store, {
+      event_type: 'collaborative_checkpoint_request',
+      agent_task_id: 'task-1',
+      checkpoint: { checkpoint_id: 'second', prompt: 'Second?', input_type: 'choice', options: ['A', 'B'] },
+    });
+
+    const agent = store.getAgent('task-1');
+    expect(agent?.currentCheckpoint?.checkpoint_id).toBe('second');
+    expect(agent?.showCheckpointPrompt).toBe(true);
+    expect(agent?.isCheckpointResumePending).toBe(false);
+  });
+
+  it('ends the delivery window when the backend confirms the resume', () => {
+    const store = makeStoreWithAgent();
+    store.showCheckpoint('task-1', { checkpoint_id: 'first', prompt: 'First?', input_type: 'data' });
+    store.markCheckpointResumeProcessing('task-1', 'Resuming...');
+
+    dispatch(store, { event_type: 'checkpoint_resumed', agent_task_id: 'task-1', message: 'Resumed' });
+
+    expect(store.getAgent('task-1')?.isCheckpointResumePending).toBe(false);
+  });
+
   it('surfaces failed external-service access as an error detail', () => {
     const store = makeStoreWithAgent();
 
