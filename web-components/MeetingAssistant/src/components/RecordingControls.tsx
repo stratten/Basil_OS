@@ -5,14 +5,17 @@ import {
   pauseRecording,
   resumeMeeting,
   resumeRecording,
+  setLiveEngine,
   setLiveTranscription,
   startNewMeeting,
   toggleRecording,
 } from '../bridge/meetingBridge';
 import { useMeetingMeter } from '../bridge/meetingMeterStore';
 import CloudTranscription from '../cloud/CloudTranscription';
+import { useCloudTranscription } from '../cloud/useCloudTranscription';
 import { companionPort } from '../companion/companionTarget';
 import ResourceAdvice from '../resources/ResourceAdvice';
+import LiveTranscriptionModelSelect from './LiveTranscriptionModelSelect';
 import MeetingSwitch from './MeetingSwitch';
 import { CancelCircleIcon, PauseCircleIcon, PlayCircleIcon, PlusCircleIcon, RecordCircleIcon, StopCircleIcon } from './MeetingIcons';
 
@@ -22,6 +25,7 @@ interface RecordingControlsProps {
 
 function RecordingControls({ ui }: RecordingControlsProps) {
   const loadingModels = ui.transcriptionState === 'loadingModels';
+  const cloud = useCloudTranscription(companionPort(ui));
   const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
   const keepRecordingButtonRef = useRef<HTMLButtonElement>(null);
@@ -56,7 +60,6 @@ function RecordingControls({ ui }: RecordingControlsProps) {
 
   return (
     <section className={`meeting-recording-controls${ui.isRecording ? ' is-recording' : ''}${ui.isCapturePaused ? ' is-paused' : ''}`}>
-      {!ui.isRecording && !ui.isViewingPastMeeting && <StatusRow ui={ui} />}
       {ui.isViewingPastMeeting ? (
         <div className="meeting-recording-button-row">
           <button type="button" className="meeting-resume-button" onClick={resumeMeeting} disabled={loadingModels}>
@@ -123,15 +126,21 @@ function RecordingControls({ ui }: RecordingControlsProps) {
           )}
         </>
       ) : (
-        <div className="meeting-recording-button-row">
-          <button type="button" className="meeting-record-button" onClick={toggleRecording} disabled={loadingModels}>
-            <RecordCircleIcon />
-            Start
-          </button>
-          <LiveTranscriptionSwitch enabled={ui.isLiveTranscriptionEnabled} />
+        <div className="meeting-idle-row">
+          <div className="meeting-idle-controls">
+            <div className="meeting-recording-button-row">
+              <button type="button" className="meeting-record-button" onClick={toggleRecording} disabled={loadingModels}>
+                <RecordCircleIcon />
+                Start
+              </button>
+              <LiveTranscriptionSwitch enabled={ui.isLiveTranscriptionEnabled} />
+            </div>
+            <LiveTranscriptionModelSelect ui={ui} state={cloud.state} onChoose={setLiveEngine} />
+          </div>
+          <StatusRow ui={ui} />
         </div>
       )}
-      <CloudTranscription port={companionPort(ui)} />
+      <CloudTranscription state={cloud.state} />
     </section>
   );
 }

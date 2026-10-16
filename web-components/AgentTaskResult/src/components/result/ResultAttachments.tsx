@@ -3,6 +3,10 @@ import type { StructuredFile } from '../../types';
 import { openFile, openContainingFolder, openFilePreviewWindow } from '../../services/bridge';
 import { presentFileArtifact } from './fileArtifactPresentation';
 import { normalizeFileReference } from './resultContentUtils';
+import ExpandableList from '@shared/ExpandableList';
+
+// Beyond this many rows (including the Retrieved heading) the list collapses so a long run does not push the rest of the result off screen.
+const FILES_COLLAPSED_COUNT = 5;
 
 export function FilesDisplay({ files }: { files: StructuredFile[]; resultText: string }) {
   const displayFiles: StructuredFile[] = files.length > 0
@@ -22,19 +26,23 @@ export function FilesDisplay({ files }: { files: StructuredFile[]; resultText: s
         </span>
       </div>
       <div className="result-files__list">
-        {changedFiles.map((file, i) => (
-          <FileItemRow key={`changed-${i}`} file={file} />
-        ))}
-        {readFiles.length > 0 && (
-          <div className={`result-files__retrieved${changedFiles.length > 0 ? ' result-files__retrieved--after-changed' : ''}`}>
-            <span className="result-files__retrieved-label">
+        <ExpandableList
+          collapsedCount={FILES_COLLAPSED_COUNT}
+          contentClassName="result-files__items"
+          showAllLabel={total => `Show all ${total} files`}
+        >
+          {changedFiles.map((file, i) => (
+            <FileItemRow key={`changed-${i}`} file={file} />
+          ))}
+          {readFiles.length > 0 && (
+            <span className={`result-files__retrieved-label${changedFiles.length > 0 ? ' result-files__retrieved--after-changed' : ''}`}>
               Retrieved
             </span>
-            {readFiles.map((file, i) => (
-              <FileItemRow key={`read-${i}`} file={file} />
-            ))}
-          </div>
-        )}
+          )}
+          {readFiles.map((file, i) => (
+            <FileItemRow key={`read-${i}`} file={file} />
+          ))}
+        </ExpandableList>
       </div>
     </div>
   );

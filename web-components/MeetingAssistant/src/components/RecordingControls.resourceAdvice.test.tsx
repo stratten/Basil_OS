@@ -17,6 +17,7 @@ vi.mock('../bridge/meetingBridge', () => ({
   resumeRecording: vi.fn(),
   cancelRecording: vi.fn(),
   setLiveTranscription: vi.fn(),
+  setLiveEngine: vi.fn(),
 }));
 vi.mock('../bridge/meetingMeterStore', () => ({ useMeetingMeter: () => ({ microphoneAudioLevel: 0, systemAudioLevel: 0 }) }));
 
@@ -35,7 +36,7 @@ const base = {
   isLiveTranscriptionEnabled: true,
   companionApiPort: 8123,
   thermalState: 'serious',
-} as MeetingUIStateDTO;
+} as unknown as MeetingUIStateDTO;
 
 describe('RecordingControls resource advice', () => {
   it('mounts the advice with the backend port and thermal state while recording', () => {

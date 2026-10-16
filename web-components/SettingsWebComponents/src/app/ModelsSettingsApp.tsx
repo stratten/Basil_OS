@@ -5,6 +5,7 @@ import TokenizedSelect from '@shared/TokenizedSelect'
 import { CustomModelsPanel } from '../components/CustomModelsPanel'
 import { ReasoningApiModelsPanel } from '../components/ReasoningApiModelsPanel'
 import { TranscriptionApiModelsPanel } from '../components/TranscriptionApiModelsPanel'
+import { CloudMeetingTranscriptionPanel } from '../components/CloudMeetingTranscriptionPanel'
 import {
   notifyModelsSettingsReady,
   onModelsEvent,
@@ -293,7 +294,10 @@ export function ModelsSettingsApp({
       ) : capabilityFilter === 'reasoning' && reasoningSource === 'custom' ? (
         <CustomModelsPanel />
       ) : capabilityFilter === 'transcription' && transcriptionSource === 'api' ? (
-        <TranscriptionApiModelsPanel />
+        <>
+          <TranscriptionApiModelsPanel />
+          <CloudMeetingTranscriptionPanel />
+        </>
       ) : isLoadingModels && activeGroups.length === 0 ? (
         <p className="models-settings-status" role="status">Loading models...</p>
       ) : activeGroups.length === 0 ? (

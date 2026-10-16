@@ -536,6 +536,7 @@ extension LiveTranscriptionViewModel {
             // settings fetch for this fresh recording.
             self.sessionAutomationSeeded = false
             self.liveTranscriptionSelectionTouched = false
+            self.sessionLiveEngineOverride = nil
             
             // Preserve prior analysis ownership and completion while a new
             // meeting is created. The UI gates these values by the concrete

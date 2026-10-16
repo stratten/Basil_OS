@@ -28,6 +28,7 @@ from .shell_file_artifacts import (
     verify_file_operations,
 )
 from .shell_material_operation_receipts import attach_shell_material_operation_receipts
+from .shell_script_inspection import inspect_command_script, script_changed_since_inspection
 from api.services.agent_processing.shared.workflow_budget_pause import pause_workflow_budget
 from .command_input_broker import CommandInputBroker
 from .shell_process_runner import (
@@ -102,7 +103,8 @@ class ShellService:
                         "execute_command("
                         "command: str, args: List[str] = None, cwd: str = None, "
                         "env_overrides: Dict[str,str] = None, timeout_s: int = None, "
-                        "max_output_bytes: int = None, file_operations: List[Dict[str,str]] = None) -> Dict"
+                        "max_output_bytes: int = None, file_operations: List[Dict[str,str]] = None, "
+                        "purpose: str = None, whitelist_advice: Dict[str,Any] = None) -> Dict"
                     ),
                     "doc": "Run a non-interactive shell command. Output is captured and size-limited. Commands may require user approval.",
                     "slim_doc": slim_doc,
@@ -113,6 +115,8 @@ class ShellService:
                         "env_overrides": {"type": "dict", "required": False, "description": "Explicit environment overrides (allowlisted)."},
                         "timeout_s": {"type": "int", "required": False, "description": "Hard timeout in seconds (≤60)."},
                         "max_output_bytes": {"type": "int", "required": False, "description": "Per-stream output cap (bytes)."},
+                        "purpose": {"type": "str", "required": False, "description": "One or two plain sentences telling the user what this command or script does and why. Shown on the approval card."},
+                        "whitelist_advice": {"type": "dict", "required": False, "description": "Whether the user should let Basil remember this command: {\"recommend\": true or false, \"reason\": \"...\"}. Be honest; recommend remembering only narrow, read-only, repeatable commands."},
                         "file_operations": {
                             "type": "list",
                             "required": False,
@@ -140,6 +144,8 @@ class ShellService:
         max_output_bytes: Optional[int] = None,
         file_operations: Optional[List[Dict[str, str]]] = None,
         skip_approval_check: bool = False,
+        purpose: Optional[str] = None,
+        whitelist_advice: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         if not self._initialized:
             await self.initialize()
@@ -205,6 +211,10 @@ class ShellService:
             if self._approval_service is None:
                 self._approval_service = ExecutionApprovalService(websocket_manager=self._websocket_manager)
             
+        # The script an interpreter command will run is read once here: its text goes to the approval card and its hash is checked again right before execution.
+        inspection_cwd, _inspection_cwd_error = self._resolve_and_validate_cwd(cwd)
+        script_inspection = inspect_command_script(command, args, inspection_cwd)
+
         if not skip_approval_check and self._approval_service:
             try:
                 # Request approval - returns immediately so modal can close
@@ -213,7 +223,17 @@ class ShellService:
                     "cwd": cwd,
                     "source": "shell_service",
                     "description": f"Execute shell command: {command}",
+                    "purpose": purpose,
+                    "whitelist_advice": whitelist_advice,
+                    "purpose_required": True,
                 }
+                if script_inspection is not None:
+                    approval_context["script_path"] = script_inspection.path
+                    if script_inspection.content is not None:
+                        approval_context["script_content"] = script_inspection.content
+                        approval_context["script_sha256"] = script_inspection.sha256
+                    if script_inspection.notice:
+                        approval_context["script_notice"] = script_inspection.notice
                 if unchecked_file_declarations:
                     approval_context["file_operations"] = unchecked_file_declarations
                 if isinstance(agent_task_id, str) and agent_task_id.strip():
@@ -355,6 +375,30 @@ class ShellService:
                 shell_execution_id=shell_execution_id,
                 pid=pid,
                 timeout_seconds=float(eff_timeout),
+            )
+
+        if script_inspection is not None and script_changed_since_inspection(script_inspection):
+            logger.warning("Refusing to run %s: the script changed after it was inspected for approval", script_inspection.path)
+            record_tool_progress(
+                agent_task_id=agent_task_id,
+                tool_name="shell_service_execute_command",
+                status="returned",
+                progress_kind="script_changed_after_approval",
+                command_echo=command_echo,
+                shell_execution_id=shell_execution_id,
+            )
+            return build_shell_result(
+                success=False,
+                stdout="",
+                stderr=(
+                    f"Refused to run: the script {script_inspection.path} changed after it was shown for approval. "
+                    "Run the command again so the user can review the current script."
+                ),
+                exit_code=-1,
+                duration_ms=0,
+                cwd=str(safe_cwd) if safe_cwd else "",
+                command_echo=command_echo,
+                error_type="script_changed_after_approval",
             )
 
         start = time.time()

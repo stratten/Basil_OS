@@ -1,7 +1,11 @@
+import ExpandableList from '@shared/ExpandableList';
 import type { DerivedAgentTaskArtifacts } from '../artifacts/artifactDerivation';
 import { PausedGlyph, SpeechBubbleGlyph, YourTurnGlyph } from '../interaction/InteractionExchange';
 import { interactionResponseLabel, interactionSummary } from '../interaction/userInteractions';
 import type { AgentRunOverviewPresentation, AgentRunOverviewStage, AgentRunStage } from './agentRunPresentation';
+
+// A run that produced many documents would otherwise push the preview and the rest of the overview off screen.
+const RUN_CARD_DOCUMENTS_COLLAPSED_COUNT = 5;
 
 export const EMPTY_RUN_ARTIFACTS: DerivedAgentTaskArtifacts = {
   all: [],
@@ -111,15 +115,21 @@ export function RunCard({
       )}
       {artifacts.produced.length > 0 && (
         <div className="run-card-artifacts" aria-label="Created documents">
-          {artifacts.produced.map(artifact => (
-            <button className="run-card-artifact" type="button" key={artifact.artifactId} onClick={() => onPreviewArtifact(artifact.artifactId)} aria-label={`Preview ${artifact.displayName}`}>
-              <RunStageGlyph stage={{ kind: 'artifact', state: 'completed' }} />
-              <span>{artifact.displayName}</span>
-              {artifact.review && artifact.review.revisionCount > 1 && (
-                <span className="run-card-artifact-badge">v{artifact.review.revisionCount}</span>
-              )}
-            </button>
-          ))}
+          <ExpandableList
+            collapsedCount={RUN_CARD_DOCUMENTS_COLLAPSED_COUNT}
+            contentClassName="run-card-artifacts__items"
+            showAllLabel={total => `Show all ${total} documents`}
+          >
+            {artifacts.produced.map(artifact => (
+              <button className="run-card-artifact" type="button" key={artifact.artifactId} onClick={() => onPreviewArtifact(artifact.artifactId)} aria-label={`Preview ${artifact.displayName}`}>
+                <RunStageGlyph stage={{ kind: 'artifact', state: 'completed' }} />
+                <span>{artifact.displayName}</span>
+                {artifact.review && artifact.review.revisionCount > 1 && (
+                  <span className="run-card-artifact-badge">v{artifact.review.revisionCount}</span>
+                )}
+              </button>
+            ))}
+          </ExpandableList>
         </div>
       )}
     </section>

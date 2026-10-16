@@ -335,6 +335,8 @@ export interface MeetingUIStateDTO {
   microphoneInputRecoveryMessage: string | null;
   isCapturePaused: boolean;
   isLiveTranscriptionEnabled: boolean;
+  /** The live transcription engine chosen for this one recording ('local', a cloud provider id or 'basil_account'); null or absent means the saved default applies. */
+  liveEngineOverride?: string | null;
   /** Loopback backend port for the Companion client; 0 or absent means unavailable. */
   companionApiPort?: number;
   /** The meeting being recorded right now (microphone id, else system-audio id); null or absent when not recording. */
@@ -410,6 +412,7 @@ export type MeetingBridgeIntent =
   | { type: 'resumeRecording' }
   | { type: 'cancelRecording' }
   | { type: 'setLiveTranscription'; enabled: boolean }
+  | { type: 'setLiveEngine'; engine: string | null }
   | { type: 'selectMeeting'; meetingId: string }
   | { type: 'deleteMeeting'; meetingId: string }
   | { type: 'setSidebarCollapsed'; collapsed: boolean }

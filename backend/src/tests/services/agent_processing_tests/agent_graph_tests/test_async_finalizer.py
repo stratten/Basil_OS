@@ -297,7 +297,7 @@ async def test_schedule_outcome_verification_skips_when_canceled():
     ws_manager.broadcast.assert_not_awaited()
 
 
-async def _run_verification_with(refined, *, follow_up):
+async def _run_verification_with(refined, *, follow_up, gap_follow_up=None):
     mock_finalize = AsyncMock(return_value=refined)
     mock_update = AsyncMock()
     mock_get_task = AsyncMock(return_value=SimpleNamespace(result_data={}, execution_timeline=[]))
@@ -309,12 +309,16 @@ async def _run_verification_with(refined, *, follow_up):
     )
     ws_manager = SimpleNamespace(broadcast=AsyncMock())
     schedule = AsyncMock(return_value=follow_up)
+    schedule.gap = AsyncMock(return_value=gap_follow_up)
     with patch(
         "api.services.agent_processing.lifecycle.execution_graph.async_finalizer.finalize_agent_task_result",
         new=mock_finalize,
     ), patch(
         "api.services.agent_processing.lifecycle.execution_graph.async_finalizer.schedule_follow_up_for_pending_work",
         new=schedule,
+    ), patch(
+        "api.services.agent_processing.lifecycle.execution_graph.async_finalizer.schedule_gap_continuation",
+        new=schedule.gap,
     ), patch("api.dependencies.get_sqlite_knowledge_service", return_value=mock_knowledge):
         schedule_outcome_verification(
             inputs=_sample_inputs(),
@@ -379,3 +383,59 @@ async def test_verdict_without_pending_work_never_schedules():
     refined = {"success": True, "summary_text": "Done.", "result_payload": {"outcome": "success", "files": []}}
     schedule, _update, _ws = await _run_verification_with(refined, follow_up=None)
     schedule.assert_not_awaited()
+
+
+def _gap_partial_envelope():
+    return {
+        "success": False,
+        "outcome": "partial",
+        "outcome_reason": "The sidebar was never built.",
+        "summary_text": "Partial result: The sidebar was never built.",
+        "result_payload": {"outcome": "partial", "outcome_reason": "The sidebar was never built.", "files": []},
+        "continuation": "Build the sidebar from the attached reference.",
+    }
+
+
+@pytest.mark.asyncio
+async def test_continuation_verdict_schedules_a_continuation_and_stays_partial():
+    gap_follow_up = {"id": "fu-1", "instructions": "Build the sidebar from the attached reference."}
+    schedule, mock_update, ws_manager = await _run_verification_with(
+        _gap_partial_envelope(), follow_up=None, gap_follow_up=gap_follow_up
+    )
+
+    schedule.assert_not_awaited()
+    schedule.gap.assert_awaited_once()
+    assert schedule.gap.await_args.kwargs["root_task_id"] == "root-1"
+    assert schedule.gap.await_args.kwargs["source_agent_task_id"] == "task-123"
+    assert schedule.gap.await_args.kwargs["instructions"] == "Build the sidebar from the attached reference."
+
+    stored = mock_update.await_args.kwargs["result_data"]["finalizer_result"]
+    assert "continuation" not in stored
+    assert stored["success"] is False
+    assert stored["result_payload"]["outcome"] == "partial"
+    assert stored["result_payload"]["continuation_scheduled"] is True
+    message = ws_manager.broadcast.await_args.args[0]
+    assert message["result"].startswith("Partial result")
+    assert "Basil is continuing automatically" in message["result"]
+
+
+@pytest.mark.asyncio
+async def test_continuation_verdict_without_a_scheduled_row_is_plain_partial():
+    schedule, mock_update, ws_manager = await _run_verification_with(_gap_partial_envelope(), follow_up=None, gap_follow_up=None)
+
+    schedule.gap.assert_awaited_once()
+    stored = mock_update.await_args.kwargs["result_data"]["finalizer_result"]
+    assert "continuation" not in stored
+    assert "continuation_scheduled" not in stored["result_payload"]
+    assert "Basil is continuing" not in ws_manager.broadcast.await_args.args[0]["result"]
+
+
+@pytest.mark.asyncio
+async def test_pending_work_takes_precedence_over_a_continuation():
+    envelope = _pending_partial_envelope()
+    envelope["continuation"] = "Build the sidebar."
+    follow_up = {"due_at": "2026-10-12T12:30:00+00:00", "instructions": "Check the run."}
+    schedule, _update, _ws = await _run_verification_with(envelope, follow_up=follow_up)
+
+    schedule.assert_awaited_once()
+    schedule.gap.assert_not_awaited()

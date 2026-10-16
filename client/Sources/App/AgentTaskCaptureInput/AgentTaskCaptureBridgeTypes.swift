@@ -124,6 +124,7 @@ enum CaptureInputMessage: Equatable {
     case filesDropped(paths: [String])
     case setDraggingOver(isDraggingOver: Bool)
     case showHistory
+    case toggleWindowCollapse(collapsed: Bool)
     case unknown(rawType: String)
 
     /// Returns `nil` only when `body` is not a `[String: Any]` or has no
@@ -150,6 +151,9 @@ enum CaptureInputMessage: Equatable {
                 return .unknown(rawType: type)
             }
             return .captureHeaderExtent(height: CGFloat(truncating: height))
+        case "toggleWindowCollapse":
+            guard let collapsed = dict["collapsed"] as? Bool else { return .unknown(rawType: type) }
+            return .toggleWindowCollapse(collapsed: collapsed)
         case "enterVoiceMode":
             return .enterVoiceMode
         case "enterTextEntryMode":

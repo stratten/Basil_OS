@@ -24,6 +24,7 @@ vi.mock('./bridge/meetingBridge', () => ({
   resumeRecording: vi.fn(),
   cancelRecording: vi.fn(),
   setLiveTranscription: vi.fn(),
+  setLiveEngine: vi.fn(),
   deleteMeeting: vi.fn(),
   selectMeeting: vi.fn(),
   setMeetingSearch: vi.fn(),

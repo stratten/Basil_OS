@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   isUserFacingResponseStreaming,
   normalizeResultForPresentation,
+  resultDeliveredTimestamp,
   runDetailsHint,
   splitRunDetails,
 } from './resultContentUtils';
@@ -84,5 +85,29 @@ describe('run details split', () => {
     expect(result.narrative).toBe(narrative);
     expect(result.details).toEqual([{ key: 'app', label: 'Active app', value: app }]);
     expect(runDetailsHint(result.details)).toBe(app);
+  });
+});
+
+describe('result delivered timestamp', () => {
+  it('uses the latest readable timeline entry regardless of order', () => {
+    const timeline = [
+      { timestamp: '2026-10-01T10:05:00Z' },
+      { timestamp: '2026-10-01T10:09:00Z' },
+      { timestamp: '2026-10-01T10:01:00Z' },
+    ];
+    expect(resultDeliveredTimestamp(timeline, '2026-09-01T00:00:00Z')).toBe('2026-10-01T10:09:00.000Z');
+  });
+
+  it('reads numeric epoch seconds from older approval entries', () => {
+    expect(resultDeliveredTimestamp([{ timestamp: 1_790_000_000 }], undefined)).toBe(new Date(1_790_000_000_000).toISOString());
+  });
+
+  it('ignores unreadable entries and falls back to the task timestamp', () => {
+    expect(resultDeliveredTimestamp([{ timestamp: 'not a time' }, { timestamp: '' }, {}], '2026-09-01T00:00:00Z')).toBe('2026-09-01T00:00:00Z');
+  });
+
+  it('returns undefined when nothing is known', () => {
+    expect(resultDeliveredTimestamp(undefined, undefined)).toBeUndefined();
+    expect(resultDeliveredTimestamp([], '')).toBeUndefined();
   });
 });

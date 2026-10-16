@@ -133,6 +133,7 @@ class FinalizerEvaluation:
     delivered_item_count: Optional[int] = None
     truncation_prevents_verification: bool = False
     pending_work: Optional[Dict[str, Any]] = None
+    continuation_instructions: Optional[str] = None
 
 
 def _is_non_empty_string(value: Any) -> bool:
@@ -279,6 +280,7 @@ EVALUATION GUIDELINES:
 - An internal retry or fallback that produced a complete, verified result is SUCCESS, not a warning. Do not downgrade it merely because an earlier attempt failed before a later one succeeded; that is a normal implementation detail with no user-visible consequence.
 - If a real residual gap remains after useful work was delivered, such as missing coverage, partial scope, an unverified side effect, or a required follow-up step, classify the result as partial. A failed-then-recovered attempt with no residual gap is success.
 - When FOLLOW-UP / CHAIN CONTEXT lists FOLLOW-UP CHECKS ALREADY SCHEDULED, the remaining step is already arranged and will resume this task automatically. Judge the work that scheduled check will finish as in progress, not as a residual gap. Classify partial only for gaps that no scheduled check covers, and classify success when everything else was delivered and the response tells the user what is pending.
+- CONTINUATION: set continuation_instructions only when outcome is partial because of one concrete gap that the agent has tools to close right now (for example a requested component, file, or behavior that was never built or never read, or a stated requirement that was left out). Write a self-contained instruction naming exactly what is missing and what finishing it requires. Leave it as an empty string for anything the agent cannot close with its tools: a capability limit, a refusal or denied approval, missing credentials or user input, work that is still running (use PENDING WORK for that), or a gap you are only guessing at.
 - PENDING WORK: set work_still_pending=true only when the tool output shows that work the agent started (a delegated agent run, a queued connector action, a build) is still running or queued, a later check would complete it, and no FOLLOW-UP CHECK is already scheduled. When true, pending_check_instructions must say exactly what a later turn should check and pending_check_delay_minutes must be a whole number from 5 to 1440. Otherwise set work_still_pending=false, pending_check_instructions to "", and pending_check_delay_minutes to null.
 - Use partial when some useful content was delivered but a meaningful part of the user's request remains incomplete.
 - Use failure only when the request was not delivered in a useful way.
@@ -328,7 +330,8 @@ Respond with ONLY a JSON object:
   "truncation_prevents_verification": true|false,
   "work_still_pending": true/false,
   "pending_check_instructions": "what a later turn should check; empty string when work_still_pending is false",
-  "pending_check_delay_minutes": number|null
+  "pending_check_delay_minutes": number|null,
+  "continuation_instructions": "one concrete gap the agent can close now; empty string when there is none"
 }}"""
 
 
@@ -368,6 +371,20 @@ def parse_pending_work(evaluation: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     delay = raw_delay if isinstance(raw_delay, int) and not isinstance(raw_delay, bool) else DEFAULT_PENDING_CHECK_DELAY_MINUTES
     delay = max(MIN_PENDING_CHECK_DELAY_MINUTES, min(MAX_PENDING_CHECK_DELAY_MINUTES, delay))
     return {"instructions": instructions, "delay_minutes": delay}
+
+
+MAX_CONTINUATION_INSTRUCTIONS_CHARS = 1000
+
+
+def parse_continuation_instructions(evaluation: Dict[str, Any]) -> Optional[str]:
+    """Return the evaluator's concrete gap to close now, or ``None`` when it named none or declared the work still pending."""
+    if evaluation.get("work_still_pending") is True:
+        return None
+    value = evaluation.get("continuation_instructions")
+    if not isinstance(value, str):
+        return None
+    instructions = value.strip()[:MAX_CONTINUATION_INSTRUCTIONS_CHARS]
+    return instructions or None
 
 
 def parse_evaluation_response(llm_response: str) -> FinalizerEvaluation:
@@ -448,6 +465,7 @@ def parse_evaluation_response(llm_response: str) -> FinalizerEvaluation:
         ),
         truncation_prevents_verification=bool(evaluation.get("truncation_prevents_verification", False)),
         pending_work=parse_pending_work(evaluation),
+        continuation_instructions=parse_continuation_instructions(evaluation),
     )
 
 

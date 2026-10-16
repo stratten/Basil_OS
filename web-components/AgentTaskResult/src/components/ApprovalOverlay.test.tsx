@@ -202,3 +202,116 @@ describe('ApprovalSetOverlay single-approval rendering (regression)', () => {
     expect(markup).toContain('approval-set-card');
   });
 });
+
+describe('ApprovalOverlay agent explanation and remember eligibility', () => {
+  const explained: ExecutionApprovalRequest = {
+    ...shellApproval,
+    command: 'bash /tmp/report.sh',
+    purpose: 'Builds the weekly report from the exported CSV.',
+    whitelist: {
+      eligible: false,
+      reason: 'A bare bash would allow any command or script, so Basil asks every time.',
+      advice: { recommend: false, reason: 'It is a script.', downgraded: false },
+    },
+    script_content: 'echo report\n',
+    script_path: '/tmp/report.sh',
+  };
+
+  const render = (approval: ExecutionApprovalRequest) =>
+    renderToStaticMarkup(<ApprovalOverlay agentTaskId="task-1" approval={approval} rememberChoice={false} />);
+
+  it("shows the agent's explanation, its recommendation, and the script path beside the script toggle", () => {
+    const markup = render(explained);
+
+    expect(markup).toContain('What this does');
+    expect(markup).toContain('Builds the weekly report from the exported CSV.');
+    expect(markup).toContain('The agent&#x27;s explanation');
+    expect(markup).toContain('The agent&#x27;s recommendation:');
+    expect(markup).toContain('Ask me each time');
+    expect(markup).toContain('It is a script.');
+    expect(markup).toContain('View full script (2 lines)');
+    expect(markup).toContain('/tmp/report.sh');
+  });
+
+  it('hides the remember checkbox and says why when the command can never be remembered', () => {
+    const markup = render(explained);
+
+    expect(markup).not.toContain('Remember this choice');
+    expect(markup).toContain('This approval applies to this run only.');
+    expect(markup).toContain('A bare bash would allow any command or script');
+  });
+
+  it('says when Basil overrode the agent', () => {
+    const markup = render({
+      ...explained,
+      whitelist: {
+        eligible: false,
+        reason: 'python can run any code.',
+        advice: { recommend: false, reason: 'python can run any code.', downgraded: true },
+      },
+    });
+
+    expect(markup).toContain('Basil overrode the agent here');
+  });
+
+  it('recommends remembering only when the agent says yes and the command is eligible', () => {
+    const markup = render({
+      ...shellApproval,
+      purpose: 'Lists the folder.',
+      whitelist: { eligible: true, reason: '', advice: { recommend: true, reason: 'Read-only and narrow.', downgraded: false } },
+    });
+
+    expect(markup).toContain('Remember this choice');
+    expect(markup).toContain('Read-only and narrow.');
+    expect(markup).not.toContain('This approval applies to this run only.');
+  });
+
+  it('flags a missing explanation and shows no advice', () => {
+    const markup = render({
+      ...shellApproval,
+      purpose_missing: true,
+      whitelist: { eligible: true, reason: '', advice: null },
+    });
+
+    expect(markup).toContain('The agent did not explain this command.');
+    expect(markup).not.toContain('The agent&#x27;s recommendation:');
+    expect(markup).not.toContain('What this does');
+  });
+
+  it('shows the script path and a notice when the script text is withheld', () => {
+    const markup = render({
+      ...shellApproval,
+      script_path: '/tmp/huge.sh',
+      script_notice: 'This script is larger than 256 KB, so its text is not shown.',
+    });
+
+    expect(markup).toContain('/tmp/huge.sh');
+    expect(markup).toContain('larger than 256 KB');
+    expect(markup).not.toContain('View full script');
+  });
+
+  it('keeps the previous card when the backend sends no explanation fields', () => {
+    const markup = render(shellApproval);
+
+    expect(markup).toContain('Remember this choice');
+    expect(markup).not.toContain('What this does');
+    expect(markup).not.toContain('The agent did not explain');
+  });
+
+  it('never submits a remember choice for an approval that cannot be remembered', async () => {
+    submitApprovalDecision.mockResolvedValue({ success: true, message: 'approved' });
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(<ApprovalOverlay agentTaskId="task-1" approval={explained} rememberChoice={true} />);
+    });
+
+    const approveButton = Array.from(container.querySelectorAll('button')).find(button => button.textContent === 'Approve');
+    await act(async () => {
+      approveButton?.click();
+    });
+
+    expect(submitApprovalDecision).toHaveBeenCalledWith(expect.objectContaining({ approval_id: 'approval-shell', remember_choice: false }));
+    act(() => root.unmount());
+  });
+});

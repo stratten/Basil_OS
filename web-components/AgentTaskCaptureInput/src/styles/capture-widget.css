@@ -32,6 +32,13 @@
   align-items: center;
 }
 
+/* Text mode puts the collapse button to the right of the close button. */
+.capture-header__leading--row {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--padding-xs);
+}
+
 /* Matches the archived `AgentTaskCaptureWidget.swift`'s leading
    `VStack(spacing: 3) { Button; Color.clear.frame(width: 16, height: 16) }`. */
 .capture-header__leading-spacer {
@@ -48,6 +55,7 @@
 
 .capture-header__center {
   flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -62,7 +70,16 @@
   display: flex;
   align-items: center;
   gap: 3px;
+  min-width: 0;
   transform: translateX(-8px);
+}
+
+/* A long agent name truncates instead of pushing the buttons out when the window is collapsed to its narrow width. */
+.capture-header__center-inner > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .capture-header__team-icon {
@@ -82,6 +99,32 @@
   background: transparent;
   cursor: pointer;
   color: var(--text-tertiary);
+}
+
+/* The shared window-control glyph is drawn at 20px; scale it to the 12px the custom close glyph uses. */
+.capture-header__collapse-button svg {
+  width: 12px;
+  height: 12px;
+}
+
+.capture-header__collapse-button {
+  color: var(--secondary);
+}
+
+/* Everything below the header. Collapsing hides it without unmounting, so the draft, scroll position and caret survive. */
+.capture-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.capture-content.is-collapsed {
+  flex: 0 0 0;
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
 }
 
 .capture-header__icon-button--secondary {

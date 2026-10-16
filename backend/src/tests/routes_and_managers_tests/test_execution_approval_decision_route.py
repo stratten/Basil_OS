@@ -117,3 +117,35 @@ async def test_stale_decision_returns_conflict_without_whitelisting(monkeypatch:
     assert excinfo.value.status_code == 409
     get_approval.assert_not_awaited()
     assert service.whitelisted == []
+
+
+@pytest.mark.asyncio
+async def test_remember_for_an_interpreter_command_approves_once_without_whitelisting(monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_durable_record(
+        monkeypatch,
+        {"id": "approval-1", "command": "python3 run.py", "generalized_pattern": "python3", "execution_type": "shell", "status": "approved"},
+    )
+    service = _FakeApprovalService()
+
+    response = await process_approval_decision(request=_decision(), approval_service=service)
+
+    assert response.success is True
+    assert response.pattern_id is None
+    assert response.message.startswith("Command approved for this execution only.")
+    assert "python can run any code" in response.message
+    assert service.whitelisted == []
+
+
+@pytest.mark.asyncio
+async def test_remember_for_applescript_approval_never_whitelists(monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_durable_record(
+        monkeypatch,
+        {"id": "approval-1", "command": "AppleScript: tidy notes", "generalized_pattern": "AppleScript:", "execution_type": "applescript", "status": "approved"},
+    )
+    service = _FakeApprovalService()
+
+    response = await process_approval_decision(request=_decision(), approval_service=service)
+
+    assert response.pattern_id is None
+    assert "reviewed every time" in response.message
+    assert service.whitelisted == []

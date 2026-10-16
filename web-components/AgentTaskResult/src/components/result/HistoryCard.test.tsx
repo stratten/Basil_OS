@@ -38,19 +38,47 @@ describe('HistoryCard reasoning trace', () => {
   });
 });
 
-describe('HistoryCard model label', () => {
-  it('names the model beside the Result heading only when one was recorded', () => {
-    const withModel = renderToStaticMarkup(
-      <HistoryCard item={historyItem({ modelUsed: 'gpt-5-mini' })} isExpanded onToggle={() => {}} />,
+describe('HistoryCard result footer', () => {
+  function footerOf(item: AgentTaskHistoryItem): Document {
+    return new DOMParser().parseFromString(
+      renderToStaticMarkup(<HistoryCard item={item} isExpanded onToggle={() => {}} />),
+      'text/html',
     );
-    const withoutModel = renderToStaticMarkup(
-      <HistoryCard item={historyItem()} isExpanded onToggle={() => {}} />,
-    );
+  }
 
-    expect(withModel).toContain('result-model-label');
-    expect(withModel).toContain('gpt-5-mini');
-    expect(withModel.indexOf('Result:')).toBeLessThan(withModel.indexOf('result-model-label'));
-    expect(withoutModel).not.toContain('result-model-label');
+  it('puts the time then the recorded model below the result, not beside the heading', () => {
+    const doc = footerOf(historyItem({ modelUsed: 'gpt-5-mini' }));
+    const footer = doc.querySelector('.result-footer');
+
+    expect(footer).not.toBeNull();
+    expect(doc.querySelector('.history-card__result-heading')?.textContent).toBe('Result:');
+    expect(Array.from(footer?.children ?? []).map(child => child.className)).toEqual(['result-footer__time', 'result-footer__model']);
+    expect(footer?.querySelector('time')?.getAttribute('datetime')).toBe('2026-09-24T12:00:00.000Z');
+    expect(footer?.querySelector('.result-footer__model')?.textContent).toBe('· gpt-5-mini');
+    expect(doc.querySelector('.history-card__result')?.compareDocumentPosition(footer as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('shows only the time when no model was recorded', () => {
+    const doc = footerOf(historyItem());
+    expect(doc.querySelector('.result-footer__time')).not.toBeNull();
+    expect(doc.querySelector('.result-footer__model')).toBeNull();
+  });
+
+  it('prefers the latest timeline entry over the turn timestamp', () => {
+    const doc = footerOf(historyItem({
+      executionTimeline: [
+        { id: 'a', type: 'step', timestamp: '2026-09-24T12:07:00Z', content: 'Wrote it' },
+        { id: 'b', type: 'step', timestamp: '2026-09-24T12:03:00Z', content: 'Read it' },
+      ],
+    }));
+    expect(doc.querySelector('time')?.getAttribute('datetime')).toBe('2026-09-24T12:07:00.000Z');
+  });
+
+  it('is absent from the collapsed card', () => {
+    const collapsed = renderToStaticMarkup(
+      <HistoryCard item={historyItem({ modelUsed: 'gpt-5-mini' })} isExpanded={false} onToggle={() => {}} />,
+    );
+    expect(collapsed).not.toContain('result-footer');
   });
 });
 

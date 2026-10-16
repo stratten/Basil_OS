@@ -156,3 +156,8 @@ export function openReferencePath(path: string) {
 export function showHistory() {
   postCaptureIntent({ type: 'showHistory' });
 }
+
+/** Collapses the window to its header strip or expands it back. The page keeps everything mounted, so a typed draft is never cleared. */
+export function toggleWindowCollapse(collapsed: boolean) {
+  postCaptureIntent({ type: 'toggleWindowCollapse', collapsed });
+}

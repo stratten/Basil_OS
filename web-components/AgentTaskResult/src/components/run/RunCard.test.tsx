@@ -69,4 +69,36 @@ describe('RunCard', () => {
     expect(markup).toContain('Stopped by you');
     expect(markup).not.toContain('Needs attention');
   });
+
+  describe('created documents', () => {
+    const documents = (count: number) => ({
+      ...EMPTY_RUN_ARTIFACTS,
+      produced: Array.from({ length: count }, (_, index) => ({
+        artifactId: `file-${index}`,
+        displayName: `doc-${index}.md`,
+        localPath: `/tmp/doc-${index}.md`,
+        artifactKind: 'file' as const,
+        operation: 'create',
+        lifecycle: 'verified' as const,
+        preview: { capability: 'unknown' as const },
+        verification: { status: 'verified' as const },
+        group: 'produced' as const,
+      })),
+    });
+    const render = (count: number) => renderToStaticMarkup(
+      <RunCard artifacts={documents(count)} presentation={waitingOverview} isProcessing={false} onPreviewArtifact={() => undefined} />,
+    );
+
+    it.each([3, 5])('lists %i documents without a collapse toggle', count => {
+      const markup = render(count);
+      expect(markup.match(/run-card-artifact"/g)).toHaveLength(count);
+      expect(markup).not.toContain('basil-expandable-list__toggle');
+    });
+
+    it.each([6, 20])('collapses %i documents behind a show-all toggle', count => {
+      const markup = render(count);
+      expect(markup.match(/run-card-artifact"/g)).toHaveLength(count);
+      expect(markup).toContain(`Show all ${count} documents`);
+    });
+  });
 });

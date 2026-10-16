@@ -51,6 +51,9 @@ extension LiveTranscriptionViewModel {
             URLQueryItem(name: "client", value: "native"),  // Specify native client
             URLQueryItem(name: "live_transcription", value: sessionLiveTranscriptionEnabled ? "true" : "false")
         ]
+        if let engine = sessionLiveEngineOverride {
+            queryItems.append(URLQueryItem(name: "live_engine", value: engine))
+        }
         
         // Add meeting information for microphone
         if !meetingName.isEmpty {

@@ -100,4 +100,39 @@ describe('FilesDisplay', () => {
     expect(retrievedHeaderIndex).toBeGreaterThan(createdIndex);
     expect(readIndex).toBeGreaterThan(retrievedHeaderIndex);
   });
+
+  describe('long file lists', () => {
+    const createdFiles = (count: number) => Array.from({ length: count }, (_, index) => ({
+      name: `file-${index}.txt`,
+      path: `/Users/example/file-${index}.txt`,
+      operation: 'create',
+    }));
+    const toggleText = (markup: string) => /class="basil-expandable-list__toggle"[^>]*>([^<]*)</.exec(markup)?.[1];
+
+    it.each([3, 5])('offers no collapse for %i files', count => {
+      const markup = renderToStaticMarkup(<FilesDisplay files={createdFiles(count)} resultText="" />);
+      expect(toggleText(markup)).toBeUndefined();
+    });
+
+    it.each([6, 20])('offers to show all %i files, with every file still present for the expand', count => {
+      const markup = renderToStaticMarkup(<FilesDisplay files={createdFiles(count)} resultText="" />);
+      expect(toggleText(markup)).toBe(`Show all ${count} files`);
+      expect(markup.match(/result-file-row"/g)).toHaveLength(count);
+    });
+
+    it('counts the Retrieved heading and read files in the same collapsible list, changed files first', () => {
+      const markup = renderToStaticMarkup(
+        <FilesDisplay
+          files={[
+            ...createdFiles(2),
+            ...Array.from({ length: 6 }, (_, index) => ({ name: `ref-${index}.pdf`, path: `/Users/example/ref-${index}.pdf`, operation: 'read' })),
+          ]}
+          resultText=""
+        />,
+      );
+      expect(toggleText(markup)).toBe('Show all 9 files');
+      expect(markup.indexOf('Created: file-1.txt')).toBeLessThan(markup.indexOf('Retrieved</span>'));
+      expect(markup).toContain('result-files__retrieved--after-changed');
+    });
+  });
 });

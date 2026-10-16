@@ -15,6 +15,7 @@ import {
   isUserFacingResponseStreaming,
   normalizeResultForPresentation,
   parseResult,
+  resultDeliveredTimestamp,
   splitRunDetails,
 } from './result/resultContentUtils';
 import { RunDetailsDisclosure } from './result/RunDetailsDisclosure';
@@ -23,7 +24,7 @@ import { saveAgentTaskAsSkill, submitAgentTaskFeedback } from '../services/api';
 import { DelegatedProviderReportCards } from './artifacts/DelegatedProviderReportCards';
 import PresenceRegion from '@shared/PresenceRegion';
 import { TurnLabel } from './result/TurnLabel';
-import { ModelUsedLabel } from './result/ModelUsedLabel';
+import { ResultFooter } from './result/ResultFooter';
 import { resolveTurnStatus } from './result/turnPresentation';
 import { agentTaskRunLabel } from './run/agentTaskRunFocus';
 import { RunStatusCard } from './run/RunStatusCard';
@@ -331,18 +332,9 @@ export default function ResultContent({
 
           <div className="result-header" data-run-section="result">
             <span className="result-label">{resultIsPartial ? 'Partial Result:' : 'Result:'}</span>
-            <ModelUsedLabel className="result-model-label" modelId={agentTask.modelUsed ?? agentTask.originalModelId} />
             {resultIsProvisional && (
               <span className="result-fallback-badge result-provisional-badge" title="This result is shown while Basil checks it against your request">
                 Provisional
-              </span>
-            )}
-            {agentTask.reasoningFallbackModelUsed && (
-              <span
-                className="result-fallback-badge"
-                title={`Preferred model was unreachable before any response; answered by local fallback: ${agentTask.reasoningFallbackModelUsed}`}
-              >
-                Answered with local fallback
               </span>
             )}
           </div>
@@ -353,6 +345,13 @@ export default function ResultContent({
               isStreaming={agentTask.isStreaming}
             />
           </div>
+          {!resultIsProvisional && !agentTask.isStreaming && (
+            <ResultFooter
+              timestamp={resultDeliveredTimestamp(agentTask.executionTimeline, agentTask.timestamp)}
+              modelId={agentTask.modelUsed ?? agentTask.originalModelId}
+              reasoningFallbackModelUsed={agentTask.reasoningFallbackModelUsed}
+            />
+          )}
           <RunDetailsDisclosure
             key={`run-details-${agentTask.currentTurnTaskId || agentTask.agentTaskId}`}
             details={runDetails.details}

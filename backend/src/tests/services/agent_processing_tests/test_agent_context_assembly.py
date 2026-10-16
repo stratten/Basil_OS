@@ -282,3 +282,17 @@ def test_follow_up_summary_is_skipped_when_a_real_thread_seeds_the_turn():
     assert "WORK LEDGER" in seeded_names
     assert "FOLLOW UP CONTEXT" in [section.name for section in unseeded.sections]
     assert seeded.user_input.endswith("Current request: put a copy in my downloads folder")
+
+
+def test_reference_materials_tell_the_agent_to_read_attachments_before_designing_from_them():
+    assembled = AgentContextAssembler().assemble(
+        current_request="Build a floating chip modeled after the attached app.",
+        context={"reference_paths": ["/Users/me/Swavigator"]},
+    )
+
+    reference = next(section for section in assembled.sections if section.name == "REFERENCE MATERIALS")
+
+    assert "modeled after, based on, like, or similar to" in reference.body
+    assert "READ these paths first" in reference.body
+    assert "- /Users/me/Swavigator" in reference.body
+    assert "authoritative" in reference.body

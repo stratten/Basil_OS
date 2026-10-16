@@ -4,6 +4,7 @@ import * as api from '../services/api';
 import { agentStore } from '../store/agentStore';
 import { hydrateActiveFollowUpChild, hydrateAgentFromBackend } from '../app/agentHydration';
 import BrowserSensitiveApprovalDetails from './approval/BrowserSensitiveApprovalDetails';
+import ApprovalExplanationSection, { approvalCanBeRemembered } from './approval/ApprovalExplanationSection';
 
 interface Props {
   agentTaskId: string;
@@ -31,6 +32,8 @@ export default function ApprovalOverlay({ agentTaskId, approval, rememberChoice,
   const needsUserEntry = approval.browser_metadata?.value_source === 'user_entry';
   const scriptContent = approval.script_content;
   const scriptLineCount = scriptContent ? scriptContent.split('\n').length : 0;
+  const rememberAllowed = approvalCanBeRemembered(approval);
+  const showWideCard = Boolean(scriptContent || approval.script_notice);
   const canApprove = !isProviderPermission || Boolean(approval.provider_permission?.allow_option_id);
   // Only the plain shell-command case's title ("Command Approval Required")
   // is a literal repeat of the aggregate header multi-approval callers
@@ -68,7 +71,7 @@ export default function ApprovalOverlay({ agentTaskId, approval, rememberChoice,
           approval_id: approval.approval_id,
           command: approval.command,
           approved,
-          remember_choice: remember,
+          remember_choice: remember && rememberAllowed,
           pattern_type: 'exact',
           agent_task_id: approval.agent_task_id,
           expected_revision: approval.revision,
@@ -129,8 +132,8 @@ export default function ApprovalOverlay({ agentTaskId, approval, rememberChoice,
       <div
         className="overlay-card"
         data-agent-desk-interactive-overlay="true"
-        data-preferred-content-width={scriptContent ? 640 : 480}
-        style={{ maxWidth: `clamp(360px, 60vw, ${scriptContent ? 640 : 480}px)` }}
+        data-preferred-content-width={showWideCard ? 640 : 480}
+        style={{ maxWidth: `clamp(360px, 60vw, ${showWideCard ? 640 : 480}px)` }}
       >
         {!suppressTitle && (
           <div className="overlay-title">
@@ -188,7 +191,18 @@ export default function ApprovalOverlay({ agentTaskId, approval, rememberChoice,
             )}
           </div>
 
+          <ApprovalExplanationSection approval={approval} />
+
           {/* Expandable script preview */}
+          {approval.script_path && !scriptContent && (
+            <div className="approval-section">
+              <div className="approval-script-path">
+                <span className="approval-script-path__label">Script file</span>{' '}
+                <code>{approval.script_path}</code>
+              </div>
+              {approval.script_notice && <p className="approval-script-notice" role="note">{approval.script_notice}</p>}
+            </div>
+          )}
           {scriptContent && (
             <div className="approval-section">
               <button
@@ -198,6 +212,12 @@ export default function ApprovalOverlay({ agentTaskId, approval, rememberChoice,
                 <span className={scriptExpanded ? 'approval-link-button__arrow approval-link-button__arrow--open' : 'approval-link-button__arrow'}>&#9654;</span>
                 {`View full script (${scriptLineCount} lines)`}
               </button>
+              {approval.script_path && (
+                <div className="approval-script-path">
+                  <span className="approval-script-path__label">Script file</span>{' '}
+                  <code>{approval.script_path}</code>
+                </div>
+              )}
               {scriptExpanded && (
                 <div
                   className="command-display approval-script-preview"
@@ -243,7 +263,12 @@ export default function ApprovalOverlay({ agentTaskId, approval, rememberChoice,
           )}
 
           {/* Remember choice */}
-          {!isProviderPermission && (
+          {!isProviderPermission && !rememberAllowed && (
+            <p className="approval-remember-blocked" role="note">
+              This approval applies to this run only. {approval.whitelist?.reason}
+            </p>
+          )}
+          {!isProviderPermission && rememberAllowed && (
             <label className="checkbox-row approval-remember">
               <input
                 type="checkbox"

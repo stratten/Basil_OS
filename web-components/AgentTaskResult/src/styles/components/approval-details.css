@@ -96,3 +96,81 @@
 .checkbox-row.approval-remember {
   margin-top: var(--padding-m);
 }
+
+/* The agent's explanation and recommendation. Primary text on the card surface keeps these legible; the full tinted border, like the other panels in this card, marks them as the agent's words rather than Basil's own risk assessment. */
+.approval-explanation {
+  padding: var(--padding-s) var(--padding-m);
+  border: var(--border-thin) solid color-mix(in srgb, var(--primary) 45%, transparent);
+  background: var(--background-secondary);
+  border-radius: var(--corner-radius-small);
+}
+
+.approval-explanation__label {
+  color: var(--text-primary);
+  font-size: var(--font-size-status-small);
+  font-weight: 600;
+}
+
+.approval-explanation__text {
+  margin: var(--padding-xs) 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-footnote);
+  overflow-wrap: anywhere;
+}
+
+.approval-explanation__source {
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-small);
+}
+
+.approval-explanation__missing {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-footnote);
+  font-weight: 600;
+}
+
+.approval-explanation__advice {
+  margin-top: var(--padding-s);
+  padding-top: var(--padding-s);
+  border-top: var(--border-thin) solid var(--separator-color);
+  color: var(--text-primary);
+  font-size: var(--font-size-footnote);
+  overflow-wrap: anywhere;
+}
+
+.approval-explanation__advice-label {
+  color: var(--text-secondary);
+}
+
+.approval-explanation__downgraded {
+  margin-top: var(--padding-xs);
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-small);
+}
+
+.approval-script-path {
+  color: var(--text-primary);
+  font-size: var(--font-size-status-small);
+  overflow-wrap: anywhere;
+}
+
+.approval-script-path__label {
+  color: var(--text-secondary);
+}
+
+.approval-script-notice {
+  margin: var(--padding-xs) 0 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-footnote);
+}
+
+.approval-remember-blocked {
+  margin: var(--padding-m) 0 0;
+  padding: var(--padding-s);
+  border: var(--border-thin) solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  color: var(--text-primary);
+  font-size: var(--font-size-status-small);
+  overflow-wrap: anywhere;
+}

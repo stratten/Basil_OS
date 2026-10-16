@@ -1,4 +1,6 @@
 import { useEffect, useState, type DragEvent } from 'react';
+import { useCollapseShortcut } from '@shared/useCollapseShortcut';
+import { useSettledExpand } from '@shared/useSettledExpand';
 import type { CaptureSnapshot } from './types';
 import {
   registerFontsHandler,
@@ -8,6 +10,7 @@ import {
   requestSnapshot,
   sendCaptureInputReady,
   setSelectedModel,
+  toggleWindowCollapse,
 } from './services/bridge';
 import { setBaseUrl } from './services/api';
 import { applyHostFonts, applyHostTheme, applyProcessingDefaults } from './app/themeBootstrap';
@@ -33,6 +36,24 @@ export default function App() {
   const [agentTaskDisplayName, setAgentTaskDisplayName] = useState('Paprika');
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const isContentCollapsed = useSettledExpand(isCollapsed);
+  const inputModality = snapshot?.inputModality;
+  const canUseCollapse = inputModality === 'text';
+  const mustExpand = snapshot !== null && (snapshot.inputModality !== 'text' || snapshot.hasCompleted || snapshot.isSubmittingTextPrompt);
+
+  function applyCollapsed(next: boolean): void {
+    setIsCollapsed(next);
+    toggleWindowCollapse(next);
+  }
+
+  // Expanding keeps everything mounted, so the typed draft is never lost. A collapsed window is expanded when something needs the full surface: a mode switch, a submission or a finished capture.
+  useEffect(() => {
+    if (isCollapsed && mustExpand) applyCollapsed(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCollapsed, mustExpand]);
+
+  useCollapseShortcut(() => applyCollapsed(!isCollapsed), canUseCollapse || isCollapsed);
 
   useEffect(() => {
     applyProcessingDefaults();
@@ -128,7 +149,12 @@ export default function App() {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        <CaptureHeader snapshot={snapshot} displayName={agentTaskDisplayName} />
+        <CaptureHeader snapshot={snapshot} displayName={agentTaskDisplayName} isCollapsed={isCollapsed} onToggleCollapse={() => applyCollapsed(!isCollapsed)} />
+        <div
+          className={`capture-content${isContentCollapsed ? ' is-collapsed' : ''}`}
+          aria-hidden={isContentCollapsed}
+          {...(isContentCollapsed ? { inert: '' } : {})}
+        >
         {snapshot.inputModality === 'voice' ? (
           <VoiceCaptureView
             snapshot={snapshot}
@@ -145,6 +171,7 @@ export default function App() {
         {snapshot.referencePaths.length > 0 ? (
           <ReferencePathsList paths={snapshot.referencePaths} />
         ) : null}
+        </div>
         {isDraggingOver ? <DropZoneOverlay /> : null}
       </div>
     </div>

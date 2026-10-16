@@ -7,11 +7,14 @@ import {
   reportCaptureHeaderExtent,
   showHistory,
 } from '../services/bridge';
+import { WindowControlButton } from '@shared/WindowControlButton';
 import paprikaIcon from '../assets/paprika-icon.png';
 
 interface Props {
   snapshot: CaptureSnapshot;
   displayName: string;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
 }
 
 // Inline SF-Symbol-equivalent glyphs. No pre-built SVG primitive exists in
@@ -61,9 +64,11 @@ function KeyboardGlyph() {
   );
 }
 
-export default function CaptureHeader({ snapshot, displayName }: Props) {
+export default function CaptureHeader({ snapshot, displayName, isCollapsed, onToggleCollapse }: Props) {
   const headerRef = useRef<HTMLDivElement>(null);
   const isTextEntry = snapshot.inputModality === 'text';
+  // Collapsing is offered for text entry, where a long draft is worth keeping out of the way. A collapsed window can always be expanded.
+  const canCollapse = isTextEntry || isCollapsed;
 
   useLayoutEffect(() => {
     const header = headerRef.current;
@@ -86,7 +91,7 @@ export default function CaptureHeader({ snapshot, displayName }: Props) {
 
   return (
     <div ref={headerRef} className="capture-header">
-      <div className="capture-header__leading">
+      <div className={`capture-header__leading${canCollapse ? ' capture-header__leading--row' : ''}`}>
         <button
           type="button"
           className="capture-header__icon-button"
@@ -96,11 +101,23 @@ export default function CaptureHeader({ snapshot, displayName }: Props) {
         >
           <CancelGlyph />
         </button>
-        {/* Matches the archived `AgentTaskCaptureWidget.swift`'s leading
+        {/* In voice mode this matches the archived `AgentTaskCaptureWidget.swift`'s leading
             `VStack(spacing: 3) { Button; Color.clear.frame(width: 16, height: 16) }`
             exactly — this spacer, not any CSS padding, is what gives the
-            header row its correct height in the native widget. */}
-        <div className="capture-header__leading-spacer" aria-hidden="true" />
+            header row its correct height in the native widget. In text mode
+            the collapse button sits to the right of the close button instead. */}
+        {canCollapse ? (
+          <WindowControlButton
+            kind="collapse"
+            label={isCollapsed ? 'Expand window' : 'Collapse window'}
+            className="capture-header__icon-button capture-header__collapse-button"
+            collapsed={isCollapsed}
+            pressed={isCollapsed}
+            onClick={onToggleCollapse}
+          />
+        ) : (
+          <div className="capture-header__leading-spacer" aria-hidden="true" />
+        )}
       </div>
       <div className="capture-header__center">
         {/* Matches the archived widget's `ZStack { HStack { ... }.offset(x: -8) } }`

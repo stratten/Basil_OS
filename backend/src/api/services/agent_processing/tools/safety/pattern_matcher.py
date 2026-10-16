@@ -9,6 +9,8 @@ from typing import List, Optional
 
 from api.core.models.preferences import CommandPattern
 
+from .whitelist_eligibility import assess_whitelist_eligibility
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,6 +33,10 @@ class PatternMatcher:
         for pattern in whitelist:
             if self.is_naked_wrapper(pattern.pattern):
                 logger.warning(f"⚠️ Skipping naked wrapper pattern in whitelist: '{pattern.pattern}' (pattern_id: {pattern.id})")
+                continue
+
+            if self.is_never_rememberable(pattern.pattern):
+                logger.warning(f"⚠️ Skipping whitelist pattern that can never be remembered: '{pattern.pattern}' (pattern_id: {pattern.id})")
                 continue
 
             if self.matches_pattern(command, pattern):
@@ -63,7 +69,7 @@ class PatternMatcher:
                                 logger.debug(f"🔍 Checking inner command for whitelist: '{inner_command[:80]}'")
 
                                 for pattern in whitelist:
-                                    if self.is_naked_wrapper(pattern.pattern):
+                                    if self.is_naked_wrapper(pattern.pattern) or self.is_never_rememberable(pattern.pattern):
                                         continue
 
                                     if self.matches_pattern(inner_command, pattern):
@@ -93,6 +99,11 @@ class PatternMatcher:
         except Exception as e:
             logger.error(f"Error matching pattern '{pattern.pattern}': {e}")
             return False
+
+    @staticmethod
+    def is_never_rememberable(pattern: str) -> bool:
+        """Check whether the shared eligibility rule forbids a stored pattern (interpreters, indirection, bare shells)."""
+        return not assess_whitelist_eligibility(pattern, pattern).eligible
 
     def is_naked_wrapper(self, pattern: str) -> bool:
         """Check if a pattern is just a shell wrapper with no actual command."""

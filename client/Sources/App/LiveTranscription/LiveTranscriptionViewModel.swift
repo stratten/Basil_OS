@@ -32,6 +32,8 @@ class LiveTranscriptionViewModel: ObservableObject {
     // Capture controls for the active recording part (see LiveTranscriptionViewModel+CaptureControl).
     @Published var isCapturePaused = false
     @Published var sessionLiveTranscriptionEnabled = true
+    /// The engine chosen for this one recording ("local", a cloud provider id, or "basil_account"); nil means the saved default applies. Cleared when the recording ends or a fresh meeting starts, so it never carries over.
+    @Published var sessionLiveEngineOverride: String?
     var liveTranscriptionSelectionTouched = false
     var liveTranscriptionWasDisabledThisPart = false
     let recordingClock = RecordingClock()

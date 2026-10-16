@@ -47,6 +47,8 @@ final class SettingsShellWindowController: NSWindowController, NSWindowDelegate,
     var transcriptionApiModelsWebView: ReactTranscriptionAPIModelsWebView?
     let transcriptionApiModelsViewModel = TranscriptionAPIModelsViewModel()
     var transcriptionApiModelsLoadGeneration: Int = 0
+    var cloudTranscriptionWebView: ReactCloudTranscriptionWebView?
+    var cloudTranscriptionRequestTail: Task<Void, Never>?
     var reasoningApiModelsWebView: ReactReasoningAPIModelsWebView?
     let reasoningApiModelsViewModel = APIModelsViewModel()
     var reasoningApiModelsLoadGeneration: Int = 0
@@ -187,6 +189,9 @@ final class SettingsShellWindowController: NSWindowController, NSWindowDelegate,
         let transcriptionApiModelsWebView = ReactTranscriptionAPIModelsWebView(webView: appearanceWebView.webView)
         self.transcriptionApiModelsWebView = transcriptionApiModelsWebView
 
+        let cloudTranscriptionWebView = ReactCloudTranscriptionWebView(webView: appearanceWebView.webView)
+        self.cloudTranscriptionWebView = cloudTranscriptionWebView
+
         let reasoningApiModelsWebView = ReactReasoningAPIModelsWebView(webView: appearanceWebView.webView)
         self.reasoningApiModelsWebView = reasoningApiModelsWebView
 
@@ -322,6 +327,7 @@ final class SettingsShellWindowController: NSWindowController, NSWindowDelegate,
         wireWritingExamplesSettingsWebView(writingExamplesWebView)
         wireModelsSettingsWebView(modelsWebView)
         wireTranscriptionApiModelsSettingsWebView(transcriptionApiModelsWebView)
+        wireCloudTranscriptionSettingsWebView(cloudTranscriptionWebView)
         wireReasoningApiModelsSettingsWebView(reasoningApiModelsWebView)
         wireCustomModelsSettingsWebView(customModelsWebView)
         wireBrowserAutomationSettingsWebView(browserAutomationWebView)
@@ -440,6 +446,7 @@ final class SettingsShellWindowController: NSWindowController, NSWindowDelegate,
         modelsWebView?.tearDown()
         tearDownModelsSettings()
         transcriptionApiModelsWebView?.tearDown()
+        cloudTranscriptionWebView?.tearDown()
         reasoningApiModelsWebView?.tearDown()
         customModelsDownloadCancellable?.cancel()
         customModelsWebView?.tearDown()
@@ -474,6 +481,7 @@ final class SettingsShellWindowController: NSWindowController, NSWindowDelegate,
         writingExamplesWebView = nil
         modelsWebView = nil
         transcriptionApiModelsWebView = nil
+        cloudTranscriptionWebView = nil
         reasoningApiModelsWebView = nil
         customModelsWebView = nil
         customModelsDownloadCancellable = nil

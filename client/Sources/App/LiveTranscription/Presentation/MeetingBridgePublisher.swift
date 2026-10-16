@@ -332,6 +332,7 @@ final class MeetingBridgePublisher {
             microphoneInputRecoveryMessage: microphoneRecoveryMessage(viewModel.microphoneInputRecoveryState),
             isCapturePaused: viewModel.isCapturePaused,
             isLiveTranscriptionEnabled: viewModel.sessionLiveTranscriptionEnabled,
+            liveEngineOverride: viewModel.sessionLiveEngineOverride,
             companionApiPort: APIClient.shared.currentPort,
             recordingMeetingId: viewModel.isRecording ? viewModel.currentMeetingId : nil,
             thermalState: MeetingThermalStateName.name(for: ProcessInfo.processInfo.thermalState)

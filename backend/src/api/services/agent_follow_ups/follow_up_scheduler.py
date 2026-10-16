@@ -18,6 +18,7 @@ FOLLOW_UP_BUSY_DEFER_SECONDS = 60
 FOLLOW_UP_MAX_DEFERS = 60
 FOLLOW_UP_MISSED_AFTER = timedelta(hours=24)
 FOLLOW_UP_ORIGIN_TYPE = "agent_follow_up"
+GAP_CONTINUATION_REASON = "Scheduled automatically: the outcome check found a gap the agent can close."
 _TERMINAL_TASK_STATUSES = frozenset({"completed", "failed", "canceled"})
 
 
@@ -25,7 +26,23 @@ def _iso(moment: datetime) -> str:
     return moment.astimezone(timezone.utc).isoformat(timespec="seconds")
 
 
+def is_gap_continuation(follow_up: Dict[str, Any]) -> bool:
+    return follow_up.get("reason") == GAP_CONTINUATION_REASON
+
+
+def build_gap_continuation_prompt(follow_up: Dict[str, Any]) -> str:
+    return (
+        "Basil's outcome check found a gap in your previous turn of this task.\n"
+        f"Gap: {follow_up['instructions']}\n\n"
+        "Use the earlier turns of this task for context and close this gap now with your tools. "
+        "Read any attached or referenced material you have not opened yet before building from it. "
+        "If you truly cannot close it, say exactly what is still missing and why."
+    )
+
+
 def build_follow_up_prompt(follow_up: Dict[str, Any]) -> str:
+    if is_gap_continuation(follow_up):
+        return build_gap_continuation_prompt(follow_up)
     reason = str(follow_up.get("reason") or "").strip()
     reason_line = f"\nWhy: {reason}" if reason else ""
     return (
@@ -37,6 +54,8 @@ def build_follow_up_prompt(follow_up: Dict[str, Any]) -> str:
 
 
 def build_follow_up_display_markdown(follow_up: Dict[str, Any]) -> str:
+    if is_gap_continuation(follow_up):
+        return f"**Continuing task:** {follow_up['instructions']}"
     return f"**Follow-up check:** {follow_up['instructions']}"
 
 
@@ -140,20 +159,32 @@ class AgentFollowUpScheduler:
                 follow_up_id, status="canceled", error_message="The task chain was canceled."
             )
             return "canceled"
+        if is_gap_continuation(follow_up) and str(getattr(chain[-1], "id", "")) != str(follow_up.get("source_agent_task_id") or ""):
+            await self._repository.finish_without_submission(
+                follow_up_id,
+                status="canceled",
+                error_message="The conversation moved on before Basil could continue this task automatically.",
+            )
+            return "canceled"
         if latest_status not in _TERMINAL_TASK_STATUSES:
             return await self._defer(follow_up, now, f"The task chain is busy ({latest_status or 'unknown'}).")
         if self._submission_service is None:
             return await self._defer(follow_up, now, "Agent task submission is unavailable.")
 
         agent_task_id = str(uuid.uuid4())
-        result = await self._submission_service.process_agent_task_direct(
-            agent_task=build_follow_up_prompt(follow_up),
-            display_prompt_markdown=build_follow_up_display_markdown(follow_up),
-            agent_task_id=agent_task_id,
-            root_task_id=follow_up["root_task_id"],
-            origin_type=FOLLOW_UP_ORIGIN_TYPE,
-            origin_id=follow_up_id,
-        )
+        submission: Dict[str, Any] = {
+            "agent_task": build_follow_up_prompt(follow_up),
+            "display_prompt_markdown": build_follow_up_display_markdown(follow_up),
+            "agent_task_id": agent_task_id,
+            "root_task_id": follow_up["root_task_id"],
+            "origin_type": FOLLOW_UP_ORIGIN_TYPE,
+            "origin_id": follow_up_id,
+        }
+        # The turn continues the chain's own work, so it runs on the model the chain was started with rather than whatever the default is now.
+        chain_model_id = (getattr(chain[-1], "accumulated_artifacts", None) or {}).get("model_id")
+        if isinstance(chain_model_id, str) and chain_model_id:
+            submission["model_id"] = chain_model_id
+        result = await self._submission_service.process_agent_task_direct(**submission)
         result = result or {}
         if result.get("success") is False:
             if result.get("operation") == "canceled":

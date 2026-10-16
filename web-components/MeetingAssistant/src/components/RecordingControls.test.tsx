@@ -11,6 +11,7 @@ const bridge = vi.hoisted(() => ({
   resumeRecording: vi.fn(),
   cancelRecording: vi.fn(),
   setLiveTranscription: vi.fn(),
+  setLiveEngine: vi.fn(),
 }));
 vi.mock('../bridge/meetingBridge', () => bridge);
 vi.mock('../bridge/meetingMeterStore', () => ({
@@ -37,11 +38,12 @@ describe('RecordingControls', () => {
     Object.values(bridge).forEach((mock) => mock.mockClear());
   });
 
-  it('places idle readiness above Start and omits literal idle state', () => {
+  it('places idle readiness to the right of Start and omits literal idle state', () => {
     const { container } = render(<RecordingControls ui={ui} />);
     const status = screen.getByText('Ready to start transcription');
     const start = screen.getByRole('button', { name: 'Start' });
-    expect(status.compareDocumentPosition(start) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(start.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(status.closest('.meeting-idle-row')).not.toBeNull();
     expect(container).not.toHaveTextContent(/\bidle\b/i);
   });
 

@@ -23,7 +23,7 @@
   border: 0.5px solid color-mix(in srgb, var(--primary) 20%, transparent);
 }
 
-.result-files__retrieved {
+.result-files__items {
   display: flex;
   flex-direction: column;
   gap: 6px;

@@ -2,6 +2,7 @@ import type { AgentStatus, AgentTaskDetail, CheckpointData } from '../types';
 import { normalizePersistedThinkingSegments } from '../types';
 import { parseAgentTaskPresentationSummaryForTask } from '../artifacts/artifactContract';
 import * as api from '../services/api';
+import { approvalExplanationFromContext } from '../services/approvalExplanation';
 import { agentStore } from '../store/agentStore';
 import { normalizeCheckpointData } from '../store/agentStore/checkpointNormalization';
 
@@ -125,6 +126,7 @@ async function restorePendingExecutionApproval(
         script_content: approval.script_content ?? undefined,
         execution_type: approval.execution_type,
         revision: approval.revision,
+        ...approvalExplanationFromContext(approval.context),
       });
     }
     const restoredCommandInputs = await restorePendingCommandInputs(storeAgentTaskId, sessionAgentTaskId, isCurrent);

@@ -204,6 +204,44 @@ describe('hydrateAgentFromBackend checkpoint recovery', () => {
     });
   });
 
+  it('restores the agent explanation and remember eligibility of a recovered approval', async () => {
+    agentStore.registerAgent('explained-approval-task');
+    vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
+      id: 'explained-approval-task',
+      status: 'awaiting_user_input',
+    }));
+    vi.spyOn(api, 'getPendingExecutionApprovals').mockResolvedValue({
+      approvals: [{
+        approval_id: 'approval-explained',
+        agent_task_id: 'explained-approval-task',
+        command: 'python3 /tmp/report.py',
+        reason: 'Not whitelisted',
+        risk_level: 'medium',
+        generalized_pattern: 'python3',
+        execution_type: 'shell',
+        script_content: "print('report')",
+        revision: 0,
+        context: {
+          purpose: 'Builds the weekly report.',
+          script_path: '/tmp/report.py',
+          whitelist: { eligible: false, reason: 'python can run any code.', advice: null },
+        },
+      }],
+      orphaned_approval_ids: [],
+    });
+
+    hydrateAgentFromBackend('explained-approval-task');
+
+    await vi.waitFor(() => {
+      expect(agentStore.getAgent('explained-approval-task')?.approvalRequests).toMatchObject([{
+        approval_id: 'approval-explained',
+        purpose: 'Builds the weekly report.',
+        script_path: '/tmp/report.py',
+        whitelist: { eligible: false, reason: 'python can run any code.', advice: null },
+      }]);
+    });
+  });
+
   it('retires an approval orphaned by backend restart without rendering its command', async () => {
     agentStore.registerAgent('orphaned-approval-task');
     vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({

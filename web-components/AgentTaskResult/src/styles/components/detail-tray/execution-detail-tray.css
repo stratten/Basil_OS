@@ -43,6 +43,8 @@
 
 .execution-detail-tray--run-card {
   align-self: flex-start;
+  /* Bounded by the surface so the overview scrolls inside it rather than running past the window. */
+  max-height: 100%;
   margin-top: var(--padding-m);
   border: 0;
   background: transparent;
@@ -92,15 +94,13 @@
 
 
 .run-card {
-  max-height: calc(100vh - 7rem);
-  margin: 0 var(--padding-m) var(--padding-m);
+  margin: 0 var(--padding-m);
   padding: var(--padding-m);
-  overflow-y: auto;
   box-sizing: border-box;
   border: var(--border-thin) solid color-mix(in srgb, var(--secondary) 28%, var(--separator-color));
   border-radius: var(--corner-radius-medium);
   background: var(--background-primary);
-  box-shadow: 0 8px 22px color-mix(in srgb, var(--secondary) 12%, transparent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--secondary) 12%, transparent);
   color: var(--text-primary);
   container: run-card / inline-size;
 }
@@ -225,7 +225,8 @@
 .run-card-stages {
   display: flex;
   flex-direction: column;
-  gap: var(--padding-s);
+  /* Each row already pads itself, so a list gap would double the vertical rhythm. */
+  gap: 0;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -307,12 +308,15 @@
 }
 
 .run-card-artifacts {
-  display: flex;
-  flex-direction: column;
-  gap: var(--padding-xs);
   margin-top: var(--padding-m);
   padding-top: var(--padding-m);
   border-top: var(--border-thin) solid var(--separator-color);
+}
+
+.run-card-artifacts__items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-xs);
 }
 
 .run-card-artifact,
@@ -483,26 +487,56 @@
   gap: var(--padding-s);
 }
 
-.tray-artifact-preview-topbar {
-  display: flow-root;
-  padding: var(--padding-s) var(--padding-m) 0;
+/* The topbar and the preview below it scroll together, so an expanded tab list can never push the preview out of reach. */
+.tray-artifact-preview-scroll {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
-.tray-artifact-preview-topbar .artifact-review-tabs {
+.tray-artifact-preview-scroll > .tray-artifact-preview {
+  flex: 1 0 360px;
+  overflow: visible;
+}
+
+.tray-artifact-preview-topbar {
+  --tray-panel-actions-width: calc(24px * 2 + var(--padding-xs));
+  position: relative;
+  display: flow-root;
+  flex: 0 0 auto;
+  min-height: calc(24px + var(--padding-s));
+  padding: var(--padding-s) var(--padding-m) 0;
+  box-sizing: border-box;
+}
+
+.tray-artifact-preview-topbar .artifact-review-tabs__items {
   display: block;
 }
 
-.tray-artifact-preview-panel-actions {
-  display: flex;
+/* Reserves room for the panel buttons on the first row only: a float inside the tab list narrows that row alone, where reserving the room on the list itself would narrow every row. */
+.tray-artifact-preview-topbar .artifact-review-tabs__items::before {
   float: right;
+  width: calc(var(--tray-panel-actions-width) + var(--padding-s));
+  height: 24px;
+  content: '';
+}
+
+.tray-artifact-preview-panel-actions {
+  position: absolute;
+  z-index: 1;
+  top: var(--padding-s);
+  right: var(--padding-m);
+  display: flex;
   align-items: center;
   gap: var(--padding-xs);
-  margin-left: var(--padding-s);
 }
 
 .tray-artifact-preview-panel-actions .tray-artifact-preview-close {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border: var(--border-thin) solid var(--separator-color);
   border-radius: var(--corner-radius-small);
   background: var(--surface-primary);
@@ -515,6 +549,8 @@
 
 .tray-artifact-preview-topbar .artifact-review-tab {
   margin: 0 var(--padding-xs) var(--padding-xs) 0;
+  /* Two tabs plus their right margins must fit on every row, including the first row that sits beside the panel buttons. The base rule's half-width cap ignores both, so a second tab never fits. The extra 1px absorbs sub-pixel rounding. */
+  max-width: calc((100% - var(--tray-panel-actions-width) - var(--padding-s)) / 2 - var(--padding-xs) - 1px);
 }
 
 .tray-artifact-preview-document-header {
@@ -544,8 +580,8 @@
 .tray-artifact-preview-close {
   flex: 0 0 auto;
   display: grid;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   place-items: center;
   text-align: center;

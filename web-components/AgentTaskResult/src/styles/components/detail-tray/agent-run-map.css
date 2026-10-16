@@ -1,12 +1,10 @@
 .agent-run-map {
-  max-height: calc(100vh - 7rem);
-  margin: 0 var(--padding-m) var(--padding-m);
-  overflow-y: auto;
+  margin: 0 var(--padding-m);
   box-sizing: border-box;
   border: var(--border-thin) solid color-mix(in srgb, var(--secondary) 28%, var(--separator-color));
   border-radius: var(--corner-radius-medium);
   background: var(--background-primary);
-  box-shadow: 0 8px 22px color-mix(in srgb, var(--secondary) 12%, transparent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--secondary) 12%, transparent);
   color: var(--text-primary);
 }
 

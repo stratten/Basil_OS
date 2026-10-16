@@ -27,6 +27,9 @@ extension LiveTranscriptionViewModel {
             URLQueryItem(name: "client", value: "native"),
             URLQueryItem(name: "live_transcription", value: sessionLiveTranscriptionEnabled ? "true" : "false")
         ]
+        if let engine = sessionLiveEngineOverride {
+            queryItems.append(URLQueryItem(name: "live_engine", value: engine))
+        }
 
         if !meetingName.isEmpty {
             queryItems.append(URLQueryItem(name: "meeting_id", value: systemAudioMeetingId))

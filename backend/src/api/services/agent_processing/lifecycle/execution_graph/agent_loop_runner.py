@@ -44,7 +44,7 @@ from .conversation_turns import (
     turn_input_index,
     turn_input_text,
 )
-from .execution_limits import AGENT_RUN_MAX_ACTIVE_SECONDS, active_time_limit_message
+from .execution_limits import active_time_limit_message, agent_run_max_active_seconds
 from .service_tooling.tool_call_repetition_guard import (
     RepeatedInvalidToolCallStop,
     wrap_tools_with_repetition_guard,
@@ -320,11 +320,12 @@ async def run_agent_loop(request: AgentRunRequest) -> AgentRunResult:
         source="agent_loop_runner",
     )
 
-    budget_seconds = float(AGENT_RUN_MAX_ACTIVE_SECONDS)
+    max_active_seconds = agent_run_max_active_seconds(context.get("model_id") if context is not None else None)
+    budget_seconds = float(max_active_seconds)
     can_start = True
     if deadline is not None:
-        if deadline.can_start_execution(per_pass_cap_seconds=AGENT_RUN_MAX_ACTIVE_SECONDS):
-            budget_seconds = deadline.execution_seconds_available(per_pass_cap_seconds=AGENT_RUN_MAX_ACTIVE_SECONDS)
+        if deadline.can_start_execution(per_pass_cap_seconds=max_active_seconds):
+            budget_seconds = deadline.execution_seconds_available(per_pass_cap_seconds=max_active_seconds)
         else:
             can_start = False
             if context is not None:

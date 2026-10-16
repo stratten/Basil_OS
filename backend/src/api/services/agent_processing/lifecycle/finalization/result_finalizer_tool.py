@@ -151,6 +151,7 @@ async def finalize_agent_task_result(
     llm_reasoning = ""
     should_retry = False
     pending_work: Optional[Dict[str, Any]] = None
+    continuation_instructions: Optional[str] = None
     failure_basis = ""
     has_tool_errors = bool(tool_error_history)
     has_failed_steps = _has_failed_steps(steps)
@@ -189,6 +190,7 @@ async def finalize_agent_task_result(
             should_retry = evaluation.should_retry
             failure_basis = evaluation.failure_basis
             pending_work = evaluation.pending_work
+            continuation_instructions = evaluation.continuation_instructions
             if (
                 evaluation.coverage_status == "incomplete"
                 or evaluation.truncation_prevents_verification
@@ -450,6 +452,9 @@ async def finalize_agent_task_result(
     if pending_work and outcome == "partial":
         # Transient hand-off for the async verifier; it is removed before the envelope is persisted or broadcast.
         envelope["pending_work"] = pending_work
+    elif continuation_instructions and outcome == "partial":
+        # Same transient hand-off: the async verifier turns it into an automatic continuation turn and removes the key.
+        envelope["continuation"] = continuation_instructions
     return envelope
 
 

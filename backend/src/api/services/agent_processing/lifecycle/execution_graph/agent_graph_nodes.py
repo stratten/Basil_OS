@@ -48,7 +48,7 @@ from .agent_result_synthesis import (
     intermediate_steps_to_finalizer_steps,
     run_final_synthesis_for_state,
 )
-from .execution_limits import AGENT_RUN_MAX_ACTIVE_SECONDS
+from .execution_limits import agent_run_max_active_seconds
 from ..runtime.workflow_status_notifier import WorkflowStatusNotifier
 from .agent_execution_core import (
     setup_live_callbacks,
@@ -844,10 +844,11 @@ async def _node_execute_todos_with_tools(state: PlanningState) -> Dict[str, Any]
         # Legacy recovery: only if the direct finalizer did not return an envelope
         if final_envelope is None and finalize_attempts == 0:
             deadline = deadline_from_context(state.context)
-            recovery_budget_seconds = float(AGENT_RUN_MAX_ACTIVE_SECONDS)
+            max_active_seconds = agent_run_max_active_seconds((state.context or {}).get("model_id"))
+            recovery_budget_seconds = float(max_active_seconds)
             if deadline is not None:
                 if not deadline.can_start_execution(
-                    per_pass_cap_seconds=AGENT_RUN_MAX_ACTIVE_SECONDS,
+                    per_pass_cap_seconds=max_active_seconds,
                 ):
                     if state.context is not None:
                         state.context["workflow_deadline_evidence"] = deadline_evidence(
@@ -856,7 +857,7 @@ async def _node_execute_todos_with_tools(state: PlanningState) -> Dict[str, Any]
                         )
                     raise TimeoutError("Insufficient remaining workflow time for finalizer recovery.")
                 recovery_budget_seconds = deadline.execution_seconds_available(
-                    per_pass_cap_seconds=AGENT_RUN_MAX_ACTIVE_SECONDS,
+                    per_pass_cap_seconds=max_active_seconds,
                 )
             recovery_agent = FinalizerRecoveryAgent(
                 langchain_llm=langchain_llm,

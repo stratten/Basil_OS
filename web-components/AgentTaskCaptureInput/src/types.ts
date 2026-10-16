@@ -97,7 +97,8 @@ export type CaptureInputMessage =
   | { type: 'openReferencePath'; path: string }
   | { type: 'filesDropped'; paths: string[] }
   | { type: 'setDraggingOver'; isDraggingOver: boolean }
-  | { type: 'showHistory' };
+  | { type: 'showHistory' }
+  | { type: 'toggleWindowCollapse'; collapsed: boolean };
 
 // Faithful TypeScript port of the Swift oracle's `isProcessingState`
 // computed property (`AgentTaskCaptureWidget.swift`, quoted in

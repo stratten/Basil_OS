@@ -158,13 +158,24 @@
   border: 1px solid var(--border-subtle);
 }
 
-.result-model-label {
-  font-size: var(--font-size-caption);
-  color: var(--text-primary);
-  padding: 1px 6px;
-  border-radius: 999px;
-  border: 1px solid var(--border-subtle);
+.result-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 20px;
+  padding: 0 2px;
+  font-size: 10px;
+  color: color-mix(in srgb, var(--text-primary) 62%, transparent);
+}
+
+.result-footer__model {
+  color: color-mix(in srgb, var(--text-primary) 50%, transparent);
   overflow-wrap: anywhere;
+}
+
+.result-footer__fallback {
+  color: color-mix(in srgb, var(--text-primary) 62%, transparent);
 }
 
 .result-provisional-badge {

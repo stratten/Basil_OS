@@ -314,7 +314,34 @@ export interface CommandInputMetadata {
   expires_at?: number;
 }
 
-export interface ExecutionApprovalRequest {
+export interface ApprovalWhitelistAdvice {
+  recommend: boolean;
+  reason: string;
+  /** True when the server overrode the agent's "yes" because the command can never be remembered. */
+  downgraded?: boolean;
+}
+
+export interface ApprovalWhitelistStatus {
+  /** False when the command can never be remembered (interpreters, shells, indirection, scripts). */
+  eligible: boolean;
+  /** Plain-language reason shown when `eligible` is false. */
+  reason: string;
+  advice: ApprovalWhitelistAdvice | null;
+}
+
+export interface ApprovalExplanation {
+  /** The agent's own explanation of what the command or script does. */
+  purpose?: string;
+  /** True when the agent was asked and still gave no explanation. */
+  purpose_missing?: boolean;
+  whitelist?: ApprovalWhitelistStatus;
+  script_path?: string;
+  /** Why the script text is not shown (too large, not text). */
+  script_notice?: string;
+}
+
+export interface ExecutionApprovalRequest extends ApprovalExplanation {
+  // `ApprovalExplanation` is filled from the approval event or recovered pending approval `context`.
   approval_id: string;
   agent_task_id: string;
   command: string;

@@ -43,7 +43,7 @@ final class MeetingAssistantWindowController: NSObject, NSWindowDelegate, Appear
         }
 
         let panel = ClosableBorderlessPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 860, height: 640),
+            contentRect: NSRect(x: 0, y: 0, width: 920, height: 640),
             styleMask: [.borderless, .resizable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -94,7 +94,7 @@ final class MeetingAssistantWindowController: NSObject, NSWindowDelegate, Appear
         collapseController = WindowCollapseController(
             window: panel,
             compactSize: LiveTranscriptionLayoutPolicy.compactSize,
-            fallbackExpandedSize: NSSize(width: 860, height: 640)
+            fallbackExpandedSize: NSSize(width: 920, height: 640)
         )
 
         meetingWebView.loadContent(entryFile: "src/entries/meeting-assistant.html")

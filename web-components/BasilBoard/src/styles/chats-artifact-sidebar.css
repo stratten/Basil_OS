@@ -119,8 +119,8 @@
 .chats-artifact-sidebar-action {
   display: grid;
   flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   place-items: center;
   border: var(--border-thin, 1px) solid var(--separator-color, rgba(0, 32, 77, 0.14));
@@ -145,8 +145,8 @@
 
 .chats-artifact-sidebar-close {
   flex: 0 0 auto;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   display: grid;
   place-items: center;
   border: 1px solid color-mix(in srgb, var(--primary) 18%, transparent);

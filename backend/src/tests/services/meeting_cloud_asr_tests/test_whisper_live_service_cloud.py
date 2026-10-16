@@ -57,16 +57,31 @@ def text(payload) -> dict:
     return {"type": "websocket.receive", "text": json.dumps(payload)}
 
 
+class CreatedSessions(list):
+    """The sessions the fake factory built, plus the engine override and availability queries each socket made."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.overrides = []
+        self.availability_queries = []
+
+
 def install_cloud(monkeypatch, provider: FakeProvider):
     registry, frames = recording_registry()
-    created = []
+    created = CreatedSessions()
+    overrides = created.overrides
 
-    def factory(**kwargs):
+    def factory(engine_override=None, **kwargs):
+        overrides.append(engine_override)
         session = CloudAsrSession(provider=provider, provider_id="deepgram", tier="streaming", registry=registry, **kwargs)
         created.append(session)
         return session
 
-    monkeypatch.setattr(whisper_live_service, "cloud_transcription_available", lambda: True)
+    def available(engine_override=None):
+        created.availability_queries.append(engine_override)
+        return True
+
+    monkeypatch.setattr(whisper_live_service, "cloud_transcription_available", available)
     monkeypatch.setattr(whisper_live_service, "create_cloud_session", factory)
     return frames, created
 
@@ -142,7 +157,40 @@ def test_without_a_cloud_plan_a_native_socket_still_needs_the_engine(isolated_ho
         return None
 
     monkeypatch.setattr(service, "_ensure_live_engine", no_engine)
-    monkeypatch.setattr(whisper_live_service, "cloud_transcription_available", lambda: False)
+    monkeypatch.setattr(whisper_live_service, "cloud_transcription_available", lambda engine_override=None: False)
     websocket = FakeWebSocket({"client": "native"}, [])
     asyncio.run(service._handle_websocket(websocket))
     assert websocket.accepted is False and websocket.closed == (1000, "Service not initialized")
+
+
+@pytest.mark.parametrize(
+    ("param", "expected"),
+    [("deepgram", "deepgram"), ("LOCAL", "local"), (" basil_account ", "basil_account"), ("bogus", None), ("", None)],
+)
+def test_the_recording_engine_choice_reaches_the_cloud_plan_and_session(isolated_home, monkeypatch, param, expected) -> None:
+    service = WhisperLiveService()
+
+    async def fail_engine():
+        raise AssertionError("cloud transcription must not initialize the local engine")
+
+    monkeypatch.setattr(service, "_ensure_live_engine", fail_engine)
+    _, created = install_cloud(monkeypatch, FakeProvider())
+    params = {**native_params(f"cloud-{uuid.uuid4()}"), "live_engine": param}
+    websocket = FakeWebSocket(params, [text({"type": "native_stream_timing", "stream_offset_seconds": 0.0}), audio(b"\x01\x00" * 3200)])
+    asyncio.run(service._handle_websocket(websocket))
+    assert created.availability_queries == [expected]
+    assert created.overrides == [expected]
+
+
+def test_a_socket_without_an_engine_choice_uses_the_saved_default(isolated_home, monkeypatch) -> None:
+    service = WhisperLiveService()
+
+    async def fail_engine():
+        raise AssertionError("cloud transcription must not initialize the local engine")
+
+    monkeypatch.setattr(service, "_ensure_live_engine", fail_engine)
+    _, created = install_cloud(monkeypatch, FakeProvider())
+    websocket = FakeWebSocket(native_params(f"cloud-{uuid.uuid4()}"), [text({"type": "native_stream_timing", "stream_offset_seconds": 0.0}), audio(b"\x01\x00" * 3200)])
+    asyncio.run(service._handle_websocket(websocket))
+    assert created.availability_queries == [None]
+    assert created.overrides == [None]

@@ -1,4 +1,5 @@
 import type { StructuredFile } from '../../types';
+import { timelineEntryTime } from '../run/timelineEntryTime';
 
 export function parseResult(result: string): { technicalSteps: string; userSummary: string } {
   const lines = result.split('\n');
@@ -163,6 +164,20 @@ export function formatBulletPoints(text: string): string {
   result = result.replace(/\n\n\n/g, '\n\n');
   result = result.replace(/^\n+/, '');
   return result;
+}
+
+/** The moment a result was delivered: the latest readable timeline entry as an ISO string, else the task's own timestamp. */
+export function resultDeliveredTimestamp(
+  timeline: ReadonlyArray<{ timestamp?: unknown }> | undefined,
+  fallback?: string,
+): string | undefined {
+  let latest = Number.NaN;
+  for (const entry of timeline ?? []) {
+    const time = timelineEntryTime(entry.timestamp);
+    if (Number.isFinite(time) && (!Number.isFinite(latest) || time > latest)) latest = time;
+  }
+  if (Number.isFinite(latest)) return new Date(latest).toISOString();
+  return fallback || undefined;
 }
 
 export function isUserFacingResponseStreaming(isStreaming: boolean, result: string | undefined): boolean {

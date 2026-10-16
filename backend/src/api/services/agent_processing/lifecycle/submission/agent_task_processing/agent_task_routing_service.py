@@ -206,6 +206,8 @@ class AgentTaskRoutingService:
 
     def build_routing_request(self, agent_task_record: Any):
         """Build the workflow execution request from AgentTask data."""
+        from ...execution_graph.execution_limits import workflow_wallclock_limit_seconds
+
         reference_paths = None
         model_id = None
         conversation_id = None
@@ -233,7 +235,7 @@ class AgentTaskRoutingService:
             conversation_id=conversation_id,
             todo_worker_context=todo_worker_context,
             retry_context=retry_context,
-            workflow_wallclock_limit_seconds=1500,
+            workflow_wallclock_limit_seconds=workflow_wallclock_limit_seconds(model_id),
         )
         request.full_screen_text = agent_task_record.screen_text or ""
         request.agent_task_id = agent_task_record.id

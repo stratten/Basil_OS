@@ -12,6 +12,7 @@ vi.mock('../bridge/meetingBridge', () => ({
   resumeMeeting: vi.fn(),
   startNewMeeting: vi.fn(),
   setLiveTranscription: vi.fn(),
+  setLiveEngine: vi.fn(),
 }));
 
 const recordingUi = {

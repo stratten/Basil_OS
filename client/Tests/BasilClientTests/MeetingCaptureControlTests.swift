@@ -76,5 +76,51 @@ final class MeetingCaptureControlTests: XCTestCase {
         XCTAssertEqual(MeetingBridgeIntent(rawValue: "resumeRecording"), .resumeRecording)
         XCTAssertEqual(MeetingBridgeIntent(rawValue: "cancelRecording"), .cancelRecording)
         XCTAssertEqual(MeetingBridgeIntent(rawValue: "setLiveTranscription"), .setLiveTranscription)
+        XCTAssertEqual(MeetingBridgeIntent(rawValue: "setLiveEngine"), .setLiveEngine)
+    }
+
+    func testLiveEngineChoiceAppliesToTheNextRecordingAndCanReturnToTheDefault() {
+        let viewModel = LiveTranscriptionViewModel()
+        XCTAssertNil(viewModel.sessionLiveEngineOverride, "no override means the saved default applies")
+
+        viewModel.setSessionLiveEngineOverride("deepgram")
+        XCTAssertEqual(viewModel.sessionLiveEngineOverride, "deepgram")
+
+        viewModel.setSessionLiveEngineOverride("local")
+        XCTAssertEqual(viewModel.sessionLiveEngineOverride, "local")
+
+        viewModel.setSessionLiveEngineOverride(nil)
+        XCTAssertNil(viewModel.sessionLiveEngineOverride)
+    }
+
+    func testUnknownLiveEngineChoicesAreIgnored() {
+        let viewModel = LiveTranscriptionViewModel()
+        viewModel.setSessionLiveEngineOverride("assemblyai")
+        viewModel.setSessionLiveEngineOverride("openai")
+        viewModel.setSessionLiveEngineOverride("")
+        XCTAssertEqual(viewModel.sessionLiveEngineOverride, "assemblyai")
+    }
+
+    func testLiveEngineChoiceCannotChangeWhileRecording() {
+        let viewModel = LiveTranscriptionViewModel()
+        viewModel.setSessionLiveEngineOverride("deepgram")
+        viewModel.isRecording = true
+        viewModel.setSessionLiveEngineOverride("local")
+        XCTAssertEqual(viewModel.sessionLiveEngineOverride, "deepgram")
+    }
+
+    func testSnapshotCarriesTheLiveEngineChoice() {
+        let viewModel = LiveTranscriptionViewModel()
+        let publisher = MeetingBridgePublisher(viewModel: viewModel)
+        let token = MeetingPresentationToken(id: UUID())
+        var events: [MeetingBridgeEvent] = []
+        publisher.attach(token: token, sink: { events.append($0) }, meterSink: { _ in })
+
+        publisher.sendSnapshot(to: token)
+        XCTAssertNil(events.last?.ui?.liveEngineOverride)
+
+        viewModel.sessionLiveEngineOverride = "basil_account"
+        publisher.sendSnapshot(to: token)
+        XCTAssertEqual(events.last?.ui?.liveEngineOverride, "basil_account")
     }
 }

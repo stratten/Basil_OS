@@ -4,6 +4,7 @@ import {
   userInteractionsFromTimeline,
   type UserInteraction,
 } from '../interaction/userInteractions';
+import { timelineEntryTime } from './timelineEntryTime';
 
 export type AgentRunStageKind = 'phase' | 'tool' | 'artifact' | 'interaction' | 'outcome';
 export type AgentRunStageState = 'active' | 'completed' | 'failed' | 'waiting' | 'recorded';
@@ -59,12 +60,20 @@ function stableChronologicalEntries(timeline: TimelineEntry[]): IndexedTimelineE
   return timeline
     .map((entry, index) => ({ entry, index }))
     .sort((left, right) => {
-      const leftTime = Date.parse(left.entry.timestamp);
-      const rightTime = Date.parse(right.entry.timestamp);
+      const leftTime = timelineEntryTime(left.entry.timestamp);
+      const rightTime = timelineEntryTime(right.entry.timestamp);
       if (Number.isFinite(leftTime) && Number.isFinite(rightTime) && leftTime !== rightTime) return leftTime - rightTime;
       if (Number.isFinite(leftTime) !== Number.isFinite(rightTime)) return Number.isFinite(leftTime) ? -1 : 1;
       return left.index - right.index;
     });
+}
+
+const APPROVAL_ACTIVITY_ENTRY_ID = /^approval-(?:wait|granted|denied)-(.+)$/;
+
+/** An approval's activity entries repeat what its recorded interaction already shows, so they are dropped when that interaction exists. */
+function isShadowedApprovalActivity(entry: TimelineEntry, interactionEntryIds: ReadonlySet<string>): boolean {
+  const approvalId = APPROVAL_ACTIVITY_ENTRY_ID.exec(entry.id || '')?.[1];
+  return approvalId !== undefined && interactionEntryIds.has(`user_interaction_${approvalId}`);
 }
 
 function phaseStageKey(entry: TimelineEntry): string {
@@ -162,11 +171,15 @@ export function deriveAgentRunPresentation(
     userInteractionsFromTimeline(timeline).map(interaction => [interaction.entryId, interaction]),
   );
 
+  const interactionEntryIds = new Set(interactionsByEntryId.keys());
+
   for (const { entry } of stableChronologicalEntries(timeline)) {
     if (entry.detail_kind === 'final_summary') {
       finalSummary = entry;
       continue;
     }
+
+    if (isShadowedApprovalActivity(entry, interactionEntryIds)) continue;
 
     const interaction = interactionsByEntryId.get(entry.id || entry.timestamp);
     if (interaction) {
@@ -288,6 +301,8 @@ const OVERVIEW_PHASES: Record<string, { key: string; label: string }> = {
   finalization: { key: 'execution', label: 'Completing task' },
 };
 
+const CONTINUING_TASK_LABEL = 'Continuing task';
+
 function overviewPhaseKey(stage: AgentRunStage): string {
   const phase = (stage.phase || '').trim().toLocaleLowerCase();
   return OVERVIEW_PHASES[phase]?.key || 'execution';
@@ -317,17 +332,35 @@ export function deriveAgentRunOverviewPresentation(
   let latestPhaseIndex: number | undefined;
   let artifactCount = 0;
   let outcome: AgentRunStage | undefined;
-  let pauseContinuation: { key: string; label: string; startedAt: string } | undefined;
+  // Set while work that follows an interaction has not started yet; the work then opens a new "Continuing task" chip below that interaction.
+  let continuation: { startedAt: string; resumable: boolean } | undefined;
+
+  const openContinuationChip = (key: string, stage: AgentRunStage, state: AgentRunStageState) => {
+    const baseId = `overview:${key}`;
+    phaseIndexes.set(key, stages.length);
+    latestPhaseIndex = stages.length;
+    continuation = undefined;
+    stages.push({
+      id: stages.some(existing => existing.id === baseId) ? `${baseId}:${stages.length}` : baseId,
+      kind: 'phase',
+      label: CONTINUING_TASK_LABEL,
+      state,
+      startedAt: stage.startedAt,
+      completedAt: stage.completedAt,
+      artifactCount: 0,
+    });
+  };
 
   for (const stage of presentation.stages) {
     if (stage.kind === 'phase') {
       const key = overviewPhaseKey(stage);
       const existingIndex = phaseIndexes.get(key);
-      if (existingIndex === undefined) {
+      if (continuation && existingIndex === undefined) {
+        openContinuationChip(key, stage, stage.state);
+      } else if (existingIndex === undefined) {
         const baseId = `overview:${key}`;
         phaseIndexes.set(key, stages.length);
         latestPhaseIndex = stages.length;
-        pauseContinuation = undefined;
         stages.push({
           id: stages.some(existing => existing.id === baseId) ? `${baseId}:${stages.length}` : baseId,
           kind: 'phase',
@@ -344,6 +377,14 @@ export function deriveAgentRunOverviewPresentation(
       continue;
     }
 
+    if (stage.kind === 'tool') {
+      // Tool work is not a chip of its own, but work that resumes after an interaction is what starts the next chip.
+      if (continuation) {
+        openContinuationChip('execution', stage, presentation.terminalState === 'active' ? 'active' : 'recorded');
+      }
+      continue;
+    }
+
     if (stage.kind === 'interaction') {
       stages.push({
         id: `overview:${stage.id}`,
@@ -355,23 +396,22 @@ export function deriveAgentRunOverviewPresentation(
         artifactCount: 0,
         interaction: stage.interaction,
       });
-      if (stage.interaction?.kind === 'pause' && latestPhaseIndex !== undefined) {
-        // Work after a pause belongs after it, so the phase that was running is closed off and a new one starts below the pause.
+      if (latestPhaseIndex !== undefined) {
+        // Any exchange with the user ends the work segment before it, so work that follows is shown below it instead of merging upward.
         phaseIndexes.clear();
-        const interrupted = stages[latestPhaseIndex];
-        pauseContinuation = stage.state === 'waiting'
-          ? undefined
-          : {
-            key: interrupted.id.replace(/^overview:/, '').split(':')[0],
-            label: interrupted.label,
-            startedAt: stage.completedAt || stage.startedAt,
-          };
+        continuation = {
+          startedAt: stage.completedAt || stage.startedAt,
+          resumable: stage.state !== 'waiting' && stage.state !== 'recorded',
+        };
       }
       continue;
     }
 
     if (stage.kind === 'artifact') {
       artifactCount += 1;
+      if (continuation) {
+        openContinuationChip('execution', stage, presentation.terminalState === 'active' ? 'active' : 'recorded');
+      }
       if (latestPhaseIndex !== undefined) {
         stages[latestPhaseIndex] = {
           ...stages[latestPhaseIndex],
@@ -397,13 +437,14 @@ export function deriveAgentRunOverviewPresentation(
     });
   }
 
-  if (pauseContinuation && presentation.terminalState === 'active') {
+  const pendingContinuation = continuation as { startedAt: string; resumable: boolean } | undefined;
+  if (pendingContinuation?.resumable && presentation.terminalState === 'active') {
     stages.push({
-      id: `overview:${pauseContinuation.key}:${stages.length}`,
+      id: `overview:execution:${stages.length}`,
       kind: 'phase',
-      label: pauseContinuation.label,
+      label: CONTINUING_TASK_LABEL,
       state: 'active',
-      startedAt: pauseContinuation.startedAt,
+      startedAt: pendingContinuation.startedAt,
       artifactCount: 0,
     });
   }

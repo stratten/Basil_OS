@@ -1,7 +1,9 @@
+@import '../../../shared/expandable-list.css';
 @import './components/shell-and-sidebar.css';
 @import './components/detail-tray/agent-run-rail.css';
 @import './components/detail-tray/agent-run-map.css';
 @import './components/detail-tray/execution-detail-tray.css';
+@import './components/detail-tray/run-overview-panel.css';
 @import './components/result-content.css';
 @import './components/turn-and-run-details.css';
 @import './components/detail-tray/agent-task-work-summary.css';

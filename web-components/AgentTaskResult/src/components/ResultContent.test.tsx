@@ -193,35 +193,86 @@ describe('ResultContent completed activity history', () => {
   });
 });
 
-describe('ResultContent model label', () => {
-  function modelLabelFor(task: DisplayableAgentTask): string | null {
-    return new DOMParser()
-      .parseFromString(renderToStaticMarkup(
-        <ResultContent agentTask={task} onRetry={() => {}} onContinue={() => {}} />,
-      ), 'text/html')
-      .querySelector('.result-model-label')
-      ?.textContent ?? null;
+describe('ResultContent result footer', () => {
+  function footerFor(task: DisplayableAgentTask): Document {
+    return new DOMParser().parseFromString(
+      renderToStaticMarkup(<ResultContent agentTask={task} onRetry={() => {}} onContinue={() => {}} />),
+      'text/html',
+    );
   }
 
-  it('shows the recorded answering model after the Result label', () => {
-    const markup = renderToStaticMarkup(
-      <ResultContent agentTask={{ ...completedTask, modelUsed: 'gpt-5-mini' }} onRetry={() => {}} onContinue={() => {}} />,
-    );
+  function modelLabelFor(task: DisplayableAgentTask): string | null {
+    return footerFor(task).querySelector('.result-footer__model')?.textContent ?? null;
+  }
 
-    expect(markup.indexOf('Result:')).toBeLessThan(markup.indexOf('result-model-label'));
-    expect(modelLabelFor({ ...completedTask, modelUsed: 'gpt-5-mini' })).toBe('gpt-5-mini');
+  it('places the timestamp then the model name in a row below the output, not in the Result heading', () => {
+    const doc = footerFor({ ...completedTask, modelUsed: 'gpt-5-mini' });
+    const footer = doc.querySelector('.result-footer');
+
+    expect(footer).not.toBeNull();
+    expect(doc.querySelector('.result-header')?.textContent).toBe('Result:');
+    expect(doc.querySelector('.result-header .result-footer__model')).toBeNull();
+    const children = Array.from(footer?.children ?? []).map(child => child.className);
+    expect(children).toEqual(['result-footer__time', 'result-footer__model']);
+    expect(footer?.querySelector('time')?.getAttribute('datetime')).toBe('2026-07-30T12:00:00.000Z');
+    const container = doc.querySelector('.result-container');
+    expect(container?.compareDocumentPosition(footer as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
-  it('shows nothing for a run that recorded no model and had no override', () => {
-    expect(modelLabelFor(completedTask)).toBeNull();
+  it('joins the time and the model with a dot', () => {
+    expect(modelLabelFor({ ...completedTask, modelUsed: 'gpt-5-mini' })).toBe('· gpt-5-mini');
+  });
+
+  it('shows only the time for a run that recorded no model and had no override', () => {
+    const doc = footerFor(completedTask);
+    expect(doc.querySelector('.result-footer__time')).not.toBeNull();
+    expect(doc.querySelector('.result-footer__model')).toBeNull();
   });
 
   it('falls back to the explicit override for a run that predates the recording', () => {
-    expect(modelLabelFor({ ...completedTask, originalModelId: 'local-qwen-3.5' })).toBe('local-qwen-3.5');
+    expect(modelLabelFor({ ...completedTask, originalModelId: 'local-qwen-3.5' })).toBe('· local-qwen-3.5');
   });
 
   it('prefers the recorded model over the override', () => {
-    expect(modelLabelFor({ ...completedTask, modelUsed: 'gpt-5-mini', originalModelId: 'local-qwen-3.5' })).toBe('gpt-5-mini');
+    expect(modelLabelFor({ ...completedTask, modelUsed: 'gpt-5-mini', originalModelId: 'local-qwen-3.5' })).toBe('· gpt-5-mini');
+  });
+
+  it('uses the latest timeline entry for the time and the task timestamp when the timeline is empty', () => {
+    const later = {
+      ...completedTask,
+      executionTimeline: [
+        ...completedTask.executionTimeline,
+        { id: 'step-2', type: 'step' as const, timestamp: '2026-07-30T12:05:00Z', content: 'Wrote the summary' },
+      ],
+    };
+    expect(footerFor(later).querySelector('time')?.getAttribute('datetime')).toBe('2026-07-30T12:05:00.000Z');
+    const fallback = footerFor({ ...completedTask, executionTimeline: [], timestamp: '2026-08-01T09:00:00.000Z' });
+    expect(fallback.querySelector('time')?.getAttribute('datetime')).toBe('2026-08-01T09:00:00.000Z');
+  });
+
+  it('renders no footer when there is no time, no model, and no fallback to report', () => {
+    expect(footerFor({ ...completedTask, executionTimeline: [], timestamp: undefined }).querySelector('.result-footer')).toBeNull();
+  });
+
+  it('moves the local fallback notice into the footer', () => {
+    const doc = footerFor({ ...completedTask, modelUsed: 'local-qwen-3.5', reasoningFallbackModelUsed: 'local-qwen-3.5' });
+    expect(doc.querySelector('.result-footer .result-footer__fallback')?.textContent).toBe('Answered with local fallback');
+    expect(doc.querySelector('.result-header')?.textContent).toBe('Result:');
+  });
+
+  it('hides the footer while the result is provisional or streaming and keeps the Provisional badge by the heading', () => {
+    const provisional = footerFor({ ...completedTask, modelUsed: 'gpt-5-mini', verificationStatus: 'pending' });
+    expect(provisional.querySelector('.result-footer')).toBeNull();
+    expect(provisional.querySelector('.result-header')?.textContent).toContain('Provisional');
+
+    const streaming = footerFor({ ...completedTask, modelUsed: 'gpt-5-mini', isStreaming: true });
+    expect(streaming.querySelector('.result-footer')).toBeNull();
+  });
+
+  it('labels a non-success footer under Partial Result', () => {
+    const doc = footerFor({ ...completedTask, status: 'failed', errorMessage: 'The tool crashed.', modelUsed: 'gpt-5-mini' });
+    expect(doc.querySelector('.result-header')?.textContent).toBe('Partial Result:');
+    expect(doc.querySelector('.result-footer__model')?.textContent).toBe('· gpt-5-mini');
   });
 });
 

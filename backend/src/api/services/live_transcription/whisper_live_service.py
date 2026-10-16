@@ -8,6 +8,7 @@ for improved buffer management and segment stitching.
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 import asyncio
+import functools
 import gc
 import json
 import logging
@@ -17,7 +18,7 @@ import os
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
-from api.services.meeting_cloud_asr.planner import cloud_transcription_available, create_cloud_session
+from api.services.meeting_cloud_asr.planner import cloud_transcription_available, create_cloud_session, normalize_engine_override
 
 from .live_stream_session import (
     NATIVE_LIVE_TRANSCRIPTION_TYPE,
@@ -292,8 +293,11 @@ class WhisperLiveService:
             (params.get("live_transcription") or "true").lower() != "false"
         )
 
+        # The engine chosen for this one recording; absent means the saved default applies.
+        engine_override = normalize_engine_override(params.get("live_engine"))
+
         # A native PCM socket whose settings select cloud transcription does not need the local engine to start; if the cloud connection later fails the session falls back to the local engine.
-        use_cloud_transcription = is_pcm and live_transcription_requested and cloud_transcription_available()
+        use_cloud_transcription = is_pcm and live_transcription_requested and cloud_transcription_available(engine_override)
 
         if live_transcription_requested and not use_cloud_transcription and await self._ensure_live_engine() is None:
             if self.last_initialize_error:
@@ -393,7 +397,7 @@ class WhisperLiveService:
             results_forwarder=lambda results_generator: self._handle_websocket_results(
                 websocket, results_generator, send_json=send_json
             ),
-            cloud_factory=create_cloud_session if is_pcm else None,
+            cloud_factory=functools.partial(create_cloud_session, engine_override=engine_override) if is_pcm else None,
         )
 
         # Track this connection

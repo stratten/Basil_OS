@@ -483,6 +483,32 @@ export default function ExecutionDetailTray({
   const focusedOverviewPresentation = overviewPresentation || deriveAgentRunOverviewPresentation(
     runPresentation || deriveAgentRunPresentation(timeline, terminalStatus, isProcessing),
   );
+  const focusedRunIsProcessing = runs.find(run => run.id === focusedRunId)?.isProcessing ?? isProcessing;
+  const overviewBody = runs.length > 1 ? (
+    <AgentRunMap
+      runs={runs}
+      focusedRunId={focusedRunId}
+      locationRunId={locationRunId}
+      currentRunId={currentRunId}
+      peekedRunIds={peekedRunIds}
+      focusedPresentation={focusedOverviewPresentation}
+      focusedIsProcessing={focusedRunIsProcessing}
+      artifacts={artifacts}
+      onPreviewArtifact={onPreviewArtifact}
+      onNavigateRun={onNavigateRun}
+      onTogglePeekRun={onTogglePeekRun}
+      onOpenRunDocuments={onOpenRunDocuments}
+      onJumpToLatestRun={onJumpToLatestRun}
+    />
+  ) : (
+    <RunCard
+      artifacts={artifacts}
+      presentation={focusedOverviewPresentation}
+      isProcessing={isProcessing}
+      onPreviewArtifact={onPreviewArtifact}
+      onSelectStage={stage => onNavigateRun(focusedRunId, navigationTargetForStage(stage))}
+    />
+  );
   return (
     <aside
       className={`execution-detail-tray${isRunPanel ? ' execution-detail-tray--run-panel' : ''}${previewArtifact ? ' execution-detail-tray--preview' : !detail ? ' execution-detail-tray--run-card' : ''}${isResizing ? ' execution-detail-tray--resizing' : ''}`}
@@ -508,6 +534,7 @@ export default function ExecutionDetailTray({
         onKeyDown={handleResizeKeyDown}
       />
       {previewArtifact ? (
+        <div className="tray-artifact-preview-scroll">
         <div className="tray-artifact-preview-topbar">
           <div className="tray-artifact-preview-panel-actions">
             <button type="button" className="tray-artifact-preview-close" onClick={closePreview} aria-label="Close preview" title="Close preview"><PreviewActionIcon action="close-preview" /></button>
@@ -521,45 +548,6 @@ export default function ExecutionDetailTray({
             />
           )}
         </div>
-      ) : (
-        <div className="detail-tray-header">
-          <div>
-            {detail && (
-              <div className="detail-tray-eyebrow">
-                {formatDetailKind(detail.detail_kind)}
-                {detail.streaming ? <span className="detail-tray-live">Live</span> : null}
-              </div>
-            )}
-            <div className="detail-tray-title">
-              {!detail ? 'Run overview' : detail.summary || 'Execution detail'}
-            </div>
-          </div>
-          <div className="detail-tray-header-actions">
-            <button
-              type="button"
-              className={isRunPanel ? 'tray-artifact-preview-close' : 'detail-tray-close'}
-              onClick={close}
-              aria-label={isRunPanel ? 'Collapse run panel' : 'Close detail tray'}
-              title={isRunPanel ? 'Collapse run panel' : undefined}
-            >
-              {isRunPanel ? <PreviewActionIcon action="collapse-panel" /> : '×'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {detail && !previewArtifact && (
-        <div className="detail-tray-follow-row">
-          <span>{followLatest ? 'Following latest' : 'Pinned to selected step'}</span>
-          {hasNewerDetail && (
-            <button className="detail-tray-link" onClick={onJumpToLatest}>
-              Jump to latest
-            </button>
-          )}
-        </div>
-      )}
-
-      {previewArtifact ? (
         <div className="detail-tray-content tray-artifact-preview">
           <div className="tray-artifact-preview-document-header">
             <div className="tray-artifact-preview-document-identity">
@@ -601,7 +589,48 @@ export default function ExecutionDetailTray({
             />
           )}
         </div>
+        </div>
       ) : detail ? (
+        <div className="detail-tray-header">
+          <div>
+            <div className="detail-tray-eyebrow">
+              {formatDetailKind(detail.detail_kind)}
+              {detail.streaming ? <span className="detail-tray-live">Live</span> : null}
+            </div>
+            <div className="detail-tray-title">
+              {detail.summary || 'Execution detail'}
+            </div>
+          </div>
+          <div className="detail-tray-header-actions">
+            <button
+              type="button"
+              className="detail-tray-close"
+              onClick={close}
+              aria-label="Close detail tray"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="detail-tray-header detail-tray-header--overview">
+          <button type="button" className="tray-artifact-preview-close" onClick={close} aria-label="Collapse run panel" title="Collapse run panel"><PreviewActionIcon action="collapse-panel" /></button>
+          <div className="detail-tray-title">Run overview</div>
+        </div>
+      )}
+
+      {detail && !previewArtifact && (
+        <div className="detail-tray-follow-row">
+          <span>{followLatest ? 'Following latest' : 'Pinned to selected step'}</span>
+          {hasNewerDetail && (
+            <button className="detail-tray-link" onClick={onJumpToLatest}>
+              Jump to latest
+            </button>
+          )}
+        </div>
+      )}
+
+      {previewArtifact ? null : detail ? (
         <div className="detail-tray-content">
           {detail.timestamp && (
             <div className="detail-tray-timestamp">
@@ -634,30 +663,8 @@ export default function ExecutionDetailTray({
             </>
           )}
         </div>
-      ) : runs.length > 1 ? (
-        <AgentRunMap
-          runs={runs}
-          focusedRunId={focusedRunId}
-          locationRunId={locationRunId}
-          currentRunId={currentRunId}
-          peekedRunIds={peekedRunIds}
-          focusedPresentation={focusedOverviewPresentation}
-          focusedIsProcessing={runs.find(run => run.id === focusedRunId)?.isProcessing ?? isProcessing}
-          artifacts={artifacts}
-          onPreviewArtifact={onPreviewArtifact}
-          onNavigateRun={onNavigateRun}
-          onTogglePeekRun={onTogglePeekRun}
-          onOpenRunDocuments={onOpenRunDocuments}
-          onJumpToLatestRun={onJumpToLatestRun}
-        />
       ) : (
-        <RunCard
-          artifacts={artifacts}
-          presentation={focusedOverviewPresentation}
-          isProcessing={isProcessing}
-          onPreviewArtifact={onPreviewArtifact}
-          onSelectStage={stage => onNavigateRun(focusedRunId, navigationTargetForStage(stage))}
-        />
+        <div className="run-overview-body">{overviewBody}</div>
       )}
     </aside>
   );

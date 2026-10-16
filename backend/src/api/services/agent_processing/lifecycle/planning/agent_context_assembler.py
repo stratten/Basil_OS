@@ -161,7 +161,10 @@ class AgentContextAssembler:
                 "For file operations, these explicit paths are authoritative and outrank the frontmost "
                 "window, current Terminal tab, IDE project, or screen title.\n"
                 "Do not use current-document detection for these paths unless the user explicitly asks "
-                "for the file currently open/frontmost on screen:\n"
+                "for the file currently open/frontmost on screen.\n"
+                "When the request says its result should be modeled after, based on, like, or similar to something attached, "
+                "READ these paths first with read-only tools (list the folder, open the key files) and design from what they actually contain. "
+                "Do not design from the name alone or from memory:\n"
                 + "\n".join(f"- {path}" for path in reference_paths)
             )
             sections.append(ContextSection("REFERENCE MATERIALS", body, priority=10))

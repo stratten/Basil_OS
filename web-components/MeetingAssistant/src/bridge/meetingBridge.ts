@@ -124,6 +124,11 @@ export function setLiveTranscription(enabled: boolean) {
   postToSwift({ type: 'setLiveTranscription', enabled });
 }
 
+/** Chooses the live transcription engine for the next recording only; null returns to the saved default. */
+export function setLiveEngine(engine: string | null) {
+  postToSwift({ type: 'setLiveEngine', engine });
+}
+
 export function selectMeeting(meetingId: string) {
   postToSwift({ type: 'selectMeeting', meetingId });
 }

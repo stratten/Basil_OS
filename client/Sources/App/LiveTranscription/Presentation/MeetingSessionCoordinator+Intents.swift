@@ -64,6 +64,13 @@ extension MeetingSessionCoordinator {
                 return
             }
             viewModel.setSessionLiveTranscriptionEnabled(enabled)
+        case .setLiveEngine:
+            let engine = payload["engine"] as? String
+            guard payload["engine"] is NSNull || payload["engine"] == nil || engine.map(LiveTranscriptionViewModel.liveEngineChoices.contains) == true else {
+                publishValidationError("invalid_live_engine", "The live transcription engine was not recognized.")
+                return
+            }
+            viewModel.setSessionLiveEngineOverride(engine)
         case .selectMeeting:
             guard let meetingId = payload["meetingId"] as? String,
                   viewModel.meetings.contains(where: { $0.id == meetingId }) else {

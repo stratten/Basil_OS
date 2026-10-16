@@ -104,6 +104,7 @@ function surface(
   onDetailTrayModeChange = () => {},
   source = displaySource,
   validationRunRequest: ValidationRunFocusRequest | null = null,
+  isProcessing = false,
 ) {
   return (
     <AgentTaskDetailSurface
@@ -119,7 +120,7 @@ function surface(
       followLatestDetail={false}
       hasNewerDetail={false}
       textFollowUpMode={false}
-      isProcessing={false}
+      isProcessing={isProcessing}
       captureState={null}
       onRetry={() => {}}
       onContinue={() => {}}
@@ -241,9 +242,65 @@ describe('AgentTaskDetailSurface artifact route', () => {
       await flushPreviewAvailability();
       expect(container.textContent).toContain('report.md');
       expect(container.querySelector('[aria-label="Close preview"]')).not.toBeNull();
+      expect(container.querySelector('.tray-artifact-preview')).not.toBeNull();
+      // The run overview is not embedded beside a document; a finished run shows no rail either.
+      expect(container.querySelector('.run-overview-body')).toBeNull();
+      expect(container.querySelector('.agent-run-rail')).toBeNull();
       expect(container.textContent).not.toContain('Operation');
       expect(container.textContent).not.toContain('Lifecycle');
       expect(container.textContent).not.toContain('Verification');
+    } finally {
+      act(() => {
+        root.unmount();
+      });
+      container.remove();
+    }
+  });
+
+  it('keeps the collapsed run rail left of an open document while the run is still working', async () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const working = { ...displaySource, status: 'processing' as const };
+
+    try {
+      act(() => {
+        root.render(surface('task-report', selectedDetail, true, () => {}, () => {}, working, null, true));
+      });
+      await flushPreviewAvailability();
+      const rail = container.querySelector('.agent-run-rail-presence');
+      const tray = container.querySelector('.execution-detail-tray');
+      expect(container.querySelector('.tray-artifact-preview')).not.toBeNull();
+      expect(rail).not.toBeNull();
+      expect(rail?.querySelector('button.agent-run-rail-toggle')).not.toBeNull();
+      expect(tray).not.toBeNull();
+      expect(rail!.compareDocumentPosition(tray!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(container.querySelector('.run-overview-body')).toBeNull();
+    } finally {
+      act(() => {
+        root.unmount();
+      });
+      container.remove();
+    }
+  });
+
+  it('drops the rail beside a document once the run is no longer working', async () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const working = { ...displaySource, status: 'processing' as const };
+
+    try {
+      act(() => {
+        root.render(surface('task-report', selectedDetail, true, () => {}, () => {}, working, null, true));
+      });
+      await flushPreviewAvailability();
+      expect(container.querySelector('.agent-run-rail-presence')).not.toBeNull();
+      act(() => {
+        root.render(surface('task-report', selectedDetail, true, () => {}, () => {}, displaySource, null, false));
+      });
+      await flushPreviewAvailability();
+      expect(container.querySelector('.agent-run-rail-presence')?.getAttribute('data-presence-phase') ?? 'gone').not.toBe('present');
     } finally {
       act(() => {
         root.unmount();
@@ -312,7 +369,7 @@ describe('AgentTaskDetailSurface artifact route', () => {
       act(() => {
         closePreview?.click();
       });
-      expect(container.querySelector('.detail-tray-title')?.textContent).toBe('Run overview');
+      expect(container.querySelector('.detail-tray-header--overview .detail-tray-title')?.textContent).toBe('Run overview');
       expect(container.querySelector('button.run-card-artifact')).not.toBeNull();
       expect(onDetailTrayModeChange).toHaveBeenCalledWith('overview');
     } finally {

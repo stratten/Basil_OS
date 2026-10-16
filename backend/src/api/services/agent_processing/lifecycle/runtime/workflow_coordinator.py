@@ -361,7 +361,12 @@ class WorkflowCoordinator:
             
             # Try to execute - may be interrupted by checkpoint request
             try:
-                workflow_wallclock_limit = float(context.get("workflow_wallclock_limit_seconds") or 1500)
+                from ..execution_graph.execution_limits import workflow_wallclock_limit_seconds
+
+                workflow_wallclock_limit = float(
+                    context.get("workflow_wallclock_limit_seconds")
+                    or workflow_wallclock_limit_seconds(context.get("model_id"))
+                )
                 from ..execution_graph.workflow_deadline import (
                     WorkflowDeadline,
                     run_within_workflow_deadline,

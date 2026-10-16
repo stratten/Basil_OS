@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -152,6 +153,58 @@ async def test_execution_approval_projects_and_clears_matching_conversation_atte
 
     assert await request == (True, False, "exact")
     clear_attention.assert_awaited_once_with("task-1", "approval-1")
+
+
+@pytest.mark.asyncio
+async def test_approval_activity_entries_use_sortable_iso_timestamps(monkeypatch):
+    repository = _Repository()
+    websocket = _WebSocket()
+    persisted = AsyncMock()
+    monkeypatch.setattr(
+        dependencies_module,
+        "get_sqlite_knowledge_service",
+        lambda: SimpleNamespace(execution_approval_repository=repository),
+    )
+    monkeypatch.setattr(interactive_approval, "persist_timeline_entry", persisted)
+    monkeypatch.setattr(interactive_approval, "publish_conversation_agent_attention", AsyncMock())
+    monkeypatch.setattr(interactive_approval, "clear_conversation_agent_attention", AsyncMock())
+    monkeypatch.setattr(
+        interactive_approval,
+        "resolve_tool_execution_settings",
+        lambda _context: SimpleNamespace(
+            approval_timeout_seconds=30,
+            timeout_behavior=ApprovalTimeoutBehavior.WAIT_FOREVER,
+        ),
+    )
+    manager = InteractiveApprovalManager(
+        websocket_manager=websocket,
+        generalizer=SimpleNamespace(generalize_command=lambda command: command),
+    )
+    request = asyncio.create_task(
+        manager.request_approval(
+            command="pwd",
+            decision=ExecutionApprovalDecision(needs_approval=True, reason="Not whitelisted", risk_level="low"),
+            context={"agent_task_id": "task-1"},
+        )
+    )
+    await websocket.published.wait()
+    await manager.handle_approval_response(
+        approval_id="approval-1",
+        approved=True,
+        agent_task_id="task-1",
+        expected_revision=0,
+    )
+    await request
+
+    activity_entries = [
+        call.args[1]
+        for call in persisted.await_args_list
+        if call.args[1].get("phase") == "approval_waiting"
+    ]
+    assert {entry["id"] for entry in activity_entries} == {"approval-wait-approval-1", "approval-granted-approval-1"}
+    for entry in activity_entries:
+        assert isinstance(entry["timestamp"], str)
+        assert datetime.fromisoformat(entry["timestamp"].replace("Z", "+00:00")).tzinfo is not None
 
 
 @pytest.mark.asyncio

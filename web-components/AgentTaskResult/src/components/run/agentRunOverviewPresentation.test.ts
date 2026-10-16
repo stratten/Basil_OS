@@ -132,8 +132,108 @@ describe('deriveAgentRunOverviewPresentation', () => {
     expect(overview.stages.map(item => [item.kind, item.label])).toEqual([
       ['phase', 'Completing task'],
       ['interaction', 'Basil asked'],
+      ['phase', 'Continuing task'],
     ]);
     expect(overview.stages[1]).toMatchObject({ state: 'completed', interaction: { response: 'La Fantaisie' } });
+  });
+
+  const approvalEntry = (id: string, timestamp: string, status = 'approved'): TimelineEntry => ({
+    id: `user_interaction_${id}`,
+    type: 'step',
+    timestamp,
+    content: 'Run a command',
+    detail_kind: 'user_interaction',
+    metadata: { user_interaction: { interaction_id: id, kind: 'approval', status, prompt: 'Run a command', asked_at: timestamp } },
+  });
+  const toolStartEntry = (id: string, timestamp: string): TimelineEntry => ({
+    id,
+    type: 'tool_start',
+    timestamp,
+    content: 'Running a tool',
+    detail_kind: 'tool_input',
+    correlation_id: id,
+  });
+  // Stored by the backend as epoch seconds before it wrote ISO timestamps; these used to sort after everything else.
+  const legacyApprovalActivity = (id: string, epochSeconds: number, title: string): TimelineEntry => ({
+    id,
+    type: 'step',
+    timestamp: epochSeconds as unknown as string,
+    content: title,
+    metadata: { progress_phase: 'approval_waiting' },
+  });
+
+  it('alternates work and approvals in the order they happened, labeling later work as continuing', () => {
+    const presentation = deriveAgentRunPresentation([
+      executionEntry('exec-1', '2026-10-04T23:39:00Z'),
+      toolStartEntry('tool-1', '2026-10-04T23:39:30Z'),
+      approvalEntry('a1', '2026-10-04T23:40:00Z'),
+      toolStartEntry('tool-2', '2026-10-04T23:41:00Z'),
+      toolStartEntry('tool-3', '2026-10-04T23:41:30Z'),
+      approvalEntry('a2', '2026-10-04T23:42:00Z'),
+      toolStartEntry('tool-4', '2026-10-04T23:43:00Z'),
+    ], 'processing', true);
+    const overview = deriveAgentRunOverviewPresentation(presentation);
+
+    expect(overview.stages.map(item => [item.kind, item.label])).toEqual([
+      ['phase', 'Completing task'],
+      ['interaction', 'Basil asked to run'],
+      ['phase', 'Continuing task'],
+      ['interaction', 'Basil asked to run'],
+      ['phase', 'Continuing task'],
+    ]);
+    expect(new Set(overview.stages.map(item => item.id)).size).toBe(5);
+    expect(overview.stages[4]).toMatchObject({ state: 'active' });
+    expect(overview.stages[2]).toMatchObject({ state: 'completed' });
+  });
+
+  it('shows a continuing chip right after a resolved approval while the run is still working', () => {
+    const presentation = deriveAgentRunPresentation([
+      executionEntry('exec-1', '2026-10-04T23:39:00Z'),
+      approvalEntry('a1', '2026-10-04T23:40:00Z'),
+    ], 'processing', true);
+
+    expect(deriveAgentRunOverviewPresentation(presentation).stages.map(item => [item.kind, item.label, item.state])).toEqual([
+      ['phase', 'Completing task', 'completed'],
+      ['interaction', 'Basil asked to run', 'completed'],
+      ['phase', 'Continuing task', 'active'],
+    ]);
+  });
+
+  it('keeps a pending approval last without inventing a continuing chip', () => {
+    const presentation = deriveAgentRunPresentation([
+      executionEntry('exec-1', '2026-10-04T23:39:00Z'),
+      approvalEntry('a1', '2026-10-04T23:40:00Z', 'waiting'),
+    ], 'processing', true);
+
+    expect(deriveAgentRunOverviewPresentation(presentation).stages.map(item => item.kind)).toEqual(['phase', 'interaction']);
+  });
+
+  it('drops approval activity entries that a recorded approval already represents', () => {
+    const presentation = deriveAgentRunPresentation([
+      executionEntry('exec-1', '2026-10-04T23:39:00Z'),
+      legacyApprovalActivity('approval-wait-a1', 1_759_621_190, 'Waiting for your approval'),
+      approvalEntry('a1', '2026-10-04T23:40:00Z'),
+      legacyApprovalActivity('approval-granted-a1', 1_759_621_250, 'Approval granted'),
+    ], 'processing', true);
+
+    expect(presentation.stages.map(item => item.id)).toEqual([
+      expect.stringContaining('phase:execution'),
+      'interaction:user_interaction_a1',
+    ]);
+  });
+
+  it('keeps approval activity entries for tasks that have no recorded approval, ordered by their numeric time', () => {
+    const presentation = deriveAgentRunPresentation([
+      legacyApprovalActivity('approval-granted-old', Date.parse('2026-10-04T23:42:00Z') / 1000, 'Approval granted'),
+      executionEntry('exec-1', '2026-10-04T23:39:00Z'),
+      legacyApprovalActivity('approval-wait-old', Date.parse('2026-10-04T23:40:00Z') / 1000, 'Waiting for your approval'),
+    ], 'completed', false);
+
+    expect(presentation.stages.filter(item => item.kind === 'phase').map(item => item.label)).toEqual([
+      'Working',
+      'Waiting for your approval',
+      'Approval granted',
+    ]);
   });
 
   it('settles a pending exchange once the run is no longer waiting on the user', () => {

@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 
 from api.services.agent_processing.lifecycle.execution_graph import agent_loop_runner as runner
 from api.services.agent_processing.lifecycle.execution_graph.agent_conversation_thread import StoredConversationThread
-from api.services.agent_processing.lifecycle.execution_graph.agent_loop_nudges import SCRIPTING_FLOOR_PROMPT
+from api.services.agent_processing.lifecycle.execution_graph.agent_loop_nudges import HANDOFF_CHECK_PROMPT, SCRIPTING_FLOOR_PROMPT
 from api.services.agent_processing.lifecycle.execution_graph.conversation_turns import is_turn_input, mark_turn_input
 from api.services.agent_processing.lifecycle.planning.agent_context_assembler import CONVERSATION_THREAD_SEEDED_KEY
 from api.services.agent_processing.lifecycle.execution_graph.execution_limits import active_time_limit_message
@@ -267,7 +267,7 @@ async def test_active_time_budget_stops_the_run(monkeypatch):
         await asyncio.sleep(5)
         return "too late"
 
-    monkeypatch.setattr(runner, "AGENT_RUN_MAX_ACTIVE_SECONDS", 0.2)
+    monkeypatch.setattr(runner, "agent_run_max_active_seconds", lambda _model_id=None: 0.2)
     tools = [_tool("shell_service_execute_command", slow)]
     model = ScriptedChatModel(
         responses=[AIMessage(content="", tool_calls=[_call("shell_service_execute_command", "call-slow", text="sleep")])]
@@ -325,6 +325,96 @@ async def test_scripting_floor_nudges_once_after_off_surface_call():
     ]
     assert len(floor_messages) == 1
     assert run.agent_output == "Done with a script."
+
+
+def _handoff_messages(call: list[Any]) -> list[Any]:
+    return [message for message in call if isinstance(message, HumanMessage) and message.content == HANDOFF_CHECK_PROMPT]
+
+
+@pytest.mark.asyncio
+async def test_handoff_check_asks_once_after_work_before_the_final_answer(handoff_check_enabled):
+    tools = [_tool("browser_inspect"), _tool("request_user_input")]
+    model = ScriptedChatModel(
+        responses=[
+            AIMessage(content="", tool_calls=[_call("browser_inspect", "call-inspect", text="body")]),
+            AIMessage(content="All done."),
+            AIMessage(content="Not done: the floating chip is missing, and I could not build it."),
+        ]
+    )
+
+    run = await runner.run_agent_loop(_request(model, _state(tools)))
+
+    assert len(model.calls) == 3
+    assert _handoff_messages(model.calls[1]) == []
+    assert len(_handoff_messages(model.calls[2])) == 1
+    assert run.agent_output == "Not done: the floating chip is missing, and I could not build it."
+
+
+@pytest.mark.asyncio
+async def test_handoff_check_does_not_repeat_when_the_agent_answers_again(handoff_check_enabled):
+    tools = [_tool("browser_inspect"), _tool("request_user_input")]
+    model = ScriptedChatModel(
+        responses=[
+            AIMessage(content="", tool_calls=[_call("browser_inspect", "call-inspect", text="body")]),
+            AIMessage(content="First answer."),
+            AIMessage(content="Second answer."),
+        ]
+    )
+
+    run = await runner.run_agent_loop(_request(model, _state(tools)))
+
+    assert len(model.calls) == 3
+    assert run.agent_output == "Second answer."
+
+
+@pytest.mark.asyncio
+async def test_handoff_check_is_skipped_when_no_tool_was_used(handoff_check_enabled):
+    model = ScriptedChatModel(responses=[AIMessage(content="Paris.")])
+
+    run = await runner.run_agent_loop(_request(model, _state([_tool("request_user_input")])))
+
+    assert len(model.calls) == 1
+    assert run.agent_output == "Paris."
+
+
+@pytest.mark.asyncio
+async def test_handoff_check_is_skipped_for_a_terminal_run(handoff_check_enabled):
+    from api.services.agent_processing.lifecycle.execution_graph.agent_loop_model_recovery import AgentRunFlags
+    from api.services.agent_processing.lifecycle.execution_graph.agent_loop_nudges import CompletionNudgeMiddleware
+    from api.services.agent_processing.lifecycle.execution_graph.agent_loop_tool_surface import ToolSurfaceTracker
+
+    flags = AgentRunFlags(empty_generation_failure=True)
+    middleware = CompletionNudgeMiddleware(ToolSurfaceTracker([]), flags)
+
+    outcome = await middleware.aafter_model({"messages": [AIMessage(content="Finished.")]}, None)
+
+    assert outcome is None
+    assert middleware.handoff_check_used is False
+
+
+@pytest.mark.asyncio
+async def test_scripting_floor_takes_precedence_and_the_handoff_check_still_follows(handoff_check_enabled):
+    tools = [
+        _tool("browser_inspect"),
+        _tool("applescript_service_execute_applescript"),
+        _tool("request_user_input"),
+    ]
+    model = ScriptedChatModel(
+        responses=[
+            AIMessage(content="", tool_calls=[_call("browser_inspect", "call-browser", text="body")]),
+            AIMessage(content="I could not do it."),
+            AIMessage(content="Done with a script."),
+            AIMessage(content="Confirmed: every requirement is covered."),
+        ]
+    )
+
+    run = await runner.run_agent_loop(_request(model, _state(tools)))
+
+    assert len(model.calls) == 4
+    assert any(message.content == SCRIPTING_FLOOR_PROMPT for message in model.calls[2] if isinstance(message, HumanMessage))
+    assert _handoff_messages(model.calls[2]) == []
+    assert len(_handoff_messages(model.calls[3])) == 1
+    assert run.agent_output == "Confirmed: every requirement is covered."
 
 
 @pytest.mark.asyncio

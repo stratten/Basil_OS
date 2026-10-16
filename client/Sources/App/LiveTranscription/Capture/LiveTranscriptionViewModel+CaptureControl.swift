@@ -191,6 +191,16 @@ extension LiveTranscriptionViewModel {
         }
     }
 
+    /// Engines the Notetaker may choose for a single recording; the backend validates the same set.
+    static let liveEngineChoices: Set<String> = ["local", "deepgram", "assemblyai", "basil_account"]
+
+    /// Chooses the live transcription engine for the next recording only. Nil returns to the saved default. Changing it while recording is ignored because the sockets already opened with their engine.
+    func setSessionLiveEngineOverride(_ engine: String?) {
+        guard !isRecording else { return }
+        if let engine, !Self.liveEngineChoices.contains(engine) { return }
+        sessionLiveEngineOverride = engine
+    }
+
     /// Applies the saved "live transcription by default" setting unless the user already chose for this meeting.
     func loadLiveTranscriptionDefault() async {
         let port = APIClient.shared.currentPort

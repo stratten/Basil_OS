@@ -27,6 +27,11 @@ from .command_generalization import CommandGeneralizer
 from .pattern_matcher import PatternMatcher
 from .whitelist_manager import WhitelistManager
 from .interactive_approval import InteractiveApprovalManager
+from .explanation_gate import (
+    EXPLANATION_REQUIRED_MESSAGE,
+    EXPLANATION_REQUIRED_STATUS,
+    should_request_explanation,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -203,6 +208,16 @@ class ExecutionApprovalService:
                 approved=False,
                 status="approval_unavailable",
                 reason="Command requires approval but no interactive WebSocket approval channel is available.",
+                decision=decision,
+            )
+
+        if should_request_explanation(command, context or {}):
+            logger.info("Asking the agent to explain a command before prompting the user: %s", command[:120])
+            return ExecutionApprovalOutcome(
+                approved=False,
+                pattern_type=EXPLANATION_REQUIRED_STATUS,
+                status=EXPLANATION_REQUIRED_STATUS,
+                reason=EXPLANATION_REQUIRED_MESSAGE,
                 decision=decision,
             )
 

@@ -171,7 +171,9 @@ export function AgentTaskDetailSurface({
     [runs],
   );
   const trayPresence = usePresenceTransition(detailTrayOpen);
-  const railPresence = usePresenceTransition(!detailTrayOpen && hasRunRailContent);
+  // While a run is still working, the collapsed rail stays visible beside an open document so the current status is never lost; the run overview itself is not shown there.
+  const showRailBesidePreview = Boolean(previewArtifact) && isProcessing;
+  const railPresence = usePresenceTransition((!detailTrayOpen || showRailBesidePreview) && hasRunRailContent);
   const approvalVisible = Boolean(
     selectedAgent?.showApprovalPrompt && selectedAgent.approvalRequests.length,
   );

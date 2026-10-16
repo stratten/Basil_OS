@@ -432,6 +432,8 @@ struct MeetingUIStateDTO: Codable, Equatable {
     var microphoneInputRecoveryMessage: String?
     var isCapturePaused: Bool
     var isLiveTranscriptionEnabled: Bool
+    /// The engine chosen for this one recording, or nil when the saved default applies.
+    var liveEngineOverride: String?
     /// Loopback backend port for the Companion web client (`APIClient.shared.currentPort`); 0 or less means unavailable.
     var companionApiPort: Int
     /// The meeting being recorded right now (microphone id, else system-audio id); nil when not recording.
@@ -541,6 +543,7 @@ enum MeetingBridgeIntent: String {
     case resumeRecording // {}
     case cancelRecording // {}
     case setLiveTranscription // { enabled: Bool }
+    case setLiveEngine // { engine: String? } (nil restores the saved default)
     case selectMeeting // { meetingId: String }
     case deleteMeeting // { meetingId: String }
     case setSidebarCollapsed // { collapsed: Bool }

@@ -14,12 +14,16 @@ import { diffLines, type DiffLine } from './diffLines';
 import { DiffView } from './DiffView';
 import type { ArtifactPreviewTransport } from './transport/artifactPreviewTransport';
 import CrossfadeStack from '@shared/CrossfadeStack';
+import ExpandableList from '@shared/ExpandableList';
 import type { AgentTaskRunFocusSummary } from '../run/agentTaskRunFocus';
 import { useLiveHtmlPreview } from './livePreview/useLiveHtmlPreview';
 import { LiveHtmlPreviewSurface } from './livePreview/LiveHtmlPreviewSurface';
 import { buildInlineStaticPreviewUrl } from '../../services/bridge';
 import { getBaseUrl } from '../../services/api';
 import type { AgentTaskEventSubscriber } from '../../services/websocket';
+
+// A run that produces many documents would otherwise wrap its tab strip into rows that cramp the preview below it.
+const DOCUMENT_TABS_COLLAPSED_ROWS = 2;
 
 const TEXT_DIFF_KINDS = new Set(['markdown', 'html', 'text', 'code', 'json', 'yaml', 'xml']);
 
@@ -50,25 +54,35 @@ export function ArtifactReviewDocumentTabs({
   activeArtifactId,
   onSelectArtifact,
 }: ArtifactReviewDocumentTabsProps) {
+  const activeIndex = artifacts.findIndex(artifact => artifact.artifactId === activeArtifactId);
   return (
-    <div className="artifact-review-tabs" role="tablist" aria-label="Documents produced this turn">
-      {artifacts.map(artifact => (
-        <button
-          key={artifact.artifactId}
-          type="button"
-          role="tab"
-          aria-selected={artifact.artifactId === activeArtifactId}
-          className={`artifact-review-tab${artifact.artifactId === activeArtifactId ? ' is-active' : ''}`}
-          onClick={() => onSelectArtifact(artifact.artifactId)}
-          data-tooltip={artifact.displayName}
-          data-tooltip-when="truncated"
-        >
-          <span className="artifact-review-tab-name">{artifact.displayName}</span>
-          {artifact.review && artifact.review.revisionCount > 1 && (
-            <span className="artifact-review-tab-badge">v{artifact.review.revisionCount}</span>
-          )}
-        </button>
-      ))}
+    <div className="artifact-review-tabs">
+      <ExpandableList
+        collapsedRows={DOCUMENT_TABS_COLLAPSED_ROWS}
+        keepVisibleIndex={activeIndex >= 0 ? activeIndex : undefined}
+        contentClassName="artifact-review-tabs__items"
+        contentRole="tablist"
+        contentAriaLabel="Documents produced this turn"
+        showAllLabel={total => `Show all ${total} documents`}
+      >
+        {artifacts.map(artifact => (
+          <button
+            key={artifact.artifactId}
+            type="button"
+            role="tab"
+            aria-selected={artifact.artifactId === activeArtifactId}
+            className={`artifact-review-tab${artifact.artifactId === activeArtifactId ? ' is-active' : ''}`}
+            onClick={() => onSelectArtifact(artifact.artifactId)}
+            data-tooltip={artifact.displayName}
+            data-tooltip-when="truncated"
+          >
+            <span className="artifact-review-tab-name">{artifact.displayName}</span>
+            {artifact.review && artifact.review.revisionCount > 1 && (
+              <span className="artifact-review-tab-badge">v{artifact.review.revisionCount}</span>
+            )}
+          </button>
+        ))}
+      </ExpandableList>
     </div>
   );
 }

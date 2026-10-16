@@ -1,4 +1,5 @@
 import type { ThinkingSegment, TimelineEntry } from '../../types';
+import { timelineEntryTime } from '../run/timelineEntryTime';
 
 export type UserInteractionKind =
   | 'clarification'
@@ -134,8 +135,8 @@ export function userInteractionsFromTimeline(
   return interactions
     .map((interaction, index) => ({ interaction, index }))
     .sort((left, right) => {
-      const leftTime = Date.parse(left.interaction.askedAt);
-      const rightTime = Date.parse(right.interaction.askedAt);
+      const leftTime = timelineEntryTime(left.interaction.askedAt);
+      const rightTime = timelineEntryTime(right.interaction.askedAt);
       if (Number.isFinite(leftTime) && Number.isFinite(rightTime) && leftTime !== rightTime) return leftTime - rightTime;
       return left.index - right.index;
     })
@@ -150,11 +151,11 @@ export function splitReasoningAroundInteractions(
   const slots: ThinkingSegment[][] = interactions.map(() => []);
   slots.push([]);
   for (const segment of segments) {
-    const recordedTime = segment.recordedAt ? Date.parse(segment.recordedAt) : Number.NaN;
+    const recordedTime = segment.recordedAt ? timelineEntryTime(segment.recordedAt) : Number.NaN;
     let slot = interactions.length;
     if (Number.isFinite(recordedTime)) {
       const nextIndex = interactions.findIndex(interaction => {
-        const askedTime = Date.parse(interaction.askedAt);
+        const askedTime = timelineEntryTime(interaction.askedAt);
         return Number.isFinite(askedTime) && recordedTime <= askedTime;
       });
       slot = nextIndex === -1 ? interactions.length : nextIndex;

@@ -14,6 +14,7 @@ from api.core.security.execution_approval_risk import (
     updated_whitelist_pattern_risk,
 )
 from api.services.agent_processing.tools.safety import ExecutionApprovalService
+from api.services.agent_processing.tools.safety.approval_presentation import record_whitelist_eligibility
 
 from .execution_models import (
     AddWhitelistRequest,
@@ -117,7 +118,13 @@ async def process_approval_decision(
             request.approval_id
         )
 
+        remember_blocked_reason = ""
         if request.approved and request.remember_choice and durable_approval is not None:
+            eligibility = record_whitelist_eligibility(durable_approval)
+            if not eligibility.eligible:
+                remember_blocked_reason = eligibility.reason
+
+        if request.approved and request.remember_choice and durable_approval is not None and not remember_blocked_reason:
             approved_command = str(durable_approval["command"])
             pattern = await approval_service.add_to_whitelist(
                 command=approved_command,
@@ -128,6 +135,8 @@ async def process_approval_decision(
             )
             pattern_id = pattern.id
             message = "Command approved and added to whitelist"
+        elif request.approved and remember_blocked_reason:
+            message = f"Command approved for this execution only. {remember_blocked_reason}"
         elif request.approved:
             message = "Command approved for this execution"
         else:
@@ -350,6 +359,8 @@ async def add_whitelist_pattern(
         
     except HTTPException:
         raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error adding whitelist pattern: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to add pattern: {str(e)}")
@@ -408,6 +419,8 @@ async def update_whitelist_pattern(
         
     except HTTPException:
         raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"❌ [WHITELIST] Error updating pattern: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to update pattern: {str(e)}")

@@ -194,4 +194,95 @@ describe('App', () => {
     expect(container.querySelector('.voice-capture-body__timer')?.textContent).toBe('7');
     expect(container.textContent).toContain('Press ⌥P when done');
   });
+
+  describe('collapse', () => {
+    function collapseButton(label: string): HTMLButtonElement {
+      return container.querySelector(`[aria-label="${label}"]`) as HTMLButtonElement;
+    }
+
+    function typeDraft(text: string): HTMLElement {
+      const editor = container.querySelector('.text-capture-editor') as HTMLElement;
+      expect(editor).not.toBeNull();
+      editor.textContent = text;
+      return editor;
+    }
+
+    it('hides the content without unmounting it, so the typed draft survives collapse and expand', () => {
+      vi.useFakeTimers();
+      try {
+        hydrate(baseTextSnapshot());
+        const editor = typeDraft('Requirements for the Denver workspace');
+
+        act(() => collapseButton('Collapse window').click());
+        expect(postMessage).toHaveBeenCalledWith({ type: 'toggleWindowCollapse', collapsed: true });
+        const content = container.querySelector('.capture-content') as HTMLElement;
+        expect(content.classList.contains('is-collapsed')).toBe(true);
+        expect(content.getAttribute('aria-hidden')).toBe('true');
+        expect(content.hasAttribute('inert')).toBe(true);
+        expect(container.querySelector('.text-capture-editor')).toBe(editor);
+        expect(editor.isConnected).toBe(true);
+        expect(editor.textContent).toBe('Requirements for the Denver workspace');
+        expect(postMessage).not.toHaveBeenCalledWith({ type: 'cancelCapture' });
+
+        act(() => collapseButton('Expand window').click());
+        expect(postMessage).toHaveBeenLastCalledWith({ type: 'toggleWindowCollapse', collapsed: false });
+        act(() => { vi.advanceTimersByTime(1500); });
+        expect(container.querySelector('.capture-content')?.classList.contains('is-collapsed')).toBe(false);
+        expect(container.querySelector('.text-capture-editor')).toBe(editor);
+        expect(editor.textContent).toBe('Requirements for the Denver workspace');
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('toggles with Cmd+E in text entry', () => {
+      hydrate(baseTextSnapshot());
+      act(() => {
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', metaKey: true, bubbles: true, cancelable: true }));
+      });
+      expect(postMessage).toHaveBeenCalledWith({ type: 'toggleWindowCollapse', collapsed: true });
+      act(() => {
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', metaKey: true, bubbles: true, cancelable: true }));
+      });
+      expect(postMessage).toHaveBeenLastCalledWith({ type: 'toggleWindowCollapse', collapsed: false });
+    });
+
+    it('ignores Cmd+E in voice mode', () => {
+      hydrate(baseVoiceSnapshot());
+      act(() => {
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', metaKey: true, bubbles: true, cancelable: true }));
+      });
+      expect(postMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'toggleWindowCollapse' }));
+    });
+
+    it('offers no collapse control in voice mode', () => {
+      hydrate(baseVoiceSnapshot());
+      expect(collapseButton('Collapse window')).toBeNull();
+    });
+
+    it.each([
+      ['a switch to voice capture', () => baseVoiceSnapshot({ revision: 500 })],
+      ['a submission in flight', () => baseTextSnapshot({ revision: 500, isSubmittingTextPrompt: true })],
+      ['a finished capture', () => baseTextSnapshot({ revision: 500, hasCompleted: true })],
+    ])('expands a collapsed window for %s', (_label, next) => {
+      hydrate(baseTextSnapshot());
+      act(() => collapseButton('Collapse window').click());
+      postMessage.mockClear();
+
+      act(() => {
+        window.basilAgentTaskCapture!.onSnapshot(next());
+      });
+
+      expect(postMessage).toHaveBeenCalledWith({ type: 'toggleWindowCollapse', collapsed: false });
+    });
+
+    it('does not send an expand when nothing is collapsed', () => {
+      hydrate(baseTextSnapshot());
+      postMessage.mockClear();
+      act(() => {
+        window.basilAgentTaskCapture!.onSnapshot(baseVoiceSnapshot({ revision: 500 }));
+      });
+      expect(postMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'toggleWindowCollapse' }));
+    });
+  });
 });

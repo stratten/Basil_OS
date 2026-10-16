@@ -14,6 +14,7 @@ from api.core.knowledge.sqlite.sqlite_knowledge_service_component_services.execu
     ExecutionApprovalPersistenceError,
 )
 from api.core.models.preferences import ApprovalTimeoutBehavior
+from api.services.agent_processing.lifecycle.runtime.agent_timeline_contract import timeline_timestamp
 from api.services.agent_processing.lifecycle.runtime.timeline_persistence import persist_timeline_entry
 from api.services.agent_processing.lifecycle.runtime.user_interaction_timeline import (
     record_user_interaction_asked,
@@ -27,6 +28,7 @@ from api.services.conversation.conversation_agent_turn_lifecycle import (
 from api.services.websocket_connection_manager import broadcast_json_text
 
 from .approval_override import resolve_tool_execution_settings
+from .approval_presentation import approval_presentation_fields, record_whitelist_eligibility
 from .models import ExecutionApprovalDecision
 
 logger = logging.getLogger(__name__)
@@ -86,6 +88,7 @@ class InteractiveApprovalManager:
             risk_assessor = RiskAssessor()
             risk_metadata = risk_assessor.get_risk_metadata(command)
 
+            presentation = approval_presentation_fields(command, generalized_pattern, context)
             render_context = {
                 "cwd": context.get("cwd"),
                 "source": context.get("source", "shell_service"),
@@ -94,6 +97,7 @@ class InteractiveApprovalManager:
                     "Command requires approval before execution",
                 ),
                 "risk_metadata": risk_metadata,
+                **presentation,
             }
             execution_type = context.get("execution_type", "shell")
             script_content = context.get("script_content")
@@ -134,7 +138,7 @@ class InteractiveApprovalManager:
                         "title": "Waiting for your approval",
                         "phase": "approval_waiting",
                         "state": "waiting",
-                        "timestamp": time.time(),
+                        "timestamp": timeline_timestamp(),
                     },
                 )
             except Exception:
@@ -179,11 +183,12 @@ class InteractiveApprovalManager:
                     "cwd": render_context.get("cwd"),
                     "source": render_context.get("source"),
                     "description": render_context.get("description"),
+                    **presentation,
                 },
                 "options": {
                     "risk_level": decision.risk_level,
                     "reason": decision.reason,
-                    "show_remember": True,
+                    "show_remember": bool(presentation["whitelist"]["eligible"]),
                 },
                 "risk_metadata": risk_metadata,
                 "revision": persisted_revision,
@@ -356,6 +361,10 @@ class InteractiveApprovalManager:
                 f"(status={durable_record['status']!r})"
             )
 
+        if remember and not record_whitelist_eligibility(durable_record).eligible:
+            logger.warning("Ignoring remember choice for approval %s: its pattern can never be remembered", approval_id)
+            remember = False
+
         task_id = str(durable_record["agent_task_id"])
         if agent_task_id and durable_record["agent_task_id"] != agent_task_id:
             raise ExecutionApprovalConflictError(
@@ -400,7 +409,7 @@ class InteractiveApprovalManager:
                         "title": "Approval granted" if approved else "Approval denied",
                         "phase": "approval_waiting",
                         "state": "completed" if approved else "failed",
-                        "timestamp": time.time(),
+                        "timestamp": timeline_timestamp(),
                     },
                 )
                 await record_user_interaction_resolved(

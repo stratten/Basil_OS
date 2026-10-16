@@ -23,6 +23,10 @@ from api.core.security.protected_runtime_paths import (
 )
 from api.services.agent_processing.shared.agent_runtime_context import get_current_agent_context
 from api.services.agent_processing.tools.safety import ExecutionApprovalService
+from api.services.agent_processing.tools.safety.explanation_gate import (
+    EXPLANATION_REQUIRED_MESSAGE,
+    EXPLANATION_REQUIRED_STATUS,
+)
 from .script_outcome_review import (
     build_outcome_review_error,
     detect_semantic_script_error,
@@ -308,7 +312,9 @@ class GenericAppleScriptService:
         script_content: str,
         context: Optional[Dict[str, Any]] = None,
         save_successful_scripts: bool = True,
-        skip_approval_check: bool = False
+        skip_approval_check: bool = False,
+        purpose: Optional[str] = None,
+        whitelist_advice: Optional[Dict[str, Any]] = None,
     ) -> AppleScriptResult:
         """
         Execute AppleScript content and return results.
@@ -318,6 +324,8 @@ class GenericAppleScriptService:
             context: Optional context information for logging/debugging
             save_successful_scripts: Whether to save successful scripts for future reuse
             skip_approval_check: Skip command approval check (for internal/trusted calls)
+            purpose: The agent's plain-language explanation of what the script does, shown on the approval card
+            whitelist_advice: The agent's advice on whether the user should let Basil remember this approval
             
         Returns:
             AppleScriptResult with execution details
@@ -391,6 +399,9 @@ class GenericAppleScriptService:
                             "description": f"Execute AppleScript: {task_desc}",
                             "script_content": script_content,
                             "execution_type": "applescript",
+                            "purpose": purpose,
+                            "whitelist_advice": whitelist_advice,
+                            "purpose_required": True,
                         }
                         agent_task_id = self._resolve_agent_task_id(context)
                         if isinstance(agent_task_id, str) and agent_task_id.strip():
@@ -400,6 +411,15 @@ class GenericAppleScriptService:
                             approval_summary,
                             context=approval_context,
                         )
+
+                        if not approved and pattern_type == EXPLANATION_REQUIRED_STATUS:
+                            return AppleScriptResult(
+                                success=False,
+                                output="",
+                                error=EXPLANATION_REQUIRED_MESSAGE,
+                                script_content=script_content,
+                                execution_duration=time.time() - start_time,
+                            )
 
                         if not approved:
                             self.logger.warning(f"AppleScript approval denied")
@@ -636,7 +656,9 @@ class GenericAppleScriptService:
         self,
         task_description: str,
         target_application: Optional[str] = None,
-        context_data: Optional[Dict[str, Any]] = None
+        context_data: Optional[Dict[str, Any]] = None,
+        purpose: Optional[str] = None,
+        whitelist_advice: Optional[Dict[str, Any]] = None,
     ) -> AppleScriptResult:
         """
         Generate and execute AppleScript dynamically for ANY task.
@@ -669,7 +691,9 @@ class GenericAppleScriptService:
                 "target_application": target_application,
                 "context_data": context_data,
                 "generation_method": "template"
-            }
+            },
+            purpose=purpose,
+            whitelist_advice=whitelist_advice,
         )
 
     async def _generate_script_for_task(
@@ -830,7 +854,9 @@ return "ERROR: Could not generate AppleScript for this task: {task_description}"
                     "parameters": {
                         "script_content": {"type": "str", "required": True, "description": "AppleScript code to execute"},
                         "context": {"type": "dict", "required": False, "description": "Optional context information"},
-                        "save_successful_scripts": {"type": "bool", "required": False, "description": "Whether to save successful scripts"}
+                        "save_successful_scripts": {"type": "bool", "required": False, "description": "Whether to save successful scripts"},
+                        "purpose": {"type": "str", "required": False, "description": "One or two plain sentences telling the user what this script does and why. Shown on the approval card."},
+                        "whitelist_advice": {"type": "dict", "required": False, "description": "Your honest advice on whether the user should let Basil remember this approval: {\"recommend\": true or false, \"reason\": \"...\"}."}
                     },
                     "returns": "AppleScriptResult with success status, output, and execution details"
                 },
@@ -851,7 +877,9 @@ return "ERROR: Could not generate AppleScript for this task: {task_description}"
                     "parameters": {
                         "task_description": {"type": "str", "required": True, "description": "Human-readable task description"},
                         "target_application": {"type": "str", "required": False, "description": "Specific macOS application to target"},
-                        "context_data": {"type": "dict", "required": False, "description": "Additional context for script generation"}
+                        "context_data": {"type": "dict", "required": False, "description": "Additional context for script generation"},
+                        "purpose": {"type": "str", "required": False, "description": "One or two plain sentences telling the user what this automation does and why. Shown on the approval card."},
+                        "whitelist_advice": {"type": "dict", "required": False, "description": "Your honest advice on whether the user should let Basil remember this approval: {\"recommend\": true or false, \"reason\": \"...\"}."}
                     },
                     "returns": "AppleScriptResult with generated script and execution details"
                 }

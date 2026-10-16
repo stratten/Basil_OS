@@ -39,6 +39,33 @@ describe('AgentStore provider permission approval handling', () => {
     });
   });
 
+  it('stores the explanation fields carried in the approval event context', () => {
+    const store = new AgentStore();
+    store.registerAgent('task-1');
+
+    store.handleWSEvent({
+      event_type: 'execution_approval_request',
+      agent_task_id: 'task-1',
+      approval_id: 'approval-explained',
+      command: 'bash /tmp/report.sh',
+      reason: 'Command not in whitelist',
+      risk_level: 'medium',
+      script_content: 'echo report',
+      context: {
+        cwd: '/tmp',
+        purpose: 'Builds the weekly report.',
+        script_path: '/tmp/report.sh',
+        whitelist: { eligible: false, reason: 'A bare bash would allow any command.', advice: { recommend: false, reason: 'Script.', downgraded: true } },
+      },
+    });
+
+    expect(store.getAgent('task-1')?.approvalRequests[0]).toMatchObject({
+      purpose: 'Builds the weekly report.',
+      script_path: '/tmp/report.sh',
+      whitelist: { eligible: false, advice: { recommend: false, downgraded: true } },
+    });
+  });
+
   it('clears stale approval and checkpoint presentation before retrying', () => {
     const store = new AgentStore();
     store.registerAgent('task-1');

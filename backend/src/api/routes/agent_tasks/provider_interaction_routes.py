@@ -126,6 +126,10 @@ class PendingProviderInteractionResponseModel(BaseModel):
     interaction: Optional[PendingProviderInteractionModel] = None
 
 
+# Explanation fields persisted with an approval so a recovered card matches the live one.
+_APPROVAL_PRESENTATION_KEYS = ("purpose", "purpose_missing", "whitelist", "script_path", "script_notice")
+
+
 @router.get(
     "/{agent_task_id}/execution-approvals/pending",
     response_model=PendingExecutionApprovalResponseModel,
@@ -174,6 +178,11 @@ async def get_pending_execution_approval(
                     "cwd": render_context.get("cwd"),
                     "source": render_context.get("source"),
                     "description": render_context.get("description"),
+                    **{
+                        key: render_context[key]
+                        for key in _APPROVAL_PRESENTATION_KEYS
+                        if render_context.get(key) is not None
+                    },
                 },
                 risk_metadata=risk_metadata if isinstance(risk_metadata, dict) else None,
             )

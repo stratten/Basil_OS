@@ -9,6 +9,7 @@ import type {
   WSEvent,
 } from '../../types';
 import { parseDelegatedProviderReportCardsForParent } from '../../artifacts/artifactContract';
+import { approvalExplanationFromContext } from '../../services/approvalExplanation';
 import { BlockerEventAgentStore } from './blockerEventActions';
 import { normalizeCheckpointPayload } from './checkpointNormalization';
 import { parseAgentTaskArtifactEvent } from './artifactTimelineReconciliation';
@@ -704,6 +705,7 @@ export class AgentStore extends BlockerEventAgentStore {
       provider_permission: event.provider_permission as ProviderPermissionApprovalMetadata | undefined,
       command_input: event.command_input as CommandInputMetadata | undefined,
       revision: event.revision as number | undefined,
+      ...approvalExplanationFromContext(event.context),
     };
     const waitingMessage = approval.execution_type === 'command_input'
       ? 'Waiting for your input'

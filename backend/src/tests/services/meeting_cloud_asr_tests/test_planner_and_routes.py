@@ -163,3 +163,49 @@ def test_the_literal_path_is_served_by_the_meetings_router_not_the_meeting_id_ca
     app.dependency_overrides[routes.get_account_check] = lambda: (lambda: False)
     response = TestClient(app).get("/meetings/cloud-transcription")
     assert response.status_code == 200 and response.json()["enabled"] is False
+
+
+def test_engine_override_applies_to_one_plan_without_changing_the_saved_default(store) -> None:
+    keys = MemoryKeys(deepgram="dg-key-123456", assemblyai="aai-key-123456")
+    store.save(CloudTranscriptionSettings(enabled=False, acknowledged=True, provider="deepgram"))
+    before = store.path.read_text()
+
+    assert plan_cloud_session(store=store, keys=keys, account_available=lambda: True) is None
+    plan = plan_cloud_session(store=store, keys=keys, account_available=lambda: True, engine_override="assemblyai")
+    assert plan is not None and plan.provider_id == "assemblyai"
+    assert isinstance(plan.build_provider(), AssemblyAIProvider)
+    account = plan_cloud_session(store=store, keys=keys, account_available=lambda: True, engine_override="basil_account")
+    assert account is not None and isinstance(account.build_provider(), ChunkedProxyProvider)
+    assert store.path.read_text() == before
+
+
+def test_engine_override_local_turns_off_a_saved_cloud_default(store) -> None:
+    keys = MemoryKeys(deepgram="dg-key-123456")
+    store.save(enabled(provider="deepgram"))
+    assert plan_cloud_session(store=store, keys=keys, account_available=lambda: True) is not None
+    assert plan_cloud_session(store=store, keys=keys, account_available=lambda: True, engine_override="local") is None
+
+
+def test_engine_override_never_bypasses_acknowledgment_key_or_account(store) -> None:
+    store.save(CloudTranscriptionSettings(enabled=False, acknowledged=False))
+    assert plan_cloud_session(store=store, keys=MemoryKeys(deepgram="dg-key-123456"), engine_override="deepgram") is None
+    store.save(CloudTranscriptionSettings(enabled=False, acknowledged=True))
+    assert plan_cloud_session(store=store, keys=MemoryKeys(), engine_override="deepgram") is None
+    assert plan_cloud_session(store=store, keys=MemoryKeys(), account_available=lambda: False, engine_override="basil_account") is None
+
+
+@pytest.mark.parametrize("value", [None, "", "  ", "openai", "DEEPGRAM; drop", "local-ish"])
+def test_unknown_engine_override_falls_back_to_the_saved_default(store, value) -> None:
+    keys = MemoryKeys(deepgram="dg-key-123456")
+    store.save(enabled(provider="deepgram"))
+    plan = plan_cloud_session(store=store, keys=keys, account_available=lambda: True, engine_override=value)
+    assert plan is not None and plan.provider_id == "deepgram"
+    store.save(CloudTranscriptionSettings(enabled=False, acknowledged=True))
+    assert plan_cloud_session(store=store, keys=keys, account_available=lambda: True, engine_override=value) is None
+
+
+def test_engine_override_is_case_insensitive_and_trimmed(store) -> None:
+    keys = MemoryKeys(deepgram="dg-key-123456")
+    store.save(CloudTranscriptionSettings(enabled=False, acknowledged=True))
+    plan = plan_cloud_session(store=store, keys=keys, engine_override="  Deepgram ")
+    assert plan is not None and plan.provider_id == "deepgram"

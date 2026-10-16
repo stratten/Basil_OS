@@ -543,6 +543,9 @@ extension LiveTranscriptionViewModel {
         isRecording = false
         connectionState = .ready
         
+        // The engine choice applied to this recording only.
+        sessionLiveEngineOverride = nil
+
         // Consume any resume arming so the next Start is a fresh meeting by default.
         // Meeting ids are intentionally left intact here for post-processing.
         recordingMode = .fresh

@@ -11,6 +11,8 @@ from typing import Optional
 
 from api.core.models.preferences import CommandPattern
 
+from .whitelist_eligibility import assess_whitelist_eligibility
+
 logger = logging.getLogger(__name__)
 
 
@@ -49,6 +51,11 @@ class WhitelistManager:
                 )
                 logger.error(f"🚨 SECURITY REJECTION: {error_msg}")
                 raise ValueError(error_msg)
+
+            eligibility = assess_whitelist_eligibility(command, pattern_to_save)
+            if not eligibility.eligible:
+                logger.error(f"🚨 SECURITY REJECTION: '{pattern_to_save}' cannot be whitelisted: {eligibility.reason}")
+                raise ValueError(f"Cannot whitelist '{pattern_to_save}': {eligibility.reason}")
 
             from api.core.preferences.preferences_io import load_preferences, save_preferences
             preferences = load_preferences()
@@ -91,6 +98,10 @@ class WhitelistManager:
     ) -> Optional[CommandPattern]:
         """Update an existing whitelist pattern."""
         try:
+            eligibility = assess_whitelist_eligibility(command, command)
+            if not eligibility.eligible:
+                raise ValueError(f"Cannot whitelist '{command}': {eligibility.reason}")
+
             from api.core.preferences.preferences_io import load_preferences, save_preferences
             preferences = load_preferences()
 
@@ -108,6 +119,8 @@ class WhitelistManager:
             logger.warning(f"Pattern not found in whitelist: {pattern_id}")
             return None
 
+        except ValueError:
+            raise
         except Exception as e:
             logger.error(f"Error updating whitelist pattern: {e}", exc_info=True)
             raise

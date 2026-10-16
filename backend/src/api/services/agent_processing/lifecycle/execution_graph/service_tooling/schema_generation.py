@@ -58,6 +58,13 @@ if LANGCHAIN_AVAILABLE:
             return self
 
 
+    class WhitelistAdviceArgs(BaseModel):
+        """The agent's honest advice on whether the user should let Basil remember an approved command."""
+
+        recommend: bool = Field(description="True only for a narrow, read-only, repeatable command that is safe to run again without asking. False for scripts, anything that changes files or settings, anything that reaches the network with side effects, and anything broad.")
+        reason: str = Field(description="One short sentence the user will read explaining the recommendation.")
+
+
     class ShellExecuteCommandArgs(BaseModel):
         command: str = Field(description="Executable name only, such as 'bash', 'rg', or 'git'.")
         args: Optional[List[str]] = Field(default=None, description="Native argv vector. Send a JSON array of strings such as [\"-lc\", \"printf '%s\\n' hello\"], never a quoted or double-serialized JSON array string. For plain text-file writes, use file_service_write_text_file instead of shell redirection so content is passed directly.")
@@ -66,6 +73,8 @@ if LANGCHAIN_AVAILABLE:
         timeout_s: Optional[int] = Field(default=None, description="Optional timeout in seconds, capped by the shell service at 60 seconds.")
         max_output_bytes: Optional[int] = Field(default=None, description="Optional per-stream output cap in bytes.")
         file_operations: Optional[List[ShellFileOperationArgs]] = Field(default=None, description="Exact declared filesystem transitions for a shell mutation. Each path must be absolute and within the allowed roots.")
+        purpose: Optional[str] = Field(default=None, description="One or two plain sentences telling the user what this command or script does and why. Required for every command or script that can need approval; it is shown on the approval card as the agent's explanation.")
+        whitelist_advice: Optional[WhitelistAdviceArgs] = Field(default=None, description="Your honest advice on whether the user should let Basil remember this command so it is not asked again. Required alongside purpose.")
 
     class WriteTextFileArgs(BaseModel):
         path: str = Field(description="Absolute target path inside the user home directory or Basil backend repository root. The path must not traverse a symbolic link.")
@@ -75,6 +84,7 @@ if LANGCHAIN_AVAILABLE:
 else:
     ShellFileOperationArgs = object
     ShellExecuteCommandArgs = object
+    WhitelistAdviceArgs = object
     WriteTextFileArgs = object
 
 

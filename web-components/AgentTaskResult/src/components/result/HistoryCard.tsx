@@ -7,13 +7,13 @@ import { ProgressStepsSection } from './ExecutionTimeline';
 import { ReasoningWithInteractions } from '../interaction/InteractionExchange';
 import { userInteractionsFromTimeline } from '../interaction/userInteractions';
 import { FilesDisplay, ReferencePathsList } from './ResultAttachments';
-import { formatBulletPoints, normalizeResultForPresentation, parseResult, splitRunDetails } from './resultContentUtils';
+import { formatBulletPoints, normalizeResultForPresentation, parseResult, resultDeliveredTimestamp, splitRunDetails } from './resultContentUtils';
 import { RunDetailsDisclosure } from './RunDetailsDisclosure';
 import { formatHistoryTimestamp, useDateDisplayStyle } from '../../app/dateDisplay';
 import AgentTaskOriginChip from '../request/AgentTaskOriginChip';
 import RequestDisplay from '../request/RequestDisplay';
 import { plainMarkdownText } from '../../../../shared/plainMarkdownText';
-import { ModelUsedLabel } from './ModelUsedLabel';
+import { ResultFooter } from './ResultFooter';
 
 export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSelectDetail }: {
   item: AgentTaskHistoryItem;
@@ -154,7 +154,6 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
               <span className="history-card__result-heading-text">
                 {hasError ? 'Partial Result:' : 'Result:'}
               </span>
-              <ModelUsedLabel className="result-model-label" modelId={item.modelUsed} />
             </div>
             {histParsed.technicalSteps.length > 0 &&
               !(item.executionTimeline?.length || item.executionSteps?.length) && (
@@ -164,6 +163,10 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
               <CopyButtonGroup text={presentationResult} />
               <MarkdownRenderer content={formatBulletPoints(histRunDetails.narrative)} />
             </div>
+            <ResultFooter
+              timestamp={resultDeliveredTimestamp(item.executionTimeline, item.timestamp)}
+              modelId={item.modelUsed}
+            />
             <RunDetailsDisclosure details={histRunDetails.details} />
             <FilesDisplay files={item.files} resultText={presentationResult} />
           </div>

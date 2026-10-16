@@ -96,6 +96,22 @@ final class AgentTaskCaptureInputWindowController: NSObject, NSWindowDelegate, A
     private var isApplyingProgrammaticResize = false
     private var didNotifyBackendWidgetClosed = false
 
+    // Collapse support (see `AgentTaskCaptureInputWindowController+Collapse.swift`). Internal rather than private so that extension can own the logic.
+    var collapseController: WindowCollapseController?
+    /// Distance from the top of the window to the bottom of the header row, as last reported by the page.
+    var captureHeaderExtent: CGFloat = AgentTaskCaptureInputWindowController.defaultHeaderExtent
+    /// The frame size the current collapse or expand animation is heading for. While set, resize notifications are our own motion and never become the user's chosen size.
+    var collapseTransitionTargetSize: NSSize?
+    /// The window size and the user's chosen size as they were when the window collapsed, restored on expand.
+    var expandedSizeBeforeCollapse: NSSize?
+    var userExpandedSizeBeforeCollapse: NSSize?
+    /// A content-driven resize arrived while collapsed and is reconciled on expand.
+    var hasPendingResizeWhileCollapsed = false
+    var userExpandedSizeValue: NSSize? {
+        get { userExpandedSize }
+        set { userExpandedSize = newValue }
+    }
+
     var isVisible: Bool { panel != nil }
 
     // Kept in sync with `AgentTaskCaptureViewModel.CapturePanelLayout` by
@@ -171,6 +187,12 @@ final class AgentTaskCaptureInputWindowController: NSObject, NSWindowDelegate, A
         AppearanceRefreshCoordinator.shared.register(self)
         setupWindowCommandShortcuts(for: newPanel)
 
+        collapseController = WindowCollapseController(
+            window: newPanel,
+            compactSize: Self.collapsedSize(headerExtent: Self.defaultHeaderExtent),
+            fallbackExpandedSize: Self.textModeSize
+        )
+
         hostWebView.loadContent()
         positionPanel(newPanel)
         lastCaptureWidgetFrame = newPanel.frame
@@ -197,6 +219,11 @@ final class AgentTaskCaptureInputWindowController: NSObject, NSWindowDelegate, A
         modelPickerPopover = nil
         cancellables.removeAll()
         AppearanceRefreshCoordinator.shared.unregister(self)
+        collapseController = nil
+        collapseTransitionTargetSize = nil
+        expandedSizeBeforeCollapse = nil
+        userExpandedSizeBeforeCollapse = nil
+        hasPendingResizeWhileCollapsed = false
         panel?.orderOut(nil)
         panel?.delegate = nil
         panel = nil
@@ -328,7 +355,10 @@ final class AgentTaskCaptureInputWindowController: NSObject, NSWindowDelegate, A
         case .requestCaptureResize(let width, let height):
             resizeWindow(to: (width: width, height: height))
         case .captureHeaderExtent(let height):
+            captureHeaderExtent = height
             hostWebView?.updateDragAreaHeight(height)
+        case .toggleWindowCollapse(let collapsed):
+            applyWindowCollapse(collapsed, viewModel: viewModel)
         case .enterVoiceMode:
             viewModel.enterVoiceMode()
         case .enterTextEntryMode:
@@ -483,6 +513,11 @@ final class AgentTaskCaptureInputWindowController: NSObject, NSWindowDelegate, A
     /// synchronous call — see `windowDidResize` below.
     private func resizeWindow(to newSize: (width: CGFloat, height: CGFloat)) {
         guard let panel, let viewModel else { return }
+        // A collapsed window stays a header strip. The request is reconciled when the window expands.
+        guard collapseController?.isCollapsed != true else {
+            hasPendingResizeWhileCollapsed = true
+            return
+        }
         let minSize = viewModel.isTextEntryMode ? Self.textModeSize : Self.voiceModeSize
         panel.minSize = minSize
         panel.contentMinSize = minSize
@@ -571,6 +606,10 @@ final class AgentTaskCaptureInputWindowController: NSObject, NSWindowDelegate, A
         guard let window = notification.object as? NSWindow, window === panel else { return }
         let currentFrame = window.frame
 
+        guard !isCollapseTransitionResize(frameSize: currentFrame.size) else {
+            lastCaptureWidgetFrame = currentFrame
+            return
+        }
         guard !isApplyingProgrammaticResize else {
             lastCaptureWidgetFrame = currentFrame
             return
@@ -578,6 +617,11 @@ final class AgentTaskCaptureInputWindowController: NSObject, NSWindowDelegate, A
 
         lastCaptureWidgetFrame = currentFrame
         userExpandedSize = currentFrame.size
+    }
+
+    /// A drag on the window edge is always the user's own choice of size, so it ends any collapse animation bookkeeping.
+    func windowWillStartLiveResize(_ notification: Notification) {
+        collapseTransitionTargetSize = nil
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {

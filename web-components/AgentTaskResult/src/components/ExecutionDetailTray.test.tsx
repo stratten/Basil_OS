@@ -611,4 +611,62 @@ describe('ExecutionDetailTray artifact detail', () => {
     expect(presentation.stages.map(stage => stage.label)).toEqual(['First phase', 'Second phase', 'Third phase']);
     expect(presentation.stages.map(stage => stage.label)).not.toContain('planning note one');
   });
+
+  describe('Run overview panel', () => {
+    const mount = (element: React.ReactElement) => {
+      const container = document.createElement('div');
+      document.body.appendChild(container);
+      const root = createRoot(container);
+      act(() => {
+        root.render(element);
+      });
+      return {
+        container,
+        cleanup: () => {
+          act(() => root.unmount());
+          container.remove();
+        },
+      };
+    };
+
+    it('puts the existing collapse-panel button left of the Run overview title and keeps no second collapse control', () => {
+      const onCloseRunPanel = vi.fn();
+      const { container, cleanup } = mount(tray({ detail: undefined, rootTaskId: 'panel-root', onCloseRunPanel }));
+      try {
+        const header = container.querySelector('.detail-tray-header--overview');
+        expect(header).not.toBeNull();
+        const children = Array.from(header?.children ?? []);
+        expect(children.map(child => child.tagName)).toEqual(['BUTTON', 'DIV']);
+        expect(children[0].getAttribute('aria-label')).toBe('Collapse run panel');
+        expect(children[0].getAttribute('title')).toBe('Collapse run panel');
+        expect(children[1].textContent).toBe('Run overview');
+        expect(container.querySelectorAll('[aria-expanded]').length).toBe(0);
+        expect(container.querySelector('.run-overview-body .run-card')).not.toBeNull();
+        act(() => {
+          container.querySelector<HTMLButtonElement>('[aria-label="Collapse run panel"]')?.click();
+        });
+        expect(onCloseRunPanel).toHaveBeenCalledTimes(1);
+      } finally {
+        cleanup();
+      }
+    });
+
+    it('leaves the run overview out of the tray while a document is open', () => {
+      const { container, cleanup } = mount(tray({ detail: undefined, previewArtifact: artifacts.produced[0], isProcessing: true, terminalStatus: 'processing' }));
+      try {
+        expect(container.querySelector('.tray-artifact-preview')).not.toBeNull();
+        expect(container.querySelector('.run-overview-body')).toBeNull();
+        expect(container.querySelector('.detail-tray-header--overview')).toBeNull();
+        expect(container.textContent).not.toContain('Run overview');
+      } finally {
+        cleanup();
+      }
+    });
+
+    it('does not show the run overview header for a selected step detail', () => {
+      const markup = renderToStaticMarkup(tray());
+      expect(markup).not.toContain('detail-tray-header--overview');
+      expect(markup).not.toContain('run-overview-body');
+    });
+  });
 });

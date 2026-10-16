@@ -175,6 +175,21 @@ final class AgentTaskCaptureInputMessageParsingTests: XCTestCase {
         XCTAssertEqual(CaptureInputMessage.parse(body: ["type": "showHistory"]), .showHistory)
     }
 
+    func testParsesWindowCollapseBothWays() {
+        XCTAssertEqual(CaptureInputMessage.parse(body: ["type": "toggleWindowCollapse", "collapsed": true]), .toggleWindowCollapse(collapsed: true))
+        XCTAssertEqual(CaptureInputMessage.parse(body: ["type": "toggleWindowCollapse", "collapsed": false]), .toggleWindowCollapse(collapsed: false))
+    }
+
+    func testRejectsMalformedWindowCollapse() {
+        for body: [String: Any] in [
+            ["type": "toggleWindowCollapse"],
+            ["type": "toggleWindowCollapse", "collapsed": "yes"],
+            ["type": "toggleWindowCollapse", "collapsed": NSNull()],
+        ] {
+            XCTAssertEqual(CaptureInputMessage.parse(body: body), .unknown(rawType: "toggleWindowCollapse"))
+        }
+    }
+
     func testReturnsNilForMissingType() {
         XCTAssertNil(CaptureInputMessage.parse(body: ["text": "hello"]))
     }

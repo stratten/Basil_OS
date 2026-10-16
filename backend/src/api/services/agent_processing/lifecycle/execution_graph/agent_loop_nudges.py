@@ -33,6 +33,13 @@ INVALID_TOOL_CALL_REPAIR_PROMPT = (
     "Your last response tried to call a tool, but the call could not be parsed ({details}). "
     "Call the tool again with valid JSON arguments that match its schema, or answer without calling a tool."
 )
+HANDOFF_CHECK_PROMPT = (
+    "HANDOFF CHECK (asked once, before your final answer):\n"
+    "- List every explicit requirement in the user's request, including anything they attached or pointed to.\n"
+    "- Compare each one with what you actually delivered and verified in this turn.\n"
+    "- If a requirement is unmet and you have a tool or approach that could meet it, do that work now instead of answering.\n"
+    "- If you truly cannot meet it, say so plainly in your answer and name what is missing. Do not present a simpler substitute as the requested result."
+)
 MAX_INVALID_TOOL_CALL_REPAIRS = 2
 _SCRIPTING_TOOL_PREFIXES = ("applescript_service_", "shell_service_")
 
@@ -75,6 +82,7 @@ class CompletionNudgeMiddleware(AgentMiddleware):
         self.source_catalog_loader = source_catalog_loader
         self.discovery_handoff_used = False
         self.scripting_floor_used = False
+        self.handoff_check_used = False
         self.invalid_tool_call_repairs = 0
 
     async def abefore_model(self, state: Any, runtime: Any) -> Optional[dict[str, Any]]:
@@ -121,16 +129,23 @@ class CompletionNudgeMiddleware(AgentMiddleware):
                 ],
                 "jump_to": "model",
             }
-        if self.scripting_floor_used or not self._scripting_tools_available():
+        steps = messages_to_intermediate_steps(current_turn_messages(messages))
+        if not self.scripting_floor_used and self._scripting_tools_available() and scripting_floor_owed(steps):
+            self.scripting_floor_used = True
+            logger.info(
+                "[AgentTelemetry] scripting-floor owed=True triggered=True loaded_families=%s",
+                self.tracker.loaded_families,
+            )
+            return {"messages": [HumanMessage(content=SCRIPTING_FLOOR_PROMPT)], "jump_to": "model"}
+        if not self._handoff_check_owed(steps):
             return None
-        if not scripting_floor_owed(messages_to_intermediate_steps(current_turn_messages(messages))):
-            return None
-        self.scripting_floor_used = True
-        logger.info(
-            "[AgentTelemetry] scripting-floor owed=True triggered=True loaded_families=%s",
-            self.tracker.loaded_families,
-        )
-        return {"messages": [HumanMessage(content=SCRIPTING_FLOOR_PROMPT)], "jump_to": "model"}
+        self.handoff_check_used = True
+        logger.info("[AgentTelemetry] handoff-check triggered=True tool_steps=%s", len(steps))
+        return {"messages": [HumanMessage(content=HANDOFF_CHECK_PROMPT)], "jump_to": "model"}
+
+    def _handoff_check_owed(self, steps: Sequence[Any]) -> bool:
+        """The check is asked once, and only after work was done: an answer with no tool use has nothing to compare against its request."""
+        return not self.handoff_check_used and bool(steps)
 
     def _scripting_tools_available(self) -> bool:
         return any(name.startswith(_SCRIPTING_TOOL_PREFIXES) for name in self.tracker.surface_names)
