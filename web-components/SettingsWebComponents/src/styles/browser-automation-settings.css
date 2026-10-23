@@ -1,0 +1,147 @@
+.browser-automation-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--settings-card-gap);
+  max-width: 920px;
+  width: 100%;
+}
+
+.browser-automation-section h3 {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+  margin: 0;
+}
+
+.browser-automation-columns {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.browser-automation-column {
+  border-left: 1.5px solid var(--primary);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding-left: 14px;
+}
+
+@media (max-width: 640px) {
+  .browser-automation-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.browser-automation-subgroup {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.browser-automation-subgroup .secondary-button {
+  margin-top: 4px;
+}
+
+.browser-automation-subgroup .browser-automation-domain-list {
+  align-self: stretch;
+}
+
+.browser-automation-intro {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  margin: 0;
+}
+
+.browser-automation-guidance {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.browser-automation-guidance p,
+.browser-automation-guidance ul {
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 12px;
+  margin: 6px 0 0;
+}
+
+.browser-automation-guidance ul {
+  padding-left: 18px;
+}
+
+.browser-automation-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.browser-automation-domain-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.browser-automation-domain-row {
+  align-items: center;
+  gap: 12px;
+  background: color-mix(in srgb, var(--background-primary) 96%, var(--primary));
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 12px;
+}
+
+.browser-automation-domain-text {
+  min-width: 0;
+}
+
+.browser-automation-domain-name {
+  color: var(--text-primary);
+  display: block;
+  overflow-wrap: anywhere;
+  font-family: var(--font-family-light);
+  font-size: 13px;
+}
+
+.browser-automation-domain-usage {
+  color: var(--text-secondary);
+  display: block;
+  font-family: var(--font-family-light);
+  font-size: 12px;
+}
+
+.browser-automation-status,
+.browser-automation-inline-error,
+.browser-automation-error p {
+  margin: 0;
+}
+
+.browser-automation-status {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+}
+
+.browser-automation-inline-error,
+.browser-automation-error p {
+  color: var(--error-text);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+}
+
+.browser-automation-error {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 700px;
+}

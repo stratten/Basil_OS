@@ -1,0 +1,200 @@
+{
+  "events": [
+    {
+      "id": "ev-01",
+      "seq": 1,
+      "kind": "item",
+      "meeting_time": 10.0,
+      "wall_time": "2026-01-01T10:00:01.000000Z",
+      "payload": {
+        "item": {
+          "id": "n1",
+          "kind": "suggestion",
+          "text": "A note.",
+          "confidence": 0.8,
+          "citations": [],
+          "no_source": false,
+          "transcript_range": {
+            "start": 8.0,
+            "end": 10.0,
+            "turn_ids": []
+          },
+          "trigger": "periodic",
+          "watch_id": null,
+          "truncated": false,
+          "pinned": false,
+          "dismissed": false
+        }
+      }
+    },
+    {
+      "id": "ev-02",
+      "seq": 2,
+      "kind": "audit",
+      "meeting_time": 120.0,
+      "wall_time": "2026-01-01T10:00:01.000000Z",
+      "payload": {
+        "audit_id": "au-1",
+        "scope": "so_far",
+        "summary": "First pass.",
+        "moments": [
+          {
+            "id": "m1",
+            "start": 60.0,
+            "end": 75.0,
+            "kind": "todo",
+            "why": "Nobody owned m1.",
+            "suggested_text": "Follow up on m1.",
+            "confidence": 0.8
+          },
+          {
+            "id": "m2",
+            "start": 60.0,
+            "end": 75.0,
+            "kind": "research",
+            "why": "Nobody owned m2.",
+            "suggested_text": "Follow up on m2.",
+            "confidence": 0.8
+          }
+        ],
+        "evaluations": 6,
+        "spoke": 1,
+        "covered_until": 120.0
+      }
+    },
+    {
+      "id": "ev-03",
+      "seq": 3,
+      "kind": "feedback",
+      "meeting_time": 121.0,
+      "wall_time": "2026-01-01T10:00:01.000000Z",
+      "payload": {
+        "item_id": "m1",
+        "action": "audit_agree"
+      }
+    },
+    {
+      "id": "ev-04",
+      "seq": 4,
+      "kind": "feedback",
+      "meeting_time": 122.0,
+      "wall_time": "2026-01-01T10:00:01.000000Z",
+      "payload": {
+        "item_id": "m2",
+        "action": "audit_disagree"
+      }
+    },
+    {
+      "id": "ev-05",
+      "seq": 5,
+      "kind": "feedback",
+      "meeting_time": 123.0,
+      "wall_time": "2026-01-01T10:00:01.000000Z",
+      "payload": {
+        "item_id": "m2",
+        "action": "audit_clear"
+      }
+    },
+    {
+      "id": "ev-06",
+      "seq": 6,
+      "kind": "feedback",
+      "meeting_time": 124.0,
+      "wall_time": "2026-01-01T10:00:01.000000Z",
+      "payload": {
+        "item_id": "n1",
+        "action": "audit_agree"
+      }
+    },
+    {
+      "id": "ev-07",
+      "seq": 7,
+      "kind": "audit",
+      "meeting_time": 300.0,
+      "wall_time": "2026-01-01T10:00:01.000000Z",
+      "payload": {
+        "audit_id": "au-2",
+        "scope": "meeting",
+        "summary": "Final pass.",
+        "moments": [
+          {
+            "id": "m4",
+            "start": 60.0,
+            "end": 75.0,
+            "kind": "agent_task",
+            "why": "Nobody owned m4.",
+            "suggested_text": "Follow up on m4.",
+            "confidence": 0.8
+          },
+          {
+            "id": "m5",
+            "start": 60.0,
+            "end": 75.0,
+            "kind": "note",
+            "why": "Nobody owned m5.",
+            "suggested_text": "Follow up on m5.",
+            "confidence": 0.8
+          }
+        ],
+        "evaluations": 9,
+        "spoke": 2,
+        "covered_until": 300.0
+      }
+    },
+    {
+      "id": "ev-08",
+      "seq": 8,
+      "kind": "feedback",
+      "meeting_time": 301.0,
+      "wall_time": "2026-01-01T10:00:01.000000Z",
+      "payload": {
+        "item_id": "m1",
+        "action": "audit_agree"
+      }
+    },
+    {
+      "id": "ev-09",
+      "seq": 9,
+      "kind": "feedback",
+      "meeting_time": 302.0,
+      "wall_time": "2026-01-01T10:00:01.000000Z",
+      "payload": {
+        "item_id": "m4",
+        "action": "audit_disagree"
+      }
+    },
+    {
+      "id": "ev-10",
+      "seq": 10,
+      "kind": "audit",
+      "meeting_time": 303.0,
+      "wall_time": "2026-01-01T10:00:01.000000Z",
+      "payload": {
+        "scope": "so_far"
+      }
+    }
+  ],
+  "expected": {
+    "audit": {
+      "audit_id": "au-2",
+      "scope": "meeting",
+      "summary": "Final pass.",
+      "evaluations": 9,
+      "spoke": 2,
+      "covered_until": 300.0,
+      "moments": [
+        {
+          "id": "m4",
+          "kind": "agent_task",
+          "mark": "disagree"
+        },
+        {
+          "id": "m5",
+          "kind": "note",
+          "mark": null
+        }
+      ]
+    },
+    "last_seq": 10
+  }
+}

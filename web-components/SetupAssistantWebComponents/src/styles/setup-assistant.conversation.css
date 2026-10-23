@@ -1,0 +1,198 @@
+/*
+ * Conversation core (chrome)
+ *
+ * Owns the conversation surface chrome that does not belong to a
+ * single component family: panel header, primer / guidance / working
+ * placeholder cards, the conversation root container, the messages
+ * scroll region, the setup notes popover, the chip-row entrance
+ * animations, and the input row.
+ *
+ * Component families have their own sibling files so this one stays
+ * small and scannable:
+ *   - setup-assistant.conversation.messages.css      (.basil-message bubbles, acknowledgment chip)
+ *   - setup-assistant.conversation.proposals.css     (consent receipts, recommendation review, status chip)
+ *   - setup-assistant.conversation.inline-cards.css  (email context, Dill draft, setup visual cards)
+ *
+ * Keyframes, the shared working indicator, and the single prefers-reduced-motion suppression list live in setup-assistant.motion.css.
+ */
+
+.basil-panel-header {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.conversation-team-primer {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--primary) 11%, var(--background-primary)), var(--background-primary) 64%),
+    var(--background-primary);
+  border: 0.5px solid color-mix(in srgb, var(--primary) 26%, var(--separator-color));
+  border-radius: var(--corner-radius-medium);
+  padding: 12px 14px;
+}
+
+.conversation-team-primer p {
+  color: var(--text-primary);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.conversation-team-primer strong {
+  color: var(--primary);
+  font-family: var(--font-family-medium);
+}
+
+.basil-guidance {
+  margin-bottom: var(--padding-m);
+}
+
+.basil-guidance h3 {
+  font-family: var(--font-family-medium);
+  margin: 0 0 6px;
+}
+
+.basil-guidance p {
+  margin: 0;
+}
+
+.working-state {
+  background: color-mix(in srgb, var(--primary) 12%, var(--background-primary));
+  border: 1px solid color-mix(in srgb, var(--primary) 45%, var(--separator-color));
+  border-radius: var(--corner-radius-medium);
+  margin-bottom: var(--padding-m);
+  padding: var(--padding-m);
+}
+
+.working-state h3 {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  margin: 0 0 6px;
+}
+
+.working-state p {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.basil-conversation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-s);
+  height: 100%;
+  min-height: 0;
+}
+
+.conversation-observations-popover,
+.chip-row {
+  animation: setupEnterRise 220ms var(--setup-motion-ease-out) both;
+}
+
+.basil-conversation > .basil-panel-header {
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.basil-conversation > .basil-panel-header h2 {
+  margin: 0;
+}
+
+.conversation-observations {
+  flex: 0 0 auto;
+  position: relative;
+}
+
+.conversation-observations-toggle {
+  white-space: nowrap;
+}
+
+.conversation-observations-popover {
+  background: var(--background-primary);
+  border: 0.5px solid color-mix(in srgb, var(--primary) 32%, var(--separator-color));
+  border-radius: var(--corner-radius-medium);
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.08), 0 12px 32px rgba(0, 0, 0, 0.28);
+  padding: 10px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: min(460px, 70vw);
+  z-index: 20;
+}
+
+.conversation-observation-list {
+  gap: 8px;
+  margin-top: 0;
+  max-height: min(420px, 50vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.conversation-observation-card {
+  background: color-mix(in srgb, var(--primary) 4%, var(--background-tertiary));
+  border-color: color-mix(in srgb, var(--primary) 18%, var(--separator-color));
+  padding: 14px;
+}
+
+.basil-messages {
+  flex: 1 1 auto;
+  margin: 4px 0 8px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.basil-messages-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chip-row {
+  flex: 0 0 auto;
+  margin-bottom: -4px;
+}
+
+.chip-row-label {
+  margin: 0 0 8px;
+  width: 100%;
+}
+
+.chip-row-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip-row-buttons > .secondary-button {
+  animation: setupEnterRise 180ms var(--setup-motion-ease-out) both;
+}
+
+.chip-row-buttons > .secondary-button:nth-child(2) {
+  animation-delay: 35ms;
+}
+
+.chip-row-buttons > .secondary-button:nth-child(3) {
+  animation-delay: 70ms;
+}
+
+.chip-row-buttons > .secondary-button:nth-child(4) {
+  animation-delay: 105ms;
+}
+
+.basil-input-row {
+  align-items: stretch;
+  border-top: 0.5px solid var(--separator-color);
+  flex: 0 0 auto;
+  padding-top: var(--padding-m);
+}
+
+.basil-input-row textarea {
+  border: 0.5px solid var(--separator-color);
+  border-radius: var(--corner-radius-medium);
+  flex: 1;
+  max-height: 200px;
+  min-height: 72px;
+  min-width: 0;
+  padding: var(--padding-s);
+  resize: vertical;
+}

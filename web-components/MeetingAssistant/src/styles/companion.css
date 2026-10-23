@@ -1,0 +1,975 @@
+/* The Companion pane only arranges existing Notetaker pieces: .meeting-record-button, .meeting-transcript-icon-button, .meeting-section-heading, .meeting-status-row, .meeting-analysis-model-row, .meeting-participant-chip, .meeting-metadata-name-input, .meeting-analysis-custom-instructions and .meeting-history-load-more-error. Colors, type sizes, radii and spacing come from those classes and the shared tokens. */
+
+.companion-pane {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-left: 1px solid var(--separator-color);
+  background: var(--background-primary);
+  color: var(--text-primary);
+}
+
+.companion-pane--detached {
+  flex: 1 1 auto;
+  height: 100%;
+  border-left: 0;
+}
+
+.companion-detached-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+
+.companion-detached-body[hidden] {
+  display: none;
+}
+
+.companion-pane > .meeting-tools-header,
+.companion-pane > .meeting-status-row,
+.companion-pane > .meeting-analysis-model-row,
+.companion-pane > .meeting-history-load-more-error {
+  padding-left: var(--padding-m);
+  padding-right: var(--padding-m);
+}
+
+.companion-pane > .meeting-tools-header {
+  margin-bottom: 0;
+  padding-top: var(--padding-s);
+  padding-bottom: var(--padding-xs);
+}
+
+.companion-pane > .meeting-analysis-model-row {
+  margin-top: var(--padding-xs);
+}
+
+.companion-status-row .meeting-transcription-state {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.companion-notice-row .meeting-status-message {
+  white-space: normal;
+}
+
+.companion-pane > .meeting-history-load-more-error {
+  padding-top: var(--padding-xs);
+  padding-bottom: 0;
+}
+
+.companion-scroll {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--padding-m);
+  min-height: 160px;
+  overflow-y: auto;
+  padding: var(--padding-s) var(--padding-m);
+}
+
+/* The frame holds the scroll region and the floating "N new" pill. */
+/* The top edge is a visible rule, so a card scrolled up under the controls is cut off along a line instead of mid-text, and the list reads as its own region. */
+.companion-stream-frame {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: var(--padding-xs);
+  border-top: 1px solid var(--field-border);
+}
+
+.companion-stream {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-s);
+}
+
+.companion-stream-row {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-radius: var(--corner-radius-medium);
+}
+
+/* Taken to a card (from the pinned strip, a decision notice or a transcript chip), the reader sees where they landed. The ring is kept under reduced motion; only its fade is animated. */
+.companion-stream-row.is-highlighted > * {
+  outline: 2px solid var(--secondary);
+  outline-offset: 2px;
+  animation: companion-row-highlight 1600ms ease-out backwards;
+}
+
+@keyframes companion-row-highlight {
+  from {
+    background-color: color-mix(in srgb, var(--secondary) 22%, var(--background-secondary));
+  }
+}
+
+.companion-stream-row.is-leaving {
+  display: grid;
+  grid-template-rows: 1fr;
+  overflow: hidden;
+  pointer-events: none;
+  animation: companion-row-leave 240ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.companion-stream-row.is-leaving > * {
+  min-height: 0;
+  overflow: hidden;
+}
+
+@keyframes companion-row-leave {
+  to {
+    grid-template-rows: 0fr;
+    margin-bottom: calc(-1 * var(--padding-s));
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+/* A new row opens from nothing while its card fades in a beat later, and the stream (pinned to the bottom) follows the growth, so the rows above glide up instead of jumping. The clipping is only needed while the row opens; the stream drops the class when the animation ends. The margin pulls the stream gap closed in step with the height. */
+.companion-stream-row.is-arriving {
+  display: grid;
+  grid-template-rows: 1fr;
+  animation: companion-row-arrive 560ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.companion-stream-row.is-arriving > * {
+  min-height: 0;
+  overflow: hidden;
+  animation: companion-row-fade 520ms cubic-bezier(0.2, 0.8, 0.2, 1) 120ms both;
+}
+
+@keyframes companion-row-arrive {
+  from {
+    grid-template-rows: 0fr;
+    margin-bottom: calc(-1 * var(--padding-s));
+  }
+}
+
+@keyframes companion-row-fade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.companion-fixed-note {
+  padding: 0 var(--padding-m);
+}
+
+.companion-fixed-note:empty {
+  display: none;
+}
+
+.companion-dismissed-toggle {
+  align-self: flex-start;
+}
+
+.companion-working-row {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-s);
+  padding: var(--padding-xs) var(--padding-s);
+  border: 1px dashed var(--field-border);
+  border-radius: var(--corner-radius-medium);
+  background: var(--background-primary);
+  color: var(--text-primary);
+}
+
+.companion-working-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.companion-working-row .meeting-history-load-more-button {
+  margin: 0;
+}
+
+.companion-working-dot {
+  animation: companion-working-pulse 1200ms ease-in-out infinite;
+}
+
+@keyframes companion-working-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.companion-decision-notice {
+  align-self: flex-start;
+  margin: var(--padding-xs) var(--padding-m) 0;
+  padding: 4px var(--padding-s);
+  border: 1px solid var(--primary);
+  border-radius: var(--corner-radius-small);
+  background: var(--background-primary);
+  color: var(--primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  cursor: pointer;
+}
+
+.companion-decision-notice:hover,
+.companion-decision-notice:focus-visible {
+  background: var(--primary);
+  color: var(--background-primary);
+  outline: none;
+}
+
+.companion-decision-badge {
+  padding: 1px 6px;
+  border-radius: var(--corner-radius-small);
+  background: var(--primary);
+  color: var(--background-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+}
+
+.companion-pinned-strip {
+  flex: 0 0 auto;
+  margin: var(--padding-xs) var(--padding-m) 0;
+  border: 1px solid var(--field-border);
+  border-radius: var(--corner-radius-medium);
+  background: var(--background-secondary);
+}
+
+.companion-pinned-toggle,
+.companion-settings-toggle,
+.companion-composer-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-s);
+  width: 100%;
+  padding: 6px var(--padding-s);
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+  text-align: left;
+  cursor: pointer;
+}
+
+.companion-pinned-toggle:focus-visible,
+.companion-settings-toggle:focus-visible,
+.companion-composer-bar:focus-visible,
+.companion-pinned-row:focus-visible {
+  outline: 2px solid var(--secondary);
+  outline-offset: -2px;
+}
+
+.companion-pinned-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 140px;
+  margin: 0;
+  padding: 0 0 var(--padding-xs);
+  overflow-y: auto;
+  list-style: none;
+}
+
+.companion-pinned-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--padding-s);
+  width: 100%;
+  padding: 4px var(--padding-s);
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--font-size-status-small);
+  text-align: left;
+  cursor: pointer;
+}
+
+.companion-pinned-row:hover {
+  background: color-mix(in srgb, var(--secondary) 12%, transparent);
+}
+
+.companion-pinned-kind {
+  flex: 0 0 auto;
+  font-family: var(--font-family-medium);
+}
+
+.companion-pinned-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.companion-settings {
+  flex: 0 0 auto;
+  margin: var(--padding-xs) var(--padding-m) 0;
+  border: 1px solid var(--field-border);
+  border-radius: var(--corner-radius-medium);
+  background: var(--background-primary);
+}
+
+.companion-settings-summary {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-small);
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.companion-settings-title {
+  flex: 0 0 auto;
+}
+
+.companion-settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-m);
+  max-height: 46vh;
+  padding: var(--padding-xs) var(--padding-s) var(--padding-s);
+  overflow-y: auto;
+}
+
+.companion-settings-body .meeting-analysis-model-row {
+  margin: 0;
+}
+
+.companion-settings-body .companion-focus {
+  padding: 0;
+}
+
+.companion-composer {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  border-top: 1px solid var(--separator-color);
+  background: var(--background-primary);
+}
+
+.companion-composer > .companion-state-note {
+  padding: var(--padding-s) var(--padding-m);
+}
+
+.companion-composer-bar {
+  padding: var(--padding-s) var(--padding-m);
+}
+
+.companion-composer-title {
+  flex: 0 0 auto;
+}
+
+.companion-composer-draft {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.companion-composer-attention {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 1px var(--padding-s);
+  border: 1px solid var(--primary);
+  border-radius: 999px;
+  color: var(--primary);
+  font-size: var(--font-size-status-small);
+}
+
+.companion-composer .companion-chat-form {
+  padding: 0 var(--padding-m) var(--padding-m);
+}
+
+.companion-state-note {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-small);
+}
+
+.companion-off {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--padding-m);
+}
+
+.companion-off p {
+  margin: 0;
+  font-size: var(--font-size-callout);
+  line-height: 1.45;
+}
+
+.companion-sources,
+.companion-watches {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-s);
+}
+
+.companion-sources .meeting-section-heading,
+.companion-watches .meeting-section-heading {
+  margin: 0;
+}
+
+.companion-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--padding-s);
+  padding: 10px var(--padding-m);
+  border: 1px solid var(--field-border);
+  border-radius: var(--corner-radius-medium);
+  background: var(--background-primary);
+  box-shadow: var(--shadow-light);
+}
+
+.companion-notice p {
+  margin: 0;
+  font-size: var(--font-size-callout);
+}
+
+.companion-notice strong {
+  font-family: var(--font-family-medium);
+  font-weight: 400;
+}
+
+.companion-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--padding-s) 10px;
+  border: 1px solid var(--field-border);
+  border-radius: var(--corner-radius-medium);
+  background: var(--background-secondary);
+  color: var(--text-primary);
+}
+
+.companion-item.is-pinned {
+  border-color: var(--primary);
+}
+
+/* The header wraps instead of overflowing the card. Dismiss is pinned to the top right corner and the right padding reserves its room, so the labels beside it can never run under it. The labels are DOM-ordered kind, Researched, watch, time, chip, but the Researched badge is ordered last so it always sits after, never before, the Show in transcript chip. */
+.companion-item-header {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--padding-s);
+  min-width: 0;
+  min-height: 20px;
+  padding-right: 28px;
+}
+
+.companion-item-header > * {
+  min-width: 0;
+}
+
+.companion-item-header > .companion-badge {
+  order: 6;
+}
+
+/* When the chip is present the badge goes on its own row below it: a zero-height full-width item between them forces the wrap. */
+.companion-item-header:has(> .companion-link-chip)::after {
+  content: '';
+  order: 5;
+  flex-basis: 100%;
+  height: 0;
+}
+
+.companion-item-kind,
+.companion-item-header .meeting-transcription-state {
+  white-space: nowrap;
+}
+
+.companion-item-kind {
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+  font-weight: 400;
+}
+
+.companion-item-body {
+  overflow-wrap: anywhere;
+  font-size: var(--font-size-callout);
+  line-height: 1.45;
+}
+
+/* The markdown renderer wraps its paragraphs in a div, so the margins that need to go are the first and last block inside that wrapper; the card's own gap supplies the spacing. */
+.companion-item-body > :first-child,
+.companion-item-body .meeting-markdown > :first-child {
+  margin-top: 0;
+}
+
+.companion-item-body > :last-child,
+.companion-item-body .meeting-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.companion-item-note {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-small);
+}
+
+.companion-citations summary {
+  color: var(--secondary);
+  cursor: pointer;
+  font-size: var(--font-size-status-small);
+}
+
+.companion-citations ul {
+  margin: 6px 0 0;
+  padding-left: var(--padding-l);
+}
+
+.companion-citation-path {
+  overflow-wrap: anywhere;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-code-small);
+}
+
+.companion-citation-excerpt {
+  max-height: 120px;
+  margin: 4px 0 6px;
+  padding: 6px var(--padding-s);
+  overflow: auto;
+  border: 1px solid var(--field-border);
+  border-radius: var(--corner-radius-small);
+  background: var(--background-primary);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-code-small);
+  white-space: pre;
+}
+
+.companion-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Make to-do and Hand to agent leave the Companion for another part of Basil, so they sit apart at the right end of the row. */
+.companion-item-actions-end {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+/* Dismiss sits at the top right of the card, out of the flow, so it never changes the header's height or wrapping. */
+.companion-item-header .companion-item-dismiss {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 20px;
+  min-width: 22px;
+  margin: 0;
+  padding: 3px;
+}
+
+/* A researched answer says so with a one pixel outline in the secondary color; a card never gets an accent stripe. */
+.companion-badge {
+  padding: 1px 6px;
+  border: 1px solid var(--secondary);
+  border-radius: var(--corner-radius-small);
+  color: var(--secondary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+}
+
+/* The card whose transcript lines are under the pointer, or whose chip in the transcript is. */
+.companion-item.is-linked {
+  outline: 2px solid var(--secondary);
+  outline-offset: 1px;
+}
+
+.companion-link-chip {
+  padding: 1px 8px;
+  border: 1px solid var(--secondary);
+  border-radius: 999px;
+  background: var(--background-primary);
+  color: var(--secondary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.companion-link-chip:hover {
+  background: var(--secondary);
+  color: var(--background-primary);
+}
+
+.companion-link-chip:focus-visible {
+  outline: 2px solid var(--secondary);
+  outline-offset: 1px;
+}
+
+.companion-item .meeting-history-load-more-button {
+  margin: 0;
+}
+
+.companion-proposal-title {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+}
+
+.companion-proposal-approve {
+  padding: 6px var(--padding-m);
+  font-size: var(--font-size-callout);
+}
+
+.companion-proposal-error {
+  margin: 0;
+  padding: 6px var(--padding-s);
+  border: 1px solid var(--error-base);
+  border-radius: var(--corner-radius-small);
+  color: var(--text-primary);
+  font-size: var(--font-size-status-small);
+}
+
+.companion-proposal-settings,
+.companion-research-switch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-xs);
+}
+
+.companion-proposal-settings .meeting-section-heading {
+  margin: 0;
+}
+
+.companion-research-switch .meeting-switch-control,
+.companion-proposal-settings .meeting-switch-control {
+  margin: 0;
+  font-size: var(--font-size-status-small);
+}
+
+.companion-pane .meeting-transcript-icon-button[aria-pressed='true'] {
+  background: var(--secondary);
+  color: var(--background-primary);
+}
+
+.companion-watch-list {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.companion-watch-list {
+  flex-direction: column;
+  gap: 6px;
+}
+
+.companion-watch {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--padding-s);
+  padding: 6px var(--padding-s);
+  border: 1px solid var(--field-border);
+  border-radius: var(--corner-radius-medium);
+  background: var(--background-secondary);
+}
+
+.companion-watch-copy {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.companion-wrap {
+  white-space: normal;
+}
+
+.companion-watch-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.companion-chat-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+/* The send button is the icon alone, a square that matches the input's minimum height so the two line up on the bottom edge. The name lives in its aria-label and tooltip. */
+.companion-chat-send.meeting-record-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
+
+.companion-chat-send svg,
+.companion-chat-send img {
+  width: 16px;
+  height: 16px;
+}
+
+.companion-chat-send:focus-visible {
+  outline: 2px solid var(--secondary);
+  outline-offset: 2px;
+}
+
+.companion-chat-input.meeting-analysis-custom-instructions {
+  flex: 1 1 auto;
+  width: auto;
+  min-height: 36px;
+  max-height: 96px;
+  margin: 0;
+  padding: 6px var(--padding-s);
+  font-size: var(--font-size-callout);
+}
+
+.companion-chat-message {
+  padding: 6px var(--padding-s);
+  border: 1px solid var(--field-border);
+  border-radius: var(--corner-radius-medium);
+  overflow-wrap: anywhere;
+  font-size: var(--font-size-callout);
+}
+
+.companion-chat-message p {
+  margin: 0;
+}
+
+.companion-chat-message--user {
+  align-self: flex-end;
+  border-color: transparent;
+  background: color-mix(in srgb, var(--primary) 85%, transparent);
+  color: var(--background-primary);
+}
+
+.companion-chat-message--assistant {
+  align-self: flex-start;
+  background: var(--background-secondary);
+}
+
+.companion-chat-message.is-error {
+  border-color: var(--error-base);
+}
+
+.companion-chat-message.is-pending,
+.companion-chat-message.is-streaming {
+  border-style: dashed;
+}
+
+.companion-chat-continue {
+  margin-top: 6px;
+}
+
+.companion-toggle {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--padding-s);
+  white-space: nowrap;
+}
+
+/* On a screen too small for the window to grow by the Companion's width, the main column can end up narrower than microphone + picker + switch; wrap the switch to its own line rather than clipping it. */
+.meeting-audio-source-section {
+  flex-wrap: wrap;
+  row-gap: var(--padding-xs);
+}
+
+/* The mode select reads at the size of the Companion switch label beside it. The open list is drawn outside the toolbar and copies the trigger's font size, so the trigger sets it for both; the list gets its own tighter option rows. */
+.companion-toggle .companion-mode-select {
+  font-size: var(--font-size-caption);
+}
+
+.companion-mode-menu {
+  padding: 2px;
+}
+
+.companion-mode-menu .tokenized-select__option {
+  padding: 3px var(--padding-s);
+}
+
+/* tools-analysis.css loads after the base switch rules and gives every switch a 10px vertical margin. */
+.companion-toggle .meeting-switch-control {
+  margin: 0;
+}
+
+.companion-auto-enable .meeting-switch-control {
+  margin: 0;
+  font-size: var(--font-size-status-small);
+}
+
+/* The right-edge Companion sidebar reuses the History sidebar's collapsible, header and rail; its glyphs are the History ones mirrored, and the rail's divider moves to the inner (left) side. */
+.companion-mirrored-symbol {
+  transform: scaleX(-1);
+}
+
+.companion-rail {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  border-left: 1px solid var(--separator-color);
+  background: var(--background-primary);
+}
+
+.companion-rail .shared-history-rail {
+  flex: 0 0 40px;
+  width: 40px;
+  background: transparent;
+  border-right: 0;
+}
+
+.companion-pane-header {
+  flex: 0 0 auto;
+}
+
+/* The embedded title keeps the History header's 42px height so the two titles line up across the window; the status line below it is pulled up so it reads as the title's caption instead of floating a full row away. */
+.shared-history-sidebar-header.companion-pane-header {
+  margin-bottom: -8px;
+}
+
+.companion-focus {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-xs);
+  padding: 0 var(--padding-m) var(--padding-s);
+}
+
+.companion-focus-input {
+  min-height: 56px;
+  resize: vertical;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .companion-working-dot {
+    animation: none;
+  }
+
+  .companion-stream-row.is-highlighted > * {
+    animation: none;
+  }
+
+  .companion-stream-row.is-leaving {
+    animation: none;
+  }
+
+  .companion-stream-row.is-arriving,
+  .companion-stream-row.is-arriving > * {
+    animation: none;
+  }
+
+  .companion-stream-row.is-arriving > * {
+    overflow: visible;
+  }
+}
+
+/* The count of what the Companion has for the reader while its pane is out of view: on the collapsed rail and beside the Companion switch. */
+.companion-badge-count {
+  padding: 1px var(--padding-s);
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--background-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  white-space: nowrap;
+}
+
+.companion-rail .companion-badge-count {
+  margin-top: var(--padding-xs);
+  padding: 1px 6px;
+}
+
+/* The question a researched answer replies to. A plain quote line, never an accent stripe. */
+.companion-item-quote {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  font-size: var(--font-size-status-small);
+  font-style: italic;
+}
+
+.companion-chat-research {
+  margin: 4px 0 0;
+}
+
+.companion-pinned-header {
+  display: flex;
+  align-items: center;
+}
+
+.companion-pinned-header .companion-pinned-toggle {
+  flex: 1 1 auto;
+  width: auto;
+}
+
+.companion-pinned-copy {
+  flex: none;
+  margin-right: var(--padding-xs);
+}
+
+/* One row of buttons above the stream. The active one is filled with the primary color; the rest are outlined on a white field. */
+.companion-kind-filter {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: var(--padding-xs) var(--padding-m);
+}
+
+.companion-kind-filter-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border: 1px solid var(--primary);
+  border-radius: 999px;
+  background: var(--background-primary);
+  color: var(--primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  cursor: pointer;
+}
+
+.companion-kind-filter-button.is-active {
+  background: var(--primary);
+  color: var(--background-primary);
+}
+
+.companion-kind-filter-button:disabled {
+  border-color: var(--field-border);
+  color: var(--text-secondary);
+  cursor: default;
+}
+
+.companion-kind-filter-button:focus-visible {
+  outline: 2px solid var(--secondary);
+  outline-offset: 2px;
+}
+
+.companion-undo-row {
+  flex: 0 0 auto;
+  margin: 0 var(--padding-m) var(--padding-xs);
+}

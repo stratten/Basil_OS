@@ -1,0 +1,4 @@
+/* Metallic (background only): the window header becomes transparent so the sheen shows on the window background, while the editor content area keeps its solid fill. */
+html[data-surface-finish="metal_backdrop"] .profile-editor-window-header {
+  background: transparent;
+}

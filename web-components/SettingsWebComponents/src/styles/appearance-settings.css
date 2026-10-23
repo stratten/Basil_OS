@@ -1,0 +1,393 @@
+@import '../../../AgentTaskResult/src/styles/theme.css';
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+:root {
+  /* Wireframe-feel experiment (2026-09-02; made palette-aware 2026-09-17):
+     tint text-primary/separator/field-border away from flat black/gray,
+     derived from the live --secondary so it still respects whatever accent
+     color the user picked in Appearance & Format. This used to mix toward a
+     hardcoded #000000 with !important, which forced every dark palette
+     (Midnight, Precursor Metal) to render invisible near-black text -- the
+     !important was needed only because useHostThemeSync() (see hostTheme.ts)
+     pushes the real theme values as inline styles on :root, which otherwise
+     beats a plain stylesheet rule regardless of selector specificity, and a
+     stylesheet rule cannot reference the very custom property an inline
+     style also sets (that is a circular reference, not a cascade order).
+     hostTheme.ts now publishes the raw palette values under --host-text-primary/
+     --host-separator-color instead, so this rule can derive from the actual
+     palette text/separator color -- black on light palettes (unchanged
+     result), near-white on dark palettes (stays near-white with a faint
+     secondary tint) -- without any !important collision. To revert, restore
+     hostTheme.ts's --host-text-primary/--host-separator-color/--host-field-border
+     writes to --text-primary/--separator-color/--field-border and delete this
+     rule block. */
+  --text-primary: color-mix(in srgb, var(--secondary) 14%, var(--host-text-primary, #000000));
+  /* Same derivation as shared/webTheme.ts deriveSeparatorColor (keep the 18% in step): the host's system separator color is far heavier on current macOS and is no longer used for dividers. */
+  --separator-color: color-mix(in srgb, var(--secondary) 18%, transparent);
+  /* Same derivation as shared/webTheme.ts deriveFieldBorder (keep the 20% in step): the host's field border arrives as an opaque hex color. */
+  --field-border: color-mix(in srgb, var(--secondary) 20%, transparent);
+}
+
+.appearance-settings-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--settings-card-gap);
+  padding: 20px;
+}
+
+.appearance-settings-status {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin: 0;
+}
+
+.appearance-external-change-banner {
+  align-items: center;
+  background: var(--background-secondary);
+  border: 1px solid var(--separator-color);
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 8px 12px;
+}
+
+.appearance-settings-section {
+  display: block;
+}
+
+.appearance-settings-section > h2 {
+  margin-bottom: 8px;
+}
+
+.appearance-color-columns {
+  display: grid;
+  gap: 0 24px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.appearance-color-column {
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .appearance-color-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.appearance-color-field {
+  align-items: center;
+  border-bottom: 1px solid var(--field-border);
+  display: flex;
+  gap: 12px;
+  padding: 6px 0;
+}
+
+.appearance-color-field-label {
+  color: var(--text-primary);
+  flex-shrink: 0;
+  font-size: 12px;
+  white-space: nowrap;
+  width: 120px;
+}
+
+.appearance-color-field-trigger {
+  border: 1px solid var(--field-border);
+  border-radius: 999px;
+  cursor: pointer;
+  height: 14px;
+  padding: 0;
+  width: 22px;
+}
+
+.appearance-color-field-trigger:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.appearance-color-field-hex {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 12px;
+}
+
+.appearance-preset-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-bottom: 8px;
+}
+
+.appearance-preset-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 64px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 6px;
+}
+
+.appearance-preset-swatch:hover,
+.appearance-preset-swatch:focus-visible {
+  background: var(--background-secondary);
+  outline: none;
+}
+
+.appearance-preset-swatch:focus-visible {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.appearance-preset-swatch-bg {
+  position: relative;
+  display: block;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--field-border);
+  overflow: hidden;
+}
+
+.appearance-preset-swatch-primary,
+.appearance-preset-swatch-secondary {
+  position: absolute;
+  bottom: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.appearance-preset-swatch-primary {
+  left: 6px;
+}
+
+.appearance-preset-swatch-secondary {
+  right: 6px;
+}
+
+.appearance-preset-swatch-name {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-tiny, 10px);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.appearance-finish-toggle {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.appearance-finish-label {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+}
+
+.appearance-finish-option {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-callout);
+  padding: 4px 12px;
+}
+
+.appearance-finish-option:hover,
+.appearance-finish-option:focus-visible {
+  background: var(--background-secondary);
+  outline: none;
+}
+
+.appearance-finish-option.is-selected {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  font-family: var(--font-family-medium);
+}
+
+.appearance-font-label {
+  color: var(--text-primary);
+  display: inline-block;
+  width: 120px;
+}
+
+.appearance-font-select {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  padding: 4px 8px;
+}
+
+.appearance-preview-card {
+  border: 1px solid var(--separator-color);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.appearance-preview-headline {
+  font-family: var(--font-family-medium);
+  margin: 0 0 8px;
+}
+
+.appearance-preview-buttons {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.appearance-preview-button-primary,
+.appearance-preview-button-secondary {
+  border: 0;
+  border-radius: 6px;
+  color: white;
+  font-family: var(--font-family-light);
+  padding: 6px 12px;
+}
+
+.appearance-preview-button-bordered {
+  background: transparent;
+  border-radius: 6px;
+  border-width: 1px;
+  font-family: var(--font-family-light);
+  padding: 6px 12px;
+}
+
+.appearance-preview-text-secondary {
+  color: var(--text-secondary);
+}
+
+.appearance-save-bar-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.appearance-reset-button {
+  color: var(--error-text);
+}
+
+.appearance-save-bar-error {
+  color: var(--error-text);
+}
+
+.appearance-save-bar-hint {
+  color: var(--notice-text);
+}
+
+.appearance-save-bar-hint-saved {
+  color: var(--success-base);
+}
+
+.appearance-preset-swatch-item {
+  position: relative;
+}
+
+.appearance-preset-swatch-delete {
+  align-items: center;
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 50%;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  font-size: 12px;
+  height: 18px;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  position: absolute;
+  right: 6px;
+  top: 0;
+  width: 18px;
+}
+
+.appearance-preset-swatch-delete:hover:not(:disabled),
+.appearance-preset-swatch-delete:focus-visible {
+  border-color: var(--error-base, #d9363e);
+  color: var(--error-text);
+  outline: none;
+}
+
+.appearance-preset-swatch-delete:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.appearance-save-theme {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.appearance-save-theme-label {
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.appearance-save-theme > input[type='text'] {
+  flex: 0 1 240px;
+  min-width: 0;
+}
+
+.appearance-save-theme-hint,
+.appearance-save-theme-error {
+  flex-basis: 100%;
+  font-size: 12px;
+  margin: 0;
+}
+
+.appearance-save-theme-hint {
+  color: var(--text-secondary);
+}
+
+.appearance-save-theme-error {
+  color: var(--error-text);
+}
+
+.appearance-delete-theme-confirm {
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--error-base, #d9363e) 55%, var(--field-border));
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+}
+
+.appearance-delete-theme-message {
+  color: var(--text-primary);
+  font-size: 12px;
+  margin: 0;
+}
+
+.appearance-delete-theme-actions {
+  display: flex;
+  gap: 8px;
+}

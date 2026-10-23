@@ -1,0 +1,428 @@
+.artifact-review-workspace {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* File-type colors. Each reads on both the light and dark panel backgrounds; the icon shape also differs per type, so color is never the only cue. */
+.artifact-file-list {
+  --file-type-markdown: #3b82f6;
+  --file-type-html: #f08a24;
+  --file-type-code: #8b6cf0;
+  --file-type-shell: #2fa866;
+  --file-type-data: #14a8a0;
+  --file-type-config: #8b97b0;
+  --file-type-text: #8f9aae;
+  --file-type-pdf: #e5534b;
+  --file-type-image: #d9569f;
+  --file-type-archive: #c99a2e;
+  --file-type-other: #8f9aae;
+  min-width: 0;
+  padding: 0 0 var(--padding-s, 10px);
+  border-bottom: 1px solid var(--separator-color);
+}
+
+.artifact-file-list__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px var(--padding-s, 10px);
+  min-height: 24px;
+  margin-bottom: var(--padding-xs, 6px);
+}
+
+.artifact-file-list__title {
+  color: var(--text-secondary, #4b5563);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-tiny, 11px);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.artifact-file-list__sort {
+  display: flex;
+  gap: 4px;
+}
+
+.artifact-file-list__sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.artifact-file-list__sort-arrow {
+  line-height: 1;
+}
+
+/* About two-thirds of a row, so the fade starts on the last visible row. */
+.artifact-file-list .basil-expandable-list {
+  --basil-expandable-list-fade: 22px;
+}
+
+.artifact-file-list__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.artifact-file-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary, #4b5563);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.artifact-file-row:hover,
+.artifact-file-row:focus-visible {
+  border-color: color-mix(in srgb, var(--text-primary) 20%, transparent);
+  outline: none;
+}
+
+.artifact-file-row.is-active {
+  background: color-mix(in srgb, var(--primary, #2563eb) 14%, transparent);
+  color: var(--primary, #2563eb);
+  border-color: color-mix(in srgb, var(--primary, #2563eb) 35%, transparent);
+}
+
+.artifact-file-row__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.file-type-icon {
+  display: block;
+  color: var(--file-type-other);
+}
+
+.file-type-icon--markdown { color: var(--file-type-markdown); }
+.file-type-icon--html { color: var(--file-type-html); }
+.file-type-icon--code { color: var(--file-type-code); }
+.file-type-icon--shell { color: var(--file-type-shell); }
+.file-type-icon--data { color: var(--file-type-data); }
+.file-type-icon--config { color: var(--file-type-config); }
+.file-type-icon--text { color: var(--file-type-text); }
+.file-type-icon--pdf { color: var(--file-type-pdf); }
+.file-type-icon--image { color: var(--file-type-image); }
+.file-type-icon--archive { color: var(--file-type-archive); }
+
+/* The head truncates with an ellipsis while the tail (usually the extension) stays visible. */
+.artifact-file-row__name {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.artifact-file-row__name-head {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artifact-file-row__name-tail {
+  flex: 0 0 auto;
+  white-space: pre;
+}
+
+.artifact-file-row__badge {
+  flex: 0 0 auto;
+  font-family: var(--font-family-medium);
+  font-size: 11px;
+  color: var(--text-tertiary, #6b7280);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+
+.artifact-file-row.is-active .artifact-file-row__badge {
+  color: inherit;
+  background: color-mix(in srgb, var(--primary, #2563eb) 12%, transparent);
+}
+
+.artifact-file-row__time {
+  flex: 0 0 auto;
+  color: var(--text-tertiary, #6b7280);
+  font-size: 11px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.artifact-review-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--padding-s, 10px);
+  padding: var(--padding-s, 10px) 0;
+}
+
+.artifact-review-control-stack {
+  min-width: 0;
+}
+
+.artifact-review-source-toggle {
+  display: flex;
+  gap: 4px;
+  margin-bottom: var(--padding-xs, 6px);
+}
+
+.artifact-review-mode-toggle {
+  display: flex;
+  gap: 4px;
+}
+
+.artifact-review-version-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-s, 10px);
+  min-width: 0;
+}
+
+.artifact-review-version-select-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-family-medium);
+  font-size: 12px;
+  color: var(--text-secondary, #4b5563);
+}
+
+.artifact-review-version-select {
+  min-width: 0;
+  max-width: 320px;
+  border: 1px solid var(--separator-color);
+  border-radius: 6px;
+  background: var(--background-primary, #ffffff);
+  color: var(--text-primary, #111827);
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
+.artifact-review-restore {
+  border: 1px solid color-mix(in srgb, var(--primary, #2563eb) 35%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--primary, #2563eb) 14%, transparent);
+  color: var(--primary, #2563eb);
+  font-family: var(--font-family-medium);
+  font-size: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.artifact-review-restore:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.artifact-review-restore-error {
+  color: var(--error-text);
+}
+
+.artifact-review-mode,
+.artifact-review-source-option,
+.artifact-file-list__sort-button {
+  border: 1px solid var(--separator-color);
+  background: var(--background-primary, #ffffff);
+  color: var(--text-secondary, #4b5563);
+  border-radius: 6px;
+  font-family: var(--font-family-medium);
+  font-size: 12px;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+
+.artifact-review-mode.is-active,
+.artifact-review-source-option.is-active,
+.artifact-file-list__sort-button.is-active {
+  background: color-mix(in srgb, var(--primary, #2563eb) 10%, transparent);
+  color: var(--primary, #2563eb);
+  border-color: color-mix(in srgb, var(--primary, #2563eb) 28%, transparent);
+}
+
+.artifact-review-mode:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.artifact-review-body {
+  display: grid;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.artifact-review-body-layer {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.artifact-review-body-layer[data-presence-phase='entering'],
+.artifact-review-body-layer[data-presence-phase='exiting'] {
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+}
+
+.artifact-review-body-layer > .inline-artifact-preview--tray {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.artifact-review-body-layer .result-section {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+
+.artifact-review-body-layer .result-section h1,
+.artifact-review-body-layer .result-section h2,
+.artifact-review-body-layer .result-section h3,
+.artifact-review-body-layer .result-section h4,
+.artifact-review-body-layer .result-section h5,
+.artifact-review-body-layer .result-section h6,
+.artifact-review-body-layer .result-section p,
+.artifact-review-body-layer .result-section li,
+.artifact-review-body-layer .result-section blockquote {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.artifact-review-body-layer .result-section table {
+  width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
+}
+
+.artifact-review-body-layer .result-section th,
+.artifact-review-body-layer .result-section td {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.artifact-review-body-layer .result-section pre {
+  max-width: 100%;
+  overflow-x: auto;
+  box-sizing: border-box;
+}
+
+.artifact-review-body-layer .result-section :not(pre) > code {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.artifact-review-status {
+  color: var(--text-tertiary, #6b7280);
+  font-size: 13px;
+  padding: var(--padding-m, 16px) 0;
+}
+
+.artifact-review-status p {
+  margin: 0 0 var(--padding-s, 10px);
+}
+
+.artifact-review-retry {
+  border: 1px solid var(--primary, #2563eb);
+  border-radius: 6px;
+  background: var(--background-primary, #ffffff);
+  color: var(--primary, #2563eb);
+  font-family: var(--font-family-medium);
+  font-size: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.artifact-review-source {
+  margin: 0;
+  padding: 3px 9px;
+  border: 1px solid var(--separator-color);
+  border-radius: 6px;
+  background: var(--background-primary, #ffffff);
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.artifact-review-html-frame {
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  border: 1px solid var(--separator-color);
+  border-radius: 8px;
+  background: var(--background-primary);
+}
+
+.artifact-review-diff {
+  margin: 0;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.artifact-review-diff-line {
+  display: flex;
+  gap: 8px;
+  padding: 0 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.artifact-review-diff-line--added {
+  background: color-mix(in srgb, var(--success-base) 16%, var(--background-primary));
+  color: var(--text-primary);
+}
+
+.artifact-review-diff-line--removed {
+  background: color-mix(in srgb, var(--error-base) 14%, var(--background-primary));
+  color: var(--text-primary);
+}
+
+.artifact-review-diff-marker {
+  flex: 0 0 auto;
+  width: 1ch;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.artifact-review-diff-content {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .artifact-review-body-layer {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,7 @@
+/* Metallic (background only): the window's sidebar and run rail become transparent so the sheen behind content shows on the window background, while the result card, code blocks, status pill, menus, and inputs keep their solid fills. */
+html[data-surface-finish="metal_backdrop"] :is(
+  .sidebar,
+  .agent-run-rail
+) {
+  background: transparent;
+}

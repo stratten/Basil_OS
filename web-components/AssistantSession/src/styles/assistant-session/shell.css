@@ -1,0 +1,108 @@
+@import '../../../../shared/webkit-window-chrome.css';
+
+:root {
+  --font-size-footnote: 12px;
+  --font-size-callout: 13px;
+  --font-size-status-small: 11px;
+  --font-size-status-tiny: 10px;
+  --corner-radius-small: 6px;
+  --corner-radius-medium: 8px;
+  --padding-xs: 4px;
+  --padding-s: 8px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+[style*="mask-image"] {
+  display: inline-block;
+  flex: 0 0 auto;
+  background-color: currentColor;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+body {
+  margin: 0;
+}
+
+.assistant-session-shell {
+  font-family: var(--font-family-light, -apple-system, BlinkMacSystemFont, sans-serif);
+  color: var(--text-primary, #111318);
+  background: var(--background-primary, #ffffff);
+  padding: 0 12px 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.assistant-session-shell--result {
+  padding: 12px 12px 10px;
+}
+
+.assistant-session-shell--processing {
+  padding: 8px 8px 2px 12px;
+}
+
+.basil-webkit-window-surface.assistant-session-shell--recording {
+  overflow: visible;
+}
+
+.assistant-session-shell--recording .assistant-session-header,
+.assistant-session-shell--typedInput .assistant-session-header {
+  transform: translateY(8px);
+}
+
+.assistant-session-shell--processing .assistant-session-header,
+.assistant-session-shell--result .assistant-session-header {
+  transform: translateY(-4px);
+}
+
+.assistant-session-shell--processing .assistant-session-header {
+  transform: none;
+}
+
+.assistant-session-shell--processing .assistant-session-processing {
+  margin-top: 0;
+}
+
+.assistant-session-shell__model-picker {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+}
+
+.assistant-session-shell:hover .assistant-session-shell__model-picker {
+  opacity: 0.85;
+}
+
+.assistant-session-shell:hover .assistant-session-shell__model-picker:has(button:disabled) {
+  opacity: 0.45;
+}
+
+.assistant-session-shell--recording .assistant-session-shell__model-picker {
+  right: 8px;
+  bottom: 6px;
+  width: 40px;
+  display: flex;
+  justify-content: center;
+}
+
+.assistant-session-shell--recording .assistant-session-shell__model-picker .rich-text-model-picker {
+  min-width: 14px;
+  max-width: 14px;
+}

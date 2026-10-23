@@ -1,0 +1,56 @@
+.basil-switch {
+  align-items: center;
+  color: var(--text-primary);
+  display: flex;
+  font-family: var(--font-family-light);
+  font-size: 14px;
+  gap: 10px;
+}
+
+.basil-switch-input {
+  appearance: none;
+  background: var(--text-tertiary);
+  border: 0;
+  border-radius: 999px;
+  box-sizing: border-box;
+  cursor: pointer;
+  flex: 0 0 auto;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  transition: background-color 140ms ease, border-color 140ms ease;
+  width: 31px;
+}
+
+.basil-switch-input::after {
+  background: #fff;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 30%);
+  content: '';
+  height: 14px;
+  left: 2px;
+  position: absolute;
+  top: 2px;
+  transition: transform 140ms ease;
+  width: 14px;
+}
+
+.basil-switch-input:checked {
+  background: color-mix(in srgb, var(--secondary, var(--primary)) 85%, transparent);
+}
+
+.basil-switch-input:checked::after {
+  transform: translateX(13px);
+}
+
+.basil-switch-input:focus-visible {
+  outline: 2px solid var(--secondary, var(--primary));
+  outline-offset: 2px;
+}
+
+.basil-switch-input:disabled {
+  cursor: default;
+  opacity: 0.45;
+}

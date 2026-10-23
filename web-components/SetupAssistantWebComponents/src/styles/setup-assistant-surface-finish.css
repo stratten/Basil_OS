@@ -1,0 +1,7 @@
+/* Metallic (background only): the window header and content wrapper become transparent so the sheen shows on the window background. Setup cards and permission rows keep their solid fills, so guidance text stays on solid color. */
+html[data-surface-finish="metal_backdrop"] :is(
+  .basil-window-header,
+  .basil-window-content
+) {
+  background: transparent;
+}

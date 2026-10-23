@@ -1,0 +1,31 @@
+{
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 5.0,
+      "speaker": "Alice",
+      "content": "Good morning everyone, let's start today's meeting"
+    },
+    {
+      "start": 5.0,
+      "end": 10.0,
+      "speaker": "Bob",
+      "content": "Thanks Alice, I'll review the quarterly results"
+    },
+    {
+      "start": 10.0,
+      "end": 15.0,
+      "speaker": "Alice",
+      "content": "Those numbers look great, what about the new project?"
+    },
+    {
+      "start": 15.0,
+      "end": 20.0,
+      "speaker": "Bob",
+      "content": "The project is on track, we should finish next month"
+    }
+  ],
+  "speakers": "{'Bob', 'Alice'}",
+  "duration": 20.0,
+  "scenario": "Two Speaker Meeting"
+}

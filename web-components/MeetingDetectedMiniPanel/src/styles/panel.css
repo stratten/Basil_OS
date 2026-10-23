@@ -1,0 +1,230 @@
+@import '../../../shared/webkit-window-chrome.css';
+
+:root {
+  --background-primary: #ffffff;
+  --background-secondary: #f0f0f0;
+  --background-tertiary: #e5e5e5;
+  --primary: #1d4ed8;
+  --processing-base: #7c3aed;
+  --processing-rgb: 124, 58, 237;
+  --processing-accent: #c8a8f5;
+  --success-base: #16a34a;
+  --error-base: #dc2626;
+  --secondary: #6b7280;
+  --text-primary: #111827;
+  --text-secondary: rgba(17, 24, 39, 0.6);
+  --text-tertiary: rgba(17, 24, 39, 0.4);
+  --separator-color: rgba(0, 0, 0, 0.06);
+  --field-border: rgba(0, 0, 0, 0.08);
+  --recording-base: #8b0000;
+  --recording-accent: #c94f4f;
+  --warning-base: #ffa500;
+  --ready-base: #16a34a;
+  --ready-accent: #c8f0cb;
+  --font-family-light: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-family-medium: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-family-bold: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
+
+body {
+  font-family: var(--font-family-light);
+  color: var(--text-primary);
+}
+
+.mini-panel {
+  /* Explicit height: auto is required here, not just the absence of a
+     height rule: this element also carries .basil-webkit-window-surface
+     (see App.tsx), which sets height: 100%, and since that rule declares
+     `height` and this one previously didn't, the 100% won by cascade with
+     nothing to override it. That made getBoundingClientRect() below always
+     report the *current* native window frame height back to itself
+     (a no-op resize) instead of the actual content height, so the window
+     could never grow to fit new content and instead clipped it via that
+     same ancestor's overflow: hidden. Auto-sizing to content here is what
+     makes App.tsx's measurement -> requestResize loop actually work: the
+     attendee chip row wraps to an unpredictable number of lines, so this
+     element must size to its real rendered content on every meeting update. */
+  height: auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.mini-panel-header {
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--separator-color);
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--text-primary);
+}
+
+.mini-panel-header:active {
+  cursor: grabbing;
+}
+
+.mini-panel-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.meeting-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--processing-base);
+  box-shadow: 0 0 0 0 var(--processing-base);
+  animation: meeting-panel-pulse 1.6s ease-out infinite;
+}
+
+@keyframes meeting-panel-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(var(--processing-rgb), 0.45); }
+  70%  { box-shadow: 0 0 0 6px rgba(var(--processing-rgb), 0); }
+  100% { box-shadow: 0 0 0 0 rgba(var(--processing-rgb), 0); }
+}
+
+.mini-panel-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 4px 14px 14px;
+  min-height: 0;
+}
+
+.meeting-copy {
+  min-width: 0;
+}
+
+.meeting-title {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-family-medium);
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Names the way this meeting was detected (the running app, e.g. "Zoom",
+   or "Calendar" when there's no running call app). Sits in the header row
+   beside "Meeting detected" rather than the title row, using that row's
+   previously-empty right side, and is omitted entirely (see App.tsx's
+   `detectionBadgeLabel`) when it would just repeat the title verbatim. */
+.meeting-detection-badge {
+  flex-shrink: 0;
+  max-width: 130px;
+  font-family: var(--font-family-medium);
+  font-size: 10px;
+  line-height: 14px;
+  letter-spacing: 0.2px;
+  color: var(--secondary);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meeting-detail {
+  font-family: var(--font-family-light);
+  font-size: 11px;
+  line-height: 15px;
+  color: var(--secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+/* Mirrors .meeting-participant-chip / .meeting-participant-field from the
+   meeting UI itself (MeetingAssistant/src/components/MeetingMetadataForm),
+   minus the editable input and remove button since this panel is a
+   read-only prompt: same pill shape, border, and tinted background, wraps
+   to additional rows once attendees no longer fit on one line. */
+.meeting-attendees-field {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.meeting-attendee-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border: 1px solid var(--field-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--secondary) 12%, transparent);
+  font-family: var(--font-family-light);
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.meeting-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.meeting-primary-action,
+.meeting-secondary-action {
+  appearance: none;
+  border-radius: 7px;
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: 12px;
+  line-height: 16px;
+  padding: 7px 12px;
+}
+
+.meeting-primary-action {
+  flex: 1;
+  border: 1px solid var(--primary);
+  background: var(--primary);
+  color: #ffffff;
+  font-family: var(--font-family-bold);
+}
+
+.meeting-primary-action:hover {
+  filter: brightness(0.94);
+}
+
+.meeting-secondary-action {
+  border: 1px solid color-mix(in srgb, var(--primary) 40%, transparent);
+  background: var(--background-primary);
+  color: var(--primary);
+}
+
+.meeting-secondary-action:hover {
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+}
+
+.meeting-primary-action:disabled,
+.meeting-secondary-action:disabled {
+  cursor: default;
+  opacity: 0.55;
+}

@@ -1,0 +1,282 @@
+.home-settings-shell {
+  container-name: home-settings;
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--settings-card-gap);
+  max-width: 650px;
+  width: 100%;
+}
+
+.home-settings-section {
+  align-items: flex-start;
+}
+
+.home-settings-shell > .home-settings-section {
+  max-width: 100%;
+  width: fit-content;
+}
+
+.home-settings-overview-grid {
+  align-items: stretch;
+  display: grid;
+  gap: var(--settings-card-gap);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  width: 100%;
+}
+
+.home-settings-overview-grid > .home-settings-section,
+.home-settings-model-stack {
+  min-width: 0;
+}
+
+.home-settings-model-stack {
+  display: flex;
+}
+
+.home-settings-model-stack > .home-settings-section {
+  height: 100%;
+  min-width: 0;
+}
+
+.home-settings-compact-grid {
+  display: grid;
+  gap: var(--settings-card-gap);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+}
+
+.home-settings-compact-grid > .home-settings-section {
+  min-width: 0;
+}
+
+.home-settings-readiness-row {
+  align-items: center;
+  color: var(--text-secondary);
+  display: flex;
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  gap: 12px;
+  justify-content: flex-start;
+  margin: 0;
+}
+
+.home-settings-resume-card {
+  align-items: center;
+  background: color-mix(in srgb, var(--primary) 10%, var(--background-primary));
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 12px;
+}
+
+.home-settings-resume-card span {
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+}
+
+.home-settings-setup-notice {
+  background: color-mix(in srgb, var(--notice-base) 14%, var(--background-primary));
+  border: 1px solid var(--notice-base);
+  border-left-width: 4px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+}
+
+.home-settings-setup-notice strong {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+}
+
+.home-settings-setup-notice span {
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+}
+
+.home-settings-setup-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.home-settings-setup-badge {
+  align-items: center;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  display: inline-flex;
+  font-family: var(--font-family-medium);
+  font-size: 12px;
+  gap: 6px;
+  line-height: 1;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+
+.home-settings-setup-badge::before {
+  background: currentColor;
+  border-radius: 50%;
+  content: '';
+  height: 7px;
+  width: 7px;
+}
+
+.home-settings-setup-badge.is-complete {
+  background: color-mix(in srgb, var(--success-base) 18%, transparent);
+  color: var(--success-base);
+}
+
+.home-settings-setup-badge.is-incomplete {
+  background: color-mix(in srgb, var(--notice-base) 18%, transparent);
+  color: var(--notice-text);
+}
+
+.home-settings-label {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+}
+
+.home-settings-select {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  line-height: 16px;
+  min-height: 26px;
+  padding: 4px 10px;
+}
+
+.home-settings-model-controls {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.home-settings-model-controls .home-settings-select {
+  flex: 0 1 320px;
+  max-width: 100%;
+}
+
+.home-settings-model-defaults {
+  justify-content: flex-start;
+}
+
+.home-settings-model-defaults-heading {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  width: 100%;
+}
+
+/* The negative block margin keeps the 30px button from making the heading row taller than the title, so "Default Models" lines up with "Setup & Readiness". */
+.home-settings-model-defaults-heading .home-settings-inline-action {
+  align-self: auto;
+  flex: 0 0 auto;
+  margin-block: -6px;
+}
+
+.home-settings-model-default-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+}
+
+.home-settings-model-default-group + .home-settings-model-default-group {
+  border-top: 1px solid var(--field-border);
+  padding-top: 14px;
+}
+
+.home-settings-model-default-group h3 {
+  color: var(--text-secondary);
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+  margin: 0;
+}
+
+.home-settings-model-default-group .home-settings-model-controls {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  width: 100%;
+}
+
+.home-settings-model-default-group .tokenized-select,
+.home-settings-model-default-group .home-settings-select {
+  max-width: 100%;
+  min-width: 0;
+  width: 100%;
+}
+
+.home-settings-model-default-group .home-settings-select {
+  flex: initial;
+  min-height: 26px;
+  padding: 4px 10px;
+}
+
+.home-settings-model-default-group .home-settings-inline-action {
+  grid-column: 2;
+  justify-self: start;
+}
+
+.home-settings-inline-action {
+  align-self: flex-start;
+  width: auto;
+}
+
+@container home-settings (max-width: 560px) {
+  .home-settings-overview-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-settings-compact-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.home-settings-section-warning {
+  color: var(--notice-text);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  margin: 0;
+}
+
+.home-settings-status,
+.home-settings-inline-error,
+.home-settings-error p {
+  margin: 0;
+}
+
+.home-settings-status {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+}
+
+.home-settings-inline-error,
+.home-settings-error p {
+  color: var(--error-text);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+}
+
+.home-settings-error {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 650px;
+}

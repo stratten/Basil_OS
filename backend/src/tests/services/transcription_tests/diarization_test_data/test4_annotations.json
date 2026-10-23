@@ -1,0 +1,32 @@
+{
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 3.0,
+      "speaker": "A"
+    },
+    {
+      "start": 3.0,
+      "end": 6.0,
+      "speaker": "B"
+    },
+    {
+      "start": 6.0,
+      "end": 9.0,
+      "speaker": "C"
+    },
+    {
+      "start": 9.0,
+      "end": 12.0,
+      "speaker": "D"
+    },
+    {
+      "start": 12.0,
+      "end": 15.0,
+      "speaker": "A"
+    }
+  ],
+  "speakers": "{'C', 'A', 'B', 'D'}",
+  "duration": 15.0,
+  "scenario": "Four Speaker Panel"
+}

@@ -1,0 +1,127 @@
+.reasoning-automation-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--settings-card-gap);
+  max-width: 920px;
+  width: 100%;
+}
+
+.reasoning-defaults-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--settings-card-gap);
+  max-width: 920px;
+  width: 100%;
+}
+
+/* Model and unload delay are two half-width columns; each control keeps its own hint and switch in its column, like the Dill section. */
+.reasoning-defaults-field-row {
+  align-items: start;
+  display: grid;
+  gap: 12px 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.reasoning-defaults-field {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* The label hugs its select and each hint hugs the control above it, so only the groups are 12px apart. */
+.reasoning-defaults-field-label + .tokenized-select {
+  margin-top: -8px;
+}
+
+.reasoning-defaults-field > .reasoning-defaults-field-hint:not(:first-child) {
+  margin-top: -10px;
+}
+
+@media (max-width: 560px) {
+  .reasoning-defaults-field-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.reasoning-defaults-section select {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  padding: 6px 8px;
+}
+
+.reasoning-defaults-threshold {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reasoning-defaults-threshold-row {
+  align-items: center;
+  color: var(--text-primary);
+  display: flex;
+  font-family: var(--font-family-light);
+  font-size: 13px;
+  gap: 8px;
+}
+
+.reasoning-defaults-status,
+.reasoning-defaults-inline-error,
+.reasoning-defaults-error p {
+  margin: 0;
+}
+
+.reasoning-defaults-status {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+}
+
+.reasoning-defaults-inline-error,
+.reasoning-defaults-error p {
+  color: var(--error-text);
+  font-family: var(--font-family-light);
+  font-size: 13px;
+}
+
+.reasoning-defaults-error {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 700px;
+}
+
+.reasoning-defaults-columns {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.reasoning-defaults-column {
+  border-left: 1.5px solid var(--primary);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding-left: 14px;
+}
+
+.reasoning-defaults-column h3 {
+  color: var(--primary);
+  font-family: var(--font-family-medium);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+@media (max-width: 640px) {
+  .reasoning-defaults-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

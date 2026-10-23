@@ -1,0 +1,7 @@
+/* Metallic (background only): the window shell and history sidebar become transparent so the sheen behind content shows on the window background, while the output card, search field, editors, and controls keep their solid fills. */
+html[data-surface-finish="metal_backdrop"] :is(
+  .assistant-output-history-shell,
+  .assistant-output-history-sidebar
+) {
+  background: transparent;
+}

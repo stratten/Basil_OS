@@ -1,0 +1,21 @@
+.assistant-session-actions__refine {
+  position: relative;
+  display: inline-flex;
+  color: #ffffff;
+}
+
+.assistant-session-actions__refine-badge {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--primary, #2f6fed) 90%, transparent);
+  font-size: 7px;
+  line-height: 12px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

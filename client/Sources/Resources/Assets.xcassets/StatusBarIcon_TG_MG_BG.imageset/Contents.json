@@ -1,0 +1,26 @@
+{
+  "images": [
+    {
+      "filename": "StatusBarIcon_TG_MG_BG.png",
+      "idiom": "universal",
+      "scale": "1x"
+    },
+    {
+      "filename": "StatusBarIcon_TG_MG_BG@2x.png",
+      "idiom": "universal",
+      "scale": "2x"
+    },
+    {
+      "filename": "StatusBarIcon_TG_MG_BG@3x.png",
+      "idiom": "universal",
+      "scale": "3x"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  },
+  "properties": {
+    "template-rendering-intent": "original"
+  }
+}

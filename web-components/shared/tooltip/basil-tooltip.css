@@ -1,0 +1,59 @@
+.basil-tooltip {
+  --basil-tooltip-shift-x: 0px;
+  --basil-tooltip-shift-y: -3px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2147483647;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 20px));
+  padding: 5px 8px;
+  border: 1px solid var(--separator-color, color-mix(in srgb, var(--text-primary, CanvasText) 22%, transparent));
+  border-radius: 6px;
+  background: var(--background-primary, Canvas);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 18%);
+  color: var(--text-primary, CanvasText);
+  font-family: var(--font-family-medium, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif);
+  font-size: 11px;
+  line-height: 1.3;
+  text-align: left;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(var(--basil-tooltip-shift-x), var(--basil-tooltip-shift-y));
+  transition: opacity 80ms ease-out, transform 80ms ease-out, visibility 0s linear 80ms;
+}
+
+.basil-tooltip[data-placement='above'] {
+  --basil-tooltip-shift-y: 3px;
+}
+
+.basil-tooltip[data-placement='left'] {
+  --basil-tooltip-shift-x: 3px;
+  --basil-tooltip-shift-y: 0px;
+}
+
+.basil-tooltip[data-placement='right'] {
+  --basil-tooltip-shift-x: -3px;
+  --basil-tooltip-shift-y: 0px;
+}
+
+.basil-tooltip.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: opacity 80ms ease-out, transform 80ms ease-out, visibility 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .basil-tooltip,
+  .basil-tooltip.is-visible {
+    transform: none;
+    transition: none;
+  }
+}

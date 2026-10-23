@@ -1,0 +1,61 @@
+name: Bug report
+description: Report a reproducible problem in Basil.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thank you for reporting a problem. Do not paste credentials, personal data, account tokens, or private recordings here. For a vulnerability, use the private report link on the issue chooser instead.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before you submit
+      options:
+        - label: I searched existing issues and pull requests and did not find this problem.
+          required: true
+        - label: I removed credentials, personal data, and private recordings from everything I am pasting below.
+          required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: macOS 26.0
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How Basil was installed
+      options:
+        - Website download
+        - GitHub main-latest build
+        - Built from source
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Basil version or commit
+      description: The version shown in the Basil menu, or the commit you built.
+      placeholder: 1.1.7 or 72ecef3
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Describe what you saw, and what you expected to see instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps, starting from a fresh launch if you can.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant redacted logs
+      description: Paste only the lines that matter, with names, paths, keys, and message content removed.
+      render: shell

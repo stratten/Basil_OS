@@ -1,0 +1,29 @@
+name: DCO
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dco:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require a Signed-off-by line on every commit
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          missing=0
+          for commit in $(git rev-list --no-merges "$BASE_SHA..$HEAD_SHA"); do
+            if ! git log -1 --format=%B "$commit" | grep -Eq '^Signed-off-by: .+ <.+@.+>$'; then
+              echo "::error::Commit $commit has no Signed-off-by line. Add one with git commit -s --amend --no-edit, or git rebase --signoff for several commits. See CONTRIBUTING.md."
+              missing=1
+            fi
+          done
+          exit "$missing"

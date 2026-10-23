@@ -1,0 +1,30 @@
+.settings-subtabs-picker {
+  display: flex;
+  gap: 4px;
+}
+
+.settings-subtabs-tab {
+  background: transparent;
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: 13px;
+  padding: 6px 14px;
+}
+
+.settings-subtabs-tab-selected {
+  background: color-mix(in srgb, var(--secondary, var(--primary)) 14%, transparent);
+  border-color: var(--secondary, var(--primary));
+  color: var(--text-primary);
+}
+
+.settings-subtabs-tab:hover:not(.settings-subtabs-tab-selected) {
+  background: color-mix(in srgb, var(--background-primary) 92%, var(--secondary, var(--primary)));
+}
+
+.settings-subtabs-tab:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}

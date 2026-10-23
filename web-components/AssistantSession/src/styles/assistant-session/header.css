@@ -1,0 +1,114 @@
+.assistant-session-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.assistant-session-header__left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.assistant-session-header__title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--secondary, #4c7bf0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assistant-session-header__traffic,
+.assistant-session-header__ghost-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: var(--secondary, #4c7bf0);
+  cursor: pointer;
+  padding: 0;
+}
+
+.assistant-session-header__traffic {
+  opacity: 0.85;
+  transition: opacity 0.15s;
+}
+
+.assistant-session-header__traffic:hover {
+  opacity: 1;
+}
+
+.assistant-session-header__traffic:focus-visible {
+  outline: 2px solid var(--secondary, #4c7bf0);
+  outline-offset: 2px;
+}
+
+.assistant-session-header__traffic svg {
+  display: block;
+  flex: 0 0 auto;
+}
+
+.assistant-session-header__ghost-btn {
+  width: 10px;
+  height: 22px;
+  color: color-mix(in srgb, var(--secondary, #4c7bf0) 40%, transparent);
+}
+
+.assistant-session-header__ghost-btn:hover {
+  color: color-mix(in srgb, var(--secondary, #4c7bf0) 80%, transparent);
+}
+
+.assistant-session-header__mic-live {
+  color: var(--secondary, #4c7bf0);
+}
+
+.assistant-session-header__dill {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.assistant-session-header__picker {
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+}
+
+.assistant-session-shell:hover .assistant-session-header__picker {
+  opacity: 0.85;
+}
+
+.assistant-session-header__picker:has(button:disabled) {
+  opacity: 0.45;
+}
+
+.assistant-session-header__bubble {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.assistant-session-model-picker {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.assistant-session-model-picker__label {
+  font-size: 11px;
+  color: var(--text-secondary, #5b6270);
+  pointer-events: none;
+}
+
+.assistant-session-model-picker__select {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}

@@ -1,0 +1,305 @@
+import { createSwiftBridge, missingHandlerLogger } from '@shared/swiftBridge';
+import type { MeetingBridgeEvent, MeetingBridgeIntent, MeetingHistorySearchFiltersDTO, MeetingMeterPayload } from './types';
+import { publishMeetingMeter } from './meetingMeterStore';
+
+declare global {
+  interface Window {
+    basilMeetingAssistant?: {
+      onEvent: (event: MeetingBridgeEvent) => void;
+      onMeter: (payload: MeetingMeterPayload) => void;
+      onFilesDropped?: (payload: FilesDroppedPayload) => void;
+    };
+  }
+}
+
+const PROTOCOL_VERSION = 4;
+
+export interface FilesDroppedPayload {
+  paths: string[];
+  source: 'drop' | 'picker';
+}
+
+const filesDroppedListeners = new Set<(payload: FilesDroppedPayload) => void>();
+
+function deliverFilesDropped(payload: FilesDroppedPayload) {
+  if (!payload || !Array.isArray(payload.paths)) return;
+  const paths = payload.paths.filter((path): path is string => typeof path === 'string' && path !== '');
+  if (paths.length === 0) return;
+  const source = payload.source === 'picker' ? 'picker' : 'drop';
+  for (const listener of Array.from(filesDroppedListeners)) listener({ paths, source });
+}
+
+let eventCallback: ((event: MeetingBridgeEvent) => void) | null = null;
+const pendingEvents: MeetingBridgeEvent[] = [];
+
+function installGlobalHandlers() {
+  window.basilMeetingAssistant = {
+    onEvent: (event: MeetingBridgeEvent) => {
+      if (eventCallback) {
+        eventCallback(event);
+      } else {
+        pendingEvents.push(event);
+      }
+    },
+    onMeter: (payload: MeetingMeterPayload) => {
+      publishMeetingMeter(payload);
+    },
+    onFilesDropped: (payload: FilesDroppedPayload) => {
+      deliverFilesDropped(payload);
+    },
+  };
+}
+
+installGlobalHandlers();
+
+export function registerEventHandler(cb: (event: MeetingBridgeEvent) => void) {
+  eventCallback = cb;
+  if (!window.basilMeetingAssistant) {
+    installGlobalHandlers();
+  }
+  while (pendingEvents.length > 0) {
+    const pending = pendingEvents.shift();
+    if (pending) cb(pending);
+  }
+}
+
+const swiftBridge = createSwiftBridge<MeetingBridgeIntent>('meetingBridge', {
+  onMissing: missingHandlerLogger('log', '[MeetingBridge] No Swift handler, intent:'),
+});
+
+function postToSwift(intent: MeetingBridgeIntent) {
+  swiftBridge.post(intent);
+}
+
+export function reportReady() {
+  postToSwift({ type: 'reactReady', protocolVersion: PROTOCOL_VERSION });
+}
+
+export function closeWindow() {
+  postToSwift({ type: 'closeWindow' });
+}
+
+export function minimizeWindow() {
+  postToSwift({ type: 'minimizeWindow' });
+}
+
+export function toggleWindowCollapse(collapsed: boolean) {
+  postToSwift({ type: 'toggleWindowCollapse', collapsed });
+}
+
+/// Reports the rendered height of `.meeting-window-chrome` so the native
+/// drag overlay's height constraint matches actual layout. Mirrors
+/// `AgentTaskResultWebView`'s `reportWidgetHeaderHeight`: a single
+/// `offsetHeight` number, no coordinate/region data, because the header's
+/// button clusters sit in the same fixed-width bands on every render.
+export function reportChromeHeight(height: number) {
+  postToSwift({ type: 'chromeHeight', height });
+}
+
+export function toggleRecording() {
+  postToSwift({ type: 'toggleRecording' });
+}
+
+export function startNewMeeting() {
+  postToSwift({ type: 'startNewMeeting' });
+}
+
+export function resumeMeeting() {
+  postToSwift({ type: 'resumeMeeting' });
+}
+
+export function pauseRecording() {
+  postToSwift({ type: 'pauseRecording' });
+}
+
+export function resumeRecording() {
+  postToSwift({ type: 'resumeRecording' });
+}
+
+export function cancelRecording() {
+  postToSwift({ type: 'cancelRecording' });
+}
+
+export function setLiveTranscription(enabled: boolean) {
+  postToSwift({ type: 'setLiveTranscription', enabled });
+}
+
+/** Chooses the live transcription engine for the next recording only; null returns to the saved default. */
+export function setLiveEngine(engine: string | null) {
+  postToSwift({ type: 'setLiveEngine', engine });
+}
+
+export function selectMeeting(meetingId: string) {
+  postToSwift({ type: 'selectMeeting', meetingId });
+}
+
+export function deleteMeeting(meetingId: string) {
+  postToSwift({ type: 'deleteMeeting', meetingId });
+}
+
+export function setSidebarCollapsed(collapsed: boolean) {
+  postToSwift({ type: 'setSidebarCollapsed', collapsed });
+}
+
+export function setMeetingSearch(text: string) {
+  postToSwift({ type: 'setMeetingSearch', text });
+}
+
+export function setMeetingSearchFilters(filters: MeetingHistorySearchFiltersDTO) {
+  postToSwift({ type: 'setMeetingSearchFilters', ...filters });
+}
+
+export function loadMoreMeetings() {
+  postToSwift({ type: 'loadMoreMeetings' });
+}
+
+export function updateMetadata(fields: { name?: string; purpose?: string; participants?: string }) {
+  postToSwift({ type: 'updateMetadata', ...fields });
+}
+
+export function setAudioSource(fields: {
+  enableMicrophone?: boolean;
+  captureMode?: 'none' | 'selectedProcess' | 'globalOutput';
+  processId?: number;
+}) {
+  postToSwift({ type: 'setAudioSource', ...fields });
+}
+
+export function setPostProcessingModel(model: string) {
+  postToSwift({ type: 'setPostProcessingModel', model });
+}
+
+export function startPostProcessing(operation: 'transcribe' | 'diarize') {
+  postToSwift({ type: 'startPostProcessing', operation });
+}
+
+export function setAutomation(fields: {
+  autoRetranscribeOnStop?: boolean;
+  autoRetranscribeDuringRecording?: boolean;
+  autoAnalyzeOnComplete?: boolean;
+  autoAnalyzeModes?: string[];
+  autoAnalyzeCustomInstructions?: string;
+  autoAnalyzeTiming?: string;
+}) {
+  postToSwift({ type: 'setAutomation', ...fields });
+}
+
+export function setAnalysisConfiguration(fields: { modes?: string[]; customInstructions?: string; modelId?: string; isExpanded?: boolean }) {
+  postToSwift({ type: 'setAnalysisConfiguration', ...fields });
+}
+
+export function startAnalysis() {
+  postToSwift({ type: 'startAnalysis' });
+}
+
+export function viewAnalysis(filename: string) {
+  postToSwift({ type: 'viewAnalysis', filename });
+}
+
+export function deleteAnalysis(filename: string) {
+  postToSwift({ type: 'deleteAnalysis', filename });
+}
+
+export function retryAnalysisModes(filename: string, modes: string[]) {
+  postToSwift({ type: 'retryAnalysisModes', filename, modes });
+}
+
+export function copyText(text: string, rich: boolean = false) {
+  if (swiftBridge.isAvailable()) {
+    postToSwift({ type: 'copyText', text, rich });
+    return;
+  }
+
+  if (navigator.clipboard?.writeText) {
+    void navigator.clipboard.writeText(text).catch((error: unknown) => {
+      // eslint-disable-next-line no-console
+      console.warn('[MeetingBridge] Browser clipboard write failed:', error);
+    });
+    return;
+  }
+
+  // eslint-disable-next-line no-console
+  console.warn('[MeetingBridge] Clipboard API is unavailable.');
+}
+
+export function exportAnalysis(filename: string, format: 'markdown' | 'text' = 'markdown', text?: string, filenameSuggestion?: string) {
+  postToSwift({ type: 'exportAnalysis', filename, format, text, filenameSuggestion });
+}
+
+export function updateProposal(proposalId: string, fields: { draftPrompt?: string; isEditingDraft?: boolean }) {
+  postToSwift({ type: 'updateProposal', proposalId, ...fields });
+}
+
+export function promoteProposalToTodo(proposalId: string) {
+  postToSwift({ type: 'promoteProposalToTodo', proposalId });
+}
+
+export function startProposalNow(proposalId: string) {
+  postToSwift({ type: 'startProposalNow', proposalId });
+}
+
+export function openProposalTodo(todoId: string) {
+  postToSwift({ type: 'openProposalTodo', todoId });
+}
+
+export function openProposalAgentTask(agentTaskId: string) {
+  postToSwift({ type: 'openProposalAgentTask', agentTaskId });
+}
+
+export function promoteAllProposalsToTodos() {
+  postToSwift({ type: 'promoteAllProposalsToTodos' });
+}
+
+export function dismissProposal(proposalId: string) {
+  postToSwift({ type: 'dismissProposal', proposalId });
+}
+
+export function restoreProposal(proposalId: string) {
+  postToSwift({ type: 'restoreProposal', proposalId });
+}
+
+export function pickCompanionFolder() {
+  postToSwift({ type: 'pickCompanionFolder' });
+}
+
+export function openCompanionWindow() {
+  postToSwift({ type: 'openCompanionWindow' });
+}
+
+/** Asks the Notetaker window to come forward and scroll to the transcript lines a Companion item came from. */
+export function focusTranscript(itemId: string, startSeconds: number, endSeconds: number) {
+  postToSwift({ type: 'focusTranscript', itemId, startSeconds, endSeconds });
+}
+
+/** Asks the detached Companion window to come forward and scroll to one card. */
+export function focusCompanionItem(itemId: string) {
+  postToSwift({ type: 'focusCompanionItem', itemId });
+}
+
+/** Opens an Assistant Session seeded with an approved Companion proposal; the native side validates and bounds both texts. */
+export function openCompanionAssistantSession(instruction: string, contextText: string) {
+  postToSwift({ type: 'openCompanionAssistantSession', instruction, contextText });
+}
+
+/** Opens the app Settings window; the user changes any setting there themselves. */
+export function openAppSettings() {
+  postToSwift({ type: 'openAppSettings' });
+}
+
+/** Asks the native host to open an http, https, or mailto link in the system handler; the web view itself never navigates away. */
+export function openExternalUrl(url: string) {
+  postToSwift({ type: 'openExternalUrl', url });
+}
+
+/** Tells the native window how wide the Companion column is (0 when absent) so it grows to the right by that much instead of narrowing the main column. */
+export function setCompanionPaneExtent(width: number) {
+  postToSwift({ type: 'setCompanionPaneExtent', width });
+}
+
+/** Registers a listener for filesystem paths delivered by a native drop or the folder picker; returns the unsubscribe function. */
+export function subscribeFilesDropped(listener: (payload: FilesDroppedPayload) => void): () => void {
+  filesDroppedListeners.add(listener);
+  return () => {
+    filesDroppedListeners.delete(listener);
+  };
+}

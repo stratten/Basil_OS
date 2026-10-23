@@ -1,0 +1,35 @@
+/* Canonical layout tokens: radii, spacing, borders, shadows, font sizes, and sidebar widths. Colors and font families are not here because the Swift host overrides them at runtime. Only a package that already declares every token below may import this file. A package that declares a subset must not, because shared stylesheets use fallbacks that differ from these values (for example var(--font-size-body, 13px)) and defining a previously undeclared token would change them. themeLayoutTokens.contract.test.ts keeps every local declaration equal to these values. */
+:root {
+  --corner-radius-small: 6px;
+  --corner-radius-medium: 8px;
+  --corner-radius-large: 16px;
+  --padding-xs: 4px;
+  --padding-s: 8px;
+  --padding-m: 12px;
+  --padding-l: 16px;
+  --padding-xl: 20px;
+  --border-thin: 1px;
+  --border-medium: 2px;
+
+  --shadow-light: 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-medium: 0 1px 4px rgba(0, 0, 0, 0.05);
+  --shadow-dark: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+  --font-size-large-title: 28px;
+  --font-size-title1: 24px;
+  --font-size-title2: 20px;
+  --font-size-title3: 18px;
+  --font-size-headline: 16px;
+  --font-size-subheadline: 14px;
+  --font-size-body: 14px;
+  --font-size-callout: 13px;
+  --font-size-footnote: 12px;
+  --font-size-caption: 12px;
+  --font-size-code: 13px;
+  --font-size-code-small: 11px;
+  --font-size-status-small: 11px;
+  --font-size-status-tiny: 10px;
+
+  --sidebar-collapsed-width: 28px;
+  --sidebar-expanded-width: 220px;
+}

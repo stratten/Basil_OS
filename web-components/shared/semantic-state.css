@@ -1,0 +1,20 @@
+/* Semantic state roles. Amber (--warning-base) = Your turn; red (--error-base) = error; teal (--notice-base) = notice/degraded; gray (--text-tertiary) = paused; green half-fill = partial result.
+   The mark's selector is raised by :root so it wins over a host element's own solid `background` (for example a status dot).
+   Colors here are fixed web-side values (the Swift host does not own notice). The *-text variants stay legible on light and dark appearances by mixing toward --text-primary. */
+:root {
+  --notice-base: #0E7490;
+  --notice-text: color-mix(in srgb, var(--notice-base) 60%, var(--text-primary));
+  --warning-text: color-mix(in srgb, var(--warning-base, #FFA500) 55%, var(--text-primary));
+  --error-text: color-mix(in srgb, var(--error-base, #9B1C1C) 60%, var(--text-primary));
+}
+
+:root .outcome-partial-mark {
+  display: inline-block;
+  flex: none;
+  width: var(--outcome-mark-size, 12px);
+  height: var(--outcome-mark-size, 12px);
+  box-sizing: border-box;
+  border: 1.5px solid var(--success-base);
+  border-radius: 50%;
+  background: linear-gradient(90deg, var(--success-base) 50%, transparent 50%);
+}

@@ -1,0 +1,106 @@
+/* Suggested-action cards: how a card's body opens and closes, and how a handled card confirms and leaves so the cards below it slide up instead of snapping. */
+
+/* The body stays mounted while it closes. Its inner wrapper is only clipped during the motion, so the card's own shadow and focus rings are never cut off at rest. */
+.meeting-proposal-body.is-opening,
+.meeting-proposal-body.is-closing {
+  display: grid;
+  overflow: hidden;
+}
+
+.meeting-proposal-body.is-opening > .meeting-proposal-body-inner,
+.meeting-proposal-body.is-closing > .meeting-proposal-body-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.meeting-proposal-body.is-opening {
+  animation: meeting-proposal-body-open 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.meeting-proposal-body.is-closing {
+  pointer-events: none;
+  animation: meeting-proposal-body-close 320ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes meeting-proposal-body-open {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+
+  to {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+}
+
+@keyframes meeting-proposal-body-close {
+  from {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+
+  to {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+}
+
+/* A handled card holds a short confirmation, then fades while its height, padding, margin and border go to zero. The duration matches DEPARTURE_LEAVE_MS in useDepartingProposals.ts. */
+.meeting-proposal-card.is-departing {
+  box-sizing: border-box;
+  overflow: hidden;
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 8%, var(--background-primary));
+  transition:
+    height 450ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    padding 450ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    margin-bottom 450ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-width 450ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 380ms ease,
+    box-shadow 300ms ease,
+    border-color 150ms ease,
+    background-color 150ms ease;
+}
+
+.meeting-proposal-card.is-departing.is-departing-leave {
+  padding-block: 0;
+  margin-bottom: 0;
+  border-width: 0;
+  box-shadow: none;
+  opacity: 0;
+}
+
+.meeting-proposal-card-status.is-confirmed {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--background-primary);
+  font-family: var(--font-family-medium);
+  white-space: nowrap;
+  animation: meeting-proposal-confirmation-in 180ms ease-out both;
+}
+
+@keyframes meeting-proposal-confirmation-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meeting-proposal-body.is-opening,
+  .meeting-proposal-body.is-closing,
+  .meeting-proposal-card-status.is-confirmed {
+    animation: none;
+  }
+
+  .meeting-proposal-card.is-departing {
+    transition: none;
+  }
+}
