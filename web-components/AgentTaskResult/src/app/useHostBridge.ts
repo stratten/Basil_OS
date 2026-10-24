@@ -27,7 +27,7 @@ import {
 import { wsManager } from '../services/websocket';
 import * as api from '../services/api';
 import { agentStore } from '../store/agentStore';
-import { hydrateActiveFollowUpChild, hydrateAgentFromBackend } from './agentHydration';
+import { hydrateActiveFollowUpChild, hydrateAgentFromBackend, isInFlightAgentStatus } from './agentHydration';
 import { applyHostFonts, applyHostTheme } from './themeBootstrap';
 import { applyHostDateStyle } from './dateDisplay';
 import {
@@ -57,6 +57,8 @@ export async function hydrateDetachedChain(rootTaskId: string): Promise<void> {
 
     const isTerminal = displayable.status === 'completed' || displayable.status === 'failed';
     if (isTerminal) {
+      // The latest turn is the card on screen, so it must carry its own id. Leaving the root's id here made the next follow-up snapshot this turn into history under the root's id (a duplicated first turn) and send the root as its previous task.
+      agentStore.setCurrentTurnTaskId(rootTaskId, displayable.agentTaskId);
       agentStore.updateAgentTaskText(rootTaskId, displayable.originalPrompt);
       agentStore.updateAgentDisplayPromptMarkdown(rootTaskId, displayable.displayPromptMarkdown);
       agentStore.setPresentationSummary(rootTaskId, displayable.presentationSummary);
@@ -105,6 +107,53 @@ export async function hydrateDetachedChain(rootTaskId: string): Promise<void> {
   } catch (error) {
     console.warn('[AgentTaskResult] Failed to hydrate detached chain; falling back to single-task hydration', rootTaskId, error);
     hydrateAgentFromBackend(rootTaskId);
+  }
+}
+
+export interface FollowUpTarget {
+  parentId: string;
+  previousTaskId: string;
+}
+
+// A store entry can be keyed by a non-root chain turn: the native host opens tasks by whatever id it holds (showExistingAgentTask), which may be the latest turn of a chain. The backend normalizes the root, so the durable data stays correct, but the client must never use a turn's id as the follow-up parent. get_agent_task_chain only returns the children of the id it is given, so refetching history for a turn id returns just that one turn and the whole thread collapses to "Initial request -> Follow-up 1". This resolves the chain's real root first and loads the whole chain onto a root-keyed entry before the follow-up starts.
+export async function resolveFollowUpTarget(selectedId: string): Promise<FollowUpTarget> {
+  const agent = agentStore.getAgent(selectedId);
+  const defaultParentId = agent?.rootTaskId || selectedId;
+  const defaultTarget: FollowUpTarget = {
+    parentId: defaultParentId,
+    previousTaskId: agentStore.getCurrentTurnTaskId(defaultParentId),
+  };
+
+  const mayBeAliasedTurn = Boolean(agent)
+    && !agent!.rootTaskId
+    && agent!.agentTaskHistory.length === 0
+    && !agentStore.hasActiveFollowUpTurn(selectedId)
+    && !isInFlightAgentStatus(agent!.status);
+  if (!mayBeAliasedTurn) return defaultTarget;
+
+  try {
+    const detail = await api.getAgentTaskDetail(selectedId);
+    const rootId = detail.root_task_id;
+    if (!rootId || rootId === selectedId) return defaultTarget;
+
+    if (agentStore.getAgent(rootId)) {
+      agentStore.removeAgent(selectedId);
+      agentStore.selectAgent(rootId);
+      return { parentId: rootId, previousTaskId: agentStore.getCurrentTurnTaskId(rootId) };
+    }
+
+    const rootDetail = await api.getAgentTaskDetail(rootId);
+    const latestTurnId = rootDetail.follow_ups?.length
+      ? rootDetail.follow_ups[rootDetail.follow_ups.length - 1].id
+      : rootDetail.id;
+    agentStore.registerAgent(rootId);
+    await hydrateDetachedChain(rootId);
+    agentStore.removeAgent(selectedId);
+    agentStore.selectAgent(rootId);
+    return { parentId: rootId, previousTaskId: latestTurnId };
+  } catch (error) {
+    console.warn('[AgentTaskResult] Could not resolve chain root for follow-up; using the selected task id', selectedId, error);
+    return defaultTarget;
   }
 }
 
@@ -270,11 +319,10 @@ export function useHostBridge({
     registerRequestFollowUpHandler(() => {
       const id = agentStore.getSelectedAgentId();
       if (id) {
-        const agent = agentStore.getAgent(id);
-        const parentId = agent?.rootTaskId || id;
-        const previousTaskId = agentStore.getCurrentTurnTaskId(parentId);
-        agentStore.setPendingFollowUpParent(parentId);
-        startFollowUpCapture(parentId, previousTaskId);
+        void resolveFollowUpTarget(id).then(({ parentId, previousTaskId }) => {
+          agentStore.setPendingFollowUpParent(parentId);
+          startFollowUpCapture(parentId, previousTaskId);
+        });
       } else if (viewedDetailRef.current) {
         const detail = viewedDetailRef.current;
         const parentId = detail.rootTaskId || detail.agentTaskId;
