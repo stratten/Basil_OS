@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   setSelectedModelId: vi.fn(),
   updateOriginalModelId: vi.fn(),
   setReferencePaths: vi.fn(),
+  setAgentTaskHistory: vi.fn(),
   filesPickedHandler: null as ((paths: string[]) => void) | null,
   registerFilesPickedHandler: vi.fn<(handler: (paths: string[]) => void) => () => void>(() => () => {}),
   pickFiles: vi.fn(),
@@ -46,6 +47,7 @@ vi.mock('../store/agentStore', () => ({
     setSelectedModelId: mocks.setSelectedModelId,
     updateOriginalModelId: mocks.updateOriginalModelId,
     setReferencePaths: mocks.setReferencePaths,
+    setAgentTaskHistory: mocks.setAgentTaskHistory,
   },
 }));
 
@@ -206,6 +208,46 @@ describe('TextFollowUp', () => {
     expect(mocks.processAgentTask).toHaveBeenCalledWith(expect.objectContaining({ model_id: 'gpt-5-mini' }));
     expect(mocks.updateOriginalModelId).toHaveBeenCalledWith('task-1', 'gpt-5-mini');
     mocks.getAgent.mockReturnValue(undefined);
+  });
+
+  it('carries the whole reopened chain into the new follow-up instead of only the latest turn', async () => {
+    const historyItem = (id: string) => ({ id, agentTaskText: `prompt ${id}`, result: `answer ${id}`, files: [], reference_paths: [], timestamp: '2026-10-24T00:00:00.000Z' });
+    const viewedChain = {
+      agentTaskId: 'turn-5',
+      rootTaskId: 'chain-root',
+      currentTurnTaskId: 'turn-5',
+      originalPrompt: 'prompt turn-5',
+      result: 'answer turn-5',
+      status: 'completed',
+      structuredFiles: [],
+      referencePaths: [],
+      thinkingSegments: [],
+      progressSteps: [],
+      executionTimeline: [],
+      stepDetails: [],
+      agentTaskHistory: ['chain-root', 'turn-1', 'turn-2', 'turn-3', 'turn-4'].map(historyItem),
+    };
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root.render(<TextFollowUp agentTaskId="turn-5" rootTaskId="chain-root" displaySource={viewedChain as never} onCancel={vi.fn()} />);
+    });
+    const editor = container.querySelector('[role="textbox"][aria-label="Message"]') as HTMLDivElement;
+    Object.defineProperty(editor, 'innerText', { configurable: true, value: 'Next question' });
+    await act(async () => {
+      editor.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await act(async () => {
+      editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true }));
+    });
+
+    const carried = mocks.setAgentTaskHistory.mock.calls[0];
+    expect(carried[0]).toBe('chain-root');
+    expect(carried[1].map((item: { id: string }) => item.id)).toEqual(['chain-root', 'turn-1', 'turn-2', 'turn-3', 'turn-4', 'turn-5']);
+    expect(mocks.beginFollowUpTurn.mock.calls[0][2]).toEqual(expect.objectContaining({ id: 'turn-5', agentTaskText: 'prompt turn-5' }));
+    expect(mocks.processAgentTask).toHaveBeenCalledWith(expect.objectContaining({ root_task_id: 'chain-root', previous_task_id: 'turn-5' }));
   });
 
   it('falls back to the default model when the previous turn model is no longer available', async () => {

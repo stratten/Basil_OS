@@ -5,6 +5,7 @@ import type { DisplayableAgentTask } from '../types';
 import { agentStore } from '../store/agentStore';
 import { registerFilesPickedHandler, pickFiles } from '../services/bridge';
 import { editorHtmlToDisplayMarkdown } from './request/requestMarkdown';
+import { buildFollowUpHistoryFromViewedDetail } from '../app/followUpHistory';
 import FollowUpReferences from './FollowUpReferences';
 import RichTextComposer from '../../../shared/RichTextComposer';
 import ReasoningModelPicker from '../../../shared/ReasoningModelPicker';
@@ -78,28 +79,17 @@ export default function TextFollowUp({
       ? agentStore.getCurrentTurnTaskId(rootId)
       : displaySource?.currentTurnTaskId || displaySource?.agentTaskId || agentTaskId;
     const source = parentAgent || displaySource;
-    const snapshot = !parentAgent && source && (source.originalPrompt || source.result || source.errorMessage)
-      ? {
-        id: crypto.randomUUID(),
-        agentTaskText: source.originalPrompt,
-        displayPromptMarkdown: source.displayPromptMarkdown,
-        originType: source.originType,
-        originId: source.originId,
-        result: source.result,
-        files: source.structuredFiles,
-        reference_paths: source.referencePaths,
-        timestamp: new Date().toISOString(),
-        thinkingSegments: source.thinkingSegments,
-        executionSteps: source.progressSteps,
-        executionTimeline: source.executionTimeline,
-        stepDetails: source.stepDetails,
-        errorMessage: source.errorMessage,
-        modelUsed: source.modelUsed ?? source.originalModelId,
-      }
-      : undefined;
+    // Reopened from history there is no store entry yet, so the whole chain on screen must be carried over. Snapshotting only the current turn collapsed an N-turn thread to "Initial request / Follow-up 1".
+    const carriedHistory = !parentAgent && displaySource
+      ? buildFollowUpHistoryFromViewedDetail(displaySource)
+      : [];
+    const snapshot = carriedHistory.length > 0 ? carriedHistory[carriedHistory.length - 1] : undefined;
 
     setSubmitting(true);
     agentStore.beginFollowUpTurn(followUpId, rootId, snapshot, previousTaskId, source?.taskTitle);
+    if (carriedHistory.length > 0) {
+      agentStore.setAgentTaskHistory(rootId, carriedHistory);
+    }
     agentStore.updateAgentTaskText(rootId, content);
     agentStore.updateAgentDisplayPromptMarkdown(rootId, displayPromptMarkdown || undefined);
     // Publish these immediately so the result surface shows the submitted
