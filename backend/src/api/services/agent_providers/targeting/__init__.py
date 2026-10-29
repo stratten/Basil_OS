@@ -1,0 +1,1 @@
+"""Provider target authorization ownership."""

@@ -1,0 +1,82 @@
+.companion-audit {
+  margin: var(--padding-xs) var(--padding-m) 0;
+  border: 1px solid var(--field-border);
+  border-radius: var(--corner-radius-medium);
+  background: var(--background-primary);
+  color: var(--text-primary);
+}
+
+.companion-audit-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--padding-xs) var(--padding-s);
+  padding: var(--padding-xs) var(--padding-s);
+}
+
+.companion-audit-bar .meeting-history-load-more-button {
+  margin: 0;
+}
+
+.companion-audit-toggle {
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  cursor: pointer;
+  padding: 0;
+}
+
+.companion-audit-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-xs);
+  max-height: clamp(96px, 24vh, 220px);
+  overflow-y: auto;
+  padding: 0 var(--padding-s) var(--padding-s);
+  border-top: 1px solid var(--field-border);
+}
+
+.companion-audit-counter {
+  margin: var(--padding-xs) 0 0;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+}
+
+.companion-audit-summary,
+.companion-audit-why,
+.companion-audit-suggestion {
+  margin: 0;
+  font-size: var(--font-size-status-small);
+  overflow-wrap: anywhere;
+}
+
+.companion-audit-why {
+  font-family: var(--font-family-medium);
+}
+
+.companion-audit-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.companion-audit-finding {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--padding-xs) var(--padding-s);
+  border: 1px solid var(--field-border);
+  border-radius: var(--corner-radius-medium);
+}
+
+.companion-audit-finding-head {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-s);
+}

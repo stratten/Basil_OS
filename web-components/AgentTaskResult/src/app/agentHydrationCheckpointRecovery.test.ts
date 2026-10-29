@@ -1,0 +1,587 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AgentTaskDetail } from '../types';
+import * as api from '../services/api';
+import { agentStore } from '../store/agentStore';
+import { hydrateAgentFromBackend } from './agentHydration';
+
+function makeDetail(overrides: Partial<AgentTaskDetail> = {}): AgentTaskDetail {
+  return {
+    id: 'awaiting-task',
+    original_prompt: 'Prepare the report',
+    transcribed_prompt: 'Prepare the report',
+    timestamp: '2026-07-31T00:00:00.000Z',
+    status: 'awaiting_user_input',
+    result_message: 'Which reporting period should I use?',
+    files: [],
+    reference_paths: [],
+    follow_ups: [],
+    ...overrides,
+  };
+}
+
+describe('hydrateAgentFromBackend checkpoint recovery', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(api, 'getPendingExecutionApprovals').mockResolvedValue({
+      approvals: [],
+      orphaned_approval_ids: [],
+    });
+    vi.spyOn(api, 'getPendingProviderInteraction').mockResolvedValue({ interaction: null });
+  });
+
+  it('restores the exact durable checkpoint after its WebSocket event was missed', async () => {
+    agentStore.registerAgent('awaiting-task');
+    vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
+      checkpoint_data: {
+        checkpoint_id: 'period-choice',
+        prompt: 'Which reporting period should I use?',
+        input_type: 'selection',
+        options: ['This quarter', 'Last quarter'],
+      },
+    }));
+
+    hydrateAgentFromBackend('awaiting-task');
+
+    await vi.waitFor(() => {
+      const agent = agentStore.getAgent('awaiting-task');
+      expect(agent?.status).toBe('awaitingInput');
+      expect(agent?.showCheckpointPrompt).toBe(true);
+      expect(agent?.currentCheckpoint).toMatchObject({
+        checkpoint_id: 'period-choice',
+        input_type: 'choice',
+        options: [
+          { id: 'option-0', label: 'This quarter', value: 'This quarter' },
+          { id: 'option-1', label: 'Last quarter', value: 'Last quarter' },
+        ],
+      });
+    });
+  });
+
+  it('preserves an optimistic retry when hydration still reads the preceding failed attempt', async () => {
+    agentStore.registerAgent('retrying-task');
+    agentStore.setError('retrying-task', 'OperationalError: database is locked');
+    agentStore.resetForRetry('retrying-task');
+    const getDetail = vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
+      id: 'retrying-task',
+      status: 'failed',
+      result_message: 'Prior partial result',
+      error_message: 'OperationalError: database is locked',
+    }));
+
+    hydrateAgentFromBackend('retrying-task');
+
+    await vi.waitFor(() => expect(getDetail).toHaveBeenCalledWith('retrying-task'));
+    expect(agentStore.getAgent('retrying-task')).toMatchObject({
+      status: 'processing',
+      result: '',
+      errorMessage: undefined,
+      isRetryPending: true,
+    });
+  });
+
+  it('does not restore a checkpoint the user just answered when hydration still reads awaiting input', async () => {
+    agentStore.registerAgent('answered-task');
+    agentStore.showCheckpoint('answered-task', { checkpoint_id: 'period-choice', prompt: 'Which period?', input_type: 'data' });
+    agentStore.markCheckpointResumeProcessing('answered-task', 'Resuming...');
+    vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
+      id: 'answered-task',
+      checkpoint_data: { checkpoint_id: 'period-choice', prompt: 'Which period?', input_type: 'selection', options: ['A', 'B'] },
+    }));
+
+    const outcome = await hydrateAgentFromBackend('answered-task');
+
+    expect(outcome).toBe('hydrated');
+    expect(agentStore.getAgent('answered-task')).toMatchObject({
+      status: 'processing',
+      showCheckpointPrompt: false,
+      currentCheckpoint: undefined,
+      isCheckpointResumePending: true,
+    });
+  });
+
+  it('restores a checkpoint normally once a live event has confirmed the resume', async () => {
+    agentStore.registerAgent('confirmed-task');
+    agentStore.showCheckpoint('confirmed-task', { checkpoint_id: 'first', prompt: 'First?', input_type: 'data' });
+    agentStore.markCheckpointResumeProcessing('confirmed-task', 'Resuming...');
+    agentStore.handleWSEvent({ event_type: 'agent_task_streaming', agent_task_id: 'confirmed-task', partial_result: 'Working' });
+    expect(agentStore.getAgent('confirmed-task')?.isCheckpointResumePending).toBe(false);
+    vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
+      id: 'confirmed-task',
+      checkpoint_data: { checkpoint_id: 'second', prompt: 'Second?', input_type: 'selection', options: ['A', 'B'] },
+    }));
+
+    hydrateAgentFromBackend('confirmed-task');
+
+    await vi.waitFor(() => {
+      const agent = agentStore.getAgent('confirmed-task');
+      expect(agent?.status).toBe('awaitingInput');
+      expect(agent?.currentCheckpoint?.checkpoint_id).toBe('second');
+    });
+  });
+
+  it('ignores a read that predates the answer even after the resume event has arrived', async () => {
+    agentStore.registerAgent('late-read-task');
+    agentStore.showCheckpoint('late-read-task', { checkpoint_id: 'period-choice', prompt: 'Which period?', input_type: 'data' });
+    agentStore.beginCheckpointAnswer('late-read-task', 'period-choice', 'Resuming...');
+    agentStore.handleWSEvent({ event_type: 'checkpoint_resumed', agent_task_id: 'late-read-task', message: 'Resumed' });
+    expect(agentStore.getAgent('late-read-task')?.isCheckpointResumePending).toBe(false);
+    vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
+      id: 'late-read-task',
+      checkpoint_data: { checkpoint_id: 'period-choice', prompt: 'Which period?', input_type: 'selection', options: ['A', 'B'] },
+    }));
+
+    const outcome = await hydrateAgentFromBackend('late-read-task');
+
+    expect(outcome).toBe('hydrated');
+    expect(agentStore.getAgent('late-read-task')).toMatchObject({
+      status: 'processing',
+      showCheckpointPrompt: false,
+      currentCheckpoint: undefined,
+    });
+  });
+
+  it('lets the card kept on screen leave when a read shows the task is no longer waiting', async () => {
+    agentStore.registerAgent('moved-on-task');
+    agentStore.showCheckpoint('moved-on-task', { checkpoint_id: 'period-choice', prompt: 'Which period?', input_type: 'data' });
+    agentStore.beginCheckpointAnswer('moved-on-task', 'period-choice', 'Resuming...');
+    expect(agentStore.getAgent('moved-on-task')?.showCheckpointPrompt).toBe(true);
+    vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
+      id: 'moved-on-task',
+      status: 'processing',
+      checkpoint_data: undefined,
+    }));
+
+    await hydrateAgentFromBackend('moved-on-task');
+
+    expect(agentStore.getAgent('moved-on-task')).toMatchObject({
+      status: 'processing',
+      showCheckpointPrompt: false,
+      currentCheckpoint: undefined,
+      isCheckpointResumePending: false,
+    });
+  });
+
+  it('keeps the card on screen while a read still shows the task waiting for the answer', async () => {
+    agentStore.registerAgent('still-waiting-task');
+    agentStore.showCheckpoint('still-waiting-task', { checkpoint_id: 'period-choice', prompt: 'Which period?', input_type: 'data' });
+    agentStore.beginCheckpointAnswer('still-waiting-task', 'period-choice', 'Resuming...');
+    vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
+      id: 'still-waiting-task',
+      checkpoint_data: { checkpoint_id: 'period-choice', prompt: 'Which period?', input_type: 'selection', options: ['A', 'B'] },
+    }));
+
+    await hydrateAgentFromBackend('still-waiting-task');
+
+    expect(agentStore.getAgent('still-waiting-task')).toMatchObject({
+      showCheckpointPrompt: true,
+      isCheckpointResumePending: true,
+    });
+  });
+
+  it('brings the card back and clears the pending flag when the submit fails', () => {
+    agentStore.registerAgent('failed-submit-task');
+    const checkpoint = { checkpoint_id: 'retry-me', prompt: 'Which?', input_type: 'data' as const };
+    agentStore.showCheckpoint('failed-submit-task', checkpoint);
+    agentStore.markCheckpointResumeProcessing('failed-submit-task', 'Resuming...');
+
+    agentStore.showCheckpoint('failed-submit-task', checkpoint);
+
+    expect(agentStore.getAgent('failed-submit-task')).toMatchObject({
+      isCheckpointResumePending: false,
+      showCheckpointPrompt: true,
+      status: 'awaitingInput',
+    });
+  });
+
+  it('restores a live provider form after its WebSocket event was missed', async () => {
+    agentStore.registerAgent('provider-task');
+    vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
+      id: 'provider-task',
+      status: 'processing',
+    }));
+    vi.spyOn(api, 'getPendingProviderInteraction').mockResolvedValue({
+      interaction: {
+        id: 'provider-interaction-1',
+        message: 'Choose a strategy',
+        fields: [
+          {
+            name: 'strategy',
+            label: 'Strategy',
+            kind: 'choice',
+            required: true,
+            options: [{ id: 'balanced', label: 'Balanced', value: 'balanced' }],
+          },
+        ],
+      },
+    });
+
+    hydrateAgentFromBackend('provider-task');
+
+    await vi.waitFor(() => {
+      const agent = agentStore.getAgent('provider-task');
+      expect(agent?.status).toBe('awaitingInput');
+      expect(agent?.currentCheckpoint).toMatchObject({
+        checkpoint_id: 'provider-interaction-1',
+        input_type: 'provider_form',
+        metadata: { source: 'provider_user_input' },
+      });
+    });
+  });
+
+  it('restores a durable execution approval after its WebSocket event was missed', async () => {
+    agentStore.registerAgent('approval-task');
+    vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
+      id: 'approval-task',
+      status: 'awaiting_user_input',
+    }));
+    vi.spyOn(api, 'getPendingExecutionApprovals').mockResolvedValue({
+      approvals: [{
+        approval_id: 'approval-1',
+        agent_task_id: 'task-1',
+        command: 'pwd',
+        reason: 'Not whitelisted',
+        risk_level: 'low',
+        generalized_pattern: 'pwd',
+        execution_type: 'shell',
+        revision: 0,
+        context: {},
+      }],
+      orphaned_approval_ids: [],
+    });
+
+    hydrateAgentFromBackend('approval-task');
+
+    await vi.waitFor(() => {
+      const agent = agentStore.getAgent('approval-task');
+      expect(agent?.status).toBe('awaitingInput');
+      expect(agent?.showApprovalPrompt).toBe(true);
+      expect(agent?.approvalRequests).toMatchObject([{
+        approval_id: 'approval-1',
+        revision: 0,
+      }]);
+      expect(agent?.currentStep).toBe('Waiting for your approval');
+    });
+  });
+
+  it('restores the agent explanation and remember eligibility of a recovered approval', async () => {
+    agentStore.registerAgent('explained-approval-task');
+    vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
+      id: 'explained-approval-task',
+      status: 'awaiting_user_input',
+    }));
+    vi.spyOn(api, 'getPendingExecutionApprovals').mockResolvedValue({
+      approvals: [{
+        approval_id: 'approval-explained',
+        agent_task_id: 'explained-approval-task',
+        command: 'python3 /tmp/report.py',
+        reason: 'Not whitelisted',
+        risk_level: 'medium',
+        generalized_pattern: 'python3',
+        execution_type: 'shell',
+        script_content: "print('report')",
+        revision: 0,
+        context: {
+          purpose: 'Builds the weekly report.',
+          script_path: '/tmp/report.py',
+          whitelist: { eligible: false, reason: 'python can run any code.', advice: null },
+        },
+      }],
+      orphaned_approval_ids: [],
+    });
+
+    hydrateAgentFromBackend('explained-approval-task');
+
+    await vi.waitFor(() => {
+      expect(agentStore.getAgent('explained-approval-task')?.approvalRequests).toMatchObject([{
+        approval_id: 'approval-explained',
+        purpose: 'Builds the weekly report.',
+        script_path: '/tmp/report.py',
+        whitelist: { eligible: false, reason: 'python can run any code.', advice: null },
+      }]);
+    });
+  });
+
+  it('restores the countdown of a recovered approval so a reopened window keeps counting', async () => {
+    agentStore.registerAgent('timed-approval-task');
+    vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
+      id: 'timed-approval-task',
+      status: 'awaiting_user_input',
+    }));
+    vi.spyOn(api, 'getPendingExecutionApprovals').mockResolvedValue({
+      approvals: [{
+        approval_id: 'approval-timed',
+        agent_task_id: 'timed-approval-task',
+        command: 'git status',
+        reason: 'Not whitelisted',
+        risk_level: 'low',
+        generalized_pattern: 'git',
+        execution_type: 'shell',
+        revision: 0,
+        context: { time_limit: { deadline_at: '2026-10-04T23:42:00+00:00', limit_seconds: 120, on_timeout: 'deny' } },
+      }],
+      orphaned_approval_ids: [],
+    });
+
+    hydrateAgentFromBackend('timed-approval-task');
+
+    await vi.waitFor(() => {
+      expect(agentStore.getAgent('timed-approval-task')?.approvalRequests).toMatchObject([{
+        approval_id: 'approval-timed',
+        time_limit: { deadlineMs: Date.parse('2026-10-04T23:42:00+00:00'), limitSeconds: 120, onTimeout: 'deny' },
+      }]);
+    });
+  });
+
+  it('retires an approval orphaned by backend restart without rendering its command', async () => {
+    agentStore.registerAgent('orphaned-approval-task');
+    vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
+      id: 'orphaned-approval-task',
+      status: 'awaiting_user_input',
+    }));
+    vi.spyOn(api, 'getPendingExecutionApprovals').mockResolvedValue({
+      approvals: [],
+      orphaned_approval_ids: ['approval-orphaned'],
+    });
+    const recover = vi.spyOn(api, 'recoverOrphanedExecutionApprovals').mockResolvedValue({
+      canceled_approval_ids: ['approval-orphaned'],
+    });
+
+    hydrateAgentFromBackend('orphaned-approval-task');
+
+    await vi.waitFor(() => {
+      expect(agentStore.getAgent('orphaned-approval-task')?.errorMessage)
+        .toContain('restarted while waiting for command approval');
+    });
+    expect(recover).toHaveBeenCalledWith('orphaned-approval-task', ['approval-orphaned']);
+    expect(agentStore.getAgent('orphaned-approval-task')?.approvalRequests).toEqual([]);
+  });
+
+  it('uses a safe free-text recovery prompt only for a resumable legacy checkpoint', async () => {
+    agentStore.registerAgent('legacy-awaiting-task');
+    vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
+      id: 'legacy-awaiting-task',
+      checkpoint_data: undefined,
+    }));
+    vi.spyOn(api, 'getCheckpointStatus').mockResolvedValue({
+      agent_task_id: 'legacy-awaiting-task',
+      has_checkpoint: true,
+      can_resume: true,
+      message: 'Checkpoint is available',
+    });
+
+    hydrateAgentFromBackend('legacy-awaiting-task');
+
+    await vi.waitFor(() => {
+      const agent = agentStore.getAgent('legacy-awaiting-task');
+      expect(agent?.showCheckpointPrompt).toBe(true);
+      expect(agent?.currentCheckpoint).toEqual({
+        checkpoint_id: 'recovered-legacy-awaiting-task',
+        session_agent_task_id: 'legacy-awaiting-task',
+        prompt: 'Which reporting period should I use?',
+        input_type: 'data',
+        metadata: { source: 'checkpoint_recovery' },
+      });
+    });
+  });
+
+  it('exposes a retryable failure when the durable checkpoint cannot resume', async () => {
+    agentStore.registerAgent('expired-awaiting-task');
+    vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
+      id: 'expired-awaiting-task',
+      checkpoint_data: undefined,
+    }));
+    vi.spyOn(api, 'getCheckpointStatus').mockResolvedValue({
+      agent_task_id: 'expired-awaiting-task',
+      has_checkpoint: false,
+      can_resume: false,
+      message: 'No checkpoint is available',
+    });
+
+    hydrateAgentFromBackend('expired-awaiting-task');
+
+    await vi.waitFor(() => {
+      const agent = agentStore.getAgent('expired-awaiting-task');
+      expect(agent?.status).toBe('failed');
+      expect(agent?.errorMessage).toBe('The saved input request is no longer resumable. Retry the task to start a new run.');
+      expect(agent?.showCheckpointPrompt).toBe(false);
+    });
+  });
+
+  it('does not fail a task whose approval was just answered and which has already resumed', async () => {
+    agentStore.registerAgent('just-approved-task');
+    const getDetail = vi.spyOn(api, 'getAgentTaskDetail')
+      .mockResolvedValueOnce(makeDetail({ id: 'just-approved-task', checkpoint_data: undefined }))
+      .mockResolvedValue(makeDetail({ id: 'just-approved-task', status: 'processing', checkpoint_data: undefined }));
+    const getCheckpointStatus = vi.spyOn(api, 'getCheckpointStatus').mockResolvedValue({
+      agent_task_id: 'just-approved-task',
+      has_checkpoint: false,
+      can_resume: false,
+      message: 'No checkpoint is available',
+    });
+
+    hydrateAgentFromBackend('just-approved-task');
+
+    await vi.waitFor(() => {
+      expect(getCheckpointStatus).toHaveBeenCalled();
+      expect(getDetail.mock.calls.length).toBeGreaterThanOrEqual(2);
+    });
+    await new Promise(resolve => setTimeout(resolve, 20));
+    const agent = agentStore.getAgent('just-approved-task');
+    expect(agent?.status).not.toBe('failed');
+    expect(agent?.errorMessage).toBeFalsy();
+  });
+
+  it('keeps the task running when the confirming status read fails', async () => {
+    agentStore.registerAgent('unreadable-confirmation-task');
+    vi.spyOn(api, 'getAgentTaskDetail')
+      .mockResolvedValueOnce(makeDetail({ id: 'unreadable-confirmation-task', checkpoint_data: undefined }))
+      .mockRejectedValue(new Error('offline'));
+    const getCheckpointStatus = vi.spyOn(api, 'getCheckpointStatus').mockResolvedValue({
+      agent_task_id: 'unreadable-confirmation-task',
+      has_checkpoint: false,
+      can_resume: false,
+      message: 'No checkpoint is available',
+    });
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    hydrateAgentFromBackend('unreadable-confirmation-task');
+
+    await vi.waitFor(() => expect(getCheckpointStatus).toHaveBeenCalled());
+    await new Promise(resolve => setTimeout(resolve, 20));
+    expect(agentStore.getAgent('unreadable-confirmation-task')?.status).not.toBe('failed');
+  });
+
+  it('applies the most recent follow-up turn, not the root turn, when the whole chain is terminal', async () => {
+    // Regression test for a detached multi-run window snapping back to the
+    // root's own turn after correctly hydrating the latest follow-up: this
+    // function can race hydrateDetachedChain (see useHostBridge.ts) and, if
+    // it resolves later, must not clobber the merged follow-up data with the
+    // root's own independently-terminal record.
+    agentStore.registerAgent('chain-root');
+    vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
+      id: 'chain-root',
+      status: 'completed',
+      original_prompt: 'Inspect the integration workflow.',
+      result_message: 'Run 1 is ready for history review.',
+      follow_ups: [
+        {
+          id: 'follow-up-1',
+          original_prompt: 'Add the deploy step.',
+          timestamp: '2026-08-16T00:01:00.000Z',
+          status: 'completed',
+          result_message: 'Run 2 is ready for history review.',
+          files: [],
+          reference_paths: [],
+          root_task_id: 'chain-root',
+          previous_task_id: 'chain-root',
+          chain_sequence_number: 1,
+        },
+        {
+          id: 'follow-up-2',
+          original_prompt: 'Produce the final implementation brief.',
+          timestamp: '2026-08-16T00:02:00.000Z',
+          status: 'completed',
+          result_message: 'Run 3 is ready for history review.',
+          files: [],
+          reference_paths: [],
+          root_task_id: 'chain-root',
+          previous_task_id: 'follow-up-1',
+          chain_sequence_number: 2,
+        },
+      ],
+    }));
+
+    hydrateAgentFromBackend('chain-root');
+
+    await vi.waitFor(() => {
+      const agent = agentStore.getAgent('chain-root');
+      expect(agent?.originalPrompt).toBe('Produce the final implementation brief.');
+      expect(agent?.result).toBe('Run 3 is ready for history review.');
+      expect(agent?.status).toBe('completed');
+      expect(agent?.currentTurnTaskId).toBe('follow-up-2');
+    });
+  });
+
+  it('restores a durable legacy clarification as an input checkpoint', async () => {
+    agentStore.registerAgent('clarification-task');
+    vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
+      id: 'clarification-task',
+      status: 'needs_clarification',
+      checkpoint_data: {
+        checkpoint_id: 'clarification-clarification-task',
+        prompt: 'Please provide the target date.',
+        input_type: 'data',
+        metadata: { source: 'clarification' },
+      },
+    }));
+
+    hydrateAgentFromBackend('clarification-task');
+
+    await vi.waitFor(() => {
+      const agent = agentStore.getAgent('clarification-task');
+      expect(agent?.status).toBe('awaitingInput');
+      expect(agent?.showCheckpointPrompt).toBe(true);
+      expect(agent?.currentCheckpoint).toMatchObject({
+        checkpoint_id: 'clarification-clarification-task',
+        prompt: 'Please provide the target date.',
+        input_type: 'data',
+        metadata: { source: 'clarification' },
+      });
+    });
+  });
+
+  it('restores a durable execution approval for a task still reported as processing', async () => {
+    // Regression: a shell/execution-approval wait never flips backend status
+    // to awaiting_user_input, so a task can sit at a live approval
+    // checkpoint indefinitely while status stays "processing". Reopening it
+    // must still resurface the approval instead of silently ignoring it.
+    agentStore.registerAgent('processing-approval-task');
+    vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
+      id: 'processing-approval-task',
+      status: 'processing',
+    }));
+    vi.spyOn(api, 'getPendingExecutionApprovals').mockResolvedValue({
+      approvals: [{
+        approval_id: 'approval-processing-1',
+        agent_task_id: 'processing-approval-task',
+        command: "head -n 50 build/scripts/build_and_sign.sh",
+        reason: 'Not whitelisted',
+        risk_level: 'low',
+        generalized_pattern: 'head -n <N> <path>',
+        execution_type: 'shell',
+        revision: 0,
+        context: {},
+      }],
+      orphaned_approval_ids: [],
+    });
+
+    hydrateAgentFromBackend('processing-approval-task');
+
+    await vi.waitFor(() => {
+      const agent = agentStore.getAgent('processing-approval-task');
+      expect(agent?.status).toBe('awaitingInput');
+      expect(agent?.showApprovalPrompt).toBe(true);
+      expect(agent?.approvalRequests).toMatchObject([{
+        approval_id: 'approval-processing-1',
+        revision: 0,
+      }]);
+    });
+  });
+
+  it('does not resurface anything for a genuinely in-flight processing task with no pending approval', async () => {
+    agentStore.registerAgent('plain-processing-task');
+    vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
+      id: 'plain-processing-task',
+      status: 'processing',
+    }));
+
+    hydrateAgentFromBackend('plain-processing-task');
+
+    await vi.waitFor(() => {
+      expect(api.getPendingExecutionApprovals).toHaveBeenCalledWith('plain-processing-task');
+    });
+    const agent = agentStore.getAgent('plain-processing-task');
+    expect(agent?.status).toBe('processing');
+    expect(agent?.showApprovalPrompt ?? false).toBe(false);
+  });
+});

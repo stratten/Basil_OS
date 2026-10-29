@@ -1,0 +1,439 @@
+.agent-run-rail {
+  box-sizing: border-box;
+  flex: 0 0 44px;
+  display: flex;
+  align-items: stretch;
+  flex-direction: column;
+  gap: var(--padding-s);
+  padding-top: var(--padding-m);
+  border-left: var(--border-thin) solid var(--separator-color);
+  background: var(--background-primary);
+}
+
+.agent-run-rail-presence {
+  display: flex;
+  flex: 0 0 44px;
+  width: 44px;
+  min-width: 0;
+  overflow: clip;
+  opacity: 1;
+  transition: flex-basis 400ms cubic-bezier(0.2, 0.8, 0.2, 1), width 400ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 200ms ease-out;
+}
+
+.agent-run-rail-presence[data-presence-phase='entering'],
+.agent-run-rail-presence[data-presence-phase='exiting'] {
+  flex-basis: 0;
+  width: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.agent-run-rail-presence[data-presence-phase='entering'] .agent-run-rail,
+.agent-run-rail-presence[data-presence-phase='exiting'] .agent-run-rail {
+  pointer-events: none;
+}
+
+.agent-run-rail-toggle {
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--padding-xs);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--secondary);
+  cursor: pointer;
+}
+
+.agent-run-rail-flow {
+  position: relative;
+  display: flex;
+  width: 32px;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--padding-s);
+  margin: 0;
+}
+
+.agent-run-rail-flow-stage:not(:last-child)::after {
+  position: absolute;
+  top: 100%;
+  left: calc(50% - 1px);
+  width: 2px;
+  height: var(--padding-s);
+  background: var(--text-secondary);
+  content: '';
+  pointer-events: none;
+  transform-origin: top;
+  animation: run-rail-connector-grow 160ms ease-out var(--run-rail-connector-delay) both;
+}
+
+.agent-run-rail-flow-stage {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  place-items: center;
+  border: 2px solid var(--text-tertiary);
+  border-radius: 50%;
+  background: var(--background-primary);
+  box-shadow: none;
+  transition: border-color 180ms ease, background-color 180ms ease, transform 180ms ease;
+  animation: run-rail-stage-arrive 220ms ease-out var(--run-rail-enter-delay) both;
+}
+
+.agent-run-rail-flow-stage.is-completed {
+  border-color: var(--success-base);
+  background: var(--success-base);
+}
+
+.agent-run-rail-flow-stage.is-failed {
+  border-color: var(--error-base);
+  background: var(--error-base);
+}
+
+.agent-run-rail-flow-stage.is-active {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+
+.agent-run-rail-flow-stage.is-active::before {
+  position: absolute;
+  inset: -5px;
+  box-sizing: border-box;
+  border: 2px solid transparent;
+  border-top-color: var(--primary);
+  border-right-color: var(--primary);
+  border-radius: 50%;
+  content: '';
+  pointer-events: none;
+  animation: run-rail-stage-spin 1.4s linear infinite;
+}
+
+.agent-run-rail-flow-stage.is-waiting {
+  border-color: var(--warning-base);
+  background: var(--background-primary);
+  color: var(--text-primary);
+}
+
+.agent-run-rail-flow-stage.is-recorded {
+  border-color: var(--text-tertiary);
+  background: var(--background-primary);
+}
+
+.agent-run-rail-flow-stage--outcome {
+  width: 30px;
+  height: 30px;
+  flex-basis: 30px;
+}
+
+/* Exchanges with the user are rounded squares so they never read as execution phases. */
+.agent-run-rail-flow-stage--interaction,
+.agent-run-rail-flow-stage--interaction.is-completed {
+  border-width: var(--border-thin);
+  border-color: var(--secondary);
+  border-radius: 8px;
+  background: var(--secondary);
+  color: var(--text-on-secondary, var(--background-primary));
+}
+
+.agent-run-rail-flow-stage--interaction.is-waiting {
+  border-color: var(--warning-base);
+  background: var(--warning-base);
+  color: var(--text-primary);
+  box-shadow: 0 0 0 2px var(--background-primary), 0 0 0 3px var(--warning-base);
+}
+
+/* Two pings announce the user's turn once; the outer ring then stays still. */
+.agent-run-rail-flow-stage--interaction.is-waiting::before {
+  position: absolute;
+  inset: -2px;
+  box-sizing: border-box;
+  border: var(--border-thin) solid var(--warning-base);
+  border-radius: 10px;
+  content: '';
+  opacity: 0;
+  pointer-events: none;
+  animation: run-rail-stage-ping 900ms ease-out 220ms 2;
+}
+
+.agent-run-rail-flow-stage--interaction.is-recorded {
+  border-color: var(--secondary);
+  background: var(--background-primary);
+  color: var(--secondary);
+}
+
+@keyframes run-rail-stage-ping {
+  from {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(1.45);
+  }
+}
+
+@keyframes run-rail-stage-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.agent-run-rail-flow-stage svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.agent-run-rail-flow-stage.is-completed svg {
+  color: var(--text-on-success, var(--background-primary));
+}
+
+.agent-run-rail-flow-stage.is-failed svg {
+  color: var(--text-on-error, var(--background-primary));
+}
+
+.agent-run-rail-flow-stage.is-active svg {
+  color: var(--text-on-primary, var(--background-primary));
+}
+
+.agent-run-rail-flow-stage--interaction.is-completed svg {
+  color: var(--text-on-secondary, var(--background-primary));
+}
+
+.agent-run-rail-flow-stage--interaction.is-waiting svg {
+  color: var(--text-primary);
+}
+
+.agent-run-rail-flow-stage--interaction.is-recorded svg {
+  color: var(--secondary);
+}
+
+/* A waiting pause, queued note, or lost connection is a run control, not the user's turn, so it never uses amber. */
+.agent-run-rail-flow-stage--interaction.is-run-control-neutral {
+  --run-control-color: var(--text-tertiary);
+}
+
+.agent-run-rail-flow-stage--interaction.is-run-control-notice {
+  --run-control-color: var(--notice-base);
+}
+
+.agent-run-rail-flow-stage--interaction.is-waiting[class*='is-run-control-'] {
+  border-color: var(--run-control-color);
+  background: var(--run-control-color);
+  color: var(--background-primary);
+  box-shadow: 0 0 0 2px var(--background-primary), 0 0 0 3px var(--run-control-color);
+}
+
+.agent-run-rail-flow-stage--interaction.is-waiting[class*='is-run-control-']::before {
+  display: none;
+}
+
+.agent-run-rail-flow-stage--interaction.is-waiting[class*='is-run-control-'] svg {
+  color: var(--background-primary);
+}
+
+.agent-run-rail-artifact-mark {
+  position: absolute;
+  right: -6px;
+  bottom: -4px;
+  display: grid;
+  width: 15px;
+  height: 15px;
+  place-items: center;
+  border: 1px solid var(--background-primary);
+  border-radius: 50%;
+  background: var(--secondary);
+  color: var(--text-on-secondary, var(--background-primary));
+}
+
+.agent-run-rail-artifact-mark svg {
+  width: 9px;
+  height: 9px;
+}
+
+/* Transform-only on purpose: if WebKit does not advance this animation for a stage inserted into an already-visible rail, the glyph must still be visible. */
+@keyframes run-rail-stage-arrive {
+  from {
+    transform: translateY(-8px) scale(0.8);
+  }
+
+  to {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes run-rail-connector-grow {
+  from {
+    transform: scaleY(0);
+  }
+
+  to {
+    transform: scaleY(1);
+  }
+}
+
+.agent-run-rail-toggle:hover,
+.agent-run-rail-toggle:focus-visible {
+  background: transparent;
+  outline: none;
+}
+
+.agent-run-rail-toggle:focus-visible {
+  outline: 2px solid var(--secondary);
+  outline-offset: -2px;
+}
+
+.agent-run-rail--turns {
+  padding-top: var(--padding-xs);
+  cursor: pointer;
+}
+
+/* Top padding keeps the first turn's hover outline and a leading stage's pulse inside this scroll container's clip edge. */
+.agent-run-rail-turns {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: var(--padding-s) 0 var(--padding-s);
+  overflow-y: auto;
+}
+
+.agent-run-rail-turn-expanded {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--padding-xs);
+  width: 100%;
+  padding: var(--padding-s) 0;
+  border-block: var(--border-thin) solid var(--separator-color);
+}
+
+.agent-run-rail-turn-expanded:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.agent-run-rail-turn-expanded:last-child {
+  border-bottom: 0;
+}
+
+.agent-run-rail-turn-expanded .agent-run-rail-toggle,
+.agent-run-rail-turn-expanded .agent-run-rail-flow {
+  flex: 0 0 auto;
+}
+
+.agent-run-rail-turn-number {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: calc(10px * var(--text-scale, 1));
+  line-height: 1;
+}
+
+.agent-run-rail-turn {
+  display: grid;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  box-sizing: border-box;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--success-base);
+  border-radius: 50%;
+  background: var(--background-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: calc(10px * var(--text-scale, 1));
+  line-height: 1;
+}
+
+/* An agent revision's number (1.1, 10.2) is wider than a circle, so the badge becomes a pill that still fits the 44px rail. */
+.agent-run-rail-turn.is-revision {
+  width: auto;
+  min-width: 22px;
+  padding: 0 4px;
+  border-radius: 999px;
+  font-size: calc(9px * var(--text-scale, 1));
+}
+
+.agent-run-rail-turn-number.is-revision {
+  font-size: calc(9px * var(--text-scale, 1));
+}
+
+.agent-run-rail-turn.is-failed {
+  border-color: var(--error-base);
+}
+
+.agent-run-rail-turn.is-processing {
+  border-color: var(--processing-base);
+}
+
+.agent-run-rail-turn.is-awaitingInput {
+  border-color: var(--warning-base);
+}
+
+.agent-run-rail-turn.is-paused {
+  border-color: var(--text-tertiary);
+}
+
+/* A partial turn keeps the green outline and fills its left half, the same half-filled reading as .outcome-partial-mark. */
+.agent-run-rail-turn.is-partial {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--success-base) 40%, var(--background-primary)) 50%, var(--background-primary) 50%);
+}
+
+.agent-run-rail-turn.is-location {
+  border-color: var(--secondary);
+  background: var(--secondary);
+  color: var(--background-primary);
+}
+
+.agent-run-rail-turn:hover {
+  outline: 1px solid var(--secondary);
+  outline-offset: 1px;
+}
+
+.agent-run-rail-turn:focus-visible {
+  outline: 2px solid var(--secondary);
+  outline-offset: 1px;
+}
+
+@media (max-width: 560px) {
+  .agent-run-rail {
+    flex-basis: 48px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-run-rail-presence {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+
+  .agent-run-rail-flow-stage,
+  .agent-run-rail-flow-stage::before {
+    animation-duration: 0.01ms !important;
+  }
+
+  .agent-run-rail-flow-stage.is-active::before {
+    animation: none !important;
+  }
+}

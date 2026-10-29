@@ -1,0 +1,149 @@
+.memory-intelligence-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--settings-card-gap);
+  max-width: 920px;
+  width: 100%;
+}
+
+.memory-intelligence-section-header {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+}
+
+.memory-intelligence-cadence {
+  margin-top: 2px;
+}
+
+.memory-intelligence-section-header > .secondary-button {
+  white-space: nowrap;
+}
+
+.memory-intelligence-row {
+  display: flex;
+  gap: 20px;
+}
+
+.memory-intelligence-field {
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-family-light);
+  font-size: calc(13px * var(--text-scale, 1));
+  gap: 4px;
+}
+
+.memory-intelligence-select {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: calc(13px * var(--text-scale, 1));
+  padding: 6px 8px;
+}
+
+.memory-intelligence-select:disabled {
+  opacity: 0.6;
+}
+
+.memory-intelligence-select:focus-visible,
+.memory-intelligence-section button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.memory-intelligence-status,
+.memory-intelligence-status-info,
+.memory-intelligence-status-error,
+.memory-intelligence-empty {
+  font-family: var(--font-family-light);
+  font-size: calc(13px * var(--text-scale, 1));
+  margin: 0;
+}
+
+.memory-intelligence-status,
+.memory-intelligence-status-info,
+.memory-intelligence-empty {
+  color: var(--text-secondary);
+}
+
+.memory-intelligence-status-error {
+  color: var(--error-text);
+}
+
+.memory-intelligence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.memory-intelligence-list-row {
+  align-items: center;
+  background: color-mix(in srgb, var(--background-primary) 96%, var(--primary));
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 10px 12px;
+}
+
+.memory-intelligence-list-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.memory-intelligence-list-title {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: calc(13px * var(--text-scale, 1));
+  overflow-wrap: anywhere;
+}
+
+.memory-intelligence-list-detail {
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: calc(12px * var(--text-scale, 1));
+  overflow-wrap: anywhere;
+}
+
+.memory-intelligence-list-meta {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: calc(11px * var(--text-scale, 1));
+  overflow-wrap: anywhere;
+}
+
+.memory-intelligence-list-actions {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.memory-intelligence-list-actions > .secondary-button {
+  background: transparent;
+  color: var(--primary);
+}
+
+.memory-intelligence-error {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 650px;
+}
+
+.memory-intelligence-error p {
+  color: var(--error-text);
+  font-family: var(--font-family-light);
+  font-size: calc(13px * var(--text-scale, 1));
+  margin: 0;
+}

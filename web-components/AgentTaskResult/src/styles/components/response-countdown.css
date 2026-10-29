@@ -1,0 +1,72 @@
+/* Countdown to the moment Basil stops waiting for a response. Warning tones match the waiting turn; the last seconds switch to the error tone. */
+.response-countdown {
+  --response-countdown-accent: var(--warning-base);
+  --response-countdown-text: var(--warning-text);
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-xs);
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-status-small);
+}
+
+.response-countdown.is-urgent,
+.response-countdown.is-expired {
+  --response-countdown-accent: var(--error-base);
+  --response-countdown-text: var(--error-text);
+}
+
+.response-countdown--card {
+  margin-top: var(--padding-m);
+  padding: var(--padding-s);
+  border: var(--border-thin) solid var(--response-countdown-accent);
+  border-radius: var(--corner-radius-small);
+  background: color-mix(in srgb, var(--response-countdown-accent) 10%, var(--background-primary));
+}
+
+.response-countdown--inline {
+  margin-top: var(--padding-xs);
+}
+
+.response-countdown-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--padding-s);
+  min-width: 0;
+}
+
+.response-countdown-clock {
+  flex: 0 0 auto;
+  min-width: 3ch;
+  color: var(--response-countdown-text);
+  font-family: var(--font-family-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.response-countdown-text {
+  min-width: 0;
+  font-family: var(--font-family-light);
+  overflow-wrap: anywhere;
+}
+
+.response-countdown-track {
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--secondary) 20%, transparent);
+}
+
+.response-countdown-fill {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--response-countdown-accent);
+  transform-origin: left center;
+  transition: transform 1s linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .response-countdown-fill {
+    transition: none;
+  }
+}

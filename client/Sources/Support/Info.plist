@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.stratten.basil</string>
+    <key>CFBundleName</key>
+    <string>Basil</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+    <key>CFBundleSupportedPlatforms</key>
+    <array>
+        <string>MacOSX</string>
+    </array>
+    <key>LSUIElement</key>
+    <true/>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Basil needs microphone access to transcribe audio to text.</string>
+    <key>NSAudioCaptureUsageDescription</key>
+    <string>Basil needs audio capture permission to record system audio from other applications.</string>
+    <key>NSAccessibilityUsageDescription</key>
+    <string>Basil needs accessibility permission to simulate keystrokes for text insertion and control UI elements for automation.</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Basil needs permission to control other applications for desktop automation.</string>
+    <key>NSScreenCaptureUsageDescription</key>
+    <string>Basil needs screen recording permission to capture window screenshots for OCR text extraction.</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>Basil reads your calendar to title and enrich detected meetings.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>Basil reads your calendar to title and enrich detected meetings.</string>
+    <key>NSContactsUsageDescription</key>
+    <string>Basil can use your Contacts to identify email recipients and adapt generated drafts to known names and organizations when you enable Contacts personalization.</string>
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+    <key>NSSupportsAutomaticTermination</key>
+    <true/>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.stratten.basil</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>basil</string>
+            </array>
+        </dict>
+    </array>
+</dict>
+</plist> 

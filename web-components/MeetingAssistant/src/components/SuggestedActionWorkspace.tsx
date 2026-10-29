@@ -1,0 +1,337 @@
+import { useEffect, useRef, useState } from 'react';
+import { plainMarkdownText } from '@shared/plainMarkdownText';
+import { formatClockSeconds } from '@shared/formatClockSeconds';
+import type { MeetingActionProposalDTO } from '../bridge/types';
+import { MeetingMarkdown } from '../lib/markdown';
+import { dismissProposal, openProposalAgentTask, openProposalTodo, promoteAllProposalsToTodos, promoteProposalToTodo, restoreProposal, startProposalNow, updateProposal } from '../bridge/meetingBridge';
+import { DEPARTURE_CONFIRM_MS, useDepartingProposals } from './useDepartingProposals';
+
+/** How long a card's body takes to open or close. Matches `meeting-proposal-body-open` and `meeting-proposal-body-close` in meeting-proposal-motion.css. */
+const BODY_MOTION_MS = 320;
+// Bounds how many recently posted drafts a card remembers for recognizing stale echoes from Swift.
+const MAX_TRACKED_SENT_DRAFTS = 200;
+
+function isActiveProposal(proposal: MeetingActionProposalDTO): boolean {
+  return !HANDLED_STATUSES.has(proposal.executionStatus) && proposal.executionStatus !== DISMISSED_STATUS;
+}
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+const HANDLED_STATUSES = new Set(['submitted', 'completed', 'added_to_todos']);
+const DISMISSED_STATUS = 'dismissed';
+const ACTIONABLE_STATUSES = new Set(['proposed', 'failed']);
+const AUTO_COLLAPSE_STATUSES = new Set(['submitting', 'starting', 'submitted', 'completed', 'dismissed', 'added_to_todos']);
+const TODO_STATUS_LABELS: Record<string, string> = {
+  candidate: 'Candidate',
+  open: 'Open',
+  in_progress: 'In progress',
+  ready_for_review: 'Ready for review',
+  completed: 'Completed',
+  dismissed: 'Dismissed',
+  canceled: 'Canceled',
+};
+
+export default function SuggestedActionWorkspace({ proposals }: { proposals: MeetingActionProposalDTO[] }) {
+  const departing = useDepartingProposals(proposals, isActiveProposal);
+  // A card that was just handled stays where it was, confirms, and fades out before it joins its group, so the cards below it slide up instead of snapping.
+  const active = proposals.filter((proposal) => isActiveProposal(proposal) || departing.has(proposal.id));
+  const handled = proposals.filter((proposal) => HANDLED_STATUSES.has(proposal.executionStatus) && !departing.has(proposal.id));
+  const dismissed = proposals.filter((proposal) => proposal.executionStatus === DISMISSED_STATUS && !departing.has(proposal.id));
+  const bulkEligible = proposals.filter((proposal) => (
+    ACTIONABLE_STATUSES.has(proposal.executionStatus)
+    && proposal.draftPrompt.trim().length > 0
+    && !proposalHasTodo(proposal)
+  ));
+  const [bulkRequested, setBulkRequested] = useState<number | null>(null);
+  const [bulkSawSubmitting, setBulkSawSubmitting] = useState(false);
+  const submittingCount = proposals.filter((proposal) => proposal.executionStatus === 'submitting').length;
+
+  useEffect(() => {
+    if (bulkRequested === null) return;
+    if (submittingCount > 0) setBulkSawSubmitting(true);
+    if (bulkSawSubmitting && submittingCount === 0) {
+      setBulkRequested(null);
+      setBulkSawSubmitting(false);
+    }
+  }, [bulkRequested, bulkSawSubmitting, submittingCount]);
+
+  const showBulk = bulkEligible.length > 0 || bulkRequested !== null;
+  const bulkCount = bulkRequested ?? bulkEligible.length;
+  const bulkCompleted = bulkRequested === null ? 0 : bulkRequested - submittingCount;
+
+  return (
+    <div className={`meeting-suggested-action-workspace${showBulk ? ' has-bulk-action' : ''}`}>
+      {proposals.length === 0 && <p className="meeting-proposals-empty-state">No suggested actions for this analysis.</p>}
+      {showBulk && (
+        <div className="meeting-proposals-bulk-actions">
+          <button
+            type="button"
+            className="meeting-proposals-bulk-button"
+            disabled={bulkRequested !== null}
+            onClick={() => {
+              setBulkRequested(bulkEligible.length);
+              setBulkSawSubmitting(false);
+              promoteAllProposalsToTodos();
+            }}
+          >
+            {bulkRequested !== null ? `Adding ${bulkCompleted} of ${bulkRequested}…` : `Add all ${bulkCount} to To-Dos`}
+          </button>
+        </div>
+      )}
+      {active.map((proposal) => (
+        <ProposalCard key={proposal.id} proposal={proposal} departing={departing.has(proposal.id)} />
+      ))}
+      {handled.length > 0 && (
+        <details className="meeting-handled-proposals">
+          <summary className="meeting-proposal-group-summary">
+            <GroupDisclosureChevron />
+            <span>Added to To-Dos ({handled.length})</span>
+          </summary>
+          {handled.map((proposal) => (
+            <ProposalCard key={proposal.id} proposal={proposal} />
+          ))}
+        </details>
+      )}
+      {dismissed.length > 0 && (
+        <details className="meeting-dismissed-proposals">
+          <summary className="meeting-proposal-group-summary">
+            <GroupDisclosureChevron />
+            <span>Dismissed ({dismissed.length})</span>
+          </summary>
+          {dismissed.map((proposal) => (
+            <ProposalCard key={proposal.id} proposal={proposal} />
+          ))}
+        </details>
+      )}
+    </div>
+  );
+}
+
+function ProposalCard({ proposal, departing = false }: { proposal: MeetingActionProposalDTO; departing?: boolean }) {
+  const [localDraft, setLocalDraft] = useState(proposal.draftPrompt);
+  const [manualCollapsed, setManualCollapsed] = useState<boolean | null>(null);
+  const autoCollapsed = proposal.executionStatus === 'failed' ? false : AUTO_COLLAPSE_STATUSES.has(proposal.executionStatus);
+  const isCollapsed = manualCollapsed ?? autoCollapsed;
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [leaving, setLeaving] = useState(false);
+  // The body closes and opens over a short animation instead of appearing and vanishing: it stays mounted while it closes.
+  const [lastCollapsed, setLastCollapsed] = useState(isCollapsed);
+  const [bodyMotion, setBodyMotion] = useState<'opening' | 'closing' | null>(null);
+  if (lastCollapsed !== isCollapsed) {
+    setLastCollapsed(isCollapsed);
+    setBodyMotion(prefersReducedMotion() ? null : isCollapsed ? 'closing' : 'opening');
+  }
+  const showBody = !isCollapsed || bodyMotion === 'closing';
+  useEffect(() => {
+    if (bodyMotion === null) return undefined;
+    const timer = setTimeout(() => setBodyMotion(null), BODY_MOTION_MS);
+    return () => clearTimeout(timer);
+  }, [bodyMotion]);
+
+  // A handled card first holds its confirmation, then fixes its measured height and lets CSS take it to zero, so the cards below slide up.
+  useEffect(() => {
+    if (!departing) {
+      setLeaving(false);
+      if (cardRef.current) cardRef.current.style.height = '';
+      return undefined;
+    }
+    const timer = setTimeout(() => {
+      const card = cardRef.current;
+      if (!card) return;
+      card.style.height = `${card.getBoundingClientRect().height}px`;
+      void card.offsetHeight;
+      setLeaving(true);
+      card.style.height = '0px';
+    }, DEPARTURE_CONFIRM_MS);
+    return () => clearTimeout(timer);
+  }, [departing]);
+  const status = proposal.executionStatus;
+  const hasTodo = proposalHasTodo(proposal);
+  const canMutate = ACTIONABLE_STATUSES.has(status) || status === 'submitting' || status === 'starting';
+  // The proposed task is only editable until it is submitted; once it is in To-Dos, running, handled, or dismissed, the text is a read-only record.
+  const isDraftEditable = ACTIONABLE_STATUSES.has(status);
+  const isEditingDraft = isDraftEditable && proposal.isEditingDraft;
+  const canStart = localDraft.trim().length > 0 && ACTIONABLE_STATUSES.has(status);
+  const canAdd = localDraft.trim().length > 0 && ACTIONABLE_STATUSES.has(status) && !hasTodo;
+  // Swift echoes every posted draft back asynchronously, usually one or two keystrokes behind. Adopting a stale echo while the textarea is focused rewrites its value and throws the caret to the end, so echoes of text this card already sent are ignored while editing; any other value (for example after a restore) is adopted.
+  const sentDraftsRef = useRef<Set<string>>(new Set());
+  const isEditingDraftRef = useRef(isEditingDraft);
+  isEditingDraftRef.current = isEditingDraft;
+  useEffect(() => {
+    if (isEditingDraftRef.current && sentDraftsRef.current.has(proposal.draftPrompt)) return;
+    sentDraftsRef.current.clear();
+    setLocalDraft(proposal.draftPrompt);
+  }, [proposal.draftPrompt]);
+  useEffect(() => { setManualCollapsed(null); }, [proposal.executionStatus]);
+
+  return (
+    <div
+      ref={cardRef}
+      className={`meeting-proposal-card${isCollapsed ? ' meeting-proposal-card--collapsed' : ''}${departing ? ' is-departing' : ''}${leaving ? ' is-departing-leave' : ''}`}
+      {...(departing ? { inert: '' } : {})}
+    >
+      <button
+        type="button"
+        className="meeting-proposal-card-disclosure"
+        aria-expanded={!isCollapsed}
+        onClick={() => setManualCollapsed(!isCollapsed)}
+      >
+        <svg
+          className={`meeting-proposal-card-chevron${isCollapsed ? ' is-collapsed' : ''}`}
+          width="12"
+          height="12"
+          viewBox="0 0 22 22"
+          fill="none"
+          style={{ transformBox: 'view-box', transformOrigin: 'center' }}
+          aria-hidden="true"
+        >
+          <path d="M7 9l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <CapabilityIcon capabilityType={proposal.capabilityType} />
+        <span className="meeting-proposal-source-task">{plainMarkdownText(proposal.sourceTask)}</span>
+        {departing
+          ? <span className="meeting-proposal-card-status is-confirmed" role="status">{departureConfirmation(proposal)}</span>
+          : compactStatus(proposal) && <span className="meeting-proposal-card-status">{compactStatus(proposal)}</span>}
+      </button>
+      {!departing && (hasTodo || proposal.submittedAgentTaskId) && (
+        <div className="meeting-proposal-linked-work" aria-label="Linked work">
+          {hasTodo && (
+            <div className="meeting-proposal-linked-work-row">
+              <span>To-Do{proposal.todoStatus ? `: ${formatTodoStatus(proposal.todoStatus)}` : ''}</span>
+              <button type="button" className="meeting-proposal-linked-work-link" onClick={() => openProposalTodo(proposal.todoId!)}>Open To-Do</button>
+            </div>
+          )}
+          {proposal.submittedAgentTaskId && (
+            <div className="meeting-proposal-linked-work-row">
+              <span>Paprika task{proposal.liveAgentStatus ? `: ${formatAgentStatus(proposal.liveAgentStatus)}` : ''}</span>
+              <button type="button" className="meeting-proposal-linked-work-link" onClick={() => openProposalAgentTask(proposal.submittedAgentTaskId!)}>Open in Paprika</button>
+            </div>
+          )}
+        </div>
+      )}
+      {showBody && (
+        <div className={`meeting-proposal-body${bodyMotion ? ` is-${bodyMotion}` : ''}`}>
+          <div className="meeting-proposal-body-inner">
+            <p className="meeting-proposal-meta">
+              <span className="meeting-proposal-capability">{proposal.capabilityType.replace(/_/g, ' ')}</span>
+              <span>{Math.round(proposal.confidence * 100)}% confidence</span>
+            </p>
+            <p className="meeting-proposal-why">{proposal.whyBasilCanHelp}</p>
+            {proposal.missingInformation.length > 0 && (
+              <p className="meeting-proposal-missing-info">Needs: {proposal.missingInformation.join(', ')}</p>
+            )}
+            {proposal.sourceContext && (
+              <details className="meeting-proposal-context">
+                <summary>
+                  <span>Transcript context</span>
+                  {proposal.sourceTimestamp !== null && (
+                    <time className="meeting-proposal-context-time" dateTime={`PT${proposal.sourceTimestamp}S`}>
+                      {formatClockSeconds(proposal.sourceTimestamp, { padMinutes: true })}
+                    </time>
+                  )}
+                </summary>
+                <blockquote>{proposal.sourceContext}</blockquote>
+              </details>
+            )}
+            <section className="meeting-proposal-agent-task" aria-label="Proposed task">
+              <span className="meeting-proposal-agent-task-label">Proposed task</span>
+              {isEditingDraft ? (
+                <textarea
+                  className="meeting-proposal-draft-input"
+                  value={localDraft}
+                  onChange={(event) => {
+                    setLocalDraft(event.target.value);
+                    sentDraftsRef.current.add(event.target.value);
+                    if (sentDraftsRef.current.size > MAX_TRACKED_SENT_DRAFTS) {
+                      sentDraftsRef.current.delete(sentDraftsRef.current.values().next().value as string);
+                    }
+                    updateProposal(proposal.id, { draftPrompt: event.target.value });
+                  }}
+                />
+              ) : (
+                <div
+                  className={`meeting-proposal-draft-preview${isDraftEditable ? '' : ' is-read-only'}`}
+                  onClick={isDraftEditable ? () => updateProposal(proposal.id, { isEditingDraft: true }) : undefined}
+                >
+                  <MeetingMarkdown content={proposal.draftPrompt} />
+                </div>
+              )}
+            </section>
+            {proposal.lastError && <p className="meeting-proposal-error" role="alert">{proposal.lastError}</p>}
+            {proposal.liveAgentStatus && <span className="meeting-proposal-live-status">{proposal.liveAgentStatus}</span>}
+            <div className="meeting-proposal-actions">
+              {status === 'dismissed' ? (
+                <button type="button" className="meeting-proposal-action-secondary" onClick={() => restoreProposal(proposal.id)}>Restore</button>
+              ) : canMutate ? (
+                <>
+                  <button type="button" className="meeting-proposal-action-primary" disabled={!canStart} onClick={() => startProposalNow(proposal.id)}>
+                    {status === 'starting' ? 'Starting…' : hasTodo && status === 'failed' ? 'Retry start' : 'Start now'}
+                  </button>
+                  <button type="button" className="meeting-proposal-action-secondary" disabled={!canAdd} onClick={() => promoteProposalToTodo(proposal.id)}>
+                    {status === 'submitting' ? 'Adding…' : hasTodo ? 'In To-Dos' : 'Add to To-Dos'}
+                  </button>
+                  <button type="button" className="meeting-proposal-action-secondary" disabled={!isDraftEditable} onClick={() => updateProposal(proposal.id, { isEditingDraft: !isEditingDraft })}>
+                    {isEditingDraft ? 'Done editing' : 'Edit'}
+                  </button>
+                  <button type="button" className="meeting-proposal-action-dismiss" onClick={() => dismissProposal(proposal.id)}>Dismiss</button>
+                </>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GroupDisclosureChevron() {
+  return (
+    <svg className="meeting-proposal-group-chevron" width="12" height="12" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+      <path d="M7 9l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function proposalHasTodo(proposal: MeetingActionProposalDTO): boolean {
+  return typeof proposal.todoId === 'string' && proposal.todoId.length > 0;
+}
+
+function formatTodoStatus(status: string): string {
+  return TODO_STATUS_LABELS[status] ?? status.replace(/_/g, ' ').replace(/\b\w/g, character => character.toUpperCase());
+}
+
+function formatAgentStatus(status: string): string {
+  if (status === 'awaiting_user_input' || status === 'needs_clarification') return 'Needs input';
+  return formatTodoStatus(status);
+}
+
+/** The short confirmation a card shows while it fades out after being handled. */
+function departureConfirmation(proposal: MeetingActionProposalDTO): string {
+  if (proposal.executionStatus === 'dismissed') return 'Dismissed';
+  if (proposal.executionStatus === 'added_to_todos') return '✓ Added to To-Dos';
+  return proposalHasTodo(proposal) ? '✓ Started, in To-Dos' : '✓ Started';
+}
+
+function compactStatus(proposal: MeetingActionProposalDTO): string | null {
+  const live = proposal.liveAgentStatus;
+  if (live === 'awaiting_user_input' || live === 'needs_clarification') return 'Needs input';
+  if (live === 'completed' || proposal.executionStatus === 'completed') return 'Completed';
+  if (live === 'failed' || proposal.executionStatus === 'failed') return 'Failed';
+  if (live === 'processing' || live === 'capturing' || live === 'routing' || proposal.executionStatus === 'submitted') return 'In progress';
+  if (proposal.executionStatus === 'submitting') return 'Adding';
+  if (proposal.executionStatus === 'starting') return 'Starting';
+  if (proposal.executionStatus === 'added_to_todos') return 'In To-Dos';
+  return null;
+}
+
+function CapabilityIcon({ capabilityType }: { capabilityType: string }) {
+  if (capabilityType.includes('email')) {
+    return <svg className="meeting-proposal-capability-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true"><rect x="2" y="3.5" width="12" height="9" rx="1.5" /><path d="m2.8 4.5 5.2 4 5.2-4" strokeLinejoin="round" /></svg>;
+  }
+  if (capabilityType.includes('calendar')) {
+    return <svg className="meeting-proposal-capability-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true"><rect x="2.2" y="3.5" width="11.6" height="10" rx="1.5" /><path d="M5 1.8v3M11 1.8v3M2.5 6.3h11" /></svg>;
+  }
+  return <svg className="meeting-proposal-capability-icon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M6.2 1.5c.4 2.5 1.7 3.8 4.2 4.2-2.5.4-3.8 1.7-4.2 4.2-.4-2.5-1.7-3.8-4.2-4.2 2.5-.4 3.8-1.7 4.2-4.2Zm5.2 7.2c.2 1.5 1 2.3 2.5 2.5-1.5.2-2.3 1-2.5 2.5-.2-1.5-1-2.3-2.5-2.5 1.5-.2 2.3-1 2.5-2.5Z" /></svg>;
+}

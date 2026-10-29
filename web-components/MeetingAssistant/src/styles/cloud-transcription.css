@@ -1,0 +1,68 @@
+/* The cloud transcription status chip is read-only. Setup lives in Settings. Colors, type sizes, radii and spacing come from the shared tokens. */
+
+.meeting-cloud {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--padding-s);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.meeting-cloud-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--padding-xs);
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--padding-xs) var(--padding-m);
+  border: 2px solid var(--separator-color);
+  border-radius: var(--corner-radius-medium);
+  background: var(--background-primary);
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+}
+
+.meeting-cloud-chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meeting-cloud-dot {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--text-primary);
+  border-radius: 50%;
+  background: var(--background-primary);
+}
+
+.meeting-cloud-chip--on,
+.meeting-cloud-chip--connecting {
+  border-color: var(--primary);
+}
+
+.meeting-cloud-chip--on .meeting-cloud-dot,
+.meeting-cloud-chip--connecting .meeting-cloud-dot {
+  border-color: var(--primary);
+}
+
+.meeting-cloud-chip--streaming {
+  border-color: var(--success-base);
+}
+
+.meeting-cloud-chip--streaming .meeting-cloud-dot {
+  border-color: var(--success-base);
+  background: var(--success-base);
+}
+
+.meeting-cloud-chip--fallback {
+  border-color: var(--notice-base);
+}
+
+.meeting-cloud-chip--fallback .meeting-cloud-dot {
+  border-color: var(--notice-base);
+  background: var(--notice-base);
+}

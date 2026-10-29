@@ -1,0 +1,24 @@
+/* The Run overview panel: a compact header with the collapse-panel button left of the title, and a body that scrolls inside the tray so a long run, a long document list, or a short window never cuts off the last row. */
+.detail-tray-header--overview {
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-start;
+  padding: var(--padding-xs) var(--padding-m);
+}
+
+.detail-tray-header--overview .detail-tray-title {
+  margin-top: 0;
+}
+
+.run-overview-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  /* The small gap between the divider and the overview below it. */
+  padding-top: var(--padding-s);
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-bottom: var(--padding-m);
+}

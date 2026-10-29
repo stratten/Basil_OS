@@ -1,0 +1,26 @@
+{
+  "images": [
+    {
+      "filename": "StatusBarIcon_TR_MY_BN.png",
+      "idiom": "universal",
+      "scale": "1x"
+    },
+    {
+      "filename": "StatusBarIcon_TR_MY_BN@2x.png",
+      "idiom": "universal",
+      "scale": "2x"
+    },
+    {
+      "filename": "StatusBarIcon_TR_MY_BN@3x.png",
+      "idiom": "universal",
+      "scale": "3x"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  },
+  "properties": {
+    "template-rendering-intent": "original"
+  }
+}

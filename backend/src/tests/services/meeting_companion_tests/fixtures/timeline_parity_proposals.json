@@ -1,0 +1,33 @@
+{
+  "events": [
+    {"id": "ev-01", "seq": 1, "kind": "item", "meeting_time": 10.0, "wall_time": "2026-01-01T10:00:01.000000Z", "payload": {"item": {"id": "i1", "kind": "proposal", "text": "Add a renewal reminder", "confidence": 0.9, "citations": [], "no_source": false, "transcript_range": {"start": 8.0, "end": 10.0, "turn_ids": []}, "trigger": "investigation", "watch_id": null, "truncated": false, "pinned": false, "dismissed": false, "researched": true, "investigation_id": "iv-1", "evidence_count": 2, "proposal": {"proposal_id": "pr-i1", "action": "todo", "title": "Add a renewal reminder", "instruction": "Do it: Add a renewal reminder", "authority": "review", "state": "proposed", "todo_id": null, "agent_task_id": null, "error": null, "auto_started": false}}}},
+    {"id": "ev-02", "seq": 2, "kind": "item", "meeting_time": 11.0, "wall_time": "2026-01-01T10:00:02.000000Z", "payload": {"item": {"id": "i2", "kind": "proposal", "text": "Draft the renewal summary", "confidence": 0.9, "citations": [], "no_source": false, "transcript_range": {"start": 9.0, "end": 11.0, "turn_ids": []}, "trigger": "investigation", "watch_id": null, "truncated": false, "pinned": false, "dismissed": false, "researched": true, "investigation_id": "iv-1", "evidence_count": 2, "proposal": {"proposal_id": "pr-i2", "action": "agent_task", "title": "Draft the renewal summary", "instruction": "Do it: Draft the renewal summary", "authority": "watch", "state": "proposed", "todo_id": null, "agent_task_id": null, "error": null, "auto_started": false}}}},
+    {"id": "ev-03", "seq": 3, "kind": "item", "meeting_time": 12.0, "wall_time": "2026-01-01T10:00:03.000000Z", "payload": {"item": {"id": "i3", "kind": "proposal", "text": "Talk through the renewal options", "confidence": 0.9, "citations": [], "no_source": false, "transcript_range": {"start": 10.0, "end": 12.0, "turn_ids": []}, "trigger": "investigation", "watch_id": null, "truncated": false, "pinned": false, "dismissed": false, "researched": true, "investigation_id": "iv-1", "evidence_count": 2, "proposal": {"proposal_id": "pr-i3", "action": "assistant_session", "title": "Talk through the renewal options", "instruction": "Do it: Talk through the renewal options", "authority": "review", "state": "proposed", "todo_id": null, "agent_task_id": null, "error": null, "auto_started": false}}}},
+    {"id": "ev-04", "seq": 4, "kind": "item", "meeting_time": 13.0, "wall_time": "2026-01-01T10:00:04.000000Z", "payload": {"item": {"id": "i4", "kind": "proposal", "text": "Compare the vendor quotes", "confidence": 0.9, "citations": [], "no_source": false, "transcript_range": {"start": 11.0, "end": 13.0, "turn_ids": []}, "trigger": "investigation", "watch_id": null, "truncated": false, "pinned": false, "dismissed": false, "researched": true, "investigation_id": "iv-1", "evidence_count": 2, "proposal": {"proposal_id": "pr-i4", "action": "agent_task", "title": "Compare the vendor quotes", "instruction": "Do it: Compare the vendor quotes", "authority": "review", "state": "proposed", "todo_id": null, "agent_task_id": null, "error": null, "auto_started": false}}}},
+    {"id": "ev-05", "seq": 5, "kind": "proposal", "meeting_time": 20.0, "wall_time": "2026-01-01T10:01:05.000000Z", "payload": {"item_id": "i1", "proposal_id": "pr-i1", "state": "started", "todo_id": "t-1"}},
+    {"id": "ev-06", "seq": 6, "kind": "proposal", "meeting_time": 21.0, "wall_time": "2026-01-01T10:01:06.000000Z", "payload": {"item_id": "i2", "proposal_id": "pr-i2", "state": "failed", "todo_id": "t-2", "error": "The To-Do worker is not ready yet. Try again in a moment."}},
+    {"id": "ev-07", "seq": 7, "kind": "proposal", "meeting_time": 22.0, "wall_time": "2026-01-01T10:01:07.000000Z", "payload": {"item_id": "i2", "proposal_id": "pr-i2", "state": "started", "todo_id": "t-2", "agent_task_id": "a-2", "auto": true}},
+    {"id": "ev-08", "seq": 8, "kind": "proposal", "meeting_time": 23.0, "wall_time": "2026-01-01T10:01:08.000000Z", "payload": {"item_id": "i3", "proposal_id": "pr-i3", "state": "handed_off"}},
+    {"id": "ev-09", "seq": 9, "kind": "proposal", "meeting_time": 24.0, "wall_time": "2026-01-01T10:01:09.000000Z", "payload": {"item_id": "i4", "proposal_id": "pr-i4", "state": "dismissed"}},
+    {"id": "ev-10", "seq": 10, "kind": "proposal", "meeting_time": 25.0, "wall_time": "2026-01-01T10:01:10.000000Z", "payload": {"item_id": "i4", "proposal_id": "pr-i4", "state": "started", "todo_id": "t-4"}},
+    {"id": "ev-11", "seq": 11, "kind": "proposal", "meeting_time": 26.0, "wall_time": "2026-01-01T10:01:11.000000Z", "payload": {"item_id": "zz", "proposal_id": "pr-zz", "state": "started", "todo_id": "t-9"}},
+    {"id": "ev-12", "seq": 12, "kind": "proposal", "meeting_time": 27.0, "wall_time": "2026-01-01T10:01:12.000000Z", "payload": {"item_id": "i1", "proposal_id": "pr-i1", "state": "failed", "error": "late failure"}},
+    {"id": "ev-13", "seq": 13, "kind": "proposal", "meeting_time": 28.0, "wall_time": "2026-01-01T10:01:13.000000Z", "payload": {}},
+    {"id": "ev-14", "seq": 14, "kind": "proposal", "meeting_time": 29.0, "wall_time": "2026-01-01T10:01:14.000000Z", "payload": {"item_id": "i3", "proposal_id": "pr-i3", "state": "bogus"}}
+  ],
+  "expected": {
+    "items": [
+      {"id": "i1", "kind": "proposal", "dismissed": false},
+      {"id": "i2", "kind": "proposal", "dismissed": false},
+      {"id": "i3", "kind": "proposal", "dismissed": false},
+      {"id": "i4", "kind": "proposal", "dismissed": true}
+    ],
+    "proposals": [
+      {"item_id": "i1", "state": "started", "todo_id": "t-1", "agent_task_id": null, "error": null, "auto_started": false},
+      {"item_id": "i2", "state": "started", "todo_id": "t-2", "agent_task_id": "a-2", "error": null, "auto_started": true},
+      {"item_id": "i3", "state": "handed_off", "todo_id": null, "agent_task_id": null, "error": null, "auto_started": false},
+      {"item_id": "i4", "state": "dismissed", "todo_id": null, "agent_task_id": null, "error": null, "auto_started": false}
+    ],
+    "last_seq": 14
+  }
+}

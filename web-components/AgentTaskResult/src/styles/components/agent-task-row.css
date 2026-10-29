@@ -1,0 +1,239 @@
+/* Agent Task sidebar row (AgentTaskRow.tsx). Compound selectors beat the single-class base rules in shell-and-sidebar.css, the way the former inline styles did. */
+.sidebar-row.agent-task-row {
+  position: relative;
+  overflow: hidden;
+}
+
+.agent-task-row__slide {
+  position: relative;
+  transition: transform 0.15s ease;
+}
+
+.agent-task-row__trash {
+  position: absolute;
+  top: 0;
+  right: calc(-1 * var(--padding-s));
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--error-base);
+  padding: 0 2px;
+  display: flex;
+  align-items: center;
+  z-index: 1;
+}
+
+.agent-detach-btn.agent-task-row__detach {
+  top: 0;
+  right: calc(-1 * var(--padding-s));
+}
+
+.agent-detach-btn.agent-task-row__detach--below-trash {
+  top: 14px;
+}
+
+.agent-task-row__main {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-s);
+}
+
+.agent-task-row__text {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Aligned layout: the 8px column that the status icon already occupied now also holds the schedule or conversation icon, beside the preview line, so the text column keeps its original x (8px icon column + 8px gap) and nothing shifts. The grid gaps are zero (the base rule's `gap` would otherwise add an 8px row gap); the 8px spacer column and the trailing icon's own margin reproduce the original horizontal spacing, and an absent trailing icon adds no width. `display: contents` on the text wrapper makes the title and preview grid items of the row itself, so each icon centers on its own line without changing the row height. */
+.agent-task-row__main.agent-task-row__main--aligned {
+  display: grid;
+  grid-template-columns: 8px 8px minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  gap: 0;
+  align-items: center;
+}
+
+.agent-task-row__main--aligned > .agent-task-row__text {
+  display: contents;
+}
+
+.agent-task-row__main--aligned .row-title.agent-task-row__title {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.agent-task-row__main--aligned .row-preview {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.agent-task-row__status-slot,
+.agent-task-row__origin-slot {
+  grid-column: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.agent-task-row__status-slot {
+  grid-row: 1;
+}
+
+.agent-task-row__origin-slot {
+  grid-row: 2;
+  align-self: stretch;
+  margin-top: 2px;
+}
+
+.agent-task-row__status-slot > *,
+.agent-task-row__origin-slot > * {
+  flex: 0 0 auto;
+}
+
+/* The 16px spinner (12px core plus the 2px ring inset) is wider than the 8px column; the negative right margin lets it overflow into the spacer and stop short of the title. */
+.agent-task-row__status-slot > .agent-task-processing-spinner {
+  margin-right: -4px;
+}
+
+.agent-task-row__trailing {
+  grid-column: 4;
+  grid-row: 1 / span 2;
+  margin-left: var(--padding-s);
+  display: flex;
+  align-items: center;
+  align-self: center;
+}
+
+.row-title.agent-task-row__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.agent-task-row__origin-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.agent-task-row__title-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Three classes so it beats `.sidebar-row.selected .row-preview`, as the former inline color did. */
+.sidebar-row .row-preview.agent-task-row__preview--warning {
+  color: var(--warning-text);
+}
+
+/* Paused is neutral gray; the selected-row override below keeps it legible on the filled row. */
+.sidebar-row .row-preview.agent-task-row__preview--paused {
+  color: var(--text-secondary);
+}
+
+/* Same specificity trick as the warning preview so the selected-row preview color does not win. */
+.sidebar-row .row-preview.agent-task-row__preview--waiting {
+  color: var(--primary);
+  font-family: var(--font-family-medium);
+}
+
+.agent-task-row__waiting-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  color: var(--primary);
+}
+
+/* A selected row is filled with the primary color, so the waiting accents switch to white there. */
+.sidebar-row.selected .row-preview.agent-task-row__preview--waiting,
+.sidebar-row.selected .row-preview.agent-task-row__preview--paused,
+.sidebar-row.selected .agent-task-row__waiting-icon {
+  color: var(--text-on-primary, var(--background-primary));
+}
+
+.sidebar-row.selected .agent-task-active-indicator--paused {
+  fill: var(--text-on-primary, var(--background-primary));
+}
+
+/* Schedule rows: a solid green dot means the schedule is still firing, a hollow ring means it is inactive. */
+.agent-task-row__schedule-dot {
+  display: inline-block;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: 9px;
+  height: 9px;
+  margin: 0 2px;
+  border-radius: 50%;
+}
+
+.agent-task-row__schedule-dot.is-active {
+  background: var(--success-base);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--success-base) 30%, transparent);
+}
+
+.agent-task-row__schedule-dot.is-inactive {
+  background: transparent;
+  border: 1px solid var(--text-primary);
+}
+
+/* The same dot in the schedule detail header is larger and has no row margin. */
+.agent-task-row__schedule-dot.scheduled-detail__active-dot {
+  width: 10px;
+  height: 10px;
+  margin: 0;
+}
+
+.sidebar-row.selected .agent-task-row__schedule-dot.is-active {
+  box-shadow: 0 0 0 2px var(--text-on-primary, var(--background-primary));
+}
+
+.sidebar-row.selected .agent-task-row__schedule-dot.is-inactive {
+  border-color: var(--text-on-primary, var(--background-primary));
+}
+
+.agent-task-row__alert-icon {
+  flex-shrink: 0;
+}
+
+.unread-badge.agent-task-row__unread {
+  width: 8px;
+  height: 8px;
+  font-size: 0;
+}
+
+.row-meta.agent-task-row__meta {
+  margin-left: 14px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.agent-task-row__meta-line {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-xs);
+}
+
+.agent-task-row__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.agent-task-row__meta-item--thread {
+  color: color-mix(in srgb, var(--secondary) 80%, transparent);
+}
+
+.overlay-card.agent-task-row__cancel-card {
+  max-width: 320px;
+}
+
+.action-btn.action-btn--neutral {
+  background: var(--background-secondary);
+  color: var(--text-primary);
+}

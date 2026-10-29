@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@shared/*": ["../shared/*"],
+      "@agent-task/*": ["../AgentTaskResult/src/*"],
+      "marked": ["./node_modules/marked/lib/marked.d.ts"],
+      "dompurify": ["./node_modules/dompurify/dist/purify.es.d.mts"],
+      "highlight.js": ["./node_modules/highlight.js/types/index.d.ts"],
+      "highlight.js/lib/core": ["./node_modules/highlight.js/lib/core.d.ts"],
+      "react": ["./node_modules/@types/react/index.d.ts"],
+      "react-dom": ["./node_modules/@types/react-dom/index.d.ts"],
+      "react-dom/client": ["./node_modules/@types/react-dom/client.d.ts"],
+      "react/jsx-runtime": ["./node_modules/@types/react/jsx-runtime.d.ts"],
+      "vitest": ["./node_modules/vitest/dist/index.d.ts"]
+    }
+  },
+  "include": ["src"]
+}

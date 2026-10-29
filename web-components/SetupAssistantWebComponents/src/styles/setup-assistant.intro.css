@@ -1,0 +1,860 @@
+
+.setup-shell:has(.welcome-intro) {
+  grid-template-columns: minmax(0, 900px);
+}
+
+.welcome-intro {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  margin: 0 auto;
+  max-width: 860px;
+  min-height: 430px;
+  padding: 12px var(--padding-l, 32px) 24px;
+  text-align: center;
+}
+
+.welcome-intro-logo {
+  border-radius: 50%;
+  box-shadow: 0 8px 32px color-mix(in srgb, var(--primary) 18%, transparent);
+  display: block;
+  height: 84px;
+  margin: 0 auto var(--padding-l);
+  width: 84px;
+}
+
+.welcome-intro h2 {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: clamp(calc(36px * var(--text-scale, 1)), 5vw, calc(48px * var(--text-scale, 1)));
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  margin: var(--padding-s) 0 var(--padding-l);
+}
+
+.welcome-intro-copy {
+  color: var(--text-secondary);
+  display: grid;
+  font-size: calc(18px * var(--text-scale, 1));
+  gap: var(--padding-m);
+  line-height: 1.6;
+  margin-bottom: var(--padding-xl, 40px);
+}
+
+.welcome-intro-copy p {
+  margin: 0;
+}
+
+.welcome-intro-privacy {
+  background: color-mix(in srgb, var(--primary) 8%, var(--background-primary));
+  border: 0.5px solid color-mix(in srgb, var(--primary) 30%, var(--separator-color));
+  border-radius: var(--corner-radius-medium);
+  color: var(--text-primary);
+  font-size: calc(15px * var(--text-scale, 1));
+  line-height: 1.55;
+  margin: 0 0 var(--padding-l, 28px);
+  padding: var(--padding-m) var(--padding-l);
+  text-align: left;
+}
+
+.welcome-intro-privacy code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.welcome-intro-primary {
+  min-width: 170px;
+  padding: 13px 28px;
+}
+
+.intro-capture-toggles {
+  border: 0;
+  display: grid;
+  gap: var(--padding-s);
+  margin: 0;
+  padding: 0;
+}
+
+/* The step body scrolls on its own so a reveal or key form taller than the window stays reachable. */
+.intro-privacy {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.intro-step {
+  animation: setupEnterRise 360ms var(--setup-motion-ease-out) both;
+  flex: 0 1 auto;
+  margin: 0 -4px;
+  min-height: min(280px, 30vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px;
+}
+
+.intro-step--leaving {
+  animation: setupLeaveRise 220ms var(--setup-motion-ease-in) both;
+  pointer-events: none;
+}
+
+.intro-step-body {
+  display: grid;
+  gap: var(--padding-m);
+}
+
+.intro-step-body .choice-list,
+.intro-step-body .intro-capture-toggles,
+.intro-step-body .intro-freeform,
+.intro-step-body .intro-help {
+  margin-top: 0;
+}
+
+/* A collapsing SmoothReveal still occupies a grid slot until it unmounts; canceling the step gap here and restoring it inside the revealed body keeps the surrounding content from snapping by one gap when the slot disappears. */
+.intro-step-body > .intro-step-reveal {
+  align-self: start;
+  margin-top: calc(-1 * var(--padding-m));
+}
+
+.intro-step-reveal-body {
+  padding-top: var(--padding-m);
+}
+
+.intro-step-reveal-body > p {
+  margin: 0;
+}
+
+.intro-privacy .choice-option {
+  --choice-accent: var(--separator-color);
+  align-items: flex-start;
+  background: var(--background-primary);
+  justify-content: flex-start;
+  overflow: hidden;
+  padding: var(--padding-m) var(--padding-m) var(--padding-m) calc(var(--padding-m) + 4px);
+  position: relative;
+  text-align: left;
+}
+
+.intro-privacy .choice-option::before {
+  background: var(--choice-accent);
+  bottom: 0;
+  content: '';
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 4px;
+}
+
+.intro-privacy .choice-option--local {
+  --choice-accent: var(--accent-green);
+}
+
+.intro-privacy .choice-option--provider_key {
+  --choice-accent: var(--accent-blue);
+}
+
+.intro-privacy .choice-option--basil_cloud {
+  --choice-accent: var(--accent-purple, var(--primary));
+}
+
+/* Spacing lives inside each revealed section (.choice-option-reveal-body) rather than as a grid gap, so sections that expand or collapse under an option carry their own spacing with them. */
+.choice-option-wrapper {
+  display: grid;
+}
+
+.choice-option-reveal-body {
+  padding-top: var(--padding-xs);
+}
+
+.choice-option-download {
+  display: grid;
+  gap: var(--padding-xs);
+  justify-items: start;
+}
+
+.choice-option-download-progress {
+  color: var(--text-primary);
+  display: grid;
+  gap: var(--padding-xs);
+  width: 100%;
+}
+
+.choice-option-download-bar {
+  background: var(--background-primary);
+  border: 1px solid var(--primary);
+  border-radius: 999px;
+  height: 10px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.choice-option-download-bar-fill {
+  background: var(--primary);
+  height: 100%;
+  transition: width 300ms ease;
+}
+
+.choice-option-unavailable {
+  color: var(--text-secondary);
+  font-size: var(--font-size-footnote, var(--font-size-callout));
+}
+
+.choice-option-provider-key-form {
+  display: grid;
+  gap: var(--padding-s);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+}
+
+.choice-option-provider-key-form label,
+.choice-option-provider-field {
+  color: var(--text-secondary);
+  display: grid;
+  font-size: var(--font-size-footnote, var(--font-size-callout));
+  gap: 4px;
+}
+
+.choice-option-provider-field .tokenized-select {
+  display: flex;
+  width: 100%;
+}
+
+.choice-option-provider-key-form input,
+.choice-option-provider-select {
+  background: var(--background-primary);
+  border: 1px solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  box-sizing: border-box;
+  color: var(--text-primary);
+  font: inherit;
+  min-height: 34px;
+  padding: 6px 8px;
+}
+
+.choice-option-provider-key-form input:focus,
+.choice-option-provider-select:focus-visible {
+  border-color: var(--primary);
+  outline: 2px solid color-mix(in srgb, var(--primary) 35%, transparent);
+  outline-offset: 1px;
+}
+
+.choice-option-note {
+  color: var(--text-secondary);
+  display: block;
+  font-size: var(--font-size-footnote, var(--font-size-callout));
+  margin-top: 4px;
+}
+
+.choice-option-note--positive {
+  color: var(--accent-green);
+}
+
+.choice-option-secondary-action {
+  background: none;
+  border: none;
+  color: var(--primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-footnote, var(--font-size-callout));
+  justify-self: start;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.choice-option-model-picker {
+  display: grid;
+  gap: 6px;
+  margin-top: var(--padding-s);
+}
+
+.choice-option-model-note {
+  color: var(--text-secondary);
+  font-size: var(--font-size-footnote, var(--font-size-callout));
+  margin: 0;
+}
+
+.choice-option-model-note strong {
+  color: var(--text-primary);
+}
+
+.choice-option-key-help {
+  color: var(--text-secondary);
+  font-size: var(--font-size-footnote, var(--font-size-callout));
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.choice-option-key-help a {
+  color: var(--primary);
+}
+
+.choice-option-key-validate-row {
+  align-items: center;
+  display: flex;
+  gap: var(--padding-s);
+  grid-column: 1 / -1;
+}
+
+.choice-option-key-status {
+  font-size: var(--font-size-footnote, var(--font-size-callout));
+}
+
+.choice-option-key-status--valid {
+  color: var(--accent-green);
+}
+
+.choice-option-key-status--invalid {
+  color: var(--error-text);
+}
+
+.intro-privacy .choice-option.selected,
+.intro-privacy .choice-option[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--choice-accent) 14%, var(--background-primary));
+  border-color: color-mix(in srgb, var(--choice-accent) 80%, var(--separator-color));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--choice-accent) 34%, transparent);
+  transform: none;
+}
+
+.intro-privacy .choice-option.selected::after,
+.intro-privacy .choice-option[aria-pressed="true"]::after {
+  align-items: center;
+  background: var(--choice-accent);
+  border-radius: 999px;
+  color: var(--background-primary);
+  content: '✓';
+  display: inline-flex;
+  font-family: var(--font-family-medium);
+  font-size: calc(12px * var(--text-scale, 1));
+  height: 20px;
+  justify-content: center;
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  width: 20px;
+}
+
+.intro-help {
+  background: transparent;
+  border: 0.5px solid var(--separator-color);
+  border-radius: var(--corner-radius-medium);
+  overflow: hidden;
+  transition: background-color 400ms cubic-bezier(0.2, 0.8, 0.2, 1), border-color 400ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.intro-help--open {
+  background: color-mix(in srgb, var(--primary) 4%, var(--background-tertiary));
+  border-color: color-mix(in srgb, var(--primary) 24%, var(--separator-color));
+}
+
+.intro-help-summary {
+  align-items: center;
+  background: none;
+  border: 0;
+  box-sizing: border-box;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+  gap: 8px;
+  justify-content: space-between;
+  padding: 10px 14px;
+  text-align: left;
+  user-select: none;
+  width: 100%;
+}
+
+.intro-help-summary:hover {
+  color: var(--text-primary);
+}
+
+.intro-help-summary:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary) 55%, transparent);
+  outline-offset: -2px;
+}
+
+.intro-help--open .intro-help-summary {
+  color: var(--text-primary);
+}
+
+.intro-help-chevron {
+  display: inline-block;
+  font-size: calc(16px * var(--text-scale, 1));
+  line-height: 1;
+  transition: transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.intro-help--open .intro-help-chevron {
+  transform: rotate(90deg);
+}
+
+.intro-help-body {
+  border-top: 0.5px solid color-mix(in srgb, var(--primary) 18%, var(--separator-color));
+  padding: 12px 14px 14px;
+}
+
+.intro-help-body dl {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.intro-help-body dl > div {
+  display: grid;
+  gap: 2px;
+}
+
+.intro-help-body dt {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+}
+
+.intro-help-body dd {
+  color: var(--text-secondary);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.intro-help-footnote {
+  border-top: 0.5px solid color-mix(in srgb, var(--separator-color) 60%, transparent);
+  color: var(--text-secondary);
+  font-size: var(--font-size-footnote, var(--font-size-callout));
+  line-height: 1.45;
+  margin: 12px 0 0;
+  padding-top: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-help,
+  .intro-help-chevron {
+    transition: none;
+  }
+}
+
+.intro-step-body h3 {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-headline);
+  letter-spacing: -0.01em;
+  margin: var(--padding-s) 0 0;
+}
+
+.intro-step-lede {
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.intro-step-lede em {
+  color: var(--text-primary);
+  font-style: normal;
+  font-family: var(--font-family-medium);
+}
+
+.intro-step-primary {
+  padding: 10px 22px;
+}
+
+.intro-step-back--placeholder {
+  visibility: hidden;
+}
+
+.intro-step-back {
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  padding: 6px 10px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.intro-step-back:hover {
+  color: var(--text-primary);
+}
+
+.intro-step-back:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.intro-step-back:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.intro-step-dots {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+}
+
+.intro-step-dot {
+  background: var(--separator-color);
+  border-radius: 999px;
+  display: inline-block;
+  height: 8px;
+  transition: background 200ms ease, transform 200ms ease, width 200ms ease;
+  width: 8px;
+}
+
+.intro-step-dot.done {
+  background: color-mix(in srgb, var(--primary) 40%, var(--separator-color));
+}
+
+.intro-step-dot.current {
+  background: var(--primary);
+  transform: scale(1.05);
+  width: 22px;
+}
+
+.intro-freeform-label {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-step-dot {
+    transition: none;
+  }
+}
+
+.intro-capture-toggle {
+  align-items: flex-start;
+  --capture-accent: var(--primary);
+  background: var(--background-primary);
+  border: 0.5px solid var(--separator-color);
+  border-radius: var(--corner-radius-medium);
+  display: grid;
+  gap: 8px 12px;
+  grid-template-columns: 10px minmax(0, 1fr);
+  padding: 12px 14px;
+  position: relative;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.intro-capture-toggle-accent {
+  background: var(--capture-accent);
+  border-radius: 999px;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--capture-accent) 12%, transparent);
+  height: 10px;
+  margin-top: 7px;
+  width: 10px;
+}
+
+.intro-capture-toggle--memory {
+  --capture-accent: var(--accent-purple);
+}
+
+.intro-capture-toggle--skill {
+  --capture-accent: var(--accent-orange);
+}
+
+.intro-capture-toggle:hover {
+  background: color-mix(in srgb, var(--capture-accent) 4%, var(--background-primary));
+  border-color: color-mix(in srgb, var(--capture-accent) 30%, var(--separator-color));
+}
+
+.intro-capture-toggle-label {
+  cursor: pointer;
+  display: flex;
+  gap: 12px;
+}
+
+.intro-capture-toggle input[type="checkbox"] {
+  accent-color: var(--primary);
+  height: 18px;
+  margin-top: 3px;
+  width: 18px;
+}
+
+.intro-capture-toggle-body {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.intro-capture-toggle-body strong {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+}
+
+.intro-capture-toggle-body > span:not(:first-child) {
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.intro-toggle-details {
+  color: var(--text-secondary);
+  font-size: var(--font-size-callout);
+  grid-column: 2;
+  margin-top: 4px;
+}
+
+.intro-toggle-details summary {
+  color: color-mix(in srgb, var(--capture-accent) 82%, var(--text-primary));
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  list-style-position: outside;
+}
+
+.intro-toggle-details p {
+  margin: 8px 0 0;
+}
+
+.info-card {
+  background: var(--background-tertiary);
+  border: 0.5px solid var(--separator-color);
+  border-radius: var(--corner-radius-medium);
+  padding: var(--padding-m);
+}
+
+.info-card h3 {
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-subheadline);
+  margin: 0 0 8px;
+}
+
+.info-card code {
+  background: var(--background-secondary);
+  border-radius: 6px;
+  display: inline-block;
+  padding: 4px 6px;
+}
+
+.basil-cloud-account {
+  display: grid;
+  gap: var(--padding-s);
+}
+
+.basil-cloud-account-tabs {
+  display: flex;
+  gap: var(--padding-xs);
+}
+
+.basil-cloud-account-tab {
+  background: var(--background-primary);
+  border: 1px solid var(--separator-color);
+  border-radius: 999px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-footnote, var(--font-size-callout));
+  padding: 4px 14px;
+}
+
+.basil-cloud-account-tab[aria-pressed="true"] {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--text-on-primary, var(--background-primary));
+}
+
+.basil-cloud-account-form {
+  display: grid;
+  gap: var(--padding-s);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.basil-cloud-account-form label {
+  color: var(--text-secondary);
+  display: grid;
+  font-size: var(--font-size-footnote, var(--font-size-callout));
+  gap: 4px;
+}
+
+.basil-cloud-account-form input {
+  background: var(--background-primary);
+  border: 1px solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  box-sizing: border-box;
+  color: var(--text-primary);
+  font: inherit;
+  min-height: 34px;
+  padding: 6px 8px;
+}
+
+.basil-cloud-account-form input:focus {
+  border-color: var(--primary);
+  outline: 2px solid color-mix(in srgb, var(--primary) 35%, transparent);
+  outline-offset: 1px;
+}
+
+.basil-cloud-account-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--padding-s);
+  grid-column: 1 / -1;
+}
+
+.basil-cloud-account-payment {
+  display: grid;
+  gap: var(--padding-s);
+}
+
+@media (max-width: 720px) {
+  .basil-cloud-account-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.basil-cloud-modal-backdrop {
+  align-items: center;
+  background: rgba(10, 18, 40, 0.55);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: var(--padding-l, 16px);
+  position: fixed;
+  z-index: 1000;
+}
+
+.basil-cloud-modal {
+  background: var(--background-primary);
+  border: 1px solid var(--primary);
+  border-radius: var(--corner-radius-large, 14px);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  box-sizing: border-box;
+  color: var(--text-primary);
+  display: grid;
+  gap: var(--padding-s);
+  max-height: 100%;
+  max-width: 520px;
+  overflow-y: auto;
+  padding: var(--padding-l, 16px);
+  width: 100%;
+}
+
+.basil-cloud-modal:focus {
+  outline: none;
+}
+
+.basil-cloud-modal-header {
+  align-items: center;
+  display: flex;
+  gap: var(--padding-s);
+  justify-content: space-between;
+}
+
+.basil-cloud-modal-header h3 {
+  margin: 0;
+}
+
+.basil-cloud-modal-close {
+  background: var(--background-primary);
+  border: 1px solid var(--separator-color);
+  border-radius: 999px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: calc(20px * var(--text-scale, 1));
+  height: 32px;
+  line-height: 1;
+  width: 32px;
+}
+
+.basil-cloud-modal-close:hover,
+.basil-cloud-modal-close:focus-visible {
+  border-color: var(--primary);
+  outline: 2px solid color-mix(in srgb, var(--primary) 35%, transparent);
+  outline-offset: 1px;
+}
+
+.choice-option-model-name {
+  color: var(--text-primary);
+  display: block;
+  font-size: var(--font-size-footnote, var(--font-size-callout));
+  margin-top: 4px;
+}
+
+.choice-option-model-name strong {
+  color: var(--primary);
+  display: inline;
+}
+
+/* Selectable "this is true of me" statements on the last setup preferences step. Each group is a short row of solid chips; the selected chip is filled so the choice reads at a glance. */
+.intro-style {
+  display: grid;
+  gap: var(--padding-s);
+}
+
+/* Each question sits in its own tinted card with a distinct accent so a stack of four questions has visible rhythm. The accent cycles through the shared palette by position, and it also colors that card's selected chips. */
+.intro-style-group {
+  --style-accent: var(--accent-blue);
+  background: color-mix(in srgb, var(--style-accent) 9%, var(--background-primary));
+  border: 0.5px solid color-mix(in srgb, var(--style-accent) 38%, var(--separator-color));
+  border-left: 4px solid var(--style-accent);
+  border-radius: var(--corner-radius-medium);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--style-accent) 16%, transparent);
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.intro-style-group:nth-child(4n + 2) {
+  --style-accent: var(--accent-purple);
+}
+
+.intro-style-group:nth-child(4n + 3) {
+  --style-accent: var(--accent-green);
+}
+
+.intro-style-group:nth-child(4n + 4) {
+  --style-accent: var(--accent-orange);
+}
+
+.intro-style-title {
+  color: color-mix(in srgb, var(--style-accent) 62%, var(--text-primary));
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+  margin: 0;
+}
+
+.intro-style-hint {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-small);
+  margin-left: 8px;
+}
+
+.intro-style-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.intro-style-option {
+  background: var(--background-primary);
+  border: 0.5px solid color-mix(in srgb, var(--style-accent) 50%, var(--separator-color));
+  border-radius: 999px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+  padding: 7px 14px;
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.intro-style-option:hover {
+  transform: translateY(-1px);
+}
+
+.intro-style-option.selected {
+  background: color-mix(in srgb, var(--style-accent) 78%, black);
+  border-color: color-mix(in srgb, var(--style-accent) 60%, black);
+  color: var(--text-on-primary, var(--background-primary));
+}
+
+.intro-style-footnote {
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-small);
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-style-option {
+    transition: none;
+  }
+}

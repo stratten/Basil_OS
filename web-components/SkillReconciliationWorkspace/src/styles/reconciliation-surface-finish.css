@@ -1,0 +1,8 @@
+/* Metallic (background only): the action list sidebar becomes transparent so the sheen shows on the window background. The rationale and fields read directly on the detail pane, so that pane takes the solid theme fill, while diff bodies, edit fields, and the commit bar keep their own fills. */
+html[data-surface-finish="metal_backdrop"] .action-list-pane {
+  background: transparent;
+}
+
+html[data-surface-finish="metal_backdrop"] .action-detail-pane {
+  background: var(--background-primary);
+}

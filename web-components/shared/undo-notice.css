@@ -1,0 +1,49 @@
+.basil-undo-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  margin: var(--padding-xs, 4px) 0 0;
+  padding: 8px 12px;
+  border: 1px solid var(--text-primary);
+  border-radius: 8px;
+  background: var(--text-primary);
+  box-shadow: var(--shadow-light);
+  color: var(--background-primary);
+  font-size: var(--font-size-callout, calc(13px * var(--text-scale, 1)));
+}
+
+.basil-undo-notice__message {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.basil-undo-notice__action {
+  flex: none;
+  padding: 2px 12px;
+  border: 1px solid var(--background-primary);
+  border-radius: 999px;
+  background: var(--background-primary);
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small, calc(12px * var(--text-scale, 1)));
+  cursor: pointer;
+}
+
+.basil-undo-notice__close {
+  flex: none;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--background-primary);
+  font-size: calc(16px * var(--text-scale, 1));
+  line-height: 1;
+  cursor: pointer;
+}
+
+.basil-undo-notice__action:focus-visible,
+.basil-undo-notice__close:focus-visible {
+  outline: 2px solid var(--background-primary);
+  outline-offset: 2px;
+}

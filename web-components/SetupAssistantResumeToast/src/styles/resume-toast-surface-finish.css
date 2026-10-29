@@ -1,0 +1,4 @@
+/* Metallic (background only): the toast body becomes transparent so the sheen shows on the window background, while its buttons keep their solid fills. */
+html[data-surface-finish="metal_backdrop"] .setup-assistant-resume-toast {
+  background: transparent;
+}

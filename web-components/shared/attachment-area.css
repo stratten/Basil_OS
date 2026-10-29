@@ -1,0 +1,230 @@
+/* Shared attachments and references: drop zone, chip list and standalone area. Tokens only. */
+
+.attachment-drop-zone {
+  position: relative;
+}
+
+.attachment-drop-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 2px dashed var(--secondary);
+  border-radius: var(--corner-radius-medium, 8px);
+  background: color-mix(in srgb, var(--secondary) 15%, transparent);
+  color: var(--secondary);
+  pointer-events: none;
+}
+
+.attachment-drop-overlay span {
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small, calc(11px * var(--text-scale, 1)));
+  color: var(--secondary);
+}
+
+.attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 3px var(--padding-xs, 4px);
+  background: color-mix(in srgb, var(--background-secondary) 50%, transparent);
+  border-radius: var(--corner-radius-small, 4px);
+}
+
+.attachment-list--inset {
+  margin: 4px var(--padding-xs, 4px) 0;
+}
+
+.attachment-list--flush {
+  margin: 0 var(--padding-xs, 4px);
+}
+
+.attachment-list__header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 12px;
+  padding: 0 4px;
+  color: var(--text-tertiary);
+  font-family: var(--font-family);
+  font-size: var(--font-size-status-tiny, calc(10px * var(--text-scale, 1)));
+}
+
+.attachment-list__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 62px;
+  overflow-y: auto;
+}
+
+.attachment-list__row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+  height: 18px;
+  padding: 0 4px;
+  border: 1px solid transparent;
+  border-radius: var(--corner-radius-small, 4px);
+  font-family: var(--font-family);
+  font-size: var(--font-size-status-tiny, calc(10px * var(--text-scale, 1)));
+}
+
+.attachment-list__row.is-pending {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--secondary) 60%, transparent);
+}
+
+.attachment-list__row-icon {
+  display: flex;
+  flex: 0 0 auto;
+  color: color-mix(in srgb, var(--secondary) 70%, transparent);
+}
+
+.attachment-list__row-name {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+}
+
+.attachment-list__row-name.is-link {
+  color: var(--primary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.attachment-list__row-reveal,
+.attachment-list__row-remove {
+  flex: 0 0 auto;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: var(--font-size-status-tiny, calc(10px * var(--text-scale, 1)));
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity 0.15s ease-in-out;
+}
+
+.attachment-list__row-reveal {
+  display: inline-flex;
+  align-items: center;
+}
+
+.attachment-list__row-reveal:hover,
+.attachment-list__row-remove:hover:not(:disabled) {
+  opacity: 1;
+}
+
+.attachment-list__row-remove:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.attachment-list__row-name.is-link:focus-visible,
+.attachment-list__row-reveal:focus-visible,
+.attachment-list__row-remove:focus-visible,
+.attachment-area__add:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.attachment-area {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-s, 8px);
+  min-width: 0;
+}
+
+.attachment-area__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--padding-s, 8px);
+}
+
+.attachment-area__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.attachment-area__add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border: 1px solid color-mix(in srgb, var(--primary) 45%, transparent);
+  border-radius: var(--corner-radius-small, 4px);
+  background: var(--background-primary);
+  color: var(--primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small, calc(11px * var(--text-scale, 1)));
+  cursor: pointer;
+}
+
+.attachment-area__add:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--primary) 10%, var(--background-primary));
+}
+
+.attachment-area__add:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.attachment-area__zone {
+  min-width: 0;
+  padding: var(--padding-s, 8px);
+  border: 1px dashed color-mix(in srgb, var(--secondary) 45%, transparent);
+  border-radius: var(--corner-radius-medium, 8px);
+}
+
+.attachment-area__zone.is-drag-over {
+  border-style: solid;
+  border-color: var(--secondary);
+}
+
+.attachment-area__empty {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-small, calc(11px * var(--text-scale, 1)));
+  line-height: 1.4;
+}
+
+.attachment-area__error {
+  margin: 0;
+  color: var(--error-text, var(--error-base));
+  font-size: var(--font-size-status-small, calc(11px * var(--text-scale, 1)));
+}
+
+.attachment-list--area {
+  padding: 0;
+  background: transparent;
+}
+
+.attachment-list--area .attachment-list__rows {
+  max-height: 132px;
+}
+
+.attachment-list--area .attachment-list__row {
+  height: 22px;
+  font-size: var(--font-size-status-small, calc(11px * var(--text-scale, 1)));
+}

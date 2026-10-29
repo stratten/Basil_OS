@@ -1,0 +1,81 @@
+.companion-considered-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--padding-xs) var(--padding-s);
+  margin: var(--padding-xs) var(--padding-m) 0;
+}
+
+.companion-considered-counter {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+}
+
+.companion-considered-bar .meeting-history-load-more-button {
+  margin: 0;
+}
+
+.companion-considered {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--padding-xs) var(--padding-s);
+  border: 1px dashed var(--field-border);
+  border-radius: var(--corner-radius-medium);
+  background: var(--background-primary);
+  color: var(--text-primary);
+  font-size: var(--font-size-status-small);
+}
+
+.companion-considered.is-spoke {
+  border-style: solid;
+  border-color: var(--secondary);
+}
+
+.companion-considered.is-error {
+  border-style: solid;
+  border-color: var(--primary);
+}
+
+.companion-considered p {
+  margin: 0;
+}
+
+.companion-considered-headline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--padding-s);
+  font-family: var(--font-family-medium);
+}
+
+.companion-considered-verdict {
+  margin-left: auto;
+  color: var(--secondary);
+}
+
+.companion-considered-text {
+  overflow-wrap: anywhere;
+}
+
+.companion-considered-detail summary,
+.companion-rationale summary {
+  color: var(--secondary);
+  cursor: pointer;
+}
+
+.companion-considered-detail ul {
+  margin: 4px 0 0;
+  padding-left: var(--padding-l);
+}
+
+.companion-rationale {
+  font-size: var(--font-size-status-small);
+}
+
+.companion-rationale p {
+  margin: 4px 0 0;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}

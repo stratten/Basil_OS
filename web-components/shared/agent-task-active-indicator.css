@@ -1,0 +1,55 @@
+/* Compact processing mark: the run-rail active-stage spinner, sized for the 12px sidebar slot. */
+.agent-task-processing-spinner {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.agent-task-processing-spinner::after {
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: var(--primary);
+  content: '';
+}
+
+.agent-task-processing-spinner::before {
+  position: absolute;
+  inset: -2px;
+  box-sizing: border-box;
+  border: 1.5px solid transparent;
+  border-top-color: var(--primary);
+  border-right-color: var(--primary);
+  border-radius: 50%;
+  content: '';
+  pointer-events: none;
+  animation: agent-task-processing-spin 1.4s linear infinite;
+}
+
+@keyframes agent-task-processing-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.agent-task-processing-spinner--attention::after {
+  background: var(--warning-base);
+}
+
+.agent-task-processing-spinner--attention::before {
+  border-top-color: var(--warning-base);
+  border-right-color: var(--warning-base);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-task-processing-spinner::before {
+    animation: none;
+    opacity: 0.55;
+  }
+}
+
+/* Paused is neutral gray; amber is reserved for a task waiting on the user. */
+.agent-task-active-indicator--paused {
+  fill: var(--text-tertiary);
+}

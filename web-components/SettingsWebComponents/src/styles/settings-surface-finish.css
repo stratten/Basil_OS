@@ -1,0 +1,9 @@
+/* Metallic (background only): the window header, content wrapper, navigation sidebar, and main column become transparent so the sheen shows on the window background. Settings sections and cards keep their solid fills, so labels, descriptions, and fields stay on solid color. */
+html[data-surface-finish="metal_backdrop"] :is(
+  .basil-window-header,
+  .basil-window-content,
+  .settings-shell-navigation,
+  .settings-shell-content
+) {
+  background: transparent;
+}

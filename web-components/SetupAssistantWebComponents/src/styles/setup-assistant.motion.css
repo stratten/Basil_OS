@@ -1,0 +1,194 @@
+/*
+ * Setup Assistant motion primitives: easing tokens, the canonical enter / leave / pulse / text-swap keyframes, the shared working indicator, and the single reduced-motion suppression list for every rule that uses these keyframes. Imported last by setup-assistant.css so the suppression list wins over equal-specificity rules declared earlier.
+ */
+
+:root {
+  --setup-motion-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --setup-motion-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --setup-motion-reveal-ms: 400ms;
+}
+
+@keyframes setupEnterRise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Gentler, longer entrance for content the user is meant to read (model text, receipts, cards): it fades in while drifting up from a little further away than setupEnterRise. */
+@keyframes setupSoftRise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Opacity-only fade for words as the model's text is revealed; the rising motion comes from the block they belong to. */
+@keyframes setupWordFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes setupLeaveRise {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes setupPulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(0.86);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes setupTextSwap {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Decision cards fade in while the space they need opens smoothly, so nothing below them jumps. Only the starting state is a keyframe: the resting state is the plain rule, which keeps the card visible if animations are off. */
+@keyframes setupCardReveal {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+}
+
+.setup-card-reveal {
+  animation: setupCardReveal 650ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 420ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms ease;
+}
+
+.setup-card-reveal-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.setup-card-reveal.is-settled {
+  animation: none;
+}
+
+/* Once the entrance has finished the clip is lifted so a card's shadow is not cut off. */
+.setup-card-reveal.is-settled:not(.is-collapsed) > .setup-card-reveal-inner {
+  overflow: visible;
+}
+
+.setup-card-reveal.is-collapsed {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.setup-motion-enter {
+  animation: setupEnterRise 260ms var(--setup-motion-ease-out) both;
+}
+
+.setup-working-indicator {
+  align-items: center;
+  align-self: flex-start;
+  animation: setupEnterRise 220ms var(--setup-motion-ease-out) both;
+  background: color-mix(in srgb, var(--primary) 9%, var(--background-primary));
+  border: 0.5px solid color-mix(in srgb, var(--primary) 30%, var(--separator-color));
+  border-radius: var(--corner-radius-medium);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.045);
+  display: inline-flex;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.setup-working-indicator p {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  line-height: 1.35;
+  margin: 0;
+}
+
+.setup-working-indicator .setup-working-substatus {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-small);
+  margin-top: 3px;
+}
+
+.setup-working-text {
+  animation: setupTextSwap 360ms ease both;
+}
+
+.setup-working-dot {
+  animation: setupPulse 1.1s ease-in-out infinite;
+  background: var(--primary);
+  border-radius: 999px;
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--primary) 12%, transparent);
+  flex-shrink: 0;
+  height: 9px;
+  width: 9px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button,
+  .setup-shell,
+  .setup-workspace,
+  .setup-card-reveal {
+    transition: none;
+  }
+
+  .setup-main,
+  .setup-stage-frame.entering,
+  .setup-stage-frame.leaving,
+  .setup-motion-enter,
+  .setup-working-indicator,
+  .setup-working-text,
+  .setup-working-dot,
+  .intro-step,
+  .intro-step--leaving,
+  .basil-message,
+  .basil-message.user.is-acknowledgment,
+  .basil-message-content.is-revealing > *,
+  .setup-reveal-word,
+  .status-chip.is-changing,
+  .conversation-observations-popover,
+  .chip-row,
+  .chip-row-buttons > .secondary-button,
+  .consent-receipt,
+  .setup-card-reveal,
+  .artifact-row-card,
+  .receipt-status-message,
+  .receipt-error-message,
+  .receipt-progress,
+  .agenda-confirmation-card,
+  .inline-email-context-card,
+  .inline-dill-draft-card,
+  .inline-setup-visual-card,
+  .setup-agenda-sidebar-item.is-entering {
+    animation: none;
+  }
+}

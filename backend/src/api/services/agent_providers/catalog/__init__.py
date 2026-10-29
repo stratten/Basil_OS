@@ -1,0 +1,1 @@
+"""Provider catalog discovery ownership."""

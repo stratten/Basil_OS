@@ -1,0 +1,563 @@
+.meeting-transcript-panel {
+  position: relative;
+  box-sizing: border-box;
+  flex: 1 1 0;
+  min-height: 140px;
+  overflow: hidden;
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  background: var(--background-secondary);
+}
+
+.meeting-transcript-scroll {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 12px;
+  border: 0;
+  border-radius: 0;
+}
+
+.meeting-transcript-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: var(--font-size-callout);
+}
+
+.meeting-transcript-row.is-group-leader {
+  margin-top: 12px;
+}
+
+.meeting-transcript-row:first-child {
+  margin-top: 0;
+}
+
+.meeting-transcript-row.is-attributed {
+  grid-template-columns: 120px auto minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+}
+
+.meeting-transcript-badge-column {
+  min-height: 1px;
+}
+
+.meeting-transcript-attribution-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--transcript-row-color);
+  color: var(--transcript-row-text-color, var(--text-on-primary, var(--background-primary)));
+  font-size: var(--font-size-status-small);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--transcript-row-color) 30%, transparent);
+}
+
+.meeting-transcript-attribution-badge svg {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+}
+
+.meeting-transcript-timestamp {
+  color: var(--text-secondary);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-status-small);
+  white-space: nowrap;
+}
+
+.meeting-transcript-bubble {
+  justify-self: start;
+  padding: 8px 12px;
+  overflow-wrap: anywhere;
+  border: 1px solid color-mix(in srgb, var(--transcript-row-color) 30%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--transcript-row-color) 12%, transparent);
+}
+
+.meeting-transcript-plain-text {
+  min-width: 0;
+}
+
+.meeting-transcript-row.is-interim {
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.meeting-transcript-row mark {
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--secondary) 28%, transparent);
+  color: inherit;
+}
+
+.meeting-transcript-row.has-links {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.meeting-transcript-row.is-attributed.has-links {
+  grid-template-columns: 120px auto minmax(0, 1fr) auto;
+}
+
+/* The lines a Companion card came from. The outline is drawn outside the line so no text shifts. */
+.meeting-transcript-row.is-linked {
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--secondary) 14%, var(--background-secondary));
+  outline: 1px solid var(--secondary);
+  outline-offset: 2px;
+}
+
+.meeting-transcript-row.is-link-flash {
+  animation: transcript-link-flash 1.6s ease-out backwards;
+}
+
+@keyframes transcript-link-flash {
+  from {
+    background: color-mix(in srgb, var(--secondary) 34%, var(--background-secondary));
+  }
+}
+
+.meeting-transcript-link-gutter {
+  position: relative;
+  align-self: start;
+  justify-self: end;
+}
+
+.meeting-transcript-link-chip {
+  padding: 1px 8px;
+  border: 1px solid var(--secondary);
+  border-radius: 999px;
+  background: var(--background-primary);
+  color: var(--secondary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.meeting-transcript-link-chip:hover,
+.meeting-transcript-link-chip[aria-expanded='true'] {
+  background: var(--secondary);
+  color: var(--background-primary);
+}
+
+.meeting-transcript-link-chip:focus-visible,
+.meeting-transcript-link-list button:focus-visible {
+  outline: 2px solid var(--secondary);
+  outline-offset: 1px;
+}
+
+.meeting-transcript-link-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 3;
+  display: grid;
+  width: max-content;
+  max-width: 280px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  background: var(--background-primary);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--text-primary) 22%, transparent);
+}
+
+.meeting-transcript-link-list button {
+  display: grid;
+  gap: 1px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.meeting-transcript-link-list button:hover {
+  background: color-mix(in srgb, var(--secondary) 14%, var(--background-primary));
+}
+
+.meeting-transcript-link-list-kind {
+  color: var(--secondary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+}
+
+.meeting-transcript-link-list-summary {
+  overflow-wrap: anywhere;
+  font-size: var(--font-size-callout);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meeting-transcript-row.is-link-flash {
+    animation: none;
+  }
+}
+
+.meeting-transcript-overlay-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  display: flex;
+  gap: 6px;
+}
+
+.meeting-transcript-icon-button,
+.meeting-transcript-copy-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 28px;
+  min-height: 26px;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--background-primary) 92%, transparent);
+  color: var(--secondary);
+  box-shadow: var(--shadow-light);
+}
+
+.meeting-transcript-copy-all {
+  font-size: var(--font-size-callout);
+}
+
+.meeting-transcript-icon-button {
+  justify-content: center;
+  padding: 6px;
+}
+
+.meeting-transcript-icon-button svg,
+.meeting-transcript-copy-all svg {
+  width: 13px;
+  height: 13px;
+}
+
+.meeting-transcript-search-overlay {
+  display: flex;
+  max-width: 380px;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  background: var(--background-tertiary);
+  box-shadow: var(--shadow-medium);
+}
+
+.meeting-transcript-search-overlay > svg {
+  width: 13px;
+  height: 13px;
+}
+
+.meeting-transcript-search-overlay input {
+  min-width: 110px;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+}
+
+.meeting-transcript-search-overlay button {
+  width: 18px;
+  height: 18px;
+  padding: 2px;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.meeting-transcript-search-overlay button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.meeting-transcript-match-count {
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-tiny);
+  white-space: nowrap;
+}
+
+.meeting-transcript-search-divider {
+  width: 1px;
+  height: 14px;
+  background: var(--separator-color);
+}
+
+.meeting-recording-controls {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.meeting-status-row,
+.meeting-recording-button-row,
+.meeting-active-recording-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meeting-active-recording-row {
+  width: 100%;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.meeting-idle-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+/* While idle, Start and the model choice stack on the left and the status sits on the right, top-aligned with Start. */
+.meeting-idle-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.meeting-idle-row > .meeting-status-row {
+  flex: 0 1 auto;
+  min-width: 0;
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.meeting-recording-actions,
+.meeting-cancel-confirmation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.meeting-recording-actions {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+}
+
+/* The cluster is a two-column block: the status and Live Transcribe stack on the left, the clock and meters on the right. */
+.meeting-recording-status-cluster {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+  margin-left: auto;
+}
+
+/* The vertical padding matches the indicator padding so the status centers on the clock line and the switch on the last meter. */
+.meeting-recording-status-stack {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 4px;
+  min-width: 0;
+  padding: 4px 0;
+}
+
+.meeting-recording-status-stack > .meeting-status-row {
+  min-width: 0;
+  min-height: 16px;
+  justify-content: flex-end;
+}
+
+/* tools-analysis.css loads after this file and gives every switch a 10px vertical margin, so the stack needs its own higher-specificity reset. */
+.meeting-recording-status-stack > .meeting-live-transcription-switch {
+  margin: 0;
+}
+
+/* While recording, the status message already states whether audio is being transcribed. */
+.meeting-active-recording-row .meeting-transcription-state {
+  display: none;
+}
+
+.meeting-active-recording-row .meeting-status-message {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  text-align: right;
+}
+
+@media (max-width: 620px) {
+  .meeting-idle-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .meeting-idle-row > .meeting-status-row {
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .meeting-recording-status-cluster {
+    margin-left: 0;
+  }
+
+  .meeting-recording-status-stack {
+    align-items: flex-start;
+  }
+
+  .meeting-recording-status-stack > .meeting-status-row {
+    justify-content: flex-start;
+  }
+
+  .meeting-active-recording-row .meeting-status-message {
+    text-align: left;
+  }
+}
+
+.meeting-record-button--cancel {
+  background: var(--background-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--recording-base);
+}
+
+.meeting-record-button--cancel:disabled {
+  background: var(--background-primary);
+  color: var(--text-secondary);
+  border-color: var(--text-tertiary);
+}
+
+.meeting-live-transcription-switch {
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 0;
+}
+
+.meeting-recording-button-row .meeting-live-transcription-switch {
+  justify-content: flex-start;
+}
+
+.meeting-cancel-confirmation {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--recording-base);
+  border-radius: 8px;
+  background: var(--background-primary);
+  box-shadow: var(--shadow-light);
+  color: var(--text-primary);
+}
+
+.meeting-cancel-confirmation p {
+  margin: 0;
+  font-size: var(--font-size-callout);
+}
+
+.meeting-record-button,
+.meeting-resume-button,
+.meeting-start-new-button,
+.meeting-tools-actions button,
+.meeting-automation-button,
+.meeting-start-analysis-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: var(--font-size-callout);
+}
+
+.meeting-record-button svg,
+.meeting-resume-button svg,
+.meeting-start-new-button svg,
+.meeting-tools-actions button svg,
+.meeting-automation-button svg,
+.meeting-start-analysis-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.meeting-recording-indicators {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex: 0 0 auto;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--background-primary) 95%, transparent);
+  box-shadow: var(--shadow-light);
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-tiny);
+}
+
+.meeting-recording-time,
+.meeting-recording-source-meter {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.meeting-recording-time svg,
+.meeting-recording-source-meter > svg {
+  width: 12px;
+  height: 12px;
+}
+
+.meeting-recording-time {
+  min-height: 16px;
+}
+
+.meeting-recording-source-meter {
+  position: relative;
+}
+
+.meeting-recording-source-meter .meeting-audio-meter {
+  width: 72px;
+  margin: 0;
+}
+
+/* The icon identifies each source visually; the meter keeps its accessible name. */
+.meeting-recording-source-meter > span:not(.meeting-audio-meter) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.meeting-lower-tools {
+  display: flex;
+  max-height: min(46%, 420px);
+  flex: 0 1 auto;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+  padding: 6px 2px 0;
+  border-top: 1px solid var(--separator-color);
+}
+
+.meeting-analysis-scroll-region {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}

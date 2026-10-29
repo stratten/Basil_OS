@@ -1,0 +1,144 @@
+@import '../../../../shared/rich-text-followup.css';
+@import '../../../../shared/collapsible-region.css';
+
+.text-followup-presence-region {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+
+.text-followup-presence-region[data-presence-phase='entering'],
+.text-followup-presence-region[data-presence-phase='exiting'] {
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+}
+
+/* Follow-up box fold bar. Folded, the box is just this one line (with a draft preview) so a long chain keeps its room; the draft stays mounted inside the collapsed region. */
+.text-followup-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-s);
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--padding-xs) var(--padding-s);
+  border: var(--border-thin) solid color-mix(in srgb, var(--secondary) 25%, transparent);
+  border-radius: var(--corner-radius-medium);
+  background: var(--background-primary);
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+  text-align: left;
+  cursor: pointer;
+}
+
+.text-followup-bar:hover {
+  border-color: var(--secondary);
+}
+
+.text-followup-bar:focus-visible {
+  outline: 2px solid var(--secondary);
+  outline-offset: 1px;
+}
+
+.text-followup-bar-title {
+  flex: 0 0 auto;
+}
+
+.text-followup-bar-draft {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Room for the editor's focus ring, which the collapsing region would otherwise clip. */
+.text-followup-collapsible-body {
+  padding: var(--padding-xs) 3px 3px;
+}
+
+/* The bar sits in the same column as the follow-up and note regions, which each end with one --padding-s gap. When one of them is above, that gap is the only space between it and the bar; with nothing above, the wrapper supplies the same single gap itself. */
+.inline-capture-region {
+  flex-shrink: 0;
+  padding: var(--padding-s) var(--padding-l) var(--padding-s);
+}
+
+.inline-capture-region--after-region {
+  padding-top: 0;
+}
+
+/* Inline capture bar */
+.inline-capture {
+  background: var(--background-secondary);
+  border-radius: var(--corner-radius-medium);
+  border: var(--border-thin) solid var(--separator-color);
+  padding: var(--padding-m) var(--padding-l);
+  animation: slide-up 0.3s ease-in-out;
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.inline-capture-header {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-s);
+}
+
+.inline-capture-mic {
+  color: var(--recording-base);
+  font-size: calc(16px * var(--text-scale, 1));
+}
+
+.inline-capture-label {
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-callout);
+  color: var(--text-secondary);
+  flex: 1;
+}
+
+.inline-capture-words {
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-body);
+  color: var(--text-primary);
+  margin-top: var(--padding-s);
+  font-style: italic;
+}
+
+/* Done button (matches AgentTaskWidgetTheme) */
+.done-btn {
+  background: var(--success-base);
+  color: var(--text-on-success, var(--background-primary));
+  border: none;
+  border-radius: var(--corner-radius-small);
+  padding: var(--padding-xs) var(--padding-s);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-footnote);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.done-btn:hover { opacity: 0.9; }
+
+/* Cancel button inside inline capture — match Done button sizing */
+.inline-capture .action-btn {
+  padding: var(--padding-xs) var(--padding-s);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-footnote);
+  background: color-mix(in srgb, var(--primary) 45%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .text-followup-presence-region {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+

@@ -1,0 +1,549 @@
+.permissions-settings-shell {
+  container-name: permissions;
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--settings-card-gap);
+}
+
+.permissions-sub-tab-hidden {
+  display: none;
+}
+
+.permissions-application-panel,
+.permissions-command-security-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--settings-card-gap);
+}
+
+.permissions-application-panel {
+  max-width: 920px;
+  width: 100%;
+}
+
+/* Flex column defaults to stretch, so the lone Retry button in the
+   command-security-panel error state would otherwise inherit the panel's
+   full width instead of sizing to its own content. */
+.permissions-command-security-panel > .permissions-application-refresh {
+  align-self: flex-start;
+}
+
+.permissions-application-header,
+.permissions-command-security-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.permissions-command-security-header h2 {
+  font-size: calc(15px * var(--text-scale, 1));
+  margin: 0 0 4px;
+}
+
+.permissions-command-security-header p {
+  color: var(--text-secondary);
+  font-size: calc(12px * var(--text-scale, 1));
+  margin: 0;
+}
+
+.permissions-application-header h2 {
+  font-family: var(--font-family-light);
+  font-size: calc(28px * var(--text-scale, 1));
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin: 0 0 6px;
+}
+
+.permissions-application-header p {
+  color: var(--text-secondary);
+  font-size: var(--font-size-body);
+  line-height: 1.42;
+  margin: 0;
+  max-width: 720px;
+}
+
+.permissions-application-refresh {
+  white-space: nowrap;
+}
+
+.permissions-application-action-secondary:hover,
+.permissions-whitelist-add-button:hover {
+  background: var(--background-secondary);
+}
+
+.permissions-application-action-primary:hover {
+  background: var(--secondary, var(--primary));
+}
+
+.permission-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.permission-row {
+  align-items: flex-start;
+  background: var(--background-primary);
+  border: 1px solid color-mix(in srgb, var(--permission-accent) 20%, transparent);
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 6%);
+  display: flex;
+  gap: 14px;
+  min-height: 84px;
+  padding: 14px 190px 14px 14px;
+  position: relative;
+}
+
+.permission-microphone { --permission-accent: rgb(51 153 219); }
+.permission-accessibility { --permission-accent: rgb(140 89 191); }
+.permission-input_monitoring { --permission-accent: rgb(29 132 210); }
+.permission-apple_events { --permission-accent: rgb(242 128 51); }
+.permission-screen_recording { --permission-accent: rgb(77 179 128); }
+
+.permission-icon {
+  align-items: center;
+  background: color-mix(in srgb, var(--permission-accent) 15%, transparent);
+  border-radius: 999px;
+  color: var(--permission-accent);
+  display: inline-flex;
+  flex-shrink: 0;
+  height: 40px;
+  justify-content: center;
+  margin-top: 2px;
+  width: 40px;
+}
+
+.permission-icon svg {
+  fill: currentColor;
+  height: 18px;
+  width: 18px;
+}
+
+.permission-row-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.permission-row-heading {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.permission-row-heading h3 {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: calc(18px * var(--text-scale, 1));
+  font-weight: 500;
+  line-height: 1.22;
+  margin: 0;
+}
+
+.permission-row p {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: calc(13px * var(--text-scale, 1));
+  font-weight: 300;
+  line-height: 1.35;
+  margin: 6px 0 0;
+}
+
+.permission-status {
+  align-items: center;
+  border-radius: 6px;
+  display: inline-flex;
+  font-family: var(--font-family-light);
+  font-size: calc(12px * var(--text-scale, 1));
+  font-weight: 300;
+  gap: 4px;
+  padding: 3px 8px;
+}
+
+.permission-status.granted {
+  background: color-mix(in srgb, var(--success-base) 10%, transparent);
+  color: var(--success-base);
+}
+
+.permission-status.denied {
+  background: color-mix(in srgb, var(--error-base) 10%, transparent);
+  color: var(--error-text);
+}
+
+.permission-status.not-determined {
+  background: color-mix(in srgb, var(--warning-base) 10%, transparent);
+  color: var(--warning-text);
+}
+
+.permission-status.unknown {
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  color: var(--text-secondary);
+}
+
+.permission-actions {
+  align-items: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: flex-end;
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 140px;
+}
+
+.permission-actions .primary-button,
+.permission-actions .secondary-button {
+  font-family: var(--font-family-light);
+  font-size: calc(12px * var(--text-scale, 1));
+  font-weight: 300;
+  padding: 6px 12px;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.permission-actions .primary-button {
+  background: color-mix(in srgb, var(--primary) 85%, transparent);
+}
+
+.permission-actions .secondary-button {
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--primary) 85%, transparent);
+  color: color-mix(in srgb, var(--primary) 85%, transparent);
+}
+
+.permissions-command-security-section {
+  display: block;
+}
+
+.permissions-command-security-pair {
+  display: grid;
+  gap: var(--settings-card-gap);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.permissions-command-security-pair > .permissions-command-security-section {
+  min-width: 0;
+}
+
+.permissions-command-security-switch-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.permissions-command-security-section-title {
+  margin-bottom: 6px;
+}
+
+.permissions-command-security-section-description {
+  margin-bottom: 12px;
+}
+
+.permissions-toggle-row {
+  align-items: center;
+  border-top: 1px solid color-mix(in srgb, var(--field-border) 75%, transparent);
+  display: flex;
+  gap: 8px;
+  padding: 9px 0;
+}
+
+.permissions-toggle-row:first-of-type {
+  border-top: 0;
+}
+
+.permissions-toggle-row-label {
+  color: var(--text-primary);
+  font-size: calc(12px * var(--text-scale, 1));
+  line-height: 1.35;
+}
+
+.permissions-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.permissions-radio-option {
+  align-items: center;
+  background: color-mix(in srgb, var(--background-primary) 94%, var(--secondary, var(--primary)));
+  border: 1px solid transparent;
+  border-radius: 7px;
+  display: flex;
+  gap: 6px;
+  font-size: calc(12px * var(--text-scale, 1));
+  padding: 7px 8px;
+}
+
+.permissions-radio-option:hover {
+  border-color: color-mix(in srgb, var(--secondary, var(--primary)) 35%, var(--field-border));
+}
+
+.permissions-timeout-stepper {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.permissions-whitelist-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.permissions-whitelist-add-button {
+  background: color-mix(in srgb, var(--background-primary) 88%, var(--secondary, var(--primary)));
+  border: 1px solid color-mix(in srgb, var(--secondary, var(--primary)) 45%, var(--field-border));
+  border-radius: 6px;
+  color: var(--secondary, var(--primary));
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: calc(12px * var(--text-scale, 1));
+  padding: 6px 10px;
+}
+
+.permissions-whitelist-empty {
+  color: var(--text-secondary);
+  font-size: calc(12px * var(--text-scale, 1));
+  font-style: italic;
+  padding: 8px 0;
+}
+
+.permissions-whitelist-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.permissions-whitelist-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.permissions-whitelist-row {
+  align-items: center;
+  background: color-mix(in srgb, var(--background-primary) 94%, var(--secondary, var(--primary)));
+  border: 1px solid color-mix(in srgb, var(--field-border) 84%, var(--secondary, var(--primary)));
+  border-radius: 9px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 6%);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  padding: 10px 12px;
+}
+
+.permissions-whitelist-row:hover {
+  border-color: color-mix(in srgb, var(--secondary, var(--primary)) 42%, var(--field-border));
+}
+
+.permissions-whitelist-pattern {
+  display: block;
+  font-family: monospace;
+  font-size: calc(12px * var(--text-scale, 1));
+  max-width: 24ch;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.permissions-whitelist-pattern-heading {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 50px minmax(0, 1fr);
+  min-width: 0;
+}
+
+.permissions-whitelist-details {
+  min-width: 0;
+}
+
+.permissions-whitelist-type {
+  background: color-mix(in srgb, var(--secondary, var(--primary)) 13%, transparent);
+  border-radius: 4px;
+  color: var(--secondary, var(--primary));
+  font-family: var(--font-family-medium);
+  font-size: calc(10px * var(--text-scale, 1));
+  overflow: hidden;
+  padding: 3px 5px;
+  text-align: center;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.permissions-whitelist-description,
+.permissions-whitelist-use-count {
+  color: var(--text-secondary);
+  font-size: calc(11px * var(--text-scale, 1));
+}
+
+.permissions-whitelist-description {
+  display: block;
+  margin: 5px 0 0 58px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.permissions-whitelist-use-count {
+  min-width: 42px;
+  text-align: right;
+}
+
+.permissions-whitelist-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.permissions-whitelist-action-button {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: calc(11px * var(--text-scale, 1));
+  padding: 4px 7px;
+}
+
+.permissions-whitelist-action-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--background-primary) 80%, var(--secondary, var(--primary)));
+  border-color: color-mix(in srgb, var(--secondary, var(--primary)) 35%, var(--field-border));
+  color: var(--text-primary);
+}
+
+.permissions-whitelist-delete-button {
+  color: var(--error-text);
+}
+
+.permissions-whitelist-form {
+  background: color-mix(in srgb, var(--background-primary) 87%, var(--secondary, var(--primary)));
+  border: 1px solid color-mix(in srgb, var(--secondary, var(--primary)) 36%, var(--field-border));
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 0 2px;
+  padding: 14px;
+}
+
+.permissions-whitelist-form label {
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  font-size: calc(12px * var(--text-scale, 1));
+  gap: 6px;
+}
+
+.permissions-pattern-type-picker {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.permissions-pattern-type-picker legend {
+  color: var(--text-secondary);
+  font-size: calc(12px * var(--text-scale, 1));
+  margin-bottom: 6px;
+  padding: 0;
+}
+
+.permissions-pattern-type-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.permissions-pattern-type-option {
+  align-items: center;
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: calc(12px * var(--text-scale, 1));
+  gap: 6px;
+  padding: 7px 10px;
+  text-transform: capitalize;
+}
+
+.permissions-pattern-type-option:hover {
+  border-color: color-mix(in srgb, var(--secondary, var(--primary)) 45%, var(--field-border));
+  background: color-mix(in srgb, var(--background-primary) 88%, var(--secondary, var(--primary)));
+}
+
+.permissions-pattern-type-option-selected {
+  background: color-mix(in srgb, var(--secondary, var(--primary)) 14%, var(--background-primary));
+  border-color: var(--secondary, var(--primary));
+  color: var(--secondary, var(--primary));
+  font-family: var(--font-family-medium);
+}
+
+.permissions-whitelist-form-error {
+  color: var(--error-text);
+  font-size: calc(12px * var(--text-scale, 1));
+}
+
+.permissions-whitelist-form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.permissions-whitelist-form-actions > .primary-button,
+.permissions-whitelist-form-actions > .secondary-button {
+  min-width: 92px;
+}
+
+@container permissions (max-width: 720px) {
+  .permissions-command-security-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .permission-row {
+    flex-wrap: wrap;
+    padding-right: 14px;
+  }
+
+  .permission-row-body {
+    flex: 1 1 calc(100% - 54px);
+  }
+
+  .permission-actions {
+    flex: 1 0 calc(100% - 54px);
+    flex-direction: column;
+    margin-left: 54px;
+    margin-top: 12px;
+    position: static;
+    transform: none;
+    width: calc(100% - 54px);
+  }
+
+  .permission-actions .primary-button,
+  .permission-actions .secondary-button {
+    width: 100%;
+  }
+
+  .permissions-whitelist-row {
+    align-items: flex-start;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .permissions-whitelist-actions {
+    border-top: 1px solid color-mix(in srgb, var(--field-border) 75%, transparent);
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+    padding-top: 8px;
+  }
+}

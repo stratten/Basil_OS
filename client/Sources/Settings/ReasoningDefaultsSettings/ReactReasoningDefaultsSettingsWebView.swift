@@ -1,0 +1,177 @@
+import Foundation
+@preconcurrency import WebKit
+
+@MainActor
+final class ReactReasoningDefaultsSettingsWebView: NSObject {
+    private let webView: WKWebView
+
+    var onReady: (() -> Void)?
+    var onRequestUpdateSelectedModel: ((String, String) -> Void)?
+    var onRequestUpdateCloseAssistantSessionOnInsert: ((String, Bool) -> Void)?
+    var onRequestUpdateAssistantOutputPasteMode: ((String, AssistantOutputPasteMode) -> Void)?
+    var onRequestUpdateUseRegionSelection: ((String, Bool) -> Void)?
+    var onRequestUpdateModelUnloadDelay: ((String, Int) -> Void)?
+    var onRequestUpdateKeepModelLoadedWhileWindowOpen: ((String, Bool) -> Void)?
+    var onRequestUpdateAgentTaskDefaultModality: ((String, AgentTaskInputModality) -> Void)?
+    var onRequestUpdateAgentTaskAutoReopenOnCompletion: ((String, Bool) -> Void)?
+    var onRequestUpdateAgentTaskChainExpansion: ((String, String) -> Void)?
+    var onRequestUpdateAgentTaskPushToTalk: ((String, Bool) -> Void)?
+    var onRequestUpdateAgentTaskPushToTalkThreshold: ((String, Int) -> Void)?
+    var onRequestUpdateAssistantSessionDefaultModality: ((String, AssistantSessionInputMode) -> Void)?
+    var onRequestUpdateAssistantSessionPushToTalk: ((String, Bool) -> Void)?
+    var onRequestUpdateAssistantSessionPushToTalkThreshold: ((String, Int) -> Void)?
+    var onRequestUpdateConversationDefaultConversationOnly: ((String, Bool) -> Void)?
+    var onMalformedIntent: ((String) -> Void)?
+
+    init(webView: WKWebView) {
+        self.webView = webView
+        super.init()
+        webView.configuration.userContentController.add(
+            ReactReasoningDefaultsSettingsWeakScriptMessageHandler(self),
+            name: "basilReasoningDefaultsSettingsBridge"
+        )
+    }
+
+    func callJS(_ function: String, args: Any...) {
+        guard args.count == 1 else { return }
+        webView.callBasilEventHandler(
+            function,
+            event: args[0],
+            logTag: "REASONING_DEFAULTS_SETTINGS_WEB",
+            logContext: "ReactReasoningDefaultsSettingsWebView"
+        )
+    }
+
+    func tearDown() {
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "basilReasoningDefaultsSettingsBridge")
+    }
+
+    fileprivate func handleScriptMessage(_ message: WKScriptMessage) {
+        guard message.name == "basilReasoningDefaultsSettingsBridge",
+              let body = message.body as? [String: Any],
+              let type = body["type"] as? String else {
+            return
+        }
+
+        switch type {
+        case "reactReady":
+            guard (body["protocolVersion"] as? NSNumber)?.intValue == 1 else {
+                onMalformedIntent?("reactReady")
+                return
+            }
+            onReady?()
+        case "requestUpdateSelectedModel":
+            guard let requestId = body["requestId"] as? String, let modelId = body["modelId"] as? String else {
+                onMalformedIntent?("requestUpdateSelectedModel")
+                return
+            }
+            onRequestUpdateSelectedModel?(requestId, modelId)
+        case "requestUpdateCloseAssistantSessionOnInsert":
+            guard let requestId = body["requestId"] as? String, let enabled = body["enabled"] as? Bool else {
+                onMalformedIntent?("requestUpdateCloseAssistantSessionOnInsert")
+                return
+            }
+            onRequestUpdateCloseAssistantSessionOnInsert?(requestId, enabled)
+        case "requestUpdateAssistantOutputPasteMode":
+            guard let requestId = body["requestId"] as? String,
+                  let raw = body["mode"] as? String,
+                  let mode = AssistantOutputPasteMode(rawValue: raw) else {
+                onMalformedIntent?("requestUpdateAssistantOutputPasteMode")
+                return
+            }
+            onRequestUpdateAssistantOutputPasteMode?(requestId, mode)
+        case "requestUpdateUseRegionSelection":
+            guard let requestId = body["requestId"] as? String, let enabled = body["enabled"] as? Bool else {
+                onMalformedIntent?("requestUpdateUseRegionSelection")
+                return
+            }
+            onRequestUpdateUseRegionSelection?(requestId, enabled)
+        case "requestUpdateModelUnloadDelay":
+            guard let requestId = body["requestId"] as? String, let seconds = (body["seconds"] as? NSNumber)?.intValue else {
+                onMalformedIntent?("requestUpdateModelUnloadDelay")
+                return
+            }
+            onRequestUpdateModelUnloadDelay?(requestId, seconds)
+        case "requestUpdateKeepModelLoadedWhileWindowOpen":
+            guard let requestId = body["requestId"] as? String, let enabled = body["enabled"] as? Bool else {
+                onMalformedIntent?("requestUpdateKeepModelLoadedWhileWindowOpen")
+                return
+            }
+            onRequestUpdateKeepModelLoadedWhileWindowOpen?(requestId, enabled)
+        case "requestUpdateAgentTaskDefaultModality":
+            guard let requestId = body["requestId"] as? String,
+                  let raw = body["modality"] as? String,
+                  let modality = AgentTaskInputModality(rawValue: raw) else {
+                onMalformedIntent?("requestUpdateAgentTaskDefaultModality")
+                return
+            }
+            onRequestUpdateAgentTaskDefaultModality?(requestId, modality)
+        case "requestUpdateAgentTaskAutoReopenOnCompletion":
+            guard let requestId = body["requestId"] as? String, let enabled = body["enabled"] as? Bool else {
+                onMalformedIntent?("requestUpdateAgentTaskAutoReopenOnCompletion")
+                return
+            }
+            onRequestUpdateAgentTaskAutoReopenOnCompletion?(requestId, enabled)
+        case "requestUpdateAgentTaskChainExpansion":
+            guard let requestId = body["requestId"] as? String,
+                  let value = body["value"] as? String,
+                  AppearanceSettings.supportedAgentTaskChainExpansions.contains(value) else {
+                onMalformedIntent?("requestUpdateAgentTaskChainExpansion")
+                return
+            }
+            onRequestUpdateAgentTaskChainExpansion?(requestId, value)
+        case "requestUpdateAgentTaskPushToTalk":
+            guard let requestId = body["requestId"] as? String, let enabled = body["enabled"] as? Bool else {
+                onMalformedIntent?("requestUpdateAgentTaskPushToTalk")
+                return
+            }
+            onRequestUpdateAgentTaskPushToTalk?(requestId, enabled)
+        case "requestUpdateAgentTaskPushToTalkThreshold":
+            guard let requestId = body["requestId"] as? String, let thresholdMs = (body["thresholdMs"] as? NSNumber)?.intValue else {
+                onMalformedIntent?("requestUpdateAgentTaskPushToTalkThreshold")
+                return
+            }
+            onRequestUpdateAgentTaskPushToTalkThreshold?(requestId, thresholdMs)
+        case "requestUpdateAssistantSessionDefaultModality":
+            guard let requestId = body["requestId"] as? String,
+                  let raw = body["modality"] as? String,
+                  let modality = AssistantSessionInputMode(rawValue: raw) else {
+                onMalformedIntent?("requestUpdateAssistantSessionDefaultModality")
+                return
+            }
+            onRequestUpdateAssistantSessionDefaultModality?(requestId, modality)
+        case "requestUpdateAssistantSessionPushToTalk":
+            guard let requestId = body["requestId"] as? String, let enabled = body["enabled"] as? Bool else {
+                onMalformedIntent?("requestUpdateAssistantSessionPushToTalk")
+                return
+            }
+            onRequestUpdateAssistantSessionPushToTalk?(requestId, enabled)
+        case "requestUpdateAssistantSessionPushToTalkThreshold":
+            guard let requestId = body["requestId"] as? String, let thresholdMs = (body["thresholdMs"] as? NSNumber)?.intValue else {
+                onMalformedIntent?("requestUpdateAssistantSessionPushToTalkThreshold")
+                return
+            }
+            onRequestUpdateAssistantSessionPushToTalkThreshold?(requestId, thresholdMs)
+        case "requestUpdateConversationDefaultConversationOnly":
+            guard let requestId = body["requestId"] as? String, let enabled = body["enabled"] as? Bool else {
+                onMalformedIntent?("requestUpdateConversationDefaultConversationOnly")
+                return
+            }
+            onRequestUpdateConversationDefaultConversationOnly?(requestId, enabled)
+        default:
+            onMalformedIntent?(type)
+        }
+    }
+}
+
+private final class ReactReasoningDefaultsSettingsWeakScriptMessageHandler: NSObject, WKScriptMessageHandler {
+    private weak var target: ReactReasoningDefaultsSettingsWebView?
+
+    init(_ target: ReactReasoningDefaultsSettingsWebView) {
+        self.target = target
+    }
+
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        target?.handleScriptMessage(message)
+    }
+}

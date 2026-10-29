@@ -1,0 +1,11 @@
+/* Metallic (background only): the panel shell and section sidebar become transparent so the sheen shows on the window background. The guide text reads directly on the content pane, so that pane takes the solid theme fill instead. */
+html[data-surface-finish="metal_backdrop"] :is(
+  .pug-shell,
+  .pug-sidebar
+) {
+  background: transparent;
+}
+
+html[data-surface-finish="metal_backdrop"] .pug-content {
+  background: var(--background-primary);
+}

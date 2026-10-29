@@ -1,0 +1,147 @@
+# Development
+
+Basil has three primary source surfaces:
+
+- `client/`: the native macOS Swift package and packaged resources.
+- `backend/`: the local Python/FastAPI service.
+- `web-components/`: React/Vite applications embedded in native WebKit hosts.
+
+Supporting build and release code lives under `scripts/` and `build/scripts/`. Generated bundles, build output, model weights, local databases, logs, and runtime state are not source files; see [Generated files](generated-files.md).
+
+## Architecture
+
+The macOS client owns native window presentation, macOS permissions, audio and screen capture, status-bar controls, and WebKit hosts. The FastAPI backend owns local service APIs, model orchestration, persistence-facing service work, and WebSocket coordination. Embedded web components render interactive application surfaces and communicate with their native hosts through explicit bridge contracts.
+
+The native app is the integration boundary for features that need macOS lifecycle, Accessibility, Screen Recording, microphone, Calendar, Contacts, Apple Events, or window presentation. Do not assume that a browser-only build proves native integration, and do not assume that a native menu action proves a WebKit renderer received its data. Validate the appropriate boundary for the change you make.
+
+Keep these boundaries intact:
+
+- Put reusable backend behavior in `backend/src/api/services/` or `backend/src/api/core/`; route modules are HTTP/WebSocket adapters.
+- Keep native lifecycle, permission, and WebKit-host behavior in `client/Sources/`.
+- Build embedded UI from `web-components/` source, not from staged files under `client/Sources/Resources/`.
+- Treat a model, provider, connection, or permission choice as a product boundary. Trace producers and consumers before changing its contract.
+
+The route inventory is registered in `backend/src/api/routes/registry.py`. The Settings navigation is defined in `web-components/SettingsWebComponents/src/app/SettingsShell.tsx`. Both are useful starting points when locating a capability.
+
+## Local development
+
+From the repository root, install the Python environment and launch the complete development session:
+
+```bash
+poetry install
+./dev.sh
+```
+
+`./dev.sh` is the complete local-development launcher. It builds required components, starts the backend, packages a development app, and launches the client. It also terminates existing Basil development backend/client processes. Do not run it over an active development session you do not intend to replace.
+
+The launch flow also builds the LGPL FFmpeg dependency when necessary, generates development icons, refreshes every canonical WebKit resource bundle, checks the staged output, and waits on the launched native client. Keep the terminal available while the development session is in use. Quit the app or press Control-C to let the launcher perform its cleanup.
+
+For a narrower build, use the component's own package or canonical builder rather than editing staged web assets manually. Do not run `./dev.sh` merely to refresh a renderer when its process replacement would interrupt another active development workflow.
+
+## Choose the correct development surface
+
+Start in `client/` when a change concerns macOS presentation, menu actions, permissions, audio or screen capture, native storage, or a WebKit host. Start in `backend/` when it concerns an API route, durable data, model orchestration, agent lifecycle, scheduling, a connection, or WebSocket behavior. Start in `web-components/` when it concerns an embedded interactive renderer, then trace the bridge and host that supply its data.
+
+Many product features span all three surfaces. For example, a meeting control can need a native entry point, backend state and persistence, a bridge payload, and a WebKit renderer. Identify each producer and consumer before changing a shared data shape or API contract.
+
+## Embedded web assets
+
+The embedded applications are source code under `web-components/`; the files staged below `client/Sources/Resources/` are package inputs generated from that source. Never hand-edit a staged JavaScript or CSS bundle as the implementation of a feature.
+
+The canonical builders are:
+
+- `scripts/build-agent-task-assets.sh` builds and stages Agent Task, scheduled-run, model-download, power-user-guide, setup-resume, Meeting/Call Detection, ambient-suggestions, Basil Board/conversation, Notetaker/analysis (the `MeetingAssistant` package), Assistant Session/history, Transcription/audio-file, and Agent Task capture-input bundles.
+- `scripts/build-setup-assistant-assets.sh` builds and stages Setup Assistant.
+- `scripts/build-profile-editor-assets.sh` builds and stages profile, memory, and skills editing.
+- `scripts/build-settings-appearance-assets.sh` builds and stages the Settings renderer.
+- `scripts/build-skill-reconciliation-workspace-assets.sh` builds and stages the Skill Reconciliation Workspace.
+
+Each builder produces Vite output and stages it under `client/Sources/Resources/` for the Swift package. The builders fail when their expected HTML or JavaScript output is missing so that an old bundle is not silently packaged. A successful package-local Vite build does not update the bundle in the native application; run the corresponding canonical builder when you need the package resource to change.
+
+The main development launcher invokes all canonical builders. A focused builder is appropriate only when you know the affected renderer and need to update its staged resource without replacing the entire development session.
+
+Hover help in every embedded renderer comes from `installBasilTooltips()` in `web-components/shared/tooltip/basilTooltip.ts`, which each entry calls next to `enableBackdropSurfaceFinish()`. It replaces native `title` tooltips with one styled tooltip that appears after a half-second hover or keyboard focus. Use `title` for a short hint that adds information the control does not already show; a `title` that repeats fully visible text appears only when that text is truncated. Use `data-tooltip` for multi-line text, `data-tooltip-when="truncated"` for text that should appear only when clipped, and `data-tooltip-placement` (`above`, `below`, `left`, or `right`) when the default placement below the target would cover related content. Window controls (close, minimize, collapse, expand, dismiss) carry an `aria-label` and no tooltip.
+
+## Validation
+
+Run the narrowest relevant checks before broad checks. These commands are repository-supported validation entry points:
+
+```bash
+poetry run pytest
+swift test --package-path client
+swift build --package-path client
+```
+
+For an embedded web package, run its package-local checks. For example:
+
+```bash
+cd web-components/SettingsWebComponents
+npm run typecheck
+npm test
+npm run build
+```
+
+Every renderer talks to Swift through a WKWebView message handler. Use `createSwiftBridge` from `web-components/shared/swiftBridge.ts` instead of reading `window.webkit` directly: it resolves the handler on every call, owns the one global `Window.webkit` type, reports a dropped message when the page runs outside the app, and lets a package keep its own typed outgoing message union. Use `hasSwiftHandler` when code needs to branch on whether the native host is present.
+
+Window headers use `WindowControlButton` from `web-components/shared/WindowControlButton.tsx` for the circular close, minimize, and collapse buttons instead of copying the SVG glyphs: the host keeps its own button class for size, hover, and focus, and the shared stylesheet supplies the circle fill (the theme's `--secondary` at 15 percent, the same color as the glyph stroke) and the chevron rotation. A button that cancels a running process rather than closing a window, such as the Assistant Session "Cancel request" button, keeps its own markup.
+
+Copy buttons that show a brief "Copied" confirmation use `useCopyFeedback` from `web-components/shared/useCopyFeedback.ts` (or its single-button form `useCopiedFlag`) instead of a local `useState` and `setTimeout`: at most one control is confirmed at a time, a new flash restarts one timer so an earlier flash cannot clear a later one, and the timer is cleared on unmount.
+
+An in-place delete confirmation inside a list row (the "Delete this task?" style: a label with Cancel and a danger Delete that replaces the row's content) uses `InlineDeleteConfirm` from `web-components/shared/InlineDeleteConfirm.tsx` instead of a hand-written label and button pair; pass `layout="stacked"` for a narrow column, and a `className` for the host row's own padding and chrome. The host keeps its own confirmation state and performs the delete. Panel and modal confirmations are different UI and do not use it.
+
+Elapsed or position times shown as a clock ("2:05", or "1:02:05" past an hour) use `formatClockSeconds` from `web-components/shared/formatClockSeconds.ts` instead of a local `padStart` helper: pass `{ padMinutes: true }` only where the label sits beside transcript `[mm:ss]` markers. Date and time-of-day formatting is a separate concern and stays with each surface's own locale helper.
+
+Presentational styling in `AgentTaskResult` components belongs in the stylesheets under `web-components/AgentTaskResult/src/styles/components/`, not in inline `style={{ ... }}` blocks: use a class with theme tokens (`var(--primary)`, `color-mix(in srgb, var(--secondary) 80%, transparent)`) and a modifier class for a variant. Keep an inline style only for a value computed at runtime, such as a drag offset or a width clamp, and give a rule that must beat an existing single-class rule a compound selector. `inlineStyleContract.test.ts` pins the four components cleaned up so far.
+
+Packages that declare the full set of layout tokens (radii, spacing, borders, shadows, font sizes, and sidebar widths) import them with `@import '../../../shared/theme-layout-tokens.css'` at the top of their `theme.css` instead of redeclaring them; `AgentTaskResult` and `SkillReconciliationWorkspace` do this today. A package that declares only some of those tokens must not import the file, because shared stylesheets rely on per-use fallbacks that differ from the canonical values. `web-components/shared/themeLayoutTokens.contract.test.ts` keeps every remaining local declaration equal to the canonical value, apart from overrides listed in that test with a reason. Colors and font families stay out of the shared file because the Swift host overrides them at runtime.
+
+Semantic state colors are shared the same way: `web-components/shared/semantic-state.css` defines `--notice-base`, `--notice-text`, `--warning-text`, and `--error-text`, plus the `.outcome-partial-mark` class for a half-filled green partial-result circle. Amber (`--warning-base`) means only that it is the user's turn, red (`--error-base`) is the only error color, paused is neutral gray, and teal is the notice color. Teal is fixed on the web side and is not a Swift-owned, user-themeable token. The `*-text` variants mix toward `--text-primary` so text stays legible on light and dark appearances, so use them for text and keep the base tokens for fills, borders, and dots. Each package reaches the file through its `theme.css` or another stylesheet import, and `web-components/shared/semanticState.contract.test.ts` fails when a package uses the tokens without importing the file or redefines them.
+
+Dividers and input outlines come from two derived tokens that `applyHostTheme` in `web-components/shared/webTheme.ts` sets on every window: `--separator-color` (the theme's `secondary` color at 18 percent over transparent) and `--field-border` (the same color at 20 percent). Both ignore any value the host sends, so use them for dividers, card edges, and field outlines instead of mixing a border color in a stylesheet, and the outlines then stay visible on every appearance.
+
+`npm run typecheck` runs `tsc --noEmit` against the package's `tsconfig.json`, including every `web-components/shared` file the package imports. Vitest and Vite do not type-check, so run it alongside the tests; CI runs it for every package.
+
+`python3 scripts/check_literal_structural_colors.py` fails when web-component CSS outside a `theme.css` file uses a hardcoded black or white value that is not an accepted exception. Each exception in `scripts/literal_structural_colors_allowlist.json` is named by its file, selector, property, and value and carries a reason, so moving or editing unrelated rules does not affect it. Add a new intentional exception with `python3 scripts/check_literal_structural_colors.py --update-baseline --reason "Why it is intentional."`. CI runs the check.
+
+To tune the Notetaker Companion, replay a saved meeting with `backend/scripts/companion_replay.py`. The default run is a dry run that uses no model and no network and prints when and why the Companion would evaluate. A live replay calls the selected model once per predicted evaluation and needs both `--live-model` and `--yes`. The `--candidate` option scores the shipped behavior and each tuning candidate against the audit findings you marked **Good catch** or **Not needed**, and `--record` and `--recorded` save and reuse the baseline's model responses. The script changes nothing in the app: a candidate becomes a default only by a deliberate edit after the comparison table says to apply it. The script's docstring lists the flags and candidates. `scripts/run-basil-validation.sh --enable-companion` starts the live Companion runtime in the isolated validation app, which otherwise leaves it disabled.
+
+Use the appropriate canonical builder after changes that must reach a packaged WebKit resource. Do not assume a package-local Vite build alone updates the client resource bundle. Builders and package builds can modify generated output, so review `git status` afterward and do not add generated assets to source control.
+
+The repository's Python configuration is in `pyproject.toml`; the client package is in `client/Package.swift`. Follow existing component-specific tests and project guidance in `DEVELOPMENT_PRINCIPLES.md`. Before changing user-visible workflows, validate the smallest safe functional path in addition to unit/build checks.
+
+For a native feature, use macOS Accessibility to inspect named UI elements and make a narrow functional assertion. For a browser-accessible renderer, use the browser surface to prove the relevant event and rendered state. Do not create recordings, start an agent task, approve an action, or contact an external service as a validation fixture without explicit authorization and an isolated test context.
+
+For an isolated second copy of Basil to validate against, use `scripts/run-basil-validation.sh --session <name>`. It launches a separate `Basil Validation` app and a loopback backend with their own synthetic home, database, credentials namespace, and fixtures under `~/Library/Application Support/BasilValidation/sessions/<name>`, and never touches the normal app, backend, or port file. See [scripts/validation/README.md](../scripts/validation/README.md) for the flags, the seeded fixtures, and the per-package acceptance scripts.
+
+## Working with generated and local data
+
+Generated web bundles, application bundles, model weights, local databases, logs, and package-manager output are intentionally excluded from version control. The source-to-staging relationship and the current generated-file inventory are documented in [Generated files](generated-files.md).
+
+Keep provider keys, signing identities, tokens, local release exports, recordings, and other private data out of the working tree. Use the configured local storage roots described in [Privacy and data flow](privacy-and-data-flow.md) when you need to inspect or remove application data; trace the owning subsystem rather than treating a broad filesystem search as authoritative.
+
+## Packaging and release boundaries
+
+Community builds use an ad-hoc package path:
+
+```bash
+build/scripts/build_app.sh --ad-hoc
+```
+
+The `release.sh` wrapper delegates to `build/scripts/build_app.sh`. Signing, notarization, update-feed generation, DMG publication, uploads, and release credentials are release-owner operations. They can change external systems or publish artifacts and are not routine local validation steps.
+
+An ad-hoc signature identifies the app to the Keychain only by its code hash, which changes whenever anything in the bundle changes, so macOS asks again for Keychain access after every rebuild even if you chose "Always Allow". `dev.sh` therefore signs with the first valid "Apple Development" certificate in your own Keychain when there is one, and "Always Allow" then survives rebuilds. The first rebuild after switching from an ad-hoc build asks once more, and macOS may also ask once whether `codesign` may use the certificate's private key. Choose "Always Allow" for both. Set `BASIL_DEV_SIGNING_IDENTITY` to the name or hash of a different certificate (list them with `security find-identity -v -p codesigning`), or to `-` to force ad-hoc signing. With no Apple Development certificate, `dev.sh` signs ad-hoc and says so. You can confirm the stable signature with `codesign -d -r- client/.build/debug/BasilClient.app`: the designated requirement names the certificate instead of a `cdhash`. Only the Basil app reads or writes secrets in the Keychain: it keeps your account session, connection tokens, and provider API keys in one Keychain item, and the backend (started by `dev.sh` with `BASIL_CREDENTIAL_HOST=client`) receives provider keys from the app over the local connection and holds them in memory, so the Python interpreter never needs Keychain access. The first launch of this layout moves any provider keys an earlier build stored under the service `com.basil.providerKeys` into that item, which can show one last macOS prompt for the old items. Tests and headless runs do not set `BASIL_CREDENTIAL_HOST` and keep using the operating system's credential store through `keyring`.
+
+An ad-hoc community package is useful for local packaging validation. It is not a substitute for an official signed or notarized build, and it does not authorize publication. Do not use a release command with notarization or upload options unless the release owner has explicitly authorized that specific external action.
+
+The `release-build` job in `.github/workflows/validate.yml` runs only on pushes to `main`, after the backend, web-component, and client jobs pass. It reads its signing and notarization credentials from the protected `release-build` GitHub environment, which is restricted to `main`, so pull requests never receive them. The job stamps the commit into the app's `BasilSourceCommit` Info.plist key, checks that every bundled binary resolves its libraries inside the app with `build/scripts/verify_bundle_self_contained.sh`, checks the signed DMG with `build/scripts/verify_release_artifact.sh`, attests the DMG, and replaces the `main-latest` pre-release. Repository builds include a Sparkle feed that points at this repository's `update-feed` release, the public half of the repository update key, and the requirement that the feed be signed. The public key is the `release-build` environment variable `BASIL_SPARKLE_REPO_PUBLIC_ED_KEY` and the private key is the environment secret `BASIL_SPARKLE_REPO_PRIVATE_KEY`; the workflow pipes the private key to `sign_update` on standard input and never writes it to disk. After the DMG release is published the job signs a one-item `appcast.xml` with `build/scripts/update_appcast.sh --sign-feed` and replaces the asset on the permanent `update-feed` pre-release, and it skips every publishing step when the run is not for the current tip of `main`. `build/scripts/verify_release_artifact.sh` fails the build unless the app's feed is this repository's own and the signed-feed requirement is present. `build/scripts/test_update_appcast.sh` tests the feed generator with a stub signing tool and runs in the backend job. A fork must use its own feed address and signing key, as [TRADEMARK.md](../TRADEMARK.md) requires. [Verifying repository builds](verifying-builds.md) is the user-facing description.
+
+[CHANGELOG.md](../CHANGELOG.md) is the single source of release notes. Add a plain-language `- ` bullet under `## Unreleased` with any user-facing change; those bullets appear in the `main-latest` notes as changes since the last website release. A website release build for version `X.Y.Z` reads the `## X.Y.Z` section through `build/scripts/changelog_section.sh` and stops before building if that section is missing, has no bullets, or contains `<` or `&`, which would break the HTML update notes. Before that build, rename `## Unreleased` to the version and add a fresh `## Unreleased` above it. Setting `BASIL_RELEASE_NOTES_FILE` overrides the changelog with a plain-text file in the same one-bullet-per-line format.
+
+Do not add signing identities, provider credentials, tokens, local release exports, model weights, recordings, or generated artifacts to version control.
+
+## Contribution, support, and security
+
+- [CONTRIBUTING.md](../CONTRIBUTING.md) defines contribution requirements and the Developer Certificate of Origin.
+- [DEVELOPMENT_PRINCIPLES.md](../DEVELOPMENT_PRINCIPLES.md) defines project-specific engineering guidance.
+- [SUPPORT.md](../SUPPORT.md) describes public support requests and safe diagnostic information.
+- [SECURITY.md](../SECURITY.md) defines the security-reporting boundary. Do not file vulnerabilities, credentials, private recordings, or personal data in public issues.

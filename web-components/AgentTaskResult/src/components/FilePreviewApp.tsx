@@ -1,0 +1,348 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { WindowControlButton } from '@shared/WindowControlButton';
+import MarkdownRenderer from './MarkdownRenderer';
+import {
+  filePreviewKindForReviewKind,
+  filePreviewNameFromPath,
+  presentFilePreview,
+} from './artifacts/filePreviewPresentation';
+import type { FilePreviewInitMessage, WSEvent } from '../types';
+import {
+  agentTaskArtifactPreviewTransport,
+  closeWidget,
+  minimizeWidget,
+  openContainingFolder,
+  openFile,
+  previewFile,
+  registerFilePreviewInitHandler,
+  registerFilePreviewUpdateHandler,
+  registerThemeHandler,
+  reportFilePreviewChromeHeight,
+  type FilePreviewPayload,
+} from '../services/bridge';
+import { getAgentTaskDetail, setBaseUrl } from '../services/api';
+import { applyHostFonts, applyHostTheme } from '../app/themeBootstrap';
+import type { AgentTaskEventSubscriber } from '../services/websocket';
+import CrossfadeStack from '@shared/CrossfadeStack';
+import { useManagedVersionHistory } from './artifacts/managedHistory/useManagedVersionHistory';
+import { ManagedVersionControls, ManagedVersionRestoreError } from './artifacts/managedHistory/ManagedVersionControls';
+import { diffLines, type DiffLine } from './artifacts/diffLines';
+import { DiffView } from './artifacts/DiffView';
+import { deriveAgentTaskArtifacts, findArtifactForPath, type DerivedAgentTaskArtifact } from './artifacts/artifactDerivation';
+import { ArtifactReviewWorkspace, isTextReviewable } from './artifacts/ArtifactReviewWorkspace';
+
+type PreviewStatus = 'waiting' | 'loading' | 'ready' | 'error';
+type PreviewMode = 'render' | 'source' | 'diff';
+
+interface PreviewState {
+  status: PreviewStatus;
+  path: string;
+  payload?: FilePreviewPayload;
+  error?: string;
+}
+
+interface PreviewContext {
+  rootTaskId?: string;
+  agentTaskId?: string;
+}
+
+/** The task's own record of the file, when the window was opened from a task and the task knows the file as reviewable text. */
+interface ReviewTarget {
+  artifact: DerivedAgentTaskArtifact;
+  rootTaskId: string;
+}
+
+const ignoreArtifactSelection = () => undefined;
+
+// The shared appliers set every theme token, the surface finish, and the text size, so this window follows live appearance edits exactly like every other Basil window.
+function applyPreviewTheme(config: Pick<FilePreviewInitMessage, 'theme' | 'fonts'>) {
+  applyHostTheme(config.theme);
+  applyHostFonts(config.fonts);
+}
+
+function defaultModeForKind(kind: FilePreviewPayload['kind'] | undefined): PreviewMode {
+  return kind === 'markdown' ? 'render' : 'source';
+}
+
+export default function FilePreviewApp() {
+  const [state, setState] = useState<PreviewState>({
+    status: 'waiting',
+    path: '',
+  });
+  const [context, setContext] = useState<PreviewContext>({});
+  const [mode, setMode] = useState<PreviewMode>('source');
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+  const [reviewTarget, setReviewTarget] = useState<ReviewTarget>();
+  const activePreviewRequestId = useRef<string>();
+  const reviewTargetRef = useRef<ReviewTarget>();
+  reviewTargetRef.current = reviewTarget;
+  const contextRef = useRef<PreviewContext>({});
+  contextRef.current = context;
+  const artifactEventListeners = useRef(new Set<(event: WSEvent) => void>());
+  // The window has no task event stream of its own. The native file watcher already reports every change to the open file, so a change is replayed to the review workspace as the artifact event it would otherwise wait for.
+  const subscribeToArtifactEvents = useCallback<AgentTaskEventSubscriber>(handler => {
+    artifactEventListeners.current.add(handler);
+    return () => {
+      artifactEventListeners.current.delete(handler);
+    };
+  }, []);
+
+  useEffect(() => {
+    registerThemeHandler((theme, fonts) => applyPreviewTheme({ theme, fonts }));
+  }, []);
+
+  useEffect(() => {
+    registerFilePreviewInitHandler(config => {
+      applyPreviewTheme(config);
+      if (typeof config.port === 'number') {
+        setBaseUrl(config.port);
+      }
+      setContext({ rootTaskId: config.rootTaskId, agentTaskId: config.agentTaskId });
+      setReviewTarget(undefined);
+      activePreviewRequestId.current = undefined;
+      setState({ status: 'loading', path: config.path });
+
+      previewFile(config.path)
+        .then(payload => {
+          activePreviewRequestId.current = payload.requestId;
+          setState({
+            status: payload.error ? 'error' : 'ready',
+            path: payload.path || config.path,
+            payload,
+            error: payload.error,
+          });
+          setMode(defaultModeForKind(payload.kind));
+        })
+        .catch(error => {
+          setState({
+            status: 'error',
+            path: config.path,
+            error: error instanceof Error ? error.message : 'Unable to load file preview.',
+          });
+        });
+    });
+  }, []);
+
+  useEffect(() => registerFilePreviewUpdateHandler(payload => {
+    if (activePreviewRequestId.current !== payload.requestId) return;
+    setState(current => (
+      current.status === 'ready' && current.payload?.requestId === payload.requestId
+        ? {
+            status: payload.error ? 'error' : 'ready',
+            path: payload.path || current.path,
+            payload,
+            error: payload.error,
+          }
+        : current
+    ));
+    setHistoryRefreshKey(current => current + 1);
+
+    const target = reviewTargetRef.current;
+    const agentTaskId = contextRef.current.agentTaskId;
+    if (!target || !agentTaskId) return;
+    const event = {
+      event_type: 'agent_task_artifact',
+      agent_task_id: agentTaskId,
+      root_task_id: target.rootTaskId,
+      agent_task_artifact: { artifact_id: target.artifact.artifactId },
+    } as unknown as WSEvent;
+    artifactEventListeners.current.forEach(listener => listener(event));
+  }), []);
+
+  const agentTaskIdForReview = context.agentTaskId;
+  const rootTaskIdForReview = context.rootTaskId;
+  const pathForReview = state.path;
+  useEffect(() => {
+    if (!agentTaskIdForReview || !pathForReview) return undefined;
+    let isCurrent = true;
+    getAgentTaskDetail(agentTaskIdForReview)
+      .then(detail => {
+        if (!isCurrent) return;
+        const artifact = findArtifactForPath(
+          deriveAgentTaskArtifacts(detail.files, detail.execution_timeline ?? []).all,
+          pathForReview,
+        );
+        setReviewTarget(artifact && isTextReviewable(artifact)
+          ? { artifact, rootTaskId: detail.root_task_id ?? rootTaskIdForReview ?? agentTaskIdForReview }
+          : undefined);
+      })
+      .catch(() => {
+        // Without the task's record the window falls back to the native preview and managed history.
+        if (isCurrent) setReviewTarget(undefined);
+      });
+    return () => {
+      isCurrent = false;
+    };
+  }, [agentTaskIdForReview, rootTaskIdForReview, pathForReview]);
+
+  useEffect(() => {
+    const measure = () => {
+      const pathEl = document.querySelector('.file-preview-window-path');
+      if (!pathEl) return;
+      const height = Math.round(pathEl.getBoundingClientRect().bottom);
+      if (height > 0) reportFilePreviewChromeHeight(height);
+    };
+    // Defer to next frame so fonts/theme applied by init have laid out.
+    const id = requestAnimationFrame(measure);
+    return () => cancelAnimationFrame(id);
+  }, [state.status]);
+
+  const path = state.payload?.path || state.path;
+  const name = state.payload?.name || filePreviewNameFromPath(path);
+  // The native layer only knows the extensions in its own table, but the task already classified this file when it recorded it.
+  const nativeKind = state.payload?.kind;
+  const previewKind = nativeKind === 'unsupported' && reviewTarget
+    ? filePreviewKindForReviewKind(reviewTarget.artifact.review?.kind) ?? nativeKind
+    : nativeKind;
+  const presentation = presentFilePreview(previewKind);
+  // The review workspace brings its own version history, so the window's copy stands down when it is in use.
+  const isVersionableKind = !reviewTarget
+    && state.payload?.kind !== undefined
+    && state.payload.kind !== 'pdf'
+    && state.payload.kind !== 'image'
+    && state.payload.kind !== 'unsupported';
+
+  // The review workspace brings its own toolbar and framed content, so the window body stops padding around it.
+  const isReviewWorkspace = Boolean(reviewTarget && context.agentTaskId && state.status !== 'waiting' && state.status !== 'loading');
+
+  const managed = useManagedVersionHistory({
+    canonicalPath: isVersionableKind ? path : undefined,
+    enabled: isVersionableKind && state.status === 'ready',
+    rootTaskId: context.rootTaskId,
+    focusedAgentTaskId: context.agentTaskId,
+    refreshKey: historyRefreshKey,
+  });
+
+  const hasVersionHistory = managed.state.versions.length > 0;
+  const isHistoricalSelection = hasVersionHistory && managed.state.selectedIndex !== 0;
+  const selectedVersionIsLoading = hasVersionHistory && managed.state.status === 'loading';
+  const selectedVersionLoadFailed = hasVersionHistory && managed.state.status === 'error';
+  const initialHistoryLoadFailed = !hasVersionHistory && managed.state.status === 'error';
+  const displayedContent = hasVersionHistory ? managed.state.selectedContent : state.payload?.content;
+  const canDiff = hasVersionHistory && managed.state.compareContent !== undefined;
+
+  const diff = useMemo<DiffLine[] | undefined>(() => {
+    if (mode !== 'diff' || !canDiff) return undefined;
+    return diffLines(managed.state.compareContent ?? '', managed.state.selectedContent ?? '');
+  }, [mode, canDiff, managed.state.compareContent, managed.state.selectedContent]);
+
+  return (
+    <div className="basil-webkit-window-frame">
+      <div className="file-preview-window basil-webkit-window-surface">
+      <header className="file-preview-window-header">
+        <div className="file-preview-window-controls" aria-label="Window controls">
+          <WindowControlButton kind="close" label="Close preview window" className="file-preview-window-control header-btn" onClick={closeWidget} />
+          <WindowControlButton kind="minimize" label="Minimize preview window" className="file-preview-window-control header-btn" onClick={minimizeWidget} />
+        </div>
+        <div className="file-preview-window-title-group">
+          <div className="file-preview-window-eyebrow">{presentation.label}</div>
+          <h1 className="file-preview-window-title" title={path}>{name}</h1>
+        </div>
+        <div className="file-preview-window-actions">
+          <button
+            type="button"
+            className="file-preview-window-action"
+            disabled={!path}
+            onClick={() => openFile(path)}
+          >
+            Open File
+          </button>
+          <button
+            type="button"
+            className="file-preview-window-action"
+            disabled={!path}
+            onClick={() => openContainingFolder(path)}
+          >
+            Show in Folder
+          </button>
+        </div>
+      </header>
+      <div className="file-preview-window-path" title={path}>{path}</div>
+      {hasVersionHistory && (
+        <div className="file-preview-window-version-row">
+          <div className="artifact-review-mode-toggle" role="tablist" aria-label="Preview mode">
+            {(
+              presentation.renderMode === 'markdown'
+                ? (['render', 'source', 'diff'] as PreviewMode[])
+                : (['source', 'diff'] as PreviewMode[])
+            ).map(candidate => (
+              <button
+                key={candidate}
+                type="button"
+                role="tab"
+                aria-selected={mode === candidate}
+                disabled={candidate === 'diff' && !canDiff}
+                className={`artifact-review-mode${mode === candidate ? ' is-active' : ''}`}
+                onClick={() => setMode(candidate)}
+                title={candidate === 'diff' && !canDiff ? 'A prior version is required to show a diff.' : undefined}
+              >
+                {candidate === 'render' ? 'Render' : candidate === 'source' ? 'Source' : 'Diff'}
+              </button>
+            ))}
+          </div>
+          <ManagedVersionControls
+            state={managed.state}
+            canRestore={managed.canRestore}
+            onSelect={managed.selectVersion}
+            onRestore={managed.restore}
+          />
+        </div>
+      )}
+      {hasVersionHistory && <ManagedVersionRestoreError state={managed.state} />}
+      {initialHistoryLoadFailed && (
+        <div className="file-preview-window-history-status" role="alert">
+          <span>Version history is unavailable: {managed.state.errorMessage}</span>
+          <button type="button" className="artifact-review-retry" onClick={managed.retry}>Retry</button>
+        </div>
+      )}
+      <CrossfadeStack
+        contentKey={`${state.status}:${state.payload?.requestId ?? ''}:${reviewTarget?.artifact.artifactId ?? ''}:${mode}:${hasVersionHistory ? managed.state.selectedIndex : ''}`}
+        className={`file-preview-window-body${isReviewWorkspace ? ' file-preview-window-body--review' : ''}`}
+        layerClassName="file-preview-window-body-layer"
+        as="main"
+      >
+        {state.status === 'waiting' || state.status === 'loading' ? (
+          <div className="file-preview-window-message">Loading preview...</div>
+        ) : reviewTarget && context.agentTaskId ? (
+          <ArtifactReviewWorkspace
+            agentTaskId={context.agentTaskId}
+            rootTaskId={reviewTarget.rootTaskId}
+            focusedRunId={context.agentTaskId}
+            artifacts={[reviewTarget.artifact]}
+            activeArtifactId={reviewTarget.artifact.artifactId}
+            onSelectArtifact={ignoreArtifactSelection}
+            showDocumentTabs={false}
+            previewTransport={agentTaskArtifactPreviewTransport}
+            subscribeToEvents={subscribeToArtifactEvents}
+          />
+        ) : state.status === 'error' ? (
+          <div className="file-preview-window-message">{state.error || 'Unable to load file preview.'}</div>
+        ) : selectedVersionIsLoading ? (
+          <div className="file-preview-window-message" role="status">Loading selected version...</div>
+        ) : selectedVersionLoadFailed ? (
+          <div className="file-preview-window-message" role="alert">
+            <p>Unable to load the selected version: {managed.state.errorMessage}</p>
+            <button type="button" className="artifact-review-retry" onClick={managed.retry}>Retry</button>
+          </div>
+        ) : mode === 'diff' && diff ? (
+          <DiffView diff={diff} label={`Diff for ${name}`} />
+        ) : mode === 'render' && presentation.renderMode === 'markdown' && !isHistoricalSelection && displayedContent ? (
+          <div className="file-preview-window-markdown">
+            <MarkdownRenderer content={displayedContent} />
+          </div>
+        ) : mode === 'render' && presentation.renderMode === 'markdown' && isHistoricalSelection && displayedContent !== undefined ? (
+          <MarkdownRenderer content={displayedContent} />
+        ) : presentation.renderMode === 'native_pdf' ? (
+          <div className="file-preview-window-pdf-placeholder" aria-hidden="true" />
+        ) : presentation.renderMode === 'image' && state.payload?.dataUrl ? (
+          <img className="file-preview-window-image" src={state.payload.dataUrl} alt={name} />
+        ) : displayedContent !== undefined && (presentation.renderMode === 'source' || presentation.renderMode === 'markdown' || presentation.renderMode === 'live_html') ? (
+          <pre className="file-preview-window-source"><code>{displayedContent}</code></pre>
+        ) : (
+          <div className="file-preview-window-message">This file type is not supported by the in-app preview.</div>
+        )}
+      </CrossfadeStack>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,103 @@
+.profile-settings-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--settings-card-gap);
+  max-width: 920px;
+  width: 100%;
+}
+
+.profile-settings-intro {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: calc(13px * var(--text-scale, 1));
+  margin: 0;
+}
+
+.profile-settings-columns {
+  display: grid;
+  gap: var(--settings-card-gap);
+  grid-template-columns: 1fr 1fr;
+}
+
+.mac-contacts-settings-status,
+.mac-contacts-settings-error {
+  font-family: var(--font-family-light);
+  font-size: calc(12px * var(--text-scale, 1));
+  margin: 0;
+}
+
+.mac-contacts-settings-status {
+  color: var(--text-secondary);
+}
+
+.mac-contacts-settings-status-enabled {
+  color: var(--success-base);
+}
+
+.mac-contacts-settings-error {
+  color: var(--error-text);
+}
+
+.mac-contacts-settings-card > .secondary-button {
+  align-self: flex-start;
+}
+
+.profile-settings-field {
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-family-light);
+  font-size: calc(13px * var(--text-scale, 1));
+  gap: 4px;
+}
+
+.profile-settings-select {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: calc(13px * var(--text-scale, 1));
+  padding: 6px 8px;
+}
+
+.profile-settings-select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.profile-settings-select:disabled {
+  opacity: 0.6;
+}
+
+.profile-settings-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.profile-settings-status,
+.profile-settings-inline-error,
+.profile-settings-error p {
+  margin: 0;
+}
+
+.profile-settings-status {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: calc(13px * var(--text-scale, 1));
+}
+
+.profile-settings-inline-error,
+.profile-settings-error p {
+  color: var(--error-text);
+  font-family: var(--font-family-light);
+  font-size: calc(13px * var(--text-scale, 1));
+}
+
+.profile-settings-error {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 650px;
+}

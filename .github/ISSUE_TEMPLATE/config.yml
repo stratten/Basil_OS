@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability privately
+    url: https://github.com/stratten/Basil_OS/security/advisories/new
+    about: Do not open a public issue for a vulnerability, credential, personal data, account token, or private recording. Use private vulnerability reporting instead, as described in SECURITY.md.

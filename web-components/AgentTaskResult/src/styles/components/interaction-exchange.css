@@ -1,0 +1,174 @@
+.interaction-exchange {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-s);
+  margin: 0 var(--padding-xs) var(--padding-m);
+}
+
+/* One side of an exchange. App turns sit on the left, user turns on the right, matching Conversations. */
+.interaction-turn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-xs);
+  max-width: 88%;
+  min-width: 0;
+  padding: var(--padding-s) var(--padding-m);
+  border: var(--border-thin) solid var(--secondary);
+  border-radius: var(--corner-radius-medium, 8px);
+}
+
+.interaction-turn.is-app {
+  align-self: flex-start;
+  background: var(--background-primary);
+  color: var(--text-primary);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--secondary) 14%, transparent);
+}
+
+.interaction-turn.is-user {
+  align-self: flex-end;
+  background: var(--secondary);
+  color: var(--background-primary);
+}
+
+.interaction-turn.is-waiting {
+  border-color: var(--warning-base);
+  background: color-mix(in srgb, var(--warning-base) 16%, var(--background-primary));
+  color: var(--text-primary);
+}
+
+.interaction-turn.is-waiting.is-run-control-neutral {
+  --run-control-color: var(--text-tertiary);
+}
+
+.interaction-turn.is-waiting.is-run-control-notice {
+  --run-control-color: var(--notice-base);
+}
+
+/* A queued note, pause, or lost connection is waiting on Basil or the connection, not on the user, so it never uses amber. */
+.interaction-turn.is-waiting[class*='is-run-control-'] {
+  border-color: var(--run-control-color);
+  background: color-mix(in srgb, var(--run-control-color) 14%, var(--background-primary));
+}
+
+.interaction-turn.is-waiting[class*='is-run-control-'] .interaction-exchange-waiting-dot {
+  background: var(--run-control-color);
+}
+
+.interaction-turn.is-negative {
+  border-color: var(--error-base);
+  background: var(--background-primary);
+  color: var(--error-text);
+}
+
+.interaction-turn-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+}
+
+.interaction-turn-glyph {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  place-items: center;
+  border-radius: 50%;
+}
+
+.interaction-turn.is-app .interaction-turn-glyph {
+  background: var(--secondary);
+  color: var(--background-primary);
+}
+
+.interaction-turn.is-user .interaction-turn-glyph {
+  border: 2px solid var(--background-primary);
+  background: var(--secondary);
+  color: var(--background-primary);
+}
+
+.interaction-turn-glyph svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.interaction-turn.is-app .interaction-turn-label {
+  color: var(--secondary);
+}
+
+.interaction-exchange-time {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: inherit;
+  font-size: var(--font-size-status-tiny);
+  opacity: 0.85;
+}
+
+.interaction-turn.is-user a,
+.interaction-turn.is-user code,
+.interaction-turn.is-user .interaction-exchange-prompt {
+  color: inherit;
+}
+
+.interaction-turn.is-user code {
+  background: color-mix(in srgb, var(--background-primary) 22%, transparent);
+}
+
+.interaction-exchange-prompt {
+  margin-top: var(--padding-xs);
+  color: inherit;
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-small);
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.interaction-exchange-command {
+  margin: var(--padding-xs) 0 0;
+  padding: var(--padding-xs) var(--padding-s);
+  max-height: 160px;
+  overflow: auto;
+  border-radius: var(--corner-radius-small);
+  background: color-mix(in srgb, var(--secondary) 60%, var(--text-primary));
+  color: var(--background-primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--font-size-status-tiny);
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+
+.interaction-exchange-response-text {
+  margin-top: 3px;
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-small);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.interaction-exchange-waiting-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: var(--warning-base);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.reasoning-with-interactions > .thinking-segments + .thinking-segments {
+  margin-top: var(--padding-s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .interaction-exchange-waiting-dot {
+    animation: none;
+  }
+}

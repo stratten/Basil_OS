@@ -1,0 +1,341 @@
+import type { ResponseTimeLimit, ThinkingSegment, TimelineEntry } from '../../types';
+import { timelineEntryTime } from '../run/timelineEntryTime';
+import { parseResponseTimeLimit } from './responseTimeLimit';
+
+export type UserInteractionKind =
+  | 'clarification'
+  | 'approval'
+  | 'credential'
+  | 'provider_target'
+  | 'command_input'
+  | 'provider_input'
+  | 'provider_permission'
+  | 'guidance'
+  | 'pause'
+  | 'connection_lost'
+  | 'connection_token';
+
+export type UserInteractionStatus =
+  | 'waiting'
+  | 'answered'
+  | 'dismissed'
+  | 'approved'
+  | 'denied'
+  | 'timed_out'
+  | 'canceled'
+  | 'resolved'
+  | 'unrecorded';
+
+export interface UserInteraction {
+  id: string;
+  entryId: string;
+  kind: UserInteractionKind;
+  status: UserInteractionStatus;
+  prompt: string;
+  askedAt: string;
+  response?: string;
+  responseHidden: boolean;
+  respondedAt?: string;
+  options: string[];
+  /** Present only while the request is waiting and stops waiting on its own. */
+  timeLimit?: ResponseTimeLimit;
+}
+
+export type ReasoningBlock =
+  | { type: 'reasoning'; key: string; segments: ThinkingSegment[] }
+  | { type: 'interaction'; key: string; interaction: UserInteraction };
+
+const KINDS: ReadonlySet<string> = new Set([
+  'clarification',
+  'approval',
+  'credential',
+  'provider_target',
+  'command_input',
+  'provider_input',
+  'provider_permission',
+  'guidance',
+  'pause',
+  'connection_lost',
+  'connection_token',
+]);
+
+const STATUSES: ReadonlySet<string> = new Set([
+  'waiting',
+  'answered',
+  'dismissed',
+  'approved',
+  'denied',
+  'timed_out',
+  'canceled',
+  'resolved',
+]);
+
+function text(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value : undefined;
+}
+
+function recordedInteraction(entry: TimelineEntry): UserInteraction | null {
+  if (entry.detail_kind !== 'user_interaction') return null;
+  const raw = entry.metadata?.user_interaction;
+  if (!raw || typeof raw !== 'object') return null;
+  const record = raw as Record<string, unknown>;
+  const kind = text(record.kind);
+  const status = text(record.status);
+  if (!kind || !KINDS.has(kind) || !status || !STATUSES.has(status)) return null;
+  return {
+    id: text(record.interaction_id) || entry.id || entry.timestamp,
+    entryId: entry.id || entry.timestamp,
+    kind: kind as UserInteractionKind,
+    status: status as UserInteractionStatus,
+    prompt: text(record.prompt) || entry.content || '',
+    askedAt: text(record.asked_at) || entry.timestamp,
+    response: typeof record.response === 'string' ? record.response : undefined,
+    responseHidden: record.response_hidden === true,
+    respondedAt: text(record.responded_at),
+    options: Array.isArray(record.options) ? record.options.filter((option): option is string => typeof option === 'string') : [],
+    timeLimit: status === 'waiting' ? parseResponseTimeLimit(record.time_limit) : undefined,
+  };
+}
+
+function legacyClarification(entry: TimelineEntry): UserInteraction | null {
+  if (entry.detail_kind !== 'tool_input' || entry.metadata?.tool_name !== 'request_user_input') return null;
+  let prompt = '';
+  try {
+    const parsed = JSON.parse(entry.body || '') as { prompt?: unknown };
+    prompt = text(parsed.prompt) || '';
+  } catch {
+    prompt = '';
+  }
+  if (!prompt) return null;
+  const entryId = entry.id || entry.timestamp;
+  return {
+    id: entryId,
+    entryId,
+    kind: 'clarification',
+    status: 'unrecorded',
+    prompt: prompt.replace(/\\n/g, '\n'),
+    askedAt: entry.timestamp,
+    responseHidden: false,
+    options: [],
+  };
+}
+
+export interface UserInteractionOptions {
+  /** The run already finished or was canceled, so nothing can still be waiting on the user. */
+  runEnded?: boolean;
+}
+
+/** Return the ask/response exchanges recorded in a task timeline, oldest first. Tasks recorded before exchanges were persisted fall back to their clarification questions, without answers. A request still marked waiting on a run that has ended is stale and is presented as canceled. */
+export function userInteractionsFromTimeline(
+  timeline: TimelineEntry[] | undefined,
+  options: UserInteractionOptions = {},
+): UserInteraction[] {
+  const entries = timeline || [];
+  const recorded = entries.map(recordedInteraction).filter((interaction): interaction is UserInteraction => interaction !== null);
+  const interactions = (recorded.length > 0
+    ? recorded
+    : entries.map(legacyClarification).filter((interaction): interaction is UserInteraction => interaction !== null))
+    .map((interaction): UserInteraction => (
+      options.runEnded && interaction.status === 'waiting'
+        ? { ...interaction, status: 'canceled' }
+        : interaction
+    ));
+  return interactions
+    .map((interaction, index) => ({ interaction, index }))
+    .sort((left, right) => {
+      const leftTime = timelineEntryTime(left.interaction.askedAt);
+      const rightTime = timelineEntryTime(right.interaction.askedAt);
+      if (Number.isFinite(leftTime) && Number.isFinite(rightTime) && leftTime !== rightTime) return leftTime - rightTime;
+      return left.index - right.index;
+    })
+    .map(({ interaction }) => interaction);
+}
+
+/** Interleave reasoning passes with the exchanges that happened between them. A pass without a recorded time is placed after every exchange, because such passes only survive from the final resumed run. */
+export function splitReasoningAroundInteractions(
+  segments: ThinkingSegment[],
+  interactions: UserInteraction[],
+): ReasoningBlock[] {
+  const slots: ThinkingSegment[][] = interactions.map(() => []);
+  slots.push([]);
+  for (const segment of segments) {
+    const recordedTime = segment.recordedAt ? timelineEntryTime(segment.recordedAt) : Number.NaN;
+    let slot = interactions.length;
+    if (Number.isFinite(recordedTime)) {
+      const nextIndex = interactions.findIndex(interaction => {
+        const askedTime = timelineEntryTime(interaction.askedAt);
+        return Number.isFinite(askedTime) && recordedTime <= askedTime;
+      });
+      slot = nextIndex === -1 ? interactions.length : nextIndex;
+    }
+    slots[slot].push(segment);
+  }
+
+  const blocks: ReasoningBlock[] = [];
+  slots.forEach((slotSegments, index) => {
+    if (slotSegments.length > 0) {
+      blocks.push({ type: 'reasoning', key: `reasoning-${index}`, segments: slotSegments });
+    }
+    const interaction = interactions[index];
+    if (interaction) blocks.push({ type: 'interaction', key: `interaction-${interaction.entryId}`, interaction });
+  });
+  return blocks;
+}
+
+/** These requests show their own countdown on the card you answer them with, so the transcript does not run a second clock beside it. */
+const KINDS_WITH_COUNTDOWN_CARD: ReadonlySet<UserInteractionKind> = new Set(['approval', 'command_input', 'connection_token']);
+
+/** The countdown the transcript should show for an exchange: one that is still waiting, has a limit, and has no card of its own. */
+export function interactionTranscriptCountdown(
+  interaction: Pick<UserInteraction, 'kind' | 'status' | 'timeLimit'>,
+): ResponseTimeLimit | undefined {
+  if (interaction.status !== 'waiting' || KINDS_WITH_COUNTDOWN_CARD.has(interaction.kind)) return undefined;
+  return interaction.timeLimit;
+}
+
+export function isApprovalLikeInteraction(interaction: Pick<UserInteraction, 'kind'>): boolean {
+  return interaction.kind === 'approval' || interaction.kind === 'provider_permission';
+}
+
+export type InteractionSpeaker = 'app' | 'user';
+
+/** A leading-space class suffix for a waiting run-control stage; empty for every other stage. */
+export function runControlStageClass(stage: { kind: string; state: string; interaction?: Pick<UserInteraction, 'kind'> }): string {
+  if (stage.kind !== 'interaction' || stage.state !== 'waiting') return '';
+  const tone = runControlTone(stage.interaction);
+  return tone ? ` is-run-control-${tone}` : '';
+}
+
+export type RunControlTone = 'neutral' | 'notice';
+
+/** Notes, pauses, and lost connections are run controls, not questions: while waiting they are never "Your turn" (amber). A pause or queued note is neutral; a lost connection is a notice. */
+export function runControlTone(interaction: Pick<UserInteraction, 'kind'> | undefined): RunControlTone | null {
+  if (!interaction) return null;
+  if (interaction.kind === 'connection_lost') return 'notice';
+  if (interaction.kind === 'pause' || interaction.kind === 'guidance') return 'neutral';
+  return null;
+}
+
+/** A note you send or a pause you request starts with you; every other exchange starts with Basil, a command, or a provider. */
+export function interactionAskerSpeaker(interaction: Pick<UserInteraction, 'kind'>): InteractionSpeaker {
+  return interaction.kind === 'guidance' || interaction.kind === 'pause' ? 'user' : 'app';
+}
+
+/** Who produced the second half of the exchange: your answer, or Basil acknowledging your note or a stopped pause. */
+export function interactionResponseSpeaker(interaction: Pick<UserInteraction, 'kind' | 'status'>): InteractionSpeaker {
+  if (interaction.kind === 'guidance') return 'app';
+  if (interaction.kind === 'pause' || interaction.kind === 'connection_lost') {
+    return interaction.status === 'resolved' ? 'user' : 'app';
+  }
+  return 'user';
+}
+
+export function interactionAskerLabel(interaction: Pick<UserInteraction, 'kind'>): string {
+  switch (interaction.kind) {
+    case 'approval':
+      return 'Basil asked to run';
+    case 'credential':
+      return 'Basil asked for Keychain access';
+    case 'provider_target':
+      return 'Basil asked you to confirm';
+    case 'command_input':
+      return 'A command asked you';
+    case 'provider_input':
+      return 'A provider asked you';
+    case 'provider_permission':
+      return 'A provider asked permission';
+    case 'guidance':
+      return 'You sent Basil a note';
+    case 'pause':
+      return 'You paused the run';
+    case 'connection_lost':
+      return 'Basil lost its connection';
+    case 'connection_token':
+      return 'Basil asked you to connect';
+    default:
+      return 'Basil asked';
+  }
+}
+
+function runControlResponseLabel(kind: UserInteractionKind | undefined, status: UserInteractionStatus): string | null {
+  if (kind === 'guidance') {
+    if (status === 'waiting') return "Waiting for Basil's next step";
+    if (status === 'resolved') return 'Basil read it at its next step';
+    if (status === 'canceled') return 'Not delivered: the run finished first';
+  }
+  if (kind === 'pause') {
+    if (status === 'waiting') return 'Paused until you resume';
+    if (status === 'resolved') return 'You resumed';
+    if (status === 'canceled') return 'Stopped while paused';
+  }
+  if (kind === 'connection_lost') {
+    if (status === 'waiting') return 'Saved and paused until you resume';
+    if (status === 'resolved') return 'You resumed';
+    if (status === 'canceled') return 'Stopped while interrupted';
+  }
+  if (kind === 'connection_token') {
+    if (status === 'waiting') return 'Waiting for the token';
+    if (status === 'approved') return 'You connected';
+    if (status === 'dismissed') return 'You canceled';
+    if (status === 'resolved') return 'The connection failed';
+    if (status === 'timed_out') return 'No token before the time limit';
+    if (status === 'canceled') return 'Canceled before a token was entered';
+  }
+  return null;
+}
+
+export function interactionResponseLabel(
+  interaction: Pick<UserInteraction, 'status' | 'response' | 'responseHidden'> & Partial<Pick<UserInteraction, 'kind'>>,
+): string {
+  const runControlLabel = runControlResponseLabel(interaction.kind, interaction.status);
+  if (runControlLabel) return runControlLabel;
+  switch (interaction.status) {
+    case 'waiting':
+      return 'Waiting for your answer';
+    case 'answered':
+      return interaction.responseHidden ? 'You answered (hidden)' : 'You answered';
+    case 'dismissed':
+      return 'You closed this without answering';
+    case 'approved':
+      return 'You approved';
+    case 'denied':
+      return 'You declined';
+    case 'timed_out':
+      return 'No answer before the time limit';
+    case 'canceled':
+      return 'Canceled - the run ended before this was answered';
+    case 'unrecorded':
+      return 'Your answer was not recorded for this task';
+    default:
+      return 'You responded';
+  }
+}
+
+const STATUSES_WITH_RESPONSE_TEXT: ReadonlySet<UserInteraction['status']> = new Set([
+  'answered',
+  'approved',
+  'denied',
+  'resolved',
+]);
+
+export function visibleInteractionResponse(
+  interaction: Pick<UserInteraction, 'status' | 'response' | 'responseHidden'>,
+): string | null {
+  if (interaction.responseHidden || !STATUSES_WITH_RESPONSE_TEXT.has(interaction.status)) return null;
+  const response = interaction.response?.trim();
+  return response ? response : null;
+}
+
+function truncate(value: string, limit: number): string {
+  const singleLine = value.replace(/\s+/g, ' ').trim();
+  return singleLine.length > limit ? `${singleLine.slice(0, limit - 1)}…` : singleLine;
+}
+
+export function interactionSummary(interaction: UserInteraction): string {
+  const asked = `${interactionAskerLabel(interaction)}: ${truncate(interaction.prompt, 90)}`;
+  const response = visibleInteractionResponse(interaction);
+  const answer = response
+    ? `${interactionResponseLabel(interaction)}: ${truncate(response, 90)}`
+    : interactionResponseLabel(interaction);
+  return `${asked}\n${answer}`;
+}

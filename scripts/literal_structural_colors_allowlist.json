@@ -1,0 +1,299 @@
+{
+  "files": {
+    "web-components/AgentTaskResult/src/styles/components/artifact-review-workspace.css": [
+      {
+        "property": "background",
+        "reason": "Token fallback for --background-primary, matching the other accepted artifact review fallbacks. The rule now also covers the source option and the file list sort button, so its selector changed.",
+        "selector": ".artifact-review-mode, .artifact-review-source-option, .artifact-file-list__sort-button",
+        "value": "var(--background-primary, #ffffff)"
+      },
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".artifact-review-retry",
+        "value": "var(--background-primary, #ffffff)"
+      },
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".artifact-review-source",
+        "value": "var(--background-primary, #ffffff)"
+      },
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".artifact-review-version-select",
+        "value": "var(--background-primary, #ffffff)"
+      }
+    ],
+    "web-components/AgentTaskResult/src/styles/components/checkpoint-flow.css": [
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".agent-task-input-backdrop",
+        "value": "rgba(0, 0, 0, 0.18)"
+      }
+    ],
+    "web-components/AgentTaskResult/src/styles/components/overlays-and-approvals.css": [
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".overlay-backdrop",
+        "value": "rgba(0, 0, 0, 0.3)"
+      }
+    ],
+    "web-components/AgentTaskResult/src/styles/components/result-content.css": [
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".agent-task-selection-loading-overlay",
+        "value": "color-mix(in srgb, var(--background-primary, #ffffff) 92%, transparent)"
+      }
+    ],
+    "web-components/AssistantSession/src/styles/assistant-output-history/detail.css": [
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".assistant-output-history-detail code",
+        "value": "color-mix(in srgb, var(--secondary, #4c7bf0) 8%, var(--background-primary, #ffffff))"
+      },
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".assistant-output-history-detail__error",
+        "value": "color-mix(in srgb, var(--error-base, #b42318) 10%, var(--background-primary, #ffffff))"
+      },
+      {
+        "property": "border",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".assistant-output-history-detail__error",
+        "value": "1px solid color-mix(in srgb, var(--error-base, #b42318) 35%, var(--background-primary, #ffffff))"
+      },
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".assistant-output-history-detail__output-card",
+        "value": "var(--background-primary, #ffffff)"
+      }
+    ],
+    "web-components/AssistantSession/src/styles/assistant-output-history/shell.css": [
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".assistant-output-history-shell",
+        "value": "var(--background-primary, #ffffff)"
+      },
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".assistant-output-history-shell__confirm",
+        "value": "color-mix(in srgb, var(--background-primary, #ffffff) 88%, transparent)"
+      }
+    ],
+    "web-components/AssistantSession/src/styles/assistant-output-history/sidebar.css": [
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".assistant-output-history-sidebar",
+        "value": "var(--background-primary, #ffffff)"
+      },
+      {
+        "property": "background",
+        "reason": "Assistant Session history sidebar delete affordances: white glyph and text on the blue active row and on the solid red swipe action, plus the theme background fallback; same fixed-white pattern as the file's existing active-row text entry, and no on-accent token exists.",
+        "selector": ".assistant-output-history-sidebar__delete",
+        "value": "var(--background-primary, #ffffff)"
+      },
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".assistant-output-history-sidebar__search-wrap",
+        "value": "var(--background-primary, #ffffff)"
+      }
+    ],
+    "web-components/AssistantSession/src/styles/assistant-session/recording.css": [
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".assistant-session-recording__status",
+        "value": "var(--background-primary, #ffffff)"
+      }
+    ],
+    "web-components/AssistantSession/src/styles/assistant-session/result.css": [
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".assistant-session-result__output code",
+        "value": "color-mix(in srgb, var(--secondary, #4c7bf0) 8%, var(--background-primary, #ffffff))"
+      },
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".assistant-session-result__output, .assistant-session-result__edit-textarea",
+        "value": "var(--background-primary, #ffffff)"
+      }
+    ],
+    "web-components/AssistantSession/src/styles/assistant-session/shell.css": [
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".assistant-session-shell",
+        "value": "var(--background-primary, #ffffff)"
+      }
+    ],
+    "web-components/AssistantSession/src/styles/assistant-session/typed-input.css": [
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".assistant-session-typed-input__textarea",
+        "value": "var(--background-primary, #ffffff)"
+      }
+    ],
+    "web-components/BasilBoard/src/styles/chats-artifact-sidebar.css": [
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".chats-artifact-sidebar",
+        "value": "var(--background-primary, #ffffff)"
+      }
+    ],
+    "web-components/BasilBoard/src/styles/chats-messages.css": [
+      {
+        "property": "background",
+        "reason": "Theme variable with a white fallback; --background-primary supplies the real color, like the other var(--background-primary, #ffffff) exceptions.",
+        "selector": ".chats-composer-region",
+        "value": "var(--background-primary, #ffffff)"
+      }
+    ],
+    "web-components/BasilBoard/src/styles/chats.css": [
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".chats-sidebar",
+        "value": "var(--background-primary, #ffffff)"
+      },
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".chats-sidebar-header, .chats-main-header",
+        "value": "var(--background-primary, #ffffff)"
+      },
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".chats-tab",
+        "value": "var(--background-primary, #ffffff)"
+      },
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".chats-tab > .chats-sidebar.chats-sidebar-collapsed",
+        "value": "var(--background-primary, #ffffff)"
+      }
+    ],
+    "web-components/BasilBoard/src/styles/home.css": [
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".home-composer-shell",
+        "value": "var(--background-primary, #ffffff)"
+      },
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".home-error-state button, .home-loading button",
+        "value": "var(--background-primary, #ffffff)"
+      },
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".home-view",
+        "value": "var(--background-primary, #ffffff)"
+      }
+    ],
+    "web-components/BasilBoard/src/styles/todos.css": [
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".todo-list-pane, .todo-detail-pane, .todo-workspace-pane",
+        "value": "var(--background-primary, #ffffff)"
+      },
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".todo-view",
+        "value": "var(--background-primary, #ffffff)"
+      }
+    ],
+    "web-components/SettingsWebComponents/src/styles/appearance-settings.css": [
+      {
+        "property": "border",
+        "reason": "Fixed light ring that separates the small primary and secondary preset dots from the preset color behind them.",
+        "selector": ".appearance-preset-swatch-primary, .appearance-preset-swatch-secondary",
+        "value": "1px solid rgba(255, 255, 255, 0.6)"
+      }
+    ],
+    "web-components/SettingsWebComponents/src/styles/custom-models.css": [
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".custom-models-modal-overlay",
+        "value": "rgba(0, 0, 0, 0.5)"
+      }
+    ],
+    "web-components/TranscriptionWidget/src/styles/audio-file-upload.css": [
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".audio-upload-root",
+        "value": "var(--background-primary, #ffffff)"
+      }
+    ],
+    "web-components/TranscriptionWidget/src/styles/transcription-widget.css": [
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".transcription-body",
+        "value": "var(--background-primary, #fff)"
+      }
+    ],
+    "web-components/shared/expandable-list.css": [
+      {
+        "property": "-webkit-mask-image",
+        "reason": "The #000 in a mask-image gradient is an alpha mask for the fade, not a visible color, so it has no theme token.",
+        "selector": ".basil-expandable-list__frame.is-collapsed.is-fading",
+        "value": "linear-gradient(to bottom, #000 calc(100% - var(--basil-expandable-list-fade, 28px)), transparent)"
+      },
+      {
+        "property": "mask-image",
+        "reason": "The #000 in a mask-image gradient is an alpha mask for the fade, not a visible color, so it has no theme token.",
+        "selector": ".basil-expandable-list__frame.is-collapsed.is-fading",
+        "value": "linear-gradient(to bottom, #000 calc(100% - var(--basil-expandable-list-fade, 28px)), transparent)"
+      }
+    ],
+    "web-components/shared/history-sidebar-controls.css": [
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".shared-history-search-shell",
+        "value": "var(--background-primary, #fff)"
+      }
+    ],
+    "web-components/shared/rich-text-followup.css": [
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".rich-text-composer",
+        "value": "var(--background-primary, #ffffff)"
+      }
+    ],
+    "web-components/shared/switch.css": [
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
+        "selector": ".basil-switch-input::after",
+        "value": "#fff"
+      }
+    ]
+  },
+  "version": 2
+}

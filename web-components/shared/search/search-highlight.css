@@ -1,0 +1,44 @@
+/* Search hits in the Companion and Notetaker visual language: matched sections use the Companion linked-row look, the jump target flashes once, and each searched word carries the theme's secondary accent twice, as a tint and as a solid underline. The underline is what keeps a word readable inside its matched section, whose own tint is the same hue. The Custom Highlight API cannot draw outlines or rounded corners, so section styling lives on the marked element and word styling is limited to the properties it allows. */
+::highlight(search-match) {
+  background-color: color-mix(in srgb, var(--secondary) 34%, transparent);
+  color: var(--text-primary);
+  text-decoration-line: underline;
+  text-decoration-style: solid;
+  text-decoration-color: var(--secondary);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  text-decoration-skip-ink: none;
+}
+
+[data-search-section] {
+  position: relative;
+  border-radius: 6px;
+  outline: 1px solid var(--secondary);
+  outline-offset: 2px;
+}
+
+/* An overlay rather than a background, so the tint never fights the host element's own background rules and the flash can animate cleanly. */
+[data-search-section]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--secondary) 14%, transparent);
+  pointer-events: none;
+}
+
+[data-search-section="jump"]::after {
+  animation: search-section-flash 1.6s ease-out backwards;
+}
+
+@keyframes search-section-flash {
+  from {
+    background: color-mix(in srgb, var(--secondary) 34%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-search-section="jump"]::after {
+    animation: none;
+  }
+}

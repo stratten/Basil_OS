@@ -1,0 +1,4 @@
+/* Metallic (background only): the status body becomes transparent so the sheen shows on the window background. */
+html[data-surface-finish="metal_backdrop"] .startup-loading-body {
+  background: transparent;
+}

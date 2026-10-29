@@ -1,0 +1,31 @@
+name: Feature request
+description: Suggest an improvement to Basil.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: Basil keeps its local-first, user-controlled operating model. Requests that fit that model are the easiest to accept.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before you submit
+      options:
+        - label: I searched existing issues and pull requests and did not find this request.
+          required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem you want solved
+      description: Describe what you are trying to do and what gets in the way today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like Basil to do
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered

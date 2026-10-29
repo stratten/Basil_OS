@@ -1,0 +1,128 @@
+/* Blueprint reveal: when a surface opens, its content stays hidden while a green blueprint of its real layout draws from the top down, then the content fades in as the blueprint fades out. Nothing here applies unless blueprintController.ts marks a window frame with data-basil-blueprint. The timings are the website's, compressed to about half for a hotkey widget (see BLUEPRINT_PACE in blueprintOverlay.ts). */
+
+:root {
+  --basil-blueprint-stroke: #22c55e;
+}
+
+@keyframes basil-blueprint-draw {
+  0% {
+    stroke-dashoffset: var(--bp-len);
+    opacity: 0;
+  }
+
+  12% {
+    stroke-dashoffset: var(--bp-len);
+    opacity: 1;
+  }
+
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes basil-blueprint-fade {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes basil-blueprint-content-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* The drawing sits inside the surface's positioned frame, above the surface, and never takes pointer input. The whole drawing fades as the content fades in. */
+.basil-blueprint {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  overflow: visible;
+  pointer-events: none;
+  animation: basil-blueprint-fade 0.28s ease-out var(--bp-fade-delay, 0.8s) forwards;
+}
+
+/* A drawing that holds only the window's outline, started while the content is still loading, stays put until the rest of the layout is added. */
+.basil-blueprint--pending {
+  animation: none;
+}
+
+/* Each stroke is one dash the length of its shape, hidden by an offset of that length and drawn by animating the offset to 0. The delay, set per shape, runs from the top of the surface to the bottom. */
+.basil-blueprint__shape {
+  fill: none;
+  stroke: var(--basil-blueprint-stroke);
+  stroke-dasharray: var(--bp-len);
+  stroke-dashoffset: var(--bp-len);
+  opacity: 0;
+  animation: basil-blueprint-draw 0.19s ease-out var(--bp-delay) forwards;
+}
+
+/* The frame's own chrome (the window's fill and border) is drawn by its pseudo-elements, so it is hidden with the content and fades in with it. */
+.basil-webkit-window-frame[data-basil-blueprint="hidden"]::before,
+.basil-webkit-window-frame[data-basil-blueprint="hidden"]::after {
+  opacity: 0;
+}
+
+.basil-webkit-window-frame[data-basil-blueprint="reveal"]::before,
+.basil-webkit-window-frame[data-basil-blueprint="reveal"]::after {
+  animation: basil-blueprint-content-in 0.35s ease-out both;
+}
+
+/* The metallic surface finish adds its sheen as a separate layer inside the frame. It is part of the window's chrome, so it is held back and fades in with it. Its normal opacity is left to the finish itself: the animation runs from 0 to whatever that is. */
+@keyframes basil-blueprint-sheen-in {
+  from {
+    opacity: 0;
+  }
+}
+
+html[data-surface-finish] .basil-webkit-window-frame[data-basil-blueprint="hidden"] > .basil-surface-finish-overlay {
+  opacity: 0;
+}
+
+html[data-surface-finish] .basil-webkit-window-frame[data-basil-blueprint="reveal"] > .basil-surface-finish-overlay {
+  animation: basil-blueprint-sheen-in 0.35s ease-out both;
+}
+
+/* While the blueprint is being measured and drawn the content is laid out but invisible and cannot be clicked. */
+.basil-webkit-window-frame[data-basil-blueprint="hidden"] .basil-webkit-window-surface {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.basil-webkit-window-frame[data-basil-blueprint="reveal"] .basil-webkit-window-surface {
+  animation: basil-blueprint-content-in 0.35s ease-out both;
+}
+
+/* Reduced motion skips the drawing and shows the content at once. */
+@media (prefers-reduced-motion: reduce) {
+  .basil-blueprint {
+    display: none;
+  }
+
+  .basil-webkit-window-frame[data-basil-blueprint="hidden"] .basil-webkit-window-surface {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  html[data-surface-finish] .basil-webkit-window-frame[data-basil-blueprint="reveal"] > .basil-surface-finish-overlay,
+  .basil-webkit-window-frame[data-basil-blueprint="reveal"] .basil-webkit-window-surface,
+  .basil-webkit-window-frame[data-basil-blueprint="reveal"]::before,
+  .basil-webkit-window-frame[data-basil-blueprint="reveal"]::after {
+    animation: none;
+  }
+
+  .basil-webkit-window-frame[data-basil-blueprint="hidden"]::before,
+  .basil-webkit-window-frame[data-basil-blueprint="hidden"]::after {
+    opacity: 1;
+  }
+}

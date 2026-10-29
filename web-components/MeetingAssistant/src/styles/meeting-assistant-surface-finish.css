@@ -1,0 +1,10 @@
+/* Metallic (background only): the window surface, title chrome, body, and history sidebar become transparent so the sheen behind content shows on the window background, while the transcript panel, tool and analysis cards, metadata fields, and controls keep their solid fills. */
+html[data-surface-finish="metal_backdrop"] :is(
+  .meeting-assistant-surface,
+  .meeting-window-chrome,
+  .meeting-body,
+  .meeting-history-sidebar,
+  .meeting-history-sidebar--collapsed
+) {
+  background: transparent;
+}
