@@ -109,4 +109,4 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Use [SUPP
 
 ## License
 
-Copyright 2026 Stratten Waldt. Basil is licensed under Apache-2.0; see `LICENSE`. The Basil name and official-distribution identity are governed separately by `TRADEMARK.md`.
+Copyright 2026 Stratten Waldt. Basil is licensed under Apache-2.0; see [LICENSE](LICENSE), and [NOTICE](NOTICE) for vendored third-party code. The Basil name and official-distribution identity are governed separately by the [Trademark Policy](TRADEMARK.md).
