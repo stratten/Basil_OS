@@ -21,7 +21,7 @@ Use the menu bar, the Board, or a configurable hotkey to capture screen or windo
 
 <img width="284" height="146" alt="image" src="https://github.com/user-attachments/assets/0e354643-3d75-456f-9ada-8966e59a2138" />
 
-(Yes, it does look a but like a dishwasher tablet, if you want to make that comparison)
+(Yes, it does look like a dishwasher tablet, now that you mention it)
 
 
 The transcription widget records live microphone audio, and the menu also offers transcription of a user-selected local audio file. Transcription history supports retrieval, review, copying, playback when recorded audio exists, and retranscription with an available model. Settings control the model, paste behavior, post-completion behavior, history, and text-replacement rules applied before insertion. Hotkeys are configurable; examples in this documentation are not promises of a fixed binding.
