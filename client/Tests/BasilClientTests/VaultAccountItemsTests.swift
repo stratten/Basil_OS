@@ -55,7 +55,10 @@ final class VaultAccountItemsTests: XCTestCase {
     }
 
     private func accountJSON() throws -> String {
-        String(decoding: try JSONEncoder().encode(credentials), as: UTF8.self)
+        // JSONEncoder does not promise a key order, so two encodings of the same value can differ as text; sorted keys keep the comparisons below deterministic.
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        return String(decoding: try encoder.encode(credentials), as: UTF8.self)
     }
 
     private func vaultContents(_ keychain: FakeKeychain) throws -> CredentialVault.Contents {
