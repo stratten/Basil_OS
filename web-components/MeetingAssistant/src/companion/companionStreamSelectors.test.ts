@@ -50,6 +50,39 @@ describe('selectCompanionStream', () => {
   it('is empty for an empty timeline', () => {
     expect(selectCompanionStream({ items: [], chat: [] })).toEqual([]);
   });
+
+  describe('audit findings', () => {
+    const at = (end: number) => ({ start: end - 5, end, turn_ids: [] });
+    const finding = (id: string, seq: number, end: number) => item(id, seq, { trigger: 'audit', transcript_range: at(end) });
+
+    it('places a finding that arrived last at the point in the meeting it refers to', () => {
+      const items = [item('first', 1, { transcript_range: at(60) }), item('second', 2, { transcript_range: at(600) }), item('third', 3, { transcript_range: at(1200) }), finding('missed', 40, 700)];
+      expect(selectCompanionStream({ items, chat: [] }).map((entry) => entry.key)).toEqual(['item:first', 'item:second', 'item:missed', 'item:third']);
+    });
+
+    it('orders several findings by their meeting time, and puts one before every row when it predates them all', () => {
+      const items = [item('a', 1, { transcript_range: at(300) }), finding('late', 50, 900), finding('early', 51, 10), finding('mid', 52, 400)];
+      expect(selectCompanionStream({ items, chat: [] }).map((entry) => entry.key)).toEqual(['item:early', 'item:a', 'item:mid', 'item:late']);
+    });
+
+    it('sits among chat messages by their meeting time while the rest of the stream keeps arrival order', () => {
+      const chat: ChatMessage[] = [{ ...message('q', 5), meeting_time: 100 }, { ...message('a', 6, 'assistant'), meeting_time: 110 }, { ...message('q2', 7), meeting_time: 500 }];
+      const stream = selectCompanionStream({ items: [finding('missed', 90, 105)], chat });
+      expect(stream.map((entry) => entry.key)).toEqual(['chat:q', 'item:missed', 'chat:a', 'chat:q2']);
+    });
+
+    it('keeps the arrival seq so a late finding still counts as new, and keeps drafts at the end', () => {
+      const stream = selectCompanionStream({ items: [item('a', 1, { transcript_range: at(300) }), item('b', 2, { transcript_range: at(900) }), finding('missed', 40, 350)], chat: [] }, { drafts: { live: 'x' } });
+      expect(stream.map((entry) => entry.key)).toEqual(['item:a', 'item:missed', 'item:b', 'chat:live']);
+      expect(selectUnseenEntries(stream, 10).map((entry) => entry.key)).toEqual(['item:missed']);
+    });
+
+    it('hides a dismissed finding like any other item', () => {
+      const items = [item('a', 1), { ...finding('missed', 40, 0.5), dismissed: true }];
+      expect(selectCompanionStream({ items, chat: [] }).map((entry) => entry.key)).toEqual(['item:a']);
+      expect(selectCompanionStream({ items, chat: [] }, { includeDismissed: true }).map((entry) => entry.key)).toEqual(['item:missed', 'item:a']);
+    });
+  });
 });
 
 describe('unseen and pinned selection', () => {

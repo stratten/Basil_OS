@@ -324,6 +324,7 @@ def get_schema_statements() -> List[str]:
             reference_paths TEXT NOT NULL DEFAULT '[]', -- JSON array of attached file paths
             connection_ids TEXT NOT NULL DEFAULT '[]', -- JSON array of Connections (MCP) ids every run is tied to
             model_id TEXT, -- NULL = use the default reasoning model
+            chain_config TEXT NOT NULL DEFAULT '{}', -- JSON: {"mode": "independent"} or {"mode": "chained", "max_runs": N, "max_age_minutes": N, "carry_over": bool}
             next_run_at TIMESTAMP,
             last_run_at TIMESTAMP,
             last_status TEXT,

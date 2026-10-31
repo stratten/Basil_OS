@@ -51,6 +51,7 @@ def migrate_scheduled_agent_tasks_tables(conn: sqlite3.Connection) -> None:
         "reference_paths": "ALTER TABLE scheduled_agent_tasks ADD COLUMN reference_paths TEXT NOT NULL DEFAULT '[]'",
         "model_id": "ALTER TABLE scheduled_agent_tasks ADD COLUMN model_id TEXT",
         "connection_ids": "ALTER TABLE scheduled_agent_tasks ADD COLUMN connection_ids TEXT NOT NULL DEFAULT '[]'",
+        "chain_config": "ALTER TABLE scheduled_agent_tasks ADD COLUMN chain_config TEXT NOT NULL DEFAULT '{}'",
     }
     for col_name, alter_sql in sc_migrations.items():
         if col_name not in sc_columns:

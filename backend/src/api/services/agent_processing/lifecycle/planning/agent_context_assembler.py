@@ -97,6 +97,10 @@ class AgentContextAssembler:
     # 'detail') instead of silently vanishing.
     MAX_INLINE_CHAIN_TURNS = 12
     MAX_CHAIN_TURN_SUMMARY_CHARS = 900
+    MAX_CHAIN_TURN_SUMMARY_CHARS_CEILING = 4_000
+    MIN_INPUT_BUDGET_CHARS = 6_000
+    # Share of the model's input window the assembled turn text may use; the rest is left for the system prompt, tool schemas, and the replayed conversation.
+    WINDOW_SHARE_FOR_TURN_TEXT = 0.4
     MAX_TODO_WORKER_SOURCE_TASKS = 10
     MAX_TODO_WORKER_EXCERPT_CHARS = 500
 
@@ -107,8 +111,8 @@ class AgentContextAssembler:
         context: Optional[Dict[str, Any]] = None,
     ) -> AssembledAgentContext:
         context = context or {}
-        sections = self._build_sections(context)
         budget_chars = self._derive_budget_chars(context)
+        sections = self._build_sections(context, budget_chars)
 
         selected: List[ContextSection] = []
         omitted: List[str] = []
@@ -149,7 +153,7 @@ class AgentContextAssembler:
             budget_chars=budget_chars,
         )
 
-    def _build_sections(self, context: Dict[str, Any]) -> List[ContextSection]:
+    def _build_sections(self, context: Dict[str, Any], budget_chars: Optional[int] = None) -> List[ContextSection]:
         sections: List[ContextSection] = []
 
         reference_paths = context.get("reference_paths") or []
@@ -193,7 +197,7 @@ class AgentContextAssembler:
             if not context.get(CONVERSATION_THREAD_SEEDED_KEY):
                 sections.append(ContextSection(
                     "FOLLOW UP CONTEXT",
-                    self._format_chain_context(chain_context),
+                    self._format_chain_context(chain_context, summary_chars=self._chain_summary_chars(budget_chars)),
                     priority=30,
                 ))
             pinned_body = self._format_pinned_context(chain_context)
@@ -313,7 +317,7 @@ class AgentContextAssembler:
             return None
         return self._stringify(excerpt) if isinstance(excerpt, (dict, list)) else str(excerpt)
 
-    def _format_chain_context(self, chain_context: Dict[str, Any]) -> str:
+    def _format_chain_context(self, chain_context: Dict[str, Any], summary_chars: Optional[int] = None) -> str:
         """Render prior chain turns as an actual back-and-forth conversation.
 
         The previous rendering used a structured mini-report per turn
@@ -364,7 +368,7 @@ class AgentContextAssembler:
             else:
                 summary = self._extract_result_summary(result)
                 if summary:
-                    lines.append(f"You: {self._truncate(summary, self.MAX_CHAIN_TURN_SUMMARY_CHARS)}")
+                    lines.append(f"You: {self._truncate(summary, summary_chars or self.MAX_CHAIN_TURN_SUMMARY_CHARS)}")
                 elif status == "failed":
                     reason = self._extract_failure_reason(result)
                     lines.append(
@@ -453,11 +457,20 @@ class AgentContextAssembler:
             if context_window:
                 output_reserve = int(context.get("output_reserve_tokens") or self.OUTPUT_RESERVE_TOKENS)
                 input_tokens = max(4_000, int(context_window) - output_reserve)
-                derived = input_tokens * self.CHARS_PER_TOKEN_ESTIMATE
-                return max(self.DEFAULT_INPUT_BUDGET_CHARS, min(self.MAX_INPUT_BUDGET_CHARS, derived))
+                derived = int(input_tokens * self.CHARS_PER_TOKEN_ESTIMATE * self.WINDOW_SHARE_FOR_TURN_TEXT)
+                return max(self.MIN_INPUT_BUDGET_CHARS, min(self.MAX_INPUT_BUDGET_CHARS, derived))
         except Exception:
             logger.debug("Could not derive model context budget from %r", context_window)
         return self.DEFAULT_INPUT_BUDGET_CHARS
+
+    def _chain_summary_chars(self, budget_chars: Optional[int]) -> int:
+        """Per-turn cap for the follow-up summary: the long-standing 900 characters, growing with a larger budget."""
+        if not budget_chars:
+            return self.MAX_CHAIN_TURN_SUMMARY_CHARS
+        return max(
+            self.MAX_CHAIN_TURN_SUMMARY_CHARS,
+            min(self.MAX_CHAIN_TURN_SUMMARY_CHARS_CEILING, int(budget_chars) // 40),
+        )
 
     def _compact_section_to_fit(self, section: ContextSection, available_chars: int) -> Optional[ContextSection]:
         if available_chars < 500:
@@ -677,3 +690,18 @@ def render_chain_turns_as_conversation(chain_agent_tasks: List[Dict[str, Any]]) 
     (`agent_task_submission_service.handle_discussion_followup`) does not
     maintain a second, divergent context-rendering implementation."""
     return AgentContextAssembler()._format_chain_context({"chain_agentTasks": chain_agent_tasks})
+
+
+def extract_result_summary_text(result: Any, max_chars: Optional[int] = None) -> Optional[str]:
+    """The user-facing answer stored in a task's result data, redacted like the rest of the assembled context, optionally clipped.
+
+    For callers outside the assembler, such as a scheduled chain handing its last result to the next chain.
+    """
+    if not result:
+        return None
+    assembler = AgentContextAssembler()
+    summary = assembler._extract_result_summary(assembler._redact_value(result))
+    summary = (summary or "").strip()
+    if not summary:
+        return None
+    return assembler._truncate(summary, max_chars) if max_chars else summary

@@ -18,8 +18,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from api.core.models.model_invocation import StructuredModelOutputError, call_model_with_schema
 
 from .conversation_state import clock_label, format_transcript
-from .evaluator import default_token_budget
-from .models import AuditMoment, AuditReport, AuditScope, CompanionItem, CompanionTurn, TimelineEvent
+from .evaluator import default_item_id, default_token_budget
+from .models import AuditMoment, AuditReport, AuditScope, CompanionItem, CompanionTurn, TimelineEvent, TranscriptRange
 from .similarity import content_tokens, jaccard, normalize_text
 
 logger = logging.getLogger(__name__)
@@ -177,6 +177,42 @@ def merge_moments(groups: Sequence[List[AuditMoment]]) -> List[AuditMoment]:
         if len(merged) >= MAX_MOMENTS:
             break
     return sorted(merged, key=lambda moment: (moment.start, moment.id))
+
+
+AUDIT_ITEM_TRIGGER = "audit"
+MAX_TURN_IDS_PER_FINDING = 10
+
+
+def findings_as_items(
+    report: AuditReport,
+    turns: Sequence[CompanionTurn],
+    existing: Sequence[CompanionItem],
+    id_factory: Callable[[], str] = default_item_id,
+) -> List[CompanionItem]:
+    """One feed item per audit finding, placed at the finding's own transcript range so it sits where the miss happened. A fact, risk or answer becomes an insight; a to-do, agent task or research request becomes a suggestion, which the feed already lets the user turn into a to-do or hand to an agent. ``existing`` (dismissed items included) is checked so a repeated audit never duplicates a note or brings back one the user dismissed."""
+    covered = [content_tokens(item.text) for item in existing]
+    created: List[CompanionItem] = []
+    for moment in report.moments:
+        text = normalize_text(moment.suggested_text)
+        if not text:
+            continue
+        tokens = content_tokens(text)
+        if any(jaccard(tokens, earlier) >= COVERED_SIMILARITY for earlier in covered):
+            continue
+        overlapping = [turn.id for turn in turns if turn.start < moment.end and turn.end > moment.start][:MAX_TURN_IDS_PER_FINDING]
+        created.append(
+            CompanionItem(
+                id=id_factory(),
+                kind="insight" if moment.kind == "note" else "suggestion",
+                text=text,
+                confidence=moment.confidence,
+                transcript_range=TranscriptRange(start=moment.start, end=moment.end, turn_ids=overlapping),
+                trigger=AUDIT_ITEM_TRIGGER,
+                rationale=normalize_text(moment.why),
+            )
+        )
+        covered.append(tokens)
+    return created
 
 
 def default_audit_id() -> str:

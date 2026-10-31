@@ -516,8 +516,8 @@ class AudioProcessor:
                     if buffer_text.startswith(validated_text):
                         _buffer_transcript.text = buffer_text[len(validated_text):].lstrip()
                     else:
-                        # CRITICAL: If buffer doesn't match, clear it anyway to prevent contamination
-                        logger.warning(f"[BUFFER] Buffer text doesn't match validated tokens. Clearing to prevent contamination. Buffer: '{buffer_text[:50]}...', Validated: '{validated_text[:50]}...'")
+                        # The pending buffer rarely starts with newly validated text; clearing it prevents contamination, and this is the normal case rather than a fault
+                        logger.debug(f"[BUFFER] Buffer text doesn't match validated tokens. Clearing to prevent contamination. Buffer: '{buffer_text[:50]}...', Validated: '{validated_text[:50]}...'")
                         _buffer_transcript.text = ""
                     assign_token_timeline(
                         new_tokens,

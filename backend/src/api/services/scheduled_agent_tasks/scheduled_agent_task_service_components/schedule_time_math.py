@@ -1,7 +1,8 @@
 """Pure time / timezone helpers and next-run computation.
 
 This module is the lowest layer of the scheduled-agent-tasks component split: it
-has no dependencies on any other component module and no I/O beyond a single
+has no dependencies on any other component module (apart from the equally
+dependency-free ``schedule_exclusion_windows``) and no I/O beyond a single
 ``os.readlink("/etc/localtime")`` probe used to detect the host's IANA
 timezone. Everything here is deterministic given its inputs.
 
@@ -31,7 +32,12 @@ from typing import Any, Dict, Optional, Tuple
 from zoneinfo import ZoneInfo
 from api.core.utc_time import utc_now  # noqa: F401
 
+from .schedule_exclusion_windows import normalize_exclusion_windows, parse_exclusion_windows, shift_out_of_windows
+
 logger = logging.getLogger(__name__)
+
+# Bounds how many times a candidate can be pushed out of an exclusion window before the schedule is declared unrunnable.
+_MAX_WINDOW_SHIFTS = 64
 
 
 @lru_cache(maxsize=1)
@@ -135,7 +141,70 @@ def compute_next_run_at(
     *,
     from_time: Optional[datetime] = None,
 ) -> Optional[str]:
-    """Compute next UTC ISO timestamp from schedule definition."""
+    """Compute the next UTC ISO timestamp from a schedule definition, skipping any exclusion windows.
+
+    An interval schedule that lands inside a window resumes when the window ends, and keeps its interval from there.
+    A daily or weekly schedule that lands inside a window skips that occurrence and uses the next one.
+    Returns None when the windows leave no time for the schedule to run.
+    """
+    raw = _compute_unfiltered_next_run_at(schedule_type, schedule_config, timezone_name, from_time=from_time)
+    if raw is None or schedule_type != "recurring":
+        return raw
+    windows = parse_exclusion_windows(schedule_config.get("exclusion_windows"))
+    if not windows:
+        return raw
+    zone = get_zone(timezone_name)
+    is_interval = schedule_config.get("mode", "daily") == "interval"
+    candidate = datetime.fromisoformat(raw)
+    for _ in range(_MAX_WINDOW_SHIFTS):
+        local = candidate.astimezone(zone)
+        allowed = shift_out_of_windows(local, windows)
+        if allowed == local:
+            return candidate.astimezone(timezone.utc).isoformat()
+        if is_interval:
+            candidate = allowed.astimezone(timezone.utc)
+            continue
+        following = _compute_unfiltered_next_run_at(schedule_type, schedule_config, timezone_name, from_time=candidate)
+        if following is None:
+            return None
+        candidate = datetime.fromisoformat(following)
+    return None
+
+
+def normalized_schedule_config(
+    schedule_type: str,
+    schedule_config: Optional[Dict[str, Any]],
+    timezone_name: str,
+) -> Dict[str, Any]:
+    """The config with its exclusion windows validated and in canonical form; raises ValueError with a plain message.
+
+    A one-time schedule has no recurrence to exclude from, so any windows are dropped from it.
+    Windows that leave no time for a recurring schedule to run are rejected, so the schedule cannot be saved in a state where it never fires.
+    """
+    config: Dict[str, Any] = dict(schedule_config or {})
+    if "exclusion_windows" not in config:
+        return config
+    if schedule_type != "recurring":
+        config.pop("exclusion_windows")
+        return config
+    windows = normalize_exclusion_windows(config.get("exclusion_windows"))
+    if not windows:
+        config.pop("exclusion_windows")
+        return config
+    config["exclusion_windows"] = windows
+    if compute_next_run_at(schedule_type, config, timezone_name) is None:
+        raise ValueError("These exclusion windows leave no time for this schedule to run.")
+    return config
+
+
+def _compute_unfiltered_next_run_at(
+    schedule_type: str,
+    schedule_config: Dict[str, Any],
+    timezone_name: str,
+    *,
+    from_time: Optional[datetime] = None,
+) -> Optional[str]:
+    """Compute next UTC ISO timestamp from schedule definition, ignoring exclusion windows."""
     base_utc = from_time or utc_now()
     zone = get_zone(timezone_name)
     base_local = base_utc.astimezone(zone)

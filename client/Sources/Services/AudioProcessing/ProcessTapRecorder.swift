@@ -29,7 +29,8 @@ final class ProcessTapRecorder: ObservableObject {
     private var meterUpdateCounter: Int = 0
     
     // Add callback for audio data to be sent to MeetingAudioCaptureService
-    var onAudioDataAvailable: ((Data) -> Void)?
+    /// Invoked on the recorder's serial IO queue with 16 kHz mono Float32 samples. Set before `start()`; the handler must not touch main-actor state.
+    var onAudioDataAvailable: (@Sendable (Data) -> Void)?
     var onRecordingFailure: ((String) -> Void)?
 
     // Add an error recovery mechanism
@@ -223,23 +224,20 @@ final class ProcessTapRecorder: ObservableObject {
                             }
                             #endif
                             
-                            // Send data to callback on main thread to ensure consistent delivery
-                            DispatchQueue.main.async {
-                                // Reset error counter if we haven't had errors in a while
-                                let currentTime = Date().timeIntervalSince1970
-                                if currentTime - self.lastErrorTime > self.errorResetInterval {
-                                    self.consecutiveErrors = 0
-                                    if self.isErrorState {
-                                        self.isErrorState = false
-                                        #if DEBUG
-                                        DevLogger.shared.info("Audio data delivery recovered after error state", context: self.context)
-                                        #endif
-                                    }
+                            // Reset error counter if we haven't had errors in a while. These fields are only touched here, on the IO queue.
+                            let currentTime = Date().timeIntervalSince1970
+                            if currentTime - self.lastErrorTime > self.errorResetInterval {
+                                self.consecutiveErrors = 0
+                                if self.isErrorState {
+                                    self.isErrorState = false
+                                    #if DEBUG
+                                    DevLogger.shared.info("Audio data delivery recovered after error state", context: self.context)
+                                    #endif
                                 }
-                                
-                                // Attempt to send data with error tracking
-                                callback(transcriptionData)
                             }
+
+                            // Delivered on the IO queue, not the main thread: a main-thread stall must not delay or batch live audio.
+                            callback(transcriptionData)
                         } else if transcriptionData == nil {
                             // A nil result is a hard conversion failure. We do NOT fall
                             // back to raw buffer bytes: those are native-rate stereo

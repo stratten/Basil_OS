@@ -35,8 +35,38 @@ if os.getenv('BASIL_BUNDLED', 'false').lower() == 'true':
     ENABLE_DESKTOP_DEBUG_LOGGING = False
 
 DESKTOP_DEBUG_LOG_DIR = Path.home() / "Desktop" / "BasilDebugLogs"
+DESKTOP_DEBUG_LOG_RETENTION_DAYS = 14
+
+
+def prune_old_desktop_debug_logs(
+    directory: Path,
+    max_age_days: int = DESKTOP_DEBUG_LOG_RETENTION_DAYS,
+    now: Optional[float] = None,
+) -> int:
+    """Delete ``Basil_*`` log and sample files in ``directory`` last modified more than ``max_age_days`` ago; returns how many were removed. Only plain files with the ``Basil_`` prefix and a ``.log`` or ``.txt`` suffix are touched, so nothing else a user keeps in the folder is at risk, and a file that cannot be removed is skipped."""
+    import time
+
+    cutoff = (time.time() if now is None else now) - max_age_days * 86400
+    removed = 0
+    try:
+        entries = list(os.scandir(directory))
+    except OSError:
+        return 0
+    for entry in entries:
+        if not entry.name.startswith("Basil_") or not entry.name.endswith((".log", ".txt")):
+            continue
+        try:
+            if entry.is_file(follow_symlinks=False) and entry.stat(follow_symlinks=False).st_mtime < cutoff:
+                os.remove(entry.path)
+                removed += 1
+        except OSError:
+            continue
+    return removed
+
+
 if ENABLE_DESKTOP_DEBUG_LOGGING:
     DESKTOP_DEBUG_LOG_DIR.mkdir(parents=True, exist_ok=True)
+    prune_old_desktop_debug_logs(DESKTOP_DEBUG_LOG_DIR)
 
 def setup_api_logger(
     name: str,
@@ -78,7 +108,8 @@ def setup_api_logger(
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
 
-        desktop_file_handler = logging.FileHandler(str(effective_log_file_path), mode='w')  # Use 'w' for new file each session
+        # delay=True creates the file on the first record, so a logger that never emits leaves no empty file behind
+        desktop_file_handler = logging.FileHandler(str(effective_log_file_path), mode='w', delay=True)  # Use 'w' for new file each session
         desktop_file_handler.setFormatter(formatter)
         logger.addHandler(desktop_file_handler)
         

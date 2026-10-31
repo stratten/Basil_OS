@@ -73,7 +73,7 @@ async def test_a_session_records_how_it_was_configured_when_it_started(make_sess
     runs = harness.event_kinds("run")
     assert len(runs) == 1
     payload = runs[0].payload
-    assert payload["mode"] == "active" and payload["confidence_floor"] == 0.6 and payload["question_confidence_floor"] == 0.4
+    assert payload["mode"] == "active" and payload["confidence_floor"] == 0.55 and payload["question_confidence_floor"] == 0.4
     assert len(payload["prompt_hash"]) == 12 and payload["gate"]["periodic_cooldown"] == 90.0 and payload["has_focus"] is False
 
 

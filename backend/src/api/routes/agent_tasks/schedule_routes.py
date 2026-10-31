@@ -109,10 +109,13 @@ async def create_scheduled_agent_task(
             reference_paths=payload.reference_paths,
             model_id=model_id,
             connection_ids=connection_ids,
+            chain_config=payload.chain_config,
         )
         return ScheduledAgentTaskItem(**created)
     except HTTPException:
         raise
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         logger.error(f"Error creating scheduled agent task: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error creating scheduled agent task: {str(e)}")
@@ -136,6 +139,8 @@ async def update_scheduled_agent_task(
         return ScheduledAgentTaskItem(**updated)
     except HTTPException:
         raise
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         logger.error(f"Error updating scheduled agent task {scheduled_agent_task_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error updating scheduled agent task: {str(e)}")

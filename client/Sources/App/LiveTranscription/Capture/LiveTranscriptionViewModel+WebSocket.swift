@@ -182,37 +182,51 @@ extension LiveTranscriptionViewModel {
         #endif
     }
     
+    /// Reads `task` so that one receive is always outstanding. Each receive used to be re-armed only after the main actor had handled the previous message. Measured locally: with small messages `URLSessionWebSocketTask` answers keepalive pings even when no receive is pending and the main thread is blocked, but once a large backlog of unread messages (about 6 MB) queues ahead of a ping it stops answering until receives resume. The next receive is now armed from the completion handler itself, so reading never waits on the main actor, and messages reach the main actor in order through the stream, so a stalled main thread only delays handling.
+    nonisolated static func incomingMessages(from task: URLSessionWebSocketTask) -> AsyncStream<Result<URLSessionWebSocketTask.Message, Error>> {
+        AsyncStream { continuation in
+            @Sendable func armReceive() {
+                task.receive { result in
+                    continuation.yield(result)
+                    switch result {
+                    case .success:
+                        armReceive()
+                    case .failure:
+                        continuation.finish()
+                    }
+                }
+            }
+            armReceive()
+        }
+    }
+
     /// Continuous message reception loop for microphone audio
     func receiveMicrophoneMessages() {
-        microphoneWebSocketTask?.receive { [weak self] result in
-            switch result {
-            case .success(let message):
-                Task { @MainActor [weak self] in
-                    self?.handleMicrophoneMessage(message)
-                    self?.receiveMicrophoneMessages() // Continue receiving messages
-                }
-                
-            case .failure(let error):
-                Task { @MainActor [weak self] in
-                    self?.handleError(error, source: .microphone)
+        guard let task = microphoneWebSocketTask else { return }
+        Task { @MainActor [weak self] in
+            for await result in Self.incomingMessages(from: task) {
+                guard let self else { return }
+                switch result {
+                case .success(let message):
+                    self.handleMicrophoneMessage(message)
+                case .failure(let error):
+                    self.handleError(error, source: .microphone)
                 }
             }
         }
     }
-    
+
     /// Continuous message reception loop for system audio
     func receiveSystemAudioMessages() {
-        systemAudioWebSocketTask?.receive { [weak self] result in
-            switch result {
-            case .success(let message):
-                Task { @MainActor [weak self] in
-                    self?.handleSystemAudioMessage(message)
-                    self?.receiveSystemAudioMessages() // Continue receiving messages
-                }
-                
-            case .failure(let error):
-                Task { @MainActor [weak self] in
-                    self?.handleError(error, source: .systemAudio)
+        guard let task = systemAudioWebSocketTask else { return }
+        Task { @MainActor [weak self] in
+            for await result in Self.incomingMessages(from: task) {
+                guard let self else { return }
+                switch result {
+                case .success(let message):
+                    self.handleSystemAudioMessage(message)
+                case .failure(let error):
+                    self.handleError(error, source: .systemAudio)
                 }
             }
         }

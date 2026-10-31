@@ -166,7 +166,7 @@ async def handle_init_transcription(websocket, transcription_service, send_trans
     try:
         if not transcription_service.is_model_loaded():
             logger.info("Loading transcription model...")
-            transcription_service.load_model()
+            await asyncio.get_running_loop().run_in_executor(None, transcription_service.load_model)
             logger.info("Transcription model loaded successfully")
         else:
             logger.info("Transcription model already loaded")
@@ -183,8 +183,8 @@ async def handle_initialize_transcription(websocket, transcription_service, send
     logger.info("Initializing transcription model")
     # Cancel any scheduled unloads
     cancel_model_unload()
-    # Load the transcription model
-    transcription_service.load_model()
+    # Load the transcription model off the event loop so a multi-second load cannot stall live websockets
+    await asyncio.get_running_loop().run_in_executor(None, transcription_service.load_model)
     # Notify clients that model is ready
     logger.info("Sending model_ready event")
     await send_transcription_status("model_ready")
@@ -231,7 +231,7 @@ async def handle_audio_transcription(websocket, message, transcription_service, 
             # Use the logger that's confirmed to be writing to the main API log
             main_api_logger = logging.getLogger("api.api.main")
             main_api_logger.info("Loading transcription model (audio processing)... (logged via 'api.api.main')")
-            transcription_service.load_model()
+            await asyncio.get_running_loop().run_in_executor(None, transcription_service.load_model)
             main_api_logger.info("Model loaded successfully (logged via 'api.api.main')")
         else:
             # Use the logger that's confirmed to be writing to the main API log

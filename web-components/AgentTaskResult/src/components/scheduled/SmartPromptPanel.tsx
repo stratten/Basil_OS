@@ -1,7 +1,9 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import AnimatedBubble from '@shared/bubble/AnimatedBubble';
 import * as api from '../../services/api';
+import type { ExclusionWindow } from '../../types';
 import { getCurrentTimeHHMM, getDefaultRunAtLocal } from './scheduledAgentTaskHelpers';
+import { exclusionWindowsFromConfig } from './scheduledChainHelpers';
 
 // Fields the panel hands the parent after a successful smart-prompt
 // interpretation. Mirrors the orchestrator's controlled-field shape so
@@ -21,6 +23,8 @@ export interface SmartScheduleFields {
   startAt?: string;
   runAt?: string;
   weeklyDays?: number[];
+  // Always set for a recurring schedule (an empty list when the request named no quiet hours), so windows from an earlier manual edit cannot leak into a smart-generated schedule.
+  exclusionWindows?: ExclusionWindow[];
 }
 
 // Imperative handle the parent can use to query smart-prompt state from
@@ -163,6 +167,7 @@ const SmartPromptPanel = forwardRef<SmartPromptPanelHandle, Props>(
             fields.mode = 'daily';
             fields.time = String(cfg.time || getCurrentTimeHHMM());
           }
+          fields.exclusionWindows = exclusionWindowsFromConfig(cfg);
         }
         onApply(fields);
       } finally {

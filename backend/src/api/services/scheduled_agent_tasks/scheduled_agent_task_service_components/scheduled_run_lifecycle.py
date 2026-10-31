@@ -24,7 +24,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
-from .schedule_time_math import compute_next_run_at, utc_now
+from .schedule_time_math import compute_next_run_at, normalized_schedule_config, utc_now
+from .scheduled_chain_config import CHAIN_MODE_CHAINED, normalize_chain_config
 
 if TYPE_CHECKING:
     from api.core.knowledge.sqlite.sqlite_knowledge_service import SQLiteKnowledgeService
@@ -33,6 +34,14 @@ if TYPE_CHECKING:
     )
 
 logger = logging.getLogger(__name__)
+
+
+def _validated_chain_config(schedule_type: str, chain_config: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Canonical chain settings for a schedule; raises ValueError with a plain message when they cannot apply."""
+    normalized = normalize_chain_config(chain_config)
+    if normalized["mode"] == CHAIN_MODE_CHAINED and schedule_type != "recurring":
+        raise ValueError("A one-time schedule cannot continue one conversation; choose a recurring schedule or turn chaining off.")
+    return normalized
 
 
 async def create_scheduled_agent_task(
@@ -48,7 +57,10 @@ async def create_scheduled_agent_task(
     reference_paths: Optional[List[str]] = None,
     model_id: Optional[str] = None,
     connection_ids: Optional[List[str]] = None,
+    chain_config: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
+    schedule_config = normalized_schedule_config(schedule_type, schedule_config, timezone_name)
+    chain_config = _validated_chain_config(schedule_type, chain_config)
     next_run_at = compute_next_run_at(schedule_type, schedule_config, timezone_name)
     created = await repo.create_scheduled_agent_task(
         title=title,
@@ -62,6 +74,7 @@ async def create_scheduled_agent_task(
         reference_paths=reference_paths,
         model_id=model_id,
         connection_ids=connection_ids,
+        chain_config=chain_config,
     )
     if is_active and next_run_at:
         await enqueue_scheduled_agent_task(repo, created["id"], next_run_at)
@@ -81,6 +94,15 @@ async def update_scheduled_agent_task(
     schedule_config = updates.get("schedule_config", existing["schedule_config"])
     timezone_name = updates.get("timezone", existing["timezone"])
     is_active = updates.get("is_active", existing["is_active"])
+
+    if "schedule_type" in updates or "schedule_config" in updates or "timezone" in updates:
+        schedule_config = normalized_schedule_config(schedule_type, schedule_config, timezone_name)
+        if "schedule_config" in updates or schedule_config != existing["schedule_config"]:
+            updates["schedule_config"] = schedule_config
+    if "chain_config" in updates or "schedule_type" in updates:
+        updates["chain_config"] = _validated_chain_config(
+            schedule_type, updates.get("chain_config", existing.get("chain_config"))
+        )
 
     if "schedule_type" in updates or "schedule_config" in updates or "timezone" in updates or "is_active" in updates:
         updates["next_run_at"] = (
@@ -103,10 +125,42 @@ async def update_scheduled_agent_task(
         reference_paths=updates.get("reference_paths"),
         model_id=updates.get("model_id"),
         connection_ids=updates.get("connection_ids"),
+        chain_config=updates.get("chain_config"),
     )
     if updated and updated.get("is_active") and updated.get("next_run_at"):
         await enqueue_scheduled_agent_task(repo, updated["id"], updated["next_run_at"])
     return updated
+
+
+async def finalize_skipped_run(
+    repo: "ScheduledAgentTaskRepository",
+    *,
+    scheduled_agent_task_id: str,
+    run_id: str,
+    reason: str,
+) -> Dict[str, Any]:
+    """End a claimed run that chose not to start, keep the schedule's last status as it was, and arm the next occurrence."""
+    now = utc_now()
+    await repo.update_scheduled_run(run_id, status="skipped", completed_at=now.isoformat(), notice=reason)
+    scheduled_agent_task = await repo.get_scheduled_agent_task(scheduled_agent_task_id)
+    if (
+        not scheduled_agent_task
+        or not scheduled_agent_task["is_active"]
+        or scheduled_agent_task["schedule_type"] != "recurring"
+    ):
+        return {"status": "skipped", "next_run_at": None}
+    next_run_at = compute_next_run_at(
+        scheduled_agent_task["schedule_type"],
+        scheduled_agent_task["schedule_config"],
+        scheduled_agent_task["timezone"],
+        from_time=now,
+    )
+    if next_run_at:
+        await repo.update_scheduled_agent_task(scheduled_agent_task_id, next_run_at=next_run_at)
+        await enqueue_scheduled_agent_task(repo, scheduled_agent_task_id, next_run_at)
+    else:
+        await repo.update_scheduled_agent_task(scheduled_agent_task_id, clear_next_run_at=True)
+    return {"status": "skipped", "next_run_at": next_run_at}
 
 
 async def enqueue_scheduled_agent_task(

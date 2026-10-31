@@ -482,6 +482,21 @@ export interface AgentTaskListItem {
   archived_at?: string | null;
 }
 
+// A daily time range in which a recurring schedule does not run. Times are 24-hour HH:MM in the schedule's timezone; an end earlier than the start crosses midnight, an end equal to the start covers a whole day. `days` lists the weekdays (Mon=0 .. Sun=6) the window starts on; absent or empty means every day.
+export interface ExclusionWindow {
+  start: string;
+  end: string;
+  days?: number[];
+}
+
+// Whether each scheduled run starts its own task or continues one conversation, and when that conversation rolls over. A chained schedule always has at least one of max_runs and max_age_minutes.
+export interface ScheduledChainConfig {
+  mode: 'independent' | 'chained';
+  max_runs?: number;
+  max_age_minutes?: number;
+  carry_over?: boolean;
+}
+
 export interface ScheduledAgentTask {
   id: string;
   title: string;
@@ -503,6 +518,8 @@ export interface ScheduledAgentTask {
   // means "use the default reasoning model". On update payloads an empty
   // string clears the pin; omission leaves it unchanged.
   model_id?: string | null;
+  // Absent on older responses; absent means independent runs.
+  chain_config?: ScheduledChainConfig;
   next_run_at?: string | null;
   last_run_at?: string | null;
   last_status?: string | null;

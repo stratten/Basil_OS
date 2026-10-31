@@ -1,6 +1,6 @@
 # Verifying repository builds
 
-Every push to `main` builds Basil on GitHub-hosted macOS runners, signs and notarizes it with the project's Developer ID, and publishes the result as the `main-latest` pre-release on this repository's Releases page. Each new push replaces the previous build. This page explains how to confirm that a downloaded build came from the code you can read here.
+Every push to `main` that changes more than the README builds Basil on GitHub-hosted macOS runners, signs and notarizes it with the project's Developer ID, and publishes the result as the `main-latest` pre-release on this repository's Releases page. Each new push replaces the previous build. This page explains how to confirm that a downloaded build came from the code you can read here.
 
 ## Who this is for
 

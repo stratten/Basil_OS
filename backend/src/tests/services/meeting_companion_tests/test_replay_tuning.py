@@ -111,7 +111,7 @@ def evaluator_with(caller):
 
 @pytest.mark.asyncio
 async def test_recorded_responses_make_a_floor_candidate_testable_without_a_model():
-    recorded_items = [{"items": [{"kind": "suggestion", "text": "Confirm the pipeline review owner", "confidence": 0.55, "source_turn_ids": []}], "conversation_state": "", "considered": "Weighed it."}]
+    recorded_items = [{"items": [{"kind": "suggestion", "text": "Confirm the pipeline review owner", "confidence": 0.5, "source_turn_ids": []}], "conversation_state": "", "considered": "Weighed it."}]
     recorded_items = recorded_items * 2
     baseline_evaluator = evaluator_with(RecordedCaller(recorded_items))
     baseline = await replay(turns(), evaluate=baseline_evaluator.evaluate)

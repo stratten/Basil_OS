@@ -74,6 +74,8 @@ class ScheduledAgentTaskCreateRequest(BaseModel):
     connection_ids: Optional[List[str]] = None
     # Reasoning model every scheduled run uses. Omit or leave empty to use the default reasoning model.
     model_id: Optional[str] = None
+    # Whether each run starts its own task or continues one conversation, and when that conversation rolls over. Omit for independent runs.
+    chain_config: Optional[Dict[str, Any]] = None
 
 
 class ScheduledAgentTaskUpdateRequest(BaseModel):
@@ -91,6 +93,8 @@ class ScheduledAgentTaskUpdateRequest(BaseModel):
     connection_ids: Optional[List[str]] = None
     # Omit to leave the model unchanged; send an empty string to go back to the default reasoning model.
     model_id: Optional[str] = None
+    # Replaces the chain settings wholesale. Omit to leave them unchanged; send {"mode": "independent"} to stop chaining.
+    chain_config: Optional[Dict[str, Any]] = None
 
 
 class ScheduleInterpretationRequest(BaseModel):
@@ -177,6 +181,7 @@ class ScheduledAgentTaskItem(BaseModel):
     connection_ids: List[str] = []
     # None means the schedule uses the default reasoning model.
     model_id: Optional[str] = None
+    chain_config: Dict[str, Any] = {"mode": "independent"}
     next_run_at: Optional[str] = None
     last_run_at: Optional[str] = None
     last_status: Optional[str] = None

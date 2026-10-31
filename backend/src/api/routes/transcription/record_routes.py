@@ -284,7 +284,7 @@ async def retranscribe(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
         logger.info("Loading transcription model for retranscription...")
-        transcription_service.load_model()
+        await asyncio.get_running_loop().run_in_executor(None, transcription_service.load_model)
         if not transcription_service.is_model_loaded():
             raise ValueError("Transcription model failed to load for retranscription.")
 

@@ -349,7 +349,7 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
                                     #endif
                                     self.handleAuthTokenRequest(json)
                                 
-                                case "agent_task_step_detail", "conversation_agent_status":
+                                case "agent_task_step_detail", "conversation_agent_status", "meeting_companion_event", "meeting_companion_status", "meeting_companion_chat_delta", "meeting_companion_proposal":
                                     #if DEBUG
                                     DevLogger.shared.info(
                                         "Ignoring browser-owned WebSocket event_type '\(eventType)' in native router",

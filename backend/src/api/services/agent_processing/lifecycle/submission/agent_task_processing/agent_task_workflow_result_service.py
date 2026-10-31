@@ -44,11 +44,13 @@ class AgentTaskWorkflowResultService:
             previous_task_id = getattr(request, "previous_task_id", None)
             retry_context = getattr(request, "retry_context", None)
             todo_worker_context = getattr(request, "todo_worker_context", None)
+            origin_type = None
 
             if getattr(request, "agent_task_id", None):
                 try:
                     agent_task_record = await self.db_service.get_agent_task(request.agent_task_id)
                     if agent_task_record:
+                        origin_type = getattr(agent_task_record, "origin_type", None)
                         artifacts = agent_task_record.accumulated_artifacts
                         if isinstance(artifacts, dict):
                             if "todo_worker_context" in artifacts:
@@ -88,6 +90,7 @@ class AgentTaskWorkflowResultService:
                 "user_agent_task": combined_agent_task,
                 "reference_paths": getattr(request, "reference_paths", None),
                 "model_id": getattr(request, "model_id", None),
+                "origin_type": origin_type,
                 "conversation_id": getattr(request, "conversation_id", None),
                 "todo_worker_context": todo_worker_context,
                 "cancel_event": getattr(request, "cancel_event", None),

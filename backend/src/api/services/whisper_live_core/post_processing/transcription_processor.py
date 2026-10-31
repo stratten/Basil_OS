@@ -97,6 +97,36 @@ class TranscriptionProcessor:
 
         raise RuntimeError(f"Transcription model is not registered: {self.model_name}")
 
+    PRELOAD_STATUS_READY = "ready"
+    PRELOAD_STATUS_SKIPPED_CLOUD = "skipped_cloud"
+    PRELOAD_STATUS_SKIPPED_NOT_PARAKEET = "skipped_not_parakeet"
+
+    async def preload_selected_model(self) -> str:
+        """Load a local Parakeet model's ONNX sessions ahead of its first window.
+
+        Creating ONNX sessions holds the GIL for seconds and freezes the whole backend process, so callers invoke this before live streams open instead of letting the first mid-recording window trigger it. The load runs in an executor and is idempotent: when the same Parakeet model is already loaded the manager returns immediately and also cancels any pending idle unload. Cloud models and non-Parakeet local models need no preload and are skipped. Raises ``RuntimeError`` when the model is not registered.
+        """
+        model_id, model_config = self._resolve_model_config()
+        if model_config.get("location") == "cloud":
+            return self.PRELOAD_STATUS_SKIPPED_CLOUD
+        if model_config.get("handler") != "parakeet":
+            return self.PRELOAD_STATUS_SKIPPED_NOT_PARAKEET
+
+        from api.services.transcription.backends.parakeet_service import (
+            ParakeetTranscriptionService,
+        )
+
+        service = ParakeetTranscriptionService(model_id=model_id)
+        started = time()
+        await asyncio.get_running_loop().run_in_executor(None, service.load_model)
+        logger.info(
+            "Preloaded retranscription model %s in %.2fs (loaded=%s)",
+            model_id, time() - started, service.is_model_loaded(),
+        )
+        if not service.is_model_loaded():
+            raise RuntimeError(f"Parakeet model {model_id} did not finish loading")
+        return self.PRELOAD_STATUS_READY
+
     async def _transcribe_whisper(
         self,
         model_name: str,

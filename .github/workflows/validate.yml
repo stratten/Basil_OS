@@ -4,6 +4,9 @@ on:
   pull_request:
   push:
     branches: [main]
+    # A push that changes only the README skips the tests and the signed build; the latest main-latest build still matches the last code change.
+    paths-ignore:
+      - README.md
 
 permissions:
   contents: read

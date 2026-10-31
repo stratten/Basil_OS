@@ -6,7 +6,9 @@ import SwiftUI
 @MainActor
 class LiveTranscriptionViewModel: ObservableObject {
     // MARK: - Published Properties
-    @Published var isRecording = false
+    @Published var isRecording = false {
+        didSet { systemAudioSender.updateGate { $0.isRecording = isRecording } }
+    }
     @Published var statusMessage = "Ready to start transcription"
     @Published var transcriptionLines: [TranscriptionLine] = []  // Combined view (interleaved by timestamp)
     @Published var microphoneTranscript: [TranscriptionLine] = []  // Microphone-only transcript
@@ -30,13 +32,17 @@ class LiveTranscriptionViewModel: ObservableObject {
     @Published var systemAudioCaptureMode: SystemAudioCaptureMode = .globalOutput
 
     // Capture controls for the active recording part (see LiveTranscriptionViewModel+CaptureControl).
-    @Published var isCapturePaused = false
+    @Published var isCapturePaused = false {
+        didSet { systemAudioSender.updateGate { $0.isCapturePaused = isCapturePaused } }
+    }
     @Published var sessionLiveTranscriptionEnabled = true
     /// The engine chosen for this one recording ("local", a cloud provider id, or "basil_account"); nil means the saved default applies. Cleared when the recording ends or a fresh meeting starts, so it never carries over.
     @Published var sessionLiveEngineOverride: String?
     var liveTranscriptionSelectionTouched = false
     var liveTranscriptionWasDisabledThisPart = false
     let recordingClock = RecordingClock()
+    /// Sends system audio to its WebSocket off the main thread. Its gate mirrors `isRecording`, `isCapturePaused`, `systemAudioWebSocketTask`, `systemAudioReconnectInFlight` and `systemAudioStreamTimingReady` through their `didSet` observers (see LiveTranscriptionViewModel+SystemAudio).
+    lazy var systemAudioSender: SystemAudioChunkSender = makeSystemAudioSender()
     
     // Event-driven batched transcription state
     @Published var transcriptionState: TranscriptionState = .loadingModels
@@ -209,12 +215,16 @@ class LiveTranscriptionViewModel: ObservableObject {
     // callback, which runs on CoreAudio's serial IO thread.
     let microphoneRateEstimator = AudioInputRateEstimator()
     var microphoneWebSocketTask: URLSessionWebSocketTask?  // Dedicated WebSocket for microphone audio
-    var systemAudioWebSocketTask: URLSessionWebSocketTask?  // Dedicated WebSocket for system audio
+    var systemAudioWebSocketTask: URLSessionWebSocketTask? {  // Dedicated WebSocket for system audio
+        didSet { systemAudioSender.updateGate { $0.transport = systemAudioWebSocketTask } }
+    }
     // Per-source reconnect debounce. A dead socket fails ~10 sends/sec; without
     // these flags every failed chunk would spawn its own reconnect (a storm).
     // Set true while a single reconnect for that source is in flight.
     var microphoneReconnectInFlight = false
-    var systemAudioReconnectInFlight = false
+    var systemAudioReconnectInFlight = false {
+        didSet { systemAudioSender.updateGate { $0.isReconnectInFlight = systemAudioReconnectInFlight } }
+    }
     // Reset after a successful source connection or when recording stops.
     // Incremented for each retry to apply capped exponential backoff.
     var microphoneReconnectAttempt = 0
@@ -243,7 +253,9 @@ class LiveTranscriptionViewModel: ObservableObject {
     // A newly created source socket must receive its capture-time control
     // message before it can send PCM, including after reconnecting.
     var microphoneStreamTimingReady = false
-    var systemAudioStreamTimingReady = false
+    var systemAudioStreamTimingReady = false {
+        didSet { systemAudioSender.updateGate { $0.isStreamTimingReady = systemAudioStreamTimingReady } }
+    }
     
     // Backward compatibility: returns mic WebSocket if available, otherwise system audio
     var webSocketTask: URLSessionWebSocketTask? {

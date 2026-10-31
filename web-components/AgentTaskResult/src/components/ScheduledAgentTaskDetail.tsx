@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import type { ScheduledAgentTask, ScheduledAgentTaskRun } from '../types';
+import type { ExclusionWindow, ScheduledAgentTask, ScheduledAgentTaskRun } from '../types';
 import * as api from '../services/api';
 import AttachedFilesDisplay from './scheduled/AttachedFilesDisplay';
 import AttachedFilesEditor from './scheduled/AttachedFilesEditor';
@@ -7,6 +7,21 @@ import ScheduleControls from './scheduled/ScheduleControls';
 import ScheduledRunHistoryList from './scheduled/ScheduledRunHistoryList';
 import ScheduledConnectionsField, { CONNECTIONS_LABEL, ScheduledConnectionsDisplay, connectionsChanged } from './scheduled/ScheduledConnectionsField';
 import ScheduledModelField, { describeScheduledModel } from './scheduled/ScheduledModelField';
+import ScheduledChainField from './scheduled/ScheduledChainField';
+import ScheduledExclusionWindowsField from './scheduled/ScheduledExclusionWindowsField';
+import {
+  DEFAULT_CHAIN_FORM,
+  chainConfigChanged,
+  chainFormError,
+  chainFormFromConfig,
+  describeChain,
+  describeExclusionWindows,
+  effectiveChainConfig,
+  exclusionWindowsError,
+  exclusionWindowsFromConfig,
+  withExclusionWindows,
+  type ChainFormState,
+} from './scheduled/scheduledChainHelpers';
 import { plainMarkdownText } from '../../../shared/plainMarkdownText';
 import MarkdownRenderer from './MarkdownRenderer';
 import SmartPromptPanel, {
@@ -79,6 +94,10 @@ export default function ScheduledAgentTaskDetail({
   const [runAt, setRunAt] = useState<string>(() => getDefaultRunAtLocal());
   // Mon=0 .. Sun=6 — default to weekdays selected.
   const [weeklyDays, setWeeklyDays] = useState<number[]>([0, 1, 2, 3, 4]);
+  // Daily time ranges in which a recurring schedule does not run; empty means none.
+  const [exclusionWindows, setExclusionWindows] = useState<ExclusionWindow[]>([]);
+  // Whether each run is its own task or continues one conversation, and the limits that start a new one. Sent whole on create when chained, and on edit only when it changed.
+  const [chainForm, setChainForm] = useState<ChainFormState>({ ...DEFAULT_CHAIN_FORM });
   const [busy, setBusy] = useState(false);
 
   // Absolute filesystem paths the user has attached as context for this
@@ -146,6 +165,8 @@ export default function ScheduledAgentTaskDetail({
     setReferencePaths(Array.isArray(item.reference_paths) ? [...item.reference_paths] : []);
     setConnectionIds(Array.isArray(item.connection_ids) ? [...item.connection_ids] : []);
     setModelId(item.model_id || '');
+    setChainForm(chainFormFromConfig(item.chain_config));
+    setExclusionWindows(exclusionWindowsFromConfig(item.schedule_config));
     const cfg = item.schedule_config || {};
     if (item.schedule_type === 'one_time') {
       const runAtIso = String(cfg.run_at || '');
@@ -207,6 +228,8 @@ export default function ScheduledAgentTaskDetail({
     setReferencePaths([]);
     setConnectionIds([]);
     setModelId('');
+    setChainForm({ ...DEFAULT_CHAIN_FORM });
+    setExclusionWindows([]);
   }, [createMode, userTz]);
 
   useEffect(() => {
@@ -241,19 +264,25 @@ export default function ScheduledAgentTaskDetail({
       // start_at is omitted when blank so the stored config stays identical to
       // what interval schedules saved before this field existed.
       const startAt = composeFirstRun({ date: startDate, time: startTime }, timezone);
-      return startAt
-        ? { mode: 'interval', minutes: intervalMinutes, start_at: startAt }
-        : { mode: 'interval', minutes: intervalMinutes };
+      return withExclusionWindows(
+        startAt
+          ? { mode: 'interval', minutes: intervalMinutes, start_at: startAt }
+          : { mode: 'interval', minutes: intervalMinutes },
+        exclusionWindows,
+      );
     }
     if (mode === 'weekly') {
       const days = [...weeklyDays].filter(v => Number.isInteger(v) && v >= 0 && v <= 6).sort((a, b) => a - b);
-      return { mode: 'weekly', days, time };
+      return withExclusionWindows({ mode: 'weekly', days, time }, exclusionWindows);
     }
-    return { mode: 'daily', time };
-  }, [scheduleType, mode, runAt, intervalMinutes, startDate, startTime, timezone, weeklyDays, time]);
+    return withExclusionWindows({ mode: 'daily', time }, exclusionWindows);
+  }, [scheduleType, mode, runAt, intervalMinutes, startDate, startTime, timezone, weeklyDays, time, exclusionWindows]);
 
   // A date with no time would be dropped silently, so saving waits until the reader adds the time or clears the date.
   const firstRunIncomplete = scheduleType === 'recurring' && mode === 'interval' && startDate !== '' && startTime === '';
+
+  // Chain limits or quiet-hours windows the backend would reject. The reason is shown beside the field, and Create and Save stay disabled until it is fixed.
+  const scheduleFormError = scheduleType === 'recurring' ? (chainFormError(chainForm) ?? exclusionWindowsError(exclusionWindows)) : null;
 
   const create = async (sourceType: 'manual' | 'smart') => {
     setBusy(true);
@@ -277,6 +306,8 @@ export default function ScheduledAgentTaskDetail({
         // Omitted when the user kept the default so the payload stays the
         // same as before this field existed.
         ...(modelId ? { model_id: modelId } : {}),
+        // Omitted for independent runs so the payload stays the same as before this field existed.
+        ...(scheduleType === 'recurring' && chainForm.chained ? { chain_config: effectiveChainConfig(chainForm, scheduleType) } : {}),
       });
       setItem(created);
       setRuns([]);
@@ -317,6 +348,10 @@ export default function ScheduledAgentTaskDetail({
         // that has since become unavailable would make an unrelated edit
         // fail validation. '' clears the pin back to the default model.
         ...(modelId !== (item.model_id || '') ? { model_id: modelId } : {}),
+        // Only send the chain settings when they changed, and never a chain for a one-time schedule. {mode: 'independent'} stops chaining.
+        ...(chainConfigChanged(chainForm, item.chain_config, scheduleType)
+          ? { chain_config: effectiveChainConfig(chainForm, scheduleType) }
+          : {}),
       });
       setItem(updated);
       setEditing(false);
@@ -353,6 +388,7 @@ export default function ScheduledAgentTaskDetail({
     }
     if (fields.runAt !== undefined) setRunAt(fields.runAt);
     if (fields.weeklyDays !== undefined) setWeeklyDays(fields.weeklyDays);
+    if (fields.exclusionWindows !== undefined) setExclusionWindows(fields.exclusionWindows);
   };
 
   const toggleWeekday = (day: number) => {
@@ -423,12 +459,19 @@ export default function ScheduledAgentTaskDetail({
               onToggleWeekday={toggleWeekday}
             />
 
+            {scheduleType === 'recurring' && (
+              <ScheduledExclusionWindowsField windows={exclusionWindows} onChange={setExclusionWindows} disabled={busy} />
+            )}
+            {scheduleType === 'recurring' && (
+              <ScheduledChainField form={chainForm} onChange={setChainForm} disabled={busy} />
+            )}
+
             <div className="overlay-actions">
               <button className="action-btn" onClick={onExitCreateMode}>Cancel</button>
               <button
                 className="action-btn primary"
                 onClick={() => create(smartPanelRef.current?.hasPromptText() ? 'smart' : 'manual')}
-                disabled={busy || !agentTaskText.trim() || firstRunIncomplete}
+                disabled={busy || !agentTaskText.trim() || firstRunIncomplete || Boolean(scheduleFormError)}
               >
                 Create Schedule
               </button>
@@ -545,6 +588,13 @@ export default function ScheduledAgentTaskDetail({
               onToggleWeekday={toggleWeekday}
             />
 
+            {scheduleType === 'recurring' && (
+              <ScheduledExclusionWindowsField windows={exclusionWindows} onChange={setExclusionWindows} disabled={busy} />
+            )}
+            {scheduleType === 'recurring' && (
+              <ScheduledChainField form={chainForm} onChange={setChainForm} disabled={busy} />
+            )}
+
             <div className="overlay-actions">
               <button
                 className="action-btn"
@@ -556,7 +606,7 @@ export default function ScheduledAgentTaskDetail({
               <button
                 className="action-btn primary"
                 onClick={saveEdits}
-                disabled={busy || !agentTaskText.trim() || firstRunIncomplete}
+                disabled={busy || !agentTaskText.trim() || firstRunIncomplete || Boolean(scheduleFormError)}
               >
                 Save changes
               </button>
@@ -609,6 +659,18 @@ export default function ScheduledAgentTaskDetail({
             <span style={metaLabelStyle}>Model</span>
             <span>{describeScheduledModel(models, item.model_id)}</span>
           </div>
+          {exclusionWindowsFromConfig(item.schedule_config).length > 0 && (
+            <div style={metaRowStyle}>
+              <span style={metaLabelStyle}>Quiet hours</span>
+              <span>{describeExclusionWindows(exclusionWindowsFromConfig(item.schedule_config))}</span>
+            </div>
+          )}
+          {item.chain_config?.mode === 'chained' && (
+            <div style={metaRowStyle}>
+              <span style={metaLabelStyle}>Runs</span>
+              <span>{describeChain(item.chain_config)}</span>
+            </div>
+          )}
           {item.next_run_at && (
             <div style={metaRowStyle}>
               <span style={metaLabelStyle}>Next run</span>

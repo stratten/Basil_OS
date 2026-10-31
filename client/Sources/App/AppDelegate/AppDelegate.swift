@@ -149,6 +149,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         configureBackendStartupFromArguments()
         initializeLaunchServices()
         logBundleDebugInformation()
+        MainThreadStallWatchdog.shared.start()
 
         if !BasilRuntimeProfile.isValidation {
             // Set up diagnostic local key monitor

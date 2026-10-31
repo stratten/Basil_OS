@@ -48,6 +48,7 @@ from .....core.runtime.hardware_capability_service import (
     HardwareCapabilityService,
 )
 from .....settings import get_models_dir
+from .parakeet_session_factory import create_parakeet_session_pair
 
 logger = setup_api_logger(
     __name__,
@@ -379,17 +380,21 @@ class ParakeetModelManager:
             f"(providers={providers})"
         )
         t0 = time.monotonic()
-        encoder_session = ort.InferenceSession(
-            str(encoder_path), sess_options=sess_options, providers=providers
-        )
-        decoder_session = ort.InferenceSession(
-            str(decoder_path), sess_options=sess_options, providers=providers
+        encoder_session, decoder_session, coreml_cache_dir = create_parakeet_session_pair(
+            ort,
+            encoder_path,
+            decoder_path,
+            sess_options,
+            providers,
+            settings.STORAGE_DIR,
+            bundle_dir,
         )
         elapsed = time.monotonic() - t0
         logger.info(
             f"✅ Parakeet ONNX sessions loaded in {elapsed:.2f}s "
             f"(encoder providers={encoder_session.get_providers()}, "
-            f"decoder providers={decoder_session.get_providers()})"
+            f"decoder providers={decoder_session.get_providers()}, "
+            f"coreml_compile_cache={coreml_cache_dir})"
         )
 
         vocab, blank_id = self._load_vocab(vocab_path)

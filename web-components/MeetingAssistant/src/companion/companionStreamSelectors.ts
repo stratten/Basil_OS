@@ -50,9 +50,41 @@ export interface CompanionStreamOptions {
   pendingAssistantIds?: string[];
 }
 
-/** The one arrival-order stream: items and chat merge by the `seq` of the event that created them, oldest first and newest last. Old meetings saved before `seq` existed carry the order of their replayed events, so the same rule holds for them. */
+/** The trigger the backend gives an item made from an audit finding. */
+export const AUDIT_ITEM_TRIGGER = 'audit';
+
+type PersistedStreamEntry = Exclude<CompanionStreamEntry, { seq: null }>;
+
+function entryMeetingTime(entry: PersistedStreamEntry): number {
+  if (entry.type === 'item') return entry.item.transcript_range.end;
+  if (entry.type === 'chat') return entry.message.meeting_time;
+  return entry.event.meeting_time;
+}
+
+function isAuditEntry(entry: PersistedStreamEntry): boolean {
+  return entry.type === 'item' && entry.item.trigger === AUDIT_ITEM_TRIGGER;
+}
+
+/** An audit finding arrives long after the moment it points at, so it is shown where that moment happened: after the last row at or before the end of the finding's transcript range. Every other row keeps its arrival order, and `seq` is untouched so the finding still counts as new when it arrives. */
+function placeAuditFindingsByMeetingTime(arrivalOrdered: PersistedStreamEntry[]): PersistedStreamEntry[] {
+  const findings = arrivalOrdered.filter(isAuditEntry);
+  if (findings.length === 0) return arrivalOrdered;
+  const placed = arrivalOrdered.filter((entry) => !isAuditEntry(entry));
+  const byTime = [...findings].sort((a, b) => entryMeetingTime(a) - entryMeetingTime(b) || a.seq - b.seq);
+  for (const finding of byTime) {
+    const time = entryMeetingTime(finding);
+    let insertAt = 0;
+    placed.forEach((entry, index) => {
+      if (entryMeetingTime(entry) <= time) insertAt = index + 1;
+    });
+    placed.splice(insertAt, 0, finding);
+  }
+  return placed;
+}
+
+/** The one stream: items and chat merge by the `seq` of the event that created them, oldest first and newest last, except that audit findings sit at the point in the meeting they refer to. Old meetings saved before `seq` existed carry the order of their replayed events, so the same rule holds for them. */
 export function selectCompanionStream(timeline: Pick<CompanionTimelineState, 'items' | 'chat'> & Partial<Pick<CompanionTimelineState, 'evaluations'>>, options: CompanionStreamOptions = {}): CompanionStreamEntry[] {
-  const entries: CompanionStreamEntry[] = [];
+  const entries: PersistedStreamEntry[] = [];
   for (const item of timeline.items) {
     if (item.dismissed && !options.includeDismissed) continue;
     if (!itemMatchesKindFilter(item, options.kindFilter ?? 'all')) continue;
@@ -66,19 +98,20 @@ export function selectCompanionStream(timeline: Pick<CompanionTimelineState, 'it
       entries.push({ type: 'considered', key: `eval:${event.id}`, seq: event.seq, event });
     }
   }
-  entries.sort((a, b) => (a.seq as number) - (b.seq as number));
+  entries.sort((a, b) => a.seq - b.seq);
+  const ordered: CompanionStreamEntry[] = placeAuditFindingsByMeetingTime(entries);
 
   const persistedChatIds = new Set(timeline.chat.map((message) => message.id));
   const drafts = options.drafts ?? {};
   for (const [messageId, text] of Object.entries(drafts)) {
     if (persistedChatIds.has(messageId)) continue;
-    entries.push({ type: 'draft', key: `chat:${messageId}`, seq: null, messageId, text });
+    ordered.push({ type: 'draft', key: `chat:${messageId}`, seq: null, messageId, text });
   }
   for (const messageId of options.pendingAssistantIds ?? []) {
     if (persistedChatIds.has(messageId) || messageId in drafts) continue;
-    entries.push({ type: 'pending', key: `chat:${messageId}`, seq: null, messageId });
+    ordered.push({ type: 'pending', key: `chat:${messageId}`, seq: null, messageId });
   }
-  return entries;
+  return ordered;
 }
 
 /** Pinned items for the strip, in the order they arrived. A dismissed item is not shown even when pinned. */

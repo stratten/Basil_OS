@@ -2,24 +2,38 @@
 
 Basil is a local-first macOS AI assistant. It combines a native Swift client, a local Python/FastAPI service, and focused WebKit application surfaces so that assistance, capture, transcription, meetings, automation, and personal context can live in one desktop workflow. You can use downloaded local models, models reached through your own provider key, custom model endpoints, or Basil Cloud where available.
 
+<p align="center">
+  <a href="https://github.com/stratten/Basil_OS/releases/latest/download/Basil.dmg"><img src="docs/download.svg" alt="Download Basil for Mac" width="236" height="60" /></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/stratten/Basil_OS/releases">All releases</a> · <a href="docs/verifying-builds.md">Verify a build</a>
+</p>
+
 ## What Basil does
 
 ### Workspaces, conversations, and agent work
 
 The Basil Board is the main workspace for beginning an inquiry, reopening work, viewing meeting state, and moving among conversations, Paprika tasks, and todos. Conversations retain threaded work around an ongoing subject. **Dill (Quick Assist)** (default hotkey ⌥⌥) answers each request in a single model turn and provides a focused text-or-voice surface with saved outputs, refinement, and copy controls.
 
-<img width="2240" height="1440" alt="image" src="https://github.com/user-attachments/assets/77971b3d-1637-4ddc-a142-a2ab7c785feb" />
+<p align="center">
+  <img width="2240" alt="The Basil Board: a prompt box headed What can I do for you, with a model picker and recent work listed below" src="https://github.com/user-attachments/assets/77971b3d-1637-4ddc-a142-a2ab7c785feb" />
+</p>
 
 **Paprika (Agent)** (default hotkey ⌥Space) runs goal-oriented, multi-step tasks that can start from text, files, images, captured audio, or screen context. A task can show progress and intermediate activity, present results and local artifact previews, accept revisions, and request approval before taking an action. Tasks can be scheduled, reviewed, paused, or canceled when their state supports it. The todo workspace tracks work through inbox, open, in-progress, review, and completed views, with details, ordering, dates, and status for agent-backed work.
 
-<img width="840" height="800" alt="image" src="https://github.com/user-attachments/assets/02f7c237-254c-4a6d-bbc8-b9bfc0d35edd" />
+<p align="center">
+  <img width="840" alt="A Paprika agent task with follow-ups, a progress timeline on the right, and a verified result" src="https://github.com/user-attachments/assets/02f7c237-254c-4a6d-bbc8-b9bfc0d35edd" />
+</p>
 
 
 ### Capture, OCR, and transcription
 
 Use the menu bar, the Board, or a configurable hotkey to capture screen or window content for OCR, visual analysis, and context-assisted work. The capture result remains subject to the selected model path: a local model processes it on the Mac, while a provider-backed model may receive the content required for the request.
 
-<img width="284" height="146" alt="image" src="https://github.com/user-attachments/assets/0e354643-3d75-456f-9ada-8966e59a2138" />
+<p align="center">
+  <img width="284" alt="Basil's floating widget, a small green orb on a dark blue tile" src="https://github.com/user-attachments/assets/0e354643-3d75-456f-9ada-8966e59a2138" />
+</p>
 
 (Yes, it does look like a dishwasher tablet, now that you mention it)
 
@@ -30,10 +44,14 @@ The transcription widget records live microphone audio, and the menu also offers
 
 Open **Notetaker** from the Basil menu to create a manual recording of a meeting or call. Before recording, you can set the meeting name, purpose, participants, and available microphone or system-audio source. During a meeting, the Notetaker exposes source meters, recording state, and a live transcript. Afterward, it retains meeting metadata and history, supports searching and reopening stored meetings, and can improve a transcript, add speaker labels, or run analysis such as summaries, action items, decisions, questions and answers, sentiment, or a custom instruction.
 
-<img width="1910" height="1444" alt="image" src="https://github.com/user-attachments/assets/b1bb1a23-7d5b-4a55-85e7-de09b2d0b579" />
+<p align="center">
+  <img width="1910" alt="Notetaker showing a past meeting with a transcript split by microphone and system audio, and transcript tools below" src="https://github.com/user-attachments/assets/b1bb1a23-7d5b-4a55-85e7-de09b2d0b579" />
+</p>
 
 
-<img width="600" height="700" alt="image" src="https://github.com/user-attachments/assets/a4627980-b7cf-4850-96bc-dd5d7bb18552" />
+<p align="center">
+  <img width="600" alt="Meeting Analysis listing To-Do candidates that Basil identified, each with Start now, Add to To-Dos, Edit, and Dismiss" src="https://github.com/user-attachments/assets/a4627980-b7cf-4850-96bc-dd5d7bb18552" />
+</p>
 
 
 The optional **Companion** sits beside the live transcript and can offer notes, answer questions about the meeting, watch for topics you name, and research your attached files. It keeps a record of what it considered, turns a note into a To-Do or agent task only when you approve it, and can audit a meeting afterward for moments it should have helped. See [Capabilities](docs/capabilities.md#notetaker-companion).
@@ -59,7 +77,9 @@ Settings are grouped into General, Personalization, Capabilities, and System. Th
 
 Choose model paths independently for supported reasoning and transcription work: downloaded local models, direct provider/API models using your key, custom models, or Basil Cloud. Provider enablement is distinct from choosing to use your own API key. Some settings make a capability available without starting its background runtime; Meeting/Call Detection, for example, must be started from its dedicated control unless its separate start-at-launch preference applies.
 
-<img width="1540" height="1200" alt="image" src="https://github.com/user-attachments/assets/731c1c38-3b3d-4db5-847a-b7b8c1c5ec90" />
+<p align="center">
+  <img width="1540" alt="Settings Home showing setup status, default models, launch preferences, and active features" src="https://github.com/user-attachments/assets/731c1c38-3b3d-4db5-847a-b7b8c1c5ec90" />
+</p>
 
 
 ## Quick start for development
@@ -101,7 +121,7 @@ Run the narrowest relevant validation for a change, such as `poetry run pytest`,
 
 Community builds use `build/scripts/build_app.sh --ad-hoc`. Signing, notarization, update feeds, artifact upload, and DMG publication require release-owner credentials and can change external systems; they are not routine contributor operations.
 
-Every push to `main` also produces a signed, notarized build with a GitHub build-provenance attestation, published as the `main-latest` pre-release; those builds update themselves through Sparkle from this repository's `update-feed` release. [Verifying repository builds](docs/verifying-builds.md) explains how to confirm that a download matches the code in this repository.
+Every push to `main` that changes more than the README also produces a signed, notarized build with a GitHub build-provenance attestation, published as the `main-latest` pre-release; those builds update themselves through Sparkle from this repository's `update-feed` release. [Verifying repository builds](docs/verifying-builds.md) explains how to confirm that a download matches the code in this repository.
 
 ## Contributing and support
 

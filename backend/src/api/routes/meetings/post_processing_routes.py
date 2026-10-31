@@ -2,6 +2,7 @@
 
 import json
 import logging
+from pathlib import Path
 from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
@@ -17,7 +18,11 @@ from api.services.whisper_live_core.post_processing.transcript_merger import (
     validate_audio_file_for_post_processing,
 )
 
-from .models import PostProcessingConfig, RetranscribeWindowConfig
+from .models import (
+    PostProcessingConfig,
+    PrepareRetranscriptionModelConfig,
+    RetranscribeWindowConfig,
+)
 from .state import active_post_processing
 from api.core.utc_time import utc_now_naive_iso_z
 
@@ -39,6 +44,26 @@ def _meeting_timeline_for_window(meeting_id: str, live: bool) -> MeetingTimeline
     metadata = MeetingRecorder.load_metadata(meeting_id)
     ranges = metadata.stream_timeline_ranges if metadata is not None else None
     return MeetingTimeline.from_ranges(ranges, live=False)
+
+
+@router.post("/prepare-retranscription-model")
+async def prepare_retranscription_model(config: PrepareRetranscriptionModelConfig) -> Dict[str, str]:
+    """Load the mid-recording retranscription model before a recording opens its live streams.
+
+    Loading a local Parakeet model freezes the backend process for seconds, so the client calls this while nothing live depends on the event loop. The first retranscription window then finds the model already loaded instead of freezing the process mid-recording. Models that need no preload (cloud and non-Parakeet local models) answer with a ``skipped_*`` status.
+    """
+    from api.services.whisper_live_core.post_processing.transcription_processor import (
+        TranscriptionProcessor,
+    )
+
+    try:
+        status = await TranscriptionProcessor(Path("."), 0.0, config.model).preload_selected_model()
+    except RuntimeError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.error("Error preparing retranscription model %s: %s", config.model, e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"model": config.model, "status": status}
 
 
 @router.post("/{meeting_id}/retranscribe-window")

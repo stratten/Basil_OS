@@ -42,6 +42,11 @@ class RetranscribeWindowConfig(BaseModel):
     live: bool = True  # Read the still-growing audio.wav by default
 
 
+class PrepareRetranscriptionModelConfig(BaseModel):
+    """Request to load the mid-recording retranscription model before a recording starts."""
+    model: str
+
+
 class MeetingAnalysisConfig(BaseModel):
     """Configuration for analyzing a meeting."""
     model_id: Optional[str] = None  # Reasoning model ID (defaults to user preference)

@@ -174,7 +174,8 @@ final class SystemOutputTapRecorder: ObservableObject {
     @Published private(set) var isRecording = false
     @Published var audioLevel: Float = 0.0
 
-    var onAudioDataAvailable: ((Data) -> Void)?
+    /// Invoked on the recorder's serial IO queue with 16 kHz mono Float32 samples. Set before `start()`; the handler must not touch main-actor state.
+    var onAudioDataAvailable: (@Sendable (Data) -> Void)?
 
     private var currentFile: AVAudioFile?
     private var bytesWritten: UInt64 = 0
@@ -279,9 +280,8 @@ final class SystemOutputTapRecorder: ObservableObject {
                         )
                     }
                     #endif
-                    DispatchQueue.main.async {
-                        self.onAudioDataAvailable?(transcriptionData)
-                    }
+                    // Delivered on the IO queue, not the main thread: a main-thread stall must not delay or batch live audio.
+                    self.onAudioDataAvailable?(transcriptionData)
                 } else if transcriptionData == nil {
                     #if DEBUG
                     DevLogger.shared.warning(

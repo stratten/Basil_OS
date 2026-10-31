@@ -220,8 +220,9 @@ extension LiveTranscriptionViewModel {
         #endif
         
         // Set up the audio data callback
-        newRecorder.onAudioDataAvailable = { [weak self] audioData in
-            self?.sendSystemAudioFloatData(audioData)
+        let sender = systemAudioSender
+        newRecorder.onAudioDataAvailable = { audioData in
+            sender.submit(floatAudio: audioData)
         }
         newRecorder.onRecordingFailure = { [weak self, weak newRecorder] message in
             Task { @MainActor [weak self, weak newRecorder] in
@@ -271,84 +272,6 @@ extension LiveTranscriptionViewModel {
         }
     }
 
-    func sendSystemAudioFloatData(_ audioData: Data) {
-        let captureEndElapsed = recordingClock.elapsedSeconds()
-        let floatData = audioData.withUnsafeBytes { $0.bindMemory(to: Float32.self) }
-        guard floatData.count > 0 else { return }
-
-        // Clamp to [-1, 1] and guard against NaN/inf before scaling: the
-        // Int16(_:) initializer traps on out-of-range or non-finite values,
-        // and CoreAudio float samples are not guaranteed to be normalized.
-        var int16Data = Data(capacity: audioData.count / 2)
-        for sample in floatData {
-            let safeSample = sample.isFinite ? min(1.0, max(-1.0, sample)) : 0.0
-            let int16Sample = Int16(safeSample * 32767.0)
-            int16Data.append(contentsOf: withUnsafeBytes(of: int16Sample) { Array($0) })
-        }
-
-        let chunkSize = 3200
-        var offset = 0
-        while offset < int16Data.count {
-            let length = min(chunkSize, int16Data.count - offset)
-            let chunk = int16Data.subdata(in: offset..<(offset + length))
-            // 16 kHz mono Int16 is 32,000 bytes per second of audio.
-            let chunkStartElapsed = max(0, captureEndElapsed - Double(int16Data.count - offset) / 32000.0)
-
-            DispatchQueue.main.async { [weak self] in
-                guard let self = self, self.isRecording else { return }
-                // While a reconnect is in flight the task is nil; skip sending
-                // (the loop effectively pauses) rather than spawning more reconnects.
-                guard !self.systemAudioReconnectInFlight else { return }
-                guard !self.isCapturePaused else { return }
-                guard self.systemAudioStreamTimingReady else { return }
-                guard let systemAudioWebSocketTask = self.systemAudioWebSocketTask else {
-                    #if DEBUG
-                    DevLogger.shared.warning("Cannot send system audio chunk: System audio WebSocket not connected", context: "LiveTranscriptionViewModel")
-                    #endif
-                    if self.connectionState == .recording || self.connectionState == .connecting {
-                        self.recoverSystemAudioWebSocket(reason: "socket not connected")
-                    }
-                    return
-                }
-
-                if self.recordingClock.claimMarker(for: .systemAudio, at: chunkStartElapsed) {
-                    systemAudioWebSocketTask.send(.string(LiveTranscriptionViewModel.streamClockMarkerMessage(elapsedSeconds: chunkStartElapsed))) { _ in }
-                }
-                systemAudioWebSocketTask.send(.data(chunk)) { error in
-                    if let error {
-                        #if DEBUG
-                        DevLogger.shared.error("❌ Failed to send system audio chunk: \(error)", context: "LiveTranscriptionViewModel")
-                        #endif
-                        // The socket is dead. Recover (debounced) so the stream
-                        // continues instead of logging ~10 failures/sec forever.
-                        Task { @MainActor [weak self] in
-                            self?.recoverSystemAudioWebSocket(reason: "send failed: \(error.localizedDescription)")
-                        }
-                    } else {
-                        Task { @MainActor [weak self] in
-                            guard let self else { return }
-                            self.lastBufferSendTime = Date().timeIntervalSince1970
-                            if self.systemAudioCaptureMode == .globalOutput {
-                                let nextCount = (self.systemAudioState?.sentSystemAudioChunkCount ?? 0) + 1
-                                self.systemAudioState?.sentSystemAudioChunkCount = nextCount
-                                #if DEBUG
-                                if nextCount == 1 || nextCount % 100 == 0 {
-                                    DevLogger.shared.info(
-                                        "Global system audio websocket sent chunk \(nextCount) (\(chunk.count) bytes)",
-                                        context: "LiveTranscriptionViewModel"
-                                    )
-                                }
-                                #endif
-                            }
-                        }
-                    }
-                }
-            }
-
-            offset += length
-        }
-    }
-
     func startGlobalSystemAudioRecording() async throws {
         guard #available(macOS 14.2, *) else {
             throw "Global system output capture requires macOS 14.2 or later"
@@ -388,8 +311,9 @@ extension LiveTranscriptionViewModel {
 
         let recorder = SystemOutputTapRecorder(fileURL: audioFileURL, tap: tap)
         systemAudioState?.globalOutputRecorder = recorder
-        recorder.onAudioDataAvailable = { [weak self] audioData in
-            self?.sendSystemAudioFloatData(audioData)
+        let sender = systemAudioSender
+        recorder.onAudioDataAvailable = { audioData in
+            sender.submit(floatAudio: audioData)
         }
         systemAudioState?.meterState.reset()
         updateSystemAudioLevel(0.0)

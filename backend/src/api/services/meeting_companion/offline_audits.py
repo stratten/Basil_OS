@@ -10,7 +10,7 @@ import logging
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Set, Tuple
 
 from . import offline
-from .audit import AuditFailed, AuditInputs, AuditRejected, CompanionAuditor
+from .audit import AuditFailed, AuditInputs, AuditRejected, CompanionAuditor, findings_as_items
 from .models import CompanionTurn, TimelineEvent
 from .stored_transcript import load_stored_turns
 
@@ -84,6 +84,9 @@ class StoredAudits:
         try:
             report = await self._auditor.audit(inputs)
             await asyncio.to_thread(self._append, meeting_id, session_key, "audit", meeting_time, report.model_dump(mode="json"))
+            # Findings also join the normal feed, at the point in the meeting where each miss happened.
+            for finding in findings_as_items(report, inputs.turns, inputs.items):
+                await asyncio.to_thread(self._append, meeting_id, session_key, "item", finding.transcript_range.end, {"item": finding.model_dump(mode="json")})
         except asyncio.CancelledError:
             raise
         except (AuditFailed, AuditRejected) as failure:

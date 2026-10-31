@@ -77,6 +77,9 @@ async def test_an_audit_of_a_live_meeting_runs_in_the_background_and_lands_on_th
     assert auditor.inputs[0].scope == "so_far" and [t.text for t in auditor.inputs[0].turns] == [QUESTION]
     assert [event.kind for event in harness.session.events()].count("audit") == 1
     assert any(frame.get("event_type") == "meeting_companion_event" and frame["event"]["kind"] == "audit" for frame in harness.broadcasts)
+    feed_items = [item for item in harness.session.snapshot("mic1").items if item.trigger == "audit"]
+    assert [(item.text, item.kind, item.transcript_range.start, item.transcript_range.end) for item in feed_items] == [("Email Acme about the renewal term this week.", "suggestion", 10.0, 20.0)]
+    assert any(frame.get("event_type") == "meeting_companion_event" and frame["event"]["kind"] == "item" and frame["event"]["meeting_time"] == 20.0 for frame in harness.broadcasts)
 
 
 @pytest.mark.asyncio
@@ -194,6 +197,8 @@ async def test_a_finished_meeting_audit_is_saved_announced_and_restored(home):
     assert ("meeting_companion_status", True) in kinds and ("meeting_companion_status", False) in kinds
     assert any(frame["event_type"] == "meeting_companion_event" and frame["event"]["kind"] == "audit" and frame["meeting_ids"] == ["m1"] for frame in broadcasts)
     assert service.is_running("m1") is False
+    assert [(item.text, item.trigger, item.transcript_range.end) for item in offline.load_stored_snapshot("m1").items] == [("Email Acme about the renewal term this week.", "audit", 20.0)]
+    assert any(frame["event_type"] == "meeting_companion_event" and frame["event"]["kind"] == "item" and frame["meeting_ids"] == ["m1"] for frame in broadcasts)
     assert offline.record_stored_feedback("m1", "am-1", "audit_disagree") is True
     assert offline.load_stored_snapshot("m1").audit.moments[0].mark == "disagree"
     assert offline.record_stored_feedback("m1", "ghost", "audit_agree") is False

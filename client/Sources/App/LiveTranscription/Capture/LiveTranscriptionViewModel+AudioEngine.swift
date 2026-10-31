@@ -366,6 +366,9 @@ extension LiveTranscriptionViewModel {
                 // First fetch settings
                 try await fetchTranscriptionSettings()
 
+                // Load the retranscription model now so its backend pause does not land mid-recording.
+                await preloadRetranscriptionModelIfNeeded()
+
                 await MainActor.run {
                     isRecording = true
                     recordingStartTime = Date()

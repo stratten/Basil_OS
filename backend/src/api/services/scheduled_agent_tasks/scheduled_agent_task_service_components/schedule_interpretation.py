@@ -36,6 +36,7 @@ from api.services.model_usage_service import ModelUsageService
 
 from .schedule_time_math import (
     compute_next_run_at,
+    normalized_schedule_config,
     detect_local_timezone_name,
     get_zone,
     utc_now,
@@ -166,6 +167,16 @@ Convert the user's natural-language scheduling intent into STRICT JSON matching 
     //   Optional first run: add "start_at": "YYYY-MM-DDTHH:MM" (local wall-clock
     //   time in the schedule's timezone, no offset) ONLY when the user names a
     //   starting time ("every 30 minutes starting at 3pm"). Omit it otherwise.
+    //
+    // any recurring schedule may also carry quiet hours that it must not run in:
+    //   "exclusion_windows": [{{"start": "HH:MM", "end": "HH:MM", "days": [0..6]}}]
+    //   Times are 24-hour local wall-clock times in the schedule's timezone. A window
+    //   whose end is earlier than its start crosses midnight ("except 10pm to 7am" is
+    //   start "22:00", end "07:00"). "days" is optional (Monday=0) and lists the days on
+    //   which the window starts; omit it for every day. Equal start and end with "days"
+    //   excludes whole days ("not on weekends" is start "00:00", end "00:00", days [5, 6]).
+    //   Add one object per separate window, at most 8. Omit "exclusion_windows" entirely
+    //   when the user names no times to avoid.
   }},
   "timezone": "IANA timezone string like America/New_York",
   "needs_user_confirmation": true | false,
@@ -201,6 +212,9 @@ Rules:
    about timezone unless the user said something explicitly contradictory.
 9) If there was a prior validation error, fix that exact issue and return
    corrected JSON only.
+10) Quiet-hours wording ("except 10pm to 7am", "not on weekends", "skip lunchtime") belongs in
+   schedule_config.exclusion_windows, never in agent_task_text. Remove it from agent_task_text
+   the same way as recurrence wording.
 
 User request:
 \"\"\"{user_prompt}\"\"\"{context_block}{correction_block}"""
@@ -229,6 +243,9 @@ def validate_interpreted_schedule_payload(payload: Dict[str, Any]) -> Dict[str, 
 
     # Validate timezone format (fallback handled in runtime, but reject obviously bad output here).
     _ = get_zone(timezone_name)
+
+    # Canonicalize exclusion windows (raises ValueError, which the interpretation retry loop feeds back to the model).
+    schedule_config = normalized_schedule_config(schedule_type, schedule_config, timezone_name)
 
     # Validate schedule payload by attempting to compute next run.
     next_run = compute_next_run_at(schedule_type, schedule_config, timezone_name)

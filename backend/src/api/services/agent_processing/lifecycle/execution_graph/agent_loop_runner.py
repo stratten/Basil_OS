@@ -37,6 +37,7 @@ from .agent_loop_model_recovery import AgentRunFlags, ModelRecoveryMiddleware
 from .agent_loop_nudges import CompletionNudgeMiddleware, ProgressBridgeMiddleware
 from .agent_loop_run_control import RunControlMiddleware, record_undelivered_notes
 from .agent_loop_tool_surface import ToolSurfaceMiddleware, ToolSurfaceTracker
+from .chain_thread_budget import fit_prior_messages, history_budget_tokens
 from .context_window_budget import model_display_label, prompt_budget_tokens, resolve_context_window_tokens
 from .conversation_turns import (
     current_turn_messages,
@@ -259,6 +260,7 @@ def _initial_messages(
     prior_thread: Any = None,
     langchain_llm: Any = None,
     runtime_context: str = "",
+    history_budget: Optional[int] = None,
 ) -> list[BaseMessage]:
     resume_input = getattr(state, "agent_resume_input", None)
     if resume_input is not None:
@@ -276,6 +278,8 @@ def _initial_messages(
             logger.info("🔁 Resuming the paused agent conversation with %s message(s)", len(seeded))
             return seeded
     prior_messages = prepare_thread_for_model(prior_thread, langchain_llm)
+    if prior_messages and history_budget:
+        prior_messages = fit_prior_messages(prior_messages, history_budget).messages
     if prior_messages:
         context = getattr(state, "context", None)
         if isinstance(context, dict):
@@ -311,11 +315,18 @@ async def run_agent_loop(request: AgentRunRequest) -> AgentRunResult:
         context=context,
     )
     system_prompt_text = resolve_system_prompt_text(request)
+    window_tokens = await resolve_context_window_tokens(request.langchain_llm, context)
+    budget_tokens = prompt_budget_tokens(request.langchain_llm, window_tokens)
+    if context is not None and window_tokens:
+        # The context assembler sizes the turn text from the window of the model that is about to run, not from its fixed default.
+        context["context_window"] = window_tokens
+    from_schedule = context is not None and context.get("origin_type") == "scheduled_task"
     messages = _initial_messages(
         state,
         request.prior_thread,
         request.langchain_llm,
         runtime_context=build_runtime_context(request),
+        history_budget=history_budget_tokens(budget_tokens, scheduled=from_schedule),
     )
     final_input = _synthesis_input(messages)
     await emit_activity_phase(
@@ -375,8 +386,6 @@ async def run_agent_loop(request: AgentRunRequest) -> AgentRunResult:
         )
 
     if can_start:
-        window_tokens = await resolve_context_window_tokens(request.langchain_llm, context)
-        budget_tokens = prompt_budget_tokens(request.langchain_llm, window_tokens)
         if budget_tokens:
             logger.info("📏 Prompt budget %s tokens for a %s-token context window", budget_tokens, window_tokens)
         agent_task_id = str((context or {}).get("agent_task_id") or "").strip()

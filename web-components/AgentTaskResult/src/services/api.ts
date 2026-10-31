@@ -4,6 +4,7 @@ import type {
   CheckpointField,
   ScheduledAgentTask,
   ScheduledAgentTaskRun,
+  ScheduledChainConfig,
 } from '../types';
 import type { AgentTaskFilterParams } from '../components/sidebar/sidebarFilters';
 
@@ -557,6 +558,8 @@ export async function createScheduledAgentTask(payload: {
   // Optional reasoning model to pin for every scheduled run. Omit to use
   // the default reasoning model.
   model_id?: string;
+  // Optional chain settings. Omit for independent runs (one task per run).
+  chain_config?: ScheduledChainConfig;
 }): Promise<ScheduledAgentTask> {
   return request('POST', '/api/v1/agent-task-schedules', payload);
 }
@@ -580,6 +583,8 @@ export async function updateScheduledAgentTask(
     // Pin a reasoning model for scheduled runs. Send an empty string to go
     // back to the default model; omit the field to leave it unchanged.
     model_id: string;
+    // Replaces the chain settings wholesale; send {mode: 'independent'} to stop chaining, omit to leave them unchanged.
+    chain_config: ScheduledChainConfig;
   }>
 ): Promise<ScheduledAgentTask> {
   return request('PATCH', `/api/v1/agent-task-schedules/${scheduledAgentTaskId}`, payload);

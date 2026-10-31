@@ -64,6 +64,20 @@ final class AudioProcessController {
 
     private var cancellables = Set<AnyCancellable>()
 
+    /// Logger for the background build, which runs off the main actor.
+    private nonisolated static let buildLogger = Logger(subsystem: "com.stratten.basil", category: "AudioProcessController")
+
+    /// Reloads slower than this, or ones that covered several notifications, are written to the desktop log so a main-thread stall can be matched to its cause.
+    private static let slowReloadLogThresholdMilliseconds = 250
+
+    /// True once the first delivery after `activate()` has been built. That one stays synchronous because callers read `processGroups` right after activating.
+    private(set) var hasLoadedProcesses = false
+    private(set) var isReloadInFlight = false
+    private var pendingApps: RunningApplicationsBox?
+    private(set) var pendingNotificationCount = 0
+    /// How many background rebuilds have started; lets tests prove that bursts coalesce.
+    private(set) var backgroundReloadCount = 0
+
     func activate() {
         logger.debug(#function)
 
@@ -72,41 +86,103 @@ final class AudioProcessController {
             .map { $0.filter({ $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }) }
             .sink { [weak self] apps in
                 guard let self else { return }
-                self.reload(apps: apps)
+                self.handleRunningApplicationsChange(apps)
             }
             .store(in: &cancellables)
     }
 
-    private func reload(apps: [NSRunningApplication]) {
-        logger.debug(#function)
+    /// Every running-application change used to rebuild the whole list on the main actor, and each rebuild makes a blocking round trip to `coreaudiod` per audio process, so a burst of launches and quits froze the app for seconds. After the first load the build now runs on a background task, and notifications that arrive while it runs collapse into one more rebuild with the latest application list.
+    func handleRunningApplicationsChange(_ apps: [NSRunningApplication]) {
+        guard hasLoadedProcesses else {
+            hasLoadedProcesses = true
+            let started = ContinuousClock.now
+            apply(Self.buildProcesses(apps: apps), notifications: 1, started: started)
+            return
+        }
 
+        pendingNotificationCount += 1
+        guard !isReloadInFlight else {
+            pendingApps = RunningApplicationsBox(apps: apps)
+            return
+        }
+        startBackgroundReload(apps: apps)
+    }
+
+    private func startBackgroundReload(apps: [NSRunningApplication]) {
+        isReloadInFlight = true
+        backgroundReloadCount += 1
+        let notifications = pendingNotificationCount
+        pendingNotificationCount = 0
+        let box = RunningApplicationsBox(apps: apps)
+        let started = ContinuousClock.now
+        Task.detached(priority: .utility) { [weak self] in
+            let result = Self.buildProcesses(apps: box.apps)
+            await self?.finishBackgroundReload(result, notifications: notifications, started: started)
+        }
+    }
+
+    private func finishBackgroundReload(_ result: Result<[AudioProcess], Error>, notifications: Int, started: ContinuousClock.Instant) {
+        apply(result, notifications: notifications, started: started)
+        if let next = pendingApps {
+            pendingApps = nil
+            startBackgroundReload(apps: next.apps)
+        } else {
+            isReloadInFlight = false
+        }
+    }
+
+    private func apply(_ result: Result<[AudioProcess], Error>, notifications: Int, started: ContinuousClock.Instant) {
+        switch result {
+        case .success(let updatedProcesses):
+            processes = updatedProcesses
+        case .failure(let error):
+            logger.error("Error reading process list: \(error)")
+        }
+
+        let components = started.duration(to: ContinuousClock.now).components
+        let milliseconds = Int(components.seconds) * 1000 + Int(components.attoseconds / 1_000_000_000_000_000)
+        if milliseconds >= Self.slowReloadLogThresholdMilliseconds || notifications > 1 {
+            DevLogger.shared.warning(
+                "Audio process list reload took \(milliseconds) ms for \(processes.count) processes and covered \(notifications) application-list notification(s)",
+                context: "AudioProcessController"
+            )
+        }
+    }
+
+    /// Reads the CoreAudio process list and builds an `AudioProcess` for each entry. Safe off the main actor: it touches no controller state.
+    private nonisolated static func buildProcesses(apps: [NSRunningApplication]) -> Result<[AudioProcess], Error> {
         do {
             let objectIdentifiers = try AudioObjectID.readProcessList()
-            
+
             let updatedProcesses: [AudioProcess] = objectIdentifiers.compactMap { objectID in
                 do {
                     let proc = try AudioProcess(objectID: objectID, runningApplications: apps)
 
                     #if DEBUG
                     if UserDefaults.standard.bool(forKey: "ACDumpProcessInfo") {
-                        logger.debug("[PROCESS] \(String(describing: proc))")
+                        buildLogger.debug("[PROCESS] \(String(describing: proc))")
                     }
                     #endif
 
                     return proc
                 } catch {
-                    logger.warning("Failed to initialize process with object ID #\(objectID): \(error)")
+                    buildLogger.warning("Failed to initialize process with object ID #\(objectID): \(error)")
                     return nil
                 }
             }
 
-            self.processes = updatedProcesses.sorted { 
+            return .success(updatedProcesses.sorted {
                 $0.name.localizedStandardCompare($1.name) == .orderedAscending
-            }
+            })
         } catch {
-            logger.error("Error reading process list: \(error)")
+            return .failure(error)
         }
     }
+}
+
+/// Hands the running-application snapshot to the background build. `NSRunningApplication` is not declared `Sendable`, but the properties read from it (`processIdentifier`, `localizedName`, `bundleURL`, `bundleIdentifier`) are safe to read from any thread, and the meeting-detection probe already reads it off the main actor.
+private struct RunningApplicationsBox: @unchecked Sendable {
+    let apps: [NSRunningApplication]
 }
 
 private extension AudioProcess {

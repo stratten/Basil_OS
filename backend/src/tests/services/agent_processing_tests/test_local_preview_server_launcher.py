@@ -275,9 +275,13 @@ async def test_second_session_for_same_artifact_stops_first(
             port=port_b,
         )
 
-    assert registry.get_active_session_id_for_artifact("task-1", "artifact-a1") == second.session_id
-    assert registry.get(first.session_id).status == "stopped"
-    assert first_process.returncode is not None
+    try:
+        assert registry.get_active_session_id_for_artifact("task-1", "artifact-a1") == second.session_id
+        assert registry.get(first.session_id).status == "stopped"
+        assert first_process.returncode is not None
+    finally:
+        # The replacement session owns a real listener subprocess that outlives pytest unless it is stopped.
+        await launcher.stop_session(second.session_id)
 
 
 @pytest.mark.asyncio

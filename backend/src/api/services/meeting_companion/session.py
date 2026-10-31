@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Sequence, Set, Tuple, Union, get_args
 
-from .audit import MIN_EVALUATIONS_FOR_AUTOMATIC_AUDIT, AuditFailed, AuditInputs, AuditRejected, CompanionAuditor
+from .audit import MIN_EVALUATIONS_FOR_AUTOMATIC_AUDIT, AuditFailed, AuditInputs, AuditRejected, CompanionAuditor, findings_as_items
 from .capacity import CapacityGuard, allowed_triggers, prefetch_allowed
 from .chat import ChatRequest, CompanionChatService
 from .context_search import MAX_ROOTS, RootRejected, validate_root
@@ -745,6 +745,9 @@ class CompanionSession:
             report = await auditor.audit(inputs)
             if not self._closed:
                 self._append("audit", self._latest_meeting_time, report.model_dump(mode="json"))
+                # Findings also join the normal feed, at the point in the meeting where each miss happened.
+                for finding in findings_as_items(report, inputs.turns, self._get_derived().items):
+                    self._append("item", finding.transcript_range.end, {"item": finding.model_dump(mode="json")})
         except (AuditFailed, AuditRejected) as failure:
             self._append("error", self._latest_meeting_time, {"code": "audit_failed", "message": f"The audit failed: {failure}"[:MAX_ERROR_MESSAGE_CHARS]})
         except Exception as error:

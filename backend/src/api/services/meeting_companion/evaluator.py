@@ -101,7 +101,7 @@ class EvaluationOutcome:
 
 
 QUESTION_CONFIDENCE_FLOOR = 0.4
-DEFAULT_CONFIDENCE_FLOOR = 0.6
+DEFAULT_CONFIDENCE_FLOOR = 0.55
 
 
 def min_confidence_for(trigger: str) -> float:

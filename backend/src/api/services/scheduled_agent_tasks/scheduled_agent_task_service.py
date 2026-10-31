@@ -130,6 +130,7 @@ class ScheduledAgentTaskService:
         reference_paths: Optional[List[str]] = None,
         model_id: Optional[str] = None,
         connection_ids: Optional[List[str]] = None,
+        chain_config: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         return await scheduled_run_lifecycle.create_scheduled_agent_task(
             self._repo,
@@ -143,6 +144,7 @@ class ScheduledAgentTaskService:
             reference_paths=reference_paths,
             model_id=model_id,
             connection_ids=connection_ids,
+            chain_config=chain_config,
         )
 
     async def list_scheduled_agent_tasks(self, include_inactive: bool = True) -> List[Dict[str, Any]]:

@@ -33,7 +33,7 @@ from typing import Any, Dict, Iterator, Optional, TYPE_CHECKING
 
 from api.dependencies import get_sqlite_knowledge_service
 
-from . import scheduled_connection_tags, scheduled_run_lifecycle
+from . import scheduled_chain_runtime, scheduled_connection_tags, scheduled_run_lifecycle
 from .schedule_time_math import utc_now
 from .scheduled_run_outcome import (
     OUTCOME_FAILED,
@@ -560,6 +560,17 @@ async def execute_scheduled_run(
         )
         return {"success": False, "error": "Run already claimed"}
 
+    chain_plan = await scheduled_chain_runtime.plan_chain_run(repo, db, scheduled_agent_task, run_id=run_id)
+    if chain_plan.action == scheduled_chain_runtime.ACTION_SKIP:
+        skip_reason = chain_plan.skip_reason or scheduled_chain_runtime.SKIP_REASON
+        await scheduled_run_lifecycle.finalize_skipped_run(
+            repo,
+            scheduled_agent_task_id=scheduled_agent_task_id,
+            run_id=run_id,
+            reason=skip_reason,
+        )
+        return {"success": False, "skipped": True, "error": skip_reason}
+
     with _prevent_idle_system_sleep_for_scheduled_run(
         scheduled_agent_task_id=scheduled_agent_task_id,
         run_id=run_id,
@@ -612,8 +623,9 @@ async def execute_scheduled_run(
             run_model_id, model_notice = await _resolve_scheduled_model(
                 scheduled_agent_task, scheduled_agent_task_id
             )
-            if model_notice:
-                await repo.update_scheduled_run(run_id, notice=model_notice)
+            run_start_notice = " ".join(part for part in (model_notice, chain_plan.notice) if part)
+            if run_start_notice:
+                await repo.update_scheduled_run(run_id, notice=run_start_notice)
             agent_task_text = scheduled_agent_task["agent_task_text"]
             connection_tag_blocker_message, connection_tag_block = _check_connection_tags(
                 scheduled_agent_task, scheduled_agent_task_id
@@ -625,6 +637,13 @@ async def execute_scheduled_run(
                 # Kept on the run itself, so its view lists the connections it was told to use even if the schedule is edited later.
                 submit_kwargs["connection_ids"] = scheduled_connection_tags.normalize_connection_ids(scheduled_agent_task.get("connection_ids"))
                 agent_task_text = f"{agent_task_text}\n\n{connection_tag_block}"
+            if chain_plan.handoff_block:
+                # The agent also sees the closed conversation's last result; the run's history keeps showing the prompt as the user wrote it.
+                submit_kwargs.setdefault("display_prompt_markdown", scheduled_agent_task["agent_task_text"])
+                agent_task_text = f"{agent_task_text}\n\n{chain_plan.handoff_block}"
+            if chain_plan.root_task_id:
+                # Continues the chain's conversation; the submission service derives the previous task from the chain's latest task.
+                submit_kwargs["root_task_id"] = chain_plan.root_task_id
             if connection_tag_blocker_message:
                 # A tagged connection cannot be used, so nothing is submitted. The failure goes through the same finalization as a failed submission, which keeps a recurring schedule moving to its next occurrence.
                 submission_result = {"success": False, "error": connection_tag_blocker_message}

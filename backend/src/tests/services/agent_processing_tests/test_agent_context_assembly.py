@@ -41,10 +41,19 @@ def test_derive_budget_chars_floors_at_default_when_window_unknown():
     assert assembler._derive_budget_chars({}) == assembler.DEFAULT_INPUT_BUDGET_CHARS
 
 
-def test_derive_budget_chars_floors_at_default_for_small_context_window():
+def test_derive_budget_chars_shrinks_below_the_default_for_a_small_context_window():
     assembler = AgentContextAssembler()
     budget = assembler._derive_budget_chars({"context_window": 8_000})
-    assert budget == assembler.DEFAULT_INPUT_BUDGET_CHARS
+    # Input tokens are clamped to at least 4,000, so this is the smallest budget a known window can produce.
+    assert budget == int(4_000 * assembler.CHARS_PER_TOKEN_ESTIMATE * assembler.WINDOW_SHARE_FOR_TURN_TEXT)
+    assert assembler.MIN_INPUT_BUDGET_CHARS <= budget < assembler.DEFAULT_INPUT_BUDGET_CHARS
+
+
+def test_derive_budget_chars_uses_a_share_of_a_mid_sized_window():
+    assembler = AgentContextAssembler()
+    budget = assembler._derive_budget_chars({"context_window": 32_768})
+    assert budget == int((32_768 - assembler.OUTPUT_RESERVE_TOKENS) * assembler.CHARS_PER_TOKEN_ESTIMATE * assembler.WINDOW_SHARE_FOR_TURN_TEXT)
+    assert assembler.MIN_INPUT_BUDGET_CHARS < budget < assembler.DEFAULT_INPUT_BUDGET_CHARS
 
 
 def test_derive_budget_chars_caps_at_max_for_very_large_context_window():

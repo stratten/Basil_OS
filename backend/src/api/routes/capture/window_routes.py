@@ -103,7 +103,14 @@ async def handle_capture_response(response_data: dict) -> CaptureResponseAckResp
             status="success",
             message="Capture response received"
         )
-        
+
+    except KeyError:
+        # A reply that arrives after its request timed out is expected when the app was busy; the app can do nothing about it, so acknowledge it instead of reporting a server error.
+        return CaptureResponseAckResponse(
+            status="ignored",
+            message="No pending capture request; it may have timed out"
+        )
+
     except Exception as e:
         logger.error(f"❌ Error handling capture response: {e}")
         raise HTTPException(status_code=500, detail=f"Error handling capture response: {str(e)}")

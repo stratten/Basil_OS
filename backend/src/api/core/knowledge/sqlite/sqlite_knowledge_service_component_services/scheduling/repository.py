@@ -74,10 +74,21 @@ class ScheduledAgentTaskRepository:
         return json.dumps(list(dict.fromkeys(cleaned)))
 
     @staticmethod
+    def _serialize_chain_config(chain_config: Optional[Dict[str, Any]]) -> str:
+        # Stored exactly as the lifecycle layer validated it; absent means independent runs.
+        return json.dumps(chain_config or {"mode": "independent"}, sort_keys=True)
+
+    @staticmethod
+    def _decode_chain_config(raw: Optional[str]) -> Dict[str, Any]:
+        decoded = ScheduledAgentTaskRepository._decode_config_json(raw)
+        return decoded if isinstance(decoded, dict) and decoded.get("mode") else {"mode": "independent"}
+
+    @staticmethod
     def _row_to_scheduled_agent_task(row: sqlite3.Row) -> Dict[str, Any]:
         row_keys = row.keys()
         reference_paths_raw = row["reference_paths"] if "reference_paths" in row_keys else None
         connection_ids_raw = row["connection_ids"] if "connection_ids" in row_keys else None
+        chain_config_raw = row["chain_config"] if "chain_config" in row_keys else None
         return {
             "id": row["id"],
             "title": row["title"],
@@ -90,6 +101,7 @@ class ScheduledAgentTaskRepository:
             "reference_paths": ScheduledAgentTaskRepository._decode_reference_paths(reference_paths_raw),
             "connection_ids": ScheduledAgentTaskRepository._decode_reference_paths(connection_ids_raw),
             "model_id": (row["model_id"] if "model_id" in row_keys else None) or None,
+            "chain_config": ScheduledAgentTaskRepository._decode_chain_config(chain_config_raw),
             "next_run_at": row["next_run_at"],
             "last_run_at": row["last_run_at"],
             "last_status": row["last_status"],
@@ -127,14 +139,15 @@ class ScheduledAgentTaskRepository:
         reference_paths: Optional[List[str]] = None,
         model_id: Optional[str] = None,
         connection_ids: Optional[List[str]] = None,
+        chain_config: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         scheduled_agent_task_id = str(uuid.uuid4())
         await self._execute_write(
             """
             INSERT INTO scheduled_agent_tasks (
                 id, title, agent_task_text, schedule_type, schedule_config,
-                timezone, is_active, source_type, reference_paths, connection_ids, model_id, next_run_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                timezone, is_active, source_type, reference_paths, connection_ids, model_id, chain_config, next_run_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 scheduled_agent_task_id,
@@ -148,6 +161,7 @@ class ScheduledAgentTaskRepository:
                 self._serialize_reference_paths(reference_paths),
                 self._serialize_connection_ids(connection_ids),
                 (model_id or "").strip() or None,
+                self._serialize_chain_config(chain_config),
                 next_run_at,
             ),
         )
@@ -218,6 +232,7 @@ class ScheduledAgentTaskRepository:
         reference_paths: Optional[List[str]] = None,
         model_id: Optional[str] = None,
         connection_ids: Optional[List[str]] = None,
+        chain_config: Optional[Dict[str, Any]] = None,
     ) -> Optional[Dict[str, Any]]:
         # ``next_run_at=None`` is treated as "do not touch this column" so
         # callers that pass partial updates don't accidentally wipe the
@@ -264,6 +279,10 @@ class ScheduledAgentTaskRepository:
             # ``None`` leaves the stored ids alone; an empty list clears every tag.
             updates.append("connection_ids = ?")
             params.append(self._serialize_connection_ids(connection_ids))
+        if chain_config is not None:
+            # ``None`` leaves the stored chain settings alone; the lifecycle layer always passes a validated object.
+            updates.append("chain_config = ?")
+            params.append(self._serialize_chain_config(chain_config))
         if model_id is not None:
             # ``None`` leaves the stored model alone; an empty string clears it back to the default model.
             updates.append("model_id = ?")
@@ -453,6 +472,37 @@ class ScheduledAgentTaskRepository:
             }
             for row in rows
         ]
+
+    @run_in_worker_thread
+    def latest_chain_anchor(self, scheduled_agent_task_id: str, exclude_run_id: str) -> Optional[Dict[str, Any]]:
+        """The most recent earlier run of this schedule that started an agent task, with its chain root and whether that chain is archived.
+
+        Runs that never started a task (skipped, missed, failed before submission) are passed over, so a chain continues from the last real conversation.
+        """
+        with self._get_connection() as conn:
+            row = conn.execute(
+                """
+                SELECT scr.agent_task_id AS agent_task_id,
+                       COALESCE(t.root_task_id, t.id) AS root_task_id,
+                       root.archived_at AS root_archived_at
+                FROM scheduled_agent_task_runs scr
+                JOIN agent_tasks t ON t.id = scr.agent_task_id
+                LEFT JOIN agent_tasks root ON root.id = COALESCE(t.root_task_id, t.id)
+                WHERE scr.scheduled_agent_task_id = ?
+                  AND scr.id <> ?
+                  AND scr.agent_task_id IS NOT NULL
+                ORDER BY scr.scheduled_for DESC
+                LIMIT 1
+                """,
+                (scheduled_agent_task_id, exclude_run_id),
+            ).fetchone()
+        if not row:
+            return None
+        return {
+            "agent_task_id": row["agent_task_id"],
+            "root_task_id": row["root_task_id"],
+            "root_archived_at": row["root_archived_at"],
+        }
 
     @run_in_worker_thread
     def list_due_agent_tasks(self, now_iso: str) -> List[Dict[str, Any]]:
