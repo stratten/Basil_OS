@@ -1,0 +1,244 @@
+name: Promote Basil build
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "rolling replaces the main-latest pre-release and does not touch the update feed. stable publishes a numbered release as Latest and publishes the signed update feed."
+        required: true
+        type: choice
+        options:
+          - rolling
+          - stable
+      commit:
+        description: "Full 40-character SHA of a main commit whose Validate Basil build is still within its artifact retention."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  promote:
+    if: github.ref == 'refs/heads/main'
+    runs-on: macos-latest
+    timeout-minutes: 60
+    environment: release-build
+    concurrency:
+      group: promote-build
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      actions: read
+    env:
+      CHANNEL: ${{ inputs.channel }}
+      COMMIT: ${{ inputs.commit }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Check the inputs
+        run: |
+          if ! [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::The commit input must be a full 40-character lowercase SHA."
+            exit 1
+          fi
+          status="$(gh api "repos/${GITHUB_REPOSITORY}/compare/main...${COMMIT}" --jq .status)"
+          case "$status" in
+            identical|behind) ;;
+            *)
+              echo "::error::Commit $COMMIT is not on main (comparison status: $status)."
+              exit 1
+              ;;
+          esac
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.commit }}
+          persist-credentials: false
+
+      - name: Download and check the build
+        id: build
+        run: |
+          artifact="basil-build-${COMMIT}"
+          run_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${artifact}&per_page=100" --jq '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last | .workflow_run.id // empty')"
+          if [ -z "$run_id" ]; then
+            echo "::error::No unexpired build artifact named ${artifact}. Push the commit again or re-run its Validate Basil workflow to produce one."
+            exit 1
+          fi
+          build_dir="$RUNNER_TEMP/build"
+          mkdir -p "$build_dir"
+          gh run download "$run_id" --name "$artifact" --dir "$build_dir"
+          info="$build_dir/build-info.env"
+          value() { sed -n "s/^$1=//p" "$info"; }
+          if [ "$(value BASIL_SOURCE_COMMIT)" != "$COMMIT" ]; then
+            echo "::error::The artifact was built from $(value BASIL_SOURCE_COMMIT), not $COMMIT."
+            exit 1
+          fi
+          dmg_name="$(value BASIL_DMG_NAME)"
+          (cd "$build_dir" && shasum -a 256 -c SHA256SUMS.txt)
+          {
+            echo "run_id=$run_id"
+            echo "build_dir=$build_dir"
+            echo "dmg_name=$dmg_name"
+            echo "version=$(value BASIL_APP_VERSION)"
+            echo "build_number=$(value BASIL_BUILD_NUMBER)"
+            echo "dmg_sha256=$(awk '{print $1}' "$build_dir/SHA256SUMS.txt")"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Check the signed build
+        env:
+          BASIL_EXPECTED_PUBLIC_ED_KEY: ${{ vars.BASIL_SPARKLE_REPO_PUBLIC_ED_KEY }}
+          BUILD_DIR: ${{ steps.build.outputs.build_dir }}
+          DMG_NAME: ${{ steps.build.outputs.dmg_name }}
+        run: build/scripts/verify_release_artifact.sh "$BUILD_DIR/$DMG_NAME" "$COMMIT"
+
+      - name: Publish the rolling main-latest pre-release
+        if: inputs.channel == 'rolling'
+        env:
+          BUILD_DIR: ${{ steps.build.outputs.build_dir }}
+          DMG_NAME: ${{ steps.build.outputs.dmg_name }}
+          DMG_SHA256: ${{ steps.build.outputs.dmg_sha256 }}
+          BUILD_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ steps.build.outputs.run_id }}
+          COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ inputs.commit }}
+          DOCS_URL: ${{ github.server_url }}/${{ github.repository }}/blob/${{ inputs.commit }}/docs/verifying-builds.md
+        run: |
+          short_sha="${COMMIT:0:12}"
+          notes_path="$RUNNER_TEMP/release-notes.md"
+          cat > "$notes_path" <<NOTES
+          Build of [\`${COMMIT}\`](${COMMIT_URL}) on \`main\`, produced by [this workflow run](${BUILD_RUN_URL}) and promoted here by hand. This pre-release is replaced each time the release owner promotes another build; it is not a stable release. Basil installed from it checks this repository's \`update-feed\` release, which lists stable releases only, so it is never offered another \`main\` build.
+
+          - File: \`${DMG_NAME}\`
+          - SHA-256: \`${DMG_SHA256}\`
+
+          Verify that this file was built by this repository's workflow from that commit:
+
+          \`\`\`bash
+          gh attestation verify ${DMG_NAME} --repo ${GITHUB_REPOSITORY} --signer-workflow ${GITHUB_REPOSITORY}/.github/workflows/validate.yml --source-ref refs/heads/main --source-digest ${COMMIT} --deny-self-hosted-runners
+          \`\`\`
+
+          Full steps and what this does and does not prove: [Verifying repository builds](${DOCS_URL}).
+
+          ## Changes since the last website release
+
+          NOTES
+          unreleased="$(build/scripts/changelog_section.sh Unreleased)"
+          if [ -n "$unreleased" ]; then
+            printf '%s\n' "$unreleased" >> "$notes_path"
+          else
+            echo "No user-facing changes are recorded yet." >> "$notes_path"
+          fi
+          printf '\nFull history: [CHANGELOG.md](%s/%s/blob/%s/CHANGELOG.md)\n' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$COMMIT" >> "$notes_path"
+          gh release delete main-latest --cleanup-tag --yes || true
+          gh release create main-latest "$BUILD_DIR/$DMG_NAME" "$BUILD_DIR/SHA256SUMS.txt" \
+            --target "$COMMIT" \
+            --prerelease \
+            --latest=false \
+            --title "Latest main build (${short_sha})" \
+            --notes-file "$notes_path"
+
+      - name: Check that the stable release can be created
+        if: inputs.channel == 'stable'
+        id: stable
+        env:
+          VERSION: ${{ steps.build.outputs.version }}
+        run: |
+          tag="v${VERSION}"
+          if gh release view "$tag" > /dev/null 2>&1; then
+            echo "::error::A release named ${tag} already exists. Raise the version in CHANGELOG.md for a new stable release, or delete the existing release and its tag first."
+            exit 1
+          fi
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" > /dev/null 2>&1; then
+            echo "::error::The tag ${tag} already exists. Delete it on the remote first so the release tag matches this build."
+            exit 1
+          fi
+          build/scripts/changelog_section.sh "$VERSION" > "$RUNNER_TEMP/stable-notes.txt"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Generate the signed stable update feed
+        if: inputs.channel == 'stable'
+        id: feed
+        env:
+          BASIL_SPARKLE_PRIVATE_KEY: ${{ secrets.BASIL_SPARKLE_REPO_PRIVATE_KEY }}
+          BASIL_APPCAST_URL: ${{ github.server_url }}/${{ github.repository }}/releases/download/update-feed/appcast.xml
+          BASIL_RELEASE_NOTES_FILE: ${{ runner.temp }}/stable-notes.txt
+          BUILD_DIR: ${{ steps.build.outputs.build_dir }}
+          DMG_NAME: ${{ steps.build.outputs.dmg_name }}
+          VERSION: ${{ steps.build.outputs.version }}
+          BUILD_NUMBER: ${{ steps.build.outputs.build_number }}
+          TAG: ${{ steps.stable.outputs.tag }}
+        run: |
+          if [ -z "$BASIL_SPARKLE_PRIVATE_KEY" ]; then
+            echo "::error::The release-build environment needs the BASIL_SPARKLE_REPO_PRIVATE_KEY secret."
+            exit 1
+          fi
+          swift package resolve --package-path client
+          appcast_path="$RUNNER_TEMP/appcast.xml"
+          rm -f "$appcast_path"
+          build/scripts/update_appcast.sh \
+            --version "$VERSION" \
+            --build "$BUILD_NUMBER" \
+            --dmg "$BUILD_DIR/$DMG_NAME" \
+            --download-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${TAG}/Basil.dmg" \
+            --appcast "$appcast_path" \
+            --sign-feed
+          echo "appcast_path=$appcast_path" >> "$GITHUB_OUTPUT"
+
+      - name: Publish the stable release
+        if: inputs.channel == 'stable'
+        env:
+          BUILD_DIR: ${{ steps.build.outputs.build_dir }}
+          DMG_NAME: ${{ steps.build.outputs.dmg_name }}
+          DMG_SHA256: ${{ steps.build.outputs.dmg_sha256 }}
+          VERSION: ${{ steps.build.outputs.version }}
+          BUILD_NUMBER: ${{ steps.build.outputs.build_number }}
+          TAG: ${{ steps.stable.outputs.tag }}
+          SPARKLE_PUBLIC_ED_KEY: ${{ vars.BASIL_SPARKLE_REPO_PUBLIC_ED_KEY }}
+          BUILD_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ steps.build.outputs.run_id }}
+          PROMOTE_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ inputs.commit }}
+          DOCS_URL: ${{ github.server_url }}/${{ github.repository }}/blob/${{ inputs.commit }}/docs/verifying-builds.md
+        run: |
+          stable_dir="$RUNNER_TEMP/stable"
+          mkdir -p "$stable_dir"
+          cp "$BUILD_DIR/$DMG_NAME" "$stable_dir/Basil.dmg"
+          (cd "$stable_dir" && shasum -a 256 Basil.dmg > SHA256SUMS.txt)
+          notes_path="$RUNNER_TEMP/stable-release-notes.md"
+          cat > "$notes_path" <<NOTES
+          Basil ${VERSION} (build ${BUILD_NUMBER}), built from [\`${COMMIT}\`](${COMMIT_URL}) by [this workflow run](${BUILD_RUN_URL}) and promoted to the stable channel by [this manual run](${PROMOTE_RUN_URL}). Basil installed from this release updates itself through Sparkle from this repository's \`update-feed\` release, which lists stable releases only; each update is verified with the EdDSA public key \`${SPARKLE_PUBLIC_ED_KEY}\`.
+
+          - File: \`Basil.dmg\`
+          - SHA-256: \`${DMG_SHA256}\`
+
+          Verify that this file was built by this repository's workflow from that commit:
+
+          \`\`\`bash
+          gh attestation verify Basil.dmg --repo ${GITHUB_REPOSITORY} --signer-workflow ${GITHUB_REPOSITORY}/.github/workflows/validate.yml --source-ref refs/heads/main --source-digest ${COMMIT} --deny-self-hosted-runners
+          \`\`\`
+
+          Full steps and what this does and does not prove: [Verifying repository builds](${DOCS_URL}).
+
+          ## What is new in ${VERSION}
+
+          NOTES
+          cat "$RUNNER_TEMP/stable-notes.txt" >> "$notes_path"
+          printf '\nFull history: [CHANGELOG.md](%s/%s/blob/%s/CHANGELOG.md)\n' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$COMMIT" >> "$notes_path"
+          gh release create "$TAG" "$stable_dir/Basil.dmg" "$stable_dir/SHA256SUMS.txt" \
+            --target "$COMMIT" \
+            --latest \
+            --title "Basil ${VERSION}" \
+            --notes-file "$notes_path"
+
+      - name: Publish the stable update feed
+        if: inputs.channel == 'stable'
+        env:
+          APPCAST_PATH: ${{ steps.feed.outputs.appcast_path }}
+        run: |
+          if ! gh release view update-feed > /dev/null 2>&1; then
+            gh release create update-feed \
+              --target "$COMMIT" \
+              --prerelease \
+              --latest=false \
+              --title "Update feed" \
+              --notes "Sparkle update feed for stable releases of this repository. This release holds only appcast.xml, which each stable promotion replaces in place. Download Basil from the latest release instead."
+          fi
+          gh release upload update-feed "$APPCAST_PATH" --clobber

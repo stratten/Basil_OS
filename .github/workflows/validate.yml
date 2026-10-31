@@ -4,7 +4,7 @@ on:
   pull_request:
   push:
     branches: [main]
-    # A push that changes only the README skips the tests and the signed build; the latest main-latest build still matches the last code change.
+    # A push that changes only the README skips the tests and the signed build; the newest build artifact still matches the last code change.
     paths-ignore:
       - README.md
 
@@ -65,14 +65,13 @@ jobs:
       group: release-build-main
       cancel-in-progress: false
     permissions:
-      contents: write
+      contents: read
       id-token: write
       attestations: write
     env:
       HOMEBREW_NO_AUTO_UPDATE: "1"
       HOMEBREW_NO_INSTALL_CLEANUP: "1"
       BASIL_NOTARY_KEYCHAIN_PROFILE: basil-ci-notary
-      RELEASE_TAG: main-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -123,10 +122,9 @@ jobs:
       - name: Resolve the repository update channel
         env:
           SPARKLE_PUBLIC_ED_KEY: ${{ vars.BASIL_SPARKLE_REPO_PUBLIC_ED_KEY }}
-          SPARKLE_PRIVATE_KEY: ${{ secrets.BASIL_SPARKLE_REPO_PRIVATE_KEY }}
         run: |
-          if [ -z "$SPARKLE_PUBLIC_ED_KEY" ] || [ -z "$SPARKLE_PRIVATE_KEY" ]; then
-            echo "::error::The release-build environment needs the BASIL_SPARKLE_REPO_PUBLIC_ED_KEY variable and the BASIL_SPARKLE_REPO_PRIVATE_KEY secret."
+          if [ -z "$SPARKLE_PUBLIC_ED_KEY" ]; then
+            echo "::error::The release-build environment needs the BASIL_SPARKLE_REPO_PUBLIC_ED_KEY variable."
             exit 1
           fi
           app_version="$(awk '/^## [0-9]+\.[0-9]+\.[0-9]+[[:space:]]*$/ { print $2; exit }' CHANGELOG.md)"
@@ -179,118 +177,35 @@ jobs:
             echo "dmg_sha256=$(awk '{print $1}' "$release_dir/SHA256SUMS.txt")"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Confirm this run is for the current tip of main
-        id: tip
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          tip="$(gh api "repos/${GITHUB_REPOSITORY}/commits/main" --jq .sha)"
-          if [ "$tip" = "$GITHUB_SHA" ]; then
-            echo "current=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::main is now at $tip, so this run for $GITHUB_SHA will not publish a build or an update."
-            echo "current=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Generate the signed update feed
-        if: steps.tip.outputs.current == 'true'
-        id: feed
-        env:
-          BASIL_SPARKLE_PRIVATE_KEY: ${{ secrets.BASIL_SPARKLE_REPO_PRIVATE_KEY }}
-          BASIL_APPCAST_URL: ${{ github.server_url }}/${{ github.repository }}/releases/download/update-feed/appcast.xml
-          APP_PATH: ${{ steps.stage.outputs.app_path }}
-          DMG_PATH: ${{ steps.stage.outputs.dmg_path }}
-          DMG_NAME: ${{ steps.stage.outputs.dmg_name }}
-        run: |
-          info_plist="$APP_PATH/Contents/Info.plist"
-          build_number="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$info_plist")"
-          app_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$info_plist")"
-          notes_file="$RUNNER_TEMP/appcast-notes.txt"
-          build/scripts/changelog_section.sh Unreleased > "$notes_file"
-          if [ ! -s "$notes_file" ]; then
-            echo "- No user-facing changes are recorded yet." > "$notes_file"
-          fi
-          appcast_path="$RUNNER_TEMP/appcast.xml"
-          rm -f "$appcast_path"
-          BASIL_RELEASE_NOTES_FILE="$notes_file" build/scripts/update_appcast.sh \
-            --version "$app_version" \
-            --build "$build_number" \
-            --dmg "$DMG_PATH" \
-            --download-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/main-latest/${DMG_NAME}" \
-            --appcast "$appcast_path" \
-            --sign-feed
-          echo "appcast_path=$appcast_path" >> "$GITHUB_OUTPUT"
-
       - name: Attest build provenance
-        if: steps.tip.outputs.current == 'true'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: ${{ steps.stage.outputs.dmg_path }}
 
-      - name: Publish the rolling main-latest pre-release
-        if: steps.tip.outputs.current == 'true'
+      - name: Record the build metadata
         env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          DMG_PATH: ${{ steps.stage.outputs.dmg_path }}
+          APP_PATH: ${{ steps.stage.outputs.app_path }}
           DMG_NAME: ${{ steps.stage.outputs.dmg_name }}
-          SUMS_PATH: ${{ steps.stage.outputs.sums_path }}
-          SHORT_SHA: ${{ steps.stage.outputs.short_sha }}
-          DMG_SHA256: ${{ steps.stage.outputs.dmg_sha256 }}
-          SPARKLE_PUBLIC_ED_KEY: ${{ vars.BASIL_SPARKLE_REPO_PUBLIC_ED_KEY }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
-          DOCS_URL: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/docs/verifying-builds.md
         run: |
-          notes_path="$RUNNER_TEMP/release-notes.md"
-          cat > "$notes_path" <<EOF
-          Automated build of [\`${GITHUB_SHA}\`](${COMMIT_URL}) on \`main\`, produced by [this workflow run](${RUN_URL}). This pre-release is replaced by every push to \`main\`; it is not the website release. Basil installed from it updates itself through Sparkle from this repository's \`update-feed\` release, and each update is verified with the EdDSA public key \`${SPARKLE_PUBLIC_ED_KEY}\`.
+          info_plist="$APP_PATH/Contents/Info.plist"
+          {
+            echo "BASIL_BUILD_NUMBER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$info_plist")"
+            echo "BASIL_APP_VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$info_plist")"
+            echo "BASIL_SOURCE_COMMIT=$GITHUB_SHA"
+            echo "BASIL_DMG_NAME=$DMG_NAME"
+          } > "$RUNNER_TEMP/release/build-info.env"
 
-          - File: \`${DMG_NAME}\`
-          - SHA-256: \`${DMG_SHA256}\`
-
-          Verify that this file was built by this repository's workflow from that commit:
-
-          \`\`\`bash
-          gh attestation verify ${DMG_NAME} --repo ${GITHUB_REPOSITORY} --signer-workflow ${GITHUB_REPOSITORY}/.github/workflows/validate.yml --source-ref refs/heads/main --source-digest ${GITHUB_SHA} --deny-self-hosted-runners
-          \`\`\`
-
-          Full steps and what this does and does not prove: [Verifying repository builds](${DOCS_URL}).
-
-          ## Changes since the last website release
-
-          EOF
-          unreleased="$(build/scripts/changelog_section.sh Unreleased)"
-          if [ -n "$unreleased" ]; then
-            printf '%s\n' "$unreleased" >> "$notes_path"
-          else
-            echo "No user-facing changes are recorded yet." >> "$notes_path"
-          fi
-          printf '\nFull history: [CHANGELOG.md](%s/%s/blob/%s/CHANGELOG.md)\n' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_SHA" >> "$notes_path"
-          gh release delete "$RELEASE_TAG" --cleanup-tag --yes || true
-          gh release create "$RELEASE_TAG" "$DMG_PATH" "$SUMS_PATH" \
-            --target "$GITHUB_SHA" \
-            --prerelease \
-            --latest=false \
-            --title "Latest main build (${SHORT_SHA})" \
-            --notes-file "$notes_path"
-
-      - name: Publish the update feed
-        if: steps.tip.outputs.current == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          APPCAST_PATH: ${{ steps.feed.outputs.appcast_path }}
-        run: |
-          if ! gh release view update-feed > /dev/null 2>&1; then
-            gh release create update-feed \
-              --target "$GITHUB_SHA" \
-              --prerelease \
-              --latest=false \
-              --title "Update feed" \
-              --notes "Sparkle update feed for repository builds. This release holds only appcast.xml, which every push to main replaces in place. Download Basil from the main-latest release instead."
-          fi
-          gh release upload update-feed "$APPCAST_PATH" --clobber
+      - name: Upload the build for later promotion
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: basil-build-${{ github.sha }}
+          path: |
+            ${{ steps.stage.outputs.dmg_path }}
+            ${{ steps.stage.outputs.sums_path }}
+            ${{ runner.temp }}/release/build-info.env
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
 
       - name: Remove the signing keychain
         if: always()

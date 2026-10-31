@@ -1,10 +1,10 @@
 # Verifying repository builds
 
-Every push to `main` that changes more than the README builds Basil on GitHub-hosted macOS runners, signs and notarizes it with the project's Developer ID, and publishes the result as the `main-latest` pre-release on this repository's Releases page. Each new push replaces the previous build. This page explains how to confirm that a downloaded build came from the code you can read here.
+Every push to `main` that changes more than the README builds Basil on GitHub-hosted macOS runners, signs and notarizes it with the project's Developer ID, attests it, and keeps the result as a workflow artifact. The release owner then promotes a build by hand, either to the `main-latest` pre-release on this repository's Releases page, which each promotion replaces, or to a numbered stable release such as `v1.0.0`. This page explains how to confirm that a downloaded build came from the code you can read here.
 
 ## Who this is for
 
-Use a repository build if you want a ready-to-run app but also want to confirm what it was built from. If you would rather build Basil yourself, follow [Getting started](getting-started.md). If you would rather follow the release owner's separately scheduled releases than the newest code on `main`, use the release from the website instead.
+Use a repository build if you want a ready-to-run app but also want to confirm what it was built from. If you would rather build Basil yourself, follow [Getting started](getting-started.md). If you would rather follow the release owner's stable releases than a build of the newest code on `main`, use the latest release on the Releases page, or the release from the website.
 
 ## What you need
 
@@ -14,7 +14,7 @@ Use a repository build if you want a ready-to-run app but also want to confirm w
 
 ## Steps
 
-1. Open the `main-latest` pre-release on the repository's Releases page. Note the full commit SHA in the release notes, then download `Basil-main-<short-sha>.dmg` and `SHA256SUMS.txt`.
+1. Open the release you downloaded from on the repository's Releases page, either a stable release or the `main-latest` pre-release. Note the full commit SHA in the release notes, then download the DMG (`Basil.dmg` on a stable release, `Basil-main-<short-sha>.dmg` on `main-latest`) and `SHA256SUMS.txt`. Use your file's name wherever the steps below say `Basil-main-<short-sha>.dmg`.
 
 2. Confirm the file matches the published checksum:
 
@@ -61,11 +61,11 @@ The script confirms the notarization ticket, the Developer ID signature, Gatekee
 
 ## Updates
 
-Repository builds update themselves through Sparkle, the same mechanism the website build uses, but from this repository instead of from the website. Each build contains the address of this repository's `update-feed` release (`https://github.com/<owner>/<repository>/releases/download/update-feed/appcast.xml`) and the public half of the repository's update signing key. The feed is signed, Basil refuses a feed whose signature does not verify, and Basil verifies each update's signature before unpacking it. Choose Check for Updates in the Basil menu to check at any time, and you can skip any update.
+Repository builds update themselves through Sparkle, the same mechanism the website build uses, but from this repository instead of from the website. Each build contains the address of this repository's `update-feed` release (`https://github.com/<owner>/<repository>/releases/download/update-feed/appcast.xml`) and the public half of the repository's update signing key. That feed lists stable releases only: a copy installed from `main-latest` is never offered another `main` build, only a stable release newer than itself. The feed is signed, Basil refuses a feed whose signature does not verify, and Basil verifies each update's signature before unpacking it. Choose Check for Updates in the Basil menu to check at any time, and you can skip any update.
 
-The update signing key is separate from the key the website build uses. Its private half is a secret in this repository's protected `release-build` environment and is available only to the workflow that builds `main`. The public key is printed in the notes of every `main-latest` release and by `build/scripts/verify_release_artifact.sh`, so you can compare the key inside your copy with the published one.
+The update signing key is separate from the key the website build uses. Its private half is a secret in this repository's protected `release-build` environment and is available only to the manually started workflow that promotes a stable release. The public key is printed in the notes of every `main-latest` and stable release and by `build/scripts/verify_release_artifact.sh`, so you can compare the key inside your copy with the published one.
 
-An update is checked by that signing key, not individually with `gh attestation verify`. The file an update installs is the same file that is attested on the `main-latest` release, so you can still download that release and follow the steps above to check it by hand.
+An update is checked by that signing key, not individually with `gh attestation verify`. The file an update installs is the same file that is attested on the stable release, so you can still download that release and follow the steps above to check it by hand.
 
 ## Repository builds and website builds
 
@@ -73,4 +73,4 @@ Both are signed with the same Developer ID and use the same bundle identifier, s
 
 Website builds update themselves through the website's feed and are released on a separate schedule; they are built by the release owner rather than by this workflow, so the steps on this page do not apply to them. Repository builds update from this repository as described in [Updates](#updates).
 
-`main-latest` follows the newest code on `main`, which can include changes that have not reached a website release yet. Those changes can upgrade Basil's stored data, so moving from a repository build back to an older website release is not supported; wait for a website release at least as new as your repository build.
+`main-latest` is the `main` build the release owner promoted most recently, which can include changes that have not reached a stable or website release yet. Those changes can upgrade Basil's stored data, so moving from a repository build back to an older website release is not supported; wait for a website release at least as new as your repository build.
