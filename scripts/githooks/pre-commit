@@ -1,5 +1,5 @@
 #!/bin/sh
-# Enable once per clone with: git config core.hooksPath .githooks
+# Enable once per clone with: git config core.hooksPath scripts/githooks
 set -e
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"

@@ -18,6 +18,8 @@ Web component source lives in `web-components/`, not in the corresponding Swift 
 
 `dev.sh` coordinates the complete local development launch and calls the canonical builders. For a narrow WebKit change, use the relevant builder in `scripts/`; see [Generated files](generated-files.md) for the builder inventory and the rule that generated output must not be committed.
 
+`install.sh` is the command-line installer for end users. It downloads the latest stable release, checks it, and installs `Basil.app`; it is not part of the build and does not run in development. [Verifying repository builds](verifying-builds.md) describes what it checks.
+
 ## Documentation and repository policies
 
 The root `README.md` is the GitHub cover sheet and documentation entry point. The focused guides are:
@@ -29,7 +31,7 @@ The root `README.md` is the GitHub cover sheet and documentation entry point. Th
 - `docs/development.md` for architecture, builders, validation, and release boundaries.
 - `docs/generated-files.md` for source versus generated/staged artifacts.
 
-`CONTRIBUTING.md`, `DEVELOPMENT_PRINCIPLES.md`, `SECURITY.md`, `SUPPORT.md`, `LICENSE`, and `TRADEMARK.md` define contribution, engineering, reporting, legal, and product-identity boundaries. Read the policy document that applies rather than copying its requirements into a feature-specific change.
+`.github/CONTRIBUTING.md`, `docs/DEVELOPMENT_PRINCIPLES.md`, `.github/SECURITY.md`, `.github/SUPPORT.md`, `LICENSE`, and `docs/TRADEMARK.md` define contribution, engineering, reporting, legal, and product-identity boundaries. Read the policy document that applies rather than copying its requirements into a feature-specific change.
 
 ## Local-only and excluded material
 

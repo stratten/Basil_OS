@@ -6,6 +6,10 @@ Every push to `main` that changes more than the README builds Basil on GitHub-ho
 
 Use a repository build if you want a ready-to-run app but also want to confirm what it was built from. If you would rather build Basil yourself, follow [Getting started](getting-started.md). If you would rather follow the release owner's stable releases than a build of the newest code on `main`, use the latest release on the Releases page, or the release from the website.
 
+## The command-line installer
+
+The [`install.sh`](../install.sh) script in the repository root downloads the latest stable release, checks the SHA-256 checksum in `SHA256SUMS.txt`, and checks the app's code signature and Gatekeeper's assessment before it replaces any existing copy. It does not check the build-provenance attestation; follow the steps below if you want that. The checksum comes from the same release as the download, so it catches a damaged or incomplete download, not a tampered release.
+
 ## What you need
 
 - A Mac with Apple Silicon.

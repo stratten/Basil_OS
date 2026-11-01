@@ -4,7 +4,7 @@
 
 # Basil
 
-Basil is a local-first macOS AI assistant. It combines a native Swift client, a local Python/FastAPI service, and focused WebKit application surfaces so that assistance, capture, transcription, meetings, automation, and personal context can live in one desktop workflow. You can use downloaded local models, models reached through your own provider key, custom model endpoints, or Basil Cloud where available.
+Basil is a local-first AI assistant for your Mac. Run a model on your Mac or bring your own key, and use it for agents, transcription, meeting notes, call detection, and help that knows what you are working on. Basil Cloud is optional.
 
 <p align="center">
   <a href="https://github.com/stratten/Basil_OS/releases/latest/download/Basil.dmg"><img src="docs/download.svg" alt="Download Basil for Mac" width="236" height="60" /></a>
@@ -13,6 +13,23 @@ Basil is a local-first macOS AI assistant. It combines a native Swift client, a 
 <p align="center">
   <a href="https://github.com/stratten/Basil_OS/releases">All releases</a> · <a href="docs/verifying-builds.md">Verify a build</a>
 </p>
+
+## Install from the command line
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/stratten/Basil_OS/main/install.sh | bash
+```
+
+This downloads the latest stable release, checks its SHA-256 checksum, checks the code signature and Gatekeeper's assessment, puts Basil in Applications, and opens it. [The script](install.sh) never uses `sudo`; if Applications is not writable it installs into `~/Applications`. Add `-s -- --no-open` after `bash` to skip opening Basil, or set `BASIL_VERSION=v1.0.0` to install a specific release. Prefer to check provenance yourself? See [Verifying repository builds](docs/verifying-builds.md).
+
+## What Basil does not do
+
+- **Run anywhere else.** Basil is for Apple Silicon Macs on macOS 13 or later. There is no Windows, Linux, or iPhone version.
+- **Require that your content leave your Mac.** Local-model inference stays on your Mac. Content goes to a provider, a custom endpoint, or Basil Cloud only if you choose one of them.
+- **Act without asking.** A request to an agent is not authorization to send a message, change a record, or run a command. Basil asks for approval before it takes an action.
+- **Reach into your Mac on its own.** Recording audio, reading the screen, and using Calendar or Contacts each need the matching macOS permission.
+
+Under the hood, Basil combines a native Swift client, a local Python/FastAPI service, and focused WebKit application surfaces so that assistance, capture, transcription, meetings, automation, and personal context can live in one desktop workflow. You can use downloaded local models, models reached through your own provider key, custom model endpoints, or Basil Cloud where available.
 
 ## What Basil does
 
@@ -129,8 +146,8 @@ Every push to `main` that changes more than the README also produces a signed, n
 
 ## Contributing and support
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Use [SUPPORT.md](SUPPORT.md) for reproducible bugs, installation problems, and feature requests. Do not report vulnerabilities publicly; follow [SECURITY.md](SECURITY.md).
+Read [CONTRIBUTING.md](.github/CONTRIBUTING.md) before opening a pull request. Use [SUPPORT.md](.github/SUPPORT.md) for reproducible bugs, installation problems, and feature requests. Do not report vulnerabilities publicly; follow [SECURITY.md](.github/SECURITY.md).
 
 ## License
 
-Copyright 2026 Stratten Waldt. Basil is licensed under Apache-2.0; see [LICENSE](LICENSE), and [NOTICE](NOTICE) for vendored third-party code. The Basil name and official-distribution identity are governed separately by the [Trademark Policy](TRADEMARK.md).
+Copyright 2026 Stratten Waldt. Basil is licensed under Apache-2.0; see [LICENSE](LICENSE), and [NOTICE](NOTICE) for vendored third-party code. The Basil name and official-distribution identity are governed separately by the [Trademark Policy](docs/TRADEMARK.md).

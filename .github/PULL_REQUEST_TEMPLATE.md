@@ -8,7 +8,7 @@ List the commands you ran and what they reported, for example the affected `pyte
 
 ## Checklist
 
-- [ ] Every commit has a `Signed-off-by` line (`git commit -s`), as described in `CONTRIBUTING.md`.
+- [ ] Every commit has a `Signed-off-by` line (`git commit -s`), as described in `.github/CONTRIBUTING.md`.
 - [ ] The change is narrowly scoped and includes tests for changed behavior.
 - [ ] No credentials, model weights, build output, local databases, logs, or generated web bundles are included.
 - [ ] `python3 scripts/spelling/check_american_spelling.py` and `python3 scripts/check_literal_structural_colors.py` pass.

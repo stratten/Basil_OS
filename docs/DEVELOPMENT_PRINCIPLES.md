@@ -332,7 +332,7 @@ Remember: If you find yourself typing a specific value that came from documentat
 
 Identifiers, persisted values, API fields, UI copy, log messages, comments, tests, and documentation use American spelling (for example canceled, canceling, behavior, color, normalize, gray, and queuing). "Cancellation" and "cancellable" stay as written because they are the standard American forms. A British spelling is allowed only where Basil does not own it: platform and library symbols such as Python's `CancelledError` and Swift's task and URL-error cancellation APIs, the DOM's `aria-labelledby` attribute, protocol values defined by an external specification such as ACP stop reasons, normalizers that accept a provider's British input, and explicit spelling-map data files. Every exception is listed in `scripts/spelling/spelling_policy.py`. Run `python3 scripts/spelling/check_american_spelling.py` before committing; CI runs the same check and fails on any new British spelling.
 
-To run the check automatically before every commit, enable the repository's hooks once per clone with `git config core.hooksPath .githooks`; `.githooks/pre-commit` then blocks any commit that introduces a British spelling.
+To run the check automatically before every commit, enable the repository's hooks once per clone with `git config core.hooksPath scripts/githooks`; `scripts/githooks/pre-commit` then blocks any commit that introduces a British spelling.
 
 ## Code Comments and Documentation
 

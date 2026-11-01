@@ -1,6 +1,0 @@
-{
-    "extraPaths": ["backend/src"],
-    "include": ["backend/src"],
-    "reportMissingImports": false,
-    "pythonVersion": "3.11"
-} 

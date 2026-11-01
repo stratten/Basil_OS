@@ -22,7 +22,7 @@ jobs:
           missing=0
           for commit in $(git rev-list --no-merges "$BASE_SHA..$HEAD_SHA"); do
             if ! git log -1 --format=%B "$commit" | grep -Eq '^Signed-off-by: .+ <.+@.+>$'; then
-              echo "::error::Commit $commit has no Signed-off-by line. Add one with git commit -s --amend --no-edit, or git rebase --signoff for several commits. See CONTRIBUTING.md."
+              echo "::error::Commit $commit has no Signed-off-by line. Add one with git commit -s --amend --no-edit, or git rebase --signoff for several commits. See .github/CONTRIBUTING.md."
               missing=1
             fi
           done
