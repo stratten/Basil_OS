@@ -39,16 +39,78 @@ final class DateDisplayPreferenceStore: ObservableObject {
     }
 }
 
+/// Formatters shared across calls. Constructing an `ISO8601DateFormatter` or `DateFormatter` goes through ICU and costs far more than using one, and the meeting history bridge formats every visible row on the main thread each time it reconciles, so per-call construction visibly starves window animations. Each formatter is fully configured once and never mutated afterwards (a shared formatter must not have its `dateFormat` changed between calls), which makes `string(from:)` and `date(from:)` safe to call from any thread. Locale and time zone use the auto-updating variants so a change made while the app is running still takes effect, exactly as it did when a fresh formatter was built per call.
+private enum SharedDateFormatters {
+    static let internetDateTimeWithFractionalSeconds: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    static let internetDateTime: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    static let sidebar: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = .autoupdatingCurrent
+        formatter.timeZone = .autoupdatingCurrent
+        formatter.dateFormat = "yyyy-MM-dd h:mm a"
+        formatter.amSymbol = "am"
+        formatter.pmSymbol = "pm"
+        return formatter
+    }()
+
+    static let shortTime: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = .autoupdatingCurrent
+        formatter.timeStyle = .short
+        return formatter
+    }()
+
+    static let weekdayAndTime = localizedFormatter("EEEE, h:mm a")
+    static let monthDayAndTime = localizedFormatter("MMM d, h:mm a")
+
+    static let localMicroseconds = posixLocalFormatter("yyyy-MM-dd'T'HH:mm:ss.SSSSSS")
+    static let localMilliseconds = posixLocalFormatter("yyyy-MM-dd'T'HH:mm:ss.SSS")
+    static let localSeconds = posixLocalFormatter("yyyy-MM-dd'T'HH:mm:ss")
+    static let localDateOnly = posixLocalFormatter("yyyy-MM-dd")
+
+    static let utcMilliseconds = posixUTCFormatter("yyyy-MM-dd HH:mm:ss.SSS")
+    static let utcSeconds = posixUTCFormatter("yyyy-MM-dd HH:mm:ss")
+
+    private static func localizedFormatter(_ format: String) -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.locale = .autoupdatingCurrent
+        formatter.dateFormat = format
+        return formatter
+    }
+
+    /// Parses wall-clock text in the user's local timezone (matches the backend, which writes `datetime.now().isoformat()` as local time).
+    private static func posixLocalFormatter(_ format: String) -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = .autoupdatingCurrent
+        formatter.dateFormat = format
+        return formatter
+    }
+
+    private static func posixUTCFormatter(_ format: String) -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        formatter.dateFormat = format
+        return formatter
+    }
+}
+
 enum DateFormattingUtils {
     /// Standard absolute date format: yyyy-MM-dd h:mm a
     /// Uses the user's current timezone
     static func sidebarFormat(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd h:mm a"
-        formatter.amSymbol = "am"
-        formatter.pmSymbol = "pm"
-        formatter.timeZone = .current  // Explicit: use user's local timezone
-        return formatter.string(from: date)
+        return SharedDateFormatters.sidebar.string(from: date)
     }
 
     /// Relative date format (e.g., "Today, 10:45 AM", "Yesterday, 10:45 AM",
@@ -58,69 +120,50 @@ enum DateFormattingUtils {
         let now = Date()
 
         if calendar.isDateInToday(date) {
-            let formatter = DateFormatter()
-            formatter.timeStyle = .short
-            return "Today, \(formatter.string(from: date))"
+            return "Today, \(SharedDateFormatters.shortTime.string(from: date))"
         } else if calendar.isDateInYesterday(date) {
-            let formatter = DateFormatter()
-            formatter.timeStyle = .short
-            return "Yesterday, \(formatter.string(from: date))"
+            return "Yesterday, \(SharedDateFormatters.shortTime.string(from: date))"
         } else if calendar.isDate(date, equalTo: now, toGranularity: .weekOfYear) {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "EEEE, h:mm a"
-            return formatter.string(from: date)
+            return SharedDateFormatters.weekdayAndTime.string(from: date)
         } else {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "MMM d, h:mm a"
-            return formatter.string(from: date)
+            return SharedDateFormatters.monthDayAndTime.string(from: date)
         }
+    }
+
+    /// Parses only timestamps that carry an explicit timezone (for example `Z` or `+00:00`), with or without fractional seconds. Returns nil for timezone-less text; `parseISO8601` adds the fallback formats on top of this.
+    static func parseInternetDateTime(_ timestamp: String) -> Date? {
+        if let date = SharedDateFormatters.internetDateTimeWithFractionalSeconds.date(from: timestamp) { return date }
+        return SharedDateFormatters.internetDateTime.date(from: timestamp)
     }
 
     /// Parse ISO8601 timestamp (with various fallback options)
     static func parseISO8601(_ timestamp: String) -> Date? {
         // First, try ISO8601DateFormatter for timestamps WITH explicit timezone (Z or +00:00)
         // These are genuinely UTC timestamps that need timezone conversion
-        let isoFormatter = ISO8601DateFormatter()
-        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = isoFormatter.date(from: timestamp) { return date }
-        
-        isoFormatter.formatOptions = [.withInternetDateTime]
-        if let date = isoFormatter.date(from: timestamp) { return date }
+        if let date = parseInternetDateTime(timestamp) { return date }
         
         // For timestamps WITHOUT timezone info (e.g., "2026-01-23T10:17:41.213599")
         // Backend uses datetime.now().isoformat() which is LOCAL time, not UTC
         // Do NOT append "Z" - that would incorrectly interpret local time as UTC
-        let dateFormatter = DateFormatter()
-        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-        dateFormatter.timeZone = .current  // Parse as local time (matches backend behavior)
+        // Parsed as local time (matches backend behavior)
         
         // Try with microseconds
-        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
-        if let date = dateFormatter.date(from: timestamp) { return date }
+        if let date = SharedDateFormatters.localMicroseconds.date(from: timestamp) { return date }
         
         // Try with milliseconds
-        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS"
-        if let date = dateFormatter.date(from: timestamp) { return date }
+        if let date = SharedDateFormatters.localMilliseconds.date(from: timestamp) { return date }
         
         // Try without fractional seconds
-        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        if let date = dateFormatter.date(from: timestamp) { return date }
+        if let date = SharedDateFormatters.localSeconds.date(from: timestamp) { return date }
         
-        // Try date only (no time component, treat as midnight UTC)
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        if let date = dateFormatter.date(from: timestamp) { return date }
+        // Try date only (no time component, parsed as local midnight)
+        if let date = SharedDateFormatters.localDateOnly.date(from: timestamp) { return date }
 
         // SQLite CURRENT_TIMESTAMP shape: "2026-06-29 14:45:00" (space-separated, tz-less UTC).
         // These are genuinely UTC and MUST be interpreted as such, unlike the 'T' branches above.
-        let utcFormatter = DateFormatter()
-        utcFormatter.locale = Locale(identifier: "en_US_POSIX")
-        utcFormatter.timeZone = TimeZone(identifier: "UTC")
+        if let date = SharedDateFormatters.utcMilliseconds.date(from: timestamp) { return date }
 
-        utcFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
-        if let date = utcFormatter.date(from: timestamp) { return date }
-
-        utcFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        if let date = utcFormatter.date(from: timestamp) { return date }
+        if let date = SharedDateFormatters.utcSeconds.date(from: timestamp) { return date }
 
         return nil
     }

@@ -90,43 +90,11 @@ struct MeetingListItem: Identifiable, Codable {
 
     /// Relative date string (e.g., "Today", "Yesterday", "Nov 28")
     var relativeDateString: String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        
-        guard let date = formatter.date(from: startTime) else {
-            // Fallback: try without fractional seconds
-            formatter.formatOptions = [.withInternetDateTime]
-            guard let date = formatter.date(from: startTime) else {
-                return formattedDate
-            }
-            return formatRelativeDate(date)
+        // Only timezone-qualified timestamps are parsed here; anything else falls back to `formattedDate`, as before.
+        guard let date = DateFormattingUtils.parseInternetDateTime(startTime) else {
+            return formattedDate
         }
-        
-        return formatRelativeDate(date)
-    }
-    
-    /// Format relative date
-    private func formatRelativeDate(_ date: Date) -> String {
-        let calendar = Calendar.current
-        let now = Date()
-        
-        if calendar.isDateInToday(date) {
-            let formatter = DateFormatter()
-            formatter.timeStyle = .short
-            return "Today, \(formatter.string(from: date))"
-        } else if calendar.isDateInYesterday(date) {
-            let formatter = DateFormatter()
-            formatter.timeStyle = .short
-            return "Yesterday, \(formatter.string(from: date))"
-        } else if calendar.isDate(date, equalTo: now, toGranularity: .weekOfYear) {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "EEEE, h:mm a"
-            return formatter.string(from: date)
-        } else {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "MMM d, h:mm a"
-            return formatter.string(from: date)
-        }
+        return DateFormattingUtils.relativeFormat(date)
     }
 }
 
@@ -158,11 +126,7 @@ struct MeetingMember: Codable, Identifiable {
     /// correction). Returns nil when no/invalid start_time is present.
     var startDate: Date? {
         guard let startTime = startTime else { return nil }
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: startTime) { return date }
-        formatter.formatOptions = [.withInternetDateTime]
-        return formatter.date(from: startTime)
+        return DateFormattingUtils.parseInternetDateTime(startTime)
     }
 }
 
