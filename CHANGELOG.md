@@ -6,6 +6,10 @@ Write one bullet per line, starting with `- `, in plain language for people usin
 
 ## Unreleased
 
+## 1.0.1
+
+- The Notetaker window's opening animation is smoother: the meeting list no longer rebuilds its date text from scratch on every update, which had been briefly freezing the window while it drew in
+
 ## 1.0.0
 
 - Basil is a local-first AI assistant for your Mac: run a model on your Mac, or use your own Anthropic, OpenAI, or Google key, any OpenAI-compatible endpoint, or Basil Cloud where it is available, and no account is needed for the first two
