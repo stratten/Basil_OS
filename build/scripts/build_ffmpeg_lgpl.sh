@@ -21,7 +21,12 @@ done
 
 mkdir -p "$FFMPEG_CACHE_DIR"
 if [[ ! -f "$FFMPEG_ARCHIVE_PATH" ]]; then
-    curl --fail --location --proto '=https' --tlsv1.2 "$FFMPEG_URL" --output "$FFMPEG_ARCHIVE_PATH"
+    # ffmpeg.org is a single host, so a transient outage must not fail a release build. Retry, and download to a temporary name so a failed attempt never leaves a truncated archive in the cache. The pinned checksum below still decides whether the archive is accepted.
+    rm -f "$FFMPEG_ARCHIVE_PATH.part"
+    curl --fail --location --proto '=https' --tlsv1.2 \
+        --connect-timeout 30 --retry 6 --retry-all-errors --retry-delay 20 \
+        "$FFMPEG_URL" --output "$FFMPEG_ARCHIVE_PATH.part"
+    mv "$FFMPEG_ARCHIVE_PATH.part" "$FFMPEG_ARCHIVE_PATH"
 fi
 
 expected_checksum="${FFMPEG_SHA256}  ${FFMPEG_ARCHIVE_PATH}"
