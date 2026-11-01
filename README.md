@@ -74,7 +74,7 @@ The transcription widget records live microphone audio, and the menu also offers
 Open **Notetaker** from the Basil menu to create a manual recording of a meeting or call. Before recording, you can set the meeting name, purpose, participants, and available microphone or system-audio source. During a meeting, the Notetaker exposes source meters, recording state, and a live transcript. Afterward, it retains meeting metadata and history, supports searching and reopening stored meetings, and can improve a transcript, add speaker labels, or run analysis such as summaries, action items, decisions, questions and answers, sentiment, or a custom instruction.
 
 <p align="center">
-  <img width="1910" alt="Notetaker showing a past meeting with a transcript split by microphone and system audio, and transcript tools below" src="https://github.com/user-attachments/assets/b1bb1a23-7d5b-4a55-85e7-de09b2d0b579" />
+  <img width="1024" alt="Notetaker showing a past meeting with a transcript split by microphone and system audio, and transcript tools below" src="docs/notetaker-transcript.png" />
 </p>
 
 
