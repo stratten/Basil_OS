@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/banner.png" alt="Basil: an AI assistant that lives on your Mac, not in a browser tab. Agents, live transcription, meeting notes, call detection, context-aware help, and more. Free and open source, for Apple Silicon Macs on macOS 13 or later." width="900" />
+  <img src="docs/banner.png" alt="Basil: an AI assistant that lives on your Mac, not in a browser tab. Agents, transcription, meeting notes, call detection, context-aware help, and a lot more. Free and open source, for Apple Silicon Macs on macOS 13 or later." width="900" />
 </p>
 
 # Basil
@@ -21,7 +21,7 @@ Basil is a local-first macOS AI assistant. It combines a native Swift client, a 
 The Basil Board is the main workspace for beginning an inquiry, reopening work, viewing meeting state, and moving among conversations, Paprika tasks, and todos. Conversations retain threaded work around an ongoing subject. **Dill (Quick Assist)** (default hotkey ⌥⌥) answers each request in a single model turn and provides a focused text-or-voice surface with saved outputs, refinement, and copy controls.
 
 <p align="center">
-  <img width="900" alt="The Basil Board drawing in and typing a request into its prompt box, which is headed What can I do for you, with recent work listed below" src="docs/board-home.gif" />
+  <img width="900" alt="The Basil Board drawing in and typing a request into its prompt box, which is headed What can I do for you, with recent work listed below" src="docs/board-home.webp" />
 </p>
 
 **Paprika (Agent)** (default hotkey ⌥Space) runs goal-oriented, multi-step tasks that can start from text, files, images, captured audio, or screen context. A task can show progress and intermediate activity, present results and local artifact previews, accept revisions, and request approval before taking an action. Tasks can be scheduled, reviewed, paused, or canceled when their state supports it. The todo workspace tracks work through inbox, open, in-progress, review, and completed views, with details, ordering, dates, and status for agent-backed work.
