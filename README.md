@@ -22,6 +22,14 @@ curl -fsSL https://raw.githubusercontent.com/stratten/Basil_OS/main/install.sh |
 
 This downloads the latest stable release, checks its SHA-256 checksum, checks the code signature and Gatekeeper's assessment, puts Basil in Applications, and opens it. [The script](install.sh) never uses `sudo`; if Applications is not writable it installs into `~/Applications`. Add `-s -- --no-open` after `bash` to skip opening Basil, or set `BASIL_VERSION=v1.0.0` to install a specific release. Prefer to check provenance yourself? See [Verifying repository builds](docs/verifying-builds.md).
 
+With Homebrew:
+
+```sh
+brew install --cask stratten/tap/basil
+```
+
+The [tap](https://github.com/stratten/homebrew-tap) follows each stable release automatically, after checking the download against the published checksum and the build-provenance attestation. Basil updates itself, so `brew upgrade` leaves it alone unless you add `--greedy`.
+
 ## What Basil does not do
 
 - **Run anywhere else.** Basil is for Apple Silicon Macs on macOS 13 or later. There is no Windows, Linux, or iPhone version.
