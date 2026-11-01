@@ -4,9 +4,10 @@ on:
   pull_request:
   push:
     branches: [main]
-    # A push that changes only the README skips the tests and the signed build; the newest build artifact still matches the last code change.
+    # A push that changes only the README or files under docs/ skips the tests and the signed build, because nothing in the build or the app reads them; the newest build artifact still matches the last code change.
     paths-ignore:
       - README.md
+      - docs/**
 
 permissions:
   contents: read
