@@ -21,6 +21,7 @@ internal enum MenuItemTag: Int {
     case agentTask = 113
     case ambientSuggestions = 114
     case meetingDetection = 115
+    case reportProblem = 116
 }
 
 @MainActor
@@ -352,6 +353,12 @@ final class StatusBarManager: StatusBarServiceProtocol {
         SettingsShellWindowController.shared.show()
     }
     
+    @objc func reportProblem() {
+        Task { @MainActor in
+            await ProblemReportService.report(source: "status_bar", detail: nil)
+        }
+    }
+
     @objc func quitApp() {
         Task { @MainActor in
             // 1) Close user-visible UI promptly

@@ -3,7 +3,8 @@ import * as api from '../services/api';
 import type { ReasoningModel } from '../services/api';
 import type { DisplayableAgentTask } from '../types';
 import { agentStore } from '../store/agentStore';
-import { registerFilesPickedHandler, pickFiles } from '../services/bridge';
+import { pickFiles } from '../services/bridge';
+import { useFilesPickedHandler } from '../services/useFilesPickedHandler';
 import { editorHtmlToDisplayMarkdown } from './request/requestMarkdown';
 import { buildFollowUpHistoryFromViewedDetail } from '../app/followUpHistory';
 import { seedDurableFollowUpHistory } from '../app/agentHydration';
@@ -15,6 +16,7 @@ import AttachmentDropZone from '../../../shared/AttachmentDropZone';
 import CollapsibleRegion from '../../../shared/CollapsibleRegion';
 import ExecutionDisclosureChevron from '../../../shared/ExecutionDisclosureChevron';
 import { useFollowUpComposerCollapsed } from '../store/followUpComposerViewStore';
+import { openChecklistWindow } from '../store/checklistViewStore';
 import { consumeFollowUpPrefill, reportFollowUpDraft, useFollowUpPrefillRequest } from '../store/followUpPrefillStore';
 import { addDraftLine, removeDraftLine } from './followUpDraftLines';
 import {
@@ -162,7 +164,8 @@ export default function TextFollowUp({
         setAvailableModels(data.models);
         setDefaultModelId(data.current_model);
         const agent = agentStore.getAgent(rootIdForModelPreference);
-        const previousTurnModel = agent?.originalModelId ?? displaySource?.originalModelId;
+        // The model the previous turn asked for, then the one it actually ran on (older turns that used the default have no request recorded), so the picker never falls back to a default that has changed since.
+        const previousTurnModel = agent?.originalModelId ?? displaySource?.originalModelId ?? agent?.modelUsed ?? displaySource?.modelUsed;
         const availableIds = new Set(data.models.map((model) => model.id));
         const usablePreviousTurnModel = previousTurnModel && availableIds.has(previousTurnModel)
           ? previousTurnModel
@@ -172,9 +175,9 @@ export default function TextFollowUp({
       .catch((error) => console.error('[TextFollowUp] Failed to load models:', error));
   }, [rootIdForModelPreference]);
 
-  useEffect(() => registerFilesPickedHandler((paths) => {
+  useFilesPickedHandler((paths) => {
     setReferencePaths((previous) => [...new Set([...previous, ...paths])]);
-  }), []);
+  });
 
   const submit = useCallback(() => {
     const content = editorRef.current?.innerText.trim() ?? '';
@@ -194,7 +197,7 @@ export default function TextFollowUp({
     const snapshot = carriedHistory.length > 0 ? carriedHistory[carriedHistory.length - 1] : undefined;
 
     setSubmitting(true);
-    agentStore.beginFollowUpTurn(followUpId, rootId, snapshot, previousTaskId, source?.taskTitle);
+    agentStore.beginFollowUpTurn(followUpId, rootId, snapshot, previousTaskId, source?.taskTitle, { readerStarted: true });
     if (carriedHistory.length > 0) {
       agentStore.setAgentTaskHistory(rootId, carriedHistory);
     } else if (parentAgent) {
@@ -209,7 +212,8 @@ export default function TextFollowUp({
     agentStore.setReferencePaths(rootId, referencePaths);
     // A follow-up is not given the earlier run's connection instructions.
     agentStore.setConnectionReferences(rootId, []);
-    const modelOverride = selectedModelId && selectedModelId !== defaultModelId ? selectedModelId : undefined;
+    // Always send what the picker shows. Sending nothing for the default left the turn to inherit the previous turn's model or to follow a default that may have changed.
+    const modelOverride = selectedModelId ?? defaultModelId ?? undefined;
     agentStore.updateOriginalModelId(rootId, selectedModelId ?? defaultModelId ?? undefined);
     agentStore.setSelectedModelId(rootId, undefined);
     api.processAgentTask({
@@ -287,6 +291,18 @@ export default function TextFollowUp({
                   >
                     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <path d="M14.5 7.5l-6.3 6.3a3.5 3.5 0 0 1-5-5l6.3-6.3a2.3 2.3 0 0 1 3.3 3.3L6.5 12a1.2 1.2 0 0 1-1.7-1.7l5.8-5.8" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    className="text-followup-action-btn"
+                    onClick={() => openChecklistWindow(rootIdForModelPreference)}
+                    title="Open the checklist"
+                    aria-label="Open the checklist"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <rect x="2" y="2" width="12" height="12" rx="2" />
+                      <path d="m5 8.2 2 2 4-4.4" />
                     </svg>
                   </button>
                   <button

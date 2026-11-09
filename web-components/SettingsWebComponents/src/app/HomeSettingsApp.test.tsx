@@ -75,17 +75,53 @@ describe('HomeSettingsApp', () => {
     expect(container.querySelector('.home-settings-account-row')).toBeNull()
   })
 
-  it('shows the Activity Capture and Meeting/Call Detection launch hints ported from the deleted Background Behavior leaf', () => {
+  const tooltips = () => Array.from(container.querySelectorAll('.hint-tooltip-trigger')).map((trigger) => trigger.getAttribute('data-tooltip'))
+
+  it('shows the Activity Capture and Meeting/Call Detection launch explanations in tooltips', () => {
     act(() => { window.basilHomeSettings!.onEvent({ type: 'init', protocolVersion: 1, fields: FIXTURE_FIELDS }) })
-    const hints = Array.from(container.querySelectorAll('.home-settings-hint')).map((hint) => hint.textContent)
-    expect(hints).toContain('Starts the capture scheduler after Basil reconnects to its backend on your next launch.')
-    expect(hints).toContain("Turning this on also enables Meeting/Call Detection; it won't start the monitor until the next launch.")
+    expect(tooltips()).toContain('Activity Capture starts by itself each time Basil opens, beginning with your next launch.')
+    expect(tooltips()).toContain('Turning this on also turns on Meeting/Call Detection. It starts watching for calls the next time Basil opens.')
   })
 
-  it('switches the Activity Capture hint to its disabled-feature wording when Activity Capture is off', () => {
+  it('switches the Activity Capture tooltip to its disabled-feature wording when Activity Capture is off', () => {
     act(() => { window.basilHomeSettings!.onEvent({ type: 'init', protocolVersion: 1, fields: { ...FIXTURE_FIELDS, activityCaptureEnabled: false } }) })
-    expect(Array.from(container.querySelectorAll('.home-settings-hint')).map((hint) => hint.textContent))
-      .toContain('Enable Automatic Capture in Activity Capture settings before choosing a startup schedule.')
+    expect(tooltips()).toContain('Turn on Automatic Capture in Activity Capture settings first. Then you can have it start when Basil opens.')
+  })
+
+  it('explains each switch that starts something in the background through a circled question mark, not a line of text', () => {
+    act(() => { window.basilHomeSettings!.onEvent({ type: 'init', protocolVersion: 1, fields: FIXTURE_FIELDS }) })
+    expect(tooltips()).toContain('Voice Listener listens through your microphone so you can start things by voice. It needs microphone access.')
+    expect(tooltips()).toContain('Takes a screenshot of your screen on a schedule and has a model read it. Where that reading happens depends on the model you pick in Activity Capture settings.')
+    expect(tooltips()).toContain('Notices when a meeting or call starts on this Mac.')
+    expect(tooltips()).toContain('Lets me offer help without being asked, when your settings allow it.')
+    const trigger = container.querySelector<HTMLButtonElement>('[aria-label="About Voice Listener"]')!
+    expect(trigger.textContent).toBe('?')
+    expect(trigger.getAttribute('data-tooltip')).toContain('Voice Listener listens through your microphone')
+    expect(container.querySelector('.hint-tooltip-bubble')).toBeNull()
+    expect(container.querySelector('#home-enable-monitoring')?.closest('label')?.textContent).toContain('Enable hotkeys at startup')
+    const sectionHints = Array.from(container.querySelectorAll('.home-settings-hint')).map((hint) => hint.textContent ?? '')
+    expect(sectionHints.some((text) => text.includes('listens through your microphone'))).toBe(false)
+  })
+
+  it('puts Quick Presets first and Report a problem second in the right rail, after all the other content', () => {
+    act(() => { window.basilHomeSettings!.onEvent({ type: 'init', protocolVersion: 1, fields: FIXTURE_FIELDS }) })
+    const layout = container.querySelector('.home-settings-layout')!
+    const [main, rail] = Array.from(layout.children)
+    expect(main.classList.contains('home-settings-main')).toBe(true)
+    expect(rail.classList.contains('home-settings-rail')).toBe(true)
+    expect(Array.from(rail.querySelectorAll('h2')).map((heading) => heading.textContent)).toEqual(['Quick Presets', 'Support'])
+    expect(main.textContent).not.toContain('Report a problem')
+    expect(rail.querySelector('#home-support-heading')?.closest('section')?.textContent).toContain('Report a problem')
+  })
+
+  it('tucks each preset explanation into a closed expandable block under its button', () => {
+    act(() => { window.basilHomeSettings!.onEvent({ type: 'init', protocolVersion: 1, fields: FIXTURE_FIELDS }) })
+    const blocks = Array.from(container.querySelectorAll<HTMLDetailsElement>('.home-settings-preset-details'))
+    expect(blocks.map((block) => block.open)).toEqual([false, false])
+    expect(blocks[0].textContent).toContain('Turns on Voice Listener, Activity Capture, Meeting/Call Detection, Proactive Suggestions, and their startup options.')
+    expect(blocks[1].textContent).toContain('Keeps only hotkeys on and turns the rest off.')
+    expect(blocks[0].previousElementSibling?.textContent?.trim()).toBe('Enable everything')
+    expect(blocks[1].previousElementSibling?.textContent?.trim()).toBe('Conservative')
   })
 
   it('posts an updateToggle intent, applies it immediately, and keeps other controls interactive until native confirms', () => {
@@ -186,6 +222,13 @@ describe('HomeSettingsApp', () => {
     act(() => { window.basilHomeSettings!.onEvent({ type: 'init', protocolVersion: 1, fields: FIXTURE_FIELDS }) })
     act(() => { Array.from(container.querySelectorAll('button')).find((button) => button.textContent === "Explore Basil's Capabilities")!.click() })
     expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'openPowerUserGuide' }))
+  })
+
+  it('offers Report a problem from the Support card and says nothing is sent until the issue is submitted', () => {
+    act(() => { window.basilHomeSettings!.onEvent({ type: 'init', protocolVersion: 1, fields: FIXTURE_FIELDS }) })
+    act(() => { Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Report a problem')!.click() })
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'reportProblem', requestId: expect.any(String) }))
+    expect(container.textContent).toContain('Nothing is sent until you submit the issue.')
   })
 
   it('disables unavailable controls and explains the degraded snapshot', () => {

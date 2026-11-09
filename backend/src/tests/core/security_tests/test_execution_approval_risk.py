@@ -100,7 +100,9 @@ class _RecordingApprovalService:
         self.added: list[str] = []
         self.updated: list[str] = []
 
-    async def add_to_whitelist(self, *, command: str, pattern_type: str, description: str, risk_level: str):
+    async def add_to_whitelist(
+        self, *, command: str, pattern_type: str, description: str, risk_level: str, pattern: str | None = None
+    ):
         self.added.append(command)
         return _pattern(command, pattern_type)
 

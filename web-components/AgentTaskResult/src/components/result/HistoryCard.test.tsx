@@ -152,3 +152,58 @@ describe('HistoryCard connections', () => {
     }
   });
 });
+
+describe('HistoryCard request of an earlier turn', () => {
+  const longRequest = [
+    '## Plan',
+    '',
+    'First paragraph of a long request that goes on for a while. '.repeat(8),
+    '',
+    '- first bullet',
+    '- second bullet',
+    '',
+    'Closing line after the list.',
+  ].join('\n');
+
+  function expandedDoc(item: AgentTaskHistoryItem): Document {
+    return new DOMParser().parseFromString(
+      renderToStaticMarkup(<HistoryCard item={item} isExpanded onToggle={() => {}} />),
+      'text/html',
+    );
+  }
+
+  it('shows the full request only in the collapsed-by-default Markdown block, never unconditionally in the header', () => {
+    const doc = expandedDoc(historyItem({ agentTaskText: longRequest }));
+
+    const header = doc.querySelector('.history-card__request-full');
+    expect(header?.getAttribute('title')).toContain('Closing line after the list.');
+    expect(doc.querySelectorAll('.history-card__request-full')).toHaveLength(1);
+    const request = doc.querySelector('.request-display-content');
+    expect(request).not.toBeNull();
+    expect(request?.classList.contains('is-expanded')).toBe(false);
+  });
+
+  it('keeps the structure of a Markdown request in the request block', () => {
+    const doc = expandedDoc(historyItem({ agentTaskText: longRequest }));
+
+    const request = doc.querySelector('.request-display-content');
+    expect(request?.querySelector('h2')?.textContent).toBe('Plan');
+    expect(Array.from(request?.querySelectorAll('li') ?? []).map(item => item.textContent)).toEqual(['first bullet', 'second bullet']);
+    expect(request?.querySelectorAll('p').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('puts the copy buttons in the Result heading row, outside the result text', () => {
+    const doc = expandedDoc(historyItem({ agentTaskText: 'short' }));
+
+    const heading = doc.querySelector('.history-card__result-heading');
+    expect(heading?.querySelector('button[aria-label="Copy rich text"]')).not.toBeNull();
+    expect(heading?.querySelector('button[aria-label="Copy markdown"]')).not.toBeNull();
+    expect(doc.querySelector('.history-card__result button[aria-label="Copy markdown"]')).toBeNull();
+  });
+
+  it('keeps the line breaks of a plain-text request that has no Markdown in it', () => {
+    const doc = expandedDoc(historyItem({ agentTaskText: 'PART 1: PREPARE\nCall get_status.\nPART 2: DRAFT\nWrite replies.' }));
+
+    expect(doc.querySelector('.request-display-content')?.querySelectorAll('br').length).toBe(3);
+  });
+});

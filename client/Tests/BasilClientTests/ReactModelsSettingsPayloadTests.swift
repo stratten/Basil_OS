@@ -34,6 +34,17 @@ final class ReactModelsSettingsPayloadTests: XCTestCase {
         XCTAssertNil(item["progress"])
     }
 
+    func test_makeModelWireItem_tagsLocalModelsWithTheirFileFormat() {
+        func wireFormat(handler: String?) -> String? {
+            let model = ModelDownloadInfo(id: "Qwen-f", modelType: "Qwen", variantId: "f", name: "Qwen F", capabilities: [.reasoning], variants: [:], handler: handler)
+            return ModelsSettingsPayloadBuilder.makeModelWireItem(model, downloadProgress: [:], downloadProgressMetadata: [:])["format"] as? String
+        }
+        XCTAssertEqual(wireFormat(handler: "mlx"), "MLX")
+        XCTAssertEqual(wireFormat(handler: "llama_cpp"), "GGUF")
+        XCTAssertNil(wireFormat(handler: "huggingface"))
+        XCTAssertNil(wireFormat(handler: nil))
+    }
+
     func test_makeModelWireItem_downloadingStatusPrefersLiveProgressOverModelStatus() {
         let model = makeModel(id: "Qwen-b", modelType: "Qwen", variantId: "b", name: "Qwen B", capabilities: [.reasoning], status: .downloading(progress: 0.2))
         let item = ModelsSettingsPayloadBuilder.makeModelWireItem(model, downloadProgress: ["Qwen-b": 0.55], downloadProgressMetadata: [:])

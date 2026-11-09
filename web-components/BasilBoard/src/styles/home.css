@@ -114,6 +114,17 @@
   gap: var(--padding-m, 16px);
 }
 
+.home-front-door-logo {
+  display: block;
+  flex: none;
+  width: 84px;
+  height: 84px;
+  margin: 0 auto var(--padding-s, 8px);
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 8px 32px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
 .home-front-door-title {
   margin: 0;
   text-align: center;

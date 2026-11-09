@@ -46,7 +46,8 @@ extension ModelDownloadViewModel {
                         capabilities: modelCapabilities,
                         status: status,
                         size: sizeBytes,
-                        variants: ["variants": modelCapabilities.map { $0.rawValue }]
+                        variants: ["variants": modelCapabilities.map { $0.rawValue }],
+                        handler: variant.handler
                     )
                     modelInfos.append(modelInfo)
                 }

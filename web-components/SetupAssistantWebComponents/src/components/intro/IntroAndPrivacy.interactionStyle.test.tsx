@@ -57,6 +57,15 @@ function installFetch({ catalog = true, saveOk = true }: { catalog?: boolean; sa
   })
 }
 
+// The flow opens on the skippable model downloads step; these tests exercise the steps after it.
+async function skipDownloadsStep() {
+  await act(async () => {
+    container.querySelector<HTMLButtonElement>('.intro-step-primary')!.click()
+    await Promise.resolve()
+    await Promise.resolve()
+  })
+}
+
 async function renderIntro(onContinue = vi.fn()) {
   await act(async () => {
     root.render(
@@ -69,6 +78,7 @@ async function renderIntro(onContinue = vi.fn()) {
     await Promise.resolve()
     await Promise.resolve()
   })
+  await skipDownloadsStep()
   return onContinue
 }
 
@@ -77,6 +87,7 @@ const option = (label: string) => Array.from(container.querySelectorAll<HTMLButt
   .find(button => button.textContent === label)!
 
 async function reachNoteStep() {
+  act(() => { primary().click() })
   act(() => { primary().click() })
   act(() => { primary().click() })
 }

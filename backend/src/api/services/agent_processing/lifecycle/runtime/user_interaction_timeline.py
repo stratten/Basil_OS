@@ -51,6 +51,11 @@ RESPONSE_TIMEOUT_OUTCOMES = frozenset({
 
 Broadcast = Callable[[Dict[str, Any]], Awaitable[Any]]
 
+# Fields that explain an approval to the user and are kept on the recorded request so the transcript card can lead with them. Script text is capped because the timeline is stored with the task.
+SCRIPT_CONTENT_LIMIT = 20000
+_PRESENTATION_TEXT_KEYS = ("purpose", "script_path", "script_notice")
+_PURPOSE_SOURCES = ("agent", "basil")
+
 # Requests this process announced and has not yet resolved. The durable timeline is rewritten whole by several
 # independent writers, so a waiting entry can be lost before its answer arrives; this lets the answer still reach
 # the UI and the saved timeline instead of leaving the request showing as waiting.
@@ -128,6 +133,27 @@ def checkpoint_interaction_kind(checkpoint_data: Mapping[str, Any]) -> str:
     return "clarification"
 
 
+def normalize_interaction_presentation(presentation: Optional[Mapping[str, Any]]) -> Dict[str, Any]:
+    """Keep only the explanation fields of an approval (purpose, script details), with script text capped; safe to apply to an already recorded interaction."""
+    if not isinstance(presentation, Mapping):
+        return {}
+    fields: Dict[str, Any] = {}
+    for key in _PRESENTATION_TEXT_KEYS:
+        value = presentation.get(key)
+        if isinstance(value, str) and value.strip():
+            fields[key] = value.strip()
+    if "purpose" in fields and presentation.get("purpose_source") in _PURPOSE_SOURCES:
+        fields["purpose_source"] = presentation["purpose_source"]
+    if "purpose" not in fields and presentation.get("purpose_missing") is True:
+        fields["purpose_missing"] = True
+    script_content = presentation.get("script_content")
+    if isinstance(script_content, str) and script_content:
+        fields["script_content"] = script_content[:SCRIPT_CONTENT_LIMIT]
+        if len(script_content) > SCRIPT_CONTENT_LIMIT or presentation.get("script_truncated") is True:
+            fields["script_truncated"] = True
+    return fields
+
+
 def build_user_interaction_entry(
     *,
     interaction_id: str,
@@ -141,8 +167,12 @@ def build_user_interaction_entry(
     response_hidden: bool = False,
     responded_at: Optional[str] = None,
     time_limit: Optional[Mapping[str, Any]] = None,
+    presentation: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Return one complete contract entry describing a single ask/response exchange."""
+    """Return one complete contract entry describing a single ask/response exchange.
+
+    ``presentation`` carries an approval's explanation fields (see ``normalize_interaction_presentation``).
+    """
     if kind not in USER_INTERACTION_KINDS:
         raise ValueError(f"Unknown user interaction kind: {kind!r}")
     if status not in USER_INTERACTION_STATUSES:
@@ -173,6 +203,7 @@ def build_user_interaction_entry(
         interaction["responded_at"] = responded_at
     if time_limit and status == "waiting":
         interaction["time_limit"] = dict(time_limit)
+    interaction.update(normalize_interaction_presentation(presentation))
     return normalize_timeline_entry({
         "id": user_interaction_entry_id(interaction_id),
         "type": "step",
@@ -209,10 +240,11 @@ async def record_user_interaction_asked(
     options: Optional[Sequence[Any]] = None,
     broadcast: Optional[Broadcast] = None,
     time_limit: Optional[Mapping[str, Any]] = None,
+    presentation: Optional[Mapping[str, Any]] = None,
 ) -> None:
     """Persist and announce that the task is now waiting on the user; never raises.
 
-    ``time_limit`` (see ``build_response_time_limit``) is given only for requests that stop waiting on their own.
+    ``time_limit`` (see ``build_response_time_limit``) is given only for requests that stop waiting on their own. ``presentation`` carries an approval's explanation and script details for the transcript card.
     """
     if not agent_task_id or not interaction_id:
         return
@@ -224,6 +256,7 @@ async def record_user_interaction_asked(
             input_type=input_type,
             options=options,
             time_limit=time_limit,
+            presentation=presentation,
         )
         await persist_timeline_entry(agent_task_id, entry, replace_existing=True, preserve_position=True)
         _remember_asked(agent_task_id, entry["metadata"]["user_interaction"])
@@ -418,6 +451,7 @@ def close_waiting_interactions_in_timeline(
                 input_type=interaction.get("input_type") if isinstance(interaction.get("input_type"), str) else None,
                 options=interaction.get("options") if isinstance(interaction.get("options"), list) else None,
                 responded_at=timeline_timestamp(),
+                presentation=interaction,
             )
         )
         closed += 1
@@ -462,6 +496,7 @@ async def _persist_resolution(
         response=response,
         response_hidden=response_hidden,
         responded_at=timeline_timestamp(),
+        presentation=existing,
     )
     try:
         await persist_timeline_entry(agent_task_id, entry, replace_existing=True, preserve_position=True)

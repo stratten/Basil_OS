@@ -25,6 +25,21 @@ enum BasilRuntimeProfile: Equatable {
         return manifest
     }
 
+    /// A validation session launched as a first-time install of the real app.
+    static var isFreshInstall: Bool {
+        validationManifest?.freshInstall == true
+    }
+
+    /// True for a fixture validation session, which keeps off the behavior that could collide with a normal Basil running on this Mac: global hotkeys, key monitors, the setup resume toast, and meeting and activity startup. A fresh-install session turns them back on, so only one Basil may run, unless it was launched to coexist with a normal Basil, which keeps them off.
+    static var suppressesAmbientBehavior: Bool {
+        isValidation && (!isFreshInstall || validationManifest?.suppressAmbientBehavior == true)
+    }
+
+    /// True when the first-run permission gate is skipped. Only a fixture session skips it: a fresh-install session always shows it, even one that keeps ambient behavior off to coexist with a normal Basil.
+    static var skipsFirstRunPermissionGate: Bool {
+        isValidation && !isFreshInstall
+    }
+
     static var backendURL: URL? {
         validationManifest?.backendURL
     }

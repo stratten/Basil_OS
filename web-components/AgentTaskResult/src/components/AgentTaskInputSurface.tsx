@@ -18,9 +18,9 @@ export default function AgentTaskInputSurface({
   onResumeQuestion,
 }: Props) {
   return (
-    <div className={`agent-task-input-backdrop${isReviewingOutput ? ' agent-task-input-backdrop--reviewing-output' : ''}`}>
+    <div className={`basil-modal-backdrop agent-task-input-backdrop${isReviewingOutput ? ' agent-task-input-backdrop--reviewing-output' : ''}`}>
       <section
-        className={`agent-task-input-dialog${isReviewingOutput ? ' agent-task-input-dialog--reviewing-output' : ''}`}
+        className={`basil-modal-dialog agent-task-input-dialog${isReviewingOutput ? ' agent-task-input-dialog--reviewing-output' : ''}`}
         role={isReviewingOutput ? 'region' : 'dialog'}
         aria-modal={isReviewingOutput ? undefined : true}
         aria-labelledby={isReviewingOutput ? 'agent-task-input-dock-eyebrow' : 'agent-task-input-eyebrow'}

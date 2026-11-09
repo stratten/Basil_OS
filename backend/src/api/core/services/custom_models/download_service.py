@@ -313,7 +313,6 @@ class CustomModelDownloadService:
                         repo_id=repo_id,
                         filename=request.filename,
                         local_dir=models_dir / model_id,
-                        local_dir_use_symlinks=False,
                     )
                 
                 downloaded_path = await asyncio.to_thread(download_file)

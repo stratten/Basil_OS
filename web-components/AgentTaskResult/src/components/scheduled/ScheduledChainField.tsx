@@ -17,7 +17,10 @@ const UNIT_OPTIONS: DropdownOption<ChainAgeUnit>[] = [
 export const CHAIN_LABEL = 'Runs';
 
 const CHAIN_HELP =
-  'When runs continue one conversation, each run sees what the earlier runs did and anything you added in between, and shows up as one entry in the sidebar. A run is skipped while the previous one is still working or waiting for you. A new conversation starts after the limits you choose.';
+  'When runs continue one conversation, each run sees what the earlier runs did and anything you added in between, and shows up as one entry in the sidebar. A run is skipped while the previous one is still working or waiting for you. A new conversation starts after the limits you choose. The turn limit counts every turn in the conversation, including follow-ups you type and follow-ups Basil starts itself, so a conversation you keep adding to starts over sooner.';
+
+const CHECKLIST_HELP =
+  'Each run keeps a checklist of its steps. When this is on, the open and waiting items from the schedule\'s previous run, and its notes, are copied into the next run as carried items. Done and dropped items stay behind. Leave it off for a clean slate every run.';
 
 interface Props {
   form: ChainFormState;
@@ -66,9 +69,9 @@ export default function ScheduledChainField({ form, onChange, disabled }: Props)
                 checked={form.limitRuns}
                 disabled={disabled}
                 onChange={event => patch({ limitRuns: event.target.checked })}
-                aria-label="Limit the number of runs"
+                aria-label="Limit the number of turns"
               />
-              <span>This many runs</span>
+              <span>This many turns, including your follow-ups</span>
               <input
                 className="sidebar-search-input"
                 type="number"
@@ -77,7 +80,7 @@ export default function ScheduledChainField({ form, onChange, disabled }: Props)
                 disabled={disabled || !form.limitRuns}
                 onChange={event => patch({ maxRuns: event.target.value })}
                 style={{ flex: '0 0 90px' }}
-                aria-label="Maximum runs in one conversation"
+                aria-label="Maximum turns in one conversation"
               />
             </label>
             <div style={checkLineStyle}>
@@ -126,6 +129,16 @@ export default function ScheduledChainField({ form, onChange, disabled }: Props)
             )}
           </>
         )}
+        <label className="checklist-schedule-option" title={CHECKLIST_HELP}>
+          <input
+            type="checkbox"
+            checked={form.carryChecklist}
+            disabled={disabled}
+            onChange={event => patch({ carryChecklist: event.target.checked })}
+            aria-label="Carry unfinished checklist items over to the next run"
+          />
+          <span>Carry unfinished checklist items over to the next run</span>
+        </label>
       </div>
     </div>
   );

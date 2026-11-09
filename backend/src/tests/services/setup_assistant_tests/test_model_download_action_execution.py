@@ -191,3 +191,41 @@ def test_setup_agent_prompt_requires_hardware_fit_model_recommendations() -> Non
     assert "hardware_fits_memory_budget" in prompt
     assert '`mutation_tool_name="start_model_downloads"`' in prompt
     assert "first couple of `agent_synthesis` turns" in prompt
+
+
+@pytest.mark.asyncio
+async def test_a_model_refused_for_disk_space_is_a_failed_item_with_the_numbers_and_the_other_models_still_start() -> None:
+    from api.core.models.model_download.disk_space import InsufficientDiskSpaceError
+
+    available_models = {
+        "Qwen": {"variants": {"qwen3-8b-instruct-q4km": {"model_id": MODEL_ID}}},
+        "NVIDIA": {"variants": {"parakeet-tdt-0.6b-v3-quantized": {"model_id": PARAKEET_MODEL_ID}}},
+    }
+    disk_error = InsufficientDiskSpaceError(MODEL_ID, "Qwen3-8B", 12.0, 5.0)
+
+    async def start(model_type: str, variant: str):
+        if model_type == "Qwen":
+            raise disk_error
+        return SimpleNamespace(status="queued", model_id=f"{model_type}-{variant}")
+
+    service = SetupAssistantActionExecutionService(
+        download_manager=SimpleNamespace(start=start),
+        model_service=SimpleNamespace(model_downloader=SimpleNamespace(get_available_models=lambda: available_models)),
+    )
+
+    results = await service.execute_approved_setup_actions(
+        actions=[],
+        tool_calls=[approved_model_download_proposal([MODEL_ID, PARAKEET_MODEL_ID])],
+    )
+
+    assert [item.status for item in results] == [SetupExecutionStatus.failed, SetupExecutionStatus.applied]
+    assert results[0].message == str(disk_error)
+    assert results[0].result_payload == {
+        "model_id": MODEL_ID,
+        "model_type": "Qwen",
+        "variant": "qwen3-8b-instruct-q4km",
+        "download_status": "insufficient_disk_space",
+        "free_disk_gb": 5.0,
+        "required_disk_gb": 12.0,
+    }
+    assert results[1].result_payload["download_status"] == "queued"

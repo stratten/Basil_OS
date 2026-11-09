@@ -9,6 +9,7 @@ from typing import List, Optional
 
 from api.core.models.preferences import CommandPattern
 
+from .command_words import effective_command, join_words, pattern_words
 from .whitelist_eligibility import assess_whitelist_eligibility
 
 logger = logging.getLogger(__name__)
@@ -29,7 +30,10 @@ class PatternMatcher:
         command: str,
         whitelist: List[CommandPattern]
     ) -> Optional[CommandPattern]:
-        """Check if command matches any whitelisted pattern."""
+        """Return the remembered pattern that covers ``command``, or None when the user has to be asked.
+
+        ``command`` is the command exactly as it will run, never a shortened copy of it. A prefix or regex pattern only covers a plain command, or a shell wrapper around one plain command; anything that chains, pipes, redirects, or substitutes is only ever covered by an exact pattern for that same command.
+        """
         for pattern in whitelist:
             if self.is_naked_wrapper(pattern.pattern):
                 logger.warning(f"⚠️ Skipping naked wrapper pattern in whitelist: '{pattern.pattern}' (pattern_id: {pattern.id})")
@@ -43,55 +47,27 @@ class PatternMatcher:
                 logger.debug(f"✅ Full command matched: '{command[:80]}' → pattern '{pattern.pattern}'")
                 return pattern
 
-        inner_match = self._check_inner_command_whitelist(command, whitelist)
-        if inner_match:
-            return inner_match
-
-        return None
-
-    def _check_inner_command_whitelist(
-        self,
-        command: str,
-        whitelist: List[CommandPattern]
-    ) -> Optional[CommandPattern]:
-        """Check if the inner command of a shell wrapper is whitelisted."""
-        try:
-            tokens = shlex.split(command)
-            if tokens:
-                base_cmd = tokens[0]
-
-                if base_cmd in self.SHELL_WRAPPERS and len(tokens) >= 2:
-                    for i in range(1, len(tokens)):
-                        token = tokens[i]
-                        if token.startswith('-') and 'c' in token:
-                            if i + 1 < len(tokens):
-                                inner_command = tokens[i + 1]
-                                logger.debug(f"🔍 Checking inner command for whitelist: '{inner_command[:80]}'")
-
-                                for pattern in whitelist:
-                                    if self.is_naked_wrapper(pattern.pattern) or self.is_never_rememberable(pattern.pattern):
-                                        continue
-
-                                    if self.matches_pattern(inner_command, pattern):
-                                        logger.info(f"✅ Inner command matched whitelist: '{inner_command[:80]}' → pattern '{pattern.pattern}'")
-                                        return pattern
-                            break
-        except Exception as e:
-            logger.debug(f"Failed to check inner command against whitelist: {e}")
-
         return None
 
     def matches_pattern(self, command: str, pattern: CommandPattern) -> bool:
-        """Check if a command matches a specific pattern."""
+        """Check if a command matches a specific pattern.
+
+        A prefix pattern matches whole words: ``gh gist view`` covers ``gh gist view abc`` but not ``gh gist viewer`` and ``gh`` does not cover ``ghostscript``.
+        """
         try:
             if pattern.pattern_type == 'exact':
                 return command == pattern.pattern
 
+            effective = effective_command(command)
+            if effective.words is None:
+                return False
+
             if pattern.pattern_type == 'prefix':
-                return command.startswith(pattern.pattern)
+                required = pattern_words(pattern.pattern)
+                return bool(required) and effective.words[:len(required)] == required
 
             if pattern.pattern_type == 'regex':
-                return bool(re.match(pattern.pattern, command))
+                return bool(re.match(pattern.pattern, join_words(effective.words)))
 
             logger.warning(f"Unknown pattern type: {pattern.pattern_type}")
             return False
@@ -102,8 +78,11 @@ class PatternMatcher:
 
     @staticmethod
     def is_never_rememberable(pattern: str) -> bool:
-        """Check whether the shared eligibility rule forbids a stored pattern (interpreters, indirection, bare shells)."""
-        return not assess_whitelist_eligibility(pattern, pattern).eligible
+        """Check whether the shared eligibility rule forbids a stored pattern (interpreters, indirection, bare shells).
+
+        Specificity is not enforced here: a stored single-word pattern keeps working and is only flagged as broad in settings.
+        """
+        return not assess_whitelist_eligibility(pattern, pattern, enforce_specificity=False).eligible
 
     def is_naked_wrapper(self, pattern: str) -> bool:
         """Check if a pattern is just a shell wrapper with no actual command."""

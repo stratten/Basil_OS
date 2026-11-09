@@ -15,6 +15,7 @@ from typing import Callable, Set, Dict, Any, AsyncGenerator, Iterator, Optional,
 from ...logging.api_logger import api_logger
 from ...runtime.hardware_capability_service import HardwareCapabilityService
 from ...runtime.llama_cpp_load_plan import build_llama_cpp_load_plan
+from ...runtime.llama_cpp_memory_budget import CONTEXT_STEP, MEMORY_FLOOR_CONTEXT, read_model_memory_facts
 from ..base_model import ModelMetadata, ModelState
 from ..model_types import ModelCapability
 from .base_reasoning import (
@@ -23,6 +24,12 @@ from .base_reasoning import (
     ReasoningTruncatedError,
     has_unterminated_reasoning,
     strip_inline_reasoning,
+)
+from .local_model_failure import (
+    DecodeFailure,
+    LocalModelDecodeError,
+    LocalModelFailureKind,
+    parse_decode_failure,
 )
 from .streaming_async_bridge import async_iter_sync_stream
 
@@ -36,6 +43,18 @@ logger = api_logger.getChild("llama_cpp_model")
 # Global model cache to keep models loaded between requests
 _MODEL_CACHE = {}
 _MODEL_EXECUTION_LOCKS: Dict[str, Any] = {}
+# Context ceilings set after a native decode failed, keyed like _MODEL_CACHE. Every wrapper on the same GGUF plans its next load under the ceiling, so a reload never climbs back to the size that failed.
+_CONTEXT_CEILINGS_BY_KEY: Dict[str, int] = {}
+
+
+def _context_ceiling_for(cache_key: str) -> Optional[int]:
+    with _MODEL_EXECUTION_LOCKS_GUARD:
+        return _CONTEXT_CEILINGS_BY_KEY.get(cache_key)
+
+
+def _set_context_ceiling(cache_key: str, ceiling: int) -> None:
+    with _MODEL_EXECUTION_LOCKS_GUARD:
+        _CONTEXT_CEILINGS_BY_KEY[cache_key] = ceiling
 _MODEL_EXECUTION_LOCKS_GUARD = threading.Lock()
 
 
@@ -459,6 +478,75 @@ class LlamaCppModel(BaseReasoningModel):
             self._native_execution_lock = lock
         return lock
 
+    def _plan_native_load(self) -> Any:
+        """Resolve the load plan: registry and GGUF context, the memory ceiling, and any ceiling a failed decode set."""
+        # Use registry-configured context window if available,
+        # otherwise fall back to GGUF metadata parsing.
+        trained_context = self._read_gguf_metadata_context_or_none()
+        if self._registry_config and self._registry_config.get("context_window"):
+            context_window = self._registry_config["context_window"]
+            if trained_context is not None and context_window > trained_context:
+                logger.warning(
+                    f"[LlamaCpp] Registry context_window={context_window} exceeds GGUF "
+                    f"trained context={trained_context}; loading at requested value but "
+                    f"model behavior beyond {trained_context} tokens may be unreliable"
+                )
+            elif trained_context is not None:
+                logger.info(
+                    f"[LlamaCpp] Using registry context window: {context_window} tokens "
+                    f"(GGUF trained context={trained_context})"
+                )
+            else:
+                logger.info(
+                    f"[LlamaCpp] Using registry context window: {context_window} tokens "
+                    f"(GGUF trained context unavailable for validation)"
+                )
+        else:
+            context_window = self._get_context_window_from_gguf()
+            if trained_context is None and context_window != self.DEFAULT_CONTEXT_WINDOW:
+                trained_context = context_window
+            logger.info(f"[LlamaCpp] Using GGUF-derived context window: {context_window} tokens")
+
+        registry_cfg = self._registry_config or {}
+        memory_facts = read_model_memory_facts(self.model_path)
+        load_plan = build_llama_cpp_load_plan(
+            hardware_profile=self.hardware_profile,
+            registry_config=registry_cfg,
+            gguf_context_window=trained_context or context_window,
+            default_context_window=self.DEFAULT_CONTEXT_WINDOW,
+            max_context_window=_context_ceiling_for(str(self.model_path.resolve())),
+            model_bytes=memory_facts.model_bytes,
+            kv_bytes_per_token=memory_facts.kv_bytes_per_token,
+        )
+        logger.info(
+            "[LlamaCpp] Final load settings: "
+            f"n_ctx={load_plan.n_ctx}, n_gpu_layers={load_plan.n_gpu_layers}, "
+            f"n_threads={load_plan.n_threads}, n_batch={load_plan.n_batch}, "
+            f"n_ubatch={load_plan.n_ubatch}, fallback_reasons={load_plan.fallback_reasons}"
+        )
+        return load_plan
+
+    def _open_native_context(self, cache_key: str, load_plan: Any) -> Any:
+        """Create the native llama.cpp context for a plan, or reuse the cached one. Blocking; callers off the event loop only."""
+        from llama_cpp import Llama
+
+        llama_kwargs = load_plan.to_llama_kwargs(self.model_path)
+        with self.native_execution_lock:
+            cached = _MODEL_CACHE.get(cache_key)
+            if cached is not None:
+                return cached
+            loaded = Llama(**llama_kwargs)
+            if load_plan.prompt_cache_bytes > 0:
+                from llama_cpp.llama_cache import LlamaRAMCache
+
+                loaded.set_cache(LlamaRAMCache(capacity_bytes=load_plan.prompt_cache_bytes))
+                logger.info(
+                    "[LlamaCpp] Prompt-state cache enabled: capacity=%.1f GiB",
+                    load_plan.prompt_cache_bytes / (1 << 30),
+                )
+            _MODEL_CACHE[cache_key] = loaded
+            return loaded
+
     async def load(self) -> None:
         """Load the llama.cpp model."""
         if self.state == ModelState.READY:
@@ -487,61 +575,9 @@ class LlamaCppModel(BaseReasoningModel):
             # Import here to avoid dependency issues if llama_cpp is not installed
             from llama_cpp import Llama
             
-            # Use registry-configured context window if available,
-            # otherwise fall back to GGUF metadata parsing.
-            trained_context = self._read_gguf_metadata_context_or_none()
-            if self._registry_config and self._registry_config.get("context_window"):
-                context_window = self._registry_config["context_window"]
-                if trained_context is not None and context_window > trained_context:
-                    logger.warning(
-                        f"[LlamaCpp] Registry context_window={context_window} exceeds GGUF "
-                        f"trained context={trained_context}; loading at requested value but "
-                        f"model behavior beyond {trained_context} tokens may be unreliable"
-                    )
-                elif trained_context is not None:
-                    logger.info(
-                        f"[LlamaCpp] Using registry context window: {context_window} tokens "
-                        f"(GGUF trained context={trained_context})"
-                    )
-                else:
-                    logger.info(
-                        f"[LlamaCpp] Using registry context window: {context_window} tokens "
-                        f"(GGUF trained context unavailable for validation)"
-                    )
-            else:
-                context_window = self._get_context_window_from_gguf()
-                if trained_context is None and context_window != self.DEFAULT_CONTEXT_WINDOW:
-                    trained_context = context_window
-                logger.info(f"[LlamaCpp] Using GGUF-derived context window: {context_window} tokens")
-
-            registry_cfg = self._registry_config or {}
-            load_plan = build_llama_cpp_load_plan(
-                hardware_profile=self.hardware_profile,
-                registry_config=registry_cfg,
-                gguf_context_window=trained_context or context_window,
-                default_context_window=self.DEFAULT_CONTEXT_WINDOW,
-            )
+            load_plan = self._plan_native_load()
             context_window = load_plan.n_ctx
-            llama_kwargs = load_plan.to_llama_kwargs(self.model_path)
-
-            logger.info(
-                "[LlamaCpp] Final load settings: "
-                f"n_ctx={load_plan.n_ctx}, n_gpu_layers={load_plan.n_gpu_layers}, "
-                f"n_threads={load_plan.n_threads}, n_batch={load_plan.n_batch}, "
-                f"n_ubatch={load_plan.n_ubatch}, fallback_reasons={load_plan.fallback_reasons}"
-            )
-
-            # Load the model with the resolved load settings.
-            def load_or_reuse_native_context():
-                with self.native_execution_lock:
-                    cached = _MODEL_CACHE.get(cache_key)
-                    if cached is not None:
-                        return cached
-                    loaded = Llama(**llama_kwargs)
-                    _MODEL_CACHE[cache_key] = loaded
-                    return loaded
-
-            self.llm = await asyncio.to_thread(load_or_reuse_native_context)
+            self.llm = await asyncio.to_thread(self._open_native_context, cache_key, load_plan)
 
             # llama.cpp picks this from the GGUF's tokenizer.chat_template and
             # silently falls back to a guessed llama-2 format when a model has
@@ -589,6 +625,53 @@ class LlamaCppModel(BaseReasoningModel):
         gc.collect()
         logger.info("[LlamaCpp] Unloaded %s", self.model_path.name)
 
+    def _decode_error(self, failure: DecodeFailure, retried_context: Optional[int]) -> LocalModelDecodeError:
+        """Build the typed failure for a native decode that could not be recovered."""
+        return LocalModelDecodeError(
+            code=failure.code,
+            kind=failure.kind,
+            model_name=self.model_path.name,
+            n_ctx=self.n_ctx,
+            retried_at_context=retried_context,
+        )
+
+    def _reload_after_memory_failure(self, failure: DecodeFailure) -> Optional[int]:
+        """Reload the native context at half the size after a memory failure and return the new context, or None.
+
+        Only a fatal compute failure is retried, because a prompt that does not fit (code 1) needs a larger context, not a smaller one.
+        The reload runs under the native-execution lock, which is re-entrant, so callers that already hold it (the wrapper's own calls) and callers that do not (the agent adapter) are both safe.
+        The ceiling is recorded per GGUF so every wrapper on it plans later loads under the size that worked.
+        """
+        if failure.kind is not LocalModelFailureKind.MEMORY:
+            return None
+        with self.native_execution_lock:
+            return self._reload_at_half_context(failure)
+
+    def _reload_at_half_context(self, failure: DecodeFailure) -> Optional[int]:
+        target = (self.n_ctx // 2) // CONTEXT_STEP * CONTEXT_STEP
+        if target < MEMORY_FLOOR_CONTEXT:
+            return None
+        cache_key = str(self.model_path.resolve())
+        logger.warning(
+            "[LlamaCpp] llama_decode returned %s at n_ctx=%s; reloading %s at n_ctx<=%s",
+            failure.code, self.n_ctx, self.model_path.name, target,
+        )
+        try:
+            _set_context_ceiling(cache_key, target)
+            _evict_native_context(cache_key)
+            load_plan = self._plan_native_load()
+            llm = self._open_native_context(cache_key, load_plan)
+        except Exception:
+            logger.exception("[LlamaCpp] Reload at a smaller context failed for %s", self.model_path.name)
+            return None
+        self.llm = llm
+        self.tokenizer = LlamaCppTokenizerWrapper(llm)
+        _register_wrapper(cache_key, self)
+        self.n_ctx = load_plan.n_ctx
+        self.max_context_length = load_plan.n_ctx
+        self.state = ModelState.READY
+        return load_plan.n_ctx
+
     def _create_completion(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         if self.llm is None:
             raise RuntimeError("Llama.cpp model is not loaded")
@@ -631,7 +714,20 @@ class LlamaCppModel(BaseReasoningModel):
                     native_duration_seconds=time.perf_counter() - lock_acquired_at,
                     error_type=type(exc).__name__,
                 )
-                raise
+                failure = parse_decode_failure(exc)
+                if failure is None:
+                    raise
+                retried_context = self._reload_after_memory_failure(failure)
+                if retried_context is not None and self.llm is not None:
+                    try:
+                        response = self.llm.create_chat_completion(**kwargs)
+                    except Exception as second_exc:
+                        failure = parse_decode_failure(second_exc)
+                        if failure is None:
+                            raise
+                        raise self._decode_error(failure, retried_context) from second_exc
+                else:
+                    raise self._decode_error(failure, retried_context) from exc
             native_duration_ms = int((time.perf_counter() - lock_acquired_at) * 1000)
             _emit_runtime_trace(
                 "native_chat_completion_returned",
@@ -691,7 +787,22 @@ class LlamaCppModel(BaseReasoningModel):
                     chunk_count=chunk_count,
                     error_type=type(exc).__name__,
                 )
-                raise
+                failure = parse_decode_failure(exc)
+                if failure is None:
+                    raise
+                # A stream that already produced text cannot be replayed from the start, so only a failure before the first chunk is retried.
+                retried_context = self._reload_after_memory_failure(failure) if chunk_count == 0 else None
+                if retried_context is None or self.llm is None:
+                    raise self._decode_error(failure, retried_context) from exc
+                try:
+                    for chunk in self.llm.create_chat_completion(stream=True, **kwargs):
+                        chunk_count += 1
+                        yield chunk
+                except Exception as second_exc:
+                    failure = parse_decode_failure(second_exc)
+                    if failure is None:
+                        raise
+                    raise self._decode_error(failure, retried_context) from second_exc
             _emit_runtime_trace(
                 "native_chat_stream_completed",
                 model_path=str(getattr(self, "model_path", "")),

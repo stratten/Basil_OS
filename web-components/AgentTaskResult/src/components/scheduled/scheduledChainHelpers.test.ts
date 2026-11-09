@@ -40,7 +40,7 @@ describe('chain form and payload', () => {
   });
 
   it('rejects a chained schedule with no limit, and malformed limits', () => {
-    expect(chainFormError({ ...chained, limitRuns: false, limitAge: false })).toMatch(/run limit, a time limit, or both/);
+    expect(chainFormError({ ...chained, limitRuns: false, limitAge: false })).toMatch(/turn limit, a time limit, or both/);
     expect(chainFormError({ ...chained, maxRuns: '0' })).toMatch(/whole number from 1 to 1,000/);
     expect(chainFormError({ ...chained, maxRuns: '2.5' })).toMatch(/whole number/);
     expect(chainFormError({ ...chained, maxRuns: '1001' })).toMatch(/whole number/);
@@ -86,10 +86,10 @@ describe('chain form and payload', () => {
   it('describes a chain in plain words', () => {
     expect(describeChain(undefined)).toBe('Each run is its own task');
     expect(describeChain({ mode: 'chained', carry_over: true, max_runs: 8, max_age_minutes: 360 })).toBe(
-      'Continues one conversation, starting a new one after 8 runs or 6 hours, carrying the last result over',
+      'Continues one conversation, starting a new one after 8 turns or 6 hours, carrying the last result over',
     );
     expect(describeChain({ mode: 'chained', carry_over: false, max_runs: 1 })).toBe(
-      'Continues one conversation, starting a new one after 1 run, starting blank',
+      'Continues one conversation, starting a new one after 1 turn, starting blank',
     );
   });
 
@@ -150,5 +150,37 @@ describe('quiet-hours windows', () => {
         { start: '12:00', end: '13:30', days: [0, 1] },
       ]),
     ).toBe('10:00 PM to 7:00 AM; Sat, Sun, all day; 12:00 PM to 1:30 PM on Mon, Tue');
+  });
+});
+
+describe('checklist carry-over setting', () => {
+  it('defaults off and is not sent for independent runs unless chosen', () => {
+    expect(chainConfigFromForm(DEFAULT_CHAIN_FORM)).toEqual({ mode: 'independent' });
+    expect(chainConfigFromForm({ ...DEFAULT_CHAIN_FORM, carryChecklist: true })).toEqual({ mode: 'independent', carry_checklist: true });
+  });
+
+  it('is sent for chained runs only when on', () => {
+    expect(chainConfigFromForm(chained)).not.toHaveProperty('carry_checklist');
+    expect(chainConfigFromForm({ ...chained, carryChecklist: true })).toMatchObject({ mode: 'chained', carry_checklist: true });
+  });
+
+  it('round-trips through a saved config in both modes', () => {
+    expect(chainFormFromConfig({ mode: 'independent', carry_checklist: true }).carryChecklist).toBe(true);
+    expect(chainFormFromConfig({ mode: 'chained', max_runs: 5, carry_checklist: true })).toMatchObject({ chained: true, carryChecklist: true });
+    expect(chainFormFromConfig({ mode: 'chained', max_runs: 5 }).carryChecklist).toBe(false);
+    expect(chainFormFromConfig(undefined).carryChecklist).toBe(false);
+  });
+
+  it('counts a changed switch as a change, and an untouched one as none', () => {
+    const saved: ScheduledChainConfig = { mode: 'independent' };
+    expect(chainConfigChanged({ ...DEFAULT_CHAIN_FORM, carryChecklist: true }, saved, 'recurring')).toBe(true);
+    expect(chainConfigChanged(DEFAULT_CHAIN_FORM, saved, 'recurring')).toBe(false);
+    expect(effectiveChainConfig({ ...DEFAULT_CHAIN_FORM, carryChecklist: true }, 'recurring')).toEqual({ mode: 'independent', carry_checklist: true });
+  });
+
+  it('is mentioned in the schedule description', () => {
+    expect(describeChain({ mode: 'independent', carry_checklist: true })).toBe('Each run is its own task, carrying unfinished checklist items over');
+    expect(describeChain({ mode: 'independent' })).toBe('Each run is its own task');
+    expect(describeChain({ mode: 'chained', max_runs: 3, carry_checklist: true })).toMatch(/carrying the last result over, carrying unfinished checklist items over$/);
   });
 });

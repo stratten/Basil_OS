@@ -15,6 +15,7 @@ import type {
   SetupToolApprovalState,
 } from '@/types'
 
+import { AnswerGuide } from './AnswerGuide'
 import { SetupConversationMarkdown } from './SetupConversationMarkdown'
 import { SetupConversationMessageRow } from './SetupConversationMessageRow'
 import { plainMarkdownText } from '@shared/plainMarkdownText'
@@ -130,6 +131,11 @@ export function BasilConversation({
   const hasPendingReceiptAwaitingApproval = Object.values(pendingProposals).some(
     proposal => proposal.approvalState === 'proposed'
   )
+
+  // The guide is for the blank-page moment: Basil has spoken, the user has not typed an answer yet, no chips are offering answers, and nothing is streaming.
+  const hasBasilMessage = visibleMessages.some(message => message.role === 'basil')
+  const hasTypedUserMessage = messages.some(message => message.role === 'user' && message.inlineAcknowledgment === undefined)
+  const showAnswerGuide = hasBasilMessage && !hasTypedUserMessage && chips.length === 0 && !isStreaming && draft.length === 0 && Object.keys(pendingProposals).length === 0
 
   const submitDraft = () => {
     const trimmed = draft.trim()
@@ -326,6 +332,8 @@ export function BasilConversation({
           )}
         </div>
       )}
+
+      {showAnswerGuide && <AnswerGuide onUseExample={setDraft} />}
 
       <div className="basil-input-row">
         <textarea

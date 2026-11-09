@@ -81,6 +81,26 @@ describe('ModelsSettingsApp', () => {
     expect(container.textContent).not.toContain('Parakeet')
   })
 
+  it('shows a GGUF or MLX tag next to the size of local language models and no tag for other models', () => {
+    sendInit({
+      reasoningGroups: [
+        {
+          provider: 'Qwen',
+          models: [
+            { id: 'Qwen-gguf', modelType: 'Qwen', variantId: 'gguf', name: 'Qwen GGUF', capabilities: ['reasoning'], size: 5_000_000_000, format: 'GGUF', statusKind: 'downloadable' },
+            { id: 'Qwen-mlx', modelType: 'Qwen', variantId: 'mlx', name: 'Qwen MLX', capabilities: ['reasoning'], size: 5_000_000_000, format: 'MLX', statusKind: 'downloadable' },
+            { id: 'Qwen-plain', modelType: 'Qwen', variantId: 'plain', name: 'Qwen Plain', capabilities: ['reasoning'], size: 5_000_000_000, statusKind: 'downloadable' },
+          ],
+        },
+      ],
+    })
+    const tags = Array.from(container.querySelectorAll('.models-settings-format-tag')).map((tag) => tag.textContent)
+    expect(tags).toEqual(['GGUF', 'MLX'])
+    const rows = Array.from(container.querySelectorAll('.models-settings-row'))
+    expect(rows[2].querySelector('.models-settings-format-tag')).toBeNull()
+    expect(rows[1].querySelector('.models-settings-row-size')?.nextElementSibling?.textContent).toBe('MLX')
+  })
+
   it('switches to transcription models via a pure client-side tab with no bridge message', () => {
     sendInit()
     postMessage.mockClear()
@@ -172,10 +192,12 @@ describe('ModelsSettingsApp', () => {
     expect(downloadButton.disabled).toBe(true)
     sendInit({
       type: 'snapshot',
-      reasoningGroups: [{ provider: 'Qwen', models: [{ ...REASONING_GROUPS[0].models[0], statusKind: 'downloading', progress: 0.1 }, REASONING_GROUPS[0].models[1]] }],
+      reasoningGroups: [{ provider: 'Qwen', models: [{ ...REASONING_GROUPS[0].models[0], statusKind: 'downloading', progress: 0.1, totalDownloaded: 1_000_000, totalSize: 10_000_000 }, REASONING_GROUPS[0].models[1]] }],
     })
     act(() => { window.basilModelsSettings!.onEvent({ type: 'intentResult', requestId, status: 'success' }) })
-    expect(container.querySelector('.models-settings-progress-label')?.textContent).toBe('10%')
+    expect(container.querySelector('.download-progress__percent')?.textContent).toBe('10%')
+    expect(container.querySelector('.download-progress__amount')?.textContent).toBe('1.0 MB / 10.0 MB')
+    expect(container.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('10')
   })
 
   it('accumulates and displays the last three download log lines', () => {

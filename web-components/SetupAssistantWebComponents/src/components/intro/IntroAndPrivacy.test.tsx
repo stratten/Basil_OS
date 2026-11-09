@@ -72,13 +72,22 @@ describe('IntroAndPrivacy', () => {
     })
 
     const continueButton = () => container.querySelector<HTMLButtonElement>('.intro-step-primary')!
+    // The flow opens on the model downloads step, which is skippable.
+    expect(container.querySelector('h3')?.textContent).toBe('Model downloads')
+    act(() => { continueButton().click() })
+    expect(container.querySelector('h3')?.textContent).toBe('How I think during setup')
     act(() => { continueButton().click() })
 
     expect(container.textContent).toContain('Personalization > Personal Context')
     expect(container.textContent).toContain('Capabilities > Automation & Agents > Skills')
+    expect(Array.from(container.querySelectorAll('.intro-toggle-later')).map(line => line.textContent)).toEqual([
+      'Change this later in Personalization > Personal Context.',
+      'Change this later in Capabilities > Automation & Agents > Skills.',
+    ])
     expect(container.querySelector<HTMLInputElement>('.intro-capture-toggle--memory input')?.checked).toBe(true)
     expect(container.querySelector<HTMLInputElement>('.intro-capture-toggle--skill input')?.checked).toBe(true)
 
+    act(() => { continueButton().click() })
     act(() => { continueButton().click() })
     await act(async () => {
       continueButton().click()
@@ -124,14 +133,20 @@ describe('IntroAndPrivacy', () => {
     })
 
     const continueButton = () => container.querySelector<HTMLButtonElement>('.intro-step-primary')!
+    // The flow opens on the model downloads step, which is skippable.
+    expect(container.querySelector('h3')?.textContent).toBe('Model downloads')
+    act(() => { continueButton().click() })
+    expect(container.querySelector('h3')?.textContent).toBe('How I think during setup')
     act(() => { continueButton().click() })
     expect(container.textContent).toContain('continuing will leave them unchanged')
 
     act(() => { continueButton().click() })
     act(() => { continueButton().click() })
+    act(() => { continueButton().click() })
 
-    const settingsCalls = fetchMock.mock.calls.filter(([path]) => !String(path).includes('/interaction-style'))
-    expect(settingsCalls).toHaveLength(2)
+    const memoryCalls = fetchMock.mock.calls.filter(([path]) => String(path) === '/settings/memory-intelligence')
+    expect(memoryCalls).toHaveLength(1)
+    expect(memoryCalls.some(([, init]) => (init as RequestInit | undefined)?.method === 'PUT')).toBe(false)
     expect(onContinue).toHaveBeenCalledWith('')
   })
 })

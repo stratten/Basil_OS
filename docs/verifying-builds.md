@@ -1,6 +1,6 @@
 # Verifying repository builds
 
-Every push to `main` that changes more than the README builds Basil on GitHub-hosted macOS runners, signs and notarizes it with the project's Developer ID, attests it, and keeps the result as a workflow artifact. The release owner then promotes a build by hand, either to the `main-latest` pre-release on this repository's Releases page, which each promotion replaces, or to a numbered stable release such as `v1.0.0`. This page explains how to confirm that a downloaded build came from the code you can read here.
+Every push to `main` that changes more than the README and the files under `docs/` builds Basil on GitHub-hosted macOS runners, signs and notarizes it with the project's Developer ID, attests it, and keeps the result as a workflow artifact. The release owner then promotes a build by hand, either to the `main-latest` pre-release on this repository's Releases page, which each promotion replaces, or to a numbered stable release such as `v1.0.0`. This page explains how to confirm that a downloaded build came from the code you can read here.
 
 ## Who this is for
 

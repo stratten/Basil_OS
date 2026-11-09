@@ -2,7 +2,9 @@ import { useMemo, useRef, useEffect, useCallback } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { ARTIFACT_MARKDOWN_PURIFY_OPTIONS, escapeHtmlText, normalizeMarkdownBullets } from '@shared/markdownSafety';
-import { openFile, openExternalUrl } from '../services/bridge';
+import { COPY_FEEDBACK_MS } from '@shared/useCopyFeedback';
+import { copyToClipboard, openFile, openExternalUrl } from '../services/bridge';
+import { CHECK_ICON_MARKUP, COPY_ICON_MARKUP } from './result/copyIconMarkup';
 import hljs from 'highlight.js/lib/core';
 import javascript from 'highlight.js/lib/languages/javascript';
 import typescript from 'highlight.js/lib/languages/typescript';
@@ -50,8 +52,25 @@ renderer.code = function ({ text, lang }: { text: string; lang?: string }) {
     highlighted = hljs.highlightAuto(text).value;
   }
   const languageClass = (lang || 'plaintext').replace(/[^A-Za-z0-9_+-]/g, '') || 'plaintext';
-  return `<pre><code class="hljs language-${languageClass}">${highlighted}</code></pre>`;
+  const label = lang ? languageClass : '';
+  return copyBlock(`<pre><code class="hljs language-${languageClass}">${highlighted}</code></pre>`, 'Copy code', label);
 };
+renderer.blockquote = function ({ tokens }) {
+  return copyBlock(`<blockquote>${this.parser.parse(tokens)}</blockquote>`, 'Copy quote', 'Quote');
+};
+
+/** Wraps a fenced code block or quote with its own copy button; the click handler finds the block beside the button. */
+function copyBlock(blockHtml: string, copyLabel: string, caption: string): string {
+  const captionHtml = caption ? `<span class="markdown-copy-caption">${escapeHtmlText(caption)}</span>` : '<span></span>';
+  return `<div class="markdown-copy-block"><div class="markdown-copy-bar">${captionHtml}<button type="button" class="markdown-copy-button" data-copy-label="${copyLabel}" aria-label="${copyLabel}" title="${copyLabel}">${COPY_ICON_MARKUP}</button></div>${blockHtml}</div>`;
+}
+
+/** The text of a fenced block or quote without any copy buttons nested inside it. */
+function copyableText(block: Element): string {
+  const clone = block.cloneNode(true) as Element;
+  clone.querySelectorAll('.markdown-copy-bar').forEach(bar => bar.remove());
+  return (clone.textContent || '').replace(/\s+$/, '');
+}
 
 interface Props {
   content: string;
@@ -73,6 +92,26 @@ export default function MarkdownRenderer({ content, isStreaming, variant }: Prop
   }, [content]);
 
   const handleClick = useCallback((e: React.MouseEvent) => {
+    const copyButton = (e.target as HTMLElement).closest<HTMLElement>('.markdown-copy-button');
+    if (copyButton) {
+      e.preventDefault();
+      e.stopPropagation();
+      const block = copyButton.closest('.markdown-copy-block')?.querySelector(':scope > pre, :scope > blockquote');
+      if (!block) return;
+      copyToClipboard(copyableText(block));
+      // The check mark replaces the icon for the same moment the other copy buttons show theirs, and the label says so for assistive technology.
+      const copyLabel = copyButton.getAttribute('data-copy-label') || 'Copy';
+      copyButton.innerHTML = CHECK_ICON_MARKUP;
+      copyButton.setAttribute('aria-label', `${copyLabel} copied`);
+      copyButton.title = `${copyLabel} copied`;
+      window.setTimeout(() => {
+        if (!copyButton.isConnected) return;
+        copyButton.innerHTML = COPY_ICON_MARKUP;
+        copyButton.setAttribute('aria-label', copyLabel);
+        copyButton.title = copyLabel;
+      }, COPY_FEEDBACK_MS);
+      return;
+    }
     const target = (e.target as HTMLElement).closest('a');
     if (!target) return;
     const href = target.getAttribute('href');

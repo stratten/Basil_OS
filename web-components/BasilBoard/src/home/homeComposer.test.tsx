@@ -69,7 +69,7 @@ describe('HomeComposer', () => {
     expect(view.getByRole('button', { name: 'Bold' })).toBeTruthy();
   });
 
-  it('submits rich content with display markdown and default model omitted', async () => {
+  it('submits rich content with display markdown and the picker model, even when it is the default', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     const view = renderComposer(onSubmit);
     const editor = getEditor(view.container);
@@ -83,7 +83,7 @@ describe('HomeComposer', () => {
         content: 'Hello Basil',
         displayMarkdown: '**Hello** Basil',
         referencePaths: [],
-        modelId: undefined,
+        modelId: 'default-model',
       });
     });
   });

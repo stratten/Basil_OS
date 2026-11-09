@@ -13,6 +13,7 @@ import type { AgentRunOverviewPresentation, AgentRunPresentation } from './run/a
 import { deriveAgentRunOverviewPresentation, deriveAgentRunPresentation } from './run/agentRunPresentation';
 import { AgentRunMap } from './run/AgentRunMap';
 import { RunCard, RunStageGlyph } from './run/RunCard';
+import ChecklistOverviewSection from './checklist/ChecklistOverviewSection';
 import { navigationTargetForStage, type RunNavigationTarget } from './run/runNavigation';
 import type { AgentTaskRunFocusSummary } from './run/agentTaskRunFocus';
 import NativeSymbolIcon, { type NativeSymbolName } from '../../../shared/NativeSymbolIcon';
@@ -669,7 +670,10 @@ export default function ExecutionDetailTray({
           )}
         </div>
       ) : (
-        <div className="run-overview-body">{overviewBody}</div>
+        <div className="run-overview-body">
+          <ChecklistOverviewSection rootTaskId={rootTaskId} />
+          {overviewBody}
+        </div>
       )}
     </aside>
   );

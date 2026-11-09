@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import AttachmentArea from '@shared/AttachmentArea';
 import { mergeAttachmentPaths, pathEntries } from '@shared/attachmentPaths';
-import { pickFiles, registerFilesPickedHandler } from '../../services/bridge';
+import { pickFiles } from '../../services/bridge';
+import { useFilesPickedHandler } from '../../services/useFilesPickedHandler';
 
 interface Props {
   paths: string[];
@@ -18,12 +19,12 @@ export default function AttachedFilesEditor({ paths, onChange }: Props) {
   const onChangeRef = useRef(onChange);
   useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
 
-  // The bridge's registry is single-callback; the returned unregister only clears it while this editor still owns it.
-  useEffect(() => registerFilesPickedHandler((picked) => {
+  // The bridge's registry is single-callback and only the surface on screen may own it, so a copy of the previous surface that is still fading out cannot take dropped files from this form.
+  useFilesPickedHandler((picked) => {
     const merged = mergeAttachmentPaths(pathsRef.current, picked);
     if (merged.length === pathsRef.current.length) return;
     onChangeRef.current(merged);
-  }), []);
+  });
 
   return (
     <AttachmentArea

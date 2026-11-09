@@ -150,3 +150,43 @@ describe('HotkeySettingsApp', () => {
     expect(container.querySelector('.hotkey-row-error')?.textContent).toBe('Failed to save hotkey.')
   })
 })
+
+describe('HotkeySettingsApp system shortcut conflicts', () => {
+  it('shows nothing when native reports no conflicts', () => {
+    expect(container.querySelector('.hotkey-conflict-list')).toBeNull()
+  })
+
+  it('names the macOS feature and distinguishes an exact conflict from a possible one', () => {
+    act(() => {
+      window.basilHotkeySettings!.onEvent({
+        type: 'snapshot',
+        rows: HOTKEY_FIXTURE_ROWS,
+        enableMonitoringAtStartup: HOTKEY_FIXTURE_ENABLE_MONITORING_AT_STARTUP,
+        systemConflicts: [
+          { hotkeyId: 'agent_task', source: 'Spotlight', certainty: 'exact', message: 'Agent Task (⌥␣) is also used by Spotlight.' },
+          { hotkeyId: 'transcribe_audio', source: 'Siri', certainty: 'possible', message: 'Siri may share these keys.' },
+        ],
+      })
+    })
+
+    const notices = Array.from(container.querySelectorAll('.hotkey-conflict'))
+    expect(notices.map((notice) => notice.textContent)).toEqual([
+      'Conflict with Spotlight. Agent Task (⌥␣) is also used by Spotlight.',
+      'Possible conflict with Siri. Siri may share these keys.',
+    ])
+  })
+
+  it('clears the warning when a later snapshot reports the conflict is gone', () => {
+    act(() => {
+      window.basilHotkeySettings!.onEvent({
+        type: 'snapshot',
+        rows: HOTKEY_FIXTURE_ROWS,
+        enableMonitoringAtStartup: false,
+        systemConflicts: [{ hotkeyId: 'agent_task', source: 'Siri', certainty: 'exact', message: 'm' }],
+      })
+    })
+    expect(container.querySelector('.hotkey-conflict-list')).not.toBeNull()
+    act(sendInit)
+    expect(container.querySelector('.hotkey-conflict-list')).toBeNull()
+  })
+})

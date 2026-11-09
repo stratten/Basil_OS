@@ -48,7 +48,10 @@ from .agent_result_synthesis import (
     intermediate_steps_to_finalizer_steps,
     run_final_synthesis_for_state,
 )
+from .context_window_budget import with_context_trimmed_notice
 from .execution_limits import agent_run_max_active_seconds
+from ..runtime.agent_checklist_evidence import finalizer_checklist_block
+from ..runtime.agent_checklist_gate import with_not_completed_footer
 from ..runtime.workflow_status_notifier import WorkflowStatusNotifier
 from .agent_execution_core import (
     setup_live_callbacks,
@@ -760,6 +763,12 @@ async def _node_execute_todos_with_tools(state: PlanningState) -> Dict[str, Any]
         else:
             synthesized_text = st
 
+        # Required checklist items still open are named in plain words after the answer is written, whatever the model said.
+        synthesized_text = await with_not_completed_footer(synthesized_text, state.context)
+
+        # When Basil cut the user's own context to fit the model, or the tools alone fill its window, say so in plain words after the answer, whatever the model said.
+        synthesized_text = with_context_trimmed_notice(synthesized_text, result)
+
         await save_agent_turn_thread(
             context=state.context,
             langchain_llm=langchain_llm,
@@ -802,6 +811,11 @@ async def _node_execute_todos_with_tools(state: PlanningState) -> Dict[str, Any]
             mark_verification_status,
             schedule_outcome_verification,
         )
+        # The checklist goes to the verifier first, so the context clip cannot cut it, and as read-only evidence only.
+        checklist_evidence = await finalizer_checklist_block(ctx)
+        evaluation_context = _build_finalizer_evaluation_context(ctx)
+        if checklist_evidence:
+            evaluation_context = f"{checklist_evidence}\n\n{evaluation_context}" if evaluation_context else checklist_evidence
         finalize_inputs = FinalizeInputs(
             original_prompt=state.user_agent_task,
             agent_task_id=ctx.get("agent_task_id"),
@@ -815,7 +829,7 @@ async def _node_execute_todos_with_tools(state: PlanningState) -> Dict[str, Any]
             },
             tool_error_history=ctx.get("tool_errors"),
             read_file_artifacts=ctx.get("file_reads"),
-            evaluation_context=_build_finalizer_evaluation_context(ctx),
+            evaluation_context=evaluation_context,
             synthesis_evidence=ctx.get("final_synthesis_evidence"),
             context_window_exceeded=(result or {}).get("context_window_exceeded") if isinstance(result, dict) else None,
             agent_final_answer=agent_output if isinstance(agent_output, str) else None,

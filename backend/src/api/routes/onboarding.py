@@ -14,6 +14,7 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
+from ..core.models.model_download.disk_space import InsufficientDiskSpaceError, larger_model_blocked_message
 from ..core.services.model_download_manager import DownloadManager
 from ..core.logging.api_logger import api_logger
 from ..core.services.model_service import ModelService
@@ -22,8 +23,8 @@ from ..dependencies import get_model_service
 router = APIRouter(prefix="/onboarding", tags=["Onboarding"])
 
 
-# Define the starter model pack - downloads automatically on first launch
-STARTER_MODELS = [
+# The starter model pack downloads automatically on first launch. The two transcription models are fixed. The reasoning model comes from get_starter_models().
+_TRANSCRIPTION_STARTER_MODELS = [
     {
         "model_type": "OpenAI",
         "variant": "whisper-tiny.en",
@@ -36,13 +37,65 @@ STARTER_MODELS = [
         "priority": 2,
         "description": "High-quality multilingual transcription (670MB)",
     },
-    {
-        "model_type": "Qwen",
-        "variant": "qwen35-9b-q4km",
-        "priority": 3,
-        "description": "Reasoning model for suggestions (5.7GB)",
-    },
 ]
+
+# The two builds of each starter reasoning model, MLX first. Either build being installed satisfies the pack, so an install that already has one never downloads the other. The 4B pair is what a Mac with too little memory for the 9B receives, and the 35B pair is what a Mac with enough memory for it receives.
+_REASONING_STARTER_EQUIVALENTS_BY_MODEL = (
+    ("Qwen-qwen36-35b-a3b-mlx-4bit", "Qwen-qwen36-35b-a3b-ud-q4km"),
+    ("Qwen-qwen35-9b-mlx-4bit", "Qwen-qwen35-9b-q4km"),
+    ("Qwen-qwen35-4b-mlx-4bit", "Qwen-qwen35-4b-q4km"),
+)
+_REASONING_STARTER_FALLBACK_ID = "Qwen-qwen35-9b-q4km"
+
+
+def get_starter_models(model_service: Any) -> List[Dict[str, Any]]:
+    """Return the first-launch download pack.
+
+    The reasoning model is the registry's onboarding default for this machine: the MLX build on an Apple Silicon Mac that can run MLX, the GGUF build everywhere else, the 4B model instead of the 9B on a Mac with less memory than the 9B declares it needs, and the 35B model instead of the 9B on an MLX Mac with at least the memory the 9B names for that upgrade. If the other build of that model is already installed, that build is reported instead, so first launch never downloads a second copy of a model the user already has.
+    """
+    from ..core.models.models_registry import get_model
+    from ..core.models.preference_models.defaults import _get_default_local_reasoning_model_id
+
+    chosen_id = _get_default_local_reasoning_model_id() or _REASONING_STARTER_FALLBACK_ID
+    equivalents = next((pair for pair in _REASONING_STARTER_EQUIVALENTS_BY_MODEL if chosen_id in pair), ())
+    if equivalents:
+        for candidate_id in equivalents:
+            if get_model(candidate_id) is None:
+                continue
+            candidate_type, candidate_variant = candidate_id.split("-", 1)
+            if model_service.is_model_downloaded(candidate_type, candidate_variant):
+                chosen_id = candidate_id
+                break
+    model_type, variant = chosen_id.split("-", 1)
+    size = (get_model(chosen_id) or {}).get("size")
+    description = f"Reasoning model for suggestions ({size})" if size else "Reasoning model for suggestions"
+    return [
+        *_TRANSCRIPTION_STARTER_MODELS,
+        {"model_type": model_type, "variant": variant, "priority": 3, "description": description},
+    ]
+
+
+def starter_disk_warnings() -> List[str]:
+    """Warn when this Mac has the memory for the larger starter model but not the free disk space for it.
+
+    The starter pack then holds the smaller model, so the person using the app is told what they would gain by freeing space. The free space is read each time, so freeing it clears the warning on the next call.
+    """
+    from ..core.models.models_registry import get_model
+    from ..core.models.preference_models.defaults import _choose_local_reasoning_model
+
+    choice = _choose_local_reasoning_model()
+    if not choice.blocked_by_disk or choice.required_disk_gb is None or choice.free_disk_gb is None:
+        return []
+    preferred = get_model(choice.preferred_model_id) or {}
+    fallback = get_model(choice.model_id) or {}
+    return [
+        larger_model_blocked_message(
+            str(preferred.get("display_name") or choice.preferred_model_id),
+            str(fallback.get("display_name") or choice.model_id),
+            choice.required_disk_gb,
+            choice.free_disk_gb,
+        )
+    ]
 
 
 def _get_download_manager(request: Request) -> DownloadManager:
@@ -79,6 +132,8 @@ class StarterModelsResponse(BaseModel):
     models: List[StarterModelInfo]
     all_installed: bool
     downloads_started: int
+    # Plain-language notices for the person using the app, such as a larger model held back by free disk space. Empty when there is nothing to say.
+    warnings: List[str] = []
 
 
 @router.get("/starter-models")
@@ -89,7 +144,7 @@ async def get_starter_models_status(
     models: List[StarterModelInfo] = []
     all_installed = True
 
-    for model_config in STARTER_MODELS:
+    for model_config in get_starter_models(model_service):
         model_type = model_config["model_type"]
         variant = model_config["variant"]
         # NOTE: this string uses "/" while the canonical model_id elsewhere
@@ -111,7 +166,10 @@ async def get_starter_models_status(
         )
 
     return StarterModelsResponse(
-        models=models, all_installed=all_installed, downloads_started=0
+        models=models,
+        all_installed=all_installed,
+        downloads_started=0,
+        warnings=starter_disk_warnings(),
     )
 
 
@@ -129,11 +187,12 @@ async def start_starter_model_downloads(
     """
     manager = _get_download_manager(http_request)
 
-    sorted_models = sorted(STARTER_MODELS, key=lambda x: x.get("priority", 99))
+    sorted_models = sorted(get_starter_models(model_service), key=lambda x: x.get("priority", 99))
 
     models: List[StarterModelInfo] = []
     downloads_started = 0
     all_installed = True
+    warnings = starter_disk_warnings()
 
     for model_config in sorted_models:
         model_type = model_config["model_type"]
@@ -153,6 +212,9 @@ async def start_starter_model_downloads(
                 #     don't count it as a fresh dispatch.
                 if entry.status != "skipped_installed":
                     downloads_started += 1
+            except InsufficientDiskSpaceError as exc:
+                api_logger.warning(f"[Onboarding] Not enough disk space for starter model {canonical_id}: {exc}")
+                warnings.append(str(exc))
             except Exception as exc:
                 api_logger.error(
                     f"[Onboarding] Failed to enqueue starter model {canonical_id}: {exc}"
@@ -184,6 +246,7 @@ async def start_starter_model_downloads(
         models=models,
         all_installed=all_installed,
         downloads_started=downloads_started,
+        warnings=warnings,
     )
 
 
@@ -203,15 +266,22 @@ async def get_all_download_progress(
     manager = _get_download_manager(http_request)
 
     progress_data: Dict[str, Dict[str, Any]] = {}
-    total_models = len(STARTER_MODELS)
+    starter_models = get_starter_models(model_service)
+    total_models = len(starter_models)
     completed_models = 0
     total_progress = 0.0
 
-    for model_config in STARTER_MODELS:
+    for model_config in starter_models:
         model_type = model_config["model_type"]
         variant = model_config["variant"]
         model_id = f"{model_type}-{variant}"
         description = model_config["description"]
+        from ..core.models.models_registry import get_model as get_registry_model
+        from .setup_assistant.validation_model_routes import can_copy_from_normal_basil
+
+        display_name = str((get_registry_model(model_id) or {}).get("display_name") or model_id)
+        # True only in a fresh validation session whose normal Basil holds this model, so the setup page can offer a copy.
+        can_copy = can_copy_from_normal_basil(model_id)
 
         if model_service.is_model_downloaded(model_type, variant):
             completed_models += 1
@@ -220,6 +290,8 @@ async def get_all_download_progress(
                 "status": "completed",
                 "progress": 100.0,
                 "description": description,
+                "display_name": display_name,
+                "can_copy_from_normal_basil": can_copy,
             }
             continue
 
@@ -229,6 +301,8 @@ async def get_all_download_progress(
                 "status": "pending",
                 "progress": 0.0,
                 "description": description,
+                "display_name": display_name,
+                "can_copy_from_normal_basil": can_copy,
             }
             continue
 
@@ -242,6 +316,8 @@ async def get_all_download_progress(
             "status": status,
             "progress": progress_pct,
             "description": description,
+            "display_name": display_name,
+            "can_copy_from_normal_basil": can_copy,
         }
         if entry.bytes_downloaded:
             record["total_downloaded"] = entry.bytes_downloaded
@@ -269,3 +345,65 @@ async def get_all_download_progress(
         "phase_message": phase_message,
         "models": progress_data,
     }
+
+
+class SmallerReasoningModelResponse(BaseModel):
+    """Result of asking Basil to move to a smaller local reasoning model."""
+
+    status: str
+    model_id: str | None = None
+    message: str
+
+
+@router.post("/use-smaller-reasoning-model")
+async def use_smaller_reasoning_model(
+    http_request: Request,
+    model_service: ModelService = Depends(get_model_service),
+) -> SmallerReasoningModelResponse:
+    """Move the reasoning model to the smaller local model its registry entry names, after a failure to run the current one.
+
+    Idempotent, so the setup UI can call it again while the download runs: once the smaller model is installed the call switches the preference and reports ``switched``.
+    ``downloading`` means the download was started or is already running, and ``unavailable`` means no smaller local model exists for the current one.
+    """
+    from ..core.models.models_registry import get_model
+    from ..core.preferences.preferences_io import load_preferences, save_preferences
+
+    preferences = load_preferences()
+    current_id = preferences.models.reasoning_model
+    fallback_id = (get_model(current_id) or {}).get("onboarding_low_memory_fallback")
+    if not fallback_id or get_model(fallback_id) is None:
+        return SmallerReasoningModelResponse(
+            status="unavailable",
+            message="There is no smaller local model for this one. Use Basil Cloud or your own API key instead.",
+        )
+
+    model_type, variant = fallback_id.split("-", 1)
+    size = (get_model(fallback_id) or {}).get("size")
+    if model_service.is_model_downloaded(model_type, variant):
+        preferences.models.reasoning_model = fallback_id
+        save_preferences(preferences)
+        api_logger.info(f"[Onboarding] Switched reasoning model from {current_id} to {fallback_id}")
+        return SmallerReasoningModelResponse(
+            status="switched",
+            model_id=fallback_id,
+            message="Basil is now using a smaller model on this Mac.",
+        )
+
+    manager = _get_download_manager(http_request)
+    try:
+        await manager.start(model_type, variant)
+    except InsufficientDiskSpaceError as exc:
+        api_logger.warning(f"[Onboarding] Not enough disk space for {fallback_id}: {exc}")
+        return SmallerReasoningModelResponse(status="unavailable", model_id=fallback_id, message=str(exc))
+    except Exception as exc:
+        api_logger.error(f"[Onboarding] Failed to start download of {fallback_id}: {exc}")
+        return SmallerReasoningModelResponse(
+            status="unavailable",
+            model_id=fallback_id,
+            message="Basil could not start downloading the smaller model. Check your connection and try again.",
+        )
+    return SmallerReasoningModelResponse(
+        status="downloading",
+        model_id=fallback_id,
+        message=f"Downloading a smaller model{f' ({size})' if size else ''}. Basil will switch to it when it finishes.",
+    )

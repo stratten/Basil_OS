@@ -216,7 +216,7 @@ class EmbeddingModelManager:
         logger.info(f"Downloading embedding model '{repo_id}' for first-time install → {local_dir}")
 
         local_dir.parent.mkdir(parents=True, exist_ok=True)
-        cached = snapshot_download(repo_id=repo_id, local_files_only=False, resume_download=True)
+        cached = snapshot_download(repo_id=repo_id, local_files_only=False)
         try:
             shutil.copytree(cached, local_dir, dirs_exist_ok=True)
         finally:

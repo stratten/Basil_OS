@@ -337,13 +337,13 @@ def _release_cached_llama_cpp_models():
     yield
     import sys
 
-    for module_name in (
-        "api.core.models.reasoning.llama_cpp_model",
-        "api.core.models.reasoning.llama_cpp_model",
+    for module_name, function_name in (
+        ("api.core.models.reasoning.llama_cpp_model", "shutdown_cached_llama_cpp_models"),
+        ("api.core.models.reasoning.mlx_model", "shutdown_cached_mlx_models"),
     ):
         module = sys.modules.get(module_name)
         if module is not None:
-            module.shutdown_cached_llama_cpp_models()
+            getattr(module, function_name)()
 
 
 import pytest

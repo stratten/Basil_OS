@@ -572,3 +572,25 @@ async def test_load_standing_instructions_returns_empty_text_when_the_profile_ca
     monkeypatch.setattr(personalization_service, "PersonalizationService", _Broken)
 
     assert await load_standing_instructions() == ""
+
+
+def test_final_synthesis_shows_drafts_in_full_even_under_brevity_instructions():
+    from api.services.agent_processing.lifecycle.execution_graph.agent_result_synthesis import (
+        FINAL_SYNTHESIS_SYSTEM,
+        build_final_synthesis_system_prompt,
+    )
+
+    assert "SHOW DRAFTS IN FULL" in FINAL_SYNTHESIS_SYSTEM
+    assert "recipients (To, Cc, and Bcc when present)" in FINAL_SYNTHESIS_SYSTEM
+    assert "never an earlier attempt that a tool rejected" in FINAL_SYNTHESIS_SYSTEM
+    assert "not shortened by brevity defaults or by the user's standing instructions" in FINAL_SYNTHESIS_SYSTEM
+
+    system = build_final_synthesis_system_prompt("Lead with the answer and keep replies short.")
+    assert "except that drafts awaiting the user's approval are always shown in full" in system
+    assert system.rstrip().endswith("Lead with the answer and keep replies short.")
+
+
+def test_agent_handoff_guidance_names_where_each_unsent_draft_is_saved():
+    from api.services.agent_processing.lifecycle.execution_graph.system_prompts import AGENT_SYSTEM_PROMPT_TEMPLATE
+
+    assert "name where it is saved and which tool call holds its final saved text" in AGENT_SYSTEM_PROMPT_TEMPLATE

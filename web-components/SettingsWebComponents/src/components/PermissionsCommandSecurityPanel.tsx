@@ -10,6 +10,7 @@ import {
   requestUpdateApprovalSetting,
   requestUpdateWhitelistPattern,
 } from '../services/permissionsCommandSecurityBridge'
+import { broadWhitelistCommandName } from '../services/whitelistPatternBreadth'
 import { WhitelistPatternForm } from './WhitelistPatternForm'
 
 const APPROVAL_MODE_OPTIONS: readonly { id: ApprovalMode; label: string }[] = [
@@ -252,6 +253,11 @@ export function PermissionsCommandSecurityPanel() {
                       <span className="permissions-whitelist-type">{pattern.patternType}</span>
                       <code className="permissions-whitelist-pattern" title={pattern.pattern}>{pattern.pattern}</code>
                     </div>
+                    {broadWhitelistCommandName(pattern) && (
+                      <span className="permissions-whitelist-broad" role="note">
+                        Allows every {broadWhitelistCommandName(pattern)} command. Edit it to a specific form, or delete it.
+                      </span>
+                    )}
                     <span className="permissions-whitelist-description">{pattern.description || 'No description provided'}</span>
                   </div>
                   <span className="permissions-whitelist-use-count">{pattern.useCount} {pattern.useCount === 1 ? 'use' : 'uses'}</span>

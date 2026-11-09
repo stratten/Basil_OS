@@ -10,6 +10,7 @@ from api.core.services.model_service import get_model_service
 from api.routes.setup_assistant.models import (
     SetupAgentEvent,
     SetupArtifactKind,
+    SetupAssistantPhase,
     SetupOrientationTone,
     SetupPrivacyImpact,
     SetupSessionAgendaItemStatus,
@@ -72,7 +73,11 @@ class SetupAgentToolFactory:
         context_catalog_service: Optional[SetupAssistantContextCatalogService] = None,
         discovery_service: Optional[SetupAssistantDiscoveryService] = None,
         setup_model_selection: Optional[SetupAgentModelSelection] = None,
+        phase: Optional[SetupAssistantPhase] = None,
     ) -> None:
+        # The phase of the turn these tools were built for. Tools that only make sense in the
+        # conversation phase (propose_session_agenda) use it to refuse early calls.
+        self.phase = phase
         self.event_emitter = event_emitter
         self.proposal_store = proposal_store
         self.context_catalog_service = context_catalog_service or SetupAssistantContextCatalogService()
@@ -95,6 +100,9 @@ class SetupAgentToolFactory:
         # ``source_email_id`` even when the agent forgets to thread it through
         # the payload itself. Cleared between turns by the runtime.
         self.last_pulled_email_id: Optional[str] = None
+        # Normalized titles and details of the orientation observations already surfaced in this
+        # turn, so a model that repeats itself cannot put the same card on screen twice.
+        self.noted_observation_keys: set[str] = set()
 
     def create_setup_agent_tools(self) -> List[StructuredTool]:
         return create_setup_agent_tools_for_factory(self)

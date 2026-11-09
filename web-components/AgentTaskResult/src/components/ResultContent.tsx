@@ -336,17 +336,16 @@ export default function ResultContent({
       )}
 
       {agentTask.originalPrompt && (
-        <>
-          <RequestDisplay
-            originalPrompt={agentTask.originalPrompt}
-            displayPromptMarkdown={agentTask.displayPromptMarkdown}
-            originType={hasTurnChain ? agentTask.currentTurnOriginType : agentTask.originType}
-            originId={hasTurnChain ? agentTask.currentTurnOriginId : agentTask.originId}
-          />
-          {(agentTask.referencePaths.length > 0 || (agentTask.connectionReferences?.length ?? 0) > 0) && (
-            <ReferencePathsList paths={agentTask.referencePaths} connections={agentTask.connectionReferences} />
-          )}
-        </>
+        <RequestDisplay
+          originalPrompt={agentTask.originalPrompt}
+          displayPromptMarkdown={agentTask.displayPromptMarkdown}
+          originType={hasTurnChain ? agentTask.currentTurnOriginType : agentTask.originType}
+          originId={hasTurnChain ? agentTask.currentTurnOriginId : agentTask.originId}
+        />
+      )}
+      {/* A voice turn has no prompt text until its audio is transcribed, but the files attached to it are known as soon as the reply is accepted, so they must not wait for the prompt. */}
+      {(agentTask.referencePaths.length > 0 || (agentTask.connectionReferences?.length ?? 0) > 0) && (
+        <ReferencePathsList paths={agentTask.referencePaths} connections={agentTask.connectionReferences} />
       )}
 
       <PresenceRegion visible={Boolean(agentTask.showWorkflowPlan && agentTask.workflowPlan)} className="result-presence-region">
@@ -406,9 +405,9 @@ export default function ResultContent({
                 Provisional
               </span>
             )}
+            <CopyButtonGroup text={presentationResult} />
           </div>
           <div className="result-container" style={{ position: 'relative' }}>
-            <CopyButtonGroup text={presentationResult} />
             <MarkdownRenderer
               content={pacedNarrative.text}
               isStreaming={agentTask.isStreaming}

@@ -14,6 +14,10 @@ from pydantic import BaseModel, Field
 from langchain_core.tools import StructuredTool
 
 from api.core.models.reasoning.model_runtime_profile import select_description_for_profile
+from api.services.agent_processing.tools.internal_basil_tools.activity_query_budget import (
+    continuation_fields,
+    fit_activities_to_budget,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +124,8 @@ async def _query_activities_impl(
     app_name_filter: Optional[str] = None,
     window_title_search: Optional[str] = None,
     limit: int = 100,
-    sort_order: str = "newest"
+    sort_order: str = "newest",
+    max_output_chars: Optional[int] = None,
 ) -> str:
     """Implementation of activity query tool.
     
@@ -154,27 +159,23 @@ async def _query_activities_impl(
         # Enforce reasonable limits
         limit = min(max(1, limit), 1000)  # Clamp between 1 and 1000
         
-        # Query activities using SQLiteKnowledgeService
+        # Query activities using SQLiteKnowledgeService. The app and title filters and the sort order are applied
+        # in the database before the limit, so the limit keeps the newest (or, for "oldest", the oldest) matches.
         activities = await sqlite_service.search_activities(
             time_range=time_range if time_range else None,
-            text_search=None,  # We'll filter in post-processing if needed
+            text_search=None,
             metadata_filters=None,
-            limit=limit * 2  # Get extra to allow for filtering
+            limit=limit,
+            app_name=app_name_filter,
+            window_title_contains=window_title_search,
+            newest_first=(sort_order != "oldest"),
         )
         
         logger.info(f"Retrieved {len(activities)} activities from database")
         
-        # Convert Activity objects to dicts and apply filters
+        # Convert Activity objects to dicts
         result_activities = []
         for activity in activities:
-            # Apply app name filter (exact match, case-sensitive)
-            if app_name_filter and activity.app_name != app_name_filter:
-                continue
-            
-            # Apply window title search (case-insensitive substring)
-            if window_title_search and window_title_search.lower() not in (activity.window_title or "").lower():
-                continue
-            
             # Build activity dict with all relevant fields
             activity_dict = {
                 "id": activity.id,
@@ -199,13 +200,17 @@ async def _query_activities_impl(
         else:  # newest (default)
             result_activities.sort(key=lambda x: x['timestamp'] or "", reverse=True)
         
-        logger.info(f"Returning {len(result_activities)} filtered activities")
-        
+        kept_activities, omitted_activities = fit_activities_to_budget(result_activities, max_output_chars)
+        logger.info(
+            f"Returning {len(kept_activities)} of {len(result_activities)} filtered activities"
+            f" ({len(omitted_activities)} left out to fit the output budget)"
+        )
+
         # Return as JSON
-        return json.dumps({
+        response: Dict[str, Any] = {
             "success": True,
-            "count": len(result_activities),
-            "activities": result_activities,
+            "count": len(kept_activities),
+            "activities": kept_activities,
             "query_params": {
                 "start_time": parsed_start_time.isoformat() if parsed_start_time else None,
                 "end_time": parsed_end_time.isoformat() if parsed_end_time else None,
@@ -214,7 +219,10 @@ async def _query_activities_impl(
                 "limit": limit,
                 "sort_order": sort_order
             }
-        }, ensure_ascii=False, indent=2)
+        }
+        if omitted_activities:
+            response.update(continuation_fields(omitted_activities, sort_order, max_output_chars))
+        return json.dumps(response, ensure_ascii=False, indent=2)
         
     except Exception as e:
         logger.error(f"Error querying activities: {e}", exc_info=True)
@@ -304,22 +312,27 @@ The tool returns raw activity data that you can:
 """
 
 
-def create_activity_query_tool(profile=None) -> StructuredTool:
+def create_activity_query_tool(profile=None, max_output_chars: Optional[int] = None) -> StructuredTool:
     """Factory for the ``query_activities`` tool.
 
     Under a slim rendering profile the description is swapped to
     ``SLIM_DESCRIPTION`` above; otherwise ``_FULL_DESCRIPTION`` flows
-    through unchanged.
+    through unchanged. ``max_output_chars`` is the service-tool output
+    ceiling; results are fitted to it and the rest is described in the
+    result so the agent can ask for the next window.
     """
     tool_description = select_description_for_profile(
         profile, _FULL_DESCRIPTION, SLIM_DESCRIPTION
     )
 
+    async def _invoke(**kwargs) -> str:
+        return await _query_activities_impl(**kwargs, max_output_chars=max_output_chars)
+
     return StructuredTool.from_function(
-        func=_query_activities_impl,
+        func=_invoke,
         name="query_activities",
         description=tool_description,
         args_schema=ActivityQueryInput,
-        coroutine=_query_activities_impl  # Mark as async
+        coroutine=_invoke,
     )
 

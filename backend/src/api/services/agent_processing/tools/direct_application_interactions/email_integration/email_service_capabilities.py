@@ -156,6 +156,10 @@ _SLIM_DOCS_BY_METHOD: Dict[str, str] = {
 }
 
 
+# The shared execution principles are rules about drafting (write contracts, reply and recipient safety, Outlook draft verification, the AppleScript carve-out), so under the full profile they are published on the two tools they govern instead of being repeated on all 14 email tools. The model sees every bound tool, so no rule is lost.
+_METHODS_CARRYING_EXECUTION_PRINCIPLES = frozenset({"create_new_email_draft", "create_reply_email_draft"})
+
+
 def build_service_capabilities(service) -> Dict[str, Any]:
     """
     Build service method signatures and parameter information for intelligent operation planning.
@@ -220,6 +224,7 @@ def build_service_capabilities(service) -> Dict[str, Any]:
                     "parameters": parameters,
                     "doc": method.__doc__ or "No documentation available",
                     "slim_doc": _SLIM_DOCS_BY_METHOD.get(method_name, ""),
+                    "carries_execution_principles": method_name in _METHODS_CARRYING_EXECUTION_PRINCIPLES,
                 }
             except Exception as e:
                 logger.warning(f"Could not inspect method {method_name}: {e}")

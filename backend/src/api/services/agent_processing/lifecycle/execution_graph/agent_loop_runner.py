@@ -34,6 +34,7 @@ from .agent_loop_messages import (
     serialize_agent_messages,
 )
 from .agent_loop_model_recovery import AgentRunFlags, ModelRecoveryMiddleware
+from .agent_loop_checklist_gate import ChecklistGateMiddleware
 from .agent_loop_nudges import CompletionNudgeMiddleware, ProgressBridgeMiddleware
 from .agent_loop_run_control import RunControlMiddleware, record_undelivered_notes
 from .agent_loop_tool_surface import ToolSurfaceMiddleware, ToolSurfaceTracker
@@ -106,11 +107,12 @@ def build_system_prompt(request: AgentRunRequest) -> str:
     )
 
 
-def build_runtime_context(request: AgentRunRequest) -> str:
-    """The per-turn block (clock, communication context, preselected skill) that stays out of the cached system prompt."""
+def build_runtime_context(request: AgentRunRequest, checklist_section: str = "") -> str:
+    """The per-turn block (clock, communication context, preselected skill, task checklist) that stays out of the cached system prompt."""
     return build_turn_runtime_context(
         communication_context_section=request.communication_context_section,
         preloaded_skill_section=request.selected_skill_section,
+        checklist_section=checklist_section,
     )
 
 
@@ -301,6 +303,21 @@ def _synthesis_input(messages: Sequence[BaseMessage]) -> str:
     return f"{recap}\n\n{text}" if recap else text
 
 
+async def _checklist_section(context: Optional[dict[str, Any]], budget_tokens: Optional[int]) -> str:
+    """The bounded checklist block for this turn; empty when the chain has no checklist or the store is unavailable."""
+    if context is None:
+        return ""
+    try:
+        from api.dependencies import get_sqlite_knowledge_service
+
+        from ..runtime.agent_checklist_service import AgentChecklistService
+
+        return await AgentChecklistService(get_sqlite_knowledge_service()).prompt_section(context, prompt_budget_tokens=budget_tokens)
+    except Exception as checklist_error:
+        logger.debug("Skipping the checklist block: %s", checklist_error)
+        return ""
+
+
 async def run_agent_loop(request: AgentRunRequest) -> AgentRunResult:
     """Run the whole task as one conversation and return the aggregate outcome."""
     state = request.state
@@ -321,11 +338,12 @@ async def run_agent_loop(request: AgentRunRequest) -> AgentRunResult:
         # The context assembler sizes the turn text from the window of the model that is about to run, not from its fixed default.
         context["context_window"] = window_tokens
     from_schedule = context is not None and context.get("origin_type") == "scheduled_task"
+    checklist_section = await _checklist_section(context, budget_tokens)
     messages = _initial_messages(
         state,
         request.prior_thread,
         request.langchain_llm,
-        runtime_context=build_runtime_context(request),
+        runtime_context=build_runtime_context(request, checklist_section),
         history_budget=history_budget_tokens(budget_tokens, scheduled=from_schedule),
     )
     final_input = _synthesis_input(messages)
@@ -407,8 +425,10 @@ async def run_agent_loop(request: AgentRunRequest) -> AgentRunResult:
                     model_label=model_display_label(request.langchain_llm, context),
                     connection=ConnectionWait(notify=_announce_connection),
                     pause_when_connection_lost=True,
+                    summarize_history=True,
                 ),
                 CompletionNudgeMiddleware(tracker, flags),
+                ChecklistGateMiddleware(flags),
             ],
         )
         runtime_context_token = set_current_agent_context(state.context)
@@ -424,14 +444,13 @@ async def run_agent_loop(request: AgentRunRequest) -> AgentRunResult:
                 budget_seconds=budget_seconds,
                 workflow_deadline=deadline,
             )
-        except asyncio.CancelledError:
-            _stop_live_tool_runs(request.live_callbacks)
-            raise
         except Exception as pause_error:
             if is_pause_request(pause_error):
                 pause_error.basil_system_prompt_text = system_prompt_text
             raise
         finally:
+            # Whatever ended the run (finished, canceled, out of time, a guard stop, a pause, or an error), no tool call of it is running any more. A tool call that was cut off never reports its own end, because cancellation skips the tool callbacks, so its heartbeat would otherwise keep announcing "Still working" long after the run moved on.
+            _stop_live_tool_runs(request.live_callbacks)
             reset_current_agent_context(runtime_context_token)
             if run_control is not None:
                 undelivered_notes = run_control.detach()

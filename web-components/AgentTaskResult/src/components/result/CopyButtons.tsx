@@ -3,15 +3,16 @@ import type { ReactNode } from 'react';
 import { useCopiedFlag } from '@shared/useCopyFeedback';
 import { copyRichTextToClipboard, copyToClipboard } from '../../services/bridge';
 
+// Sits at the right end of the "Result:" header row, outside the result text, so it can never overlap the content below it. The header is a flex row, so the auto margin pushes the group to the edge.
 const copyButtonGroupStyle = {
-  position: 'absolute',
-  top: 2,
-  right: 'var(--padding-xs)',
   display: 'flex',
   alignItems: 'center',
+  alignSelf: 'center',
   gap: 2,
-  zIndex: 1,
+  marginLeft: 'auto',
 } as const;
+
+const RESTING_OPACITY = 0.75;
 
 const copyButtonBaseStyle = {
   border: 'none',
@@ -72,7 +73,7 @@ function CopyConfirmationButton({
       onMouseLeave={() => setIsHovering(false)}
       style={{
         ...copyButtonBaseStyle,
-        opacity: isHovering || copied ? 1 : 0.4,
+        opacity: isHovering || copied ? 1 : RESTING_OPACITY,
         background: isHovering || copied ? 'rgba(51, 85, 155, 0.08)' : 'transparent',
       }}
     >

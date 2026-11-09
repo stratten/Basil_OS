@@ -61,7 +61,7 @@ def test_denylisted_commands_can_never_be_remembered(command: str) -> None:
     assert eligibility.reason
 
 
-@pytest.mark.parametrize("command", ["git status", "ls -la", "rg needle src", "du -sh /tmp", "poetry run pytest", "bash -lc git status"])
+@pytest.mark.parametrize("command", ["git status", "ls -la", "rg needle src", "du -sh /tmp", "poetry run pytest", "bash -lc 'git status'"])
 def test_ordinary_commands_can_be_remembered(command: str) -> None:
     pattern = CommandGeneralizer().generalize_command(command)
 
@@ -123,7 +123,7 @@ def test_presentation_marks_a_missing_explanation_and_strips_advice() -> None:
 
     assert fields["purpose_missing"] is True
     assert "purpose" not in fields
-    assert fields["whitelist"] == {"eligible": True, "reason": "", "advice": None}
+    assert fields["whitelist"] == {"eligible": True, "reason": "", "advice": None, "pattern": "cargo build", "broad": False}
     assert fields["script_path"] == "/tmp/x.sh"
 
 
@@ -180,8 +180,8 @@ async def test_whitelist_manager_refuses_interpreters_and_accepts_ordinary_comma
 
     pattern = await manager.add_to_whitelist("git status", pattern_type="prefix")
 
-    assert pattern.pattern == "git"
-    assert [p.pattern for p in store.preferences.tool_execution.whitelisted_commands] == ["git"]
+    assert pattern.pattern == "git status"
+    assert [p.pattern for p in store.preferences.tool_execution.whitelisted_commands] == ["git status"]
 
 
 def test_stored_patterns_that_can_never_be_remembered_no_longer_approve_commands() -> None:
@@ -254,3 +254,31 @@ def test_applescript_capabilities_expose_the_explanation_arguments() -> None:
 
     for method in ("execute_applescript", "generate_and_execute_applescript"):
         assert {"purpose", "whitelist_advice"} <= set(capabilities[method]["parameters"])
+
+
+_GMAIL_CALL = 'mcp:Gmail:label_message({"summary":"Quarterly report","messageId":"AAA"})'
+_SPEAKEASY_CALL = 'mcp:Speakeasy – Salesforce:speakeasy_create_request({"organizationId":"69947c483"})'
+
+
+@pytest.mark.parametrize("command", [_GMAIL_CALL, _SPEAKEASY_CALL])
+def test_connected_tool_calls_are_never_remembered_as_command_patterns(command: str) -> None:
+    pattern = CommandGeneralizer().generalize_command(command)
+
+    eligibility = assess_whitelist_eligibility(command, pattern)
+
+    assert eligibility.eligible is False
+    assert "Settings → Connections" in eligibility.reason
+    assert approval_presentation_fields(command, pattern, {})["whitelist"]["eligible"] is False
+
+
+def test_connected_tool_patterns_already_stored_stop_approving_calls() -> None:
+    stored = [
+        CommandPattern(id="old-speakeasy", pattern="mcp:Speakeasy", pattern_type="prefix", description="old", risk_level="low"),
+    ]
+    delete_call = 'mcp:Speakeasy – Salesforce:speakeasy_delete_request({"id":"1"})'
+
+    assert PatternMatcher().check_whitelist(delete_call, stored) is None
+
+
+def test_ordinary_commands_that_mention_mcp_are_still_remembered() -> None:
+    assert assess_whitelist_eligibility("rg mcp: src", "rg mcp:").eligible is True

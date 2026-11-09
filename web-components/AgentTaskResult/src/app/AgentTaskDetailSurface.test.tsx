@@ -133,6 +133,8 @@ function surface(
       onContinue={() => {}}
       onSelectDetail={() => {}}
       onCancelTextFollowUp={() => {}}
+      onCancelRunning={() => {}}
+      isCanceling={false}
       onStartVoiceFollowUp={() => {}}
       onOpenDetailTray={onOpenDetailTray}
       onCloseDetailTray={() => {}}

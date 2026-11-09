@@ -9,7 +9,8 @@ EXPLANATION_REQUIRED_STATUS = "explanation_required"
 EXPLANATION_REQUIRED_MESSAGE = (
     "This command needs the user's approval, and the approval card must say what it does. "
     "Call the same tool again with `purpose` (one or two plain sentences on what this command or script does and why) "
-    "and `whitelist_advice` ({\"recommend\": true or false, \"reason\": \"...\"}) on whether the user should let Basil remember it. "
+    "and `whitelist_advice` ({\"recommend\": true or false, \"reason\": \"...\", \"pattern\": \"...\"}) on whether the user should let Basil remember it, "
+    "where `pattern` is the leading words that identify what the command does, without its arguments (for `gh gist view abc --files` it is `gh gist view`). "
     "The user was not asked yet and nothing was denied."
 )
 

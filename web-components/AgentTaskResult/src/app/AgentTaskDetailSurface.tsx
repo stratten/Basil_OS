@@ -12,9 +12,13 @@ import ApprovalSetOverlay from '../components/ApprovalSetOverlay';
 import ConnectionTokenOverlay from '../components/ConnectionTokenOverlay';
 import CheckpointFlow from '../components/CheckpointFlow';
 import CheckpointReopenCard from '../components/CheckpointReopenCard';
+import CheckpointRecoveryCard from '../components/CheckpointRecoveryCard';
+import { questionNeedsRecovery } from '../components/interaction/pendingQuestion';
 import InlineCapture from '../components/InlineCapture';
 import TextFollowUp from '../components/TextFollowUp';
+import ChecklistWindow from '../components/checklist/ChecklistWindow';
 import RunControlComposer from '../components/RunControlComposer';
+import { checkpointAcceptsTypedNote } from '../components/interaction/answerWithNote';
 import { userInteractionsFromTimeline } from '../components/interaction/userInteractions';
 import ExecutionDetailTray from '../components/ExecutionDetailTray';
 import { deriveAgentTaskArtifacts } from '../components/artifacts/artifactDerivation';
@@ -56,6 +60,9 @@ interface Props {
   onContinue: () => void;
   onSelectDetail: (ownerTaskId: string, detail: StepDetailEntry, isLatest: boolean) => void;
   onCancelTextFollowUp: () => void;
+  /** Ends the running task. The note box offers it as Stop beside Pause. */
+  onCancelRunning: () => void;
+  isCanceling: boolean;
   onStartVoiceFollowUp: () => void;
   onOpenDetailTray: (mode?: 'overview' | 'detail' | 'preview') => void;
   onCloseDetailTray: () => void;
@@ -84,6 +91,8 @@ export function AgentTaskDetailSurface({
   onContinue,
   onSelectDetail,
   onCancelTextFollowUp,
+  onCancelRunning,
+  isCanceling,
   onStartVoiceFollowUp,
   onOpenDetailTray,
   onCloseDetailTray,
@@ -190,24 +199,30 @@ export function AgentTaskDetailSurface({
     && !selectedAgent.inlineCheckpoint
     ? selectedAgent.currentCheckpoint
     : undefined;
+  // The run says it is waiting for an answer but this window holds no question to show (the question event never reached it, or it was cleared). Without this the task reads "waiting for your answer" with nothing to click.
+  const questionRecovery = skippedCheckpoint ? undefined : questionNeedsRecovery(selectedAgent);
   const followUpVisible = textFollowUpMode || displaySource.status === 'completed' || displaySource.status === 'failed';
   const approvalPresence = usePresenceTransition(approvalVisible);
   const tokenConnectPresence = usePresenceTransition(tokenConnectVisible);
   const checkpointPresence = usePresenceTransition(checkpointVisible);
   const inlineCheckpointPresence = usePresenceTransition(inlineCheckpointVisible);
   const followUpPresence = usePresenceTransition(followUpVisible);
-  const runControlMode: 'running' | 'paused' | null = followUpVisible || approvalVisible || tokenConnectVisible || checkpointVisible || inlineCheckpointVisible
+  // A run parked on a question has nothing to pause or read a note, but the question this window holds can be answered by typing, so the note box stays available and its text becomes the answer.
+  const awaitingNoteCheckpoint = skippedCheckpoint && checkpointAcceptsTypedNote(skippedCheckpoint) ? skippedCheckpoint : undefined;
+  const runControlMode: 'running' | 'paused' | 'awaiting' | null = followUpVisible || approvalVisible || tokenConnectVisible || checkpointVisible || inlineCheckpointVisible
     ? null
     : displaySource.status === 'paused'
       ? 'paused'
       // A new turn starts at processing locally, but backend hydration can step it back to capturing and routing before it settles. The note box stays mounted through that so it does not blink out and back in; a note sent before Basil can read one gets the backend's "try again in a moment" reply.
       : displaySource.status === 'processing' || displaySource.status === 'routing' || displaySource.status === 'capturing'
         ? 'running'
-        : null;
+        : awaitingNoteCheckpoint ? 'awaiting' : null;
   const runControlPresence = usePresenceTransition(runControlMode !== null);
-  const retainedRunControlMode = useRef<'running' | 'paused'>(runControlMode ?? 'running');
+  const retainedRunControlMode = useRef<'running' | 'paused' | 'awaiting'>(runControlMode ?? 'running');
   if (runControlMode) retainedRunControlMode.current = runControlMode;
   const runControlTurnId = displaySource.currentTurnTaskId || displaySource.agentTaskId;
+  // The checklist belongs to the whole chain, so every surface keys it by the chain's root.
+  const checklistRootId = displaySource.rootTaskId || displaySource.agentTaskId;
   const connectionLost = useMemo(
     () => displaySource.status === 'paused'
       && userInteractionsFromTimeline(displaySource.executionTimeline)
@@ -570,8 +585,11 @@ export function AgentTaskDetailSurface({
               turnTaskId={runControlTurnId}
               rootTaskId={displaySource.rootTaskId}
               mode={retainedRunControlMode.current}
+              awaitingCheckpoint={awaitingNoteCheckpoint}
               deliveredNoteIds={deliveredNoteIds}
               connectionLost={connectionLost}
+              onCancelRunning={onCancelRunning}
+              isCanceling={isCanceling}
             />
           </div>
         )}
@@ -580,13 +598,27 @@ export function AgentTaskDetailSurface({
             <CheckpointReopenCard agentTaskId={selectedAgent.agentTaskId} checkpoint={skippedCheckpoint} />
           </div>
         )}
+        {questionRecovery && selectedAgent && (
+          <div style={{ flexShrink: 0, padding: '0 var(--padding-l)', paddingBottom: 'var(--padding-s)' }}>
+            <CheckpointRecoveryCard
+              agentTaskId={selectedAgent.agentTaskId}
+              prompt={questionRecovery === 'status' ? undefined : questionRecovery.prompt}
+              questionKey={questionRecovery === 'status' ? 'status' : questionRecovery.id}
+            />
+          </div>
+        )}
         {captureState?.isCapturing && (
           <div
-            className={`inline-capture-region${followUpPresence.shouldRender || runControlPresence.shouldRender || (skippedCheckpoint && selectedAgent) ? ' inline-capture-region--after-region' : ''}`}
+            className={`inline-capture-region${followUpPresence.shouldRender || runControlPresence.shouldRender || (skippedCheckpoint && selectedAgent) || (questionRecovery && selectedAgent) ? ' inline-capture-region--after-region' : ''}`}
           >
             <InlineCapture captureState={captureState} />
           </div>
         )}
+        <ChecklistWindow
+          rootTaskId={checklistRootId}
+          yielding={approvalPresence.shouldRender || tokenConnectPresence.shouldRender || checkpointPresence.shouldRender}
+          onNavigateRun={runId => navigateToRun(runId, { kind: 'run' })}
+        />
         {approvalPresence.shouldRender && retainedApprovals.current.length > 0 && retainedInteractiveAgentId.current && (
           <div
             className="approval-presence-region"
@@ -648,6 +680,7 @@ export function AgentTaskDetailSurface({
             runs={runs}
             locationRunId={mapLocationRunId}
             onNavigateRun={runId => navigateToRun(runId, { kind: 'run' })}
+            checklistRootId={checklistRootId}
           />
         </div>
       )}

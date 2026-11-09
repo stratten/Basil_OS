@@ -15,12 +15,17 @@ from api.services.zettel.daily_loop import (
     DailyLoopScheduler,
     next_daily_run,
     next_interval_run,
+    previous_daily_run,
 )
+from api.core.models.reasoning.effort_override import reasoning_effort_override
+from api.services.zettel.schedule_ledger import read_last_completed, record_completed
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_SCHEDULED_TIME = "02:00"
 DEFAULT_INTERVAL_MINUTES = 30
+LEDGER_NAME = "zettel-narrative"
+SUPPORTED_REASONING_EFFORTS = ("none", "low", "medium", "high")
 
 
 class ZettelNarrativeScheduler:
@@ -31,6 +36,7 @@ class ZettelNarrativeScheduler:
             name="zettel-narrative",
             run_once=self._run_once,
             next_run_at=self._next_run_at,
+            catch_up_due=self._missed_scheduled_run,
         )
         # Held so a fire-and-forget manual run is not garbage-collected mid-flight.
         self._manual_task: Optional[asyncio.Task] = None
@@ -99,21 +105,49 @@ class ZettelNarrativeScheduler:
             configured_model,
             is_manual_backlog_run=is_manual_backlog_run,
         )
-        result = await enricher.run_pass(
-            batch_size=batch,
-            max_attempts=attempts,
-            max_records=max_records,
-            run_policy=run_policy,
-        )
+        # The override is scoped to this run; the tasks run_pass spawns inherit it, and agent chat keeps the registry default.
+        with reasoning_effort_override(self._configured_reasoning_effort(settings)):
+            result = await enricher.run_pass(
+                batch_size=batch,
+                max_attempts=attempts,
+                max_records=max_records,
+                run_policy=run_policy,
+            )
         logger.info(
-            "Zettel narrative pass: %s finalized, %s still open, %s failed",
-            result.finalized, result.still_open, result.failed,
+            "Zettel narrative pass: %s finalized, %s still open, %s failed, %s discarded",
+            result.finalized, result.still_open, result.failed, result.discarded,
         )
+        if result.completed:
+            record_completed(LEDGER_NAME)
         if result.finalized:
             from api.services.retrieval.index_runtime import get_retrieval_index_runtime
 
             await get_retrieval_index_runtime().reconcile_after_narrative_pass()
         return "; ".join(result.errors) if result.errors else None
+
+    @staticmethod
+    def _configured_reasoning_effort(settings) -> Optional[str]:
+        """The narrative reasoning effort, or None (registry default) when unset or not one of the supported levels."""
+        raw = getattr(settings, "narrative_reasoning_effort", None)
+        effort = raw.strip().lower() if isinstance(raw, str) else ""
+        return effort if effort in SUPPORTED_REASONING_EFFORTS else None
+
+    def _missed_scheduled_run(self) -> bool:
+        """True in scheduled mode when the latest scheduled slot has passed without a completed pass.
+
+        This is what makes a backend that was off, or a Mac that was asleep, at the scheduled time run the pass as soon as it is active again instead of waiting for tomorrow's slot. A pass that never completed, including one stopped because the model was unavailable, keeps this true.
+        """
+        settings = self._settings()
+        if not self._enabled():
+            return False
+        mode = (getattr(settings, "narrative_mode", "scheduled") or "scheduled").lower()
+        if mode == "continuous":
+            return False
+        slot = previous_daily_run(
+            getattr(settings, "narrative_scheduled_time", DEFAULT_SCHEDULED_TIME) or DEFAULT_SCHEDULED_TIME
+        )
+        last_completed = read_last_completed(LEDGER_NAME)
+        return last_completed is None or last_completed < slot
 
     def _next_run_at(self) -> datetime:
         settings = self._settings()

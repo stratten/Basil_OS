@@ -10,6 +10,15 @@ export default defineConfig({
     alias: {
       '@': path.resolve(import.meta.dirname, './src'),
       '@shared': path.resolve(import.meta.dirname, '../shared'),
+      'react/jsx-runtime': path.resolve(import.meta.dirname, './node_modules/react/jsx-runtime.js'),
+      'react/jsx-dev-runtime': path.resolve(import.meta.dirname, './node_modules/react/jsx-dev-runtime.js'),
+      react: path.resolve(import.meta.dirname, './node_modules/react'),
+      'react-dom': path.resolve(import.meta.dirname, './node_modules/react-dom'),
+    },
+  },
+  server: {
+    fs: {
+      allow: [path.resolve(import.meta.dirname, '..')],
     },
   },
   build: {

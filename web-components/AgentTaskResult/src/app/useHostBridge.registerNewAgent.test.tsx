@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentTaskDetail, RegisterNewAgentMessage } from '../types';
 import * as api from '../services/api';
 import { agentStore } from '../store/agentStore';
+import { loadComposerDraft, rememberComposerHtml, resetComposerDrafts } from '../store/composerDraftStore';
 import { useHostBridge } from './useHostBridge';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
@@ -150,6 +151,49 @@ describe('native register-new-agent handler for a hotkey follow-up', () => {
     const agent = agentStore.getAgent(`${p}chain-root`);
     expect(agent?.currentTurnTaskId).toBe(`${p}turn-3`);
     expect(agent?.agentTaskHistory.map(item => item.id)).toEqual([`${p}chain-root`, `${p}turn-1`, `${p}turn-2`]);
+  });
+
+  it('shows files dropped during a voice follow-up on the chain root as soon as the reply is registered', async () => {
+    agentStore.registerAgent(`${p}turn-2`);
+    agentStore.updateStatus(`${p}turn-2`, 'completed');
+    agentStore.selectAgent(`${p}turn-2`);
+
+    registerFromNative({
+      agentTaskId: `${p}turn-3`,
+      rootTaskId: `${p}turn-2`,
+      previousTaskId: `${p}turn-2`,
+      referencePaths: ['/tmp/dropped during recording.pdf', '   '],
+    });
+    await flush();
+
+    expect(agentStore.getAgent(`${p}chain-root`)?.referencePaths).toEqual(['/tmp/dropped during recording.pdf']);
+    expect(agentStore.getAgent(`${p}turn-3`)).toBeUndefined();
+  });
+
+  it('keeps the root references empty when a voice follow-up had no files', async () => {
+    agentStore.registerAgent(`${p}turn-2`);
+    agentStore.updateStatus(`${p}turn-2`, 'completed');
+    agentStore.selectAgent(`${p}turn-2`);
+    agentStore.setReferencePaths(`${p}turn-2`, ['/tmp/previous turn file.pdf']);
+
+    registerFromNative({ agentTaskId: `${p}turn-3`, rootTaskId: `${p}turn-2`, previousTaskId: `${p}turn-2` });
+    await flush();
+
+    expect(agentStore.getAgent(`${p}chain-root`)?.referencePaths).toEqual([]);
+  });
+
+  it('clears the unsent follow-up text, since the reader just sent that follow-up by voice', async () => {
+    resetComposerDrafts();
+    agentStore.registerAgent(`${p}turn-2`);
+    agentStore.updateStatus(`${p}turn-2`, 'completed');
+    agentStore.selectAgent(`${p}turn-2`);
+    rememberComposerHtml('follow-up', `${p}chain-root`, 'half-written follow-up', true);
+
+    registerFromNative({ agentTaskId: `${p}turn-3`, rootTaskId: `${p}turn-2`, previousTaskId: `${p}turn-2` });
+    await flush();
+
+    expect(loadComposerDraft('follow-up', `${p}chain-root`)).toBeUndefined();
+    resetComposerDrafts();
   });
 
   it('registers a fresh top-level agent when there is no parent', async () => {

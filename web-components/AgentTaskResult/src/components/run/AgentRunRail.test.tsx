@@ -7,6 +7,13 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AgentRunOverviewPresentation } from './agentRunPresentation';
 import type { AgentTaskRunFocusSummary } from './agentTaskRunFocus';
 import { AgentRunRail } from './AgentRunRail';
+import { makeChecklistItem, makeChecklistSnapshot } from '../checklist/checklistTestData';
+import { resetChecklistStoreForTests } from '../../store/checklistStore';
+
+const getChecklist = vi.hoisted(() => vi.fn());
+vi.mock('../../services/checklistApi', () => ({ getChecklist: (...args: unknown[]) => getChecklist(...args) }));
+vi.mock('../../services/api', () => ({ isApiReady: () => true }));
+vi.mock('../../services/websocket', () => ({ wsManager: { subscribe: () => () => {}, onConnect: () => () => {} } }));
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -346,5 +353,58 @@ describe('AgentRunRail', () => {
     );
     expect(single).not.toContain('agent-run-rail-turns');
     expect(withoutHandler).not.toContain('agent-run-rail-turns');
+  });
+});
+
+describe('AgentRunRail checklist pill', () => {
+  async function mount(props: Partial<React.ComponentProps<typeof AgentRunRail>>) {
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(<AgentRunRail overview={overview} onExpand={() => {}} {...props} />);
+    });
+    return { container, unmount: () => act(() => root.unmount()) };
+  }
+
+  it('sits above the turn dots as a fixed child of the rail, only once the chain has items', async () => {
+    resetChecklistStoreForTests();
+    getChecklist.mockResolvedValue(makeChecklistSnapshot([makeChecklistItem({ status: 'done' }), makeChecklistItem({ id: 'b' })]));
+    const turn = (id: string, ordinal: number): AgentTaskRunFocusSummary => ({
+      id, kind: ordinal === 1 ? 'root' : 'follow_up', ordinal, displayNumber: String(ordinal), label: `Turn ${ordinal}`, requestText: 'Ask', resultText: 'Done.',
+      timestamp: '2026-08-10T12:00:00Z', taskStatus: 'completed', isProcessing: false, documentCount: 0, structuredFiles: [], executionTimeline: [],
+    });
+    const { container, unmount } = await mount({
+      runId: 'turn-2', runs: [turn('turn-1', 1), turn('turn-2', 2), turn('turn-3', 3)], locationRunId: 'turn-2', onNavigateRun: () => {}, checklistRootId: 'root-1',
+    });
+
+    const rail = container.querySelector('aside.agent-run-rail')!;
+    expect(Array.from(rail.children).map(child => child.className.split(' ')[0])).toEqual(['agent-run-rail-checklist', 'agent-run-rail-turns']);
+    expect(rail.querySelector('.agent-run-rail-checklist-pill')!.textContent).toBe('1/2');
+    unmount();
+  });
+
+  it('also appears above the stage flow when the rail has no turn dots', async () => {
+    resetChecklistStoreForTests();
+    getChecklist.mockResolvedValue(makeChecklistSnapshot([makeChecklistItem()]));
+    const { container, unmount } = await mount({ checklistRootId: 'root-1' });
+
+    const rail = container.querySelector('aside.agent-run-rail')!;
+    expect(rail.firstElementChild!.className).toBe('agent-run-rail-checklist');
+    expect(container.querySelector('.agent-run-rail-toggle')).not.toBeNull();
+    unmount();
+  });
+
+  it('renders no checklist when the chain has no items or no checklist root is given', async () => {
+    resetChecklistStoreForTests();
+    getChecklist.mockResolvedValue(makeChecklistSnapshot([]));
+    const empty = await mount({ checklistRootId: 'root-1' });
+    expect(empty.container.querySelector('.agent-run-rail-checklist')).toBeNull();
+    empty.unmount();
+
+    getChecklist.mockClear();
+    const none = await mount({});
+    expect(none.container.querySelector('.agent-run-rail-checklist')).toBeNull();
+    expect(getChecklist).not.toHaveBeenCalled();
+    none.unmount();
   });
 });

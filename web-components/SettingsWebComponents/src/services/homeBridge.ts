@@ -8,6 +8,7 @@ type OutgoingHomeMessage =
   | { type: 'updateSelectedTranscriptionModel'; requestId: string; modelId: string }
   | { type: 'openSetupAssistant'; requestId: string }
   | { type: 'openPowerUserGuide'; requestId: string }
+  | { type: 'reportProblem'; requestId: string }
 
 declare global {
   interface Window {
@@ -75,6 +76,12 @@ export function updateHomeSelectedTranscriptionModel(modelId: string): string {
 export function openHomeSetupAssistant(): string {
   const id = requestId('openSetupAssistant')
   postMessage({ type: 'openSetupAssistant', requestId: id })
+  return id
+}
+
+export function reportHomeProblem(): string {
+  const id = requestId('reportProblem')
+  postMessage({ type: 'reportProblem', requestId: id })
   return id
 }
 

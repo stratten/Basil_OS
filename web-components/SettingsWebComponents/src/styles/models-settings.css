@@ -136,6 +136,22 @@
   font-size: calc(12px * var(--text-scale, 1));
 }
 
+.models-settings-format-tag {
+  border: 1px solid var(--text-primary);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: calc(11px * var(--text-scale, 1));
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+}
+
+.models-settings-format-tag-mlx {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #ffffff;
+}
+
 .models-settings-installed-badge {
   background: color-mix(in srgb, var(--success-base, #1a7f37) 16%, transparent);
   border-radius: 4px;
@@ -172,28 +188,6 @@
   align-items: center;
   display: flex;
   gap: 8px;
-}
-
-.models-settings-progress-track {
-  background: var(--field-border);
-  border-radius: 999px;
-  flex: 1;
-  height: 6px;
-  overflow: hidden;
-}
-
-.models-settings-progress-fill {
-  background: var(--primary);
-  height: 100%;
-  transition: width 200ms ease;
-}
-
-.models-settings-progress-label {
-  color: var(--text-secondary);
-  font-family: var(--font-family-light);
-  font-size: calc(12px * var(--text-scale, 1));
-  min-width: 34px;
-  text-align: right;
 }
 
 .models-settings-log-tail {

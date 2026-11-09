@@ -66,8 +66,18 @@ struct ModelDownloadInfo: Identifiable, Codable, Equatable {
     var status: ModelDownloadStatus = .downloadable
     var size: Int64?           // Size in bytes
     let variants: [String: [String]]
+    var handler: String? = nil  // Registry runtime handler (e.g., "llama_cpp", "mlx"); nil for models without one.
+
+    /// The local-model file format shown next to the size in Settings: "MLX" or "GGUF". Nil for every other kind of model.
+    var formatTag: String? {
+        switch handler {
+        case "mlx": return "MLX"
+        case "llama_cpp": return "GGUF"
+        default: return nil
+        }
+    }
     
-    init(id: String, modelType: String, variantId: String, name: String, capabilities: [ModelCapabilityType], status: ModelDownloadStatus = .downloadable, size: Int64? = nil, variants: [String: [String]]) {
+    init(id: String, modelType: String, variantId: String, name: String, capabilities: [ModelCapabilityType], status: ModelDownloadStatus = .downloadable, size: Int64? = nil, variants: [String: [String]], handler: String? = nil) {
         self.id = id
         self.modelType = modelType
         self.variantId = variantId
@@ -76,6 +86,7 @@ struct ModelDownloadInfo: Identifiable, Codable, Equatable {
         self.status = status
         self.size = size
         self.variants = variants
+        self.handler = handler
     }
     
     private enum CodingKeys: String, CodingKey {

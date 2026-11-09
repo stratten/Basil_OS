@@ -151,11 +151,22 @@ async def check_setup_model_status(factory) -> Dict[str, Any]:
             }
         )
 
+    from api.core.models.preference_models.defaults import _choose_local_reasoning_model, _detected_free_disk_gb
+
+    free_disk_gb = _detected_free_disk_gb()
+    choice = _choose_local_reasoning_model(free_disk_gb=free_disk_gb)
     return {
         "installed_model_ids": installed_model_ids,
         "downloads_with_recorded_activity": in_progress,
+        "free_disk_gb": round(free_disk_gb, 1) if free_disk_gb is not None else None,
+        "local_reasoning_recommendation": {
+            "recommended_model_id": choice.model_id,
+            "best_for_this_machine_memory_model_id": choice.preferred_model_id,
+            "blocked_by_disk": choice.blocked_by_disk,
+            "download_disk_required_gb": round(choice.required_disk_gb, 1) if choice.required_disk_gb is not None else None,
+        },
         "note": (
-            "installed_model_ids is what is on disk right now. A model listed in downloads_with_recorded_activity but not installed is queued, still downloading, or stopped before finishing; operation_status says which. A model in neither list has not been started."
+            "installed_model_ids is what is on disk right now. A model listed in downloads_with_recorded_activity but not installed is queued, still downloading, or stopped before finishing; operation_status says which. A model in neither list has not been started. free_disk_gb and local_reasoning_recommendation are read live: when blocked_by_disk is true, this Mac has the memory for best_for_this_machine_memory_model_id but not the free disk space to download it, and download_disk_required_gb is the free space it needs."
         ),
     }
 

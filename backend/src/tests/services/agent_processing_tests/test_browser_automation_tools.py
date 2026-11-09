@@ -108,6 +108,8 @@ def test_browser_optional_tools_are_registered():
     assert tool_map["browser.highlight"].name == "browser_highlight"
     assert tool_map["browser.tabs"].name == "browser_tabs"
     assert tool_map["browser.screenshot"].name == "browser_screenshot"
+    assert "browser.native_input" in tool_map
+    assert tool_map["browser.native_input"].name == "browser_native_input"
 
 
 def test_inspect_javascript_supports_modern_dom_surfaces():
@@ -224,7 +226,9 @@ async def test_inspect_focus_content_handles_empty_body(monkeypatch):
 def test_interact_wait_uses_non_blocking_polling():
     wait_js = browser_interact_tool._build_action_js("wait", "#ready", None)
 
-    assert "setTimeout" in wait_js
+    assert "setTimeout" not in wait_js
+    assert "async function" not in wait_js
+    assert "Element not visible yet" in wait_js
     assert "while (Date.now()" not in wait_js
     assert "attempts" in wait_js
     assert "queryDeep(selector)" in wait_js

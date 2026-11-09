@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from api.core.models.models_registry import get_local_reasoning_models, get_model
+from api.core.models.preference_models.defaults import _get_default_local_reasoning_model_id
 from api.routes.setup_assistant.models import (
     SetupAgentModelAccess,
     SetupAgentModelAccessMode,
@@ -85,7 +86,8 @@ class SetupAssistantContextCatalogService:
         local_models = get_local_reasoning_models()
         model_id = requested_model_id
         if model_id is None:
-            model_id = next(
+            machine_default = _get_default_local_reasoning_model_id()
+            model_id = machine_default if machine_default in local_models else next(
                 (
                     candidate_id
                     for candidate_id, config in local_models.items()

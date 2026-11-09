@@ -63,6 +63,7 @@ if LANGCHAIN_AVAILABLE:
 
         recommend: bool = Field(description="True only for a narrow, read-only, repeatable command that is safe to run again without asking. False for scripts, anything that changes files or settings, anything that reaches the network with side effects, and anything broad.")
         reason: str = Field(description="One short sentence the user will read explaining the recommendation.")
+        pattern: Optional[str] = Field(default=None, description="The leading words of the command that identify what it does, copied exactly from the start of the command line and without its arguments: gh gist view for 'gh gist view abc123 --files', git status for 'git status -s', rg for 'rg needle src'. This is what Basil remembers if the user ticks Remember, so make it as specific as the command allows. Basil ignores a pattern that is not the command's own leading words.")
 
 
     class ShellExecuteCommandArgs(BaseModel):

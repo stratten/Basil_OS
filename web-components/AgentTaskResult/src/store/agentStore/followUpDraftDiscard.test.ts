@@ -21,24 +21,44 @@ function startedEvent(): WSEvent {
 describe('the unsent follow-up draft once a follow-up turn begins', () => {
   beforeEach(() => resetComposerDrafts());
 
-  it('is dropped when the follow-up is started by the store, however it was sent', () => {
+  it('is dropped when the reader sends a follow-up, typed or by voice', () => {
     const store = new AgentStore();
     store.registerAgent('root-1');
     rememberComposerHtml('follow-up', 'root-1', 'a half-written question', true);
 
-    store.beginFollowUpTurn('turn-2', 'root-1');
+    store.beginFollowUpTurn('turn-2', 'root-1', undefined, undefined, undefined, { readerStarted: true });
 
     expect(loadComposerDraft('follow-up', 'root-1')).toBeUndefined();
   });
 
-  it('is dropped when a follow-up first arrives as a live event, as a voice follow-up does', () => {
+  it('is kept when a turn first arrives as a live event, because the window cannot tell who started it', () => {
     const store = new AgentStore();
     store.registerAgent('root-1');
     rememberComposerHtml('follow-up', 'root-1', 'a half-written question', true);
 
     store.handleWSEvent(startedEvent());
 
-    expect(loadComposerDraft('follow-up', 'root-1')).toBeUndefined();
+    expect(loadComposerDraft('follow-up', 'root-1')?.html).toBe('a half-written question');
+  });
+
+  it('is kept when a turn begins without the reader having sent it, the default for hydration and any other caller', () => {
+    const store = new AgentStore();
+    store.registerAgent('root-1');
+    rememberComposerHtml('follow-up', 'root-1', 'a half-written question', true);
+
+    store.beginFollowUpTurn('turn-2', 'root-1');
+
+    expect(loadComposerDraft('follow-up', 'root-1')?.html).toBe('a half-written question');
+  });
+
+  it('is kept when a turn is both background and flagged as the reader\'s, since background wins', () => {
+    const store = new AgentStore();
+    store.registerAgent('root-1');
+    rememberComposerHtml('follow-up', 'root-1', 'a half-written question', true);
+
+    store.beginFollowUpTurn('turn-2', 'root-1', undefined, undefined, undefined, { background: true, readerStarted: true });
+
+    expect(loadComposerDraft('follow-up', 'root-1')?.html).toBe('a half-written question');
   });
 
   it('is dropped under the turn id the host used as well as under the chain root', () => {
@@ -47,8 +67,8 @@ describe('the unsent follow-up draft once a follow-up turn begins', () => {
     rememberComposerHtml('follow-up', 'root-1', 'under the root', true);
     rememberComposerHtml('follow-up', 'turn-1', 'under a turn id', true);
 
-    store.beginFollowUpTurn('turn-2', 'root-1', undefined, 'turn-1');
-    store.beginFollowUpTurn('turn-3', 'turn-1');
+    store.beginFollowUpTurn('turn-2', 'root-1', undefined, 'turn-1', undefined, { readerStarted: true });
+    store.beginFollowUpTurn('turn-3', 'turn-1', undefined, undefined, undefined, { readerStarted: true });
 
     expect(loadComposerDraft('follow-up', 'root-1')).toBeUndefined();
     expect(loadComposerDraft('follow-up', 'turn-1')).toBeUndefined();

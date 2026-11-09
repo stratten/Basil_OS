@@ -20,9 +20,11 @@ from api.core.security.protected_runtime_paths import (
 )
 from api.services.agent_processing.shared.agent_runtime_context import get_current_agent_context
 
+from . import text_search
 from .text_file_edit import failure_result as text_edit_failure_result
 from .text_file_edit import run_text_file_edit, run_text_files_edit
 from .text_file_write import LocalTextFileWriter
+from .text_search_capabilities import READ_ONLY_TEXT_METHOD_CAPABILITIES
 from .identification_retrieval import FileRetrievalService, CloudStorageService, FileContextDetectionService
 from .identification_retrieval import file_find_orchestrator
 from .file_models import (
@@ -155,6 +157,53 @@ class FileSystemService:
             precheck=refuse_protected,
             files=files,
         )
+
+    async def search_text_in_files(
+        self,
+        directory: str,
+        terms: List[str],
+        file_globs: Optional[List[str]] = None,
+        case_sensitive: Optional[bool] = False,
+        max_matches: Optional[int] = None,
+        include_generated_directories: Optional[bool] = False,
+    ) -> Dict[str, Any]:
+        """Find the lines under a folder that contain any of the given words, reading only and without a shell."""
+        logger.info("Agent text search request directory=%s terms=%d", directory, len(terms) if isinstance(terms, (list, tuple)) else 0)
+        return await self._run_read_only_text_tool(
+            directory, text_search.search_text_in_files, directory, terms, file_globs, case_sensitive, max_matches, include_generated_directories
+        )
+
+    async def list_files_in_folder(
+        self,
+        directory: str,
+        name_globs: Optional[List[str]] = None,
+        max_results: Optional[int] = None,
+        include_generated_directories: Optional[bool] = False,
+    ) -> Dict[str, Any]:
+        """List the files under a folder, reading only and without a shell."""
+        logger.info("Agent folder listing request directory=%s", directory)
+        return await self._run_read_only_text_tool(
+            directory, text_search.list_files_in_folder, directory, name_globs, max_results, include_generated_directories
+        )
+
+    async def read_text_file(
+        self,
+        path: str,
+        start_line: Optional[int] = None,
+        max_lines: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Read a range of lines from one UTF-8 text file, reading only and without a shell."""
+        logger.info("Agent text file read request path=%s", path)
+        return await self._run_read_only_text_tool(path, text_search.read_text_file, path, start_line, max_lines)
+
+    @staticmethod
+    async def _run_read_only_text_tool(subject: Any, function: Any, *arguments: Any) -> Dict[str, Any]:
+        """Run one blocking read-only tool off the event loop and report an unexpected error as a failed result."""
+        try:
+            return await asyncio.to_thread(function, *arguments)
+        except Exception as exc:
+            logger.error("Read-only text tool %s failed: %s", function.__name__, exc, exc_info=True)
+            return {"success": False, "path": str(subject), "error_type": "unexpected_error", "error": str(exc)}
 
     @staticmethod
     def _detect_backend_root() -> Path:
@@ -656,7 +705,8 @@ class FileSystemService:
                         }
                     ],
                     "returns": "Dict with file content prepared for LLM and metadata",
-                }
+                },
+                *READ_ONLY_TEXT_METHOD_CAPABILITIES,
             ],
             "features": [
                 "Generic file context detection (95%+ accuracy)",
@@ -679,7 +729,8 @@ class FileSystemService:
             "detection_accuracy": "95%+ across major applications",
             "total_search_paths": len(self.default_search_paths) + len(self.cloud_search_paths),
             "execution_principles": [
-                "NATIVE SEARCH FIRST: For finding files by name or content, prefer shell_service with mdfind/Spotlight before writing custom recursive search logic. mdfind is fast, index-based, and covers all mounted volumes including iCloud.",
+                "NATIVE SEARCH FIRST: For finding files by name or content anywhere on the Mac, prefer shell_service with mdfind/Spotlight before writing custom recursive search logic. mdfind is fast, index-based, and covers all mounted volumes including iCloud.",
+                "KNOWN FOLDER, READ-ONLY: When you already know which folder to look in, use search_text_in_files to find files that mention a word, list_files_in_folder to list files by name pattern, and read_text_file to read a file or a range of its lines. They only read, need no approval prompt, skip node_modules and .git by default, and report when a limit cut the answer short. Prefer them to grep, find, cat, head, tail, or sed in the shell, which can need an approval prompt.",
                 "CONTEXT DETECTION: Use detect_and_prepare_current_document when the user says 'this document', 'the file I have open', 'current file', or similar — do not search by name when the user clearly means the frontmost document.",
                 "REFERENCE PATHS ARE AUTHORITATIVE: When the task context includes explicit reference_paths, operate on those paths directly. Do not use current-document detection to infer a different target from the active window.",
                 "DIRECT TEXT WRITES: Use write_text_file for a known plain-text target instead of composing shell redirection. Read an existing file first and pass its SHA-256 as expected_sha256 when stale-write protection is needed.",

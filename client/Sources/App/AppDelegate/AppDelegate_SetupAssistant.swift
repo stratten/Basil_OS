@@ -22,7 +22,7 @@ extension AppDelegate {
             let status = await SetupPermissionsStatusEvaluator.currentStatus()
             switch SetupAssistantFirstRunGate.nextStep(
                 allRequiredPermissionsGranted: status.allRequiredPermissionsGranted,
-                isValidationProfile: BasilRuntimeProfile.isValidation
+                isValidationProfile: BasilRuntimeProfile.skipsFirstRunPermissionGate
             ) {
             case .showPermissions:
                 self.presentSetupPermissionsWindowFromDelegate(

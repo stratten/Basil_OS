@@ -318,19 +318,13 @@
 .artifact-review-body-layer .result-section table {
   width: 100%;
   max-width: 100%;
-  table-layout: fixed;
-}
-
-.artifact-review-body-layer .result-section th,
-.artifact-review-body-layer .result-section td {
-  min-width: 0;
-  overflow-wrap: anywhere;
-  word-break: break-word;
 }
 
 .artifact-review-body-layer .result-section pre {
   max-width: 100%;
   overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   box-sizing: border-box;
 }
 

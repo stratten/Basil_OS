@@ -16,6 +16,7 @@ import {
   summarizeExecutionResponse,
 } from '../setupAssistantProposalApi'
 import {
+  MODEL_DOWNLOADS_BLOCKED_BY_DISK_PROMPT,
   MODEL_DOWNLOADS_STARTED_PROMPT,
   SETUP_CHANGE_RESOLVED_PROMPT,
   SETUP_CHANGES_BATCH_RESOLVED_PROMPT,
@@ -71,12 +72,21 @@ export interface SetupProposalActionsApi {
   handleApproveAll: (proposalIds: string[]) => void
 }
 
+// A model the backend refused because the disk cannot hold it comes back as a failed item with this download_status.
+const INSUFFICIENT_DISK_SPACE_STATUS = 'insufficient_disk_space'
+
+function hasDiskBlockedDownload(response: SetupActionExecutionResponse | null): boolean {
+  return (response?.results ?? []).some(
+    item => item.result_payload?.download_status === INSUFFICIENT_DISK_SPACE_STATUS,
+  )
+}
+
 function buildModelDownloadsStartedOutcome(
   proposalId: string,
   response: SetupActionExecutionResponse | null,
 ): Record<string, unknown> {
   return {
-    kind: 'model_downloads_started',
+    kind: hasDiskBlockedDownload(response) ? 'model_downloads_blocked_by_disk' : 'model_downloads_started',
     proposal_id: proposalId,
     models: (response?.results ?? []).map(item => ({
       model_id: item.result_payload?.model_id ?? null,
@@ -244,9 +254,11 @@ export function useSetupProposalActions({
         if (!startStream && !batchOutcomes) return
         // The downloads run in the background, so the agent is handed the conversation back as soon as they are queued instead of waiting for them to finish or for the user to type something.
         if (toolCall.tool_name === 'start_model_downloads' && !batchOutcomes) {
-          if (!result.failed && startStream) {
+          // A download refused for lack of disk space is not a dead end: the agent explains how much to free and offers the smaller model, so it is handed the conversation back too.
+          const blockedByDisk = hasDiskBlockedDownload(response)
+          if ((!result.failed || blockedByDisk) && startStream) {
             startStream(
-              MODEL_DOWNLOADS_STARTED_PROMPT,
+              blockedByDisk ? MODEL_DOWNLOADS_BLOCKED_BY_DISK_PROMPT : MODEL_DOWNLOADS_STARTED_PROMPT,
               undefined,
               'agent_synthesis',
               'conversation',

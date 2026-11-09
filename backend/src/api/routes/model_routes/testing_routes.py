@@ -3,6 +3,7 @@ from typing import Dict, Optional
 from fastapi import APIRouter, Depends, WebSocket, HTTPException, Request
 from pydantic import BaseModel
 
+from ...core.models.model_download.disk_space import InsufficientDiskSpaceError
 from ...core.services.model_download_manager import DownloadManager
 from ...core.services.model_service import ModelService, ModelNotFoundError, ModelCapability
 from ...dependencies import get_model_service
@@ -92,6 +93,8 @@ async def download_model(
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except InsufficientDiskSpaceError as e:
+        raise HTTPException(status_code=507, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
 

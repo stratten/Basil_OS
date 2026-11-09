@@ -5,9 +5,11 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { marked } from 'marked';
 import MarkdownRenderer from './MarkdownRenderer';
-import { openExternalUrl, openFile } from '../services/bridge';
+import { copyToClipboard, openExternalUrl, openFile } from '../services/bridge';
+import { CHECK_ICON_MARKUP, COPY_ICON_MARKUP } from './result/copyIconMarkup';
 
 vi.mock('../services/bridge', () => ({
+  copyToClipboard: vi.fn(),
   openFile: vi.fn(),
   openExternalUrl: vi.fn(),
 }));
@@ -109,5 +111,92 @@ describe('MarkdownRenderer sanitization', () => {
 
     expect(openExternalUrl).toHaveBeenCalledWith('https://example.com');
     expect(openFile).toHaveBeenCalledWith('/tmp/report.md');
+  });
+});
+
+describe('MarkdownRenderer copy buttons', () => {
+  function click(element: Element) {
+    act(() => {
+      element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
+  }
+
+  it('gives every fenced block and quote its own copy button', () => {
+    render('```\nfirst\n```\n\n> quoted line\n\n```python\nsecond = 2\n```');
+
+    const blocks = container.querySelectorAll('.markdown-copy-block');
+    expect(blocks).toHaveLength(3);
+    expect(container.querySelectorAll('.markdown-copy-block > .markdown-copy-bar > .markdown-copy-button')).toHaveLength(3);
+    expect(container.querySelector('.markdown-copy-block > pre code')).not.toBeNull();
+    expect(container.querySelector('.markdown-copy-block > blockquote')?.textContent).toContain('quoted line');
+    expect(container.textContent).toContain('python');
+  });
+
+  it('copies exactly the text of the block beside the clicked button', () => {
+    render('```\nfirst line\nsecond line\n```\n\n```\nother block\n```');
+    const buttons = container.querySelectorAll('.markdown-copy-button');
+
+    click(buttons[0]);
+    expect(copyToClipboard).toHaveBeenLastCalledWith('first line\nsecond line');
+    click(buttons[1]);
+    expect(copyToClipboard).toHaveBeenLastCalledWith('other block');
+  });
+
+  it('copies a quote without the button labels of quotes nested inside it', () => {
+    render('> outer line\n>\n> > inner line');
+    const [outerButton] = Array.from(container.querySelectorAll('.markdown-copy-button'));
+
+    click(outerButton);
+
+    const calls = vi.mocked(copyToClipboard).mock.calls;
+    const copied = calls[calls.length - 1]?.[0] ?? '';
+    expect(copied).toContain('outer line');
+    expect(copied).toContain('inner line');
+    expect(copied).not.toContain('Copy');
+    expect(copied).not.toContain('Quote');
+  });
+
+  it('uses the copy icon the rest of the result area uses, with no text on the button', () => {
+    render('```\nvalue\n```\n\n> quoted');
+
+    const buttons = Array.from(container.querySelectorAll<HTMLElement>('.markdown-copy-button'));
+    expect(buttons).toHaveLength(2);
+    for (const button of buttons) {
+      expect(button.textContent).toBe('');
+      expect(button.querySelector('svg rect')).not.toBeNull();
+      expect(button.innerHTML).toBe(COPY_ICON_MARKUP);
+    }
+    expect(buttons[0].getAttribute('aria-label')).toBe('Copy code');
+    expect(buttons[1].getAttribute('aria-label')).toBe('Copy quote');
+  });
+
+  it('confirms the copy with the check mark and then restores the icon and label', () => {
+    vi.useFakeTimers();
+    try {
+      render('```\nvalue\n```');
+      const button = container.querySelector('.markdown-copy-button') as HTMLElement;
+
+      click(button);
+      expect(button.innerHTML).toBe(CHECK_ICON_MARKUP);
+      expect(button.getAttribute('aria-label')).toBe('Copy code copied');
+      expect(button.title).toBe('Copy code copied');
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+      expect(button.innerHTML).toBe(COPY_ICON_MARKUP);
+      expect(button.getAttribute('aria-label')).toBe('Copy code');
+      expect(button.title).toBe('Copy code');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not open links or copy anything when other content is clicked', () => {
+    render('```\nvalue\n```');
+
+    click(container.querySelector('pre') as Element);
+
+    expect(copyToClipboard).not.toHaveBeenCalled();
+    expect(openFile).not.toHaveBeenCalled();
   });
 });

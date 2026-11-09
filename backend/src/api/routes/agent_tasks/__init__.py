@@ -2,6 +2,7 @@
 
 from .core_routes import router
 from .audio_routes import router as audio_router
+from .checklist_routes import router as checklist_router
 from .command_input_routes import router as command_input_router
 from .execution_approval_routes import router as execution_approval_router
 from .execution_control_routes import router as execution_control_router
@@ -12,6 +13,7 @@ from .provider_interaction_routes import router as provider_interaction_router
 from .schedule_routes import run_router, schedule_router
 
 router.include_router(audio_router)
+router.include_router(checklist_router)
 router.include_router(execution_approval_router)
 router.include_router(command_input_router)
 router.include_router(provider_interaction_router)

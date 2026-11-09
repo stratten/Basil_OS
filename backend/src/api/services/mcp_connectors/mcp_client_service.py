@@ -67,6 +67,22 @@ future embedded MCP servers should reuse this same prefix and be
 deferred-imported in :meth:`MCPClientService._dispatch_local`."""
 
 
+def tool_catalog_entry(tool: Any) -> Dict[str, Any]:
+    """One tool of a server's catalog, as the connection records cache it.
+
+    ``is_destructive_hint`` is the server's own ``destructiveHint`` annotation, or ``None`` when the server did not declare one. The MCP spec treats a missing hint as destructive for any tool that is not read-only, so the absence is kept as ``None`` rather than ``False``, and callers act only on an explicit ``True``.
+    """
+    annotations = getattr(tool, "annotations", None)
+    declared_destructive = getattr(annotations, "destructiveHint", None) if annotations else None
+    return {
+        "name": tool.name,
+        "description": tool.description,
+        "input_schema": tool.inputSchema or {},
+        "is_read_only_hint": bool(getattr(annotations, "readOnlyHint", False)) if annotations else False,
+        "is_destructive_hint": declared_destructive if isinstance(declared_destructive, bool) else None,
+    }
+
+
 class MCPClientService:
     """Stateless dispatcher for remote MCP operations."""
 
@@ -88,7 +104,8 @@ class MCPClientService:
               "server": {"name": str, "version": str, "protocol": str},
               "tools": [
                 {"name": str, "description": str|None,
-                 "input_schema": dict, "is_read_only_hint": bool},
+                 "input_schema": dict, "is_read_only_hint": bool,
+                 "is_destructive_hint": bool|None},
                 ...
               ]
             }
@@ -110,16 +127,7 @@ class MCPClientService:
             tools_result = await session.list_tools()
             tools_payload: List[Dict[str, Any]] = []
             for tool in tools_result.tools:
-                annotations = getattr(tool, "annotations", None)
-                read_only_hint = bool(getattr(annotations, "readOnlyHint", False)) if annotations else False
-                tools_payload.append(
-                    {
-                        "name": tool.name,
-                        "description": tool.description,
-                        "input_schema": tool.inputSchema or {},
-                        "is_read_only_hint": read_only_hint,
-                    }
-                )
+                tools_payload.append(tool_catalog_entry(tool))
             return {
                 "server": {
                     "name": getattr(init.serverInfo, "name", None),

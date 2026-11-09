@@ -29,6 +29,8 @@ class ExecutionApprovalOutcome:
     status: str = "approved"
     reason: str = ""
     decision: Optional[ExecutionApprovalDecision] = None
+    # Free-text guidance the user typed alongside an approve or deny; empty when none was given.
+    user_note: str = ""
 
     def as_legacy_tuple(self) -> tuple[bool, bool, str]:
         """Return the legacy tuple shape used by older approval callers."""

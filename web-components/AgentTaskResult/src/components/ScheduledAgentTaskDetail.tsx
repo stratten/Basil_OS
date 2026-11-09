@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { ExclusionWindow, ScheduledAgentTask, ScheduledAgentTaskRun } from '../types';
 import * as api from '../services/api';
+import { startScheduledRunNow } from '../services/scheduledRunNow';
 import AttachedFilesDisplay from './scheduled/AttachedFilesDisplay';
 import AttachedFilesEditor from './scheduled/AttachedFilesEditor';
 import ScheduleControls from './scheduled/ScheduleControls';
@@ -50,6 +51,8 @@ interface Props {
   // dependent surfaces (e.g. bump the sidebar's scheduledListVersion so a
   // renamed schedule's row label updates without a manual view toggle).
   onUpdated?: (scheduledAgentTaskId: string) => void;
+  // Bumped by the parent when a schedule changes somewhere else, such as a pause or resume from its sidebar row. When it changes, the open schedule and its runs are fetched again so this view never shows a stale Active or Inactive state.
+  scheduledListVersion?: number;
   // Invoked when the user clicks a run-history row that has an
   // associated agent_task_id. The parent (App) is responsible for
   // routing the selection through agentStore so the result widget
@@ -64,6 +67,7 @@ export default function ScheduledAgentTaskDetail({
   onCreated,
   onExitCreateMode,
   onUpdated,
+  scheduledListVersion,
   onViewAgentTask,
 }: Props) {
   const [item, setItem] = useState<ScheduledAgentTask | null>(null);
@@ -99,6 +103,8 @@ export default function ScheduledAgentTaskDetail({
   // Whether each run is its own task or continues one conversation, and the limits that start a new one. Sent whole on create when chained, and on edit only when it changed.
   const [chainForm, setChainForm] = useState<ChainFormState>({ ...DEFAULT_CHAIN_FORM });
   const [busy, setBusy] = useState(false);
+  // Result of the last Run Now press: shown under the buttons, because the backend reports a run that could not start in the response rather than as an error.
+  const [runNow, setRunNow] = useState<{ starting: boolean; failure: string | null }>({ starting: false, failure: null });
 
   // Absolute filesystem paths the user has attached as context for this
   // scheduled agent task. Hydrated from the loaded ``item`` in the read view
@@ -250,6 +256,28 @@ export default function ScheduledAgentTaskDetail({
       .finally(() => setLoading(false));
   }, [scheduledAgentTaskId, createMode]);
 
+  // Refetch quietly when the schedule changed elsewhere. It is skipped while the edit form is open, because a fresh item would overwrite what the user is typing, and it is not tied to the first render, which the effect above already loads.
+  const seenListVersion = useRef(scheduledListVersion);
+  useEffect(() => {
+    if (scheduledListVersion === seenListVersion.current) return undefined;
+    seenListVersion.current = scheduledListVersion;
+    if (!scheduledAgentTaskId || createMode || editing) return undefined;
+    let canceled = false;
+    Promise.all([
+      api.getScheduledAgentTask(scheduledAgentTaskId),
+      api.listScheduledAgentTaskRuns(scheduledAgentTaskId, 100),
+    ])
+      .then(([agentTask, runList]) => {
+        if (canceled) return;
+        setItem(agentTask);
+        setRuns(runList);
+      })
+      .catch((err) => console.error('[ScheduledAgentTaskDetail] Failed to refresh the schedule', err));
+    return () => {
+      canceled = true;
+    };
+  }, [scheduledListVersion, scheduledAgentTaskId, createMode, editing]);
+
   const refreshRuns = useCallback(async () => {
     if (!item) return;
     const runList = await api.listScheduledAgentTaskRuns(item.id, 100);
@@ -307,7 +335,7 @@ export default function ScheduledAgentTaskDetail({
         // same as before this field existed.
         ...(modelId ? { model_id: modelId } : {}),
         // Omitted for independent runs so the payload stays the same as before this field existed.
-        ...(scheduleType === 'recurring' && chainForm.chained ? { chain_config: effectiveChainConfig(chainForm, scheduleType) } : {}),
+        ...(scheduleType === 'recurring' && (chainForm.chained || chainForm.carryChecklist) ? { chain_config: effectiveChainConfig(chainForm, scheduleType) } : {}),
       });
       setItem(created);
       setRuns([]);
@@ -708,14 +736,34 @@ export default function ScheduledAgentTaskDetail({
               </button>
               <button
                 className="action-btn"
+                disabled={runNow.starting}
                 onClick={async () => {
-                  await api.runScheduledAgentTaskNow(item.id);
+                  setRunNow({ starting: true, failure: null });
+                  const outcome = await startScheduledRunNow(item.id);
+                  setRunNow({ starting: false, failure: outcome.ok ? null : (outcome.message ?? null) });
                   await refreshRuns();
                 }}
               >
                 Run Now
               </button>
             </div>
+            {runNow.failure && (
+              <p
+                role="alert"
+                style={{
+                  margin: '0 0 10px',
+                  padding: 'var(--padding-s)',
+                  border: '1px solid var(--warning-base)',
+                  borderRadius: 'var(--corner-radius-small)',
+                  background: 'color-mix(in srgb, var(--warning-base) 16%, var(--background-primary))',
+                  color: 'var(--text-primary)',
+                  fontSize: 'var(--font-size-callout)',
+                  overflowWrap: 'anywhere',
+                }}
+              >
+                {runNow.failure}
+              </p>
+            )}
           </>
         )}
         <ScheduledRunHistoryList runs={runs} onViewAgentTask={onViewAgentTask} />

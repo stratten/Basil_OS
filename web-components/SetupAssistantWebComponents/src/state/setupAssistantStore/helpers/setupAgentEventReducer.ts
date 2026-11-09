@@ -58,6 +58,7 @@ import {
   normalizeAgendaItemsFromSse,
   normalizeAgendaMarkFromSse,
   normalizeInlineVisualFromSse,
+  normalizeLocalModelFailureFromSse,
   normalizeSuggestionChipsFromSse,
 } from './ssePayloadNormalizers'
 
@@ -72,6 +73,7 @@ export function applySetupAgentEvent(
         ...state,
         isStreaming: true,
         errorMessage: undefined,
+        localModelFailure: undefined,
         lastStreamActivity: null,
         latestProgressNarration: null,
       }
@@ -201,6 +203,7 @@ export function applySetupAgentEvent(
         isStreaming: false,
         lastStreamActivity: null,
         errorMessage: stringPayload(event.payload.message, 'Basil could not finish that setup step.'),
+        localModelFailure: normalizeLocalModelFailureFromSse(event.payload.local_model_failure),
       }
     default:
       return state

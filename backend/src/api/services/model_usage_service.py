@@ -7,6 +7,7 @@ from ..core.models.model_types import ModelCapability
 from ..core.models.base_model import BaseAIModel
 from ..core.services.model_service import ModelService, ModelNotFoundError
 from ..core.logging.api_logger import api_logger
+from ..core.logging.chatter import chatter_logger
 from ..core.models.preferences import Preferences
 
 
@@ -73,14 +74,15 @@ class ModelUsageService:
         if isinstance(capabilities, list):
             capabilities = set(capabilities)
             
-        self.logger.info(f"\n==== LOOKING FOR MODEL WITH CAPABILITIES: {[c.name for c in capabilities]} ====")
+        # Per-item chatter: bulk jobs such as memory summaries pick a model once per item, and these lines would drown out real startup errors.
+        chatter_logger.debug(f"Looking for a model with capabilities: {[c.name for c in capabilities]}")
         
         self._model_failures = []
 
         # An explicit model ID is honored when it loads. A stale one (uninstalled, disabled, or renamed) must not be a dead end, so a
         # failure is recorded and the normal preference and fallback chain below picks a usable model instead.
         if explicit_model_id:
-            self.logger.info(f"Explicit model ID requested: {explicit_model_id}")
+            chatter_logger.debug(f"Explicit model ID requested: {explicit_model_id}")
             try:
                 explicit_model = await self._load_model_by_id(explicit_model_id, capabilities)
                 if explicit_model:
@@ -158,7 +160,7 @@ class ModelUsageService:
             return await self.model_service.load_custom_model(model_id, capabilities)
         
         # For all other models, use model_service.load_model_by_id
-        self.logger.info(f"Loading model from registry: {model_id}")
+        chatter_logger.debug(f"Loading model from registry: {model_id}")
         return await self.model_service.load_model_by_id(model_id, capabilities)
 
     async def _try_load_preferred_api_model(

@@ -18,6 +18,11 @@ from ..infrastructure.connection import run_in_worker_thread, get_sync_connectio
 logger = logging.getLogger(__name__)
 
 
+def _python_lower(value: Any) -> Optional[str]:
+    """Lowercase like Python does, for window title matching; SQLite's own lower() only folds ASCII."""
+    return value.lower() if isinstance(value, str) else None
+
+
 class ActivitySearchRepository:
     def __init__(self, db_path: str, schema: Dict[str, Set[str]]) -> None:
         self.db_path = db_path
@@ -29,6 +34,9 @@ class ActivitySearchRepository:
         text_search: Optional[str] = None,
         metadata_filters: Optional[Dict[str, Any]] = None,
         limit: int = 100,
+        app_name: Optional[str] = None,
+        window_title_contains: Optional[str] = None,
+        newest_first: bool = True,
     ) -> List[Activity]:
         """Search for activities with optional filters.
 
@@ -37,6 +45,9 @@ class ActivitySearchRepository:
             text_search: Optional FTS5 formatted search string.
             metadata_filters: Optional dict of metadata key-value pairs.
             limit: Maximum number of results to return.
+            app_name: Optional exact, case-sensitive application name, applied in SQL before ``limit``.
+            window_title_contains: Optional case-insensitive substring of the window title, applied in SQL before ``limit``.
+            newest_first: Order by timestamp descending when true (the default) and ascending when false, applied in SQL before ``limit`` so the limit keeps the newest or the oldest rows respectively.
 
         Returns:
             List of matching Activity objects.
@@ -67,16 +78,25 @@ class ActivitySearchRepository:
                     conditions.append(('timestamp', '<=', time_range['end'].isoformat()))
                     print(f"  - End time: {time_range['end'].isoformat()}")
 
-            params = [value for _, _, value in conditions]
+            if app_name:
+                conditions.append(('app_name', '=', app_name))
 
-            if conditions:
+            params = [value for _, _, value in conditions]
+            where_clauses = [f'{col} {op} ?' for col, op, _ in conditions]
+            if window_title_contains:
+                where_clauses.append('instr(py_lower(window_title), ?) > 0')
+                params.append(window_title_contains.lower())
+
+            if where_clauses:
                 print("Adding WHERE conditions to query")
                 for col, op, val in conditions:
                     print(f"  - Condition: {col} {op} {val}")
+                if window_title_contains:
+                    print(f"  - Condition: window title contains (case-insensitive) {window_title_contains.lower()}")
                 base_query = f"""
                     SELECT {', '.join(f'a.{col}' for col in columns)}
                     FROM activities a
-                    WHERE {' AND '.join(f'{col} {op} ?' for col, op, _ in conditions)}
+                    WHERE {' AND '.join(where_clauses)}
                 """
             else:
                 base_query = f"""
@@ -131,11 +151,12 @@ class ActivitySearchRepository:
                         """
                         params.extend([key, value])
 
+            order_direction = "DESC" if newest_first else "ASC"
             query = f"""
                 WITH final_results AS ({query})
                 SELECT DISTINCT {', '.join(f'f.{col}' for col in columns)}
                 FROM final_results f
-                ORDER BY f.timestamp DESC LIMIT ?
+                ORDER BY f.timestamp {order_direction} LIMIT ?
             """
             params.append(limit)
 
@@ -147,6 +168,7 @@ class ActivitySearchRepository:
             conn = await get_async_connection(self.db_path)
             print(f"Connection established: {conn}")
             try:
+                await conn.create_function("py_lower", 1, _python_lower, deterministic=True)
                 print("\nChecking if activities table exists...")
                 cursor = await conn.execute(
                     "SELECT name FROM sqlite_master WHERE type='table' AND name='activities'"

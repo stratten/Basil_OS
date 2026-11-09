@@ -38,7 +38,7 @@ def test_none_and_independent_normalize_to_independent():
 
 
 def test_chained_requires_a_limit():
-    with pytest.raises(ValueError, match="run limit, a time limit, or both"):
+    with pytest.raises(ValueError, match="turn limit, a time limit, or both"):
         normalize_chain_config({"mode": "chained"})
 
 

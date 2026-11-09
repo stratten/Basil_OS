@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Set
 from ...logging.api_logger import api_logger
 from ..models_registry import get_downloadable_models, get_model, get_on_disk_name
 from ..models_registry.local_vision_registry import local_vision_files_present
+from .hf_cache_cleanup import discard_cached_repo, repo_id_from_model_config
 
 
 class ModelArtifactStore:
@@ -200,17 +201,10 @@ class ModelArtifactStore:
                         api_logger.error("Error removing companion model file: %s", exc)
                         success = False
 
-        hf_url = model_cfg.get("repo_url") or model_cfg.get("download_url")
-        if hf_url and "huggingface.co/" in hf_url:
+        repo_id = repo_id_from_model_config(model_cfg)
+        if repo_id:
             try:
-                path_part = hf_url.split("huggingface.co/", 1)[1]
-                path_segments = path_part.split("/")
-                if len(path_segments) >= 2:
-                    repo_id = f"{path_segments[0]}/{path_segments[1]}"
-                    cache_dir = Path.home() / ".cache" / "huggingface" / "hub"
-                    repo_cache_dir = cache_dir / ("models--" + repo_id.replace("/", "--"))
-                    if repo_cache_dir.exists():
-                        shutil.rmtree(repo_cache_dir)
+                discard_cached_repo(repo_id)
             except Exception as exc:
                 api_logger.error("Error removing HF cache: %s", exc)
                 success = False

@@ -84,7 +84,7 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
         <div>
           <div className="history-card__head">
             <div className="history-card__head-main">
-              <div className="history-card__request-full">
+              <div className="history-card__request-full" title={plainRequest}>
                 {plainRequest}
               </div>
               <div className="history-card__time--expanded">
@@ -157,13 +157,13 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
               <span className="history-card__result-heading-text">
                 {hasError ? 'Partial Result:' : 'Result:'}
               </span>
+              <CopyButtonGroup text={presentationResult} />
             </div>
             {histParsed.technicalSteps.length > 0 &&
               !(item.executionTimeline?.length || item.executionSteps?.length) && (
               <ExecutionSteps stepsContent={histParsed.technicalSteps} />
             )}
             <div className="history-card__result">
-              <CopyButtonGroup text={presentationResult} />
               <MarkdownRenderer content={formatBulletPoints(histRunDetails.narrative)} />
             </div>
             <ResultFooter

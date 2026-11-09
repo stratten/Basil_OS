@@ -21,6 +21,7 @@ from api.core.security.protected_runtime_paths import (
     references_protected_runtime_path,
 )
 from api.services.agent_processing.tools.safety import ExecutionApprovalService
+from api.services.agent_processing.tools.safety.whitelist_pattern_selection import advice_pattern
 from .shell_execution_result import build_approval_failure_result, build_shell_result
 from .shell_file_artifacts import (
     prepare_file_operations,
@@ -117,7 +118,7 @@ class ShellService:
                         "timeout_s": {"type": "int", "required": False, "description": "Hard timeout in seconds (≤60)."},
                         "max_output_bytes": {"type": "int", "required": False, "description": "Per-stream output cap (bytes)."},
                         "purpose": {"type": "str", "required": False, "description": "One or two plain sentences telling the user what this command or script does and why. Shown on the approval card."},
-                        "whitelist_advice": {"type": "dict", "required": False, "description": "Whether the user should let Basil remember this command: {\"recommend\": true or false, \"reason\": \"...\"}. Be honest; recommend remembering only narrow, read-only, repeatable commands."},
+                        "whitelist_advice": {"type": "dict", "required": False, "description": "Whether the user should let Basil remember this command: {\"recommend\": true or false, \"reason\": \"...\", \"pattern\": \"...\"}. Be honest; recommend remembering only narrow, read-only, repeatable commands. pattern is the leading words that identify what the command does, exactly as they appear at the start of the command and without its arguments (for gh gist view abc123 --files it is gh gist view). It is what Basil remembers, so make it as specific as the command allows; Basil ignores a pattern that is not the command's own leading words."},
                         "file_operations": {
                             "type": "list",
                             "required": False,
@@ -147,6 +148,41 @@ class ShellService:
         skip_approval_check: bool = False,
         purpose: Optional[str] = None,
         whitelist_advice: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        # When the user approved with a note ("approve, but also ..."), the note rides on the result so the agent reads it in the same turn as the command output.
+        approval_note_holder: Dict[str, str] = {}
+        result = await self._execute_command_after_policy(
+            command,
+            args=args,
+            cwd=cwd,
+            env_overrides=env_overrides,
+            timeout_s=timeout_s,
+            max_output_bytes=max_output_bytes,
+            file_operations=file_operations,
+            skip_approval_check=skip_approval_check,
+            purpose=purpose,
+            whitelist_advice=whitelist_advice,
+            approval_note_holder=approval_note_holder,
+        )
+        approved_note = approval_note_holder.get("note", "")
+        if approved_note and isinstance(result, dict):
+            result["approval_user_note"] = approved_note
+            result["user_guidance_with_approval"] = f"The user approved this command and added this guidance: {approved_note}"
+        return result
+
+    async def _execute_command_after_policy(
+        self,
+        command: str,
+        args: Optional[List[str]] = None,
+        cwd: Optional[str] = None,
+        env_overrides: Optional[Dict[str, str]] = None,
+        timeout_s: Optional[int] = None,
+        max_output_bytes: Optional[int] = None,
+        file_operations: Optional[List[Dict[str, str]]] = None,
+        skip_approval_check: bool = False,
+        purpose: Optional[str] = None,
+        whitelist_advice: Optional[Dict[str, Any]] = None,
+        approval_note_holder: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         if not self._initialized:
             await self.initialize()
@@ -232,6 +268,13 @@ class ShellService:
                     "whitelist_advice": whitelist_advice,
                     "purpose_required": True,
                 }
+                task_workspace = self._default_task_workspace()
+                approval_context["workspace_scope"] = {
+                    "argv": [self._redact_secrets(str(part)) for part in argv],
+                    "cwd": str(inspection_cwd) if inspection_cwd is not None else None,
+                    "workspace": str(task_workspace) if task_workspace is not None else None,
+                    "has_env_overrides": bool(env_overrides),
+                }
                 if script_inspection is not None:
                     approval_context["script_path"] = script_inspection.path
                     if script_inspection.content is not None:
@@ -280,6 +323,9 @@ class ShellService:
                         file_artifact_declarations=unchecked_file_declarations,
                     ), declared_file_operations)
                 
+                if approval_outcome.user_note and approval_note_holder is not None:
+                    approval_note_holder["note"] = approval_outcome.user_note
+
                 # If user approved and wants to remember, add to whitelist
                 if approval_outcome.remember:
                     try:
@@ -288,6 +334,7 @@ class ShellService:
                             pattern_type=approval_outcome.pattern_type,
                             description="User-approved shell command",
                             record_initial_use=True,
+                            proposed_pattern=advice_pattern(whitelist_advice),
                         )
                         logger.info(f"Added command to whitelist: {full_command} (type: {approval_outcome.pattern_type})")
                     except Exception as e:

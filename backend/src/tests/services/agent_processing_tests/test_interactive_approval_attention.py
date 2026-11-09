@@ -516,3 +516,80 @@ async def test_failed_resolution_bookkeeping_still_releases_the_waiting_run(monk
     )
 
     assert await asyncio.wait_for(request, timeout=2) == (False, False, "exact")
+
+
+async def _decide_with_note(monkeypatch, *, approved: bool, user_note):
+    repository = _Repository()
+    websocket = _WebSocket()
+    _patch_waiting_manager(monkeypatch, repository, AsyncMock())
+    manager = InteractiveApprovalManager(
+        websocket_manager=websocket,
+        generalizer=SimpleNamespace(generalize_command=lambda command: command),
+    )
+    decision = ExecutionApprovalDecision(needs_approval=True, reason="Not whitelisted", risk_level="low")
+    note_sink: dict[str, str] = {}
+    request = asyncio.create_task(
+        manager.request_approval(
+            command="pwd", decision=decision, context={"agent_task_id": "task-1"}, note_sink=note_sink
+        )
+    )
+    await websocket.published.wait()
+    await manager.handle_approval_response(
+        approval_id="approval-1",
+        approved=approved,
+        agent_task_id="task-1",
+        expected_revision=0,
+        user_note=user_note,
+    )
+    result = await asyncio.wait_for(request, timeout=2)
+    return result, note_sink
+
+
+@pytest.mark.asyncio
+async def test_a_denial_note_reaches_the_waiting_run_trimmed_and_does_not_linger(monkeypatch):
+    result, note_sink = await _decide_with_note(
+        monkeypatch, approved=False, user_note="  That file lives in ~/Documents, not here.  "
+    )
+
+    assert result[0] is False
+    assert note_sink == {"user_note": "That file lives in ~/Documents, not here."}
+    assert InteractiveApprovalManager._decision_notes == {}
+
+
+@pytest.mark.asyncio
+async def test_an_approval_note_reaches_the_waiting_run(monkeypatch):
+    result, note_sink = await _decide_with_note(monkeypatch, approved=True, user_note="Approve, but also check the exit code.")
+
+    assert result[0] is True
+    assert note_sink == {"user_note": "Approve, but also check the exit code."}
+    assert InteractiveApprovalManager._decision_notes == {}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("blank", [None, "", "   \n\t "])
+async def test_a_blank_note_is_not_delivered(monkeypatch, blank):
+    _result, note_sink = await _decide_with_note(monkeypatch, approved=False, user_note=blank)
+
+    assert note_sink == {}
+    assert InteractiveApprovalManager._decision_notes == {}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("approved", "note", "expected_status", "expected_response"),
+    [
+        (False, "  There's a readme in the project folder.  ", "denied", "There's a readme in the project folder."),
+        (True, "Go ahead, but check the exit code.", "approved", "Go ahead, but check the exit code."),
+        (False, None, "denied", None),
+        (False, "   ", "denied", None),
+    ],
+)
+async def test_the_note_typed_with_a_decision_is_recorded_on_the_transcript_exchange(monkeypatch, approved, note, expected_status, expected_response):
+    resolved = AsyncMock()
+    monkeypatch.setattr(interactive_approval, "record_user_interaction_resolved", resolved)
+
+    await _decide_with_note(monkeypatch, approved=approved, user_note=note)
+
+    resolved.assert_awaited_once()
+    assert resolved.await_args.kwargs["status"] == expected_status
+    assert resolved.await_args.kwargs["response"] == expected_response

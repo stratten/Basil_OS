@@ -20,6 +20,7 @@ from api.routes.setup_assistant.models import (
     SetupAgentRequest,
     SetupAssistantPhase,
 )
+from api.services.setup_assistant.agent_graph.setup_agent_errors import setup_error_payload
 from api.services.setup_assistant.agent_graph.agenda_catalog import (
     applicable_catalog_seed,
 )
@@ -35,6 +36,9 @@ from api.services.agent_processing.lifecycle.execution_graph.agent_loop_messages
 from api.services.agent_processing.lifecycle.execution_graph.agent_loop_model_recovery import (
     AgentRunFlags,
     ModelRecoveryMiddleware,
+)
+from api.services.setup_assistant.agent_graph.setup_agent_nudges import (
+    SetupPresentationNudgeMiddleware,
 )
 from api.services.setup_assistant.agent_graph.setup_agent_progress import SetupAgentProgressCallback
 from api.services.setup_assistant.agent_graph.setup_agent_system_prompt import (
@@ -128,7 +132,7 @@ class SetupAgentRuntime:
                 await emit_event(
                     SetupAgentEvent(
                         kind=SetupAgentEventKind.error,
-                        payload={"message": str(exc)},
+                        payload=setup_error_payload(exc),
                     )
                 )
             finally:
@@ -161,6 +165,7 @@ class SetupAgentRuntime:
             proposal_store=self.proposal_store,
             context_catalog_service=self.context_catalog_service,
             setup_model_selection=model_selection,
+            phase=request.phase,
         ).create_setup_agent_tools()
         capture_state = self._load_current_capture_state()
         system_prompt = build_setup_agent_system_prompt(
@@ -170,7 +175,15 @@ class SetupAgentRuntime:
             langchain_model,
             tools=tools,
             system_prompt=system_prompt,
-            middleware=[ModelRecoveryMiddleware(AgentRunFlags())],
+            middleware=[
+                ModelRecoveryMiddleware(AgentRunFlags()),
+                SetupPresentationNudgeMiddleware(
+                    phase=request.phase,
+                    agenda_owed=bool(self._resolve_agenda_items_for_turn(request))
+                    and not request.session_goals,
+                    finalize_mode=finalize_mode,
+                ),
+            ],
             checkpointer=False,
             name="basil_setup_loop",
         )

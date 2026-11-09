@@ -349,3 +349,28 @@ def test_slim_description_carries_actuation_clause():
     # Pre-existing slim contract preserved.
     assert "reformulate" in slim
     assert "structured/exact parameters" in slim
+
+
+def test_slim_description_names_email_accounts_and_scopes_the_native_email_tools():
+    slim = external_catalog_descriptions.SLIM_DESCRIPTION
+    assert "including connected email accounts" in slim
+    assert "native email tools only for the Mail app or Outlook on this Mac" in slim
+    assert "Gmail" in slim
+    # The old wording sent a connected mailbox to the local email tools.
+    assert "native tools for local email" not in slim
+
+
+def test_full_description_treats_a_connected_mailbox_as_a_connected_service():
+    description = external_catalog_descriptions.build_full_external_catalog_description("**CURRENT CONNECTIONS:** none")
+    assert "is a connected service, not the Mail app" in description
+    assert "'what is my most recent email' when a Gmail connection is enabled" in description
+    assert "'find my last email from Sarah in the Mail app' → email_service, not MCP" in description
+    assert "'find my last email from Sarah' → email_service" not in description
+
+
+def test_system_prompt_points_to_the_tool_index_instead_of_loading_first():
+    assert "find it in the tool index in the `load_tool_family` description and call it directly by name" in AGENT_SYSTEM_PROMPT_TEMPLATE
+    assert "Call `load_tool_family` only when you want to read a family's full schemas first" in AGENT_SYSTEM_PROMPT_TEMPLATE
+    assert "call `load_tool_family` first" not in AGENT_SYSTEM_PROMPT_TEMPLATE
+    # The rule that an already-available family is never reloaded stays.
+    assert "do NOT call `load_tool_family` to reload an already-available family" in AGENT_SYSTEM_PROMPT_TEMPLATE

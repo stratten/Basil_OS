@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TimelineEntry } from '../../types';
-import { backfillDurableTimelineEntries, timelineTimestampMs } from './timelineBackfill';
+import { backfillDurableTimelineEntries, earliestTimelineMs, timelineTimestampMs } from './timelineBackfill';
 
 function entry(id: string, content: string, timestamp: string, type: TimelineEntry['type'] = 'step'): TimelineEntry {
   return { id, type, content, timestamp };
@@ -17,6 +17,17 @@ describe('timelineTimestampMs', () => {
   it('returns undefined for missing or malformed values', () => {
     expect(timelineTimestampMs(undefined)).toBeUndefined();
     expect(timelineTimestampMs('not a time')).toBeUndefined();
+  });
+});
+
+describe('earliestTimelineMs', () => {
+  it('finds the oldest usable timestamp regardless of order and ignores unreadable ones', () => {
+    const timeline = [entry('a', 'Later', at(30)), entry('b', 'Broken', 'not a time'), entry('c', 'Earlier', at(5))];
+    expect(earliestTimelineMs(timeline)).toBe(T0 + 5000);
+  });
+
+  it('returns undefined for an empty timeline', () => {
+    expect(earliestTimelineMs([])).toBeUndefined();
   });
 });
 
@@ -55,6 +66,27 @@ describe('backfillDurableTimelineEntries', () => {
     const merged = backfillDurableTimelineEntries([], durable, 0);
 
     expect(merged.map(item => item.id)).toEqual(['d1', 'd2']);
+  });
+
+  it('restores only the history before the first live entry when an upper bound is given', () => {
+    const local = [entry('l1', 'Waiting for your answer', at(100))];
+    const durable = [
+      entry('d1', 'Read the inbox', at(10)),
+      entry('d2', 'Prepared two drafts', at(60)),
+      entry('d3', 'Persisted wording of the question', at(100.2)),
+      entry('d4', 'Later step', at(130)),
+    ];
+
+    const merged = backfillDurableTimelineEntries(local, durable, 0, T0 + 100_000);
+
+    expect(merged.map(item => item.id)).toEqual(['d1', 'd2', 'l1']);
+  });
+
+  it('adds nothing when no persisted entry predates the first live entry', () => {
+    const local = [entry('l1', 'First live step', at(10))];
+    const durable = [entry('d1', 'Persisted twin with other wording', at(10.4))];
+
+    expect(backfillDurableTimelineEntries(local, durable, 0, T0 + 10_000)).toBe(local);
   });
 
   it('keeps repeated identical steps that are far apart in time', () => {

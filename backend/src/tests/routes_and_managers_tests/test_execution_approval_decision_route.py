@@ -28,7 +28,14 @@ class _FakeApprovalService:
         self.responses.append(kwargs)
 
     async def add_to_whitelist(
-        self, *, command: str, pattern_type: str, description: str, risk_level: str, record_initial_use: bool = False
+        self,
+        *,
+        command: str,
+        pattern_type: str,
+        description: str,
+        risk_level: str,
+        record_initial_use: bool = False,
+        pattern: str | None = None,
     ):
         self.whitelisted.append(
             {
@@ -37,6 +44,7 @@ class _FakeApprovalService:
                 "description": description,
                 "risk_level": risk_level,
                 "record_initial_use": record_initial_use,
+                "pattern": pattern,
             }
         )
         return SimpleNamespace(id="pattern-1")
@@ -79,8 +87,47 @@ async def test_remembered_approval_whitelists_the_durable_command(monkeypatch: p
             "description": "User-approved: ls -la",
             "risk_level": "low",
             "record_initial_use": True,
+            "pattern": None,
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_remembered_approval_stores_the_pattern_the_card_showed_as_a_prefix(monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_durable_record(
+        monkeypatch,
+        {
+            "id": "approval-1",
+            "command": "gh gist view 8edb73ec --files",
+            "generalized_pattern": "gh gist view",
+            "execution_type": "shell",
+            "status": "approved",
+        },
+    )
+    service = _FakeApprovalService()
+
+    response = await process_approval_decision(request=_decision(pattern_type="exact"), approval_service=service)
+
+    assert response.pattern_id == "pattern-1"
+    assert service.whitelisted[0]["command"] == "gh gist view 8edb73ec --files"
+    assert service.whitelisted[0]["pattern"] == "gh gist view"
+    assert service.whitelisted[0]["pattern_type"] == "prefix"
+
+
+@pytest.mark.asyncio
+async def test_remember_for_a_bare_multi_command_tool_is_not_stored(monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_durable_record(
+        monkeypatch,
+        {"id": "approval-1", "command": "gh gist view abc", "generalized_pattern": "gh", "execution_type": "shell", "status": "approved"},
+    )
+    service = _FakeApprovalService()
+
+    response = await process_approval_decision(request=_decision(), approval_service=service)
+
+    assert response.pattern_id is None
+    assert response.message.startswith("Command approved for this execution only.")
+    assert "would approve every gh command" in response.message
+    assert service.whitelisted == []
 
 
 @pytest.mark.asyncio

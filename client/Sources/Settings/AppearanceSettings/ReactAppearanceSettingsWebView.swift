@@ -165,7 +165,7 @@ struct ReactAppearanceColorPickerRequest {
 }
 
 @MainActor
-final class ReactAppearanceSettingsWebView: NSObject {
+final class ReactAppearanceSettingsWebView: NSObject, WKUIDelegate {
     let webView: WKWebView
 
     var onReady: (() -> Void)?
@@ -178,6 +178,14 @@ final class ReactAppearanceSettingsWebView: NSObject {
 
     override init() {
         let configuration = BasilWebViewConfigurationFactory.makeConfiguration()
+        // Pages that call the local backend directly (the personal context import) read the address from here.
+        let configJSON = (try? JSONSerialization.data(withJSONObject: ["apiBaseUrl": APIClient.shared.baseURL], options: []))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+        configuration.userContentController.addUserScript(WKUserScript(
+            source: "window.basilSettingsConfig = \(configJSON);",
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: true
+        ))
         webView = FirstClickWebView(frame: .zero, configuration: configuration)
         webView.setValue(false, forKey: "drawsBackground")
         if #available(macOS 12.0, *) {
@@ -186,10 +194,21 @@ final class ReactAppearanceSettingsWebView: NSObject {
 
         super.init()
 
+        webView.uiDelegate = self
         configuration.userContentController.add(
             ReactAppearanceSettingsWeakScriptMessageHandler(self),
             name: "basilAppearanceSettingsBridge"
         )
+    }
+
+    /// This one web view hosts every Settings page, so a file input on any of them (such as the personal context import) opens a native chooser through here.
+    func webView(
+        _ webView: WKWebView,
+        runOpenPanelWith parameters: WKOpenPanelParameters,
+        initiatedByFrame frame: WKFrameInfo,
+        completionHandler: @escaping ([URL]?) -> Void
+    ) {
+        WebFileInputPanel.present(parameters: parameters, over: webView, completionHandler: completionHandler)
     }
 
     func loadContent() {

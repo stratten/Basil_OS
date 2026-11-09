@@ -102,6 +102,8 @@ export function useSetupAgentStream({
       active_artifact_id: store.state.activeArtifact?.id,
       // The user's chosen working style from the last setup preferences step, so the conversation follows it from the first message.
       interaction_style: store.state.interactionStyle,
+      // Present only when the user imported something in the optional step. Stable facts from it are proposals awaiting approval in Settings, not yet saved memory.
+      ...(store.state.importedContext ? { imported_context: store.state.importedContext } : {}),
     },
     setup_agent_model_override_id: null,
     // Round-trip the current agenda back to the backend on every turn so

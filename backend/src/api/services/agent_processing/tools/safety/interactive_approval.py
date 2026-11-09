@@ -7,7 +7,7 @@ Manages user approval prompts and responses for command execution.
 import asyncio
 import logging
 import time
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Optional, Tuple
 
 from api.core.knowledge.sqlite.sqlite_knowledge_service_component_services.execution_approvals.repository import (
     ExecutionApprovalConflictError,
@@ -31,6 +31,7 @@ from api.services.websocket_connection_manager import broadcast_json_text
 from .approval_override import resolve_tool_execution_settings
 from .approval_presentation import approval_presentation_fields, record_whitelist_eligibility
 from .models import ExecutionApprovalDecision
+from .whitelist_pattern_selection import advice_pattern, select_remember_pattern
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,8 @@ class InteractiveApprovalManager:
 
     _pending_approvals: Dict[str, asyncio.Future] = {}
     _processing_approvals: set = set()
+    # The optional note the user typed with a decision, keyed by approval id. It is stored just before the waiting run is released and removed by that run, so it never outlives the approval.
+    _decision_notes: Dict[str, str] = {}
 
     def __init__(self, websocket_manager, generalizer):
         self.websocket_manager = websocket_manager
@@ -76,8 +79,12 @@ class InteractiveApprovalManager:
         command: str,
         decision: ExecutionApprovalDecision,
         context: Dict[str, Any],
+        note_sink: Optional[Dict[str, str]] = None,
     ) -> Tuple[bool, bool, str]:
-        """Request user approval for a command via WebSocket and wait for response."""
+        """Request user approval for a command via WebSocket and wait for response.
+
+        When the user typed a note with their decision it is placed in ``note_sink["user_note"]``.
+        """
         agent_task_id = context.get("agent_task_id")
         if not isinstance(agent_task_id, str) or not agent_task_id.strip():
             logger.error("Execution approval requested without a durable agent_task_id")
@@ -93,7 +100,12 @@ class InteractiveApprovalManager:
         persisted_revision = 0
 
         try:
-            generalized_pattern = self.generalizer.generalize_command(command)
+            # The pattern is chosen once, here: the agent's proposal when it is a valid leading run of this command's words, otherwise the heuristic. The card shows it, the durable record keeps it, and the remember step stores it.
+            generalized_pattern = select_remember_pattern(
+                command,
+                advice_pattern(context.get("whitelist_advice")),
+                self.generalizer,
+            ).pattern
 
             from .risk_assessment import RiskAssessor
 
@@ -181,6 +193,7 @@ class InteractiveApprovalManager:
                 input_type=execution_type,
                 broadcast=self.websocket_manager.broadcast,
                 time_limit=time_limit,
+                presentation={**presentation, "script_content": script_content},
             )
 
             try:
@@ -264,6 +277,9 @@ class InteractiveApprovalManager:
                 logger.info("Received approval response after %.2fs: %s", wait_duration, type(result))
                 logger.info("Approval tuple: approved=%s", result[0] if result else "N/A")
 
+                user_note = InteractiveApprovalManager._decision_notes.pop(approval_id, "")
+                if user_note and note_sink is not None:
+                    note_sink["user_note"] = user_note
                 return result
 
             except asyncio.TimeoutError:
@@ -339,6 +355,8 @@ class InteractiveApprovalManager:
         finally:
             if approval_id and approval_id in InteractiveApprovalManager._pending_approvals:
                 del InteractiveApprovalManager._pending_approvals[approval_id]
+            if approval_id:
+                InteractiveApprovalManager._decision_notes.pop(approval_id, None)
 
     async def handle_approval_response(
         self,
@@ -349,6 +367,7 @@ class InteractiveApprovalManager:
         *,
         agent_task_id: str | None = None,
         expected_revision: int | None = None,
+        user_note: str | None = None,
     ) -> None:
         """Process user's approval response from frontend."""
         handler_start = time.time()
@@ -432,12 +451,16 @@ class InteractiveApprovalManager:
                     task_id,
                     interaction_id=approval_id,
                     status="approved" if approved else "denied",
+                    response=(user_note or "").strip() or None,
                     broadcast=self._broadcast,
                 )
             except Exception:
                 logger.exception("Failed to record the resolution of execution approval %s", approval_id)
             finally:
                 if not future.done():
+                    cleaned_note = (user_note or "").strip()
+                    if cleaned_note:
+                        InteractiveApprovalManager._decision_notes[approval_id] = cleaned_note
                     future.set_result((approved, remember, pattern_type))
         finally:
             InteractiveApprovalManager._processing_approvals.discard(approval_id)

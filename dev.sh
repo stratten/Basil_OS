@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Run from the repository root: ./dev.sh [--no-clean] [--zombies|--no-zombies]
+# Run from the repository root: ./dev.sh [--no-clean] [--zombies|--no-zombies] [--llama-verbose]
+#
+# --llama-verbose  Turns on llama.cpp's own diagnostic output in the backend log (zz. Logs/uvicorn.log), including how much of each prompt was reused from the prefix cache and how much was re-read. Use it to find out why a local-model call spent a long time "reading the prompt". It makes the log much noisier, so leave it off for normal work. It sets BASIL_LLAMA_CPP_VERBOSE=1 for the backend this script starts, including any crash-restart, and it does not persist: the next ./dev.sh run is quiet again. Example: ./dev.sh --no-clean --llama-verbose
 set -euo pipefail
 
 readonly REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
@@ -34,6 +36,10 @@ do
         --no-zombies)
         ENABLE_ZOMBIES=false
         shift # Remove --no-zombies from processing
+        ;;
+        --llama-verbose)
+        export BASIL_LLAMA_CPP_VERBOSE=1 # Read by llama_cpp_load_plan.py; inherited by every backend spawn below
+        shift # Remove --llama-verbose from processing
         ;;
     esac
 done

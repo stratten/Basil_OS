@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from dataclasses import replace
 from types import SimpleNamespace
 from typing import Any
@@ -17,7 +18,7 @@ from pydantic import BaseModel, Field
 
 from api.services.agent_processing.lifecycle.execution_graph import agent_loop_runner as runner
 from api.services.agent_processing.lifecycle.execution_graph.agent_conversation_thread import StoredConversationThread
-from api.services.agent_processing.lifecycle.execution_graph.agent_loop_nudges import HANDOFF_CHECK_PROMPT, SCRIPTING_FLOOR_PROMPT
+from api.services.agent_processing.lifecycle.execution_graph.agent_loop_nudges import HANDOFF_CHECK_PROMPT, HANDS_BACK_PROMPT, SCRIPTING_FLOOR_PROMPT
 from api.services.agent_processing.lifecycle.execution_graph.conversation_turns import is_turn_input, mark_turn_input
 from api.services.agent_processing.lifecycle.planning.agent_context_assembler import CONVERSATION_THREAD_SEEDED_KEY
 from api.services.agent_processing.lifecycle.execution_graph.execution_limits import active_time_limit_message
@@ -144,23 +145,62 @@ async def test_load_family_grows_surface_within_one_run():
 
 
 @pytest.mark.asyncio
-async def test_off_surface_call_is_rejected_then_family_is_loaded():
+async def test_off_surface_call_to_a_registered_tool_runs_and_loads_its_family():
     tools = [_tool("browser_inspect"), _tool("request_user_input")]
+    state = _state(tools)
     model = ScriptedChatModel(
         responses=[
             AIMessage(content="", tool_calls=[_call("browser_inspect", "call-early", text="body")]),
-            AIMessage(content="", tool_calls=[_call("browser_inspect", "call-late", text="body")]),
             AIMessage(content="Inspected."),
+        ]
+    )
+
+    run = await runner.run_agent_loop(_request(model, state))
+
+    assert "browser_inspect" not in model.bound_tool_names[0]
+    assert "browser_inspect" in model.bound_tool_names[1]
+    result = next(message for message in model.calls[1] if isinstance(message, ToolMessage) and message.tool_call_id == "call-early")
+    assert result.content == "browser_inspect ok"
+    assert result.status != "error"
+    assert state.context["loaded_tool_families"] == ["browser"]
+    assert run.intermediate_steps[-1][1] == "browser_inspect ok"
+    assert run.agent_output == "Inspected."
+
+
+@pytest.mark.asyncio
+async def test_off_surface_call_to_an_unregistered_tool_is_still_rejected():
+    tools = [_tool("browser_inspect"), _tool("request_user_input")]
+    model = ScriptedChatModel(
+        responses=[
+            AIMessage(content="", tool_calls=[_call("browser_missing_tool", "call-missing", text="body")]),
+            AIMessage(content="Gave up."),
         ]
     )
 
     run = await runner.run_agent_loop(_request(model, _state(tools)))
 
-    rejected = next(message for message in model.calls[1] if isinstance(message, ToolMessage) and message.tool_call_id == "call-early")
-    assert "browser_inspect is not a valid tool" in rejected.content
-    assert "browser_inspect" in model.bound_tool_names[1]
-    assert run.intermediate_steps[-1][1] == "browser_inspect ok"
-    assert run.agent_output == "Inspected."
+    rejected = next(message for message in model.calls[1] if isinstance(message, ToolMessage) and message.tool_call_id == "call-missing")
+    assert "browser_missing_tool is not a valid tool" in rejected.content
+    assert rejected.status == "error"
+    assert run.agent_output == "Gave up."
+
+
+@pytest.mark.asyncio
+async def test_off_surface_call_to_a_registered_tool_that_no_family_owns_is_still_rejected():
+    tools = [_tool("browser_inspect"), _tool("request_user_input"), _tool("mystery_helper")]
+    state = _state(tools)
+    model = ScriptedChatModel(
+        responses=[
+            AIMessage(content="", tool_calls=[_call("mystery_helper", "call-mystery", text="body")]),
+            AIMessage(content="Gave up."),
+        ]
+    )
+
+    await runner.run_agent_loop(_request(model, state))
+
+    rejected = next(message for message in model.calls[1] if isinstance(message, ToolMessage) and message.tool_call_id == "call-mystery")
+    assert "mystery_helper is not a valid tool" in rejected.content
+    assert not state.context.get("loaded_tool_families")
 
 
 @pytest.mark.asyncio
@@ -302,10 +342,14 @@ async def test_repetition_guard_stop_returns_guard_output():
     assert run.result["tool_repetition_guard_stop"]["invalid_kind"] == "missing_required_argument"
 
 
+async def _failed_inspect(text: str = "") -> str:
+    return json.dumps({"success": False, "error": "the page did not load"})
+
+
 @pytest.mark.asyncio
-async def test_scripting_floor_nudges_once_after_off_surface_call():
+async def test_scripting_floor_nudges_once_after_a_specialized_tool_fails():
     tools = [
-        _tool("browser_inspect"),
+        _tool("browser_inspect", _failed_inspect),
         _tool("applescript_service_execute_applescript"),
         _tool("request_user_input"),
     ]
@@ -395,7 +439,7 @@ async def test_handoff_check_is_skipped_for_a_terminal_run(handoff_check_enabled
 @pytest.mark.asyncio
 async def test_scripting_floor_takes_precedence_and_the_handoff_check_still_follows(handoff_check_enabled):
     tools = [
-        _tool("browser_inspect"),
+        _tool("browser_inspect", _failed_inspect),
         _tool("applescript_service_execute_applescript"),
         _tool("request_user_input"),
     ]
@@ -470,6 +514,40 @@ async def test_cancel_stops_live_tool_runs_left_without_an_end_callback():
         await runner.run_agent_loop(request)
 
     assert recorder.started == ["shell_service_execute_command"]
+    assert recorder.stop_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_running_out_of_time_stops_live_tool_runs_left_without_an_end_callback(monkeypatch):
+    async def never_returns(text: str = "") -> str:
+        await asyncio.sleep(5)
+        return "too late"
+
+    monkeypatch.setattr(runner, "agent_run_max_active_seconds", lambda _model_id=None: 0.2)
+    recorder = ToolRunStoppingCallback()
+    tools = [_tool("shell_service_execute_command", never_returns)]
+    model = ScriptedChatModel(
+        responses=[AIMessage(content="", tool_calls=[_call("shell_service_execute_command", "call-hung", text="send")])]
+    )
+    request = replace(_request(model, _state(tools)), live_callbacks=[recorder])
+
+    run = await runner.run_agent_loop(request)
+
+    # The cut-off tool call never reports its own end, so the heartbeat that announces "Still working" must be stopped here or it outlives the run.
+    assert run.result["execution_timed_out"] is True
+    assert recorder.started == ["shell_service_execute_command"]
+    assert recorder.stop_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_a_run_that_finishes_normally_also_stops_its_live_tool_runs():
+    recorder = ToolRunStoppingCallback()
+    model = ScriptedChatModel(responses=[AIMessage(content="All done.")])
+    request = replace(_request(model, _state([_tool("shell_service_execute_command")])), live_callbacks=[recorder])
+
+    run = await runner.run_agent_loop(request)
+
+    assert run.agent_output == "All done."
     assert recorder.stop_calls == 1
 
 
@@ -613,3 +691,87 @@ async def test_new_turn_puts_the_runtime_context_in_the_first_human_message(runn
 
     human = [message for message in model.calls[0] if isinstance(message, HumanMessage)][0]
     assert human.content == f"RUNTIME CONTEXT BLOCK\n\n{TASK_TEXT}"
+
+
+def _hands_back_messages(call: list[Any]) -> list[Any]:
+    return [message for message in call if isinstance(message, HumanMessage) and message.content == HANDS_BACK_PROMPT]
+
+
+def _ask(monkeypatch, request: str) -> None:
+    monkeypatch.setattr(runner, "format_chain_context", lambda _state: f"Current request: {request}")
+
+
+HANDS_BACK_ANSWER = "The app is built. To run this application, you'll need to:\n1. Run `npm install`\n2. Run `npm run dev`"
+
+
+@pytest.mark.asyncio
+async def test_hands_back_answer_to_an_instruction_is_sent_back_once_and_the_agent_then_runs_it(monkeypatch):
+    _ask(monkeypatch, "Yeah, you have the ability to run all of those commands. Do it.")
+    tools = [_tool("shell_service_execute_command"), _tool("request_user_input")]
+    model = ScriptedChatModel(
+        responses=[
+            AIMessage(content=HANDS_BACK_ANSWER),
+            AIMessage(content="", tool_calls=[_call("shell_service_execute_command", "call-run", text="npm install")]),
+            AIMessage(content="Ran npm install; it finished cleanly."),
+        ]
+    )
+
+    run = await runner.run_agent_loop(_request(model, _state(tools)))
+
+    assert len(model.calls) == 3
+    assert _hands_back_messages(model.calls[0]) == []
+    assert len(_hands_back_messages(model.calls[1])) == 1
+    assert run.agent_output == "Ran npm install; it finished cleanly."
+
+
+@pytest.mark.asyncio
+async def test_hands_back_nudge_is_not_repeated(monkeypatch):
+    _ask(monkeypatch, "Okay, get it running.")
+    tools = [_tool("shell_service_execute_command"), _tool("request_user_input")]
+    model = ScriptedChatModel(
+        responses=[
+            AIMessage(content=HANDS_BACK_ANSWER),
+            AIMessage(content="I cannot execute these commands directly from this environment."),
+        ]
+    )
+
+    run = await runner.run_agent_loop(_request(model, _state(tools)))
+
+    assert len(model.calls) == 2
+    assert run.agent_output == "I cannot execute these commands directly from this environment."
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("question", ["How do I run this?", "Okay, so what do I need to run?", "Explain how to start it.", "Tell me how to get it running."])
+async def test_a_how_to_answer_to_a_question_is_not_sent_back(monkeypatch, question):
+    _ask(monkeypatch, question)
+    tools = [_tool("shell_service_execute_command"), _tool("request_user_input")]
+    model = ScriptedChatModel(responses=[AIMessage(content=HANDS_BACK_ANSWER)])
+
+    run = await runner.run_agent_loop(_request(model, _state(tools)))
+
+    assert len(model.calls) == 1
+    assert run.agent_output == HANDS_BACK_ANSWER
+
+
+@pytest.mark.asyncio
+async def test_hands_back_nudge_needs_a_shell_or_script_tool_to_be_bound(monkeypatch):
+    _ask(monkeypatch, "Okay, get it running.")
+    model = ScriptedChatModel(responses=[AIMessage(content=HANDS_BACK_ANSWER)])
+
+    run = await runner.run_agent_loop(_request(model, _state([_tool("request_user_input")])))
+
+    assert len(model.calls) == 1
+    assert run.agent_output == HANDS_BACK_ANSWER
+
+
+@pytest.mark.asyncio
+async def test_a_plain_answer_to_an_instruction_is_not_sent_back(monkeypatch):
+    _ask(monkeypatch, "Okay, get it running.")
+    tools = [_tool("shell_service_execute_command"), _tool("request_user_input")]
+    model = ScriptedChatModel(responses=[AIMessage(content="Paris.")])
+
+    run = await runner.run_agent_loop(_request(model, _state(tools)))
+
+    assert len(model.calls) == 1
+    assert run.agent_output == "Paris."

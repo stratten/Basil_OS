@@ -6,6 +6,7 @@ import asyncio
 import hashlib
 import json
 import random
+import re
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Optional
 
@@ -17,8 +18,18 @@ from api.core.logging.api_logger import api_logger
 from ...shared.prompt_context_trimming import trim_oldest_context
 from .agent_execution_core import ModelUnavailableBeforeFirstResponse
 from .agent_executor_factory import _llm_output_log_fields
+from .agent_conversation_thread import ensure_unique_tool_call_ids
 from .agent_loop_connection import ConnectionLostPause, ConnectionWait, is_connectivity_error
 from .context_window_budget import context_window_exceeded_message, estimate_prompt_tokens
+from .conversation_summary import (
+    MAX_SUMMARIES_PER_RUN,
+    ConversationSummary,
+    apply_summary,
+    build_summary,
+    choose_cut,
+    head_end_index,
+    summary_trigger_tokens,
+)
 from .conversation_turns import message_text, render_thread_recap, turn_input_index
 from .model_error_policy import (
     CONTEXT_OVERFLOW,
@@ -45,6 +56,8 @@ ROUTINE_KEEP_RECENT_RESULTS = 6
 ELIDED_RESULT_HEAD_CHARS = 400
 # The tool surface is rebuilt from these results, and a pending question must keep its answer intact
 _NEVER_ELIDED_TOOLS = frozenset({"load_tool_family", "request_user_input"})
+# A result that was already saved (a stored envelope, or a stored_result reply) names its id in the first few dozen characters
+_STORED_RESULT_ID = re.compile(r'"result_id":\s*"(r-[0-9a-f]{8})"')
 
 
 @dataclass
@@ -53,6 +66,8 @@ class AgentRunFlags:
 
     empty_generation_failure: bool = False
     context_window_exceeded: Optional[dict[str, Any]] = None
+    # Not terminal: the run goes on. It records that the user's own context was cut to fit, or that the fixed prompt alone is over the budget.
+    context_trimmed: Optional[dict[str, Any]] = None
 
     def terminal(self) -> bool:
         return self.empty_generation_failure or self.context_window_exceeded is not None
@@ -63,6 +78,8 @@ class AgentRunFlags:
             fields["empty_generation_failure"] = True
         if self.context_window_exceeded is not None:
             fields["context_window_exceeded"] = dict(self.context_window_exceeded)
+        if self.context_trimmed is not None:
+            fields["context_trimmed"] = dict(self.context_trimmed)
         return fields
 
 
@@ -92,26 +109,46 @@ def _condense_prior_turns(messages: list[BaseMessage]) -> list[BaseMessage]:
     return [condensed, *messages[index + 1:]]
 
 
+def _stale_tool_indexes(messages: list[BaseMessage], level: int) -> set[int]:
+    """The positions of the tool results a compaction level replaces: all but the newest few."""
+    keep = _RECENT_TOOL_RESULTS_BY_LEVEL[level]
+    tool_indexes = [index for index, message in enumerate(messages) if isinstance(message, ToolMessage)]
+    return set(tool_indexes[:-keep]) if len(tool_indexes) > keep else set()
+
+
+def _compacted_text(stored_result_id: Optional[str]) -> str:
+    if not stored_result_id:
+        return COMPACTED_TOOL_RESULT
+    return f"[Earlier tool result removed to fit the model's context window; the full result is saved as {stored_result_id}. Use the stored_result tool (search or read) to recover it.]"
+
+
 def compact_messages(
     messages: list[BaseMessage],
     level: int,
     *,
     actual_tokens: Optional[int] = None,
     max_tokens: Optional[int] = None,
+    stored_result_ids: Optional[dict[str, str]] = None,
+    trim_request: bool = True,
+    trim_report: Optional[dict[str, int]] = None,
 ) -> list[BaseMessage]:
-    """Request-only copy: older tool results replaced; level 2 trims the current request; level 3 condenses earlier turns."""
-    keep = _RECENT_TOOL_RESULTS_BY_LEVEL[level]
-    tool_indexes = [index for index, message in enumerate(messages) if isinstance(message, ToolMessage)]
-    stale_indexes = set(tool_indexes[:-keep]) if len(tool_indexes) > keep else set()
-    trim_index = _trim_target_index(messages) if level >= 2 else None
+    """Request-only copy: older tool results replaced; level 2 trims the current request unless trim_request is False; level 3 condenses earlier turns.
+
+    When trim_report is given and the request was actually shortened, it receives request_chars_removed.
+    """
+    saved = stored_result_ids or {}
+    stale_indexes = _stale_tool_indexes(messages, level)
+    trim_index = _trim_target_index(messages) if level >= 2 and trim_request else None
     compacted: list[BaseMessage] = []
     for index, message in enumerate(messages):
         if index in stale_indexes:
-            compacted.append(message.model_copy(update={"content": COMPACTED_TOOL_RESULT}))
+            compacted.append(message.model_copy(update={"content": _compacted_text(saved.get(message.tool_call_id))}))
             continue
         if index == trim_index:
             chars_to_remove = overflow_chars_to_remove(message.content, actual_tokens, max_tokens)
             trimmed = trim_oldest_context(message.content, chars_to_remove, logger)
+            if trimmed and trim_report is not None and len(trimmed) < len(message.content):
+                trim_report["request_chars_removed"] = len(message.content) - len(trimmed)
             compacted.append(message.model_copy(update={"content": trimmed}) if trimmed else message)
             continue
         compacted.append(message)
@@ -120,22 +157,32 @@ def compact_messages(
     return compacted
 
 
-def _elided_text(message: ToolMessage) -> str:
+def _elided_text(message: ToolMessage, stored_result_id: Optional[str] = None) -> str:
     original = message_text(message.content)
     head = original[:ELIDED_RESULT_HEAD_CHARS]
     omitted = max(0, len(original) - len(head))
+    recovery = (
+        f"the full result is saved as {stored_result_id}; use the stored_result tool (search or read) to recover it, or call the tool again"
+        if stored_result_id
+        else "call the tool again if you need them"
+    )
     return (
         f"[Earlier result trimmed: first {ELIDED_RESULT_HEAD_CHARS} characters follow]\n{head}\n"
-        f"[{omitted} characters omitted; call the tool again if you need them.]"
+        f"[{omitted} characters omitted; {recovery}.]"
     )
 
 
-def apply_routine_elision(messages: list[BaseMessage], elided_call_ids: set[str]) -> list[BaseMessage]:
+def apply_routine_elision(
+    messages: list[BaseMessage],
+    elided_call_ids: set[str],
+    stored_result_ids: Optional[dict[str, str]] = None,
+) -> list[BaseMessage]:
     """Request-only copy with the already-elided tool results replaced by their heads."""
     if not elided_call_ids:
         return messages
+    saved = stored_result_ids or {}
     return [
-        message.model_copy(update={"content": _elided_text(message)})
+        message.model_copy(update={"content": _elided_text(message, saved.get(message.tool_call_id))})
         if isinstance(message, ToolMessage) and message.tool_call_id in elided_call_ids
         else message
         for message in messages
@@ -182,6 +229,20 @@ def prefix_fingerprint(request: Any) -> str:
     return digest.hexdigest()[:12]
 
 
+def tool_result_log_fields(request: Any) -> str:
+    """Sizes of the tool results the model has just read, largest first, so a jump in input tokens can be traced to the tool that caused it."""
+    messages = list(getattr(request, "messages", None) or [])
+    last_ai_index = max((index for index, message in enumerate(messages) if isinstance(message, AIMessage)), default=-1)
+    latest = [
+        (message.name or "unknown", len(message_text(message.content)))
+        for message in messages[last_ai_index + 1:]
+        if isinstance(message, ToolMessage)
+    ]
+    chars_in_history = sum(len(message_text(message.content)) for message in messages if isinstance(message, ToolMessage))
+    largest = ", ".join(f"{name}={chars}" for name, chars in sorted(latest, key=lambda entry: -entry[1])[:6]) or "-"
+    return f"messages={len(messages)}, tool_result_chars_in_history={chars_in_history}, latest_tool_results=[{largest}]"
+
+
 def _cache_read_tokens(message: Any) -> Optional[int]:
     usage = getattr(message, "usage_metadata", None) or {}
     details = usage.get("input_token_details") or {}
@@ -217,6 +278,7 @@ class ModelRecoveryMiddleware(AgentMiddleware):
         model_label: str = "",
         connection: Optional[ConnectionWait] = None,
         pause_when_connection_lost: bool = False,
+        summarize_history: bool = False,
     ) -> None:
         super().__init__()
         self.flags = flags
@@ -233,14 +295,121 @@ class ModelRecoveryMiddleware(AgentMiddleware):
         self._tool_chars_cache: dict[str, int] = {}
         self._previous_prefix: Optional[str] = None
         self._elided_call_ids: set[str] = set()
+        self._stored_result_ids: dict[str, str] = {}
+        # Only the main agent loop condenses its older steps; the setup assistant and internal executor leave this off
+        self.summarize_history = summarize_history
+        self._summary: Optional[ConversationSummary] = None
+        self._summaries_made = 0
+        self._summary_floor_tokens = 0
+
+    def _view(self, request: ModelRequest) -> list[BaseMessage]:
+        """The history the model should see before elision: all of it, or with its older part replaced by the saved record."""
+        # Elision and saved-result handles are keyed on tool_call_id, so ids an adapter reused across turns are made unique here, before the summary is applied, in the same order on every call.
+        messages = ensure_unique_tool_call_ids(list(request.messages))
+        return apply_summary(messages, self._summary) if self._summary is not None else messages
+
+    def _save_elided_results(self, candidates: list[ToolMessage]) -> None:
+        """Save each result about to be trimmed, so its trimmed copy can point back to it. A result that was already saved keeps its id."""
+        try:
+            from ...tools.internal_basil_tools.stored_result.store import save_result
+        except Exception as error:
+            logger.debug("Trimmed results cannot be saved: %s", error)
+            return
+        for message in candidates:
+            if message.tool_call_id in self._stored_result_ids:
+                continue
+            text = message_text(message.content)
+            existing = _STORED_RESULT_ID.search(text[: ELIDED_RESULT_HEAD_CHARS * 2])
+            if existing:
+                self._stored_result_ids[message.tool_call_id] = existing.group(1)
+                continue
+            stored = save_result(text)
+            if stored:
+                self._stored_result_ids[message.tool_call_id] = stored["result_id"]
+
+    def _estimate_view(self, request: ModelRequest) -> int:
+        return estimate_prompt_tokens(
+            apply_routine_elision(self._view(request), self._elided_call_ids, self._stored_result_ids),
+            system_text=_system_text(request),
+            tools=list(getattr(request, "tools", None) or []),
+            tool_chars_cache=self._tool_chars_cache,
+        )
+
+    async def _make_summary(self, request: ModelRequest, *, estimate: int, budget: Optional[int]) -> bool:
+        """Condense the older steps now. True when a new record was made and applied; failure leaves the run as it was."""
+        model = getattr(request, "model", None)
+        if not self.summarize_history or model is None or self._summaries_made >= MAX_SUMMARIES_PER_RUN:
+            return False
+        messages = ensure_unique_tool_call_ids(list(request.messages))
+        head_end = head_end_index(messages)
+        if head_end is None:
+            return False
+        cut = choose_cut(messages, self._summary.cut if self._summary is not None else head_end)
+        if cut is None:
+            return False
+        try:
+            summary = await build_summary(
+                model,
+                messages,
+                head_end=head_end,
+                cut=cut,
+                previous=self._summary,
+                prompt_budget_tokens=budget,
+            )
+        except Exception as error:
+            logger.warning("Conversation summary failed (%s); older tool results are trimmed instead", str(error)[:200])
+            summary = None
+        if summary is None:
+            self._summary_floor_tokens = max(self._summary_floor_tokens, int(estimate * 1.25))
+            return False
+        self._summary = summary
+        self._summaries_made += 1
+        after = self._estimate_view(request)
+        self._summary_floor_tokens = int(after * 1.25)
+        logger.info(
+            "conversation-summary n=%s tokens_before=%s tokens_after=%s covered_messages=%s stored=%s",
+            self._summaries_made,
+            estimate,
+            after,
+            summary.messages_covered,
+            summary.stored_result_id or "-",
+        )
+        return True
+
+    async def _summarize_if_needed(self, request: ModelRequest) -> None:
+        """Condense the older steps of a long run into a saved record before the prompt gets close to the window."""
+        trigger = summary_trigger_tokens(self.prompt_budget_tokens)
+        if not self.summarize_history or trigger is None:
+            return
+        estimate = self._estimate_view(request)
+        if estimate > max(trigger, self._summary_floor_tokens):
+            await self._make_summary(request, estimate=estimate, budget=self.prompt_budget_tokens)
+
+    async def _summarize_after_overflow(self, request: ModelRequest) -> bool:
+        """The model refused the prompt as too long: condense the older steps now, whatever the trigger says, and check the result fits before the call is retried.
+
+        When the run started without a known budget, 80% of the window the error reports (or the configured window) is used, and kept as the budget once a summary has been made, so the fit check and later proactive compaction work.
+        """
+        _, reported_window = self._overflow_tokens
+        window = next(
+            (value for value in (reported_window, self.context_window_tokens) if isinstance(value, int) and not isinstance(value, bool) and value > 0),
+            None,
+        )
+        budget = self.prompt_budget_tokens or (int(window * 0.8) if window else None)
+        if not await self._make_summary(request, estimate=self._estimate_view(request), budget=budget):
+            return False
+        if not self.prompt_budget_tokens:
+            self.prompt_budget_tokens = budget
+        self._compact_proactively(request)
+        return True
 
     def _elide_routinely(self, request: ModelRequest) -> None:
         """Once the prompt passes the trigger, elide every older result in one batch so the cached prefix changes rarely."""
         system_text = _system_text(request)
         tools = list(getattr(request, "tools", None) or [])
-        messages = list(request.messages)
+        messages = self._view(request)
         tokens_before = estimate_prompt_tokens(
-            apply_routine_elision(messages, self._elided_call_ids),
+            apply_routine_elision(messages, self._elided_call_ids, self._stored_result_ids),
             system_text=system_text,
             tools=tools,
             tool_chars_cache=self._tool_chars_cache,
@@ -251,8 +420,9 @@ class ModelRecoveryMiddleware(AgentMiddleware):
         if not candidates:
             return
         self._elided_call_ids.update(message.tool_call_id for message in candidates)
+        self._save_elided_results(candidates)
         tokens_after = estimate_prompt_tokens(
-            apply_routine_elision(messages, self._elided_call_ids),
+            apply_routine_elision(messages, self._elided_call_ids, self._stored_result_ids),
             system_text=system_text,
             tools=tools,
             tool_chars_cache=self._tool_chars_cache,
@@ -265,18 +435,59 @@ class ModelRecoveryMiddleware(AgentMiddleware):
         )
 
     def _compacted(self, request: ModelRequest) -> ModelRequest:
-        elided = apply_routine_elision(list(request.messages), self._elided_call_ids)
+        elided = apply_routine_elision(self._view(request), self._elided_call_ids, self._stored_result_ids)
         if self.compaction_level == 0:
-            return request.override(messages=elided) if self._elided_call_ids else request
+            return request.override(messages=elided) if (self._elided_call_ids or self._summary is not None) else request
+        view = self._view(request)
+        self._save_elided_results([view[index] for index in sorted(_stale_tool_indexes(view, self.compaction_level))])
         actual_tokens, max_tokens = self._overflow_tokens
-        return request.override(
-            messages=compact_messages(
-                elided,
-                self.compaction_level,
-                actual_tokens=actual_tokens,
-                max_tokens=max_tokens,
-            )
+        fixed_tokens = self._fixed_prompt_tokens(request)
+        limit = self.prompt_budget_tokens or max_tokens
+        # The system prompt and tool definitions are never trimmed, so when they alone reach the limit, cutting the user's context cannot make the prompt fit and would only destroy it.
+        fixed_over_limit = bool(limit) and fixed_tokens >= limit
+        trim_report: dict[str, int] = {}
+        compacted = compact_messages(
+            elided,
+            self.compaction_level,
+            actual_tokens=actual_tokens,
+            max_tokens=max_tokens,
+            stored_result_ids=self._stored_result_ids,
+            trim_request=not fixed_over_limit,
+            trim_report=trim_report,
         )
+        self._note_context_cut(trim_report, fixed_over_limit=fixed_over_limit, fixed_tokens=fixed_tokens, limit=limit)
+        return request.override(messages=compacted)
+
+    def _fixed_prompt_tokens(self, request: ModelRequest) -> int:
+        """The estimated tokens of the part of every call that no compaction level can shrink: the system prompt and the tool definitions."""
+        return estimate_prompt_tokens(
+            [],
+            system_text=_system_text(request),
+            tools=list(getattr(request, "tools", None) or []),
+            tool_chars_cache=self._tool_chars_cache,
+        )
+
+    def _note_context_cut(self, trim_report: dict[str, int], *, fixed_over_limit: bool, fixed_tokens: int, limit: Optional[int]) -> None:
+        """Record, for the run's result, that the user's context was cut to fit or that nothing could be cut because the fixed prompt is already over the limit."""
+        removed = trim_report.get("request_chars_removed", 0)
+        if not removed and not (fixed_over_limit and self.compaction_level >= 2):
+            return
+        previous = self.flags.context_trimmed or {}
+        if fixed_over_limit and not previous.get("fixed_over_limit"):
+            logger.warning(
+                "⚠️ The system prompt and tools alone (%s tokens) reach the %s-token limit, so the request is left untrimmed; the call may be refused",
+                fixed_tokens,
+                limit,
+            )
+        self.flags.context_trimmed = {
+            "request_chars_removed": max(removed, int(previous.get("request_chars_removed", 0))),
+            "fixed_prompt_tokens": fixed_tokens,
+            "limit_tokens": limit,
+            "fixed_over_limit": fixed_over_limit or bool(previous.get("fixed_over_limit")),
+            "window_tokens": self.context_window_tokens or self._overflow_tokens[1],
+            "model": self.model_label,
+            "compaction_level": self.compaction_level,
+        }
 
     def _max_level(self, request: ModelRequest) -> int:
         return max_compaction_level(list(request.messages))
@@ -357,6 +568,7 @@ class ModelRecoveryMiddleware(AgentMiddleware):
     ) -> Any:
         transient_attempts = 0
         empty_retried = False
+        await self._summarize_if_needed(request)
         self._elide_routinely(request)
         self._compact_proactively(request)
         while True:
@@ -375,6 +587,9 @@ class ModelRecoveryMiddleware(AgentMiddleware):
                 if classification.kind == CONTEXT_OVERFLOW:
                     self._overflow_tokens = (classification.actual_tokens, classification.max_tokens)
                     token_summary = overflow_token_summary(*self._overflow_tokens)
+                    if await self._summarize_after_overflow(request):
+                        logger.warning("⚠️ Prompt too long%s; condensed the older steps into a saved record and retrying", token_summary)
+                        continue
                     max_level = self._max_level(request)
                     if self.compaction_level < max_level:
                         self.compaction_level += 1
@@ -422,6 +637,7 @@ class ModelRecoveryMiddleware(AgentMiddleware):
                 logger.info(
                     f"🔬 PIPELINE: model returned — {_llm_output_log_fields(last_ai)}, prefix={prefix}"
                 )
+                logger.info(f"[AgentTelemetry] call-context {tool_result_log_fields(request)}")
                 if self._previous_prefix is not None and _cache_read_tokens(last_ai) == 0:
                     if prefix == self._previous_prefix:
                         logger.warning("Prompt cache miss with an unchanged prefix (likely cache TTL expiry)")

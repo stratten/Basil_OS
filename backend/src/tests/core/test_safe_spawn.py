@@ -112,3 +112,82 @@ async def test_slow_spawn_is_reported(monkeypatch):
     await safe_spawn.create_subprocess_exec("echo", "x")
 
     assert any("took 3.5s" in warning for warning in warnings)
+
+
+def _tesseract_binary():
+    import os
+    import shutil
+
+    found = shutil.which("tesseract")
+    if found:
+        return found
+    return "/opt/homebrew/bin/tesseract" if os.path.exists("/opt/homebrew/bin/tesseract") else None
+
+
+def test_pytesseract_wrapper_adds_close_fds_false_and_installing_twice_is_a_no_op():
+    import pytesseract.pytesseract as module
+
+    safe_spawn.install_pytesseract_posix_spawn()
+    installed = module.subprocess_args
+    safe_spawn.install_pytesseract_posix_spawn()
+
+    assert module.subprocess_args is installed
+    assert installed._basil_posix_spawn is True
+    assert installed.__wrapped__ is not installed
+    assert installed()["close_fds"] is False
+
+
+def test_pytesseract_wrapper_keeps_an_explicit_close_fds_and_leaves_fork_only_options_alone(monkeypatch):
+    import pytesseract.pytesseract as module
+
+    monkeypatch.setattr(module, "subprocess_args", lambda *a, **k: {"close_fds": True, "stdin": subprocess.PIPE})
+    safe_spawn.install_pytesseract_posix_spawn()
+    assert module.subprocess_args()["close_fds"] is True
+
+    monkeypatch.setattr(module, "subprocess_args", lambda *a, **k: {"cwd": "/tmp"})
+    safe_spawn.install_pytesseract_posix_spawn()
+    assert "close_fds" not in module.subprocess_args()
+
+
+def test_pytesseract_image_to_string_takes_the_posix_spawn_path_and_never_forks(posix_spawn_calls, monkeypatch):
+    import pytesseract
+    from PIL import Image
+
+    tesseract = _tesseract_binary()
+    if tesseract is None:
+        pytest.skip("tesseract is not installed")
+    safe_spawn.install_pytesseract_posix_spawn()
+    monkeypatch.setattr(pytesseract.pytesseract, "tesseract_cmd", tesseract)
+    fork_calls = []
+    original_fork_exec = subprocess._fork_exec
+    monkeypatch.setattr(subprocess, "_fork_exec", lambda *a, **k: fork_calls.append(a) or original_fork_exec(*a, **k))
+
+    text = pytesseract.image_to_string(Image.new("RGB", (200, 60), "white"))
+
+    assert isinstance(text, str)
+    assert len(posix_spawn_calls) == 1
+    assert fork_calls == []
+
+
+@pytest.mark.parametrize(
+    "module_name",
+    ["api.services.ocr.ocr_service", "api.services.image_processing.image_processing_service"],
+)
+def test_both_ocr_services_install_the_posix_spawn_route_on_import(module_name):
+    import os
+    import sys
+
+    code = (
+        f"import {module_name}\n"
+        "import pytesseract.pytesseract as m\n"
+        "print('INSTALLED' if getattr(m.subprocess_args, '_basil_posix_spawn', False) else 'MISSING')\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        timeout=180,
+        env={**os.environ, "PYTHONPATH": os.pathsep.join(p for p in sys.path if p)},
+    )
+
+    assert "INSTALLED" in result.stdout, result.stdout + result.stderr

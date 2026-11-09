@@ -1,3 +1,5 @@
+@import '../../../shared/markdown-table.css';
+
 .home-markdown h1,
 .home-markdown h2,
 .home-markdown h3,
@@ -42,11 +44,15 @@
   text-decoration: line-through;
 }
 
+/* Table shape, borders, rounded corners, and column minimums come from shared/markdown-table.css, the same as every other Markdown surface. Here the table scrolls sideways when it is wider than the bubble, and its box shrinks to its content so the rounded border does not stretch across the bubble. The line color follows the bubble's text color because these tables sit on both light and colored backgrounds. */
+.home-markdown {
+  --markdown-table-line: color-mix(in srgb, currentColor 35%, transparent);
+}
+
 .home-markdown table {
-  border-collapse: collapse;
   display: block;
+  width: fit-content;
   margin: 0 0 0.75em;
-  max-width: 100%;
   overflow-x: auto;
 }
 
@@ -54,15 +60,6 @@
   margin-bottom: 0;
 }
 
-.home-markdown th,
-.home-markdown td {
-  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
-  padding: 4px 8px;
-  text-align: left;
-  vertical-align: top;
-}
-
 .home-markdown th {
-  background: color-mix(in srgb, currentColor 10%, transparent);
   font-family: var(--font-family-medium);
 }

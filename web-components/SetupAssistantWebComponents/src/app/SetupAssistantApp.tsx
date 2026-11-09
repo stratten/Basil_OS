@@ -4,13 +4,18 @@ import { SetupAgendaSidebar } from '@/components/agenda/SetupAgendaSidebar'
 import { BasilArtifactPanel } from '@/components/conversation/BasilArtifactPanel'
 import { BasilConversation } from '@/components/conversation/BasilConversation'
 import { OrientationInterstitial } from '@/components/discovery/OrientationInterstitial'
+import { ExpressSetup } from '@/components/express/ExpressSetup'
+import { applyNativeExpressItems, nativeHandledItemIds } from '@/components/express/expressNativeHotkeys'
+import type { ComfortLevel } from '@/components/express/expressTypes'
 import { IntroAndPrivacy } from '@/components/intro/IntroAndPrivacy'
 import { WelcomeIntro } from '@/components/intro/WelcomeIntro'
+import { LocalModelFailureBanner } from '@/components/layout/LocalModelFailureBanner'
 import { SetupShell } from '@/components/layout/SetupShell'
 import { SetupStepActions } from '@/components/layout/SetupStepActions'
+import { StarterDownloadsStatus } from '@/components/layout/StarterDownloadsStatus'
 import { StageTransition } from '@/components/transitions/StageTransition'
 import { SetupWrapUpPanel } from '@/components/wrapup/SetupWrapUpPanel'
-import { closeSetupAssistant, notifySetupAssistantReady } from '@/services/bridge'
+import { closeSetupAssistant, notifySetupAssistantReady, reportProblem, showDiagnosticLogs } from '@/services/bridge'
 import {
   type SetupAgendaConfirmationResolution,
   useSetupAssistantStore,
@@ -55,6 +60,12 @@ export function SetupAssistantApp() {
   const { handleFinish, handleSkip } = useSetupCompletion({ store, buildRequest, abort })
   // True while newly proposed agenda items are animating in; the first Basil message waits for it so the agenda lands before the reply types in.
   const [isAgendaEntering, setIsAgendaEntering] = useState(false)
+  // Which of the manual flow's steps opens first. 'model' is where Express hands over when it cannot set up the thinking model itself.
+  const [introStartStep, setIntroStartStep] = useState<'downloads' | 'model'>('downloads')
+  // YOLO is the All-in plan with its own heading, so the comfort level alone cannot tell the two paths apart.
+  const [isYoloPath, setIsYoloPath] = useState(false)
+  // Set once the person leaves orientation, so a discovery sweep that finishes later does not start the orientation stream over their conversation.
+  const orientationLeftRef = useRef(false)
   const receiptActionRef = useRef(handleReceiptAction)
   const approveAllRef = useRef(handleApproveAll)
   const agendaConfirmationResolutionRef = useRef(handleAgendaConfirmationResolved)
@@ -100,19 +111,50 @@ export function SetupAssistantApp() {
   const handleIntroContinue = (initialMessage: string, interactionStyle: string[] = []) => {
     store.setInteractionStyle(interactionStyle)
     resetOrientationSettled()
+    orientationLeftRef.current = false
     store.setStage('orientation')
     if (initialMessage) {
       store.appendUserMessage(initialMessage)
     }
     void (async () => {
       const facts = await fetchDiscoveryFactsForOrientation()
+      // The person may have continued past orientation while the sweep ran. Starting the orientation stream now would cut off their conversation.
+      if (orientationLeftRef.current) return
       startStream(initialMessage, facts, 'deterministic_discovery', 'orientation')
     })()
   }
 
+  const openManualSetup = (startStep: 'downloads' | 'model') => {
+    setIntroStartStep(startStep)
+    store.setStage('intro_and_privacy')
+  }
+
+  // The first screen stays reachable after a path is chosen, so someone partway through step by step can still switch to the quick route.
+  const backToPathChooser = () => {
+    store.setStage('welcome')
+  }
+
+  const startExpressSetup = (comfort: ComfortLevel, isYolo = false) => {
+    setIsYoloPath(isYolo)
+    store.setExpressComfort(comfort)
+    store.setStage('express')
+  }
+
   const handleOrientationContinue = () => {
+    orientationLeftRef.current = true
     store.setStage('conversation')
     startStream(SETUP_CONVERSATION_START_PROMPT, undefined, 'agent_synthesis', 'conversation')
+  }
+
+  // Runs the last thing the user said again, for the failure banner's Try again. Before the user has said anything it re-sends an empty message for the current stage.
+  const handleRetryLastTurn = () => {
+    const lastUserMessage = [...store.state.messages].reverse().find(message => message.role === 'user')
+    store.applyEvent({
+      kind: 'turn_started',
+      payload: {},
+      created_at: new Date().toISOString(),
+    })
+    startStream(lastUserMessage?.content ?? '')
   }
 
   const handleUserMessage = (content: string, preliminaryStatusMessage?: string | null) => {
@@ -165,7 +207,28 @@ export function SetupAssistantApp() {
 
   const renderCurrentSetupStage = () => {
     if (store.state.setupStage === 'welcome') {
-      return <WelcomeIntro onContinue={() => store.setStage('intro_and_privacy')} />
+      return (
+        <WelcomeIntro
+          onChooseManual={() => openManualSetup('downloads')}
+          onChooseSelf={comfort => startExpressSetup(comfort)}
+          onChooseYolo={() => startExpressSetup('all_in', true)}
+        />
+      )
+    }
+
+    if (store.state.setupStage === 'express') {
+      return (
+        <ExpressSetup
+          comfort={store.state.expressComfort ?? 'cautious'}
+          isYolo={isYoloPath}
+          nativeHandledIds={nativeHandledItemIds()}
+          nativeApplier={applyNativeExpressItems}
+          onSelectModelAccess={store.setModelAccess}
+          onFinished={() => handleIntroContinue('')}
+          onChooseManual={() => openManualSetup('model')}
+          onBackToStart={backToPathChooser}
+        />
+      )
     }
 
     if (store.state.setupStage === 'intro_and_privacy') {
@@ -174,6 +237,10 @@ export function SetupAssistantApp() {
           selectedModelAccess={store.state.setupAgentModelAccess}
           onSelectModelAccess={store.setModelAccess}
           onContinue={handleIntroContinue}
+          initialStep={introStartStep}
+          onBackToStart={backToPathChooser}
+          onContextImported={store.mergeImportedContext}
+          onContextImportUndone={store.clearImportedProfile}
         />
       )
     }
@@ -186,6 +253,7 @@ export function SetupAssistantApp() {
           isDiscoveryFetching={isDiscoveryFetching}
           isAgentStreaming={store.state.isStreaming}
           latestProgressNarration={store.state.latestProgressNarration}
+          importedContext={store.state.importedContext}
           onReadyForConversation={handleOrientationContinue}
         />
       )
@@ -263,7 +331,20 @@ export function SetupAssistantApp() {
       hasActiveArtifact={hasActiveArtifact}
       onSkip={handleSkip}
     >
-      {store.state.errorMessage && <div className="error-banner">{store.state.errorMessage}</div>}
+      {store.state.localModelFailure ? (
+        <LocalModelFailureBanner
+          failure={store.state.localModelFailure}
+          onRetry={handleRetryLastTurn}
+          onChooseAnotherRoute={() => openManualSetup('downloads')}
+          onReport={detail => reportProblem('setup_assistant', detail)}
+          onShowLogs={detail => showDiagnosticLogs('setup_assistant', detail)}
+        />
+      ) : (
+        store.state.errorMessage && <div className="error-banner">{store.state.errorMessage}</div>
+      )}
+
+      {/* The first screen has its own Model downloads step, so this status panel appears only on the wrap-up screen. */}
+      {store.state.setupStage === 'wrap_up' && <StarterDownloadsStatus />}
 
       <StageTransition stageKey={store.state.setupStage}>
         {renderCurrentSetupStage()}

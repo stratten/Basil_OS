@@ -71,9 +71,18 @@ extension HotkeySettingsWebView: HotkeySettingsBridgeOutput {
                 "binding": bindingPayload(binding),
             ]
         }
+        let effectiveBindings = Dictionary(uniqueKeysWithValues: rows.map { ($0.id, bindings[$0.id] ?? HotkeyRowCatalog.defaultBinding(for: $0.id)) })
+        let systemState = SystemShortcutConflictDetector.readSystemState()
+        let conflicts = SystemShortcutConflictDetector.conflicts(
+            bindings: effectiveBindings,
+            rows: rows,
+            symbolicHotKeys: systemState.symbolicHotKeys,
+            siriPreferences: systemState.siriPreferences
+        )
         return [
             "rows": rowPayloads,
             "enableMonitoringAtStartup": enableMonitoringAtStartup,
+            "systemConflicts": conflicts.map(\.payload),
         ]
     }
 }

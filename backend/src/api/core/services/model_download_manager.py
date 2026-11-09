@@ -30,6 +30,12 @@ from typing import Any, Callable, Dict, List, Literal, Optional
 
 from api.core.config.api_settings import settings as api_settings
 from api.core.logging.api_logger import api_logger
+from api.core.models.model_download.disk_space import (
+    InsufficientDiskSpaceError,
+    cached_repo_gb,
+    detected_free_disk_gb,
+    download_disk_required_gb,
+)
 from api.core.models.model_downloader import ModelDownloader
 from api.settings import get_models_dir
 
@@ -84,6 +90,8 @@ class DownloadEntry:
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     cancel_event: asyncio.Event = field(default_factory=asyncio.Event)
+    # Set only for a validation session's "copy from my normal Basil" request. The entry then copies files from this models folder instead of downloading, and reports progress the same way.
+    copy_source_root: Optional[Path] = None
 
     def to_progress_payload(self) -> Dict[str, Any]:
         return {
@@ -149,8 +157,16 @@ class DownloadManager:
     def model_id_for(model_type: str, variant: str) -> str:
         return f"{model_type}-{variant}"
 
-    async def start(self, model_type: str, variant: str) -> DownloadEntry:
-        """Enqueue a download. Idempotent for in-flight or installed models."""
+    async def start(
+        self,
+        model_type: str,
+        variant: str,
+        copy_source_root: Optional[Path] = None,
+    ) -> DownloadEntry:
+        """Enqueue a download. Idempotent for in-flight or installed models.
+
+        Raises ``InsufficientDiskSpaceError`` when the models volume cannot hold the download, so a full disk is reported up front with how much to free instead of failing partway through the copy. With ``copy_source_root`` (validation sessions only) the entry copies the installed model from that folder instead of downloading it.
+        """
         model_id = self.model_id_for(model_type, variant)
         async with self._lock:
             existing = self._entries.get(model_id)
@@ -173,11 +189,14 @@ class DownloadManager:
                 )
                 return entry
 
+            self._ensure_disk_space(model_type, variant)
+
             entry = DownloadEntry(
                 model_id=model_id,
                 model_type=model_type,
                 variant=variant,
                 message="Queued",
+                copy_source_root=copy_source_root,
             )
             self._entries[model_id] = entry
             self._tasks[model_id] = asyncio.create_task(
@@ -258,6 +277,37 @@ class DownloadManager:
                 task.cancel()
         await asyncio.gather(*self._tasks.values(), return_exceptions=True)
 
+    def _ensure_disk_space(self, model_type: str, variant: str) -> None:
+        """Refuse a registry model whose download the models volume cannot hold.
+
+        A model with no registry entry, no size in GB, or a free-space reading that fails is let through, because the download itself still reports a full disk. What an earlier attempt left in the Hugging Face cache counts toward the need, so a retry is only asked for the room it still requires.
+        """
+        from api.core.models.model_download.hf_cache_cleanup import repo_id_from_model_config
+        from api.core.models.models_registry import get_model
+
+        model_id = self.model_id_for(model_type, variant)
+        try:
+            config = get_model(model_id)
+            if not config:
+                return
+            required_gb = download_disk_required_gb(
+                config.get("size"),
+                cached_gb=cached_repo_gb(repo_id_from_model_config(config)),
+            )
+            free_gb = detected_free_disk_gb(self._models_dir)
+        except Exception:
+            api_logger.exception("[DOWNLOAD_MANAGER] disk space check failed for %s; allowing the download", model_id)
+            return
+        if required_gb is None or free_gb is None or free_gb >= required_gb:
+            return
+        api_logger.warning(
+            "[DOWNLOAD_MANAGER] refusing %s: needs %.1f GB free, %.1f GB free",
+            model_id,
+            required_gb,
+            free_gb,
+        )
+        raise InsufficientDiskSpaceError(model_id, str(config.get("display_name") or model_id), required_gb, free_gb)
+
     def _is_installed(self, model_type: str, variant: str) -> bool:
         try:
             installed = self._downloader.get_installed_models()
@@ -323,6 +373,27 @@ class DownloadManager:
 
         return _cb
 
+    async def _copy_from_source(
+        self,
+        entry: DownloadEntry,
+        callback: Callable[[float, str, Optional[Dict[str, Any]]], None],
+    ) -> None:
+        """Copy an installed model from the entry's source folder into this manager's models folder."""
+        from api.core.models.model_download.validation_model_copy import (
+            ModelCopyCanceled,
+            copy_model,
+            plan_model_copy,
+        )
+
+        plan = plan_model_copy(entry.model_id, entry.copy_source_root, self._models_dir)
+        if plan is None:
+            raise RuntimeError(f"Your normal Basil does not have a complete copy of {entry.model_id} to copy.")
+        try:
+            await asyncio.to_thread(copy_model, plan, callback, entry.cancel_event)
+        except ModelCopyCanceled:
+            # _run reads the canceled event right after this returns and records the canceled status.
+            entry.cancel_event.set()
+
     async def _run(self, entry: DownloadEntry) -> None:
         try:
             async with self._semaphore:
@@ -335,12 +406,15 @@ class DownloadManager:
                 entry.message = "Starting download..."
 
                 callback = self._make_progress_callback(entry)
-                await self._downloader.download_model(
-                    entry.model_type,
-                    entry.variant,
-                    progress_callback=callback,
-                    cancel_event=entry.cancel_event,
-                )
+                if entry.copy_source_root is not None:
+                    await self._copy_from_source(entry, callback)
+                else:
+                    await self._downloader.download_model(
+                        entry.model_type,
+                        entry.variant,
+                        progress_callback=callback,
+                        cancel_event=entry.cancel_event,
+                    )
                 if entry.cancel_event.is_set():
                     entry.status = "user_canceled"
                     entry.message = "Canceled by user"

@@ -80,6 +80,12 @@ async def delete_agent_task(
                 agent_task_ids,
             )
 
+        if table_exists("agent_checklists") and table_exists("agent_work_sessions"):
+            # Checklist items, references, step logs, and notes can hold email content, so they leave with the chain they belong to. Captured work evidence is deliberately left alone.
+            owned_sessions = f"SELECT id FROM agent_work_sessions WHERE root_task_id IN ({placeholders})"
+            conn.execute(f"DELETE FROM agent_checklist_items WHERE session_id IN ({owned_sessions})", agent_task_ids)
+            conn.execute(f"DELETE FROM agent_checklists WHERE session_id IN ({owned_sessions})", agent_task_ids)
+
         conn.execute(
             f"DELETE FROM agent_tasks WHERE id IN ({placeholders})",
             agent_task_ids,

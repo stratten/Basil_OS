@@ -3,6 +3,7 @@ import type { AgentTaskDetail } from '../types';
 import type { AgentTaskPresentationSummaryHttpResponse } from '../artifacts/artifactContract';
 import * as api from '../services/api';
 import { agentStore } from '../store/agentStore';
+import { loadComposerDraft, rememberComposerHtml, resetComposerDrafts } from '../store/composerDraftStore';
 
 // bridge.ts (imported by useHostBridge.ts) assigns onto `window` at module
 // load time, and there is no jsdom in this project's test environment (see
@@ -186,6 +187,33 @@ describe('hydrateDetachedChain', () => {
     const agent = agentStore.getAgent('root-task-2');
     expect(agent?.status).toBe('failed');
     expect(agent?.errorMessage).toBe('File not found');
+  });
+
+  it('keeps the reader\'s unsent follow-up text when it wires an in-flight scheduled run into the chain', async () => {
+    resetComposerDrafts();
+    agentStore.registerAgent('root-typing');
+    rememberComposerHtml('follow-up', 'root-typing', 'half-written follow-up', true);
+    vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
+      id: 'root-typing',
+      status: 'completed',
+      follow_ups: [{
+        id: 'scheduled-run-turn',
+        original_prompt: 'Check the inbox',
+        timestamp: '2026-11-08T16:47:30.000Z',
+        status: 'processing',
+        files: [],
+        reference_paths: [],
+        root_task_id: 'root-typing',
+        previous_task_id: 'root-typing',
+        chain_sequence_number: 1,
+      }],
+    }));
+
+    await hydrateDetachedChain('root-typing');
+
+    expect(agentStore.getAgent('root-typing')?.currentTurnTaskId).toBe('scheduled-run-turn');
+    expect(loadComposerDraft('follow-up', 'root-typing')?.html).toBe('half-written follow-up');
+    resetComposerDrafts();
   });
 
   it('restores a missed checkpoint for the active detached follow-up onto the root entry', async () => {

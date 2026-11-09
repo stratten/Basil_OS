@@ -10,10 +10,12 @@ from . import (
     completion_routes,
     connection_routes,
     discovery_routes,
+    express_routes,
     interaction_style_routes,
     model_access_routes,
     proposal_routes,
     recommendation_routes,
+    validation_model_routes,
 )
 
 
@@ -26,5 +28,7 @@ router.include_router(proposal_routes.router)
 router.include_router(connection_routes.router)
 router.include_router(completion_routes.router)
 router.include_router(model_access_routes.router)
+router.include_router(validation_model_routes.router)
 router.include_router(interaction_style_routes.router)
+router.include_router(express_routes.router)
 

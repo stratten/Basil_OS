@@ -2,7 +2,7 @@
 Tests for the shared anti-repetition decode parameters.
 
 Beyond the dict shape, these assert that every kwarg name is actually accepted
-by the installed transformers (4.53.1) Whisper generate and faster-whisper
+by the installed transformers (5.22.2) Whisper generate and faster-whisper
 (1.1.1) transcribe APIs - i.e. the "no kwarg/runtime error" half of the venv
 harness, deterministically and without loading a 1.6GB model.
 """

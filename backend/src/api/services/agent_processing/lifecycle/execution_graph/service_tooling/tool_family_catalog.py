@@ -29,6 +29,7 @@ class ToolFamilyDefinition:
     examples: tuple[str, ...] = ()
     routing_hints: tuple[str, ...] = ()
     risk_class: str = "normal"
+    index_note: str = ""  # One sentence the tool index prints after this family's tool list, for a routing rule that must sit next to the tool names.
 
 
 @dataclass(frozen=True)
@@ -78,14 +79,14 @@ FAMILY_DEFINITIONS: tuple[ToolFamilyDefinition, ...] = (
         ),
         when_to_load="Load when the task mentions files, folders, documents, paths, attachments, or local artifacts.",
         tool_prefixes=("file_service_",),
-        examples=("find a file", "work with a dropped folder", "prepare current document"),
-        routing_hints=("local files/folders", "explicit paths", "document content", "plain-text writes"),
+        examples=("find a file", "search a project folder for a word", "read part of a text file", "work with a dropped folder", "prepare current document"),
+        routing_hints=("local files/folders", "explicit paths", "document content", "searching or reading text in a known folder without a shell", "plain-text writes"),
         risk_class="local file mutations possible",
     ),
     ToolFamilyDefinition(
         name="email",
-        purpose="Search, read, organize, or draft email through configured email clients.",
-        when_to_load="Load when the task involves mailboxes, messages, inbox triage, drafts, or email sending.",
+        purpose="Search, read, organize, or draft email in the Mail app or Outlook on this Mac (not Gmail or other connected mailboxes).",
+        when_to_load="Load when the task involves mailboxes, messages, inbox triage, drafts, or email sending. If an enabled external service covers the mailbox, use that connection first (see external); load this family only when the user asks for the Mail app, the connection fails or does not cover the work, or the mailbox has no connection.",
         tool_prefixes=("email_service_",),
         examples=("summarize inbox", "draft reply", "organize messages"),
         routing_hints=("mailboxes", "messages", "threads", "drafts"),
@@ -97,6 +98,7 @@ FAMILY_DEFINITIONS: tuple[ToolFamilyDefinition, ...] = (
         when_to_load="Load for website/page interaction when no connected external-service tool applies, or when the user explicitly needs browser UI work.",
         tool_prefixes=("browser_",),
         tool_names=("analyze_with_vision",),
+        index_note="Use these, not AppleScript or the shell, to open or read any web page, even when a browser is already open on screen.",
         examples=("use Amazon", "fill a web form", "inspect current browser page"),
         routing_hints=("ordinary websites", "DOM/page interaction", "forms", "not configured service records"),
         risk_class="user-visible web actions",
@@ -128,8 +130,8 @@ FAMILY_DEFINITIONS: tuple[ToolFamilyDefinition, ...] = (
     ),
     ToolFamilyDefinition(
         name="external",
-        purpose="Use connected remote services and current web search.",
-        when_to_load="Load when the request names a connected external service, account-backed remote data, or current open-web facts.",
+        purpose="Use connected remote services, including connected Gmail and other mail, calendar, and file accounts, and current web search.",
+        when_to_load="Load first whenever a connected external service could do the work, whether or not the request names it, and for account-backed remote data or current open-web facts.",
         tool_names=("external_catalog", "web_search"),
         examples=("GitHub/Linear/Speakeasy connector", "current web facts"),
         routing_hints=("connected third-party services", "MCP connections", "account-backed external tools", "open web search"),
@@ -147,11 +149,20 @@ FAMILY_DEFINITIONS: tuple[ToolFamilyDefinition, ...] = (
     ToolFamilyDefinition(
         name="delegation",
         purpose="Delegate independent bounded work to Basil-native child AgentTasks.",
-        when_to_load="Load only when independent subproblems can safely run in parallel.",
+        when_to_load="Load only when independent subproblems can safely run in parallel and this task needs their results. To split work off into its own standalone task, load separate_task instead.",
         tool_names=("delegated_agent",),
         examples=("parallel independent file reviews", "bounded research subtask"),
         routing_hints=("internal subagents", "parallel work", "independent child tasks"),
         risk_class="durable child-task admission",
+    ),
+    ToolFamilyDefinition(
+        name="separate_task",
+        purpose="Start a new, separate top-level Basil Agent Task for one piece of work, linked back to this task, so this task's chain can continue with other work.",
+        when_to_load="Load when the user asks to split work off into another agent task, run something as its own task, or handle one item separately while this chain carries on. Do not use it to wait or re-check later (use the follow_up tools), for a recurring schedule (use schedule), or for parallel subtasks whose results this task needs (use delegation).",
+        tool_names=("start_separate_agent_task",),
+        examples=("split this email's work into its own agent task", "handle this one item as a separate task", "run this as its own task so we can continue here"),
+        routing_hints=("split off", "separate agent task", "its own task", "continue the other items in this chain"),
+        risk_class="durable agent task creation",
     ),
     ToolFamilyDefinition(
         name="memory",
@@ -163,27 +174,39 @@ FAMILY_DEFINITIONS: tuple[ToolFamilyDefinition, ...] = (
     ),
     ToolFamilyDefinition(
         name="todos",
-        purpose="Create, inspect, and manage durable Basil To-Dos, including scoped workspace notes and worker delegation.",
-        when_to_load="Load when the user asks to capture, inspect, update, discuss, or delegate a Basil To-Do.",
+        purpose="Create, inspect, edit, and close out durable Basil To-Dos: add notes and references, change the title, description, priority, due date, or status (completing, dismissing, or canceling asks the user first), and delegate workspace To-Do work.",
+        when_to_load="Load when the user asks to capture, inspect, update, complete, discuss, or delegate a Basil To-Do, or when the task is about work that an existing To-Do already tracks.",
         tool_names=(
             "create_todos",
             "list_todos",
             "inspect_todo",
             "append_todo_note",
+            "attach_todo_reference",
+            "update_todo",
+            "set_todo_status",
             "delegate_todo_work",
         ),
-        examples=("create a To-Do", "add a note to this To-Do", "delegate selected To-Do work"),
-        routing_hints=("Basil To-Dos", "action items", "workspace notes", "To-Do delegation"),
+        examples=("create a To-Do", "add a note to this To-Do", "update the To-Do with the next steps", "mark this To-Do completed", "delegate selected To-Do work"),
+        routing_hints=("Basil To-Dos", "action items", "workspace notes", "update the To-Do", "complete the To-Do", "To-Do delegation"),
         risk_class="durable To-Do mutations and worker admission",
     ),
     ToolFamilyDefinition(
         name="schedule",
-        purpose="Create standalone scheduled Basil agent tasks that run later or on a recurrence, independent of this task.",
+        purpose="Create standalone scheduled Basil agent tasks that run later or on a recurrence, independent of this task, review the existing schedules, and pause one.",
         when_to_load="Load when Basil itself needs to run a separate agent task later or on a recurrence that does not depend on this task's history, such as a daily digest. To wait for something to finish, or to keep checking on something for this task every so often, use the always-available follow_up tools instead so the checks stay in this task's chain.",
-        tool_names=("create_scheduled_agent_task_from_prompt",),
-        examples=("run this every morning", "schedule recurring agent work"),
-        routing_hints=("future agent work", "recurring schedules"),
+        tool_names=("create_scheduled_agent_task_from_prompt", "manage_scheduled_agent_tasks"),
+        examples=("run this every morning", "schedule recurring agent work", "what schedules do I have", "pause the daily digest"),
+        routing_hints=("future agent work", "recurring schedules", "list schedules", "pause a schedule"),
         risk_class="future tool execution",
+    ),
+    ToolFamilyDefinition(
+        name="app_settings",
+        purpose="Look up and change Basil's own settings, such as its colors, text size and font.",
+        when_to_load="Load when the user asks you to change how Basil itself looks or behaves, or asks what Basil's settings are. It is not for changing the user's files or other apps.",
+        tool_names=("app_settings",),
+        examples=("make your UI pink", "make your text larger", "switch to a different font", "undo that color change"),
+        routing_hints=("Basil appearance", "Basil colors", "text size", "Basil settings"),
+        risk_class="changes to Basil's own configuration",
     ),
     ToolFamilyDefinition(
         name="follow_up",
@@ -245,6 +268,12 @@ CORE_TOOL_NAMES: frozenset[str] = frozenset(
         # change skill behavior.
         "skill_search",
         "skill_load",
+        # The task checklist is always available: a step list the model only
+        # reaches after loading a family is a step list it never uses.
+        "checklist",
+        "checklist_notes",
+        # A result too large for the conversation is saved and read back through this tool, so it must be present from the first pass.
+        "stored_result",
     }
 )
 
@@ -322,19 +351,35 @@ def _connected_external_services_for_routing() -> list[str]:
         return []
 
 
+CONNECTED_SERVICE_ROUTING_RULE = (
+    "A connected service is the first route for any request it can serve, even when the request does not name it "
+    "(for example, recent email when a matching mail connection is enabled). Use a local app tool instead only when the user asks for the local app, "
+    "or the connection fails or does not cover the work."
+)
+
+
 def _family_when_to_load(family: ToolFamilyDefinition, connected_services: list[str]) -> str:
     if family.name != "external" or not connected_services:
         return family.when_to_load
     return (
         f"{family.when_to_load} Currently enabled external services: "
-        f"{', '.join(connected_services)}. Load this family when the request names one of these services."
+        f"{', '.join(connected_services)}. {CONNECTED_SERVICE_ROUTING_RULE}"
     )
 
 
-def render_family_routing_catalog() -> str:
-    """Render family-level routing metadata for the initial loader description."""
+def render_family_routing_catalog(exclude_names: Iterable[str] = ()) -> str:
+    """Render family-level routing metadata for the initial loader description.
+
+    Families named in ``exclude_names`` are left out of the list and named once in a closing line, so a caller whose
+    tools for those families are already bound does not spend catalog space on entries that can never be loaded.
+    """
+    excluded = {str(name).strip().lower() for name in exclude_names if str(name).strip()}
+    bound: list[str] = []
     lines = ["Available tool families for first-pass routing:"]
     for family in describe_tool_families():
+        if family["name"] in excluded:
+            bound.append(family["name"])
+            continue
         hints = ", ".join(family.get("routing_hints") or [])
         examples = ", ".join(family.get("examples") or [])
         connected = ""
@@ -343,6 +388,11 @@ def render_family_routing_catalog() -> str:
         lines.append(
             f"- {family['name']}: {family['purpose']} When to load: {family['when_to_load']}"
             f"{connected}; hints: {hints}; examples: {examples}"
+        )
+    if bound:
+        lines.append(
+            f"Already bound from your first step, so never load them: {', '.join(bound)}. "
+            "Their tools are in your tool list now; the system prompt and each tool's description say when to use them."
         )
     return "\n".join(lines)
 
@@ -518,21 +568,21 @@ def create_load_tool_family_tool(
                 "requested_family_inputs": normalized.requested_names,
                 "mapped_family_inputs": normalized.name_mappings,
                 "suggested_families": loaded_families,
-                "available_families": describe_tool_families(),
+                "available_families": get_family_names(),
                 "tool_names_by_family": tool_names_by_family,
                 "next_step": next_step,
             },
             ensure_ascii=False,
         )
 
+    # Imported here because tool_index imports this module for the family definitions.
+    from .tool_index import render_tool_index
+
     loader_tool = StructuredTool.from_function(
         func=_load_tool_family,
         coroutine=_load_tool_family,
         name="load_tool_family",
-        description=(
-            "Load exact full tool schemas for one or more needed tool families before doing work. Use this first when the task needs files, email, browser, shell, automation, external services, memory, scheduling, activity history, or iterative tracking.\n\n"
-            + render_family_routing_catalog()
-        ),
+        description=render_tool_index(all_tools, exclude_names=[*BASELINE_FALLBACK_FAMILY_NAMES, "core"]),
         args_schema=LoadToolFamilyInput,
     )
     return normalize_structured_tool_args_schema(loader_tool)

@@ -24,7 +24,7 @@ const setupPhasePath: readonly SetupPhasePathItem[] = [
   {
     id: 'setup_preferences',
     label: 'Setup Preferences',
-    stages: ['intro_and_privacy'],
+    stages: ['express', 'intro_and_privacy'],
   },
   {
     id: 'getting_oriented',

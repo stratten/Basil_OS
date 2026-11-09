@@ -63,19 +63,13 @@ def _minutes_since(timestamp: Any, now: datetime) -> float:
     return max(0.0, (reference - timestamp).total_seconds() / 60.0)
 
 
-def _scheduled_turn_count(chain: List[Any], scheduled_agent_task_id: str) -> int:
-    return sum(
-        1
-        for turn in chain
-        if getattr(turn, "origin_type", None) == SCHEDULED_ORIGIN_TYPE
-        and getattr(turn, "origin_id", None) == scheduled_agent_task_id
-    )
+def _rollover_reason(config: ChainConfig, chain: List[Any], now: datetime) -> Optional[str]:
+    """Which limit the chain has reached, in words for the run history, or None when it can still grow.
 
-
-def _rollover_reason(config: ChainConfig, chain: List[Any], scheduled_agent_task_id: str, now: datetime) -> Optional[str]:
-    """Which limit the chain has reached, in words for the run history, or None when it can still grow."""
-    if config.max_runs and _scheduled_turn_count(chain, scheduled_agent_task_id) >= config.max_runs:
-        return f"{config.max_runs} run{'s' if config.max_runs != 1 else ''}"
+    The length limit counts every turn in the chain, including turns you typed and follow-ups Basil started itself, because the limit exists to keep the conversation's context small and traceable, and a turn adds to that context whoever started it.
+    """
+    if config.max_runs and len(chain) >= config.max_runs:
+        return f"{config.max_runs} turn{'s' if config.max_runs != 1 else ''}"
     if config.max_age_minutes and _minutes_since(getattr(chain[0], "timestamp", None), now) >= config.max_age_minutes:
         return describe_age_limit(config.max_age_minutes)
     return None
@@ -138,7 +132,7 @@ async def plan_chain_run(
             chain = list(await db.get_agent_task_chain(anchor["root_task_id"]) or [])
         if not chain:
             return ChainPlan(action=ACTION_START)
-        reason = _rollover_reason(config, chain, schedule_id, now)
+        reason = _rollover_reason(config, chain, now)
         if reason:
             handoff = await build_handoff_block(chain, scheduled_agent_task.get("model_id")) if config.carry_over else None
             return ChainPlan(

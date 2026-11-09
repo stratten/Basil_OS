@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type KeyboardEvent } from 'react';
 import type { BrowserPermissionRepairMetadata, CheckpointData, CheckpointField, CheckpointOption, ProviderTargetAuthorizationMetadata } from '../types';
 import * as api from '../services/api';
 import { agentStore } from '../store/agentStore';
@@ -206,6 +206,8 @@ export default function CheckpointFlow({ agentTaskId, checkpoint, mode }: Props)
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isReviewingOutput, setIsReviewingOutput] = useState(false);
+  // Approvals (yes/no) open the details because the content is what is being approved; other questions keep them one click away.
+  const [detailsOpen, setDetailsOpen] = useState(checkpoint.input_type === 'confirmation');
   const sessionAgentTaskId = checkpoint.session_agent_task_id || agentTaskId;
   const isClarificationCheckpoint = checkpoint.metadata?.source === 'clarification';
   const isProviderFormCheckpoint = isProviderUserInputCheckpoint(checkpoint);
@@ -356,6 +358,19 @@ export default function CheckpointFlow({ agentTaskId, checkpoint, mode }: Props)
         <MarkdownRenderer content={normalizeCheckpointPromptForDisplay(checkpoint.prompt)} variant="checkpoint" />
       </div>
 
+      {checkpoint.details_markdown && (
+        <details
+          className="checkpoint-details"
+          open={detailsOpen}
+          onToggle={event => setDetailsOpen(event.currentTarget.open)}
+        >
+          <summary className="checkpoint-details-summary">{detailsOpen ? 'Hide details' : 'Show details'}</summary>
+          <div className="checkpoint-prompt checkpoint-details-body">
+            <MarkdownRenderer content={checkpoint.details_markdown} variant="checkpoint" />
+          </div>
+        </details>
+      )}
+
       {browserPermissionMetadata && (
         <BrowserPermissionRepairDetails metadata={browserPermissionMetadata} />
       )}
@@ -496,8 +511,20 @@ export default function CheckpointFlow({ agentTaskId, checkpoint, mode }: Props)
     </div>
   );
 
+  // Command-Return (or Control-Return) from any text field sends the answer, the same as the Continue button and as in the other answer boxes. It is claimed even when Continue is disabled, so a half-finished answer does not fall through to something else.
+  const handleCommandReturn = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey) || event.nativeEvent.isComposing) return;
+    if (!(event.target as HTMLElement).closest('textarea, input')) return;
+    event.preventDefault();
+    if (submitting || !canSubmit) return;
+    void handleSubmit();
+  };
+
   const content = (
-    <div className={`checkpoint-flow-content${mode === 'overlay' ? ' checkpoint-flow-content--overlay' : ''}`}>
+    <div
+      className={`checkpoint-flow-content${mode === 'overlay' ? ' checkpoint-flow-content--overlay' : ''}`}
+      onKeyDown={handleCommandReturn}
+    >
       {promptDetails}
       {responseControls}
     </div>

@@ -172,8 +172,14 @@ final class StatusBarMenuBuilder {
         menu.addItem(developerMenuItem)
         #endif
 
-        // Separator before quit
+        // Separator before the support items and quit
         menu.addItem(NSMenuItem.separator())
+
+        // Report a problem. Always available so a failure can be reported from anywhere.
+        let reportProblemItem = NSMenuItem(title: "Report a Problem…", action: #selector(StatusBarManager.reportProblem), keyEquivalent: "")
+        reportProblemItem.target = target
+        reportProblemItem.tag = MenuItemTag.reportProblem.rawValue
+        menu.addItem(reportProblemItem)
 
         // Quit
         let quitItem = NSMenuItem(title: "Quit", action: #selector(StatusBarManager.quitApp), keyEquivalent: "")

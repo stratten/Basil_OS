@@ -71,6 +71,10 @@ describe('ModelDownloadMiniPanel', () => {
 
     expect([...container.querySelectorAll('.model-row-title')].map(element => element.textContent)).toEqual(['Fast Transcription', 'Local Reasoning', 'unrecognized-model'])
     expect(container.textContent).toContain('400 bytes / 1.0 KB')
+    const data = container.querySelector('.model-row .download-progress__data')!
+    expect(Array.from(data.children).map(child => child.textContent)).toEqual(['400 bytes / 1.0 KB', '40%'])
+    expect(container.querySelector('.model-row-action')!.textContent).not.toContain('%')
+    expect(container.querySelectorAll('.download-progress')).toHaveLength(2)
     expect(container.textContent).toContain('Queued')
     expect(container.querySelector('[aria-label="Retry unrecognized-model"]')).toBeNull()
   })
@@ -82,6 +86,25 @@ describe('ModelDownloadMiniPanel', () => {
     const dismiss = container.querySelector<HTMLButtonElement>('[aria-label="Dismiss model download panel"]')!
     act(() => dismiss.click())
     expect(state.dismissPanel).toHaveBeenCalledOnce()
+  })
+
+  it('puts the close control first in the header, drawn as a centered vector glyph', () => {
+    act(() => state.initHandler!({ theme, fonts, snapshot: makeSnapshot([]) }))
+
+    const header = container.querySelector('.model-download-header')!
+    const dismiss = header.querySelector<HTMLButtonElement>('[aria-label="Dismiss model download panel"]')!
+    expect(header.firstElementChild).toBe(dismiss)
+    expect(dismiss.textContent).toBe('')
+    const glyph = dismiss.querySelector('svg')!
+    expect(glyph.getAttribute('viewBox')).toBe('0 0 22 22')
+    const circle = glyph.querySelector('circle')!
+    expect([circle.getAttribute('cx'), circle.getAttribute('cy')]).toEqual(['11', '11'])
+    const strokes = [...glyph.querySelectorAll('line')]
+    expect(strokes).toHaveLength(2)
+    expect(strokes.map(line => [line.getAttribute('x1'), line.getAttribute('y1'), line.getAttribute('x2'), line.getAttribute('y2')])).toEqual([
+      ['7.5', '7.5', '14.5', '14.5'],
+      ['14.5', '7.5', '7.5', '14.5'],
+    ])
   })
 
   it('deduplicates a retry click until the native snapshot acknowledges it', () => {

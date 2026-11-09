@@ -83,6 +83,33 @@ async def create_subprocess_exec(program: str, *args: str, **kwargs: Any) -> asy
         _log_if_slow(resolved, started)
 
 
+def install_pytesseract_posix_spawn() -> None:
+    """Make ``pytesseract``'s own ``subprocess.Popen`` calls eligible for ``posix_spawn``.
+
+    ``pytesseract`` launches Tesseract with ``subprocess.Popen`` directly, so ``run`` and ``create_subprocess_exec`` never see it, and with the default ``close_fds=True`` every OCR call took the fork path.
+    Backend logs from 2026-10-30 and 2026-11-04 end within 30 ms of an OCR start with a worker thread inside ``_fork_exec`` and every other Python thread silent, so the backend never recovered until it was restarted.
+    ``pytesseract`` builds the Popen keyword arguments in one module-level function, so wrapping it covers every ``pytesseract`` call (``image_to_string`` and the version and language probes) without patching ``subprocess`` itself.
+    The wrapper only adds ``close_fds=False`` when ``posix_spawn_eligible`` says no fork-only option is present, and it never overrides a value ``pytesseract`` already set.
+    Calling it again is a no-op.
+    ``posix_spawn`` is used only when the Tesseract command has a directory part, which both OCR services guarantee by assigning an absolute ``tesseract_cmd``; a bare ``tesseract`` keeps the fork path.
+    """
+    import pytesseract.pytesseract as pytesseract_module
+
+    original = pytesseract_module.subprocess_args
+    if getattr(original, "_basil_posix_spawn", False):
+        return
+
+    def subprocess_args(*args: Any, **kwargs: Any) -> Dict[str, Any]:
+        options = original(*args, **kwargs)
+        if posix_spawn_eligible(options):
+            options.setdefault("close_fds", False)
+        return options
+
+    subprocess_args._basil_posix_spawn = True  # type: ignore[attr-defined]
+    subprocess_args.__wrapped__ = original  # type: ignore[attr-defined]
+    pytesseract_module.subprocess_args = subprocess_args
+
+
 def run(args: Sequence[str], **kwargs: Any) -> subprocess.CompletedProcess:
     """Drop-in for ``subprocess.run`` with a list of arguments, using posix_spawn when eligible.
 

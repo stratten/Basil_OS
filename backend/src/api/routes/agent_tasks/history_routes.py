@@ -73,6 +73,15 @@ def _list_filters(
     )
 
 
+async def _checklist_counts(knowledge_service: SQLiteKnowledgeService, root_task_ids: list) -> dict:
+    """Checklist counters for the sidebar badge. A failure here only hides the badge; it never fails the history list."""
+    try:
+        return await knowledge_service.agent_checklist_repository.counts_for_roots(root_task_ids)
+    except Exception:
+        logger.warning("Could not read checklist counts for the task history", exc_info=True)
+        return {}
+
+
 @router.get("/history", response_model=AgentTaskHistoryResponse, summary="Get AgentTask History")
 async def get_agent_task_history(
     limit: int = Query(50, ge=1, le=300, description="Maximum number of agent tasks to return"),
@@ -107,6 +116,7 @@ async def get_agent_task_history(
 
         agent_task_ids = [summary["id"] for summary in summaries]
         scheduled_mapping = await knowledge_service.scheduled_agent_task_repository.get_scheduled_run_mapping(agent_task_ids)
+        checklist_counts = await _checklist_counts(knowledge_service, agent_task_ids)
 
         # Convert to list items with preview
         agent_task_items = []
@@ -130,6 +140,8 @@ async def get_agent_task_history(
                 is_scheduled_run=agent_task_id in scheduled_mapping,
                 scheduled_agent_task_id=scheduled_mapping.get(agent_task_id, {}).get("scheduled_agent_task_id"),
                 scheduled_agent_task_title=scheduled_mapping.get(agent_task_id, {}).get("scheduled_agent_task_title"),
+                checklist_done=checklist_counts.get(agent_task_id, {}).get("done", 0),
+                checklist_total=checklist_counts.get(agent_task_id, {}).get("total", 0),
             ))
 
         logger.info(f"Retrieved {len(agent_task_items)} agent_tasks for history (limit={limit}, offset={offset})")
@@ -191,6 +203,7 @@ async def search_agent_task_history(
 
         agent_task_ids = [summary["id"] for summary in summaries]
         scheduled_mapping = await knowledge_service.scheduled_agent_task_repository.get_scheduled_run_mapping(agent_task_ids)
+        checklist_counts = await _checklist_counts(knowledge_service, agent_task_ids)
 
         # Convert to list items with preview
         agent_task_items = []
@@ -214,6 +227,8 @@ async def search_agent_task_history(
                 is_scheduled_run=agent_task_id in scheduled_mapping,
                 scheduled_agent_task_id=scheduled_mapping.get(agent_task_id, {}).get("scheduled_agent_task_id"),
                 scheduled_agent_task_title=scheduled_mapping.get(agent_task_id, {}).get("scheduled_agent_task_title"),
+                checklist_done=checklist_counts.get(agent_task_id, {}).get("done", 0),
+                checklist_total=checklist_counts.get(agent_task_id, {}).get("total", 0),
             ))
 
         logger.info(f"AgentTask search returned {len(agent_task_items)} results (query={query}, status={status}, app={app})")

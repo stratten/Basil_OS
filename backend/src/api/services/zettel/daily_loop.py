@@ -9,11 +9,17 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Awaitable, Callable, Optional
 
 logger = logging.getLogger(__name__)
+
+# The loop never sleeps longer than this in one go, so it re-reads the wall clock often enough to notice that a Mac slept through a scheduled time. asyncio timeouts use a clock that stops while the Mac sleeps, so a single long wait would fire hours late after waking.
+WAKE_POLL_SECONDS = 30.0
+# While a catch-up run keeps ending without completing, for example because the model is not loaded yet, another attempt waits at least this long.
+CATCH_UP_RETRY_SECONDS = 900.0
 
 
 @dataclass
@@ -26,7 +32,10 @@ class LoopStatus:
 
 
 class DailyLoopScheduler:
-    """Runs *run_once* at a configured local time, with kick and stop support."""
+    """Runs *run_once* at a configured local time, with kick and stop support.
+
+    *catch_up_due*, when given, says whether a scheduled run was missed. The loop runs immediately when it starts and finds a missed run, and again after a wake or an incomplete attempt (at most once per *catch_up_retry_seconds*), so a backend that was not running at the scheduled time does not wait a whole day.
+    """
 
     def __init__(
         self,
@@ -34,10 +43,22 @@ class DailyLoopScheduler:
         name: str,
         run_once: Callable[[], Awaitable[Optional[str]]],
         next_run_at: Callable[[], datetime],
+        catch_up_due: Optional[Callable[[], bool]] = None,
+        wake_poll_seconds: float = WAKE_POLL_SECONDS,
+        catch_up_retry_seconds: float = CATCH_UP_RETRY_SECONDS,
+        clock: Callable[[], datetime] = datetime.now,
+        monotonic: Callable[[], float] = time.monotonic,
     ) -> None:
         self._name = name
         self._run_once = run_once
         self._next_run_at = next_run_at
+        self._catch_up_due = catch_up_due
+        self._wake_poll_seconds = wake_poll_seconds
+        self._catch_up_retry_seconds = catch_up_retry_seconds
+        self._clock = clock
+        self._monotonic = monotonic
+        self._last_catch_up_attempt: Optional[float] = None
+        self._last_wait_serviced_kick = False
         self._task: Optional[asyncio.Task] = None
         self._stop = asyncio.Event()
         self._kick = asyncio.Event()
@@ -76,8 +97,7 @@ class DailyLoopScheduler:
             while not self._stop.is_set():
                 next_run = self._next_run_at()
                 self._status.next_run_at = next_run.isoformat()
-                wait_seconds = max((next_run - datetime.now()).total_seconds(), 0.0)
-                if await self._wait(wait_seconds):
+                if await self._wait_until(next_run):
                     return
                 await self._guarded_run()
         except asyncio.CancelledError:
@@ -86,7 +106,39 @@ class DailyLoopScheduler:
         finally:
             self._status.is_running = False
 
+    async def _wait_until(self, next_run: datetime) -> bool:
+        """Wait in short slices until *next_run*, catching up a missed run first; returns True when stopped."""
+        while True:
+            await self._maybe_catch_up()
+            remaining = (next_run - self._clock()).total_seconds()
+            if remaining <= 0:
+                return self._stop.is_set()
+            if await self._wait(min(remaining, self._wake_poll_seconds)):
+                return True
+            if self._last_wait_serviced_kick:
+                return False
+
+    async def _maybe_catch_up(self) -> None:
+        if self._catch_up_due is None or self._stop.is_set():
+            return
+        now = self._monotonic()
+        if self._last_catch_up_attempt is not None and now - self._last_catch_up_attempt < self._catch_up_retry_seconds:
+            return
+        try:
+            due = bool(self._catch_up_due())
+        except Exception:
+            # Throttled like a real attempt so a persistently failing check logs once per retry interval, not once per poll.
+            self._last_catch_up_attempt = now
+            logger.exception("%s could not check for a missed run", self._name)
+            return
+        if not due:
+            return
+        self._last_catch_up_attempt = now
+        logger.info("%s missed a scheduled run; running it now", self._name)
+        await self._guarded_run()
+
     async def _wait(self, seconds: float) -> bool:
+        self._last_wait_serviced_kick = False
         stop_task = asyncio.create_task(self._stop.wait())
         kick_task = asyncio.create_task(self._kick.wait())
         try:
@@ -99,6 +151,7 @@ class DailyLoopScheduler:
                 task.cancel()
             if kick_task in done:
                 self._kick.clear()
+                self._last_wait_serviced_kick = True
                 if not self._stop.is_set():
                     await self._guarded_run()
             return self._stop.is_set()
@@ -123,6 +176,16 @@ class DailyLoopScheduler:
             return str(exc)
         finally:
             self._status.is_running_now = False
+
+
+def previous_daily_run(configured_time: str, now: Optional[datetime] = None) -> datetime:
+    """Latest local occurrence of an HH:MM string that is not in the future."""
+    hour, minute = _parse_time(configured_time)
+    moment = now or datetime.now()
+    candidate = moment.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    if candidate > moment:
+        candidate = candidate - timedelta(days=1)
+    return candidate
 
 
 def next_daily_run(configured_time: str) -> datetime:

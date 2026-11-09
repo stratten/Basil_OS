@@ -449,10 +449,12 @@
   overflow: auto;
 }
 
+/* The preview's own border and the scrolling layer sit flush against the text unless the Markdown has its own inset. */
 .tray-artifact-preview .inline-artifact-preview--tray .result-section {
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  padding: var(--padding-m);
   box-sizing: border-box;
 }
 
@@ -470,14 +472,13 @@
   word-break: break-word;
 }
 
+/* Automatic column widths (the base table rules in result-content.css) size each column to its content, so a number column stays as wide as its digits instead of getting an equal share like a text column. */
 .tray-artifact-preview .inline-artifact-preview--tray .result-section table {
   width: 100%;
   max-width: 100%;
-  table-layout: fixed;
 }
 
-.tray-artifact-preview .inline-artifact-preview--tray .result-section th,
-.tray-artifact-preview .inline-artifact-preview--tray .result-section td,
+/* Table cells keep the base rule's overflow-wrap and are left without word-break: break-word, which would let any column shrink to one character. */
 .tray-artifact-preview .inline-artifact-preview--tray .result-section :not(pre) > code {
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -486,6 +487,8 @@
 .tray-artifact-preview .inline-artifact-preview--tray .result-section pre {
   max-width: 100%;
   overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   box-sizing: border-box;
 }
 

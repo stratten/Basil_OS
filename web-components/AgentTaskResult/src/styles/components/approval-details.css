@@ -70,6 +70,18 @@
   color: var(--text-primary);
 }
 
+.approval-note-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--padding-s);
+  border-radius: var(--corner-radius-small);
+  border: var(--border-thin) solid var(--separator-color);
+  background: var(--background-primary);
+  color: var(--text-primary);
+  font: inherit;
+  resize: vertical;
+}
+
 .approval-reason {
   color: var(--text-secondary);
   font-size: var(--font-size-footnote);
@@ -79,6 +91,47 @@
   color: var(--text-tertiary);
   font-size: var(--font-size-status-small);
   margin-top: var(--padding-s);
+}
+
+/* What ticking Remember would store. Primary text rather than the faint pattern line, because this is the one sentence that says how much a tick approves. */
+.approval-pattern.approval-pattern--remembered {
+  color: var(--text-primary);
+  font-size: var(--font-size-footnote);
+  overflow-wrap: anywhere;
+}
+
+.approval-pattern__words {
+  font-family: var(--font-family-mono);
+  font-weight: 600;
+  padding: 1px 6px;
+  border: var(--border-thin) solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  background: var(--background-secondary);
+  color: var(--text-primary);
+}
+
+/* A remembered single command name approves every use of that tool, so the warning carries the same full warning border as the other cautions in the interaction cards. */
+.approval-pattern-broad {
+  margin: var(--padding-xs) 0 0;
+  padding: var(--padding-s);
+  border: var(--border-thin) solid var(--warning-base);
+  border-radius: var(--corner-radius-small);
+  background: color-mix(in srgb, var(--warning-base) 16%, var(--background-primary));
+  color: var(--text-primary);
+  font-size: var(--font-size-status-small);
+  overflow-wrap: anywhere;
+}
+
+/* A connected tool whose name says it deletes or sends: the same warning panel as a broad pattern, so "always allow" for a delete reads differently from one for a relabel. */
+.approval-tool-destructive {
+  margin: var(--padding-m) 0 0;
+  padding: var(--padding-s);
+  border: var(--border-thin) solid var(--warning-base);
+  border-radius: var(--corner-radius-small);
+  background: color-mix(in srgb, var(--warning-base) 16%, var(--background-primary));
+  color: var(--text-primary);
+  font-size: var(--font-size-status-small);
+  overflow-wrap: anywhere;
 }
 
 /* The accent has no theme token; it is named here so the one literal is easy to find. */

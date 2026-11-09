@@ -90,6 +90,19 @@ describe('HomeView', () => {
     expect(document.querySelector('.home-history-pane')).toBeNull();
   });
 
+  it('shows the Basil logo directly above the greeting, hidden from assistive technology', async () => {
+    renderHome(forwardStub());
+
+    const logo = document.querySelector('img.home-front-door-logo');
+    const title = screen.getByRole('heading', { name: 'What can I do for you?' });
+    expect(logo).not.toBeNull();
+    expect(logo?.getAttribute('aria-hidden')).toBe('true');
+    expect(logo?.getAttribute('alt')).toBe('');
+    expect(logo?.getAttribute('src')).toBeTruthy();
+    expect(logo?.nextElementSibling).toBe(title);
+    await screen.findByText('Nothing yet. Your recent requests will show up here.');
+  });
+
   it('forwards a routed turn to the shell with the submitted text', async () => {
     const response: HomeTurnResponse = {
       inquiry_id: 'inq-1',

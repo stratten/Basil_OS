@@ -27,8 +27,10 @@ LOCAL_EVALUATOR_TIMEOUT_SECONDS = 45
 # The evaluator judges the delivered response against the request; it never needs raw tool payloads, so each bounded section keeps the prompt small enough to prefill quickly on a local model.
 MAX_DELIVERED_RESPONSE_CHARS = 24000
 MAX_AGENT_ANSWER_CHARS = 8000
-MAX_STEPS_METADATA_CHARS = 6000
+MAX_STEPS_METADATA_CHARS = 8000
 MAX_STEP_RESULT_CHARS = 240
+# The evaluator needs to see what a retrieval asked for (its query, folder, or date range) to confirm the stated scope was applied, but never a whole file body or script, so each step's input is clipped like its result.
+MAX_STEP_INPUT_CHARS = 240
 CHARS_PER_TOKEN_ESTIMATE = 3
 # Negative iterations are reserved sentinels: -1 is the final-synthesis pass, -2 is outcome verification.
 VERIFIER_THINKING_ITERATION = -2
@@ -135,6 +137,7 @@ class FinalizerEvaluation:
     pending_work: Optional[Dict[str, Any]] = None
     continuation_instructions: Optional[str] = None
     suggested_follow_ups: List[str] = field(default_factory=list)
+    checklist_review: Optional[Dict[str, Any]] = None
 
 
 def _is_non_empty_string(value: Any) -> bool:
@@ -210,6 +213,15 @@ def format_steps_metadata(steps: Optional[List[Dict[str, Any]]]) -> str:
                 for key in ("service", "method", "tool", "success", "status", "error")
                 if step.get(key) is not None
             ]
+            tool_input = step.get("tool_input")
+            if tool_input:
+                try:
+                    input_text = json.dumps(tool_input, default=str, separators=(",", ":"), ensure_ascii=False)
+                except (TypeError, ValueError):
+                    input_text = str(tool_input)
+                if len(input_text) > MAX_STEP_INPUT_CHARS:
+                    input_text = input_text[:MAX_STEP_INPUT_CHARS] + "..."
+                parts.append(f"input={input_text}")
             result = step.get("result")
             if result is not None:
                 result_text = str(result)
@@ -313,6 +325,7 @@ EVALUATION GUIDELINES:
 - If user wanted "email summary" but you only see error messages or empty results → FAILURE
 - If agent produced substantial useful content that directly answers the request → SUCCESS
 - If the request names an explicit number of deliverables, count the actual delivered numbered items. A sentence claiming "all N" is not evidence.
+- SCOPE CHECK: if the request names a scope for the data (a folder or mailbox such as the inbox, a label, an account, a date range, a sender, a project, or "newest N"), do this before choosing success. Read the input= of each retrieval step in EXECUTION STEPS METADATA and the scope its result names: a result header such as "for 'all mail'" or "for 'in:inbox'" states the query that actually ran. A retrieval ran unscoped when its input= carries no query, filter, label, folder, or date argument matching the request (arguments sent as a quoted string that contains no such restriction count as carrying none), even though the call succeeded, and also when its result header names a broader scope than the request (for example 'all mail' for a request about the inbox). When a retrieval ran unscoped, or the delivered items plainly fall outside the scope, classify partial with should_retry=true and set continuation_instructions to repeat the retrieval with the stated scope applied; a delivered response that only presents the items as in scope does not make them so, and neither does your own belief that the agent must have filtered the results afterward: count the scope as applied only when a step shows it (a query or filter argument, or a later retrieval that used it), and say which step in your reasoning. When the trace shows the scope was applied, or no step shows an input= field at all, do not downgrade the outcome on a guess.
 - If output ends mid-item or truncation evidence prevents verification, classify as partial with should_retry=true.
 - Tool failures are evidence, not an automatic failure. If earlier tools failed but a later fallback verified the requested scope and satisfies the request, classify as success.
 - An internal retry or fallback that produced a complete, verified result is SUCCESS, not a warning. Do not downgrade it merely because an earlier attempt failed before a later one succeeded; that is a normal implementation detail with no user-visible consequence.
@@ -320,6 +333,7 @@ EVALUATION GUIDELINES:
 - When FOLLOW-UP / CHAIN CONTEXT lists FOLLOW-UP CHECKS ALREADY SCHEDULED, the remaining step is already arranged and will resume this task automatically. Judge the work that scheduled check will finish as in progress, not as a residual gap. Classify partial only for gaps that no scheduled check covers, and classify success when everything else was delivered and the response tells the user what is pending.
 - CONTINUATION: set continuation_instructions only when outcome is partial because a stated requirement of the request is verifiably missing, or a requested write is verifiably unapplied, and the agent has tools to close that one gap right now (for example a requested component, file, or behavior that was never built or never read). A delivered answer that is merely incomplete in depth, polish, or style is not a gap: leave continuation_instructions empty and do not request a revision. Write a self-contained instruction naming exactly what is missing and what finishing it requires. Leave it as an empty string for anything the agent cannot close with its tools: a capability limit, a refusal or denied approval, missing credentials or user input, work that is still running (use PENDING WORK for that), or a gap you are only guessing at.
 - SUGGESTED FOLLOW-UPS: when the outcome is success and the delivered result naturally invites one to three next requests, list them in suggested_follow_ups. Write each exactly as the user would type it to Basil: a short imperative sentence of at most 80 characters that makes sense on its own (for example "Draft a reply to the first email"). Suggest only what the delivered result and the user's tools make plausible. Use an empty list for partial or failure outcomes, when work is pending, or when nothing obvious follows.
+- CHECKLIST REVIEW: only when a TASK CHECKLIST block is present, apply its sign-off rules. Each checklist_review.items entry is an object with item, status, reason, and optionally waiting_on; each new_items entry is an object with title and optionally detail, status, and waiting_on. Leave both lists empty when nothing needs to change. Your checklist decisions never affect outcome, should_retry, or continuation_instructions.
 - PENDING WORK: set work_still_pending=true only when the tool output shows that work the agent started (a delegated agent run, a queued connector action, a build) is still running or queued, a later check would complete it, and no FOLLOW-UP CHECK is already scheduled. When true, pending_check_instructions must say exactly what a later turn should check and pending_check_delay_minutes must be a whole number from 5 to 1440. Otherwise set work_still_pending=false, pending_check_instructions to "", and pending_check_delay_minutes to null.
 - Use partial when some useful content was delivered but a meaningful part of the user's request remains incomplete.
 - Use failure only when the request was not delivered in a useful way.
@@ -371,7 +385,8 @@ Respond with ONLY a JSON object:
   "pending_check_instructions": "what a later turn should check; empty string when work_still_pending is false",
   "pending_check_delay_minutes": number|null,
   "continuation_instructions": "one concrete gap the agent can close now; empty string when there is none",
-  "suggested_follow_ups": ["zero to three short next requests the user might send; empty list when none"]
+  "suggested_follow_ups": ["zero to three short next requests the user might send; empty list when none"],
+  "checklist_review": {{"items": [], "new_items": []}}
 }}"""
 
 
@@ -414,6 +429,13 @@ def parse_pending_work(evaluation: Dict[str, Any]) -> Optional[Dict[str, Any]]:
 
 
 MAX_CONTINUATION_INSTRUCTIONS_CHARS = 1000
+
+
+def _parse_checklist_review(evaluation: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """The evaluator's checklist decisions, cleaned and capped, or ``None``. Imported here because the runtime package imports this module's callers."""
+    from ..runtime.agent_checklist_signoff import parse_checklist_review
+
+    return parse_checklist_review(evaluation)
 
 
 def parse_continuation_instructions(evaluation: Dict[str, Any]) -> Optional[str]:
@@ -533,6 +555,7 @@ def parse_evaluation_response(llm_response: str) -> FinalizerEvaluation:
         pending_work=parse_pending_work(evaluation),
         continuation_instructions=parse_continuation_instructions(evaluation),
         suggested_follow_ups=parse_suggested_follow_ups(evaluation, outcome),
+        checklist_review=_parse_checklist_review(evaluation),
     )
 
 

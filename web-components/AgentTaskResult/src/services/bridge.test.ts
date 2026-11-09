@@ -10,6 +10,7 @@ import {
   openAgentTaskOrigin,
   openFilePreviewWindow,
   reportAgentStatus,
+  reportUnfocusedAgentTaskCompleted,
   requestResize,
   registerCaptureHandler,
   registerExpandChromeForTaskCompletionHandler,
@@ -153,6 +154,19 @@ describe('agent task completion chrome bridge', () => {
       agentTaskId: 'task-awaiting-input',
       supportsFollowUp: true,
     });
+  });
+
+  it('reports that an unfocused task finished a turn', () => {
+    const postMessage = vi.fn();
+    window.webkit = {
+      messageHandlers: {
+        agentTaskBridge: { postMessage },
+      },
+    };
+
+    reportUnfocusedAgentTaskCompleted();
+
+    expect(postMessage).toHaveBeenCalledWith({ type: 'unfocusedAgentTaskCompleted' });
   });
 });
 

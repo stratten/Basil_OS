@@ -5,6 +5,9 @@ from __future__ import annotations
 import logging
 import re
 
+# The assembler ranks this section among its most important (priority 10 of 70), so trimming must never remove or cut it.
+_PROTECTED_SECTION = "REFERENCE MATERIALS"
+
 
 def parse_token_limit_error(error_str: str) -> tuple[int, int] | None:
     """
@@ -27,21 +30,35 @@ def trim_oldest_context(user_input: str, chars_to_remove: int, trim_logger: logg
     Remove characters from context while preserving the user agent task.
 
     Identifies context sections (chain context, screen context) and trims from the oldest.
-    Never touches the actual user agent task at the end.
+    Never touches the actual user agent task at the end, and never touches the REFERENCE MATERIALS section: the paths the user attached are a few dozen tokens and the most valuable thing in the message, so they are set aside before any trimming and put back at the front. When nothing else can be trimmed the result is None, not a cut into the references.
     """
     if chars_to_remove <= 0:
         return user_input
 
+    protected_name = _PROTECTED_SECTION.replace(" ", "_")
+    protected_start_marker = f"===== {protected_name} ====="
+    protected_end_marker = f"===== END {protected_name} ====="
+    protected_start = user_input.find(protected_start_marker)
+    protected_end = user_input.find(protected_end_marker)
+    if protected_start >= 0 and protected_end > protected_start:
+        protected_end += len(protected_end_marker)
+        protected_section = user_input[protected_start:protected_end]
+        remainder = user_input[:protected_start] + user_input[protected_end:].lstrip("\n")
+        trimmed_remainder = trim_oldest_context(remainder, chars_to_remove, trim_logger)
+        if trimmed_remainder is None:
+            return None
+        return f"{protected_section}\n\n{trimmed_remainder}"
+
     # Prefer trimming lower-priority assembled context sections before
-    # touching current request or explicit high-value references.
+    # touching the current request. The attached references are not in this
+    # list: they are protected above.
     # FOLLOW UP CONTEXT is trimmed last among these -- for a follow-up turn
     # it is the highest-value section (it carries the prior turn's resolved
-    # file/reference identity), so screen/retry/reference-material context
-    # should be shed first when a reactive token-limit trim is needed.
+    # file/reference identity), so screen and retry context should be shed
+    # first when a reactive token-limit trim is needed.
     trimmable_sections = [
         "SCREEN CONTEXT",
         "RETRY CONTEXT",
-        "REFERENCE MATERIALS",
         "FOLLOW UP CONTEXT",
         # Legacy marker retained only for prompts formatted before the shared
         # context assembler introduced agent-task naming.

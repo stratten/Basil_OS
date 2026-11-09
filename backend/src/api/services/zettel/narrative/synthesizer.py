@@ -47,7 +47,17 @@ class SynthesisResult:
 
 
 class SynthesisError(RuntimeError):
-    """Raised when no model was available or generation produced nothing."""
+    """Raised when generation produced nothing usable for this entry."""
+
+
+class ModelUnavailableError(SynthesisError):
+    """Raised when no model could be reached at all, which says nothing about the entry.
+
+    The enricher neither charges the entry a retry attempt for this nor keeps trying the rest of the pass, because every remaining entry would fail the same way and a few unloaded-model passes used to push thousands of entries into the permanently failed state.
+    """
+
+
+UNAVAILABLE_MODEL_MESSAGES = ("model is not loaded",)
 
 
 async def synthesize(
@@ -72,16 +82,21 @@ async def synthesize(
     else:
         model = await acquire_model()
     if model is None:
-        raise SynthesisError("No reasoning model available for narrative synthesis")
+        raise ModelUnavailableError("No reasoning model available for narrative synthesis")
 
     prompt = build_prompt(entry, context)
-    raw = await call_model_with_prompt(
-        model,
-        prompt=prompt,
-        purpose="narrative",
-        max_tokens=GENERATION_TOKEN_CEILING,
-        enable_web_search=False,
-    )
+    try:
+        raw = await call_model_with_prompt(
+            model,
+            prompt=prompt,
+            purpose="narrative",
+            max_tokens=GENERATION_TOKEN_CEILING,
+            enable_web_search=False,
+        )
+    except RuntimeError as exc:
+        if str(exc).strip().lower() in UNAVAILABLE_MODEL_MESSAGES:
+            raise ModelUnavailableError(str(exc)) from exc
+        raise
     if not raw or not str(raw).strip():
         raise SynthesisError("Model returned an empty narrative")
 

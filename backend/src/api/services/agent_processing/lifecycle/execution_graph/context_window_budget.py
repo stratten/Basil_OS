@@ -120,6 +120,41 @@ def context_window_exceeded_reason(details: Dict[str, Any]) -> str:
     return f"{shortfall[0].upper()}{shortfall[1:]}. {CONTEXT_WINDOW_FIX_HINT}"
 
 
+def context_trimmed_notice(details: Dict[str, Any]) -> str:
+    """One plain sentence group for the user when the recovery middleware cut their context, or could not because the tools alone fill the window. Empty when nothing was cut and the fixed prompt fits."""
+    model = str(details.get("model") or "") or "the selected model"
+    window = _positive_int(details.get("window_tokens"))
+    window_text = f"{model}'s {window:,}-token context window" if window else f"{model}'s context window"
+    fixed = _positive_int(details.get("fixed_prompt_tokens"))
+    removed = _positive_int(details.get("request_chars_removed"))
+    sentences: list[str] = []
+    if details.get("fixed_over_limit"):
+        used_text = f" use about {fixed:,} tokens" if fixed else " use most of it"
+        sentences.append(
+            f"Basil's system prompt and tools alone{used_text} of {window_text}, so there is little or no room for your request and the answer may be incomplete or fail."
+        )
+    if removed:
+        sentences.append(
+            f"To fit {window_text}, Basil removed about {removed:,} characters of earlier context from your request (files and folders you attached are never removed), so the answer may miss details from it."
+        )
+    if not sentences:
+        return ""
+    return f"{' '.join(sentences)} {CONTEXT_WINDOW_FIX_HINT}"
+
+
+def with_context_trimmed_notice(text: str, result: Any) -> str:
+    """The answer with the context-cut notice appended. Unchanged when the run result carries no cut, when the run stopped on a context overflow (its own message already says so), or when the notice is already there."""
+    if not isinstance(result, dict) or result.get("context_window_exceeded"):
+        return text
+    details = result.get("context_trimmed")
+    if not isinstance(details, dict):
+        return text
+    notice = context_trimmed_notice(details)
+    if not notice or notice in text:
+        return text
+    return f"{text.rstrip()}\n\n{notice}"
+
+
 def output_reserve_tokens(llm: Any, window: int) -> int:
     configured = _positive_int(getattr(llm, "max_tokens", None)) or DEFAULT_OUTPUT_RESERVE_TOKENS
     return max(0, min(configured, window // 4))

@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
 import { act, type ReactElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+vi.mock('@/services/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/api')>()),
+  fetchExpressReceipt: vi.fn().mockResolvedValue({ items: [] }),
+}))
 
 import { SetupWrapUpPanel } from '@/components/wrapup/SetupWrapUpPanel'
 

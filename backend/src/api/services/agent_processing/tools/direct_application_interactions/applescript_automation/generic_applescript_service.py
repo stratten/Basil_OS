@@ -230,20 +230,28 @@ class GenericAppleScriptService:
     def _detect_browser_foreground_control(self, script_content: str) -> bool:
         """Return true when AppleScript appears to foreground-control a browser."""
         lowered = script_content.lower()
+        # A browser can be named as an application, a System Events process, a bundle id, or an `open -a` argument, so any mention of the browser counts.
         targets_browser = any(
             browser in lowered
             for browser in (
-                'application "safari"',
-                'application "google chrome"',
-                'application "chrome"',
-                'application "microsoft edge"',
-                'application "edge"',
+                "safari",
+                "google chrome",
+                "microsoft edge",
+                "com.google.chrome",
+                "com.microsoft.edgemac",
             )
-        )
+        ) or re.search(r'application\s+"(chrome|edge)"', lowered) is not None
         uses_foreground_control = any(
             marker in lowered
             for marker in (
                 "activate",
+                "reopen",
+                "frontmost",
+                "set index",
+                "make new window",
+                "open location",
+                "open -a",
+                "open -b",
                 "system events",
                 "keystroke",
                 "key code",
@@ -251,6 +259,7 @@ class GenericAppleScriptService:
                 "click ",
                 "menu item",
                 "menu bar",
+                "perform action",
             )
         )
         return targets_browser and uses_foreground_control
@@ -310,6 +319,10 @@ class GenericAppleScriptService:
                 "This script appears to activate a browser and use System Events, keyboard, "
                 "mouse, or menu automation against the visible desktop."
             ),
+            "purpose": (
+                f"This script brings a browser to the front and may use the keyboard, mouse, or menus on your visible desktop, for: {task_desc}"
+            ),
+            "purpose_source": "basil",
         }
         agent_task_id = self._resolve_agent_task_id(context)
         if isinstance(agent_task_id, str) and agent_task_id.strip():
@@ -771,7 +784,7 @@ Requirements:
 3. Return a clear success or error message at the end, plus exactly one RESULT_JSON line
 4. Use modern AppleScript syntax compatible with macOS 10.15+
 5. If querying data, format results clearly (e.g., line-separated for emails)
-6. If the target application needs to be activated, include an 'activate' statement
+6. Include 'activate' only when the user asked to see or focus the application. In a read-only script, leave 'activate' out on the first attempt, because reads work with the application in the background; add it only on a retry, and only if the first result was empty or stale for data you know exists
 7. Be specific and complete - this will be executed as-is
 8. This script has a hard 60-second execution timeout — it will be killed if it hasn't completed. Never use blocking 'delay' for long durations
 9. When a native macOS app handles the task (Clock for timers, Reminders for reminders, Calendar for events, Notes for notes), use 'tell application' to delegate rather than reimplementing the functionality in raw AppleScript
@@ -781,6 +794,7 @@ Requirements:
 13. For write scripts, the RESULT_JSON line must include material_write=true, verification_status="verified" | "unverified" | "failed", summary, evidence, expected, actual, and discrepancies
 14. If the app accepts the write but readback is impossible or unreliable, use verification_status="unverified" and explain that limitation in summary; do not print SUCCESS as if the user-visible outcome was verified
 15. If readback shows missing or wrong fields, use verification_status="failed" and list discrepancies
+16. In a read-only script, declare accumulator variables before the 'tell' block or give them camelCase names like outText; a plain word such as out set inside a 'tell' looks like an application property and forces an approval prompt
 
 Generate the AppleScript now:"""
 
@@ -849,6 +863,8 @@ return "ERROR: Could not generate AppleScript for this task: {task_description}"
                 "Prefer 'tell application' delegation to native macOS apps (Clock, Reminders, Calendar, Notes, Messages) over scripting functionality from scratch",
                 "Generated scripts must complete within 60 seconds — never use blocking 'delay' for long durations",
                 "For deferred actions, use 'do shell script' with backgrounded processes rather than blocking waits.",
+                "In a read-only script, declare accumulator variables before the 'tell' block or name them like outText: a plain word such as out set inside a 'tell' looks like an application property and forces an approval prompt.",
+                "In a read-only script, leave 'activate' out on the first attempt: reads work with the app in the background, and 'activate' forces an approval prompt and can bring the app to the front. Add it only on a retry, and only if the first result was empty or stale for data you know exists.",
             ],
             # Why these slim docs:
             # - applescript_service has only two methods: execute (you wrote
@@ -875,7 +891,16 @@ return "ERROR: Could not generate AppleScript for this task: {task_description}"
                         "actions. Scripts that create or modify user-visible "
                         "state must return one RESULT_JSON line describing "
                         "material_write, verification_status, evidence, "
-                        "expected, actual, and discrepancies. If you need Basil to write the script "
+                        "expected, actual, and discrepancies. In a read-only "
+                        "script, declare accumulators before the 'tell' block "
+                        "or name them like outText: a plain word such as out "
+                        "inside a 'tell' looks like an app property and forces "
+                        "an approval prompt. Leave 'activate' out of a "
+                        "read-only script on the first attempt (reads work "
+                        "with the app in the background); add it only on a "
+                        "retry, and only if the first result was empty or "
+                        "stale for data you know exists. "
+                        "If you need Basil to write the script "
                         "from a natural-language task description, call "
                         "generate_and_execute_applescript instead."
                     ),

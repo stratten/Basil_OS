@@ -28,6 +28,7 @@ struct SetupAssistantWebView: NSViewRepresentable {
             "apiBaseUrl": APIClient.shared.baseURL,
             "theme": SetupAssistantThemePayload.theme(),
             "fonts": SetupAssistantThemePayload.fonts(),
+            "systemShortcutConflicts": SystemShortcutConflictDetector.defaultHotkeyConflictPayloads(),
         ]
         let configData = try? JSONSerialization.data(withJSONObject: config, options: [])
         let configJSON = configData.flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
@@ -89,7 +90,7 @@ struct SetupAssistantWebView: NSViewRepresentable {
         private var onCollapseRequested: (() -> Void)?
         private var onExpandRequested: (() -> Void)?
         private var onGrowForConversationRequested: (() -> Void)?
-        private weak var webView: WKWebView?
+        weak var webView: WKWebView?
 
         init(
             onRestartRequested: (() -> Void)?,
@@ -105,6 +106,10 @@ struct SetupAssistantWebView: NSViewRepresentable {
             self.onCollapseRequested = onCollapseRequested
             self.onExpandRequested = onExpandRequested
             self.onGrowForConversationRequested = onGrowForConversationRequested
+        }
+
+        deinit {
+            Task { @MainActor in HotkeyRecordingCapture.shared.cancelCapture() }
         }
 
         func loadContent(in webView: WKWebView) {
@@ -123,6 +128,18 @@ struct SetupAssistantWebView: NSViewRepresentable {
             } else {
                 DevLogger.shared.error("[SetupAssistantWebView] HTML file not found at \(htmlURL.path)", context: "SetupAssistant")
             }
+        }
+
+        // MARK: - File input
+
+        /// Lets the setup page's import step open a native file chooser.
+        func webView(
+            _ webView: WKWebView,
+            runOpenPanelWith parameters: WKOpenPanelParameters,
+            initiatedByFrame frame: WKFrameInfo,
+            completionHandler: @escaping ([URL]?) -> Void
+        ) {
+            WebFileInputPanel.present(parameters: parameters, over: webView, completionHandler: completionHandler)
         }
 
         // MARK: - Links
@@ -209,6 +226,18 @@ struct SetupAssistantWebView: NSViewRepresentable {
                 onRestartRequested?()
             case "closeSetupAssistant":
                 onCloseRequested?()
+            case "reportProblem":
+                let source = (payload?["source"] as? String) ?? "setup_assistant"
+                let detail = payload?["detail"] as? String
+                Task { @MainActor in
+                    await ProblemReportService.report(source: source, detail: detail)
+                }
+            case "showDiagnosticLogs":
+                let source = (payload?["source"] as? String) ?? "setup_assistant"
+                let detail = payload?["detail"] as? String
+                Task { @MainActor in
+                    await ProblemReportService.report(source: source, detail: detail, openIssue: false)
+                }
             case "minimizeSetupAssistant":
                 onMinimizeRequested?()
             case "collapseSetupAssistant":
@@ -235,6 +264,16 @@ struct SetupAssistantWebView: NSViewRepresentable {
                 handleAccountOpenPaymentSetup(requestId: requestId)
             case "setupAccountRefresh":
                 handleAccountRefresh(requestId: requestId)
+            case "evaluateSetupHotkeys":
+                handleEvaluateHotkeys(requestId: requestId)
+            case "applySetupHotkey":
+                handleApplyHotkey(payload: payload, requestId: requestId)
+            case "resolveSetupHotkeys":
+                handleResolveHotkeys(payload: payload, requestId: requestId)
+            case "captureSetupHotkey":
+                handleCaptureHotkey(payload: payload, requestId: requestId)
+            case "cancelSetupHotkeyCapture":
+                handleCancelHotkeyCapture()
             default:
                 DevLogger.shared.warning("[SetupAssistantWebView] Unknown bridge action: \(name)", context: "SetupAssistant")
             }

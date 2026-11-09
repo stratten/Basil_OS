@@ -464,6 +464,7 @@ async def refresh_tools(connection_id: str, request: Request) -> ConnectionDTO:
             name=t["name"],
             description=t.get("description"),
             is_read_only_hint=t.get("is_read_only_hint", False),
+            is_destructive_hint=t.get("is_destructive_hint"),
             input_schema=t.get("input_schema") or {},
         )
         for t in tools_payload

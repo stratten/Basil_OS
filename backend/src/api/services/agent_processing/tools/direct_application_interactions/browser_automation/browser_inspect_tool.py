@@ -24,6 +24,12 @@ from .browser_session_runtime import (
     is_background_browser_session,
 )
 from .browser_trace import record_browser_trace
+from .browser_inspect_extensions import (
+    EXTENSIONS_PLACEHOLDER,
+    INSPECT_EXTENSIONS_JS,
+    OPTIONS_PLACEHOLDER,
+    apply_inspect_options,
+)
 from .browser_target_runtime import (
     resolve_browser_target_inputs,
     resolve_preferred_user_browser,
@@ -40,9 +46,22 @@ class BrowserInspectInput(BaseModel):
         default=None,
         description="Browser to inspect: 'Safari', 'Chrome', 'Edge', or leave empty to auto-detect the user's default browser"
     )
-    focus: Literal["buttons", "forms", "links", "text", "content", "all"] = Field(
+    focus: Literal["buttons", "forms", "links", "text", "content", "form_state", "all"] = Field(
         default="all",
-        description="Element type to focus on. 'content' returns the page's main readable text."
+        description=(
+            "Element type to focus on. 'content' returns the page's main readable text. "
+            "'form_state' returns every visible field with its current value (secrets masked), "
+            "checked or selected state, and validity, so you can verify what a form holds before submitting."
+        ),
+    )
+    content_selector: Optional[str] = Field(
+        default=None,
+        description="With focus 'content', read the text of just this CSS selector (for example '#MainContent') instead of the whole page.",
+    )
+    content_offset: int = Field(
+        default=0,
+        ge=0,
+        description="With focus 'content', start reading at this character offset. Use mainTextMeta.next_offset to continue a long page.",
     )
     session_mode: Literal["user_browser", "basil_automation_browser"] = Field(
         default="user_browser",
@@ -59,6 +78,7 @@ class BrowserInspectInput(BaseModel):
 # JavaScript code to extract DOM information
 _INSPECT_JS_CODE = '''
 (function() {
+    /*__BASIL_OPTIONS__*/
     const info = {
         url: window.location.href,
         title: document.title,
@@ -155,7 +175,7 @@ _INSPECT_JS_CODE = '''
             el.getAttribute('aria-label'),
             el.getAttribute('placeholder')
         ].filter(Boolean).join(' ').toLowerCase();
-        return /password|passcode|token|secret|credential|one-time|otp|2fa|mfa/.test(attrs);
+        return /password|passcode|token|secret|credential|one-time|otp|2fa|mfa|cc-number|cc-csc|cc-exp|card[ _-]?(?:number|num)|credit[ _-]?card|cvv|cvc|security[ _-]?code/.test(attrs);
     }
 
     function markSafetyWarning(message) {
@@ -247,9 +267,59 @@ _INSPECT_JS_CODE = '''
         }
     }
 
+    function withoutPageChrome(root, bodyText) {
+        var chromeSelectors = 'nav, header, footer, aside, [role="navigation"], [role="banner"], [role="contentinfo"], [role="complementary"], [id*="nav" i], [class*="nav" i], [id*="menu" i], [class*="menu" i], [id*="sidebar" i], [class*="sidebar" i], [id*="footer" i], [class*="footer" i], [id*="breadcrumb" i], [class*="breadcrumb" i]';
+        var basicSelectors = 'nav, header, footer, aside, [role="navigation"], [role="banner"], [role="contentinfo"], [role="complementary"]';
+        var nodes;
+        try {
+            nodes = root.querySelectorAll(chromeSelectors);
+        } catch (selectorError) {
+            nodes = root.querySelectorAll(basicSelectors);
+        }
+        var accepted = [];
+        var candidates = Array.prototype.slice.call(nodes, 0, 200);
+        candidates.forEach(function (el) {
+            if (!isVisible(el)) return;
+            for (var i = 0; i < accepted.length; i++) {
+                if (accepted[i].contains(el)) return;
+            }
+            var chromeText = el.innerText || '';
+            if (!chromeText || chromeText.length > bodyText.length * 0.6) return;
+            accepted.push(el);
+        });
+        var cleaned = bodyText;
+        var removed = 0;
+        accepted.forEach(function (el) {
+            var chunk = (el.innerText || '').trim();
+            if (chunk.length < 20) return;
+            var at = cleaned.indexOf(chunk);
+            if (at >= 0) {
+                cleaned = cleaned.slice(0, at) + cleaned.slice(at + chunk.length);
+                removed += 1;
+            }
+        });
+        if (cleaned.trim().length < 80) return bodyText;
+        info.mainTextStrippedBlocks = removed;
+        return cleaned;
+    }
+
     function mainReadableText() {
-        var main = document.querySelector('main, article, [role="main"]');
-        var root = main || document.body;
+        var basilOptions = (typeof BASIL_OPTIONS !== 'undefined' && BASIL_OPTIONS) ? BASIL_OPTIONS : {};
+        var root = null;
+        if (basilOptions.contentSelector) {
+            try { root = document.querySelector(basilOptions.contentSelector); } catch (selectorError) { root = null; }
+            if (!root) {
+                info.mainTextMeta = {
+                    truncated: false,
+                    original_char_count: 0,
+                    returned_char_count: 0,
+                    error: 'content_selector matched no element: ' + basilOptions.contentSelector
+                };
+                return '';
+            }
+        } else {
+            root = document.querySelector('main, article, [role="main"]') || document.body;
+        }
         if (!root || !root.innerText) {
             info.mainTextMeta = {
                 truncated: false,
@@ -258,14 +328,22 @@ _INSPECT_JS_CODE = '''
             };
             return '';
         }
-        var fullText = root.innerText.replace(/\\n{3,}/g, '\\n\\n').trim();
-        var clippedText = fullText.slice(0, 12000);
+        var rawText = root.innerText;
+        if (!basilOptions.contentSelector && root === document.body) {
+            rawText = withoutPageChrome(root, rawText);
+        }
+        var fullText = rawText.replace(/\\n{3,}/g, '\\n\\n').trim();
+        var contentOffset = Math.max(0, Number(basilOptions.contentOffset) || 0);
+        var clippedText = fullText.slice(contentOffset, contentOffset + 12000);
         info.mainTextMeta = {
-            truncated: fullText.length > clippedText.length,
+            truncated: fullText.length > contentOffset + clippedText.length,
             original_char_count: fullText.length,
             returned_char_count: clippedText.length,
-            continuation_hint: fullText.length > clippedText.length
-                ? 'Page text exceeded browser_inspect mainText cap; use a narrower page section or dedicated page retrieval before claiming full-page coverage.'
+            offset: contentOffset,
+            next_offset: (contentOffset + clippedText.length < fullText.length) ? contentOffset + clippedText.length : null,
+            stripped_chrome_blocks: info.mainTextStrippedBlocks || 0,
+            continuation_hint: fullText.length > contentOffset + clippedText.length
+                ? 'Page text exceeded browser_inspect mainText cap; call browser_inspect again with focus content and content_offset set to mainTextMeta.next_offset, or pass content_selector for one section, before claiming full-page coverage.'
                 : null
         };
         return clippedText;
@@ -273,9 +351,14 @@ _INSPECT_JS_CODE = '''
     info.mainText = mainReadableText();
 
     inspectRoot(document, '');
+    /*__BASIL_EXTENSIONS__*/
     return JSON.stringify(info);
 })();
 '''
+
+if EXTENSIONS_PLACEHOLDER not in _INSPECT_JS_CODE or OPTIONS_PLACEHOLDER not in _INSPECT_JS_CODE:
+    raise RuntimeError("browser_inspect JavaScript is missing an extension placeholder.")
+_INSPECT_JS_CODE = _INSPECT_JS_CODE.replace(EXTENSIONS_PLACEHOLDER, INSPECT_EXTENSIONS_JS)
 
 
 _build_applescript = build_browser_applescript
@@ -288,6 +371,8 @@ async def _browser_inspect_impl(
     window_index: Optional[int] = None,
     tab_index: Optional[int] = None,
     browser_automation_target: Optional[Dict[str, Any]] = None,
+    content_selector: Optional[str] = None,
+    content_offset: int = 0,
 ) -> str:
     """Implementation of browser inspect tool.
     
@@ -325,7 +410,12 @@ async def _browser_inspect_impl(
         success, output, stderr = await run_applescript(
             _build_applescript(
                 browser,
-                _INSPECT_JS_CODE,
+                apply_inspect_options(
+                    _INSPECT_JS_CODE,
+                    content_selector=content_selector,
+                    content_offset=content_offset,
+                    include_form_state=(focus == "form_state"),
+                ),
                 window_index=window_index,
                 tab_index=tab_index,
             ),
@@ -374,6 +464,10 @@ async def _browser_inspect_impl(
             return json.dumps(page_data, ensure_ascii=False)
 
         # Filter by focus if specified
+        form_state = page_data.pop("formState", None)
+        main_text_meta = page_data.get("mainTextMeta")
+        validation_messages = page_data.get("validationMessages")
+        carried = {key: page_data[key] for key in ("challenge", "frame_notice") if page_data.get(key)}
         if focus == "content":
             page_data = {
                 "url": page_data.get("url", ""),
@@ -381,6 +475,19 @@ async def _browser_inspect_impl(
                 "ready": page_data.get("ready", ""),
                 "mainText": page_data.get("mainText", ""),
             }
+            if main_text_meta:
+                page_data["mainTextMeta"] = main_text_meta
+            page_data.update(carried)
+        elif focus == "form_state":
+            page_data = {
+                "url": page_data.get("url", ""),
+                "title": page_data.get("title", ""),
+                "ready": page_data.get("ready", ""),
+                "formState": form_state or [],
+            }
+            if validation_messages:
+                page_data["validationMessages"] = validation_messages
+            page_data.update(carried)
         elif focus and focus != "all":
             filtered_data = {
                 "url": page_data.get("url", ""),
@@ -397,6 +504,7 @@ async def _browser_inspect_impl(
             elif focus == "text":
                 filtered_data["headings"] = page_data.get("headings", [])
 
+            filtered_data.update(carried)
             page_data = filtered_data
         else:
             page_data.pop("mainText", None)
@@ -475,7 +583,13 @@ SLIM_DESCRIPTION = (
     "you don't already know the selector; only re-inspect after "
     "browser_interact if the next step depends on the new page state. Use "
     "browser_automation_target from browser_tabs.ensure_automation_window "
-    "when available. Leave 'browser' empty to auto-detect the user's preference/default."
+    "when available. Leave 'browser' empty to auto-detect the user's preference/default. "
+    "focus=\"form_state\" reads back every visible field's current value so you can verify a "
+    "form before submitting. Results include `challenge` when the page shows a CAPTCHA, login "
+    "or block page, `frame_notice` when part of the page is in an unreadable frame, and a "
+    "`region` (header, nav, footer, aside) on items outside the main content; an input with "
+    "`global_search: true` is the site-wide search box, not part of the form you are working on. "
+    "For long pages continue with content_offset=mainTextMeta.next_offset, or use content_selector."
 )
 
 _FULL_DESCRIPTION = """Inspect the current web page in the user's browser to discover interactive elements.
@@ -526,7 +640,12 @@ Returns JSON with:
 - `inputs`: Form fields with selectors and current values.
 - `links`: Anchor tags with href and text.
 - `headings`: H1-H3 text for context.
-- `mainText`: Page's main readable text (only when focus="content").
+- `mainText`: Page's main readable text (only when focus="content"). Navigation, header and footer blocks are removed when the page has no main region. `mainTextMeta.next_offset` is the value to pass as `content_offset` to continue a long page; `content_selector` reads one section only.
+- `formState` (only when focus="form_state"): every visible field with `selector`, `label`, `type`, `value` (secrets are `[hidden]`), `checked` or `selected_text`, `required`, `disabled`, and `invalid` with `validation_message`. Use it to verify a form before you submit it.
+- `region`: present on items inside the header, nav, footer or aside. `global_search: true` marks the site-wide search box. `form` names the form an input belongs to.
+- `challenge`: present when the page shows a CAPTCHA, login or block page. `kind` is text_image, recaptcha, hcaptcha, turnstile, login or bot_interstitial, and `next_step` says what to do.
+- `frame_notice`: present when part of the page is in a frame from another site that these tools cannot read.
+- `validationMessages`: visible error messages on the page.
 
 **IMPORTANT:**
 - Leave browser empty to auto-detect the user's default browser (recommended).

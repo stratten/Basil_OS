@@ -17,8 +17,11 @@ from api.services.agent_processing.lifecycle.runtime import user_interaction_tim
 from api.services.agent_processing.lifecycle.runtime.user_interaction_timeline import (
     USER_INTERACTION_DETAIL_KIND,
     build_response_time_limit,
+    SCRIPT_CONTENT_LIMIT,
     build_user_interaction_entry,
     checkpoint_interaction_kind,
+    close_waiting_interactions_in_timeline,
+    normalize_interaction_presentation,
     record_user_interaction_asked,
     record_user_interaction_resolved,
     resolve_all_waiting_user_interactions,
@@ -355,3 +358,62 @@ def test_thinking_history_keeps_recorded_at_and_merges_across_a_pause():
     assert "recorded_at" not in merged[1]
     assert merge_thinking_histories(None, current) == normalize_thinking_history(current)
     assert merge_thinking_histories(prior, None) == normalize_thinking_history(prior)
+
+
+def test_presentation_keeps_only_the_explanation_fields_and_caps_script_text():
+    assert normalize_interaction_presentation(None) == {}
+    assert normalize_interaction_presentation({"purpose": "  ", "cwd": "/tmp", "whitelist": {"eligible": True}}) == {}
+
+    kept = normalize_interaction_presentation(
+        {"purpose": " Builds the report. ", "script_path": "/tmp/r.py", "script_notice": "Shown in full.", "script_content": "print(1)\n", "purpose_missing": True}
+    )
+    assert kept == {
+        "purpose": "Builds the report.",
+        "script_path": "/tmp/r.py",
+        "script_notice": "Shown in full.",
+        "script_content": "print(1)\n",
+    }
+
+    assert normalize_interaction_presentation({"purpose_missing": True}) == {"purpose_missing": True}
+    assert normalize_interaction_presentation({"purpose_missing": "yes"}) == {}
+
+    long_script = "x" * (SCRIPT_CONTENT_LIMIT + 50)
+    capped = normalize_interaction_presentation({"script_content": long_script})
+    assert len(capped["script_content"]) == SCRIPT_CONTENT_LIMIT
+    assert capped["script_truncated"] is True
+    assert normalize_interaction_presentation(capped) == capped
+
+
+def test_entry_records_the_presentation_beside_the_command():
+    entry = build_user_interaction_entry(
+        interaction_id="ap-1",
+        kind="approval",
+        prompt="python3 /tmp/r.py",
+        presentation={"purpose": "Builds the report.", "script_content": "print(1)"},
+    )
+
+    assert _interaction(entry)["prompt"] == "python3 /tmp/r.py"
+    assert _interaction(entry)["purpose"] == "Builds the report."
+    assert _interaction(entry)["script_content"] == "print(1)"
+    assert "purpose" not in _interaction(build_user_interaction_entry(interaction_id="ap-2", kind="approval", prompt="ls"))
+
+
+@pytest.mark.asyncio
+async def test_the_explanation_survives_approval_and_cancellation(knowledge):
+    presentation = {"purpose": "Builds the report.", "script_path": "/tmp/r.py", "script_content": "print(1)"}
+    await record_user_interaction_asked("task-1", interaction_id="ap-1", kind="approval", prompt="python3 /tmp/r.py", presentation=presentation)
+    await record_user_interaction_asked("task-1", interaction_id="ap-2", kind="approval", prompt="ls", presentation={"purpose_missing": True})
+    waiting = knowledge.timeline()
+
+    closed, count = close_waiting_interactions_in_timeline(waiting)
+    assert count == 2
+    assert _interaction(closed[2])["purpose"] == "Builds the report."
+    assert _interaction(closed[2])["script_content"] == "print(1)"
+    assert _interaction(closed[3])["purpose_missing"] is True
+
+    await record_user_interaction_resolved("task-1", interaction_id="ap-1", status="approved")
+    approved = _interaction(next(entry for entry in knowledge.timeline() if entry["id"] == user_interaction_entry_id("ap-1")))
+    assert approved["status"] == "approved"
+    assert approved["purpose"] == "Builds the report."
+    assert approved["script_path"] == "/tmp/r.py"
+    assert approved["script_content"] == "print(1)"

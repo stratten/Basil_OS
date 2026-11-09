@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 
 # Run this module with a temporary HOME to isolate reads/writes of keys/preferences
 pytestmark = pytest.mark.use_temp_home
+from api.core.models.preference_models.defaults import _get_default_local_reasoning_model_id
 from api.core.models.preferences import Preferences
 from api.main import app
 from config.api_keys import api_key_manager
@@ -420,7 +421,7 @@ class TestAPISettings(unittest.TestCase):
         self.assertEqual(data["model"]["is_current_model"]["reasoning"], False)
 
         prefs = Preferences.load()
-        self.assertEqual(prefs.models.reasoning_model, LOCAL_REASONING_FALLBACK_MODEL)
+        self.assertEqual(prefs.models.reasoning_model, _get_default_local_reasoning_model_id())
 
     def test_reasoning_fallback_settings_round_trip(self):
         """The reasoning-fallback toggle and designated local model persist through

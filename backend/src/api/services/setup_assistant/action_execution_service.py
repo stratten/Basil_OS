@@ -10,6 +10,7 @@ from api.core.appearance.token_contract import contrast_ratio, meets_minimum_con
 from api.core.logging.api_logger import api_logger
 from pydantic import ValidationError
 
+from api.core.models.model_download.disk_space import InsufficientDiskSpaceError
 from api.core.models.preference_models.model_settings import ASSISTANT_OUTPUT_PASTE_MODES
 from api.routes.settings_routes.activity_capture_routes import (
     ActivityCaptureSettingsUpdate,
@@ -17,6 +18,11 @@ from api.routes.settings_routes.activity_capture_routes import (
 )
 from api.services.activity_capture_broadcast import broadcast_activity_capture_updated
 from api.services.appearance_broadcast import broadcast_appearance_update
+from api.services.app_control.setup_assistant_policy import (
+    SETUP_ASSISTANT_ALLOWLISTS,
+    SETUP_ASSISTANT_COLOR_KEYS,
+    SETUP_ASSISTANT_FONTS,
+)
 from api.routes.setup_assistant.models import (
     SetupAction,
     SetupActionKind,
@@ -31,62 +37,28 @@ ConnectionRefreshCallable = Callable[[str], Awaitable[Dict[str, Any]]]
 
 PROFILE_UPDATE_ALLOWLIST = {"interaction_preferences"}
 
-TOOL_EXECUTION_SETTINGS_ALLOWLIST = {"auto_approve_read_only"}
+# The allowlists live beside the app-control registry (app_control/setup_assistant_policy.py), so one place decides what is changeable and by whom. They are copied to plain sets here because the rest of this module and its callers use set operations on them.
+TOOL_EXECUTION_SETTINGS_ALLOWLIST = set(SETUP_ASSISTANT_ALLOWLISTS["tool_execution"])
 
-MODEL_SETTINGS_ALLOWLIST = {
-    "reasoning_model",
-    "transcription_model",
-    "language_model",
-    "vision_model",
-    "use_api_models",
-    "close_assistant_session_on_insert",
-    "assistant_output_paste_mode",
-    "use_region_selection",
-}
+MODEL_SETTINGS_ALLOWLIST = set(SETUP_ASSISTANT_ALLOWLISTS["models"])
 
-BEHAVIOR_SETTINGS_ALLOWLIST = {
-    "enable_monitoring_at_startup",
-    "enable_voice_listener_at_startup",
-}
+BEHAVIOR_SETTINGS_ALLOWLIST = set(SETUP_ASSISTANT_ALLOWLISTS["behavior"])
 
-ACTIVITY_CAPTURE_SETTINGS_ALLOWLIST = {
-    "enabled",
-    "start_at_startup",
-    "frequency_minutes",
-    "processing_mode",
-    "scheduled_processing_time",
-}
+ACTIVITY_CAPTURE_SETTINGS_ALLOWLIST = set(SETUP_ASSISTANT_ALLOWLISTS["activity_capture"])
 
 ACTIVITY_CAPTURE_PROCESSING_MODES = {"real_time", "scheduled"}
 
-MEMORY_INTELLIGENCE_SETTINGS_ALLOWLIST = {
-    "memory_after_task_enabled",
-    "memory_daily_enabled",
-    "memory_daily_time_local",
-    "memory_processing_model",
-    "skill_after_task_enabled",
-    "skill_daily_enabled",
-    "skill_daily_time_local",
-    "skill_processing_model",
-}
+MEMORY_INTELLIGENCE_SETTINGS_ALLOWLIST = set(SETUP_ASSISTANT_ALLOWLISTS["memory_intelligence"])
 
 # RGB triplets persisted on UIPreferences. Setup Assistant is stricter than the
 # direct Settings PUT /appearance route, which has no range validation today
 # (a pre-existing gap outside this package's scope).
-UI_COLOR_SETTINGS_KEYS = {
-    "background_color_red", "background_color_green", "background_color_blue",
-    "primary_color_red", "primary_color_green", "primary_color_blue",
-    "secondary_color_red", "secondary_color_green", "secondary_color_blue",
-    "text_color_red", "text_color_green", "text_color_blue",
-    "processing_color_red", "processing_color_green", "processing_color_blue",
-    "processing_accent_color_red", "processing_accent_color_green", "processing_accent_color_blue",
-}
+UI_COLOR_SETTINGS_KEYS = set(SETUP_ASSISTANT_COLOR_KEYS)
 
-# Mirrors client/Sources/Support/AestheticSystem.swift's `availableFonts`.
-# That native list is the source of truth; update both together if it changes.
-UI_AVAILABLE_FONTS = {"Helvetica-Light", "Arial", "Avenir-Light", "SF Pro Text", "Menlo"}
+# The font list is defined once, in app_control/entries.py, and mirrors client/Sources/Support/AestheticSystem.swift's `availableFonts`.
+UI_AVAILABLE_FONTS = set(SETUP_ASSISTANT_FONTS)
 
-UI_SETTINGS_ALLOWLIST = UI_COLOR_SETTINGS_KEYS | {"preferred_font"}
+UI_SETTINGS_ALLOWLIST = set(SETUP_ASSISTANT_ALLOWLISTS["ui"])
 
 
 def validate_model_settings_payload(updates: Dict[str, Any]) -> None:
@@ -270,7 +242,26 @@ class SetupAssistantActionExecutionService:
         results: List[SetupActionExecutionItem] = []
         for model_id in model_ids:
             model_type, variant = self._resolve_model_type_and_variant(model_id)
-            entry = await self.download_manager.start(model_type, variant)
+            try:
+                entry = await self.download_manager.start(model_type, variant)
+            except InsufficientDiskSpaceError as exc:
+                results.append(
+                    SetupActionExecutionItem(
+                        id=f"{action.id}:{model_id}",
+                        kind=action.kind.value,
+                        status=SetupExecutionStatus.failed,
+                        message=str(exc),
+                        result_payload={
+                            "model_id": model_id,
+                            "model_type": model_type,
+                            "variant": variant,
+                            "download_status": "insufficient_disk_space",
+                            "free_disk_gb": round(exc.free_gb, 1),
+                            "required_disk_gb": round(exc.required_gb, 1),
+                        },
+                    )
+                )
+                continue
             if (
                 entry.status in {"queued", "downloading", "skipped_installed"}
                 and self._is_transcription_model(model_id)

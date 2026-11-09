@@ -1,0 +1,161 @@
+/* The model download list: one bordered row per model, named by the model itself, with a compact button on the right. It is used by the Model downloads step and by the status panel on the wrap-up screen. */
+.model-downloads {
+  display: grid;
+  gap: var(--padding-m, 12px);
+}
+
+.model-downloads__list {
+  display: grid;
+  gap: var(--padding-s, 8px);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.model-downloads__row {
+  align-items: center;
+  background: var(--background-primary);
+  border: 1px solid var(--separator-color);
+  border-radius: var(--corner-radius-medium);
+  color: var(--text-primary);
+  column-gap: var(--padding-m, 12px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: var(--padding-m, 12px);
+  row-gap: var(--padding-s);
+}
+
+.model-downloads__row--completed {
+  border-color: var(--accent-green);
+}
+
+.model-downloads__row--failed {
+  border-color: var(--error-base);
+}
+
+.model-downloads__identity {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.model-downloads__name {
+  font-family: var(--font-family-medium);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.model-downloads__role {
+  color: var(--text-primary);
+  font-size: var(--font-size-footnote, var(--font-size-callout));
+  font-weight: 600;
+}
+
+.model-downloads__detail {
+  color: var(--text-secondary);
+  font-size: var(--font-size-footnote, var(--font-size-callout));
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.model-downloads__action {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--padding-s);
+  justify-content: flex-end;
+}
+
+.model-downloads__state {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-weight: normal;
+  white-space: nowrap;
+}
+
+.model-downloads__row--completed .model-downloads__state {
+  color: var(--accent-green);
+}
+
+.model-downloads__row--failed .model-downloads__state {
+  color: var(--error-base);
+}
+
+/* Label-sized buttons: the shared button classes set the compact padding, so only wrapping and width are set here. */
+.model-downloads__button {
+  font-size: var(--font-size-callout);
+  white-space: nowrap;
+  width: auto;
+}
+
+.model-downloads__all {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--padding-s);
+}
+
+/* The shared download progress (shared/DownloadProgress.tsx) sits under the row's name, across the whole row. */
+.model-downloads__progress {
+  grid-column: 1 / -1;
+}
+
+.model-downloads__error {
+  color: var(--error-base);
+  font-weight: 700;
+  margin: 0;
+}
+
+/* The wrap-up status panel wraps the same list in a bordered card with a heading. */
+.starter-downloads {
+  background: var(--background-primary);
+  border: var(--border-thin) solid var(--separator-color);
+  border-radius: var(--corner-radius-medium);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: var(--padding-m);
+  padding: var(--padding-m) var(--padding-l);
+}
+
+.setup-card > .starter-downloads {
+  flex: 0 0 auto;
+}
+
+.starter-downloads__title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+/* Validation builds only: the picker for which local thinking model setup uses. */
+.local-model-chooser {
+  background: var(--background-primary);
+  border: var(--border-thin) solid var(--separator-color);
+  border-radius: var(--corner-radius-medium);
+  display: grid;
+  gap: 6px;
+  padding: var(--padding-m, 12px);
+}
+
+.local-model-chooser__label {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-weight: normal;
+}
+
+.intro-downloads-ready {
+  color: var(--accent-green);
+  font-weight: 700;
+  margin: 0;
+}
+
+.choice-option-download-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--padding-s);
+}
+
+.choice-option-wrapper > .local-model-chooser {
+  margin-top: var(--padding-xs, 4px);
+}

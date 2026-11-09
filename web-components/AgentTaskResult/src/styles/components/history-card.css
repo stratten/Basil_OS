@@ -76,11 +76,14 @@
   min-width: 0;
 }
 
+/* One line, like the collapsed card. The full request, rendered as Markdown and collapsed by default, sits in the card body, so repeating it here would show a second, unformatted copy of every long request. */
 .history-card__request-full {
-  font-family: var(--font-family-light);
-  font-size: calc(10px * var(--text-scale, 1));
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
   color: var(--text-primary);
-  word-break: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .history-card__time--expanded {

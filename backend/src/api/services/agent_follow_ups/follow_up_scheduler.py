@@ -22,6 +22,28 @@ GAP_CONTINUATION_REASON = "Scheduled automatically: the outcome check found a ga
 _TERMINAL_TASK_STATUSES = frozenset({"completed", "failed", "canceled"})
 
 
+def _model_the_turn_ran_on(turn: Any) -> Optional[str]:
+    """The registry id of the model a finished turn really ran on, or None when it is unknown or was an emergency fallback.
+
+    A turn that moved to the local fallback because its model was unreachable is skipped, so the chain is not moved onto the fallback for good.
+    """
+    result_data = getattr(turn, "result_data", None)
+    if not isinstance(result_data, dict) or result_data.get("reasoning_fallback_model_used"):
+        return None
+    nested = result_data.get("data")
+    for candidate in (result_data.get("model_used"), nested.get("model_used") if isinstance(nested, dict) else None):
+        if not (isinstance(candidate, str) and candidate.strip()):
+            continue
+        try:
+            from api.core.models.models_registry.schema import get_model
+
+            if get_model(candidate.strip()):
+                return candidate.strip()
+        except Exception as lookup_error:
+            logger.debug("Could not check %s against the model registry: %s", candidate, lookup_error)
+    return None
+
+
 def _iso(moment: datetime) -> str:
     return moment.astimezone(timezone.utc).isoformat(timespec="seconds")
 
@@ -183,6 +205,9 @@ class AgentFollowUpScheduler:
         }
         # The turn continues the chain's own work, so it runs on the model the chain was started with rather than whatever the default is now.
         chain_model_id = (getattr(chain[-1], "accumulated_artifacts", None) or {}).get("model_id")
+        if not (isinstance(chain_model_id, str) and chain_model_id):
+            # A chain started before models were always recorded has no request on file, so use the model its last turn really ran on instead of whatever the default is now.
+            chain_model_id = _model_the_turn_ran_on(chain[-1])
         if isinstance(chain_model_id, str) and chain_model_id:
             submission["model_id"] = chain_model_id
         result = await self._submission_service.process_agent_task_direct(**submission)

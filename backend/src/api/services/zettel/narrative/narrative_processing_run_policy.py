@@ -36,7 +36,9 @@ def resolve_narrative_processing_run_policy(
     *,
     is_manual_backlog_run: bool,
 ) -> NarrativeProcessingRunPolicy:
-    """Allow bounded parallelism only for an explicitly requested cloud backlog.
+    """Allow bounded parallelism for any run on a cloud model, scheduled or manual.
+
+    A cloud model has no local weights to protect, and the model-acquisition semaphore already serializes the only shared step, so a scheduled overnight backlog gains from the same bounded fan-out as a manual one. ``is_manual_backlog_run`` is kept in the signature for callers and recorded nowhere else.
 
     An empty configured_model means "use the default reasoning model", whose eventual identity depends on ModelUsageService's runtime fallback chain and is not knowable here, so it is treated the same as an unknown model: stays sequential.
     """
@@ -44,7 +46,7 @@ def resolve_narrative_processing_run_policy(
     model_id = canonical_model_id or (configured_model or None)
     model_config = get_model(canonical_model_id) if canonical_model_id is not None else None
     is_cloud_model = isinstance(model_config, dict) and model_config.get("location") == "cloud"
-    if is_manual_backlog_run and is_cloud_model:
+    if is_cloud_model:
         return NarrativeProcessingRunPolicy(
             model_id=model_id,
             analysis_concurrency=API_BACKLOG_NARRATIVE_CONCURRENCY,

@@ -75,11 +75,19 @@ def strip_inline_reasoning(text: str, open_tag: str, close_tag: str) -> str:
 
     An unterminated block is cut from its opening tag onward: everything after it
     is reasoning, and returning it would hand raw chain-of-thought to a caller as
-    though it were the answer.
+    though it were the answer. A closing tag with no opener before it is the other
+    way a chat template can leave reasoning behind (the template supplies the
+    opening tag, so only the closer is generated): everything up to and including
+    that closer is reasoning and is dropped.
     """
     text = re.sub(
         rf"{re.escape(open_tag)}.*?{re.escape(close_tag)}\s*", "", text, flags=re.DOTALL
     )
+    close_index = text.find(close_tag)
+    if close_index != -1:
+        open_index = text.find(open_tag)
+        if open_index == -1 or close_index < open_index:
+            text = text[close_index + len(close_tag):].lstrip()
     if open_tag in text:
         text = text.split(open_tag, 1)[0]
     return text

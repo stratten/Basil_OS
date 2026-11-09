@@ -84,7 +84,7 @@ extension APIClient {
         if httpResponse.statusCode >= 400 {
             let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
             logger.error("❌ Server error (\(httpResponse.statusCode)): \(errorMessage)")
-            throw APIError.serverError(statusCode: httpResponse.statusCode)
+            throw APIError.serverFailure(statusCode: httpResponse.statusCode, body: data)
         }
         
         // Try to parse the actual response from the backend

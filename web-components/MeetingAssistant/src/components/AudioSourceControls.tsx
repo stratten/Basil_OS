@@ -143,10 +143,16 @@ export default function AudioSourceControls({ ui, companion }: AudioSourceContro
       {companion && <CompanionToggle {...companion} />}
 
       {ui.microphoneInputRecoveryState !== 'idle' && (
-        <p className="meeting-audio-recovery-notice" role="alert">
+        <p
+          className={`meeting-audio-recovery-notice${ui.microphoneInputRecoveryState === 'silent' ? ' meeting-audio-recovery-notice--silent' : ''}`}
+          role="alert"
+        >
+          {ui.microphoneInputRecoveryState === 'silent' && <span className="meeting-audio-recovery-notice-icon" aria-hidden="true">⚠</span>}
           {ui.microphoneInputRecoveryState === 'reconnecting'
             ? 'Reconnecting to the microphone…'
-            : ui.microphoneInputRecoveryMessage ?? 'Microphone input failed.'}
+            : ui.microphoneInputRecoveryState === 'silent'
+              ? ui.microphoneInputRecoveryMessage ?? 'Your microphone is only delivering silence. Another app, such as a call, may be using it.'
+              : ui.microphoneInputRecoveryMessage ?? 'Microphone input failed.'}
         </p>
       )}
     </section>

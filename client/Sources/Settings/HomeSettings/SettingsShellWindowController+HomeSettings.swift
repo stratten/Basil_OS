@@ -21,6 +21,9 @@ extension SettingsShellWindowController {
         webView.onOpenPowerUserGuide = { [weak self] requestId in
             self?.performHomeOpenPowerUserGuide(requestId: requestId)
         }
+        webView.onReportProblem = { [weak self] requestId in
+            self?.performHomeReportProblem(requestId: requestId)
+        }
         webView.onMalformedIntent = { type in
             #if DEBUG
             DevLogger.shared.error("[HOME_SETTINGS] Malformed intent: \(type)", context: "SettingsShellWindowController")
@@ -166,6 +169,14 @@ extension SettingsShellWindowController {
         }
         appDelegate.presentSetupAssistantWindowFromDelegate()
         webView.sendIntentResult(requestId: requestId, status: "success", message: nil)
+    }
+
+    private func performHomeReportProblem(requestId: String) {
+        guard let webView = homeWebView else { return }
+        Task { @MainActor in
+            await ProblemReportService.report(source: "settings_home", detail: nil)
+            webView.sendIntentResult(requestId: requestId, status: "success", message: nil)
+        }
     }
 
     private func performHomeOpenPowerUserGuide(requestId: String) {

@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException
 
 from api.core.models.models_registry import get_local_reasoning_models, get_model
 from api.core.models.models_registry.cloud_reasoning_registry import CLOUD_REASONING_MODELS
+from api.core.models.preference_models.defaults import _get_default_local_reasoning_model_id
 from api.core.models.preferences import APIKeyPreference, Preferences
 from api.core.preferences.preferences_io import save_preferences
 from api.core.services.api_key_validation import validate_provider_api_key
@@ -26,6 +27,10 @@ from api.routes.setup_assistant.models import (
     SetupAgentModelAccessSelectResponse,
     SetupAgentModelMetadata,
     SetupAgentProviderModelChoice,
+)
+from api.routes.setup_assistant.validation_model_routes import (
+    can_copy_from_normal_basil,
+    validation_local_model_choices,
 )
 from config.api_keys import aset_api_key, has_user_key
 from config.credential_store import CredentialStoreUnavailableError
@@ -50,10 +55,19 @@ async def _resolve_account_token() -> Optional[str]:
 
 
 def _default_local_model_id() -> Optional[str]:
+    """Return the local model setup recommends for this Mac: the onboarding default, moved up or down by the machine's memory.
+
+    This is the same selection that seeds the stored default and the starter pack, so setup cannot recommend a model the rest of Basil would not choose. The registry's flagged model is the answer when the machine-sized choice is not an available reasoning model here.
+    """
+
+    local_models = get_local_reasoning_models()
+    machine_default = _get_default_local_reasoning_model_id()
+    if machine_default in local_models and "reasoning" in local_models[machine_default].get("capabilities", []):
+        return machine_default
     return next(
         (
             model_id
-            for model_id, config in get_local_reasoning_models().items()
+            for model_id, config in local_models.items()
             if config.get("recommended_for_onboarding") is True
             and "reasoning" in config.get("capabilities", [])
         ),
@@ -64,10 +78,11 @@ def _default_local_model_id() -> Optional[str]:
 def _eligible_local_model_ids() -> list[str]:
     """Return every downloaded reasoning-capable local model, best setup choice first.
 
-    Setup works with whichever suitable model the user already has, so Local does not depend on one specific model. The onboarding default sorts first, then other recommended models, then registry order.
+    Setup works with whichever suitable model the user already has, so Local does not depend on one specific model. The default for this Mac sorts first, then the registry's flagged onboarding model, then other recommended models, then registry order.
     """
 
     service = get_model_service()
+    machine_default = _default_local_model_id()
     eligible: list[tuple[int, str]] = []
     for model_id, config in get_local_reasoning_models().items():
         if "reasoning" not in config.get("capabilities", []):
@@ -75,12 +90,14 @@ def _eligible_local_model_ids() -> list[str]:
         model_type, separator, variant = model_id.partition("-")
         if not separator or not service.is_model_downloaded(model_type, variant):
             continue
-        if config.get("recommended_for_onboarding") is True:
+        if model_id == machine_default:
             rank = 0
-        elif config.get("recommended") is True:
+        elif config.get("recommended_for_onboarding") is True:
             rank = 1
-        else:
+        elif config.get("recommended") is True:
             rank = 2
+        else:
+            rank = 3
         eligible.append((rank, model_id))
     return [model_id for _, model_id in sorted(eligible, key=lambda entry: entry[0])]
 
@@ -162,15 +179,27 @@ def _save_access_preference(preference: APIKeyPreference) -> None:
 @router.get("/options", response_model=SetupAgentModelAccessOptionsResponse)
 async def get_model_access_options(
     check_account: bool = False,
+    local_model_id: Optional[str] = None,
 ) -> SetupAgentModelAccessOptionsResponse:
     """Return sanitized availability for each setup model-access route.
 
     Reading the signed-in account makes the app open its Keychain, which can show a macOS permission prompt. So the default listing only uses a token the backend already holds in memory and otherwise reports Basil Cloud as not yet checked. The page passes ``check_account=true`` once the user has chosen Basil Cloud, and only then is the app asked for the account.
+
+    ``local_model_id`` names the local model the Local route should describe. It is honored only in a validation session, where the page offers a chooser; anywhere else it is ignored.
     """
 
     eligible_local_model_ids = _eligible_local_model_ids()
-    # With any eligible model on disk, Local uses it. With none, the onboarding default is the one to recommend downloading.
-    local_model_id = (
+    local_model_choices = validation_local_model_choices(
+        get_local_reasoning_models(),
+        _default_local_model_id(),
+        eligible_local_model_ids,
+        get_model_service().is_model_downloaded,
+    )
+    requested_local_model_id = (
+        local_model_id if any(choice.model_id == local_model_id for choice in local_model_choices) else None
+    )
+    # With any eligible model on disk, Local uses it. With none, the onboarding default is the one to recommend downloading. A tester's chosen model, in a validation session, wins over both.
+    local_model_id = requested_local_model_id or (
         eligible_local_model_ids[0] if eligible_local_model_ids else _default_local_model_id()
     )
     configured_provider = next(
@@ -227,6 +256,8 @@ async def get_model_access_options(
             download_size_description=local_size,
             local_model_type=local_model_type,
             local_model_variant=local_model_variant,
+            local_model_choices=local_model_choices,
+            can_copy_from_normal_basil=can_copy_from_normal_basil(local_model_id),
         ),
         SetupAgentModelAccessOption(
             mode=SetupAgentModelAccessMode.provider_key,

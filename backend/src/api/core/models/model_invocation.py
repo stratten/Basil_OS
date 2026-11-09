@@ -161,7 +161,7 @@ async def call_model_with_prompt(
     profile = resolve_runtime_model_profile(model)
     if (
         getattr(profile, "location", None) == "local"
-        and getattr(profile, "handler", None) in {"llama_cpp", "huggingface"}
+        and getattr(profile, "handler", None) in {"llama_cpp", "huggingface", "mlx"}
     ):
         from api.core.models.reasoning.streaming_contract import resolve_generation_budget
 
@@ -171,7 +171,7 @@ async def call_model_with_prompt(
             requested_output_tokens=max_tokens,
         )
         kwargs["max_tokens"] = local_budget.effective_output_tokens
-        if getattr(profile, "handler", None) == "llama_cpp" and on_local_generation_telemetry is not None:
+        if getattr(profile, "handler", None) in {"llama_cpp", "mlx"} and on_local_generation_telemetry is not None:
             kwargs["telemetry_callback"] = on_local_generation_telemetry
     elif max_tokens is not None:
         kwargs["max_tokens"] = max_tokens

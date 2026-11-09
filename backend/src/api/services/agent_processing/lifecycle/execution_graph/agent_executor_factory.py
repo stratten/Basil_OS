@@ -72,6 +72,17 @@ class FinalizeInput(BaseModel):
 # LLM CREATION
 # =============================================================================
 
+def reading_prompt_message(prompt_tokens: Optional[int], phase_seconds: Optional[float]) -> str:
+    """Progress text while a local model reads its prompt: the size is approximate and the time is how long it has been reading."""
+    details: List[str] = []
+    if prompt_tokens and prompt_tokens > 0:
+        details.append(f"about {prompt_tokens / 1000:.0f}k tokens" if prompt_tokens >= 1000 else f"about {prompt_tokens} tokens")
+    if phase_seconds is not None and phase_seconds >= 1:
+        minutes, seconds = divmod(int(phase_seconds), 60)
+        details.append(f"{minutes}m {seconds:02d}s so far" if minutes else f"{seconds}s so far")
+    return f"Local model is reading the prompt ({', '.join(details)})…" if details else "Local model is reading the prompt…"
+
+
 def _build_local_model_heartbeat(
     llm_model: Any,
     websocket_manager: Any = None,
@@ -113,6 +124,8 @@ def _build_local_model_heartbeat(
         thinking_text: Optional[str] = None,
         thinking_complete: bool = False,
         phase: Optional[str] = None,
+        prompt_tokens: Optional[int] = None,
+        phase_seconds: Optional[float] = None,
     ) -> None:
         try:
             from api.dependencies import get_model_service
@@ -171,7 +184,7 @@ def _build_local_model_heartbeat(
             elif phase == "waiting_for_model":
                 event["message"] = "Waiting for the local model to finish another request…"
             elif phase == "processing_prompt":
-                event["message"] = "Local model is reading the prompt…"
+                event["message"] = reading_prompt_message(prompt_tokens, phase_seconds)
             else:
                 event["message"] = f"Local model generating… (~{tokens_generated} tokens)"
 
@@ -181,6 +194,7 @@ def _build_local_model_heartbeat(
 
     _heartbeat.thinking_segments = _thinking_segments
     _heartbeat.accepts_phase = True
+    _heartbeat.accepts_prompt_progress = True
 
     return _heartbeat
 
@@ -247,7 +261,7 @@ def create_langchain_llm_from_model(
 
     # 3. Local llama.cpp models — handle before api_key/model_name reads
     #    since LlamaCppModel does not have those attributes
-    if engine_source.lower() == "llama.cpp":
+    if engine_source.lower() in {"llama.cpp", "mlx"}:
         if not hasattr(llm_model, "llm") or llm_model.llm is None:
             model_label = llm_model.model_path.stem if hasattr(llm_model, 'model_path') and llm_model.model_path else "local model"
             raise RuntimeError(

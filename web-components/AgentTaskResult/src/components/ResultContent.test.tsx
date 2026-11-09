@@ -118,6 +118,45 @@ describe('ResultContent completed activity history', () => {
     expect(markup).not.toContain('activity-summary');
   });
 
+  it('shows attached files before a voice turn has any transcribed prompt text', () => {
+    const markup = renderToStaticMarkup(
+      <ResultContent
+        agentTask={{
+          ...completedTask,
+          originalPrompt: '',
+          status: 'processing',
+          result: '',
+          executionTimeline: [],
+          thinkingSegments: [],
+          referencePaths: ['/tmp/Quarterly Notes.pdf'],
+        }}
+        onRetry={() => {}}
+        onContinue={() => {}}
+      />,
+    );
+
+    expect(markup).toContain('Quarterly Notes.pdf');
+  });
+
+  it('shows no attachment list for a turn with neither a prompt nor files', () => {
+    const markup = renderToStaticMarkup(
+      <ResultContent
+        agentTask={{
+          ...completedTask,
+          originalPrompt: '',
+          status: 'processing',
+          result: '',
+          executionTimeline: [],
+          thinkingSegments: [],
+        }}
+        onRetry={() => {}}
+        onContinue={() => {}}
+      />,
+    );
+
+    expect(markup).not.toContain('attachment-list');
+  });
+
   it('does not mount an empty inline activity container when a completed task has no activity', () => {
     const markup = renderToStaticMarkup(
       <ResultContent
@@ -217,6 +256,18 @@ describe('ResultContent result footer', () => {
     expect(footer?.querySelector('time')?.getAttribute('datetime')).toBe('2026-07-30T12:00:00.000Z');
     const container = doc.querySelector('.result-container');
     expect(container?.compareDocumentPosition(footer as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('puts the copy buttons at the right end of the Result heading row, outside the result text', () => {
+    const doc = footerFor({ ...completedTask, modelUsed: 'gpt-5-mini' });
+
+    const header = doc.querySelector('.result-header');
+    expect(header?.querySelector('button[aria-label="Copy rich text"]')).not.toBeNull();
+    expect(header?.querySelector('button[aria-label="Copy markdown"]')).not.toBeNull();
+    expect(header?.lastElementChild?.querySelector('button[aria-label="Copy markdown"]')).not.toBeNull();
+    expect(doc.querySelector('.result-container button[aria-label="Copy markdown"]')).toBeNull();
+    expect(doc.querySelector('.result-container button[aria-label="Copy rich text"]')).toBeNull();
+    expect(header?.textContent).toBe('Result:');
   });
 
   it('joins the time and the model with a dot', () => {

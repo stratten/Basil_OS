@@ -16,6 +16,7 @@ from .migrations import (
     _migrate_legacy_keys_for_team_identity_rename,
     _normalize_api_key_preference,
     migrate_assistant_output_paste_mode_in_data,
+    migrate_legacy_transcription_model_in_data,
     migrate_retired_cloud_model_ids_in_data,
     migrate_zettel_source_catalog_in_data,
     normalize_auth_preference_in_data,
@@ -75,6 +76,7 @@ def load_preferences_model(
             normalize_auth_preference_in_data(data)
             zettel_catalog_updated = migrate_zettel_source_catalog_in_data(data)
             retired_models_migrated = migrate_retired_cloud_model_ids_in_data(data)
+            retired_models_migrated = migrate_legacy_transcription_model_in_data(data) or retired_models_migrated
             models_data = data.get("models")
             vision_model_migrated = (
                 isinstance(models_data, dict)

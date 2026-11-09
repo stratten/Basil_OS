@@ -37,6 +37,7 @@ class ModelHandler(str, Enum):
     LLAMA_CPP = "llama_cpp"  # GGUF models via llama-cpp-python.
     LLAMA_CPP_VISION = "llama_cpp_vision"  # GGUF VLM (e.g. Qwen3-VL + mmproj).
     HUGGINGFACE = "huggingface"  # HuggingFace transformers.
+    MLX = "mlx"  # MLX checkpoint folders on Apple Silicon.
     WHISPER = "whisper"  # Whisper transcription (HF pipeline).
     PARAKEET = "parakeet"  # NVIDIA Parakeet ASR via ONNX Runtime (no NeMo).
 
@@ -145,7 +146,9 @@ class BaseModelConfig(TypedDict, total=False):
     recommended: bool  # Show as recommended (default: False).
     recommended_reason: str  # Why recommended.
     recommended_for_onboarding: bool  # Setup Assistant default; at most one per provider (default: False).
+    superseded_by_mlx: bool  # A GGUF model that also has an MLX entry. Where MLX can run, it is no longer recommended or the onboarding default, but stays listed and downloadable (default: False).
     visible: bool  # Whether model appears in UI (default: True). Set False for internal-only models.
+    default_local_vision_fallback: bool  # Seeds preferences.models.local_vision_model_id; exactly one local vision model sets it (default: False).
 
 
 class CloudReasoningConfig(BaseModelConfig):
@@ -276,6 +279,20 @@ class CustomModelConfig(BaseModelConfig):
 # =============================================================================
 
 
+def _host_view(cfg: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Return a built-in model as this machine sees it, or None when this machine cannot use it.
+
+    An MLX model does not exist on a machine without the MLX runtime. Where the runtime exists, a model flagged ``superseded_by_mlx`` (a GGUF entry that also has an MLX entry) stops being recommended and stops being the onboarding default, so the MLX entry is the one Basil suggests. The GGUF entry stays listed and downloadable.
+    """
+    from ...runtime.mlx_support import mlx_runtime_available, model_runtime_available
+
+    if not model_runtime_available(cfg):
+        return None
+    if cfg.get("superseded_by_mlx") and mlx_runtime_available():
+        return {**cfg, "recommended": False, "recommended_for_onboarding": False}
+    return cfg
+
+
 def _iter_all_models() -> Iterable[Tuple[str, Dict[str, Any]]]:
     """Iterate over all models across all per-category registries.
     
@@ -301,8 +318,11 @@ def _iter_all_models() -> Iterable[Tuple[str, Dict[str, Any]]]:
         TRANSCRIPTION_MODELS,
     ):
         for model_id, cfg in registry.items():
+            visible_cfg = _host_view(cfg)
+            if visible_cfg is None:
+                continue
             # Add category if not already set.
-            enriched_cfg = {**cfg, "category": cfg.get("category", ModelCategory.STANDARD.value)}
+            enriched_cfg = {**visible_cfg, "category": visible_cfg.get("category", ModelCategory.STANDARD.value)}
             yield model_id, enriched_cfg
 
     # User-defined custom models.
@@ -663,8 +683,11 @@ def get_local_reasoning_models() -> Dict[str, Dict[str, Any]]:
     from .local_reasoning_registry import LOCAL_GGUF_MODELS, LOCAL_HF_MODELS
     
     result: Dict[str, Dict[str, Any]] = {}
-    result.update(LOCAL_GGUF_MODELS)
-    result.update(LOCAL_HF_MODELS)
+    for registry in (LOCAL_GGUF_MODELS, LOCAL_HF_MODELS):
+        for model_id, cfg in registry.items():
+            visible_cfg = _host_view(cfg)
+            if visible_cfg is not None:
+                result[model_id] = visible_cfg
     return result
 
 

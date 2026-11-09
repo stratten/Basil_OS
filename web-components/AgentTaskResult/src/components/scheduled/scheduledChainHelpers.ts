@@ -17,9 +17,10 @@ export interface ChainFormState {
   ageValue: string;
   ageUnit: ChainAgeUnit;
   carryOver: boolean;
+  carryChecklist: boolean;
 }
 
-// A chained schedule needs at least one limit, so turning chaining on starts with both: a new conversation after 24 runs or one day, whichever comes first.
+// A chained schedule needs at least one limit, so turning chaining on starts with both: a new conversation after 24 turns or one day, whichever comes first.
 export const DEFAULT_CHAIN_FORM: ChainFormState = {
   chained: false,
   limitRuns: true,
@@ -28,6 +29,7 @@ export const DEFAULT_CHAIN_FORM: ChainFormState = {
   ageValue: '1',
   ageUnit: 'days',
   carryOver: true,
+  carryChecklist: false,
 };
 
 const CLOCK = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -52,9 +54,11 @@ export function describeMinutes(minutes: number): string {
 }
 
 export function chainFormFromConfig(config: ScheduledChainConfig | null | undefined): ChainFormState {
-  if (!config || config.mode !== 'chained') return { ...DEFAULT_CHAIN_FORM };
+  const carryChecklist = config?.carry_checklist === true;
+  if (!config || config.mode !== 'chained') return { ...DEFAULT_CHAIN_FORM, carryChecklist };
   const form: ChainFormState = {
     ...DEFAULT_CHAIN_FORM,
+    carryChecklist,
     chained: true,
     carryOver: config.carry_over !== false,
     limitRuns: false,
@@ -89,10 +93,10 @@ function ageMinutes(form: ChainFormState): number | null {
 // The message to show next to the chain row, or null when the settings can be saved.
 export function chainFormError(form: ChainFormState): string | null {
   if (!form.chained) return null;
-  if (!form.limitRuns && !form.limitAge) return 'Choose a run limit, a time limit, or both, so one conversation cannot grow without end.';
+  if (!form.limitRuns && !form.limitAge) return 'Choose a turn limit, a time limit, or both, so one conversation cannot grow without end.';
   if (form.limitRuns) {
     const runs = wholeNumber(form.maxRuns);
-    if (runs === null || runs < 1 || runs > MAX_CHAIN_RUNS) return `The run limit must be a whole number from 1 to ${MAX_CHAIN_RUNS.toLocaleString('en-US')}.`;
+    if (runs === null || runs < 1 || runs > MAX_CHAIN_RUNS) return `The turn limit must be a whole number from 1 to ${MAX_CHAIN_RUNS.toLocaleString('en-US')}.`;
   }
   if (form.limitAge) {
     const minutes = ageMinutes(form);
@@ -103,8 +107,9 @@ export function chainFormError(form: ChainFormState): string | null {
 
 // What the form means as the payload for the backend. Only call this when `chainFormError` is null.
 export function chainConfigFromForm(form: ChainFormState): ScheduledChainConfig {
-  if (!form.chained) return { mode: 'independent' };
+  if (!form.chained) return form.carryChecklist ? { mode: 'independent', carry_checklist: true } : { mode: 'independent' };
   const config: ScheduledChainConfig = { mode: 'chained', carry_over: form.carryOver };
+  if (form.carryChecklist) config.carry_checklist = true;
   if (form.limitRuns) config.max_runs = Number(form.maxRuns.trim());
   if (form.limitAge) config.max_age_minutes = ageMinutes(form) ?? undefined;
   return config;
@@ -126,12 +131,13 @@ export function chainConfigChanged(
 }
 
 export function describeChain(config: ScheduledChainConfig | null | undefined): string {
-  if (!config || config.mode !== 'chained') return 'Each run is its own task';
+  const checklist = config?.carry_checklist ? ', carrying unfinished checklist items over' : '';
+  if (!config || config.mode !== 'chained') return `Each run is its own task${checklist}`;
   const limits: string[] = [];
-  if (config.max_runs) limits.push(`${config.max_runs} ${config.max_runs === 1 ? 'run' : 'runs'}`);
+  if (config.max_runs) limits.push(`${config.max_runs} ${config.max_runs === 1 ? 'turn' : 'turns'}`);
   if (config.max_age_minutes) limits.push(describeMinutes(config.max_age_minutes));
   const lead = limits.length > 0 ? `Continues one conversation, starting a new one after ${limits.join(' or ')}` : 'Continues one conversation';
-  return `${lead}${config.carry_over === false ? ', starting blank' : ', carrying the last result over'}`;
+  return `${lead}${config.carry_over === false ? ', starting blank' : ', carrying the last result over'}${checklist}`;
 }
 
 export function newExclusionWindow(): ExclusionWindow {

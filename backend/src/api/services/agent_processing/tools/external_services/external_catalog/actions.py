@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from .approval import request_external_catalog_user_approval
+from .approval import ExplanationRequired, request_external_catalog_user_approval
 from .audit import record_external_catalog_audit
 from .auth import (
     default_external_catalog_policy_for_tool,
@@ -19,6 +19,7 @@ from .auth import (
 )
 from .envelopes import (
     make_external_catalog_auth_unavailable,
+    make_external_catalog_explanation_required,
     make_external_catalog_needs_reconnect,
     make_external_catalog_not_found,
     make_external_catalog_permission_denied,
@@ -143,7 +144,9 @@ async def call_external_catalog_tool(
     connection_id: str,
     tool_name: str,
     arguments: Dict[str, Any],
+    purpose: Optional[str] = None,
 ) -> Dict[str, Any]:
+    """Dispatch one remote tool call. ``purpose`` is the agent's explanation for the approval card and is never forwarded to the remote tool."""
     prefs = load_external_catalog_preferences()
     record = find_external_catalog_connection(prefs, connection_id)
     if record is None:
@@ -192,7 +195,11 @@ async def call_external_catalog_tool(
         return envelope
 
     if policy == "always_ask":
-        approved = await request_external_catalog_user_approval(record, tool_name, arguments)
+        try:
+            approved = await request_external_catalog_user_approval(record, tool_name, arguments, purpose=purpose)
+        except ExplanationRequired:
+            # Not audited, like the schema guard: nothing was asked or refused, and the agent repeats the call with its explanation.
+            return make_external_catalog_explanation_required(tool_name)
         if not approved:
             envelope = make_external_catalog_permission_denied(tool_name, "User denied the request.")
             await record_external_catalog_audit(

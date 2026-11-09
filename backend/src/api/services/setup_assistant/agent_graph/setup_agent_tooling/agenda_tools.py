@@ -37,6 +37,7 @@ from api.routes.setup_assistant.models import (
     SetupAgendaItemMark,
     SetupAgentEvent,
     SetupAgentEventKind,
+    SetupAssistantPhase,
     SetupSessionAgendaItem,
     SetupSessionAgendaItemStatus,
     SetupSessionAgendaProposal,
@@ -50,6 +51,13 @@ async def propose_session_agenda(
     items: List[SetupAgendaItemInput],
 ) -> str:
     """Replace the current session agenda with the supplied items."""
+
+    if getattr(factory, "phase", None) == SetupAssistantPhase.deterministic_discovery:
+        return (
+            "The session agenda can only be set in the conversation phase, which starts after the user "
+            "clicks Continue with setup. Do not call propose_session_agenda now. Finish orientation "
+            "with note_observation and narrate_progress, then stop."
+        )
 
     validated_items = [
         SetupSessionAgendaItem(

@@ -326,6 +326,18 @@ export interface ProviderPermissionApprovalMetadata {
   reject_option_id: string;
 }
 
+export interface SettingsChangeApprovalChange {
+  key: string;
+  label: string;
+  before: string;
+  after: string;
+}
+
+export interface SettingsChangeApprovalMetadata {
+  tier: string;
+  changes: SettingsChangeApprovalChange[];
+}
+
 export interface CommandInputMetadata {
   request_id: string;
   agent_task_id: string;
@@ -355,17 +367,35 @@ export interface ApprovalWhitelistAdvice {
   downgraded?: boolean;
 }
 
+/** The one tool on one connection that ticking Remember on a connected-tool card sets to Always allow. */
+export interface ApprovalToolPolicyScope {
+  connection_id: string;
+  /** The connection's display name, shown on the card. */
+  connection_name: string;
+  tool_name: string;
+  /** True when the tool's name says it deletes data or sends something out, so the card warns before the user always allows it. */
+  destructive: boolean;
+}
+
 export interface ApprovalWhitelistStatus {
   /** False when the command can never be remembered (interpreters, shells, indirection, scripts). */
   eligible: boolean;
   /** Plain-language reason shown when `eligible` is false. */
   reason: string;
   advice: ApprovalWhitelistAdvice | null;
+  /** The leading words Basil would remember if the user ticks Remember; the agent's proposal when it was valid. Older backends omit it. */
+  pattern?: string;
+  /** True when remembering would also approve commands unlike this one (a single word that the command goes beyond, such as `gh`). */
+  broad?: boolean;
+  /** Present on a connected-tool approval: Remember sets this tool's policy to Always allow instead of storing a command pattern. */
+  tool_policy?: ApprovalToolPolicyScope;
 }
 
 export interface ApprovalExplanation {
-  /** The agent's own explanation of what the command or script does. */
+  /** What the command or script does, in plain language. Written by the agent unless `purpose_source` says Basil composed it. */
   purpose?: string;
+  /** Who wrote `purpose`. Older backends omit it, and the text is then the agent's. */
+  purpose_source?: 'agent' | 'basil';
   /** True when the agent was asked and still gave no explanation. */
   purpose_missing?: boolean;
   whitelist?: ApprovalWhitelistStatus;
@@ -390,8 +420,9 @@ export interface ExecutionApprovalRequest extends ApprovalExplanation {
   generalized_pattern?: string;
   risk_metadata?: Record<string, unknown>;
   script_content?: string;
-  execution_type?: 'shell' | 'applescript' | 'browser_foreground_control' | 'mcp_connection_setup' | 'browser_sensitive_fill' | 'provider_permission' | 'command_input';
+  execution_type?: 'shell' | 'applescript' | 'browser_foreground_control' | 'mcp_connection_setup' | 'browser_sensitive_fill' | 'provider_permission' | 'command_input' | 'settings_change';
   browser_metadata?: BrowserSensitiveApprovalMetadata;
+  settings_change?: SettingsChangeApprovalMetadata;
   provider_permission?: ProviderPermissionApprovalMetadata;
   command_input?: CommandInputMetadata;
   revision?: number;
@@ -457,6 +488,8 @@ export interface CheckpointData {
   value_kind?: 'numeric';
   fields?: CheckpointField[];
   default_value?: string;
+  // The exact content the question is about (for example the email being approved), shown in a collapsible section under the prompt.
+  details_markdown?: string;
   metadata?: Record<string, unknown> | BrowserPermissionRepairMetadata | ProviderUserInputMetadata | ProviderTargetAuthorizationMetadata;
 }
 
@@ -480,6 +513,9 @@ export interface AgentTaskListItem {
   scheduled_agent_task_title?: string;
   // Set when the whole chain has been archived; absent or null otherwise.
   archived_at?: string | null;
+  // Checklist counter for the chain: items done over items tracked (dropped and archived items excluded). Both are 0 when the chain has no checklist.
+  checklist_done?: number;
+  checklist_total?: number;
 }
 
 // A daily time range in which a recurring schedule does not run. Times are 24-hour HH:MM in the schedule's timezone; an end earlier than the start crosses midnight, an end equal to the start covers a whole day. `days` lists the weekdays (Mon=0 .. Sun=6) the window starts on; absent or empty means every day.
@@ -495,6 +531,7 @@ export interface ScheduledChainConfig {
   max_runs?: number;
   max_age_minutes?: number;
   carry_over?: boolean;
+  carry_checklist?: boolean;
 }
 
 export interface ScheduledAgentTask {
@@ -734,6 +771,8 @@ export type SwiftMessage =
   | { type: 'openDetachedAgentTask'; rootTaskId: string }
   | { type: 'openAgentTaskOrigin'; originType: string; originId: string }
   | { type: 'pickFiles' }
+  // A task other than the focused one finished a turn while the widget was collapsed; native decides whether to expand it.
+  | { type: 'unfocusedAgentTaskCompleted' }
   | {
       type: 'agentStatusChanged';
       isProcessing: boolean;
@@ -795,6 +834,7 @@ export type WSEventType =
   | 'agent_task_silence_progress'
   | 'agent_task_outcome_update'
   | 'agent_task_follow_up_changed'
+  | 'agent_checklist_updated'
   | 'agent_wait_started'
   | 'agent_wait_finished'
   | 'step_progress_update'

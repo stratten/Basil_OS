@@ -18,7 +18,8 @@ from api.services.zettel.narrative.narrative_processing_run_policy import (
     NarrativeProcessingRunPolicy,
     SEQUENTIAL_NARRATIVE_CONCURRENCY,
 )
-from api.services.zettel.narrative.synthesizer import SynthesisError, synthesize
+from api.services.zettel.narrative.synthesizer import ModelUnavailableError, SynthesisError, synthesize
+from api.services.zettel.narrative.unsummarizable import discard_unsummarizable
 from api.services.zettel.normalization import utc_now_iso
 from api.services.zettel.sources.base import ZettelSource, sources_by_kind
 
@@ -35,6 +36,9 @@ class EnrichResult:
     finalized: int = 0
     still_open: int = 0
     failed: int = 0
+    discarded: int = 0
+    # False when the pass stopped early because it was canceled or the model was unavailable, so its backlog is not drained and a scheduled catch-up should still run.
+    completed: bool = True
     errors: List[str] = field(default_factory=list)
 
 
@@ -71,6 +75,7 @@ class ZettelEnricher:
         self._sources = sources if sources is not None else sources_by_kind()
         self._progress = NarrativeProgress()
         self._cancel_requested = False
+        self._model_unavailable_reason: Optional[str] = None
         self._model_stage_semaphore = asyncio.Semaphore(1)
 
     def get_progress(self) -> NarrativeProgress:
@@ -123,6 +128,8 @@ class ZettelEnricher:
         result = EnrichResult()
         run_start = utc_now_iso()
         self._cancel_requested = False
+        self._model_unavailable_reason = None
+        result.discarded = await asyncio.to_thread(self._discard_unsummarizable)
         pending_total = await asyncio.to_thread(self._count_pending, max_attempts=max_attempts)
         limit = max_records if max_records and max_records > 0 else None
         self._progress = NarrativeProgress(
@@ -142,6 +149,9 @@ class ZettelEnricher:
                         "Zettel narrative pass canceled after %s entries",
                         self._progress.processed,
                     )
+                    result.completed = False
+                    break
+                if self._model_unavailable_reason is not None:
                     break
                 if limit is not None and self._progress.processed >= limit:
                     logger.info("Zettel narrative pass reached its %s-record limit", limit)
@@ -162,6 +172,13 @@ class ZettelEnricher:
                     limit=limit,
                     concurrency=effective_concurrency,
                 )
+            if self._model_unavailable_reason is not None:
+                # Reported once for the whole pass: the entries were left pending and uncharged, so they are not individual failures.
+                message = f"Model unavailable ({self._model_unavailable_reason}); the pass stopped and its remaining entries stay pending"
+                logger.warning("Zettel narrative pass stopped: %s", message)
+                result.completed = False
+                result.errors.append(message)
+                self._progress.last_error = message
         finally:
             self._progress.active = False
             self._progress.finished_at = utc_now_iso()
@@ -191,7 +208,7 @@ class ZettelEnricher:
 
         async def process_item(item: _WorkItem) -> None:
             async with semaphore:
-                if self._cancel_requested:
+                if self._cancel_requested or self._model_unavailable_reason is not None:
                     return
                 if limit is not None and self._progress.processed >= limit:
                     return
@@ -201,6 +218,10 @@ class ZettelEnricher:
                     if concurrency > SEQUENTIAL_NARRATIVE_CONCURRENCY:
                         synthesis_kwargs["model_stage_semaphore"] = self._model_stage_semaphore
                     synthesis = await synthesize(item.entry, item.context, **synthesis_kwargs)
+                except ModelUnavailableError as exc:
+                    # Says nothing about this entry, so it keeps its attempts and stays pending untouched.
+                    self._model_unavailable_reason = str(exc)
+                    return
                 except SynthesisError as exc:
                     await record(self._record_failure, entry_id, str(exc), max_attempts, result)
                     return
@@ -218,6 +239,17 @@ class ZettelEnricher:
             if isinstance(outcome, BaseException):
                 # Do not mark the run inactive while sibling generations are still running. gather(return_exceptions=True) settles every admitted worker before the first infrastructure error escapes.
                 raise outcome
+
+    def _discard_unsummarizable(self) -> int:
+        """Delete entries with nothing to summarize before the pass counts and reads its queue; a failure here never blocks the pass."""
+        try:
+            with self._connection() as conn:
+                discarded = discard_unsummarizable(conn, self._sources)
+                conn.commit()
+                return discarded
+        except Exception:
+            logger.exception("Discarding unsummarizable memory entries failed")
+            return 0
 
     def _count_pending(self, *, max_attempts: int) -> int:
         with self._connection() as conn:

@@ -142,6 +142,8 @@ class CustomModelsViewModel: ObservableObject {
                 lastError = "Invalid URL"
             case .serverError(let statusCode):
                 lastError = "Server error: \(statusCode)"
+            case .serverMessage(_, let message):
+                lastError = message
             }
             DevLogger.shared.error("Failed to create custom model (APIError): \(apiError)", context: "CustomModels")
             return false

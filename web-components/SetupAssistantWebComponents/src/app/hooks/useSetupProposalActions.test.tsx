@@ -5,6 +5,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 
 import {
+  MODEL_DOWNLOADS_BLOCKED_BY_DISK_PROMPT,
   MODEL_DOWNLOADS_STARTED_PROMPT,
   SETUP_CHANGE_RESOLVED_PROMPT,
   SETUP_CHANGES_BATCH_RESOLVED_PROMPT,
@@ -85,10 +86,14 @@ function Harness({ store, startStream }: { store: ReturnType<typeof createStore>
   return null
 }
 
-async function approve(toolName: string, summary: { failed: boolean; message: string }) {
+async function approve(
+  toolName: string,
+  summary: { failed: boolean; message: string },
+  response: typeof queuedResponse = queuedResponse,
+) {
   const store = createStore(toolName)
   const startStream = vi.fn()
-  proposalApi.postProposalDecision.mockResolvedValue(queuedResponse)
+  proposalApi.postProposalDecision.mockResolvedValue(response)
   proposalApi.summarizeExecutionResponse.mockReturnValue({ ...summary, appearanceChange: null })
   act(() => { root.render(<Harness store={store} startStream={startStream} />) })
   await act(async () => {
@@ -140,6 +145,40 @@ describe('useSetupProposalActions model downloads', () => {
     const { startStream } = await approve('start_model_downloads', { failed: true, message: 'failed' })
 
     expect(startStream).not.toHaveBeenCalled()
+  })
+
+  it('hands the conversation back with the disk prompt when a model was refused for lack of disk space', async () => {
+    const diskMessage = 'Not enough free disk space to download Qwen3.6-35B-A3B MLX 4-bit. It needs about 42 GB free while it installs, and this Mac has 30 GB free. Free up about 12 GB and try again.'
+    const blockedResponse = {
+      results: [
+        {
+          id: 'a:qwen',
+          kind: 'start_model_downloads',
+          status: 'failed',
+          message: diskMessage,
+          result_payload: { model_id: 'qwen', model_type: 'qwen', download_status: 'insufficient_disk_space' },
+        },
+      ],
+    }
+
+    const { store, startStream } = await approve('start_model_downloads', { failed: true, message: diskMessage }, blockedResponse as never)
+
+    expect(store.setProposalState).toHaveBeenCalledWith('proposal-1', 'failed', diskMessage, diskMessage, null)
+    expect(startStream).toHaveBeenCalledTimes(1)
+    const [prompt, facts, phase, stage, outcomes] = startStream.mock.calls[0]
+    expect(prompt).toBe(MODEL_DOWNLOADS_BLOCKED_BY_DISK_PROMPT)
+    expect(facts).toBeUndefined()
+    expect(phase).toBe('agent_synthesis')
+    expect(stage).toBe('conversation')
+    expect(outcomes).toEqual([
+      {
+        kind: 'model_downloads_blocked_by_disk',
+        proposal_id: 'proposal-1',
+        models: [
+          { model_id: 'qwen', model_type: 'qwen', download_status: 'insufficient_disk_space', message: diskMessage },
+        ],
+      },
+    ])
   })
 
   it('does not use the download prompt for other approvals', async () => {

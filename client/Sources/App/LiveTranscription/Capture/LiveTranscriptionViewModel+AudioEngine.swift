@@ -105,6 +105,11 @@ extension LiveTranscriptionViewModel {
             // Get the raw int16 samples
             guard let int16Data = outputBuffer.int16ChannelData?[0] else { return }
 
+            // Exact zeros mean the input is being withheld, not that the room is quiet; see `evaluateMicrophoneSilence()`.
+            self.microphoneSilenceTracker.markBuffer(isSilent: SilentInputTracker.isDigitalSilence(
+                UnsafeBufferPointer(start: int16Data, count: Int(outputBuffer.frameLength))
+            ))
+
             let microphoneLevel = AudioLevelNormalizer.normalizedLevel(
                 from: UnsafeBufferPointer(
                     start: int16Data,
@@ -154,6 +159,7 @@ extension LiveTranscriptionViewModel {
         DevLogger.shared.info("[AUDIO ENGINE] audioEngine.start() called. Engine pointer: \(Unmanaged.passUnretained(audioEngine).toOpaque())", context: "LiveTranscriptionViewModel")
         #endif
         microphoneLivenessTracker.arm()
+        microphoneSilenceTracker.arm()
         startMicrophoneLivenessWatchdog()
     }
 
@@ -183,6 +189,9 @@ extension LiveTranscriptionViewModel {
               audioEngine != nil,
               microphoneInputRecoveryTask == nil,
               !microphoneReconnectInFlight else { return }
+
+        // Buffers that arrive but hold only zeros are invisible to the stall check below, so look at the samples first.
+        if evaluateMicrophoneSilence() { return }
 
         if microphoneLivenessTracker.hasReceivedActivitySinceArming {
             microphoneStallRecoveryCount = 0
@@ -235,6 +244,9 @@ extension LiveTranscriptionViewModel {
     func stopMicrophoneAudioEngine() {
         removeMicrophoneEngineConfigurationObserver()
         microphoneLivenessTracker.disarm()
+        microphoneSilenceTracker.disarm()
+        microphoneSilenceReclaimAttempts = 0
+        isMicrophoneSilent = false
         microphoneLivenessWatchdogTask?.cancel()
         microphoneLivenessWatchdogTask = nil
         guard let audioEngine else { return }

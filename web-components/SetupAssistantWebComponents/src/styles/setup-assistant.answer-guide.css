@@ -1,0 +1,172 @@
+/* Guidance and editable examples shown before the user has typed a first answer. */
+.answer-guide {
+  background: var(--background-primary);
+  border: var(--border-thin) solid var(--separator-color);
+  border-radius: var(--corner-radius-medium);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-s);
+  margin: 0 0 10px;
+  padding: var(--padding-m);
+}
+
+.answer-guide-lede {
+  font-size: var(--font-size-callout);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.answer-guide-examples {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.answer-guide-example {
+  background: var(--background-primary);
+  border: var(--border-thin) solid var(--separator-color);
+  color: var(--text-primary);
+  padding: var(--padding-s) var(--padding-m);
+  text-align: left;
+  white-space: normal;
+}
+
+.answer-guide-example:hover:not(:disabled) {
+  border-color: var(--primary);
+}
+
+/* The optional import inside the learning step. */
+/* The learning step lays its parts out in one column with a grid gap, so this section sets no margin and no grid placement of its own. It must not reuse .intro-toggle-details, which pins its element to the second column of a toggle card. */
+.intro-context-import > summary {
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-weight: normal;
+}
+
+/* The children of a details element are not grid items, so the step's gap does not reach them: the explanation and the card each get an explicit gap, a small one under the summary and a normal one between the explanation and the card. */
+.intro-context-import > .intro-step-lede {
+  margin-top: var(--padding-s);
+}
+
+.intro-context-import > .context-import {
+  margin-top: var(--padding-m);
+}
+
+/* The hotkeys step. */
+.intro-hotkey-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+}
+
+/* The hotkey rows follow the Settings, Hotkeys tab: plain rows divided by a hairline rule, the name in the medium face, everything else in the light face, and a faint-bordered keycap. Any clash notice or status runs across the full width below. */
+.intro-hotkey-row {
+  align-items: center;
+  border-bottom: var(--border-thin) solid var(--separator-color);
+  column-gap: var(--padding-m);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: var(--padding-m) 0;
+  row-gap: 2px;
+}
+
+.intro-hotkey-row:last-child {
+  border-bottom: none;
+}
+
+.intro-hotkey-row dt {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-subheadline);
+  font-weight: normal;
+  grid-column: 1;
+  grid-row: 1;
+  line-height: calc(16px * var(--text-scale, 1));
+}
+
+.intro-hotkey-row dd {
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.intro-hotkey-row .intro-hotkey-keys {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-s);
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  justify-self: end;
+}
+
+.intro-hotkey-row .intro-hotkey-purpose {
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-footnote);
+  grid-column: 1;
+  grid-row: 2;
+  line-height: 1.4;
+}
+
+.intro-hotkey-row .intro-hotkey-conflict {
+  grid-column: 1 / -1;
+  margin-top: var(--padding-s);
+}
+
+.intro-hotkey-row kbd {
+  background: var(--background-primary);
+  border: var(--border-thin) solid color-mix(in srgb, var(--primary) 40%, transparent);
+  border-radius: var(--corner-radius-small);
+  box-shadow: 0 1px 1px rgb(0 0 0 / 8%);
+  color: var(--text-primary);
+  display: inline-block;
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-footnote);
+  font-weight: normal;
+  line-height: calc(16px * var(--text-scale, 1));
+  min-width: 24px;
+  padding: 2px 6px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.intro-hotkey-conflicts {
+  background: color-mix(in srgb, var(--notice-base) 14%, var(--background-primary));
+  border: var(--border-thin) solid var(--notice-base);
+  border-radius: var(--corner-radius-medium);
+  color: var(--text-primary);
+  margin-top: 14px;
+  padding: var(--padding-m);
+}
+
+.intro-hotkey-conflicts p {
+  margin: 6px 0 0;
+}
+
+/* The approval and privacy note in the learning step. */
+.intro-trust-note {
+  background: var(--background-primary);
+  border: var(--border-thin) solid var(--separator-color);
+  border-radius: var(--corner-radius-medium);
+  color: var(--text-primary);
+  margin: 0;
+  padding: var(--padding-m);
+}
+
+.intro-trust-note strong {
+  font-family: var(--font-family-medium);
+  font-weight: normal;
+}
+
+.intro-trust-note p {
+  margin: 6px 0 0;
+}
+
+.intro-trust-note a {
+  color: var(--primary);
+  font-family: var(--font-family-medium);
+  font-weight: normal;
+}

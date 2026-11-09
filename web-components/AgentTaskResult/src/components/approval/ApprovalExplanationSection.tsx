@@ -21,7 +21,7 @@ export default function ApprovalExplanationSection({ approval }: Props) {
         <>
           <div className="approval-explanation__label">What this does</div>
           <p className="approval-explanation__text">{approval.purpose}</p>
-          <div className="approval-explanation__source">The agent&apos;s explanation</div>
+          <div className="approval-explanation__source">{approval.purpose_source === 'basil' ? "Basil's explanation" : "The agent's explanation"}</div>
         </>
       ) : (
         <p className="approval-explanation__missing" role="note">

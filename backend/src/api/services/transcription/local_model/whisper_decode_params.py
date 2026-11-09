@@ -12,8 +12,7 @@ committing it verbatim.
 Defined once here so the HuggingFace and faster-whisper paths stay in sync and
 no constants are duplicated across the post-processing transcription processor.
 
-Verified against the project ``.venv``: transformers 4.53.1, faster-whisper
-1.1.1, torch 2.5.1.
+Verified against the project ``.venv``: transformers 5.22.2, faster-whisper 1.1.1, torch 2.6.0.
 """
 from __future__ import annotations
 

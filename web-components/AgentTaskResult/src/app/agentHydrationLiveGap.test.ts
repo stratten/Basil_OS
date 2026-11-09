@@ -83,6 +83,36 @@ describe('hydrateAgentFromBackend progress backfill', () => {
     expect(localContents(taskId)).toEqual(['Analyzing request', 'Using shell service']);
   });
 
+  it('restores earlier history and reasoning when the first live event beat hydration to a window opened mid-run', async () => {
+    const taskId = 'reopened-while-waiting';
+    agentStore.registerAgent(taskId);
+    agentStore.upsertTimelineEntry(taskId, step('user_interaction_cp', 'How should I proceed?', 120));
+    agentStore.setThinkingSegments(taskId, [{ iteration: 3, text: 'Streaming now', isComplete: false }]);
+    noteLiveEvent(taskId, T0 + 120_000);
+    vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue({
+      ...inFlightDetail(taskId, [
+        step('db-1', 'Read the inbox', 10),
+        step('db-2', 'Prepared two drafts', 60),
+        step('db-3', 'Persisted wording of the question', 120.2),
+      ]),
+      status: 'awaiting_user_input',
+      thinking_history: [
+        { iteration: 1, text: 'Reading the inbox', is_complete: true },
+        { iteration: 2, text: 'Drafting', is_complete: true },
+        { iteration: 3, text: 'Persisted copy of three', is_complete: true },
+      ],
+    } as AgentTaskDetail);
+
+    await hydrateAgentFromBackend(taskId);
+
+    expect(localContents(taskId)).toEqual(['Read the inbox', 'Prepared two drafts', 'How should I proceed?']);
+    expect(agentStore.getAgent(taskId)?.thinkingSegments.map(item => item.text)).toEqual([
+      'Reading the inbox',
+      'Drafting',
+      'Streaming now',
+    ]);
+  });
+
   it('keeps the gap open when the task has no persisted progress to merge', async () => {
     const taskId = 'empty-durable';
     agentStore.registerAgent(taskId);

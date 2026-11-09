@@ -66,6 +66,9 @@ validation_runtime_profile = (
     if is_validation_runtime()
     else None
 )
+# A normal run and a fresh-install validation session start the background services (schedulers,
+# listeners, capture, detection); a fixture validation session keeps them off.
+ambient_services_enabled = validation_runtime_profile is None or validation_runtime_profile.fresh_install
 
 # --- Startup Status File Handling ---
 STATUS_FILE_DIR = Path.home() / ".basil" / "runtime"
@@ -345,6 +348,20 @@ async def startup_event():
                     exc_info=True,
                 )
 
+            try:
+                from .services.agent_processing.tools.internal_basil_tools.stored_result.store import (
+                    sweep_expired as sweep_expired_tool_results,
+                )
+
+                removed_tool_results = await asyncio.to_thread(sweep_expired_tool_results)
+                logger.info("Startup: Removed %s expired stored tool result(s)", removed_tool_results)
+            except Exception as error:
+                logger.error(
+                    "Startup: Failed to sweep stored tool results: %s",
+                    error,
+                    exc_info=True,
+                )
+
             wake_word_service = WakeWordService(
                 llm_service=llm_service,
                 basil_services=basil_services,
@@ -382,13 +399,16 @@ async def startup_event():
                     validation_runtime_profile,
                     sqlite_service,
                 )
-                await fixture_service.seed()
+                if validation_runtime_profile.fresh_install:
+                    logger.info("Startup: fresh-install validation session, task fixtures not seeded")
+                else:
+                    await fixture_service.seed()
+                    logger.info("Startup: validation task fixtures seeded")
                 app.state.validation_fixture_service = fixture_service
-                logger.info("Startup: validation task fixtures seeded")
 
             # Initialize scheduled agent task runtime (missed-run recovery + enqueue active jobs).
             # Runs on the in-process asyncio runner now; no separate Huey worker involved.
-            if validation_runtime_profile is None:
+            if ambient_services_enabled:
                 try:
                     from .services.scheduled_agent_tasks import initialize_scheduled_agent_task_runtime
 
@@ -470,7 +490,7 @@ async def startup_event():
             
             # Validation keeps the real service graph for manual workflows but
             # never starts the persistent listener from copied preferences.
-            if validation_runtime_profile is None:
+            if ambient_services_enabled:
                 logger.info("Startup: Updating VoiceListenerService state from settings...")
                 app.state.wake_word_service.update_listener_state_from_settings()
                 logger.info("Startup: VoiceListenerService state updated.")
@@ -499,7 +519,7 @@ async def startup_event():
             model_service = get_model_service()
             image_processor = get_image_processor()
             
-            if validation_runtime_profile is None:
+            if ambient_services_enabled:
                 await initialize_automatic_activity_services(knowledge_service, model_service, image_processor)
                 logger.info("Startup: Automatic Activity Services initialized successfully")
             else:
@@ -513,7 +533,7 @@ async def startup_event():
             from .services.ambient_suggestions.runtime import initialize_ambient_suggestion_runtime
             from .dependencies import get_model_service
 
-            if validation_runtime_profile is None:
+            if ambient_services_enabled:
                 await initialize_ambient_suggestion_runtime(get_model_service())
                 logger.info("Startup: Ambient Suggestion runtime initialized successfully")
             else:
@@ -526,7 +546,7 @@ async def startup_event():
         logger.info("Startup: Initializing Meeting Detection runtime...")
         try:
             from .services.meeting_detection.runtime import initialize_meeting_detection_runtime
-            if validation_runtime_profile is None:
+            if ambient_services_enabled:
                 await initialize_meeting_detection_runtime()
                 logger.info("Startup: Meeting Detection runtime initialized successfully")
             else:
@@ -539,7 +559,7 @@ async def startup_event():
         try:
             from .services.meeting_companion.runtime import initialize_meeting_companion_runtime
 
-            if validation_runtime_profile is None or os.environ.get("BASIL_VALIDATION_ENABLE_COMPANION") == "1":
+            if ambient_services_enabled or os.environ.get("BASIL_VALIDATION_ENABLE_COMPANION") == "1":
                 await initialize_meeting_companion_runtime()
                 logger.info("Startup: Meeting Companion runtime initialized successfully")
             else:
@@ -554,7 +574,7 @@ async def startup_event():
             from .services.meeting_resources.service import initialize_resource_advisor
             from .services.meeting_resources.snapshot_provider import analysis_jobs_running
 
-            if validation_runtime_profile is None:
+            if ambient_services_enabled:
                 await initialize_resource_advisor(analysis_running=lambda: analysis_jobs_running(active_analysis))
                 logger.info("Startup: Resource advisor started successfully")
             else:
@@ -582,7 +602,7 @@ async def startup_event():
                 prune_redundant_embedding_artifacts,
             )
 
-            if validation_runtime_profile is None:
+            if ambient_services_enabled:
                 embedding_cleanup = prune_redundant_embedding_artifacts(models_dir)
                 legacy_memvid_cleanup = cleanup_legacy_memvid_data(delete=True)
                 logger.info(
@@ -746,7 +766,7 @@ async def startup_event():
             # One-shot Huey-era leftover purge before any new state is built.
             # Idempotent + best-effort; never raises. Use the canonical model
             # directory helper so cleanup, downloads, and runtime loading agree.
-            if validation_runtime_profile is None:
+            if ambient_services_enabled:
                 try:
                     cleanup_huey_orphans(models_dir=get_models_dir())
                 except Exception as orphan_exc:
@@ -757,10 +777,10 @@ async def startup_event():
             )
             app.state.capture_cleanup_scheduler = CaptureCleanupScheduler()
             register_capture_cleanup_scheduler(app.state.capture_cleanup_scheduler)
-            if validation_runtime_profile is None:
+            if ambient_services_enabled:
                 await app.state.capture_cleanup_scheduler.start()
             app.state.memory_intelligence_scheduler = get_memory_intelligence_scheduler()
-            if validation_runtime_profile is None:
+            if ambient_services_enabled:
                 await app.state.memory_intelligence_scheduler.start()
             from .services.zettel.scheduler import get_zettel_scheduler
             from .services.zettel.narrative_scheduler import (
@@ -768,15 +788,15 @@ async def startup_event():
             )
 
             app.state.zettel_scheduler = get_zettel_scheduler()
-            if validation_runtime_profile is None:
+            if ambient_services_enabled:
                 await app.state.zettel_scheduler.start()
             app.state.zettel_narrative_scheduler = get_zettel_narrative_scheduler()
-            if validation_runtime_profile is None:
+            if ambient_services_enabled:
                 await app.state.zettel_narrative_scheduler.start()
             from .services.retrieval.index_runtime import get_retrieval_index_runtime
 
             app.state.retrieval_index_runtime = get_retrieval_index_runtime()
-            if validation_runtime_profile is None:
+            if ambient_services_enabled:
                 await app.state.retrieval_index_runtime.start()
             logger.info(
                 "Startup: DownloadManager + CaptureCleanupScheduler + MemoryIntelligenceScheduler attached to app.state"
@@ -927,7 +947,7 @@ async def shutdown_event():
     # Stop the in-process model download manager. Each in-flight DownloadEntry
     # has its asyncio.Event.set() and its background asyncio.Task .cancel()'d;
     # the manager awaits the gather() so partial-download HF cache state is
-    # consistent on the next launch (snapshot_download(resume_download=True)
+    # consistent on the next launch (snapshot_download resumes from the HF cache
     # picks up where it left off). Replaces the prior Huey worker SIGTERM/
     # SIGKILL dance + PID-file scrubbing.
     download_manager = getattr(app.state, "download_manager", None)
@@ -988,9 +1008,12 @@ async def shutdown_event():
 
     try:
         from .core.models.reasoning.llama_cpp_model import shutdown_cached_llama_cpp_models
+        from .core.models.reasoning.mlx_model import shutdown_cached_mlx_models
 
         shutdown_cached_llama_cpp_models()
         logger.info("Shutdown: cached llama.cpp models closed")
+        shutdown_cached_mlx_models()
+        logger.info("Shutdown: cached MLX models closed")
     except Exception as e:
         logger.error(f"🚨 Shutdown: Error closing cached llama.cpp models: {e}", exc_info=True)
 

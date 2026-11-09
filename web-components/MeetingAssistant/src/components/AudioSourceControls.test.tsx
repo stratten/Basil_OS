@@ -59,6 +59,51 @@ describe('AudioSourceControls', () => {
     expect(screen.getByRole('combobox', { name: 'Audio Source' })).toBeDisabled();
   });
 
+  describe('Microphone notices', () => {
+    it('shows nothing while the microphone is healthy', () => {
+      render(<AudioSourceControls ui={ui} />);
+      expect(screen.queryByRole('alert')).toBeNull();
+    });
+
+    it('shows a warning with its explanation while the microphone is only delivering silence', () => {
+      const { container } = render(
+        <AudioSourceControls
+          ui={{
+            ...ui,
+            isRecording: true,
+            microphoneInputRecoveryState: 'silent',
+            microphoneInputRecoveryMessage: 'Your microphone is only delivering silence. Another app, such as a call, may be using it.',
+          }}
+        />,
+      );
+      expect(screen.getByRole('alert')).toHaveTextContent('Your microphone is only delivering silence. Another app, such as a call, may be using it.');
+      expect(container.querySelector('.meeting-audio-recovery-notice--silent')).not.toBeNull();
+      expect(container.querySelector('.meeting-audio-recovery-notice-icon')).toHaveAttribute('aria-hidden', 'true');
+    });
+
+    it('falls back to the standard explanation when the silent state arrives without a message', () => {
+      render(<AudioSourceControls ui={{ ...ui, microphoneInputRecoveryState: 'silent', microphoneInputRecoveryMessage: null }} />);
+      expect(screen.getByRole('alert')).toHaveTextContent('Your microphone is only delivering silence.');
+    });
+
+    it('keeps the existing reconnecting and failed notices unchanged and without the silent styling', () => {
+      const { container, rerender } = render(
+        <AudioSourceControls ui={{ ...ui, microphoneInputRecoveryState: 'reconnecting' }} />,
+      );
+      expect(screen.getByRole('alert')).toHaveTextContent('Reconnecting to the microphone…');
+      expect(container.querySelector('.meeting-audio-recovery-notice--silent')).toBeNull();
+
+      rerender(
+        <AudioSourceControls
+          ui={{ ...ui, microphoneInputRecoveryState: 'failed', microphoneInputRecoveryMessage: 'The microphone stopped delivering audio.' }}
+        />,
+      );
+      expect(screen.getByRole('alert')).toHaveTextContent('The microphone stopped delivering audio.');
+      expect(container.querySelector('.meeting-audio-recovery-notice--silent')).toBeNull();
+      expect(container.querySelector('.meeting-audio-recovery-notice-icon')).toBeNull();
+    });
+  });
+
   describe('Companion switch', () => {
     const companion = { enabled: false, busy: false, paneHidden: true, onChange: vi.fn(), onShowPane: vi.fn(), error: null, onDismissError: vi.fn() };
 

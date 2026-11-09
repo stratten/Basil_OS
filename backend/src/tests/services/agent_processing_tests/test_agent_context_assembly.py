@@ -8,8 +8,10 @@ Covers the fixes for the "agent lost context in a follow-up" issue:
   Current request:" fallback on any reactive token-limit trim.
 - The input budget scales with the model's context window instead of being
   capped at a flat 48k chars regardless of model size.
-- FOLLOW UP CONTEXT is trimmed after SCREEN/RETRY/REFERENCE MATERIALS, since
-  it carries the prior turn's resolved file/reference identity.
+- FOLLOW UP CONTEXT is trimmed after SCREEN/RETRY, since it carries the prior
+  turn's resolved file/reference identity.
+- REFERENCE MATERIALS (the paths the user attached) is never trimmed: it is set
+  aside before trimming and put back at the front.
 - A PINNED CONTEXT section survives even when a reactive token-limit trim
   removes FOLLOW UP CONTEXT entirely.
 """
@@ -124,6 +126,73 @@ def test_trim_oldest_context_exhausts_screen_before_touching_follow_up():
     # Most of the FOLLOW_UP_CONTEXT body should still be present -- it was
     # only partially trimmed, not wiped out like SCREEN_CONTEXT was.
     assert trimmed.count("f") >= 300
+
+
+_REFERENCE_SECTION = (
+    "===== REFERENCE_MATERIALS =====\n"
+    "The user attached these files/folders.\n"
+    "- /Users/example/Orchard\n"
+    "===== END REFERENCE_MATERIALS ====="
+)
+
+
+def test_trim_oldest_context_keeps_the_attached_references_when_other_context_is_shed():
+    user_input = (
+        _REFERENCE_SECTION
+        + "\n\n===== SCREEN_CONTEXT =====\n"
+        + ("s" * 500)
+        + "\n===== END SCREEN_CONTEXT =====\n\n"
+        "Current request: summarize the folder"
+    )
+    # The 4,000-character floor used by the reactive trim is far larger than the whole message.
+    trimmed = trim_oldest_context(user_input, 4_000, _TRIM_LOGGER)
+    assert trimmed is not None
+    assert _REFERENCE_SECTION in trimmed
+    assert "===== SCREEN_CONTEXT =====" not in trimmed
+    assert trimmed.endswith("Current request: summarize the folder")
+
+
+def test_trim_oldest_context_keeps_the_references_even_when_they_come_after_other_sections():
+    user_input = (
+        "===== PINNED_CONTEXT =====\n"
+        + ("p" * 300)
+        + "\n===== END PINNED_CONTEXT =====\n\n"
+        + _REFERENCE_SECTION
+        + "\n\n===== FOLLOW_UP_CONTEXT =====\n"
+        + ("f" * 300)
+        + "\n===== END FOLLOW_UP_CONTEXT =====\n\n"
+        "Current request: continue"
+    )
+    trimmed = trim_oldest_context(user_input, 4_000, _TRIM_LOGGER)
+    assert trimmed is not None
+    assert _REFERENCE_SECTION in trimmed
+    assert trimmed.endswith("Current request: continue")
+
+
+def test_trim_oldest_context_fallback_cuts_unstructured_text_but_not_the_references():
+    user_input = _REFERENCE_SECTION + "\n\n" + ("z" * 5_000) + "\n\nCurrent request: question"
+    trimmed = trim_oldest_context(user_input, 2_000, _TRIM_LOGGER)
+    assert trimmed is not None
+    assert trimmed.startswith(_REFERENCE_SECTION)
+    assert trimmed.endswith("Current request: question")
+    assert trimmed.count("z") == 3_000
+
+
+def test_trim_oldest_context_returns_none_when_only_the_references_and_the_request_remain():
+    user_input = _REFERENCE_SECTION + "\n\nCurrent request: question"
+    assert trim_oldest_context(user_input, 4_000, _TRIM_LOGGER) is None
+
+
+def test_trim_oldest_context_without_references_behaves_as_before():
+    user_input = (
+        "===== SCREEN_CONTEXT =====\n"
+        + ("s" * 500)
+        + "\n===== END SCREEN_CONTEXT =====\n\n"
+        "Current request: do the thing"
+    )
+    trimmed = trim_oldest_context(user_input, 100, _TRIM_LOGGER)
+    assert trimmed is not None
+    assert "screen context truncated by 100 chars" in trimmed
 
 
 def test_format_pinned_context_included_in_assembly():
@@ -305,3 +374,17 @@ def test_reference_materials_tell_the_agent_to_read_attachments_before_designing
     assert "READ these paths first" in reference.body
     assert "- /Users/me/Swavigator" in reference.body
     assert "authoritative" in reference.body
+
+
+def test_reference_materials_name_the_attachment_as_this_project_and_stay_compact():
+    path = "/Users/me/Projects/Swavigator"
+    assembled = AgentContextAssembler().assemble(
+        current_request="Tell me about this app.",
+        context={"reference_paths": [path]},
+    )
+
+    reference = next(section for section in assembled.sections if section.name == "REFERENCE MATERIALS")
+
+    assert "'This project', 'this codebase', 'this app'" in reference.body
+    assert reference.body.rstrip().endswith(f"- {path}")
+    assert len(reference.render()) < 600

@@ -56,6 +56,12 @@ async function renderStep() {
     await Promise.resolve()
     await Promise.resolve()
   })
+  // The flow opens on the skippable model downloads step; these tests exercise the model step after it.
+  await act(async () => {
+    container.querySelector<HTMLButtonElement>('.intro-step-primary')!.click()
+    await Promise.resolve()
+    await Promise.resolve()
+  })
 }
 
 function downloadButton() {
@@ -103,17 +109,19 @@ describe('IntroAndPrivacy local model download', () => {
   })
 
   it('starts the download, shows progress, and makes the route selectable when the disk confirms it', async () => {
-    let pollCount = 0
+    let pollsSinceStart = 0
+    let started = false
     let onDisk = false
     fetchMock.mockImplementation((path: string, init?: RequestInit) => {
       if (path === OPTIONS_PATH) return Promise.resolve(jsonResponse({ options: [localOption(onDisk), providerKeyOption] }))
       if (path === '/models/download' && init?.method === 'POST') {
+        started = true
         return Promise.resolve(jsonResponse({ model_id: 'Qwen-qwen35-9b-q4km', status: 'queued' }))
       }
       if (path === PROGRESS_PATH) {
-        pollCount += 1
-        if (pollCount === 1) return Promise.resolve(jsonResponse({ status: 'not_started', progress: 0 }))
-        if (pollCount === 2) return Promise.resolve(jsonResponse({ status: 'downloading', progress: 0.42 }))
+        if (!started) return Promise.resolve(jsonResponse({ status: 'not_started', progress: 0 }))
+        pollsSinceStart += 1
+        if (pollsSinceStart === 1) return Promise.resolve(jsonResponse({ status: 'downloading', progress: 0.42, total_downloaded: 2_386_000_000, total_size: 5_680_000_000 }))
         onDisk = true
         return Promise.resolve(jsonResponse({ status: 'completed', progress: 1 }))
       }
@@ -132,7 +140,9 @@ describe('IntroAndPrivacy local model download', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ request: { model_type: 'Qwen', variant: 'qwen35-9b-q4km' } }),
     })
-    expect(container.textContent).toContain('Downloading… 42%')
+    expect(container.textContent).toContain('42%')
+    expect(container.querySelector('.download-progress__amount')?.textContent).toBe('2.4 GB / 5.7 GB')
+    expect(container.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('42')
     expect(container.textContent).toContain('You can keep going with another route')
     expect(container.querySelector<HTMLButtonElement>('.choice-option--provider_key')?.disabled).toBe(false)
 
@@ -142,7 +152,7 @@ describe('IntroAndPrivacy local model download', () => {
     })
 
     expect(downloadButton()).toBeUndefined()
-    expect(container.textContent).not.toContain('Downloading…')
+    expect(container.textContent).not.toContain('You can keep going with another route')
     expect(container.querySelector<HTMLButtonElement>('.choice-option--local')?.disabled).toBe(false)
   })
 
@@ -200,7 +210,7 @@ describe('IntroAndPrivacy local model download', () => {
     await renderStep()
     await act(async () => { await Promise.resolve() })
 
-    expect(container.textContent).toContain('Downloading… 50%')
+    expect(container.textContent).toContain('50%')
     expect(downloadButton()).toBeUndefined()
   })
 

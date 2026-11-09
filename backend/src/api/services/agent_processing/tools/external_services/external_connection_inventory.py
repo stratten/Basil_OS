@@ -7,6 +7,7 @@ from typing import Any, Iterable, Optional
 
 from .external_connection_capability import (
     connection_routing_label,
+    render_compact_connection_blocks,
     render_connection_capability_block,
 )
 
@@ -165,14 +166,23 @@ def render_connection_inventory_for_description(
     *,
     preferences: Any = None,
     max_tool_names: int = DEFAULT_TOOL_NAME_LIMIT,
+    compact: bool = False,
 ) -> str:
-    """Render the external_catalog CURRENT CONNECTIONS block."""
+    """Render the external_catalog CURRENT CONNECTIONS block.
+
+    ``compact=True`` prints the server, guidance, tools, and actions once for connections that would repeat them
+    exactly (separate accounts on one server) and renders every other connection as the default form does, so it
+    leaves out no information.
+    """
     items = get_enabled_external_connections(
         preferences=preferences,
         max_tool_names=max_tool_names,
     )
     if not items:
         return "**CURRENT CONNECTIONS:** No enabled external connections are currently registered."
+
+    if compact:
+        return "\n".join(["**CURRENT CONNECTIONS:**", render_compact_connection_blocks(items)])
 
     lines = ["**CURRENT CONNECTIONS:**"]
     for item in items:

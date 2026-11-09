@@ -269,6 +269,73 @@ def _lifecycle_submission_service(stored_rows):
     )
 
 
+@pytest.fixture(autouse=True)
+def _no_default_model_lookup(monkeypatch):
+    """Submission looks up the user's default model when a task names none; these tests assert the stored artifacts exactly, so that lookup is pinned to "unknown" unless a test sets it."""
+    monkeypatch.setattr(LifecycleAgentTaskSubmissionService, "_default_reasoning_model_id", AsyncMock(return_value=None))
+
+
+@pytest.mark.asyncio
+async def test_a_task_that_names_no_model_records_the_default_model_that_applies_now(monkeypatch):
+    stored_rows = []
+    service = _lifecycle_submission_service(stored_rows)
+    monkeypatch.setattr(LifecycleAgentTaskSubmissionService, "_default_reasoning_model_id", AsyncMock(return_value="claude-sonnet-5-5"))
+
+    await service.process_agent_task("Complete the To-Do", agent_task_id="todo-1", origin_type="todo", origin_id="t-1")
+    await asyncio.sleep(0)
+
+    assert stored_rows[0]["accumulated_artifacts"]["model_id"] == "claude-sonnet-5-5"
+
+
+@pytest.mark.asyncio
+async def test_a_chosen_model_beats_the_model_the_chain_already_has_and_the_default(monkeypatch):
+    stored_rows = []
+    service = _lifecycle_submission_service(stored_rows)
+    lookup = AsyncMock(return_value="claude-sonnet-5-5")
+    monkeypatch.setattr(LifecycleAgentTaskSubmissionService, "_default_reasoning_model_id", lookup)
+    chain_context = {"root_task_id": "run-1", "chain_sequence_number": 1, "accumulated_artifacts": {"model_id": "gpt-5-mini"}}
+
+    await service.process_agent_task("Next", agent_task_id="run-2", chain_context=chain_context, model_id="local-qwen-3.5")
+    await asyncio.sleep(0)
+
+    assert stored_rows[0]["accumulated_artifacts"]["model_id"] == "local-qwen-3.5"
+    lookup.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_a_follow_up_that_names_no_model_keeps_the_chain_model_and_does_not_look_up_the_default(monkeypatch):
+    stored_rows = []
+    service = _lifecycle_submission_service(stored_rows)
+    lookup = AsyncMock(return_value="claude-sonnet-5-5")
+    monkeypatch.setattr(LifecycleAgentTaskSubmissionService, "_default_reasoning_model_id", lookup)
+    chain_context = {"root_task_id": "run-1", "chain_sequence_number": 1, "accumulated_artifacts": {"model_id": "gpt-5-mini"}}
+
+    await service.process_agent_task("Next", agent_task_id="run-2", chain_context=chain_context)
+    await asyncio.sleep(0)
+
+    assert stored_rows[0]["accumulated_artifacts"]["model_id"] == "gpt-5-mini"
+    lookup.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_the_default_model_lookup_failing_leaves_the_task_unrecorded_instead_of_failing_the_submission(monkeypatch):
+    stored_rows = []
+    service = _lifecycle_submission_service(stored_rows)
+    monkeypatch.undo()
+    import api.services.reasoning_model_catalog as catalog
+
+    async def _boom():
+        raise RuntimeError("settings unavailable")
+
+    monkeypatch.setattr(catalog, "heal_stored_reasoning_model", _boom)
+
+    result = await service.process_agent_task("Complete the To-Do", agent_task_id="todo-2", origin_type="todo", origin_id="t-2")
+    await asyncio.sleep(0)
+
+    assert result["success"] is True
+    assert "model_id" not in (stored_rows[0]["accumulated_artifacts"] or {})
+
+
 @pytest.mark.asyncio
 async def test_lifecycle_submission_keeps_the_connections_a_run_was_told_to_use_in_its_artifacts():
     stored_rows = []

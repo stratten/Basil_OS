@@ -51,3 +51,11 @@ def conn():
     apply_zettel_schema(connection)
     yield connection
     connection.close()
+
+
+@pytest.fixture(autouse=True)
+def isolated_scheduler_ledger(tmp_path, monkeypatch):
+    """Keeps every zettel test from reading or writing the real scheduler ledger in the owner's data directory."""
+    from api.services.zettel import schedule_ledger
+
+    monkeypatch.setattr(schedule_ledger, "ledger_path", lambda: tmp_path / "scheduler_ledger.json")

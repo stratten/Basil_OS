@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 import uuid
 from typing import Awaitable, Callable, List, Optional
@@ -20,6 +21,12 @@ from .schemas import (
 )
 
 
+def _observation_key(text: str) -> str:
+    """Normalize observation text so a repeat that differs only in case, spacing, or punctuation still matches."""
+
+    return " ".join(re.sub(r"[^\w\s]", " ", text.casefold()).split())
+
+
 async def note_setup_observation(
     factory,
     label: str,
@@ -27,6 +34,16 @@ async def note_setup_observation(
     detail: str,
     tone: SetupOrientationTone = SetupOrientationTone.ready,
 ) -> str:
+    noted_keys = getattr(factory, "noted_observation_keys", None)
+    if noted_keys is not None:
+        keys = {key for key in (_observation_key(title), _observation_key(detail)) if key}
+        if keys & noted_keys:
+            return (
+                f'You already showed this observation ("{title}"), so it was not shown again. '
+                "Do not repeat an observation. Note something different you have not shown yet, "
+                "or stop calling note_observation and finish."
+            )
+        noted_keys.update(keys)
     await factory.event_emitter(
         SetupAgentEvent(
             kind=SetupAgentEventKind.observation_added,

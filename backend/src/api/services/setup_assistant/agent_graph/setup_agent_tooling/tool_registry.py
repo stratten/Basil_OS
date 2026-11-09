@@ -8,6 +8,10 @@ from typing import List
 
 from langchain_core.tools import StructuredTool
 
+from api.services.agent_processing.lifecycle.execution_graph.service_tooling.tool_input_normalization import (
+    create_normalized_args_schema,
+)
+
 from .schemas import (
     SetupAddArtifactRowInput,
     SetupCheckProviderKeyInput,
@@ -319,6 +323,8 @@ def create_setup_agent_tools_for_factory(factory) -> List[StructuredTool]:
         ),
     ]
     for tool in tools:
+        # A local model sends every tag parameter as text, so a list such as the agenda items or the chips arrives as a JSON string. The normalizer decodes it before validation, as it does for the main agent's tools.
+        tool.args_schema = create_normalized_args_schema(tool.args_schema)
         tool.handle_validation_error = _format_setup_tool_validation_error
         if tool.coroutine is not None:
             tool.coroutine = _recover_from_tool_failure(tool.name, tool.coroutine)

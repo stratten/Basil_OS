@@ -279,19 +279,23 @@ def create_delegated_agent_tool(
                 "child_cannot_delegate": True,
             },
         )
-        admitted_scope = DelegatedAgentAdmissionService().validate(
-            proposal=proposal,
-            parent_agent_task_id=agent_task_id,
-            root_task_id=root_task_id,
-        )
-        brief = compile_delegated_agent_brief(
-            original_task=objective,
-            executor_kind="internal_agent",
-            admitted_scope=admitted_scope,
-            dependency_ids=proposal.dependency_ids,
-            acceptance_criteria=proposal.acceptance_criteria,
-            strategic_assessment=admitted_scope["strategic_assessment"],
-        )
+        try:
+            admitted_scope = DelegatedAgentAdmissionService().validate(
+                proposal=proposal,
+                parent_agent_task_id=agent_task_id,
+                root_task_id=root_task_id,
+            )
+            brief = compile_delegated_agent_brief(
+                original_task=objective,
+                executor_kind="internal_agent",
+                admitted_scope=admitted_scope,
+                dependency_ids=proposal.dependency_ids,
+                acceptance_criteria=proposal.acceptance_criteria,
+                strategic_assessment=admitted_scope["strategic_assessment"],
+            )
+        except ValueError as exc:
+            # A rejected proposal is feedback for the model to correct or abandon, not a reason to fail the whole turn.
+            return json.dumps({"ok": False, "error": str(exc)})
         if action == "propose":
             return json.dumps(
                 {

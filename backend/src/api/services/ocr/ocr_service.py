@@ -19,6 +19,9 @@ from .ocr_models import OCRResult, OCRError
 
 logger = logging.getLogger(__name__)
 
+# pytesseract spawns Tesseract itself, so route it through posix_spawn instead of the fork path (see safe_spawn).
+safe_spawn.install_pytesseract_posix_spawn()
+
 class OCRService:
     """Service that extracts text from images using OCR technology."""
     

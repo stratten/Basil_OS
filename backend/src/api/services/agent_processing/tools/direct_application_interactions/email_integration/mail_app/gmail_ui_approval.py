@@ -45,6 +45,19 @@ def build_approval_description(summary: Dict[str, Any]) -> str:
     )
 
 
+def build_approval_purpose(summary: Dict[str, Any]) -> str:
+    """The short explanation shown at the top of the card; the longer description stays on the recorded request."""
+    count = int(summary.get("message_count") or 0)
+    verb = _verb(str(summary.get("operation")))
+    noun = "message" if count == 1 else "messages"
+    seconds = max(count, 1) * SECONDS_PER_MESSAGE
+    return (
+        f"Basil wants to {verb} {count} Gmail {noun}. Mail's scripting cannot remove the Inbox label on Gmail, "
+        f"so Basil has to open a temporary Mail window and click Mail's own menus. Mail will come to the front and your screen "
+        f"will be in use for roughly {seconds} seconds."
+    )
+
+
 def _denial_reason(operation: str, status: str, detail: str) -> str:
     verb = _verb(operation)
     if status == "user_denied":
@@ -65,6 +78,8 @@ async def request_mail_ui_approval(approval_service: Optional[Any], summary: Dic
     context: Dict[str, Any] = {
         "source": "email_service",
         "description": build_approval_description(summary),
+        "purpose": build_approval_purpose(summary),
+        "purpose_source": "basil",
         "execution_type": "applescript",
         "risk_level": "high",
         "reason": "Archiving or moving a Gmail message in Apple Mail takes over the visible Mail window and menus.",

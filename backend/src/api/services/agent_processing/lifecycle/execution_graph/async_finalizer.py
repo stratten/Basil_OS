@@ -225,6 +225,9 @@ async def _run_outcome_verification(
 
     pending_work = refined.pop("pending_work", None)
     continuation = refined.pop("continuation", None)
+    checklist_review = refined.pop("checklist_review", None)
+    if isinstance(checklist_review, dict):
+        await _apply_checklist_signoff(checklist_review, root_task_id, agent_task_id)
     if isinstance(pending_work, dict):
         follow_up = await schedule_follow_up_for_pending_work(
             root_task_id=root_task_id,
@@ -251,6 +254,21 @@ async def _run_outcome_verification(
         previous_task_id=previous_task_id,
         refined=refined,
     )
+
+
+async def _apply_checklist_signoff(review: Dict[str, Any], root_task_id: Optional[str], agent_task_id: Optional[str]) -> None:
+    """Apply the verifier's checklist decisions. A failure here never changes or delays the verified outcome."""
+    try:
+        from api.dependencies import get_sqlite_knowledge_service
+
+        from ..runtime.agent_checklist_signoff import apply_checklist_review
+
+        summary = await apply_checklist_review(
+            get_sqlite_knowledge_service(), {"root_task_id": root_task_id, "agent_task_id": agent_task_id}, review
+        )
+        logger.info("Checklist sign-off for %s: %s", agent_task_id, summary)
+    except Exception:
+        logger.warning("Checklist sign-off failed for %s", agent_task_id, exc_info=True)
 
 
 async def _resolve_with_provisional(

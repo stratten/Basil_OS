@@ -1,5 +1,7 @@
 import type { ModelRowSnapshot } from '../types'
-import { displayInfoForModel, formatBytes } from '../helpers/modelDisplay'
+import { DownloadProgress } from '@shared/DownloadProgress'
+
+import { displayInfoForModel } from '../helpers/modelDisplay'
 
 interface Props {
   row: ModelRowSnapshot
@@ -42,22 +44,20 @@ export default function ModelRow({ row, isActionPending, onRetry, onCancel }: Pr
           )}
           {!isDone && !actionIsPending && isQueued && <span className="model-row-pending">Queued</span>}
           {!isDone && !actionIsPending && isDownloading && (
-            <>
-              <span className="model-row-percent">{Math.trunc(row.progress)}%</span>
-              <button type="button" className="model-row-stop" onClick={() => onCancel(row.modelId)} aria-label={`Stop ${title} download`}>
-                ■
-              </button>
-            </>
+            <button type="button" className="model-row-stop" onClick={() => onCancel(row.modelId)} aria-label={`Stop ${title} download`}>
+              ■
+            </button>
           )}
         </div>
       </div>
       {!isDone && isActive && (
-        <div className="model-row-progress">
-          <span className="model-row-progress-fill model-row-progress-fill--active" style={{ width: `${Math.max(0, Math.min(100, row.progress))}%` }} />
-        </div>
-      )}
-      {!isDone && isActive && row.totalDownloaded != null && row.totalSize != null && row.totalSize > 0 && (
-        <span className="model-row-bytes">{formatBytes(row.totalDownloaded)} / {formatBytes(row.totalSize)}</span>
+        <DownloadProgress
+          className="model-row-download-progress"
+          label={title}
+          percent={row.progress}
+          downloadedBytes={row.totalDownloaded}
+          totalBytes={row.totalSize}
+        />
       )}
     </div>
   )

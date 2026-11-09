@@ -1,3 +1,4 @@
+@import '../../../shared/basil-modal-dialog.css';
 @import '../../../shared/expandable-list.css';
 @import '../../../shared/search/search-highlight.css';
 @import '../../../shared/search/navigation-flash.css';
@@ -14,6 +15,7 @@
 @import './components/file-preview.css';
 @import './components/local-web-preview.css';
 @import './components/overlays-and-approvals.css';
+@import './components/detail-tray/checklist.css';
 @import './components/checkpoint-flow.css';
 @import './components/input-and-followup.css';
 @import './components/run-control-composer.css';

@@ -201,7 +201,11 @@ def _extract_bare_function_tag_tool_calls(
 
 
 def strip_think_sections(text: str) -> str:
-    return _THINK_RE.sub("", text).strip()
+    """Remove reasoning from a model message before it is shown or kept as the answer.
+
+    Drops complete ``<think>...</think>`` blocks and, when the chat template supplied the opening tag so only a bare ``</think>`` came back, everything before that closer. Without the second case a Qwen3.6 answer was delivered as its whole drafting monologue followed by the real answer.
+    """
+    return _strip_leaked_reasoning(text)
 
 
 def _strip_leaked_reasoning(text: str) -> str:

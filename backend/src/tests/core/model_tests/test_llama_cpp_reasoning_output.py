@@ -169,6 +169,26 @@ def test_shared_helpers_treat_closed_and_unclosed_blocks_alike():
     assert has_unterminated_reasoning(f"{_OPEN}r{_CLOSE}a", _OPEN, _CLOSE) is False
 
 
+def test_a_bare_closing_tag_drops_the_reasoning_the_template_opened():
+    assert strip_inline_reasoning(f"drafting notes\nReady.{_CLOSE}\n\nanswer", _OPEN, _CLOSE) == "answer"
+    assert has_unterminated_reasoning(f"drafting notes{_CLOSE}answer", _OPEN, _CLOSE) is False
+
+
+def test_a_bare_closer_and_a_later_unterminated_block_both_resolve_to_the_answer_between():
+    assert strip_inline_reasoning(f"notes{_CLOSE}answer{_OPEN}more notes", _OPEN, _CLOSE) == "answer"
+
+
+def test_text_with_neither_tag_and_an_empty_string_are_unchanged():
+    assert strip_inline_reasoning("plain answer", _OPEN, _CLOSE) == "plain answer"
+    assert strip_inline_reasoning("", _OPEN, _CLOSE) == ""
+
+
+@pytest.mark.asyncio
+async def test_the_model_strips_a_bare_closing_tag_from_its_answer():
+    model = _model(f"Check against constraints.\nReady.{_CLOSE}\n\nThe real answer.")
+    assert await model.generate_response("hello") == "The real answer."
+
+
 @pytest.mark.asyncio
 async def test_plain_prompt_is_sent_as_a_single_user_message():
     model = _model("hello answer")

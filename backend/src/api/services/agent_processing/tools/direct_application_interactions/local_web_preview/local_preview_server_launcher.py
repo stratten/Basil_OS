@@ -117,6 +117,8 @@ class LocalPreviewServerLauncher:
                 "cwd": str(safe_cwd),
                 "source": "local_web_preview",
                 "description": f"Start local preview server on port {port}: {full_command}",
+                "purpose": f"Start a local preview server on port {port}, reachable only from this Mac, so Basil can show you a live preview of what it built.",
+                "purpose_source": "basil",
                 "agent_task_id": agent_task_id,
             },
         )

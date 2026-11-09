@@ -79,7 +79,10 @@ def register_optional_tools(
     # Add activity query tool for querying user activity history
     try:
         from ....tools.internal_basil_tools.activity_query_tool import create_activity_query_tool
-        activity_tool = create_activity_query_tool(profile=profile)
+        activity_tool = create_activity_query_tool(
+            profile=profile,
+            max_output_chars=getattr(factory, "max_tool_output_chars", None),
+        )
         tools.append(activity_tool)
         tool_map["activity.query"] = activity_tool
         factory.logger.info("   ✅ Added query_activities tool")
@@ -139,6 +142,58 @@ def register_optional_tools(
         optional_warnings.append(err)
         factory.logger.warning(f"   ⚠️ {err}")
 
+    # Add the task checklist. It is a core tool: the model must be able to track steps from the first pass, and the current list is pushed into every turn's prompt, not pulled.
+    try:
+        from ....tools.internal_basil_tools.checklist_tool import create_checklist_tool
+
+        checklist_tool = create_checklist_tool(profile=profile)
+        tools.append(checklist_tool)
+        tool_map["checklist.manage"] = checklist_tool
+        factory.logger.info("   ✅ Added checklist tool")
+    except Exception as e:
+        err = f"Failed to add checklist tool: {e}"
+        optional_warnings.append(err)
+        factory.logger.warning(f"   ⚠️ {err}")
+
+    # Add the checklist's working notes. Named checklist_notes so it is never confused with Basil's working memory tools below.
+    try:
+        from ....tools.internal_basil_tools.checklist_notes_tool import create_checklist_notes_tool
+
+        checklist_notes_tool = create_checklist_notes_tool(profile=profile)
+        tools.append(checklist_notes_tool)
+        tool_map["checklist.notes"] = checklist_notes_tool
+        factory.logger.info("   ✅ Added checklist notes tool")
+    except Exception as e:
+        err = f"Failed to add checklist notes tool: {e}"
+        optional_warnings.append(err)
+        factory.logger.warning(f"   ⚠️ {err}")
+
+    # Add the stored-result reader. It is a core tool: it must already be on the surface at the moment a connector result turns out to be too large for the conversation, when there is no time to load a family.
+    try:
+        from ....tools.internal_basil_tools.stored_result_tool import create_stored_result_tool
+
+        stored_result_tool = create_stored_result_tool(profile=profile)
+        tools.append(stored_result_tool)
+        tool_map["stored_result.read"] = stored_result_tool
+        factory.logger.info("   ✅ Added stored result tool")
+    except Exception as e:
+        err = f"Failed to add stored result tool: {e}"
+        optional_warnings.append(err)
+        factory.logger.warning(f"   ⚠️ {err}")
+
+    # Add the app settings tool. It is a loadable family, not a core tool: the user's request to change Basil's own look or behavior loads it.
+    try:
+        from ....tools.internal_basil_tools.app_settings_tool import create_app_settings_tool
+
+        app_settings_tool = create_app_settings_tool(profile=profile)
+        tools.append(app_settings_tool)
+        tool_map["app_settings.manage"] = app_settings_tool
+        factory.logger.info("   ✅ Added app settings tool")
+    except Exception as e:
+        err = f"Failed to add app settings tool: {e}"
+        optional_warnings.append(err)
+        factory.logger.warning(f"   ⚠️ {err}")
+
     # Add working memory tools. These use Basil's bounded markdown memory
     # store, not the activity/knowledge retrieval subsystem.
     try:
@@ -165,8 +220,8 @@ def register_optional_tools(
         optional_warnings.append(err)
         factory.logger.warning(f"   ⚠️ {err}")
 
-    # Add To-Do tools: available to every task for creation, and additionally
-    # scoped to note-append/delegate only for a To-Do workspace manager task.
+    # Add To-Do tools: available to every task. A To-Do workspace manager is limited to its
+    # selected To-Dos, a direct-origin worker to its own To-Do, and delegation is workspace-only.
     try:
         from api.services.todos.tools import create_todo_tools
 
@@ -186,7 +241,7 @@ def register_optional_tools(
         for todo_tool in todo_tools:
             tools.append(todo_tool)
             tool_map[f"todos.{todo_tool.name}"] = todo_tool
-        factory.logger.info("   ✅ Added To-Do tools (create/list/inspect/note/delegate)")
+        factory.logger.info("   ✅ Added To-Do tools (create/list/inspect/note/reference/update/status/delegate)")
     except Exception as e:
         err = f"Failed to add To-Do tools: {e}"
         optional_warnings.append(err)
@@ -201,6 +256,19 @@ def register_optional_tools(
         factory.logger.info("   ✅ Added create_scheduled_agent_task_from_prompt tool")
     except Exception as e:
         err = f"Failed to add scheduled agent task tool: {e}"
+        optional_warnings.append(err)
+        factory.logger.warning(f"   ⚠️ {err}")
+
+    # Add the schedule review tool: list schedules and pause one. Resuming, editing and deleting stay with the user.
+    try:
+        from ....tools.internal_basil_tools.scheduled_agent_task_audit_tool import create_scheduled_agent_task_audit_tool
+
+        schedule_audit_tool = create_scheduled_agent_task_audit_tool(profile=profile)
+        tools.append(schedule_audit_tool)
+        tool_map["scheduled_agent_tasks.manage"] = schedule_audit_tool
+        factory.logger.info("   ✅ Added manage_scheduled_agent_tasks tool")
+    except Exception as e:
+        err = f"Failed to add scheduled agent task review tool: {e}"
         optional_warnings.append(err)
         factory.logger.warning(f"   ⚠️ {err}")
 
@@ -286,6 +354,29 @@ def register_optional_tools(
     else:
         factory.logger.info("   ⏭️ Skipped delegated_agent for constrained child AgentTask")
 
+    # Add start_separate_agent_task: splits one piece of work into its own standalone Agent Task. Constrained
+    # child AgentTasks must not spawn top-level tasks, so it follows the same gate as delegated_agent.
+    if should_register_delegated_agent(factory):
+        try:
+            from ....tools.internal_basil_tools.separate_agent_task_tool import (
+                create_start_separate_agent_task_tool,
+            )
+
+            separate_agent_task_tool = create_start_separate_agent_task_tool(
+                agent_task_id=getattr(factory, "current_agent_task_id", None),
+                root_task_id=getattr(factory, "current_root_task_id", None),
+                submission_service=getattr(factory, "agent_task_submission_service", None),
+            )
+            tools.append(separate_agent_task_tool)
+            tool_map["separate_agent_task.start"] = separate_agent_task_tool
+            factory.logger.info("   ✅ Added start_separate_agent_task tool")
+        except Exception as e:
+            err = f"Failed to add start_separate_agent_task tool: {e}"
+            optional_warnings.append(err)
+            factory.logger.warning(f"   ⚠️ {err}")
+    else:
+        factory.logger.info("   ⏭️ Skipped start_separate_agent_task for constrained child AgentTask")
+
     # Add external_catalog tool: single agent surface for all remote MCP
     # connectors the user has registered (Linear, GitHub, etc.). Discovers
     # connections + tools at runtime so adding a connection requires no
@@ -294,7 +385,10 @@ def register_optional_tools(
         from ....tools.external_services.external_catalog_tool import (
             create_external_catalog_tool,
         )
-        external_catalog_tool = create_external_catalog_tool(profile=profile)
+        external_catalog_tool = create_external_catalog_tool(
+            profile=profile,
+            max_output_chars=getattr(factory, "max_tool_output_chars", None),
+        )
         tools.append(external_catalog_tool)
         tool_map["external.catalog"] = external_catalog_tool
         factory.logger.info("   ✅ Added external_catalog tool (remote MCP connectors)")
@@ -350,6 +444,18 @@ def register_optional_tools(
         err = f"Failed to add browser tabs tool: {e}"
         optional_warnings.append(err)
         factory.logger.warning(f"   ⚠️ {err}")
+
+    # Add browser native input tool for choices DOM tools cannot reach
+    try:
+        from ....tools.direct_application_interactions.browser_automation.browser_native_input_tool import create_browser_native_input_tool
+        browser_native_input_tool = create_browser_native_input_tool(profile=profile)
+        tools.append(browser_native_input_tool)
+        tool_map["browser.native_input"] = browser_native_input_tool
+        factory.logger.info("   Added browser_native_input tool")
+    except Exception as e:
+        err = f"Failed to add browser native input tool: {e}"
+        optional_warnings.append(err)
+        factory.logger.warning(f"   {err}")
 
     # Add browser screenshot tool for vision fallback workflows
     try:

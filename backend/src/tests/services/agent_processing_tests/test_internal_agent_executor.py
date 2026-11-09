@@ -1307,3 +1307,27 @@ async def test_acp_session_is_retained_when_complete_turn_fails() -> None:
         )
 
     assert controller.contains("delegated-run") is True
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("action", ["propose", "admit"])
+async def test_rejected_child_proposal_is_returned_to_the_model_instead_of_failing_the_turn(monkeypatch, action) -> None:
+    from api import dependencies
+    from api.services.agent_processing.tools.internal_basil_tools.delegated_agent_tool import create_delegated_agent_tool
+
+    class AgentTasks:
+        async def get_agent_task(self, agent_task_id):
+            return SimpleNamespace(accumulated_artifacts={}, chain_sequence_number=1)
+
+    knowledge = SimpleNamespace(agent_task_service=AgentTasks())
+    monkeypatch.setattr(dependencies, "get_sqlite_knowledge_service", lambda: knowledge)
+    tool = create_delegated_agent_tool(agent_task_id="parent", root_task_id="root", submission_service=SimpleNamespace())
+
+    result = await tool.coroutine(
+        action=action,
+        objective="Handle the Origami reply as its own task.",
+        rationale="The reply is independent of the other emails.",
+        acceptance_criteria=[],
+    )
+
+    assert json.loads(result) == {"ok": False, "error": "delegated child requires measurable acceptance criteria"}

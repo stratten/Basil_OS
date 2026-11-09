@@ -85,6 +85,7 @@ export async function hydrateDetachedChain(rootTaskId: string): Promise<void> {
     if (displayable.agentTaskId !== rootTaskId) {
       // The most recent turn is still in-flight. Wire it into the follow-up
       // mapping so live WS events for that child route to this root entry.
+      // Hydration only loads what the backend already holds, so it never discards the reader's unsent follow-up text.
       agentStore.beginFollowUpTurn(displayable.agentTaskId, rootTaskId, undefined, displayable.previousTaskId);
       // beginFollowUpTurn snapshots the root's pre-hydration turn back into
       // history and blanks the current-turn fields. Re-seed the authoritative
@@ -230,9 +231,10 @@ interface UseHostBridgeArgs {
 
 function applyInitialReferencePaths(agentTaskId: string, paths?: string[]) {
   const referencePaths = paths?.filter(path => path.trim().length > 0) ?? [];
-  if (referencePaths.length > 0) {
-    agentStore.setReferencePaths(agentTaskId, referencePaths);
-  }
+  if (referencePaths.length === 0) return;
+  // A follow-up turn is displayed from its chain root, so the files belong there.
+  if (agentStore.isFollowUp(agentTaskId)) agentStore.setCurrentTurnReferencePaths(agentTaskId, referencePaths);
+  else agentStore.setReferencePaths(agentTaskId, referencePaths);
 }
 
 export function useHostBridge({
@@ -398,8 +400,10 @@ export function useHostBridge({
         }
         const parentAgent = agentStore.getAgent(parentId);
         let beganFollowUpTurn = false;
+        // The host sends this message only for a follow-up the reader captured, so it may answer their unsent text.
+        const readerStartedTurn = { readerStarted: true };
         if (parentAgent) {
-          agentStore.beginFollowUpTurn(data.agentTaskId, parentId, undefined, previousTaskId);
+          agentStore.beginFollowUpTurn(data.agentTaskId, parentId, undefined, previousTaskId, undefined, readerStartedTurn);
           beganFollowUpTurn = true;
         } else if (viewedDetailRef.current) {
           const detail = viewedDetailRef.current;
@@ -407,13 +411,13 @@ export function useHostBridge({
           if (detailId === parentId) {
             const completeHistory = buildFollowUpHistoryFromViewedDetail(detail);
             const snapshot = completeHistory[completeHistory.length - 1];
-            agentStore.beginFollowUpTurn(data.agentTaskId, parentId, snapshot, previousTaskId);
+            agentStore.beginFollowUpTurn(data.agentTaskId, parentId, snapshot, previousTaskId, undefined, readerStartedTurn);
             agentStore.setAgentTaskHistory(parentId, completeHistory);
             beganFollowUpTurn = true;
           }
         }
         if (!beganFollowUpTurn) {
-          agentStore.beginFollowUpTurn(data.agentTaskId, parentId, undefined, previousTaskId);
+          agentStore.beginFollowUpTurn(data.agentTaskId, parentId, undefined, previousTaskId, undefined, readerStartedTurn);
         }
         hydrateDirectFollowUpHistory(parentId, data.agentTaskId);
         applyInitialReferencePaths(data.agentTaskId, data.referencePaths);

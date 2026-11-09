@@ -11,6 +11,15 @@ export interface SetupAssistantHostConfig {
   theme?: ThemeConfig
   fonts?: FontConfig
   isReturningUserCheck?: boolean
+  // Basil's default hotkeys that share keys with a macOS shortcut that is on. Read once when the window opens.
+  systemShortcutConflicts?: SetupSystemShortcutConflict[]
+}
+
+export interface SetupSystemShortcutConflict {
+  hotkeyId: string
+  source: string
+  certainty: 'exact' | 'possible'
+  message: string
 }
 
 declare global {

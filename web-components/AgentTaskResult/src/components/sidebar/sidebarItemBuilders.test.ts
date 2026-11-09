@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { AgentState, ScheduledAgentTask } from '../../types';
 import { createAgentState } from '../../store/agentStore/stateFactory';
 import { buildHistoryItems, buildScheduledItems, sidebarAttentionPreview, sidebarResultSeverity } from './sidebarItemBuilders';
@@ -221,6 +221,80 @@ describe('buildHistoryItems live chain rows', () => {
   });
 });
 
+describe('buildHistoryItems scheduled-run badge on live rows', () => {
+  function scheduledHistoryItem(id: string, title: string | undefined) {
+    return {
+      id,
+      original_prompt: `Prompt ${id}`,
+      timestamp: '2026-11-02T14:00:00Z',
+      status: 'completed',
+      file_count: 0,
+      follow_up_count: 3,
+      is_scheduled_run: true,
+      scheduled_agent_task_id: 'schedule-1',
+      scheduled_agent_task_title: title,
+    };
+  }
+
+  it('keeps the badge on a task a schedule started once it is live in this window', () => {
+    const agent = createAgentState('task-1', 'Review my inbox');
+
+    const rows = buildHistoryItems({
+      ...buildArgs([agent]),
+      history: [scheduledHistoryItem('task-1', 'Weekly inbox review')],
+    });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].scheduledRunSourceTitle).toBe('Weekly inbox review');
+  });
+
+  it('finds the schedule through the chain root when the live task is a later turn', () => {
+    const agent = createAgentState('turn-3', 'Reply to the third thread');
+    agent.rootTaskId = 'root-1';
+
+    const rows = buildHistoryItems({
+      ...buildArgs([agent]),
+      history: [scheduledHistoryItem('root-1', 'Weekly inbox review')],
+    });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].scheduledRunSourceTitle).toBe('Weekly inbox review');
+  });
+
+  it('falls back to a generic label when the schedule has no title any more', () => {
+    const agent = createAgentState('task-1', 'Review my inbox');
+
+    const [row] = buildHistoryItems({
+      ...buildArgs([agent]),
+      history: [scheduledHistoryItem('task-1', undefined)],
+    });
+
+    expect(row.scheduledRunSourceTitle).toBe('Scheduled task');
+  });
+
+  it('adds no badge to a live task that no schedule started', () => {
+    const agent = createAgentState('task-1', 'Review my inbox');
+    const manual = { ...scheduledHistoryItem('task-1', 'Weekly inbox review'), is_scheduled_run: false };
+    const unrelated = scheduledHistoryItem('task-2', 'Weekly inbox review');
+
+    const [row] = buildHistoryItems({
+      ...buildArgs([agent]),
+      history: [manual, unrelated],
+    });
+
+    expect(row.scheduledRunSourceTitle).toBeUndefined();
+  });
+
+  it('still badges a history row that is not live', () => {
+    const rows = buildHistoryItems({
+      ...buildArgs([]),
+      history: [scheduledHistoryItem('task-1', 'Weekly inbox review')],
+    });
+
+    expect(rows[0].scheduledRunSourceTitle).toBe('Weekly inbox review');
+  });
+});
+
 describe('buildHistoryItems preserveHistoryOrder', () => {
   function historyItem(id: string, timestamp: string) {
     return {
@@ -376,3 +450,44 @@ describe('sidebarResultSeverity', () => {
     expect(rows.find((row) => row.id === 'old-1')?.resultSeverity).toBe('warning');
   });
 });
+
+describe('buildScheduledItems pause and play', () => {
+  const scheduled: ScheduledAgentTask = {
+    id: 'scheduled-9',
+    title: 'Weekly summary',
+    agent_task_text: 'Summarize my inbox',
+    schedule_type: 'recurring',
+    schedule_config: {},
+    timezone: 'UTC',
+    is_active: false,
+    source_type: 'manual',
+    reference_paths: [],
+    created_at: '2026-10-01T00:00:00Z',
+    updated_at: '2026-10-01T00:00:00Z',
+    run_count: 0,
+  };
+
+  it('hands each row the toggle callback so the row can send the schedule id and the state to set', () => {
+    const toggle = vi.fn();
+    const rows = buildScheduledItems({ scheduled: [scheduled], onViewScheduledAgentTask: noop, deleteScheduledAgentTask: noop, toggleScheduledAgentTask: toggle });
+    rows[0].onToggleSchedule?.(rows[0].id, true);
+    expect(toggle).toHaveBeenCalledWith('scheduled-9', true);
+  });
+
+  it('leaves the control off when no toggle callback is supplied', () => {
+    const rows = buildScheduledItems({ scheduled: [scheduled], onViewScheduledAgentTask: noop, deleteScheduledAgentTask: noop });
+    expect(rows[0].onToggleSchedule).toBeUndefined();
+  });
+
+  it('hands each row the run callback, for an inactive schedule as well, and leaves Run now off without one', async () => {
+    const run = vi.fn().mockResolvedValue({ ok: true });
+    const rows = buildScheduledItems({ scheduled: [scheduled], onViewScheduledAgentTask: noop, deleteScheduledAgentTask: noop, runScheduledAgentTask: run });
+    expect(rows[0].scheduleActive).toBe(false);
+    await expect(rows[0].onRunSchedule?.(rows[0].id)).resolves.toEqual({ ok: true });
+    expect(run).toHaveBeenCalledWith('scheduled-9');
+
+    const without = buildScheduledItems({ scheduled: [scheduled], onViewScheduledAgentTask: noop, deleteScheduledAgentTask: noop });
+    expect(without[0].onRunSchedule).toBeUndefined();
+  });
+});
+

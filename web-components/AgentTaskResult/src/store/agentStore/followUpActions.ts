@@ -7,7 +7,7 @@ export class FollowUpAgentStore extends AgentStoreCore {
   registerFollowUp(followUpId: string, parentId: string, previousTaskId?: string) {
     const rootId = this.resolveCanonicalRootId(parentId);
     console.log(`[AgentStore] registerFollowUp: followUpId=${followUpId}, parentId=${parentId}, rootId=${rootId}, parentExists=${this.agents.has(rootId)}, selectedBefore=${this.selectedAgentId}`);
-    this.beginFollowUpTurn(followUpId, rootId, undefined, previousTaskId);
+    this.beginFollowUpTurn(followUpId, rootId, undefined, previousTaskId, undefined, { readerStarted: true });
     console.log(`[AgentStore] registerFollowUp complete: parentStatus=${this.agents.get(rootId)?.status}, selectedAfter=${this.selectedAgentId}`);
   }
 
@@ -17,14 +17,22 @@ export class FollowUpAgentStore extends AgentStoreCore {
     snapshot?: AgentTaskHistoryItem,
     previousTaskId?: string,
     initialTaskTitle?: string,
+    options: { background?: boolean; readerStarted?: boolean } = {},
   ) {
+    // A turn Basil started on its own (a scheduled run that continues the chain, or Basil continuing its own task) is not an answer to anything the reader typed and is not where they chose to be, so it leaves their view and their unsent text alone.
+    const background = options.background === true;
+    // Only a caller that knows the reader sent this turn (typed, or captured by voice) may discard their unsent text. A page that first meets a turn through a live event, or loads one from history, cannot tell a turn Basil started from one the reader started, and a window loaded mid-run never sees the origin event, so the safe default is to keep the text.
+    const readerStarted = options.readerStarted === true && !background;
     const rootId = this.resolveCanonicalRootId(parentId);
     const alreadyMapped = this.followUpToParent.get(followUpId) === rootId;
     console.log(`[AgentStore] beginFollowUpTurn: followUpId=${followUpId}, parentId=${parentId}, rootId=${rootId}, alreadyMapped=${alreadyMapped}`);
     this.followUpToParent.set(followUpId, rootId);
-    this.activeFollowUpByParent.set(rootId, followUpId);
-    // A turn starting means whatever was typed for the next follow-up has been answered by it, however it was sent (typed, voice, or from another window), so the unsent text must not outlive it.
-    if (!alreadyMapped) {
+    // A turn the reader started stays the active one: its terminal events must not be dropped as stale because Basil's own turn began beside it.
+    if (!background || !this.activeFollowUpByParent.has(rootId)) {
+      this.activeFollowUpByParent.set(rootId, followUpId);
+    }
+    // A turn the reader sent answers whatever they had typed for the next follow-up, so the unsent text must not outlive it.
+    if (!alreadyMapped && readerStarted) {
       discardComposerDraft('follow-up', rootId);
       if (parentId !== rootId) discardComposerDraft('follow-up', parentId);
     }
@@ -34,7 +42,7 @@ export class FollowUpAgentStore extends AgentStoreCore {
       this.agents.set(rootId, rootAgent);
     }
     this.agents.delete(followUpId);
-    this.selectedAgentId = rootId;
+    if (!background) this.selectedAgentId = rootId;
 
     this.clearPendingStepTimer(rootId);
     this.stepDisplayTimes.delete(rootId);
@@ -43,7 +51,8 @@ export class FollowUpAgentStore extends AgentStoreCore {
       if (!alreadyMapped) {
         const item = snapshot || this.createHistoryItemFromCurrentTurn(a);
         if (item && (item.agentTaskText || item.result || item.errorMessage)) {
-          a.agentTaskHistory.push(item);
+          // A new array, not a push: the turn list is a dependency of memoized views (the open/closed state of each earlier turn is pruned against it), and an in-place push leaves them holding the old list, so the turn just snapshotted could not be opened until the chain was reloaded.
+          a.agentTaskHistory = [...a.agentTaskHistory, item];
         }
       }
       a.currentTurnTaskId = followUpId;
@@ -91,6 +100,30 @@ export class FollowUpAgentStore extends AgentStoreCore {
 
   isFollowUp(agentTaskId: string): boolean {
     return this.followUpToParent.has(agentTaskId);
+  }
+
+  /**
+   * The id of the entry this window already holds for a task, or undefined when it holds none.
+   *
+   * That is the task's own entry, or the chain root that carries it as a turn. A follow-up turn has no entry of its own, so a plain lookup by the turn's id misses it, and opening it as if it were new would start a second, separate entry for a task the window already shows. The turn is recognized by the follow-up mapping, as the turn on display, or as an earlier turn in the root's history.
+   */
+  findOpenEntryForTask(taskId: string): string | undefined {
+    if (this.agents.has(taskId)) return taskId;
+    if (this.followUpToParent.has(taskId)) {
+      const rootId = this.resolveCanonicalRootId(taskId);
+      if (this.agents.has(rootId)) return rootId;
+    }
+    for (const [entryId, agent] of this.agents) {
+      if (agent.currentTurnTaskId === taskId || agent.agentTaskHistory.some(turn => turn.id === taskId)) return entryId;
+    }
+    return undefined;
+  }
+
+  // A follow-up turn has no state of its own: beginFollowUpTurn deletes it and the chain root carries the displayed turn. Writing to the follow-up's id would be a silent no-op, so files attached to a voice follow-up are recorded on the root here.
+  setCurrentTurnReferencePaths(turnTaskId: string, paths: string[]) {
+    this.updateAgent(this.resolveCanonicalRootId(turnTaskId), a => {
+      a.referencePaths = [...paths];
+    });
   }
 
   setPendingFollowUpParent(parentId: string) {

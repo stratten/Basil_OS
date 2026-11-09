@@ -277,9 +277,13 @@ class TodoService:
         await self._assert_status_and_revision(todo_id, expected_revision, {"open", "in_progress"})
         return await self._transition(todo_id, expected_revision, {"status": "canceled"}, "canceled", "user", None)
 
-    async def set_status(self, todo_id: str, expected_revision: int, status: str) -> TodoItemDetail:
+    async def set_status(
+        self, todo_id: str, expected_revision: int, status: str,
+        actor_kind: str = "user", actor_id: Optional[str] = None,
+    ) -> TodoItemDetail:
         """Manual override: any status may be chosen. The automatic worker sync will not undo it
-        for Agent Tasks that already existed (their IDs are recorded on the status_set event)."""
+        for Agent Tasks that already existed (their IDs are recorded on the status_set event).
+        ``actor_kind`` and ``actor_id`` record who made the change; an Agent Task passes ``agent`` and its own id."""
         if status not in _MANUAL_TODO_STATUSES:
             raise TodoTransitionError(f"Unknown To-Do status: {status}.")
         detail = await self.get_item_detail(todo_id)
@@ -298,8 +302,8 @@ class TodoService:
             expected_revision,
             fields,
             "status_set",
-            "user",
-            None,
+            actor_kind,
+            actor_id,
             {
                 "from": detail.status,
                 "to": status,
@@ -345,7 +349,10 @@ class TodoService:
             None,
         )
 
-    async def update_fields(self, todo_id: str, expected_revision: int, fields: Dict[str, Any]) -> TodoItemDetail:
+    async def update_fields(
+        self, todo_id: str, expected_revision: int, fields: Dict[str, Any],
+        actor_kind: str = "user", actor_id: Optional[str] = None,
+    ) -> TodoItemDetail:
         allowed_fields = {"title", "description", "responsibility", "priority", "due_at", "completed_at"}
         clean_fields = {
             key: value
@@ -360,7 +367,7 @@ class TodoService:
             detail = await self.get_item_detail(todo_id)
             if detail.status != "completed":
                 raise TodoTransitionError("Completed date can only be changed for a completed To-Do.", detail=detail)
-        return await self._transition(todo_id, expected_revision, clean_fields, "updated", "user", None)
+        return await self._transition(todo_id, expected_revision, clean_fields, "updated", actor_kind, actor_id)
 
     async def replace_notes(self, todo_id: str, expected_revision: int, notes: str) -> TodoItemDetail:
         try:

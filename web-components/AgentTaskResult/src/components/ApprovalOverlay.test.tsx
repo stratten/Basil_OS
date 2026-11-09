@@ -11,11 +11,13 @@ Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 const submitApprovalDecision = vi.fn();
 const submitBrowserSensitiveFillApproval = vi.fn();
 const submitProviderPermissionDecision = vi.fn();
+const submitSettingsChangeApproval = vi.fn();
 
 vi.mock('../services/api', () => ({
   submitApprovalDecision,
   submitBrowserSensitiveFillApproval,
   submitProviderPermissionDecision,
+  submitSettingsChangeApproval,
 }));
 
 vi.mock('../store/agentStore', () => ({
@@ -258,6 +260,18 @@ describe('ApprovalOverlay agent explanation and remember eligibility', () => {
     expect(markup).toContain('A bare bash would allow any command or script');
   });
 
+  it('credits the explanation to the agent, or to Basil when Basil wrote it', () => {
+    const agents = render({ ...shellApproval, purpose: 'Lists the folder.' });
+    const agentsExplicitly = render({ ...shellApproval, purpose: 'Lists the folder.', purpose_source: 'agent' });
+    const basils = render({ ...shellApproval, purpose: 'Connect Example at https://mcp.example.com/mcp.', purpose_source: 'basil' });
+
+    expect(agents).toContain('The agent&#x27;s explanation');
+    expect(agentsExplicitly).toContain('The agent&#x27;s explanation');
+    expect(basils).toContain('Basil&#x27;s explanation');
+    expect(basils).not.toContain('The agent&#x27;s explanation');
+    expect(basils).toContain('Connect Example at https://mcp.example.com/mcp.');
+  });
+
   it('says when Basil overrode the agent', () => {
     const markup = render({
       ...explained,
@@ -281,6 +295,120 @@ describe('ApprovalOverlay agent explanation and remember eligibility', () => {
     expect(markup).toContain('Remember this choice');
     expect(markup).toContain('Read-only and narrow.');
     expect(markup).not.toContain('This approval applies to this run only.');
+  });
+
+  it('says exactly which commands remembering would approve, in the primary text, when a pattern arrives', () => {
+    const markup = render({
+      ...shellApproval,
+      command: 'gh gist view 8edb73ec --files',
+      generalized_pattern: 'gh gist view',
+      purpose: 'Lists the files in the gist.',
+      whitelist: {
+        eligible: true,
+        reason: '',
+        advice: { recommend: true, reason: 'Read-only.', downgraded: false },
+        pattern: 'gh gist view',
+        broad: false,
+      },
+    });
+
+    expect(markup).toContain('If remembered, Basil will approve any command that starts with');
+    expect(markup).toContain('<code class="approval-pattern__words">gh gist view</code>');
+    expect(markup).not.toContain('Pattern: ');
+    expect(markup).not.toContain('approval-pattern-broad');
+  });
+
+  it('warns when remembering would approve every use of a tool, and names the tool', () => {
+    const markup = render({
+      ...shellApproval,
+      command: 'ls -la /tmp',
+      generalized_pattern: 'ls',
+      whitelist: { eligible: true, reason: '', advice: null, pattern: 'ls', broad: true },
+    });
+
+    expect(markup).toContain('approval-pattern-broad');
+    expect(markup).toContain('would approve every');
+    expect(markup).toContain('<code class="approval-pattern__words">ls</code>');
+  });
+
+  it('shows neither the pattern nor the warning when the approval cannot be remembered', () => {
+    const markup = render({
+      ...shellApproval,
+      generalized_pattern: 'gh',
+      whitelist: { eligible: false, reason: 'Remembering only gh would approve every gh command.', advice: null, pattern: 'gh', broad: false },
+    });
+
+    expect(markup).not.toContain('If remembered');
+    expect(markup).not.toContain('approval-pattern-broad');
+    expect(markup).toContain('This approval applies to this run only.');
+  });
+
+  it('offers a connected tool as always allow for that one tool, with no command pattern', () => {
+    const markup = render({
+      ...shellApproval,
+      command: 'mcp:Gmail:label_message({"messageId":"AAA"})',
+      generalized_pattern: 'mcp:Gmail:label_message({messageId:AAA})',
+      purpose: 'Adds the Receipts label to one message.',
+      whitelist: {
+        eligible: true,
+        reason: '',
+        advice: null,
+        pattern: '',
+        broad: false,
+        tool_policy: { connection_id: 'conn-gmail', connection_name: 'Gmail', tool_name: 'label_message', destructive: false },
+      },
+    });
+
+    expect(markup).toContain('Always allow label_message on Gmail');
+    expect(markup).toContain('This changes only this tool. You can undo it in Settings');
+    expect(markup).not.toContain('Remember this choice');
+    expect(markup).not.toContain('Pattern: ');
+    expect(markup).not.toContain('If remembered');
+    expect(markup).not.toContain('approval-tool-destructive');
+  });
+
+  it('warns before always allowing a connected tool that deletes or sends', () => {
+    const markup = render({
+      ...shellApproval,
+      command: 'mcp:Gmail:trash_message({"messageId":"AAA"})',
+      generalized_pattern: 'mcp:Gmail:trash_message({messageId:AAA})',
+      purpose: 'Moves one message to Trash.',
+      whitelist: {
+        eligible: true,
+        reason: '',
+        advice: null,
+        pattern: '',
+        broad: false,
+        tool_policy: { connection_id: 'conn-gmail', connection_name: 'Gmail', tool_name: 'trash_message', destructive: true },
+      },
+    });
+
+    expect(markup).toContain('approval-tool-destructive');
+    expect(markup).toContain('This tool deletes or sends things.');
+    expect(markup).toContain('<code class="approval-pattern__words">trash_message</code>');
+    expect(markup).toContain('Always allow trash_message on Gmail');
+  });
+
+  it('names no connection when the backend sent none', () => {
+    const markup = render({
+      ...shellApproval,
+      whitelist: {
+        eligible: true,
+        reason: '',
+        advice: null,
+        tool_policy: { connection_id: 'conn-1', connection_name: '', tool_name: 'create_request', destructive: false },
+      },
+    });
+
+    expect(markup).toContain('Always allow create_request');
+    expect(markup).not.toContain(' on </');
+  });
+
+  it('falls back to the old pattern line when the backend sends no pattern with the whitelist status', () => {
+    const markup = render({ ...shellApproval, generalized_pattern: 'ls', whitelist: { eligible: true, reason: '', advice: null } });
+
+    expect(markup).toContain('Pattern: ls');
+    expect(markup).not.toContain('If remembered');
   });
 
   it('flags a missing explanation and shows no advice', () => {
@@ -387,5 +515,152 @@ describe('ApprovalOverlay compact command presentation', () => {
     expect(markup).toContain('Deny');
     expect(markup).toContain('Cancel');
     expect(markup).toContain('This command may cause permanent changes');
+  });
+});
+
+describe('ApprovalOverlay decision note', () => {
+  async function renderShellApproval(): Promise<{ container: HTMLDivElement; unmount: () => void }> {
+    submitApprovalDecision.mockResolvedValue({ success: true, message: 'ok' });
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(<ApprovalOverlay agentTaskId="task-1" approval={shellApproval} rememberChoice={false} />);
+    });
+    return { container, unmount: () => act(() => root.unmount()) };
+  }
+
+  async function typeNote(container: HTMLElement, text: string): Promise<void> {
+    const textarea = container.querySelector('textarea.approval-note-input') as HTMLTextAreaElement;
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
+    await act(async () => {
+      setter?.call(textarea, text);
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  }
+
+  async function press(container: HTMLElement, label: string): Promise<void> {
+    const button = Array.from(container.querySelectorAll('button')).find(candidate => candidate.textContent === label);
+    await act(async () => {
+      button?.click();
+    });
+  }
+
+  it('sends the trimmed note with a denial', async () => {
+    const { container, unmount } = await renderShellApproval();
+    await typeNote(container, '  That file is in ~/Documents, not here.  ');
+    await press(container, 'Deny');
+
+    expect(submitApprovalDecision).toHaveBeenCalledTimes(1);
+    expect(submitApprovalDecision.mock.calls[0][0]).toMatchObject({
+      approved: false,
+      user_note: 'That file is in ~/Documents, not here.',
+    });
+    unmount();
+  });
+
+  it('sends the note with an approval too', async () => {
+    const { container, unmount } = await renderShellApproval();
+    await typeNote(container, 'Approve, but also check the exit code.');
+    await press(container, 'Approve');
+
+    expect(submitApprovalDecision.mock.calls[0][0]).toMatchObject({
+      approved: true,
+      user_note: 'Approve, but also check the exit code.',
+    });
+    unmount();
+  });
+
+  it('sends the note with Cancel, which denies a shell command', async () => {
+    const { container, unmount } = await renderShellApproval();
+    await typeNote(container, 'Wrong directory.');
+    await press(container, 'Cancel');
+
+    expect(submitApprovalDecision.mock.calls[0][0]).toMatchObject({ approved: false, user_note: 'Wrong directory.' });
+    unmount();
+  });
+
+  it('omits the note entirely when it is empty or only whitespace', async () => {
+    const { container, unmount } = await renderShellApproval();
+    await typeNote(container, '   ');
+    await press(container, 'Deny');
+
+    expect(submitApprovalDecision.mock.calls[0][0].user_note).toBeUndefined();
+    unmount();
+  });
+
+  it('offers the note field for shell approvals but not for provider permissions or sensitive browser fills', () => {
+    const shell = renderToStaticMarkup(<ApprovalOverlay agentTaskId="task-1" approval={shellApproval} rememberChoice={false} />);
+    const provider = renderToStaticMarkup(<ApprovalOverlay agentTaskId="task-1" approval={providerApproval} rememberChoice={false} />);
+    const browser = renderToStaticMarkup(
+      <ApprovalOverlay
+        agentTaskId="task-1"
+        approval={{ ...shellApproval, execution_type: 'browser_sensitive_fill' }}
+        rememberChoice={false}
+      />,
+    );
+
+    expect(shell).toContain('approval-note-input');
+    expect(shell).toContain('maxLength="2000"');
+    expect(provider).not.toContain('approval-note-input');
+    expect(browser).not.toContain('approval-note-input');
+  });
+});
+
+describe('ApprovalOverlay settings change approval', () => {
+  const settingsApproval: ExecutionApprovalRequest = {
+    approval_id: 'settings-1',
+    agent_task_id: 'task-1',
+    command: 'Change Basil settings. Open turns: single to multiple',
+    reason: 'The user wants to compare turns.',
+    risk_level: 'medium',
+    generalized_pattern: 'settings_change:appearance.agent_task_chain_expansion',
+    execution_type: 'settings_change',
+    whitelist: { eligible: false, reason: 'Settings changes are approved one at a time and cannot be remembered.', advice: null },
+    settings_change: {
+      tier: 'behavioral',
+      changes: [{ key: 'appearance.agent_task_chain_expansion', label: 'Open turns in a task chain', before: 'single', after: 'multiple' }],
+    },
+  };
+
+  it('shows the before and after values, and neither a remember checkbox, a note field, nor the raw pattern', () => {
+    const markup = renderToStaticMarkup(
+      <ApprovalOverlay agentTaskId="task-1" approval={settingsApproval} rememberChoice={false} />,
+    );
+
+    expect(markup).toContain('Settings Change Approval Required');
+    expect(markup).toContain('Open turns in a task chain');
+    expect(markup).toContain('single');
+    expect(markup).toContain('multiple');
+    expect(markup).toContain('cannot be remembered');
+    expect(markup).not.toContain('Remember this choice');
+    expect(markup).not.toContain('approval-note-input');
+    expect(markup).not.toContain('Pattern:');
+    expect(markup).not.toContain('command-display');
+  });
+
+  it('falls back to the summary line when the diff is missing', () => {
+    const markup = renderToStaticMarkup(
+      <ApprovalOverlay agentTaskId="task-1" approval={{ ...settingsApproval, settings_change: undefined }} rememberChoice={false} />,
+    );
+
+    expect(markup).toContain('Change Basil settings. Open turns: single to multiple');
+  });
+
+  it('answers through the settings-change endpoint, with no command fields', async () => {
+    submitSettingsChangeApproval.mockResolvedValue({ success: true, message: 'ok' });
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(<ApprovalOverlay agentTaskId="task-1" approval={settingsApproval} rememberChoice={false} />);
+    });
+
+    const deny = Array.from(container.querySelectorAll('button')).find(button => button.textContent === 'Deny');
+    await act(async () => {
+      deny?.click();
+    });
+
+    expect(submitSettingsChangeApproval).toHaveBeenCalledWith({ approval_id: 'settings-1', approved: false });
+    expect(submitApprovalDecision).not.toHaveBeenCalled();
+    act(() => root.unmount());
   });
 });

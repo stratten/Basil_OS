@@ -171,10 +171,10 @@ def backfill_agent_task_summaries(conn: sqlite3.Connection) -> None:
             """
             SELECT *
             FROM agent_tasks
-            WHERE COALESCE(root_task_id, id) = ?
+            WHERE root_task_id = ? OR (root_task_id IS NULL AND id = ?)
             ORDER BY chain_sequence_number ASC, timestamp ASC, id ASC
             """,
-            (root_id,)
+            (root_id, root_id)
         ).fetchall()
         if not rows:
             continue

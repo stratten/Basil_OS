@@ -1,16 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Switch } from '@shared/Switch'
 import TokenizedSelect from '@shared/TokenizedSelect'
+import { HintTooltip } from '../components/HintTooltip'
 import {
   notifyHomeSettingsReady,
   onHomeEvent,
   openHomePowerUserGuide,
+  reportHomeProblem,
   openHomeSetupAssistant,
   updateHomeSelectedModel,
   updateHomeSelectedTranscriptionModel,
   updateHomeToggle,
 } from '../services/homeBridge'
 import type { HomeQuickToggleField, HomeSettingsFields } from '../types'
+import { HOME_PRESET_LABELS, planHomePreset, type HomePresetId, type HomePresetStep } from './homePresets'
 import { useOptimisticSettings } from './useOptimisticSettings'
 
 export type HomeNavigationTarget = 'permissions' | 'models' | 'account'
@@ -23,6 +26,52 @@ export function HomeSettingsApp({ onNavigate }: HomeSettingsAppProps) {
   const { settings: fields, isSaving, setSettings: setFields, track, receiveSnapshot, resolveIntent } = useOptimisticSettings<HomeSettingsFields>()
   const [loadError, setLoadError] = useState<string | null>(null)
   const [requestError, setRequestError] = useState<string | null>(null)
+  const [confirmEverything, setConfirmEverything] = useState(false)
+  const [presetStatus, setPresetStatus] = useState<{ tone: 'running' | 'done' | 'error'; message: string } | null>(null)
+  // A preset applies one setting at a time, waiting for native to confirm each before sending the next, so the native toggle handlers never race each other.
+  const fieldsRef = useRef<HomeSettingsFields | null>(null)
+  fieldsRef.current = fields
+  const presetQueueRef = useRef<HomePresetStep[]>([])
+  const presetRequestRef = useRef<string | null>(null)
+  const presetSummaryRef = useRef('')
+  const advancePresetRef = useRef<() => void>(() => {})
+
+  function advancePreset() {
+    const current = fieldsRef.current
+    const step = presetQueueRef.current.shift()
+    if (!current) return
+    if (!step) {
+      presetRequestRef.current = null
+      setPresetStatus({ tone: 'done', message: presetSummaryRef.current })
+      return
+    }
+    const next = { ...current, [step.field]: step.value } as HomeSettingsFields
+    fieldsRef.current = next
+    setFields(next)
+    presetRequestRef.current = updateHomeToggle(step.field, step.value)
+    track(presetRequestRef.current)
+  }
+  advancePresetRef.current = advancePreset
+
+  function applyPreset(preset: HomePresetId) {
+    if (!fields || presetRequestRef.current) return
+    const plan = planHomePreset(preset, fields)
+    setRequestError(null)
+    setConfirmEverything(false)
+    const parts = [
+      plan.steps.length === 0
+        ? `${HOME_PRESET_LABELS[preset]}: nothing needed to change.`
+        : `${HOME_PRESET_LABELS[preset]} applied: ${plan.steps.length} ${plan.steps.length === 1 ? 'setting' : 'settings'} changed.`,
+    ]
+    if (plan.unavailable.length > 0) parts.push(`Not changed because their status is unavailable: ${plan.unavailable.join(', ')}.`)
+    if (preset === 'everything' && fields.permissionsGrantedCount < fields.permissionsTotalCount) {
+      parts.push(`Permissions are ${fields.permissionsGrantedCount} of ${fields.permissionsTotalCount} granted. A preset never grants macOS permissions, so features that need the rest will not work until you do.`)
+    }
+    presetSummaryRef.current = parts.join(' ')
+    presetQueueRef.current = plan.steps
+    setPresetStatus({ tone: 'running', message: `Applying ${HOME_PRESET_LABELS[preset]}...` })
+    advancePreset()
+  }
 
   useEffect(() => {
     const unsubscribe = onHomeEvent((event) => {
@@ -35,8 +84,19 @@ export function HomeSettingsApp({ onNavigate }: HomeSettingsAppProps) {
         setLoadError(event.message)
         return
       }
-      if (event.type === 'intentResult' && resolveIntent(event.requestId, event.status) === 'error') {
-        setRequestError(event.message ?? 'Failed to update setting.')
+      if (event.type === 'intentResult') {
+        const outcome = resolveIntent(event.requestId, event.status)
+        if (outcome === 'error') setRequestError(event.message ?? 'Failed to update setting.')
+        if (event.requestId === presetRequestRef.current) {
+          if (outcome === 'error') {
+            const skipped = presetQueueRef.current.length
+            presetQueueRef.current = []
+            presetRequestRef.current = null
+            setPresetStatus({ tone: 'error', message: `The preset stopped after a setting failed. ${skipped} ${skipped === 1 ? 'setting was' : 'settings were'} not changed.` })
+          } else {
+            advancePresetRef.current()
+          }
+        }
       }
     })
     notifyHomeSettingsReady()
@@ -69,6 +129,11 @@ export function HomeSettingsApp({ onNavigate }: HomeSettingsAppProps) {
     track(openHomeSetupAssistant())
   }
 
+  function handleReportProblem() {
+    setRequestError(null)
+    track(reportHomeProblem())
+  }
+
   function handleOpenPowerUserGuide() {
     setRequestError(null)
     track(openHomePowerUserGuide())
@@ -97,6 +162,8 @@ export function HomeSettingsApp({ onNavigate }: HomeSettingsAppProps) {
 
   return (
     <div className="home-settings-shell">
+      <div className="home-settings-layout">
+      <div className="home-settings-main">
       <div className="home-settings-overview-grid">
         <section className="home-settings-section" aria-labelledby="home-setup-heading">
           <h2 id="home-setup-heading">Setup &amp; Readiness</h2>
@@ -194,29 +261,94 @@ export function HomeSettingsApp({ onNavigate }: HomeSettingsAppProps) {
         <section className="home-settings-section" aria-labelledby="home-launch-heading">
           <h2 id="home-launch-heading">Launch Preferences</h2>
           {!f.backgroundBehaviorAvailable && <p className="home-settings-section-warning">Hotkey and Voice Listener preferences are temporarily unavailable.</p>}
-          <Switch id="home-enable-monitoring" label="Enable hotkey monitoring at startup" checked={f.enableMonitoringAtStartup} disabled={!f.backgroundBehaviorAvailable} onChange={(checked) => handleToggle('enableMonitoringAtStartup', checked)} />
-          <Switch id="home-enable-voice-listener" label="Enable Voice Listener at startup" checked={f.enableVoiceListenerAtStartup} disabled={!f.backgroundBehaviorAvailable} onChange={(checked) => handleToggle('enableVoiceListenerAtStartup', checked)} />
-          <Switch id="home-start-activity-capture" label="Start Activity Capture on launch" checked={f.startActivityCaptureAtLaunch} disabled={!f.activityCaptureAvailable || !f.activityCaptureEnabled} onChange={(checked) => handleToggle('startActivityCaptureAtLaunch', checked)} />
-          <p className="home-settings-hint">
-            {f.activityCaptureEnabled
-              ? 'Starts the capture scheduler after Basil reconnects to its backend on your next launch.'
-              : 'Enable Automatic Capture in Activity Capture settings before choosing a startup schedule.'}
-          </p>
-          <Switch id="home-start-meeting-detection" label="Start Meeting/Call Detection on launch" checked={f.startMeetingDetectionAtLaunch} disabled={!f.meetingDetectionAvailable} onChange={(checked) => handleToggle('startMeetingDetectionAtLaunch', checked)} />
-          <p className="home-settings-hint">
-            Turning this on also enables Meeting/Call Detection; it won't start the monitor until the next launch.
-          </p>
+          <div className="home-settings-switch-row">
+            <Switch id="home-enable-monitoring" label="Enable hotkeys at startup" checked={f.enableMonitoringAtStartup} disabled={!f.backgroundBehaviorAvailable} onChange={(checked) => handleToggle('enableMonitoringAtStartup', checked)} />
+          </div>
+          <div className="home-settings-switch-row">
+            <Switch id="home-enable-voice-listener" label="Enable Voice Listener at startup" checked={f.enableVoiceListenerAtStartup} disabled={!f.backgroundBehaviorAvailable} onChange={(checked) => handleToggle('enableVoiceListenerAtStartup', checked)} />
+            <HintTooltip subject="Voice Listener" text="Voice Listener listens through your microphone so you can start things by voice. It needs microphone access." />
+          </div>
+          <div className="home-settings-switch-row">
+            <Switch id="home-start-activity-capture" label="Start Activity Capture on launch" checked={f.startActivityCaptureAtLaunch} disabled={!f.activityCaptureAvailable || !f.activityCaptureEnabled} onChange={(checked) => handleToggle('startActivityCaptureAtLaunch', checked)} />
+            <HintTooltip
+              subject="starting Activity Capture on launch"
+              text={f.activityCaptureEnabled
+                ? 'Activity Capture starts by itself each time Basil opens, beginning with your next launch.'
+                : 'Turn on Automatic Capture in Activity Capture settings first. Then you can have it start when Basil opens.'}
+            />
+          </div>
+          <div className="home-settings-switch-row">
+            <Switch id="home-start-meeting-detection" label="Start Meeting/Call Detection on launch" checked={f.startMeetingDetectionAtLaunch} disabled={!f.meetingDetectionAvailable} onChange={(checked) => handleToggle('startMeetingDetectionAtLaunch', checked)} />
+            <HintTooltip subject="starting Meeting/Call Detection on launch" text="Turning this on also turns on Meeting/Call Detection. It starts watching for calls the next time Basil opens." />
+          </div>
         </section>
 
         <section className="home-settings-section" aria-labelledby="home-features-heading">
           <h2 id="home-features-heading">Active Features</h2>
           {!f.activityCaptureAvailable && <p className="home-settings-section-warning">Activity Capture status is temporarily unavailable.</p>}
-          <Switch id="home-activity-capture-enabled" label="Activity Capture" checked={f.activityCaptureEnabled} disabled={!f.activityCaptureAvailable} onChange={(checked) => handleToggle('activityCaptureEnabled', checked)} />
+          <div className="home-settings-switch-row">
+            <Switch id="home-activity-capture-enabled" label="Activity Capture" checked={f.activityCaptureEnabled} disabled={!f.activityCaptureAvailable} onChange={(checked) => handleToggle('activityCaptureEnabled', checked)} />
+            <HintTooltip subject="Activity Capture" text="Takes a screenshot of your screen on a schedule and has a model read it. Where that reading happens depends on the model you pick in Activity Capture settings." />
+          </div>
           {!f.meetingDetectionAvailable && <p className="home-settings-section-warning">Meeting/Call Detection status is temporarily unavailable.</p>}
-          <Switch id="home-meeting-detection-enabled" label="Meeting/Call Detection" checked={f.meetingDetectionEnabled} disabled={!f.meetingDetectionAvailable} onChange={(checked) => handleToggle('meetingDetectionEnabled', checked)} />
+          <div className="home-settings-switch-row">
+            <Switch id="home-meeting-detection-enabled" label="Meeting/Call Detection" checked={f.meetingDetectionEnabled} disabled={!f.meetingDetectionAvailable} onChange={(checked) => handleToggle('meetingDetectionEnabled', checked)} />
+            <HintTooltip subject="Meeting/Call Detection" text="Notices when a meeting or call starts on this Mac." />
+          </div>
           {!f.proactiveSuggestionsAvailable && <p className="home-settings-section-warning">Proactive Suggestions status is temporarily unavailable.</p>}
-          <Switch id="home-proactive-suggestions-enabled" label="Proactive Suggestions" checked={f.proactiveSuggestionsEnabled} disabled={!f.proactiveSuggestionsAvailable} onChange={(checked) => handleToggle('proactiveSuggestionsEnabled', checked)} />
+          <div className="home-settings-switch-row">
+            <Switch id="home-proactive-suggestions-enabled" label="Proactive Suggestions" checked={f.proactiveSuggestionsEnabled} disabled={!f.proactiveSuggestionsAvailable} onChange={(checked) => handleToggle('proactiveSuggestionsEnabled', checked)} />
+            <HintTooltip subject="Proactive Suggestions" text="Lets me offer help without being asked, when your settings allow it." />
+          </div>
         </section>
+      </div>
+      </div>
+
+      <aside className="home-settings-rail" aria-label="Quick presets and support">
+        <section className="home-settings-section" aria-labelledby="home-presets-heading">
+          <h2 id="home-presets-heading">Quick Presets</h2>
+          <p className="home-settings-hint">Presets only change the switches under Launch Preferences and Active Features. They never grant macOS permissions, and you can adjust any switch afterwards.</p>
+          <div className="home-settings-preset">
+            <button type="button" className="secondary-button home-settings-inline-action" disabled={presetStatus?.tone === 'running'} onClick={() => setConfirmEverything(true)}>
+              {HOME_PRESET_LABELS.everything}
+            </button>
+            <details className="home-settings-preset-details">
+              <summary>What this does</summary>
+              <p>Turns on Voice Listener, Activity Capture, Meeting/Call Detection, Proactive Suggestions, and their startup options.</p>
+            </details>
+          </div>
+          <div className="home-settings-preset">
+            <button type="button" className="secondary-button home-settings-inline-action" disabled={presetStatus?.tone === 'running'} onClick={() => applyPreset('conservative')}>
+              {HOME_PRESET_LABELS.conservative}
+            </button>
+            <details className="home-settings-preset-details">
+              <summary>What this does</summary>
+              <p>Keeps only hotkeys on and turns the rest off.</p>
+            </details>
+          </div>
+          {confirmEverything && (
+            <div className="home-settings-setup-notice" role="alertdialog" aria-labelledby="home-preset-confirm-heading">
+              <strong id="home-preset-confirm-heading">Turn on everything?</strong>
+              <span>Activity Capture takes a screenshot of your screen on a schedule and has a model read it, Voice Listener listens through your microphone so you can start things by voice, and Meeting/Call Detection notices when you join a call. You can review or change each one in its own settings page.</span>
+              <div className="home-settings-preset-row">
+                <button type="button" className="secondary-button home-settings-inline-action" onClick={() => applyPreset('everything')}>Yes, enable everything</button>
+                <button type="button" className="secondary-button home-settings-inline-action" onClick={() => setConfirmEverything(false)}>Cancel</button>
+              </div>
+            </div>
+          )}
+          {presetStatus && (
+            <p className={`home-settings-preset-status is-${presetStatus.tone}`} role={presetStatus.tone === 'error' ? 'alert' : 'status'}>{presetStatus.message}</p>
+          )}
+        </section>
+
+        <section className="home-settings-section" aria-labelledby="home-support-heading">
+          <h2 id="home-support-heading">Support</h2>
+          <button type="button" className="secondary-button home-settings-inline-action" onClick={handleReportProblem}>
+            Report a problem
+          </button>
+          <p className="home-settings-hint">Saves a diagnostics bundle on this Mac, shows it in Finder, and opens a pre-filled GitHub issue. Nothing is sent until you submit the issue.</p>
+        </section>
+      </aside>
       </div>
 
       <p className="settings-visually-hidden" role="status">{isSaving ? 'Saving setting...' : ''}</p>

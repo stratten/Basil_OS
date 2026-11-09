@@ -84,7 +84,8 @@ describe('Header collapsed status', () => {
     expect(markup).toContain('Investigate a deliberately long task title without idle truncation');
     expect(markup).toContain('Reviewing a deliberately long current status message');
     expect(markup).toContain('class="header-right has-stop-action"');
-    expect(markup).toContain('>Stop</button>');
+    expect(markup).toContain('aria-label="Stop"');
+    expect(markup).toContain('basil-stop-action--icon');
   });
 
   it('omits only the task subtitle when the generated title is absent', () => {
@@ -186,10 +187,64 @@ describe('Header collapsed status', () => {
     });
 
     expect(activeMarkup).toContain('basil-stop-action');
-    expect(activeMarkup).toContain('>Stop</button>');
+    expect(activeMarkup).toContain('basil-stop-action--icon');
+    expect(activeMarkup).toContain('aria-label="Stop"');
+    expect(activeMarkup).not.toContain('>Stop</button>');
     expect(activeMarkup).not.toContain('header-stop-icon');
-    expect(cancelingMarkup).toContain('>Stopping</button>');
+    expect(cancelingMarkup).toContain('aria-label="Stopping"');
     expect(cancelingMarkup).toContain('disabled=""');
     expect(cancelingMarkup).toContain('class="header-right has-stop-action is-stopping"');
+  });
+
+  it('shows Pause to the left of the icon Stop button while the task runs', () => {
+    const markup = renderHeader({
+      isCollapsed: true,
+      showCancelStop: true,
+      onCancelRunning: vi.fn(),
+      runPauseState: 'running',
+      onPauseRunning: vi.fn(),
+      onResumeRunning: vi.fn(),
+    });
+
+    expect(markup).toContain('class="header-right has-stop-action has-pause-action"');
+    expect(markup).toContain('aria-label="Pause"');
+    expect(markup.indexOf('basil-pause-action')).toBeGreaterThan(-1);
+    expect(markup.indexOf('basil-pause-action')).toBeLessThan(markup.indexOf('basil-stop-action'));
+  });
+
+  it('turns Pause into Resume when the task is paused', () => {
+    const markup = renderHeader({
+      showCancelStop: true,
+      onCancelRunning: vi.fn(),
+      runPauseState: 'paused',
+      onPauseRunning: vi.fn(),
+      onResumeRunning: vi.fn(),
+    });
+
+    expect(markup).toContain('aria-label="Resume"');
+    expect(markup).not.toContain('aria-label="Pause"');
+  });
+
+  it('shows no Pause button without a pause state or without handlers', () => {
+    const noState = renderHeader({ showCancelStop: true, onCancelRunning: vi.fn(), onPauseRunning: vi.fn(), onResumeRunning: vi.fn() });
+    const noHandlers = renderHeader({ showCancelStop: true, onCancelRunning: vi.fn(), runPauseState: 'running' });
+
+    expect(noState).not.toContain('basil-pause-action');
+    expect(noHandlers).not.toContain('basil-pause-action');
+    expect(noState).toContain('class="header-right has-stop-action"');
+  });
+
+  it('keeps the text Stop and no Pause in the embedded toolbar', () => {
+    const markup = renderHeader({
+      embedded: true,
+      showCancelStop: true,
+      onCancelRunning: vi.fn(),
+      runPauseState: 'running',
+      onPauseRunning: vi.fn(),
+      onResumeRunning: vi.fn(),
+    });
+
+    expect(markup).toContain('>Stop</button>');
+    expect(markup).not.toContain('basil-pause-action');
   });
 });

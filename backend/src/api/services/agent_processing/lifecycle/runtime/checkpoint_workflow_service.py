@@ -92,6 +92,7 @@ class WorkflowCheckpointWorkflowService:
                         "options": checkpoint_data.get("options", []),
                         "allow_multiple": bool(checkpoint_data.get("allow_multiple", False)),
                         "context_summary": checkpoint_data.get("context_summary", ""),
+                        "details_markdown": checkpoint_data.get("details_markdown", ""),
                         "default_value": checkpoint_data.get("default_value", ""),
                         "metadata": checkpoint_data.get("metadata", {}),
                         "user_agent_task": user_agent_task,

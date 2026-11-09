@@ -43,6 +43,7 @@ struct ModelVariant: Codable {
     let repo: RepoInfo?
     let path: String?
     let valid: Bool?
+    let handler: String?  // Registry runtime handler (for example "llama_cpp" or "mlx"); drives the format tag in Settings.
 }
 
 struct RepoInfo: Codable {

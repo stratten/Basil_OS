@@ -119,7 +119,7 @@ extension AppDelegate {
                             break
                         case .permissionsCheckOnly:
                             self.presentSetupPermissionsWindowIfRequiredFromDelegate()
-                            if !BasilRuntimeProfile.isValidation {
+                            if !BasilRuntimeProfile.suppressesAmbientBehavior {
                                 self.presentSetupAssistantResumeToastFromDelegate(ifPendingIn: pendingState)
                             }
                         case .primarySetupFlow:
@@ -176,7 +176,7 @@ extension AppDelegate {
             }
 
             // Enable hotkeys based on local preference, and configure when backend is ready
-            if desiredMonitoring && !BasilRuntimeProfile.isValidation {
+            if desiredMonitoring && !BasilRuntimeProfile.suppressesAmbientBehavior {
                 if self.hotkeyService == nil { self.hotkeyService = HotkeyService.shared }
                 if !self.hotkeyService.isEnabled {
                     self.hotkeyService.toggleHotkeys()
@@ -184,7 +184,7 @@ extension AppDelegate {
                 Task { await self.hotkeyService.configureHotkeysWhenBackendReady() }
             }
 
-            guard !BasilRuntimeProfile.isValidation else { return }
+            guard !BasilRuntimeProfile.suppressesAmbientBehavior else { return }
 
             // Meeting Detection and Activity Capture autostart are one-shot checks
             // with no other retry path in the app: if the backend isn't available
@@ -291,7 +291,7 @@ extension AppDelegate {
         DevLogger.shared.info("🔑 STARTUP: Cached enable_monitoring_at_startup = \(behaviorSettings.enableMonitoringAtStartup)", context: "AppDelegate")
         #endif
 
-        if behaviorSettings.enableMonitoringAtStartup && !BasilRuntimeProfile.isValidation {
+        if behaviorSettings.enableMonitoringAtStartup && !BasilRuntimeProfile.suppressesAmbientBehavior {
             #if DEBUG
             DevLogger.shared.info("🎯 STARTUP: Auto-enabling monitoring at startup as requested in settings", context: "AppDelegate")
             DevLogger.shared.info("🔍 STARTUP: Current hotkeyService.isEnabled = \(hotkeyService.isEnabled)", context: "AppDelegate")

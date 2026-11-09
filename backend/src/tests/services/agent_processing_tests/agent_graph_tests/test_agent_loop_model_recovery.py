@@ -21,6 +21,7 @@ from api.services.agent_processing.lifecycle.execution_graph.agent_loop_model_re
     ModelRecoveryMiddleware,
     compact_messages,
     max_compaction_level,
+    tool_result_log_fields,
 )
 from api.services.agent_processing.lifecycle.execution_graph.conversation_turns import (
     RECAP_HEADER,
@@ -39,6 +40,17 @@ class StubRequest:
 
     def override(self, **kwargs):
         return StubRequest(kwargs.get("messages", self.messages))
+
+
+class StubRequestWithSystem(StubRequest):
+    """A request that carries a system prompt, the part of every call that no compaction level can shrink."""
+
+    def __init__(self, messages, system_prompt):
+        super().__init__(messages)
+        self.system_prompt = system_prompt
+
+    def override(self, **kwargs):
+        return StubRequestWithSystem(kwargs.get("messages", self.messages), self.system_prompt)
 
 
 def _conversation_with_tool_results(count: int, task_chars: int = 50_000):
@@ -324,6 +336,96 @@ async def test_prompt_within_budget_is_left_alone():
     assert middleware.compaction_level == 0
 
 
+def test_compaction_level_two_leaves_the_request_alone_when_trimming_is_switched_off():
+    compacted = compact_messages(
+        _conversation_with_tool_results(3), 2, actual_tokens=9_000, max_tokens=8_000, trim_request=False
+    )
+
+    assert _tool_contents(compacted) == [COMPACTED_TOOL_RESULT, COMPACTED_TOOL_RESULT, "result-2"]
+    assert compacted[0].content == "x" * 50_000
+
+
+def test_trim_report_names_the_characters_removed_from_the_request():
+    report: dict[str, int] = {}
+
+    compacted = compact_messages(
+        _conversation_with_tool_results(3), 2, actual_tokens=9_000, max_tokens=8_000, trim_report=report
+    )
+
+    assert report == {"request_chars_removed": 50_000 - len(compacted[0].content)}
+    assert report["request_chars_removed"] > 0
+
+
+def test_trim_report_stays_empty_when_nothing_was_trimmed():
+    report: dict[str, int] = {}
+
+    compact_messages(_conversation_with_tool_results(3), 1, trim_report=report)
+
+    assert report == {}
+
+
+def test_a_context_cut_note_is_not_terminal_and_is_returned_with_the_result():
+    flags = AgentRunFlags(context_trimmed={"request_chars_removed": 4_000, "fixed_over_limit": False})
+
+    assert flags.terminal() is False
+    assert flags.as_result_fields() == {"context_trimmed": {"request_chars_removed": 4_000, "fixed_over_limit": False}}
+    assert AgentRunFlags().as_result_fields() == {}
+
+
+@pytest.mark.asyncio
+async def test_request_is_left_untrimmed_when_the_system_prompt_alone_is_over_the_budget():
+    seen = []
+
+    async def handler(request):
+        seen.append(request)
+        return AIMessage(content="ok")
+
+    flags = AgentRunFlags()
+    middleware = ModelRecoveryMiddleware(flags, completed_model_calls=1, prompt_budget_tokens=1_000)
+    request = StubRequestWithSystem(_conversation_with_tool_results(4, task_chars=6_000), "s" * 6_000)
+
+    await middleware.awrap_model_call(request, handler)
+
+    assert middleware.compaction_level == MAX_COMPACTION_LEVEL
+    assert seen[0].messages[0].content == "x" * 6_000
+    assert _tool_contents(seen[0].messages) == [COMPACTED_TOOL_RESULT] * 3 + ["result-3"]
+    assert flags.context_trimmed is not None
+    assert flags.context_trimmed["fixed_over_limit"] is True
+    assert flags.context_trimmed["request_chars_removed"] == 0
+    assert flags.context_trimmed["limit_tokens"] == 1_000
+    assert flags.terminal() is False
+
+
+@pytest.mark.asyncio
+async def test_request_is_trimmed_and_the_cut_is_recorded_when_the_fixed_prompt_fits():
+    seen = []
+
+    async def handler(request):
+        seen.append(request)
+        return AIMessage(content="ok")
+
+    flags = AgentRunFlags()
+    middleware = ModelRecoveryMiddleware(flags, completed_model_calls=1, prompt_budget_tokens=1_000)
+    request = StubRequestWithSystem(_conversation_with_tool_results(4, task_chars=6_000), "s" * 300)
+
+    await middleware.awrap_model_call(request, handler)
+
+    assert len(seen[0].messages[0].content) < 6_000
+    assert flags.context_trimmed is not None
+    assert flags.context_trimmed["fixed_over_limit"] is False
+    assert flags.context_trimmed["request_chars_removed"] == 6_000 - len(seen[0].messages[0].content)
+
+
+@pytest.mark.asyncio
+async def test_no_context_cut_note_is_made_when_the_prompt_fits():
+    flags = AgentRunFlags()
+    middleware = ModelRecoveryMiddleware(flags, completed_model_calls=1, prompt_budget_tokens=100_000)
+
+    await middleware.awrap_model_call(StubRequestWithSystem(_conversation_with_tool_results(4, task_chars=6_000), "s" * 300), _ok)
+
+    assert flags.context_trimmed is None
+
+
 @pytest.mark.asyncio
 async def test_proactive_compaction_reaches_the_thread_level():
     seen = []
@@ -423,3 +525,28 @@ def test_routine_elision_is_idle_below_the_trigger():
     middleware._elide_routinely(request)
 
     assert middleware._elided_call_ids == set()
+
+
+def test_tool_result_log_fields_name_the_largest_results_the_model_just_read():
+    messages = [
+        HumanMessage(content="request"),
+        AIMessage(content="", tool_calls=[{"name": "old_tool", "args": {}, "id": "old"}]),
+        ToolMessage(content="x" * 500, tool_call_id="old", name="old_tool"),
+        AIMessage(content="", tool_calls=[{"name": "small_tool", "args": {}, "id": "a"}, {"name": "big_tool", "args": {}, "id": "b"}]),
+        ToolMessage(content="y" * 10, tool_call_id="a", name="small_tool"),
+        ToolMessage(content="z" * 9000, tool_call_id="b", name="big_tool"),
+    ]
+    request = SimpleNamespace(messages=messages)
+
+    assert tool_result_log_fields(request) == (
+        "messages=6, tool_result_chars_in_history=9510, latest_tool_results=[big_tool=9000, small_tool=10]"
+    )
+
+
+def test_tool_result_log_fields_handle_a_request_with_no_tool_results():
+    assert tool_result_log_fields(SimpleNamespace(messages=[HumanMessage(content="request")])) == (
+        "messages=1, tool_result_chars_in_history=0, latest_tool_results=[-]"
+    )
+    assert tool_result_log_fields(SimpleNamespace()) == (
+        "messages=0, tool_result_chars_in_history=0, latest_tool_results=[-]"
+    )

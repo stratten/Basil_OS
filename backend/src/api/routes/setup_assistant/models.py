@@ -315,6 +315,19 @@ class SetupAgentProviderModelChoice(BaseModel):
     recommended: bool = False
 
 
+class SetupAgentLocalModelChoice(BaseModel):
+    """A local reasoning model the validation-only chooser offers, with what setup needs to download or copy it."""
+
+    model_id: str
+    model_type: str
+    variant: str
+    display_name: str
+    size_description: Optional[str] = None
+    downloaded: bool = False
+    # True only in a fresh validation session whose normal Basil holds a complete copy of this model.
+    can_copy_from_normal_basil: bool = False
+
+
 class SetupAgentModelAccessOption(BaseModel):
     """One selectable route surfaced by the model-access endpoint."""
 
@@ -332,6 +345,10 @@ class SetupAgentModelAccessOption(BaseModel):
     download_size_description: Optional[str] = None
     local_model_type: Optional[str] = None
     local_model_variant: Optional[str] = None
+    # Filled only under the validation runtime profile: the reasoning models the chooser lists, so a tester can pick a smaller one than the machine would normally recommend. Empty everywhere else, which is how the page knows not to show the chooser.
+    local_model_choices: List[SetupAgentLocalModelChoice] = Field(default_factory=list)
+    # True only in a fresh validation session whose normal Basil holds a complete copy of the model this option names.
+    can_copy_from_normal_basil: bool = False
     # True when Basil Cloud needs the user to sign in or create an account, which setup offers inline.
     requires_sign_in: bool = False
     # True when the account has not been looked at yet because reading it can prompt for Keychain access, so the page checks it once the user chooses Basil Cloud.

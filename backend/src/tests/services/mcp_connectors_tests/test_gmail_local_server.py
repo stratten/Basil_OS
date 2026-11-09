@@ -144,6 +144,127 @@ async def test_search_keeps_drafts_when_the_query_asks_for_them(gmail):
 
 
 @pytest.mark.asyncio
+async def test_search_threads_description_encourages_reading_the_thread_when_the_answer_needs_it():
+    catalog = await server.list_tools()
+    description = {tool["name"]: tool for tool in catalog["tools"]}["search_threads"]["description"]
+    assert "often cut-off preview" in description
+    # Previews are legitimate for counting and listing, so reading every thread is not required.
+    assert "enough for counting, listing" in description
+    assert "fully contextualized" in description
+    assert "get_thread yourself" in description
+    assert "or asking the user whether to" in description
+
+
+@pytest.mark.asyncio
+async def test_search_results_say_they_are_previews_and_empty_results_do_not(gmail):
+    gmail.on("GET", "/threads", {"threads": [{"id": "t1"}], "nextPageToken": "next"})
+    gmail.on(
+        "GET",
+        "/threads/t1",
+        {
+            "id": "t1",
+            "messages": [
+                {
+                    "id": "m1",
+                    "threadId": "t1",
+                    "labelIds": ["INBOX"],
+                    "snippet": "Can you send the revised numbers before",
+                    "internalDate": "1700000000000",
+                    "payload": header_payload(From="Ann <ann@example.com>", To="me@example.com", Subject="Numbers"),
+                }
+            ],
+        },
+    )
+
+    text = (await call("search_threads", {"query": "from:ann"}))["result"]["text"]
+    assert "previews only" in text
+    assert "no message body has been read" in text
+    assert "get_thread yourself, without asking the user first" in text
+    assert "Stay with the previews only when they already settle the question" in text
+    assert text.index("previews only") < text.index("More are available")
+
+    gmail.on("GET", "/threads", {"threads": []})
+    empty_text = (await call("search_threads", {"query": "from:nobody"}))["result"]["text"]
+    assert "previews only" not in empty_text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("arguments", [{}, {"query": ""}, {"query": "   "}, {"query": None}])
+async def test_search_without_a_query_searches_the_inbox_and_says_so(gmail, arguments):
+    gmail.on("GET", "/threads", {"threads": []})
+
+    text = (await call("search_threads", arguments))["result"]["text"]
+
+    assert gmail.sent("GET", "/threads")[0].url.params["q"] == "in:inbox -in:draft"
+    assert "for 'in:inbox'" in text
+    assert "No query was given, so this searched the inbox only" in text
+    assert "'in:anywhere'" in text
+    assert "all mail'" not in text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("query", "expected_q"),
+    [("from:ann", "from:ann -in:draft"), ("in:anywhere", "in:anywhere"), ("in:sent budget", "in:sent budget -in:draft"), ("  label:work  ", "label:work -in:draft")],
+)
+async def test_search_with_a_query_is_sent_unchanged_and_carries_no_default_notice(gmail, query, expected_q):
+    gmail.on("GET", "/threads", {"threads": []})
+
+    text = (await call("search_threads", {"query": query}))["result"]["text"]
+
+    assert gmail.sent("GET", "/threads")[0].url.params["q"] == expected_q
+    assert "No query was given" not in text
+    assert f"for {query.strip()!r}" in text
+
+
+@pytest.mark.asyncio
+async def test_the_default_inbox_notice_comes_before_the_preview_notice(gmail):
+    gmail.on("GET", "/threads", {"threads": [{"id": "t1"}]})
+    gmail.on(
+        "GET",
+        "/threads/t1",
+        {
+            "id": "t1",
+            "messages": [
+                {
+                    "id": "m1",
+                    "threadId": "t1",
+                    "labelIds": ["INBOX"],
+                    "snippet": "Following up",
+                    "internalDate": "1700000000000",
+                    "payload": header_payload(From="Ann <ann@example.com>", To="me@example.com", Subject="Hello"),
+                }
+            ],
+        },
+    )
+
+    text = (await call("search_threads", {}))["result"]["text"]
+
+    assert text.index("No query was given") < text.index("previews only")
+
+
+@pytest.mark.asyncio
+async def test_list_drafts_without_a_query_is_not_limited_to_the_inbox(gmail):
+    gmail.on("GET", "/drafts", {"drafts": []})
+
+    await call("list_drafts", {})
+
+    assert "in:inbox" not in str(gmail.sent("GET", "/drafts")[0].url.params)
+
+
+@pytest.mark.asyncio
+async def test_the_search_query_schema_tells_the_model_the_default_scope():
+    catalog = await server.list_tools()
+    schema = {tool["name"]: tool for tool in catalog["tools"]}["search_threads"]["input_schema"]
+    description = schema["properties"]["query"]["description"]
+    assert "When omitted, the search covers the inbox only" in description
+    assert "in:anywhere" in description
+
+    drafts_schema = {tool["name"]: tool for tool in catalog["tools"]}["list_drafts"]["input_schema"]
+    assert "covers the inbox only" not in drafts_schema["properties"]["query"]["description"]
+
+
+@pytest.mark.asyncio
 async def test_trash_thread_posts_to_trash_and_never_deletes(gmail):
     gmail.on("POST", "/threads/t1/trash", {"id": "t1", "messages": [{"id": "m1", "labelIds": ["TRASH"]}]})
     result = await call("trash_thread", {"threadId": "t1", "summary": "Newsletter from Acme"})

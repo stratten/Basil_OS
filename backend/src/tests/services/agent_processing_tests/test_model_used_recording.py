@@ -151,6 +151,38 @@ async def test_coordinator_omits_model_used_when_no_model_name_is_known(monkeypa
     assert not hasattr(result, "model_used")
 
 
+def _coordinator_with_model(model_name):
+    coordinator = WorkflowCoordinator(llm_model=SimpleNamespace(model_name=model_name) if model_name is not None else SimpleNamespace())
+    coordinator._llm_model = coordinator._provided_llm_model
+    return coordinator
+
+
+def test_the_resolved_model_is_put_in_the_run_context_when_the_task_named_none():
+    context = {}
+
+    _coordinator_with_model("claude-sonnet-5-5")._record_resolved_model_id(context)
+
+    assert context["model_id"] == "claude-sonnet-5-5"
+
+
+def test_a_model_the_task_named_is_never_replaced_by_the_resolved_one():
+    context = {"model_id": "gpt-5-mini"}
+
+    _coordinator_with_model("claude-sonnet-5-5")._record_resolved_model_id(context)
+
+    assert context["model_id"] == "gpt-5-mini"
+
+
+def test_a_model_name_the_registry_does_not_know_is_not_recorded_as_a_model_id():
+    context = {}
+
+    _coordinator_with_model("not-a-registry-model")._record_resolved_model_id(context)
+    _coordinator_with_model(None)._record_resolved_model_id(context)
+    _coordinator_with_model("claude-sonnet-5-5")._record_resolved_model_id(None)
+
+    assert "model_id" not in context
+
+
 async def _run_fast_lane(monkeypatch, *, model, answer):
     from api.services.agent_processing.lifecycle.submission import agent_task_submission_service as submission_module
 

@@ -243,11 +243,19 @@ final class WebSocketService_AgentTask {
             }
         }
 
+        // A backend request may name one specific browser window. That window is captured by its window id so the browser is never brought to the front and whatever app is frontmost is irrelevant.
+        let browserWindowTarget = BrowserWindowCaptureTarget(payload: json["window_target"])
+
         // Trigger window capture using Swift WindowCaptureService
         Task { @MainActor in
-            let captureResult = await WindowCaptureService.shared.captureActiveWindow(
-                excludedBundleIDs: excludedBundleIDs
-            )
+            let captureResult: WindowCaptureService.CaptureResult
+            if let browserWindowTarget {
+                captureResult = await BrowserWindowCaptureService.capture(target: browserWindowTarget)
+            } else {
+                captureResult = await WindowCaptureService.shared.captureActiveWindow(
+                    excludedBundleIDs: excludedBundleIDs
+                )
+            }
 
             var responseData: [String: Any] = [
                 "request_id": requestId,

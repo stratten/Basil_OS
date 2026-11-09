@@ -560,10 +560,12 @@ async def test_continue_rejects_canceled_task_before_resume(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_submission_persists_conversation_id_as_durable_artifact():
+async def test_submission_persists_conversation_id_as_durable_artifact(monkeypatch):
     from api.services.agent_processing.lifecycle.submission.agent_task_processing.agent_task_submission_service import (
         AgentTaskSubmissionService,
     )
+
+    monkeypatch.setattr(AgentTaskSubmissionService, "_default_reasoning_model_id", AsyncMock(return_value=None))
 
     stored = []
 

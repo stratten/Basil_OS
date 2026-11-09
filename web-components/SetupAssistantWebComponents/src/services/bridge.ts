@@ -22,6 +22,13 @@ type BridgeMessageName =
   | 'collapseSetupAssistant'
   | 'expandSetupAssistant'
   | 'growSetupAssistantForConversation'
+  | 'reportProblem'
+  | 'showDiagnosticLogs'
+  | 'evaluateSetupHotkeys'
+  | 'applySetupHotkey'
+  | 'captureSetupHotkey'
+  | 'cancelSetupHotkeyCapture'
+  | 'resolveSetupHotkeys'
 
 interface SetupAssistantBridgeMessage {
   version: 1
@@ -123,8 +130,61 @@ export function expandSetupAssistant() {
   postBridgeMessage('expandSetupAssistant')
 }
 
+/** Asks the app to open its Report a problem flow. `detail` is a native return code or similar, never conversation or prompt text. */
+export function reportProblem(source: string, detail?: string) {
+  postBridgeMessage('reportProblem', { source, detail })
+}
+
+/** Asks the app to save a redacted diagnostics bundle and show it in Finder, without opening an issue. */
+export function showDiagnosticLogs(source: string, detail?: string) {
+  postBridgeMessage('showDiagnosticLogs', { source, detail })
+}
+
 export function growSetupAssistantForConversation() {
   postBridgeMessage('growSetupAssistantForConversation')
+}
+
+/** True inside the Basil app window, false in a plain browser. The hotkey conflict check only works with the app. */
+export function isSetupNativeBridgeAvailable(): boolean {
+  return swiftBridge.isAvailable()
+}
+
+export interface SetupHotkeyBindingPayload {
+  key: string
+  enabled: boolean
+  modifiers: string[]
+  isDoublePress: boolean
+  doublePressKey: string | null
+}
+
+/** Reads the person's current hotkeys and checks each against this Mac's own shortcuts and Basil's other hotkeys. */
+export function evaluateSetupHotkeys(): Promise<SetupBridgeActionResult> {
+  return postBridgeMessageWithResult('evaluateSetupHotkeys')
+}
+
+/** Saves one hotkey. Keys that clash are not saved unless `acknowledgeConflict` is true. With `checkOnly`, nothing is saved and `saved` in the answer means the keys would be accepted. */
+export function applySetupHotkey(
+  id: string,
+  binding: SetupHotkeyBindingPayload,
+  acknowledgeConflict: boolean,
+  checkOnly = false,
+): Promise<SetupBridgeActionResult> {
+  return postBridgeMessageWithResult('applySetupHotkey', checkOnly ? { id, binding, acknowledgeConflict, checkOnly } : { id, binding, acknowledgeConflict })
+}
+
+/** Starts the app's key recorder. The promise resolves when keys are pressed or the recording is canceled. */
+export function captureSetupHotkey(id: string): Promise<SetupBridgeActionResult> {
+  return postBridgeMessageWithResult('captureSetupHotkey', { id })
+}
+
+/** Ends a recording the person walked away from. */
+export function cancelSetupHotkeyCapture() {
+  postBridgeMessage('cancelSetupHotkeyCapture')
+}
+
+/** Switches every hotkey that clashes to a free replacement, in one save, except the ones in `excludeIds`, which the person already decided on. Used by express setup. */
+export function resolveSetupHotkeys(excludeIds: readonly string[] = []): Promise<SetupBridgeActionResult> {
+  return postBridgeMessageWithResult('resolveSetupHotkeys', excludeIds.length > 0 ? { excludeIds } : undefined)
 }
 
 export function launchAgentTaskOffer(offer: SetupTaskOffer): Promise<SetupBridgeActionResult> {

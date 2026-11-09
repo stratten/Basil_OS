@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Literal
 
 import pytest
 from langchain_core.tools import StructuredTool
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 from api.services.agent_processing.lifecycle.execution_graph.service_tooling.schema_generation import ShellExecuteCommandArgs
 from api.services.agent_processing.lifecycle.execution_graph.service_tooling.tool_input_normalization import (
@@ -142,6 +142,63 @@ async def test_non_string_list_field_is_not_normalized():
     assert "items" in result
 
 
+class _AgendaItem(BaseModel):
+    id: str
+    title: str
+    completion_basis: str | None = None
+
+
+class ObjectListInput(BaseModel):
+    items: List[_AgendaItem]
+
+
+async def _echo_object_items(items: List[_AgendaItem]) -> int:
+    return len(items)
+
+
+@pytest.mark.asyncio
+async def test_json_string_list_of_objects_is_normalized():
+    tool = normalize_structured_tool_args_schema(_tool("agenda", _echo_object_items, ObjectListInput))
+
+    result = await tool.ainvoke({"items": '[{"id": "a", "title": "A", "completion_basis": null}, {"id": "b", "title": "B"}]'})
+
+    assert result == 2
+
+
+@pytest.mark.asyncio
+async def test_malformed_json_list_of_objects_is_not_repaired():
+    tool = normalize_structured_tool_args_schema(_tool("agenda", _echo_object_items, ObjectListInput))
+
+    for broken in ('[{"id": "a" "b"}]', "[{'id': 'a', 'title': 'A'}]", "not a list", '{"id": "a", "title": "A"}'):
+        result = await tool.ainvoke({"items": broken})
+        assert "validation failed" in result
+
+
+@pytest.mark.asyncio
+async def test_list_of_objects_items_are_still_validated_after_normalization():
+    tool = normalize_structured_tool_args_schema(_tool("agenda", _echo_object_items, ObjectListInput))
+
+    result = await tool.ainvoke({"items": '[{"id": "a"}]'})
+
+    assert "validation failed" in result
+    assert "title" in result
+
+
+def test_real_session_agenda_schema_accepts_a_quoted_catalog_array():
+    import json
+
+    import api.routes.setup_assistant.models  # noqa: F401  (import order avoids a package cycle)
+    from api.services.setup_assistant.agent_graph.agenda_catalog import SETUP_AGENDA_CATALOG
+    from api.services.setup_assistant.agent_graph.setup_agent_tooling.schemas import SetupProposeSessionAgendaInput
+
+    schema = create_normalized_args_schema(SetupProposeSessionAgendaInput)
+    seed = [item.to_seed_dict() for item in SETUP_AGENDA_CATALOG]
+
+    parsed = schema(items=json.dumps(seed))
+
+    assert len(parsed.items) == len(seed)
+
+
 def test_normalization_is_idempotent_and_preserves_schema_title():
     tool = _tool("items", _echo_items, StringListInput)
     original_schema = tool.args_schema.model_json_schema()
@@ -258,5 +315,94 @@ def test_handle_validation_error_is_set_and_idempotent():
     handler = tool.handle_validation_error
     normalize_structured_tool_args_schema(tool)
 
-    assert handler is format_tool_validation_error
+    assert handler.func is format_tool_validation_error
+    assert handler.keywords["args_schema"] is tool.args_schema
     assert tool.handle_validation_error is handler
+
+
+class _NestedCriteria(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    sender: str | None = None
+    folder: str | None = None
+
+
+class _NestedSearchInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    criteria: _NestedCriteria
+    limit: int = 50
+
+
+async def _echo_nested_search(criteria: Dict[str, Any], limit: int = 50) -> dict[str, Any]:
+    return {"criteria": criteria, "limit": limit}
+
+
+def _validation_error_for(payload: dict[str, Any]) -> ValidationError:
+    with pytest.raises(ValidationError) as captured:
+        _NestedSearchInput.model_validate(payload)
+    return captured.value
+
+
+def test_validation_error_keeps_the_field_prefix_the_repetition_guard_reads():
+    message = format_tool_validation_error(_validation_error_for({"criteria": {}, "folder": "inbox"}), _NestedSearchInput)
+
+    assert message.startswith("Tool input validation failed for field(s): folder. ")
+    assert message.endswith("then call the tool again.")
+
+
+def test_validation_error_includes_pydantic_reason_without_a_schema():
+    message = format_tool_validation_error(_validation_error_for({"criteria": {}, "folder": "inbox"}))
+
+    assert "Reasons: folder: Extra inputs are not permitted." in message
+    assert "Accepted fields" not in message
+
+
+def test_validation_error_names_accepted_fields_and_where_a_misplaced_field_belongs():
+    message = format_tool_validation_error(_validation_error_for({"criteria": {}, "folder": "inbox"}), _NestedSearchInput)
+
+    assert "folder is not accepted at the top level but is accepted inside criteria." in message
+    assert "Accepted fields at the top level: criteria (required), limit." in message
+
+
+def test_validation_error_points_a_nested_field_back_to_the_top_level():
+    message = format_tool_validation_error(_validation_error_for({"criteria": {"limit": 5}}), _NestedSearchInput)
+
+    assert "criteria.limit: Extra inputs are not permitted" in message
+    assert "limit is not accepted inside criteria but is accepted at the top level." in message
+    assert "Accepted fields inside criteria: sender, folder." in message
+
+
+def test_validation_error_reports_missing_required_field():
+    message = format_tool_validation_error(_validation_error_for({"limit": 5}), _NestedSearchInput)
+
+    assert "criteria: Field required" in message
+
+
+def test_validation_error_never_repeats_rejected_values():
+    secret = "sk-live-secret-value-123"
+    message = format_tool_validation_error(
+        _validation_error_for({"criteria": {"sender": 5, "folder": secret}, "limit": "many", "notes": secret}),
+        _NestedSearchInput,
+    )
+
+    assert secret not in message
+
+
+def test_validation_error_with_a_dict_schema_still_names_accepted_fields():
+    message = format_tool_validation_error(
+        _validation_error_for({"criteria": {}, "folder": "inbox"}),
+        _NestedSearchInput.model_json_schema(),
+    )
+
+    assert "Accepted fields at the top level: criteria (required), limit." in message
+
+
+@pytest.mark.asyncio
+async def test_tool_observation_carries_reason_and_accepted_fields():
+    tool = normalize_structured_tool_args_schema(_tool("search", _echo_nested_search, _NestedSearchInput))
+
+    result = await tool.ainvoke({"criteria": {}, "folder": "inbox"})
+
+    assert result.startswith("Tool input validation failed for field(s): folder. ")
+    assert "folder is not accepted at the top level but is accepted inside criteria." in result

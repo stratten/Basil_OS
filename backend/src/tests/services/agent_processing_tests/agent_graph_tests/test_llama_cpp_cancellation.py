@@ -139,3 +139,64 @@ async def test_three_argument_callbacks_keep_working():
     assert "t0" in result.generations[0].message.content
     assert calls
     assert llama.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_prompt_reading_heartbeats_carry_the_prompt_size_and_elapsed_time():
+    llama = _SlowLlama(total_chunks=2, delay=0.4)
+    adapter = _adapter(llama)
+    seen: list[tuple[str, Any, Any]] = []
+
+    def _callback(tokens: int, thinking: Any, complete: bool, phase: str = "generating", prompt_tokens: Any = None, phase_seconds: Any = None) -> None:
+        seen.append((phase, prompt_tokens, phase_seconds))
+
+    _callback.accepts_phase = True
+    _callback.accepts_prompt_progress = True
+    adapter._activity_callback = _callback
+
+    await adapter._agenerate([HumanMessage(content="Give me a summary of this codebase." * 20)])
+
+    reading = [entry for entry in seen if entry[0] == "processing_prompt"]
+    assert reading
+    assert all(isinstance(entry[1], int) and entry[1] > 0 for entry in reading)
+    assert any(entry[2] is not None and entry[2] > 0 for entry in reading)
+    assert any(entry[0] == "generating" for entry in seen)
+
+
+@pytest.mark.asyncio
+async def test_phase_only_callbacks_do_not_receive_the_prompt_progress_arguments():
+    llama = _SlowLlama(total_chunks=2, delay=0.2)
+    adapter = _adapter(llama)
+    phases: list[str] = []
+
+    def _callback(tokens: int, thinking: Any, complete: bool, phase: str = "generating") -> None:
+        phases.append(phase)
+
+    _callback.accepts_phase = True
+    adapter._activity_callback = _callback
+
+    await adapter._agenerate([HumanMessage(content="hi")])
+
+    assert "processing_prompt" in phases
+
+
+@pytest.mark.asyncio
+async def test_a_stream_preview_callback_receives_the_text_streamed_so_far_without_changing_the_result():
+    llama = _SlowLlama(total_chunks=3, delay=0.01)
+    adapter = _adapter(llama)
+    previews: list[str] = []
+    adapter._stream_preview_callback = previews.append
+
+    result = await adapter._agenerate([HumanMessage(content="hi")])
+
+    assert previews
+    assert previews[-1].strip() == result.generations[0].message.content.strip()
+    assert "t0" in previews[-1]
+
+
+def test_a_stream_preview_callback_survives_binding_tools():
+    llama = _SlowLlama(total_chunks=1, delay=0.0)
+    adapter = _adapter(llama)
+    adapter._stream_preview_callback = lambda text: None
+
+    assert adapter.bind_tools([])._stream_preview_callback is adapter._stream_preview_callback

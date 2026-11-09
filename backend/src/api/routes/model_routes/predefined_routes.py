@@ -32,9 +32,11 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from api.core.logging.api_logger import api_logger
+from api.core.models.model_download.disk_space import InsufficientDiskSpaceError
 from api.core.models.model_types import ModelCapability
 from api.core.models.model_manager import ModelManager
 from api.core.models.reasoning.llama_cpp_model import evict_llama_cpp_contexts_under
+from api.core.models.reasoning.mlx_model import evict_mlx_contexts_under
 from api.core.services.model_download_manager import DownloadManager
 from api.core.services.model_service import ModelService
 from api.dependencies import get_model_service
@@ -201,6 +203,9 @@ async def download_model(
     manager = _get_download_manager(http_request)
     try:
         entry = await manager.start(model_type, variant)
+    except InsufficientDiskSpaceError as exc:
+        # 507 Insufficient Storage. The detail is written for the person using the app, and both the Settings screen and the setup flow show it as is.
+        raise HTTPException(status_code=507, detail=str(exc))
     except Exception as exc:
         api_logger.error(f"Failed to enqueue download for {model_id}: {exc}")
         raise HTTPException(status_code=500, detail=f"Failed to start download: {exc}")
@@ -248,6 +253,7 @@ async def remove_model(
         await model_service.unload_model(model_type, variant)
         await model_manager.unload_model(model_id)
         evicted = await asyncio.to_thread(evict_llama_cpp_contexts_under, model_path)
+        evicted = evicted + await asyncio.to_thread(evict_mlx_contexts_under, model_path)
         if evicted:
             api_logger.info(f"Closed {len(evicted)} native context(s) before removing {model_id}")
 

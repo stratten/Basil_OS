@@ -137,7 +137,7 @@ def _local_profile_budget(
 ) -> Optional[int]:
     if getattr(profile, "location", None) != "local":
         return None
-    if getattr(profile, "handler", None) not in {"llama_cpp", "huggingface"}:
+    if getattr(profile, "handler", None) not in {"llama_cpp", "huggingface", "mlx"}:
         return None
     config = getattr(profile, "local_generation", None)
     if not isinstance(config, dict):

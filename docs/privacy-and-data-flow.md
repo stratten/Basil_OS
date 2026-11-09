@@ -36,6 +36,8 @@ Basil Board inquiries, conversations, Dill outputs, Paprika task inputs, task st
 
 Paprika tasks can prepare actions involving local files, browser automation, desktop automation, commands, and connected services. The request alone does not authorize an external side effect: Basil's approval and authorization controls remain the boundary. Review the action target and requested capability before approving it.
 
+An Agent Task's checklist and working notes are stored locally in `~/.basil/knowledge_base.db` with the task's other records. Items and notes can hold content copied from email, calendar, and other connected services, because Basil writes down what a long job needs to remember. They are sent to the selected reasoning model as part of each turn of that task, in a short block that is size-limited, so the model path you choose receives them. They are deleted together with the conversation chain they belong to. When a schedule is set to carry its checklist forward, the open items and notes of one run are copied into the next run of that schedule and nowhere else.
+
 Local artifact previews are previews of task-produced local material. Treat an artifact's source, contents, and destination as part of the task's privacy boundary, especially when a later action proposes opening it in another application or sending it to a connected service.
 
 ### Capture, transcription, and meetings

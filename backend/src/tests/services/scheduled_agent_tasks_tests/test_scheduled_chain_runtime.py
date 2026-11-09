@@ -84,12 +84,26 @@ def test_reaching_the_run_limit_starts_a_new_chain_carrying_the_last_result_over
     chain = [_turn("root", minutes_ago=100, summary="first"), _turn("t2", minutes_ago=70, summary="second"), _turn("t3", minutes_ago=40, summary="third and latest")]
     plan, _, _ = _plan(chain)
     assert plan.action == runtime.ACTION_START and plan.root_task_id is None
-    assert "limit of 3 runs" in plan.notice
+    assert "limit of 3 turns" in plan.notice
     assert "PREVIOUS SCHEDULED CONVERSATION" in plan.handoff_block and "third and latest" in plan.handoff_block
 
 
-def test_turns_typed_by_the_user_do_not_count_toward_the_run_limit():
+def test_turns_typed_by_the_user_count_toward_the_length_limit_so_a_mostly_manual_chain_rolls_over():
     chain = [_turn("root", minutes_ago=100, summary="a"), _turn("u1", minutes_ago=90, scheduled=False), _turn("u2", minutes_ago=80, scheduled=False), _turn("t2", minutes_ago=70, summary="b"), _turn("u3", minutes_ago=60, scheduled=False)]
+    plan, _, _ = _plan(chain)
+    assert plan.action == runtime.ACTION_START and "limit of 3 turns" in plan.notice
+
+
+def test_follow_ups_started_by_basil_count_toward_the_length_limit():
+    chain = [_turn("root", minutes_ago=100, summary="a"), _turn("f1", minutes_ago=90, scheduled=False), _turn("f2", minutes_ago=80, scheduled=False)]
+    for turn in chain[1:]:
+        turn.origin_type = "agent_follow_up"
+    plan, _, _ = _plan(chain)
+    assert plan.action == runtime.ACTION_START and "limit of 3 turns" in plan.notice
+
+
+def test_a_chain_one_turn_under_the_length_limit_keeps_going_however_many_of_its_turns_are_manual():
+    chain = [_turn("root", minutes_ago=100, summary="a"), _turn("u1", minutes_ago=90, scheduled=False)]
     plan, _, _ = _plan(chain)
     assert plan.action == runtime.ACTION_CONTINUE
 
@@ -107,7 +121,7 @@ def test_just_under_the_time_limit_keeps_the_chain():
 def test_turning_carry_over_off_starts_blank():
     schedule = {**SCHEDULE, "chain_config": {"mode": "chained", "carry_over": False, "max_runs": 1}}
     plan, _, _ = _plan([_turn("root", minutes_ago=10, summary="done")], schedule=schedule)
-    assert plan.action == runtime.ACTION_START and plan.handoff_block is None and "limit of 1 run." in plan.notice
+    assert plan.action == runtime.ACTION_START and plan.handoff_block is None and "limit of 1 turn." in plan.notice
 
 
 def test_rollover_wins_over_a_waiting_turn_so_an_abandoned_chain_cannot_trap_the_schedule():

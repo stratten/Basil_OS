@@ -28,6 +28,8 @@ from .sqlite_knowledge_service_component_services.agent_tasks.delegated_agent_ev
 from .sqlite_knowledge_service_component_services.agent_tasks.service import AgentTaskService
 from .sqlite_knowledge_service_component_services.agent_work.entity_repository import AgentWorkEntityRepository
 from .sqlite_knowledge_service_component_services.agent_work.event_repository import AgentWorkEventRepository
+from .sqlite_knowledge_service_component_services.agent_work.checklist_notes_repository import AgentChecklistNotesRepository
+from .sqlite_knowledge_service_component_services.agent_work.checklist_repository import AgentChecklistRepository
 from .sqlite_knowledge_service_component_services.agent_work.item_repository import AgentWorkItemRepository
 from .sqlite_knowledge_service_component_services.agent_work.receipt_repository import AgentWorkReceiptRepository
 from .sqlite_knowledge_service_component_services.agent_work.session_repository import AgentWorkSessionRepository
@@ -135,6 +137,8 @@ class SQLiteKnowledgeService:
         self.agent_work_item_repository = AgentWorkItemRepository(self.db_path)
         self.agent_work_entity_repository = AgentWorkEntityRepository(self.db_path)
         self.agent_work_event_repository = AgentWorkEventRepository(self.db_path)
+        self.agent_checklist_repository = AgentChecklistRepository(self.db_path)
+        self.agent_checklist_notes_repository = AgentChecklistNotesRepository(self.db_path)
         self.agent_work_receipt_repository = AgentWorkReceiptRepository(self.db_path)
         self.provider_profile_repository = ProviderProfileRepository(self.db_path)
         self.provider_run_repository = ProviderRunRepository(self.db_path)
@@ -192,10 +196,15 @@ class SQLiteKnowledgeService:
         text_search: Optional[str] = None,
         metadata_filters: Optional[Dict[str, Any]] = None,
         limit: int = 100,
+        app_name: Optional[str] = None,
+        window_title_contains: Optional[str] = None,
+        newest_first: bool = True,
     ) -> List[Activity]:
         return await self.activity_search_repository.search_activities(
             time_range=time_range, text_search=text_search,
             metadata_filters=metadata_filters, limit=limit,
+            app_name=app_name, window_title_contains=window_title_contains,
+            newest_first=newest_first,
         )
 
     async def count_activities_by_metadata(self, key: str, value: str) -> int:

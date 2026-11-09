@@ -3,6 +3,8 @@ import type { ThinkingSegment } from '../../types';
 import MarkdownRenderer from '../MarkdownRenderer';
 import { ThinkingSegments, useReasoningFollowState } from '../result/ThinkingSections';
 import { formatTimestampForDisplay, useDateDisplayStyle } from '../../app/dateDisplay';
+import AttachedFilesDisplay from '../scheduled/AttachedFilesDisplay';
+import ApprovalRequestDetails from './ApprovalRequestDetails';
 import ResponseCountdown from './ResponseCountdown';
 import {
   interactionAskerLabel,
@@ -18,6 +20,34 @@ import {
   type RunControlTone,
   type UserInteraction,
 } from './userInteractions';
+
+// The backend appends the files a user attached to a run note under this exact heading, as one "- <absolute path>" line each (note_with_references in agent_run_control.py). The agent reads that listing; the transcript shows the files as chips instead.
+const ATTACHED_REFERENCES_HEADING = "Attached for you to look at (local paths on the user's Mac):";
+
+/** Separates a note's text from the trailing attached-files listing. Text without a well-formed listing comes back unchanged with no paths. */
+export function splitAttachedReferences(text: string): { body: string; paths: string[] } {
+  const headingIndex = text.lastIndexOf(ATTACHED_REFERENCES_HEADING);
+  if (headingIndex < 0 || (headingIndex > 0 && text[headingIndex - 1] !== '\n')) return { body: text, paths: [] };
+  const lines = text
+    .slice(headingIndex + ATTACHED_REFERENCES_HEADING.length)
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line !== '');
+  if (lines.length === 0 || !lines.every(line => line.startsWith('- ') && line.slice(2).trim() !== '')) {
+    return { body: text, paths: [] };
+  }
+  return { body: text.slice(0, headingIndex).trim(), paths: lines.map(line => line.slice(2).trim()) };
+}
+
+function NoteWithReferences({ text, children }: { text: string; children: (body: string) => ReactNode }) {
+  const { body, paths } = splitAttachedReferences(text);
+  return (
+    <>
+      {body !== '' && children(body)}
+      <AttachedFilesDisplay paths={paths} />
+    </>
+  );
+}
 
 export function SpeechBubbleGlyph() {
   return (
@@ -87,11 +117,15 @@ export function InteractionExchange({ interaction }: { interaction: UserInteract
       aria-label={`${interactionAskerLabel(interaction)}. ${interactionResponseLabel(interaction)}`}
     >
       <InteractionTurn speaker={askerSpeaker} tone="neutral" label={interactionAskerLabel(interaction)} time={askedTime}>
-        {isApprovalLikeInteraction(interaction) ? (
+        {interaction.kind === 'approval' ? (
+          <ApprovalRequestDetails interaction={interaction} />
+        ) : isApprovalLikeInteraction(interaction) ? (
           <pre className="interaction-exchange-command">{interaction.prompt}</pre>
         ) : (
           <div className="interaction-exchange-prompt">
-            <MarkdownRenderer content={interaction.prompt} />
+            <NoteWithReferences text={interaction.prompt}>
+              {body => <MarkdownRenderer content={body} />}
+            </NoteWithReferences>
           </div>
         )}
       </InteractionTurn>
@@ -104,7 +138,9 @@ export function InteractionExchange({ interaction }: { interaction: UserInteract
         controlTone={runControlTone(interaction)}
       >
         {responseText && (
-          <div className="interaction-exchange-response-text">{responseText}</div>
+          <NoteWithReferences text={responseText}>
+            {body => <div className="interaction-exchange-response-text">{body}</div>}
+          </NoteWithReferences>
         )}
         {countdown && <ResponseCountdown timeLimit={countdown} variant="inline" />}
       </InteractionTurn>

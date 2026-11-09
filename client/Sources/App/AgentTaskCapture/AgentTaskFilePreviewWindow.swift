@@ -92,6 +92,10 @@ private final class AgentTaskFilePreviewWindowHost: NSObject, WKScriptMessageHan
         )
         configuration.userContentController.addUserScript(consoleScript)
 
+        // The review workspace renders an HTML file in an iframe whose address uses this scheme, the same as the tray in AgentTaskResultWebView. Without a handler registered here the frame has nothing to load and the Render view is blank. WebKit only accepts a handler before the web view exists. The scope is the filesystem root, matching AgentTaskResultWebView, so an HTML file's relative CSS, scripts, and images resolve the same way in the tray and in this window, and it matches this window's existing native file read, which is not scoped to a directory either.
+        let inlinePreviewSchemeHandler = LocalPreviewFileSchemeHandler(allowedDirectory: URL(fileURLWithPath: "/"))
+        configuration.setURLSchemeHandler(inlinePreviewSchemeHandler, forURLScheme: "basil-inline-preview")
+
         let webView = FirstClickWebView(frame: .zero, configuration: configuration)
         self.webView = webView
 

@@ -38,7 +38,7 @@ def test_larger_local_reasoning_models_are_downloadable() -> None:
                 "Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf"
             ),
             "on_disk_name": "qwen3-30b-a3b-instruct-2507-q4km",
-            "context_window": 40960,
+            "context_window": 262144,
             "size": "18.56GB",
             "features": ["gpu_acceleration", "quantization", "function_calling"],
         },
@@ -92,7 +92,7 @@ def test_larger_local_reasoning_models_are_downloadable() -> None:
                 "gemma-4-E4B_q4_0-it.gguf"
             ),
             "on_disk_name": "gemma4-e4b-it-qat-q4_0",
-            "context_window": 128000,
+            "context_window": 131072,
             "size": "5.15GB",
             "features": ["gpu_acceleration", "quantization"],
         },
@@ -102,7 +102,7 @@ def test_larger_local_reasoning_models_are_downloadable() -> None:
                 "Phi-4-mini-instruct-Q4_K_M.gguf"
             ),
             "on_disk_name": "phi4-mini-instruct-q4km",
-            "context_window": 128000,
+            "context_window": 131072,
             "size": "2.49GB",
             "features": ["gpu_acceleration", "quantization", "function_calling"],
         },
@@ -112,7 +112,7 @@ def test_larger_local_reasoning_models_are_downloadable() -> None:
                 "smollm3-3b-q4_k_m.gguf"
             ),
             "on_disk_name": "smollm3-3b-q4km",
-            "context_window": 128000,
+            "context_window": 65536,
             "size": "1.92GB",
             "features": ["gpu_acceleration", "quantization", "function_calling"],
         },
@@ -143,7 +143,7 @@ def test_qwen_coder_models_are_opt_in_with_local_generation_profiles(tmp_path: P
     for cfg in (coder_30, coder_next):
         assert cfg.get("recommended") is False
         assert cfg.get("recommended_for_onboarding") is False
-        assert cfg.get("context_window") == 32768
+        assert cfg.get("context_window") == 262144
         assert cfg.get("max_output_tokens") == 65536
         assert cfg.get("tool_call_format") == "function_parameter_tags"
         local_generation = cfg.get("local_generation")

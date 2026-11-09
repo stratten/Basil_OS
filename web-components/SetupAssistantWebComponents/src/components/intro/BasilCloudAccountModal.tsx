@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react'
-import { createPortal } from 'react-dom'
+import { useState } from 'react'
 
-import { BasilCloudAccountPanel } from './BasilCloudAccountPanel'
+import { BasilModalDialog } from '@shared/BasilModalDialog'
+
+import { BasilCloudAccountPanel, type AccountFormMode } from './BasilCloudAccountPanel'
 import type { SetupAgentModelAccessOption } from '@/types'
 
 interface Props {
@@ -10,59 +11,31 @@ interface Props {
   onClose: () => void
 }
 
-/** Holds the Basil Cloud sign-in, sign-up, and payment prompts in a dialog that only exists after the user chooses Basil Cloud. */
+/** Holds the Basil Cloud sign-in, sign-up, and payment prompts in the shared Basil modal, which only exists after the user chooses Basil Cloud. */
 export function BasilCloudAccountModal({ option, refreshOptions, onClose }: Props) {
-  const dialogRef = useRef<HTMLDivElement | null>(null)
-  const onCloseRef = useRef(onClose)
-  onCloseRef.current = onClose
+  // The title names what the form below is for, so it follows the sign-in and create-account toggle.
+  const [mode, setMode] = useState<AccountFormMode>('signIn')
+  const title = !option.requires_sign_in
+    ? 'Add a payment method for Basil Cloud'
+    : mode === 'signUp' ? 'Create an account to use Basil Cloud' : 'Sign in to use Basil Cloud'
 
-  useEffect(() => {
-    const previouslyFocused = document.activeElement as HTMLElement | null
-    dialogRef.current?.focus()
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.stopPropagation()
-        onCloseRef.current()
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown, true)
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown, true)
-      previouslyFocused?.focus?.()
-    }
-  }, [])
-
-  const title = option.requires_sign_in ? 'Sign in to use Basil Cloud' : 'Add a payment method for Basil Cloud'
-
-  return createPortal(
-    <div
-      className="basil-cloud-modal-backdrop"
-      data-testid="basil-cloud-account-modal"
-      onMouseDown={event => {
-        if (event.target === event.currentTarget) onClose()
-      }}
-    >
-      <div
-        ref={dialogRef}
-        className="basil-cloud-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="basil-cloud-modal-title"
-        tabIndex={-1}
-      >
-        <div className="basil-cloud-modal-header">
-          <h3 id="basil-cloud-modal-title">{title}</h3>
-          <button type="button" className="basil-cloud-modal-close" aria-label="Close" onClick={onClose}>
-            ×
-          </button>
-        </div>
-        <BasilCloudAccountPanel
-          key={option.requires_sign_in ? 'sign-in' : 'payment'}
-          option={option}
-          refreshOptions={refreshOptions}
-        />
-      </div>
-    </div>,
-    document.body,
+  return (
+    <BasilModalDialog title={title} onClose={onClose} testId="basil-cloud-account-modal">
+      <p>
+        Basil Cloud runs the model for you on Basil's servers, so there is nothing to download and no API key to manage. You use it through a Basil account, and usage is billed to a card.
+      </p>
+      <ul className="basil-cloud-modal-trust" aria-label="What to expect">
+        <li>Your card is handled by Stripe on a secure page in your browser. Basil never sees it.</li>
+        <li>The setup conversation is routed through Basil Cloud while you use this option.</li>
+        <li>You can switch to a local model or your own key at any time in Settings.</li>
+      </ul>
+      <BasilCloudAccountPanel
+        key={option.requires_sign_in ? 'sign-in' : 'payment'}
+        option={option}
+        refreshOptions={refreshOptions}
+        onCancel={onClose}
+        onModeChange={setMode}
+      />
+    </BasilModalDialog>
   )
 }

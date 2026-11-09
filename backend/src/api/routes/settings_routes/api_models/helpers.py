@@ -121,10 +121,15 @@ def _find_fallback_model(preferences: "Preferences", exclude_model: str, prefer_
 
 
 def _get_local_default_for_capability(capability: str) -> str:
-    """Return the stable local default for a model capability."""
+    """Return the stable local default for a model capability.
+
+    The reasoning default is the registry model flagged recommended_for_onboarding. The legacy vision_model preference has no local default (an empty value means agent vision routing decides), so a removed vision model is cleared rather than replaced with a retired Moondream id.
+    """
     if capability == "vision":
-        return "vikhyatk/moondream2"
-    return "qwen/qwen35-9b-q4km"
+        return ""
+    from api.core.models.preference_models.defaults import _get_default_local_reasoning_model_id
+
+    return _get_default_local_reasoning_model_id()
 
 
 def _resolve_fallback_default(

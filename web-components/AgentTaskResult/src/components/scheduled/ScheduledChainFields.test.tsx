@@ -15,16 +15,24 @@ describe('ScheduledChainField', () => {
     const markup = renderToStaticMarkup(<ScheduledChainField form={{ ...DEFAULT_CHAIN_FORM, chained: true }} onChange={vi.fn()} />);
     expect(markup).toContain('Runs continue one conversation');
     expect(markup).toContain('Start a new conversation after');
-    expect(markup).toContain('aria-label="Maximum runs in one conversation"');
+    expect(markup).toContain('aria-label="Maximum turns in one conversation"');
     expect(markup).toContain('aria-label="Maximum conversation length"');
     expect(markup).toContain('aria-label="Carry the last result over to the new conversation"');
     expect(markup).not.toContain('role="alert"');
   });
 
+  it('offers the checklist carry-over switch for independent runs too, off by default', () => {
+    const off = renderToStaticMarkup(<ScheduledChainField form={DEFAULT_CHAIN_FORM} onChange={vi.fn()} />);
+    const on = renderToStaticMarkup(<ScheduledChainField form={{ ...DEFAULT_CHAIN_FORM, carryChecklist: true }} onChange={vi.fn()} />);
+    expect(off).toContain('aria-label="Carry unfinished checklist items over to the next run"');
+    expect(off).not.toMatch(/aria-label="Carry unfinished checklist items over to the next run"[^>]*checked/);
+    expect(on).toMatch(/checked=""[^>]*aria-label="Carry unfinished checklist items over to the next run"|aria-label="Carry unfinished checklist items over to the next run"[^>]*checked=""/);
+  });
+
   it('shows an alert when a chained form has no limit', () => {
     const markup = renderToStaticMarkup(<ScheduledChainField form={{ ...DEFAULT_CHAIN_FORM, chained: true, limitRuns: false, limitAge: false }} onChange={vi.fn()} />);
     expect(markup).toContain('role="alert"');
-    expect(markup).toContain('Choose a run limit, a time limit, or both');
+    expect(markup).toContain('Choose a turn limit, a time limit, or both');
   });
 });
 

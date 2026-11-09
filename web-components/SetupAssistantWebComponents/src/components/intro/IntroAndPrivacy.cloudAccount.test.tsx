@@ -56,6 +56,15 @@ const cloudStage = (stage: 'signedOut' | 'needsPayment' | 'eligible') => ({
 
 let stage: 'signedOut' | 'needsPayment' | 'eligible'
 
+// The flow opens on the skippable model downloads step; these tests exercise the steps after it.
+async function skipDownloadsStep() {
+  await act(async () => {
+    container.querySelector<HTMLButtonElement>('.intro-step-primary')!.click()
+    await Promise.resolve()
+    await Promise.resolve()
+  })
+}
+
 async function renderStep(selectedModelAccess: SetupAgentModelAccess | null = null) {
   await act(async () => {
     root.render(
@@ -64,6 +73,7 @@ async function renderStep(selectedModelAccess: SetupAgentModelAccess | null = nu
     await Promise.resolve()
     await Promise.resolve()
   })
+  await skipDownloadsStep()
 }
 
 function setValue(input: HTMLInputElement, value: string) {
@@ -135,7 +145,7 @@ describe('IntroAndPrivacy Basil Cloud account flow', () => {
     await renderStep()
 
     expect(container.querySelector('.intro-step-lede')?.textContent).toBe('Pick how I should think during setup.')
-    expect(container.querySelector('.choice-option--provider_key')?.textContent).toContain('Use your own provider account.')
+    expect(container.querySelector('.choice-option--provider_key')?.textContent).toContain('Use your own account with an AI company.')
     expect(container.textContent).not.toContain('Select this if you already have your own API key')
     expect(container.querySelector('.choice-option-note')).toBeNull()
   })
@@ -144,7 +154,8 @@ describe('IntroAndPrivacy Basil Cloud account flow', () => {
     await renderStep()
 
     const optionRequests = fetchMock.mock.calls.map(call => call[0]).filter(path => String(path).includes('/model-access/options'))
-    expect(optionRequests).toEqual([OPTIONS_PATH])
+    // One read for the downloads step and one for the model step, neither of which checks the account.
+    expect(optionRequests).toEqual([OPTIONS_PATH, OPTIONS_PATH])
     expect(dialog()).toBeNull()
     expect(document.body.querySelector('form')).toBeNull()
     expect(cloudRow().disabled).toBe(false)
@@ -220,11 +231,11 @@ describe('IntroAndPrivacy Basil Cloud account flow', () => {
     expect(onSelectModelAccess).not.toHaveBeenCalled()
   })
 
-  it('closes with the Close button or Escape without selecting anything, and reopens when Basil Cloud is chosen again', async () => {
+  it('closes with the Cancel button or Escape without selecting anything, and reopens when Basil Cloud is chosen again', async () => {
     await renderStep()
     await chooseBasilCloud()
-    const closeButton = dialog()?.querySelector<HTMLButtonElement>('button[aria-label="Close"]')
-    await act(async () => closeButton?.click())
+    const cancelButton = Array.from(dialog()?.querySelectorAll<HTMLButtonElement>('button') ?? []).find(node => node.textContent === 'Cancel')
+    await act(async () => cancelButton?.click())
 
     expect(dialog()).toBeNull()
     expect(onSelectModelAccess).not.toHaveBeenCalled()
@@ -248,7 +259,7 @@ describe('IntroAndPrivacy Basil Cloud account flow', () => {
     await renderStep({ mode: 'local', resolved: true })
 
     const localText = container.querySelector('.choice-option--local')?.textContent ?? ''
-    expect(localText).toContain('Private. Nothing leaves this machine.')
+    expect(localText).toContain('Private. Nothing leaves this Mac.')
     expect(localText).toContain('Model: Qwen3.5-9B')
   })
 })

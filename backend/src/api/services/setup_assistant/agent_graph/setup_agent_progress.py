@@ -8,6 +8,7 @@ from typing import Any, Awaitable, Callable, Optional
 from langchain_core.callbacks import AsyncCallbackHandler
 
 from api.routes.setup_assistant.models import SetupAgentEvent, SetupAgentEventKind
+from api.services.setup_assistant.agent_graph.setup_agent_errors import setup_error_payload
 
 SetupAgentEventEmitter = Callable[[SetupAgentEvent], Awaitable[None]]
 
@@ -59,7 +60,7 @@ class SetupAgentProgressCallback(AsyncCallbackHandler):
         await self._emit_event(
             SetupAgentEvent(
                 kind=SetupAgentEventKind.error,
-                payload={"message": str(error), "run_id": str(run_id) if run_id else None},
+                payload=setup_error_payload(error, str(run_id) if run_id else None),
             )
         )
 

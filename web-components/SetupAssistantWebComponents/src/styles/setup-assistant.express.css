@@ -1,0 +1,281 @@
+/* Express setup: the path chooser on the first screen, the confirm screen, the progress screen and the receipt. Every border is 1px with no accent bar down one side, as cardWeight.contract.test.ts enforces. */
+.setup-path {
+  display: grid;
+  gap: var(--padding-l);
+  justify-items: center;
+  width: 100%;
+}
+
+.setup-path-list {
+  margin-top: 0;
+  text-align: left;
+  width: 100%;
+}
+
+.setup-path-option,
+.setup-path-comfort-option {
+  justify-content: space-between;
+  text-align: left;
+}
+
+.setup-path-option > div,
+.setup-path-comfort-option > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.choice-option .setup-path-badge,
+.express-item-badge {
+  background: var(--primary);
+  border-radius: 999px;
+  color: var(--text-on-primary, var(--background-primary));
+  display: inline-block;
+  font-size: var(--font-size-footnote, var(--font-size-callout));
+  font-weight: 700;
+  margin-left: var(--padding-s);
+  padding: 2px 10px;
+}
+
+.setup-path-comfort {
+  display: grid;
+  gap: var(--padding-s);
+  margin-top: var(--padding-s);
+  padding-left: var(--padding-l);
+}
+
+.express-review,
+.express-progress {
+  display: grid;
+  gap: var(--padding-m);
+  margin: 0 auto;
+  max-width: 720px;
+  text-align: left;
+  width: 100%;
+}
+
+.express-review h2,
+.express-progress h2 {
+  margin: 0;
+}
+
+.express-review-summary,
+.express-review-device {
+  color: var(--text-primary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.express-review-device {
+  font-family: var(--font-family-medium);
+}
+
+.express-checks,
+.express-results,
+.express-group ul,
+.express-receipt-list {
+  display: grid;
+  gap: var(--padding-s);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.express-check,
+.express-result {
+  align-items: baseline;
+  background: var(--background-primary);
+  border: 1px solid var(--separator-color);
+  border-radius: var(--corner-radius-medium);
+  color: var(--text-primary);
+  display: flex;
+  gap: var(--padding-s);
+  padding: var(--padding-s) var(--padding-m);
+}
+
+.express-check--ok,
+.express-result--applied {
+  border-color: var(--accent-green);
+}
+
+.express-check--problem,
+.express-result--failed {
+  border-color: var(--error-base);
+}
+
+.express-check-state,
+.express-result-state {
+  font-family: var(--font-family-medium);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.express-check--ok .express-check-state,
+.express-result--applied .express-result-state {
+  color: var(--accent-green);
+}
+
+.express-check--problem .express-check-state,
+.express-result--failed .express-result-state {
+  color: var(--error-base);
+}
+
+.express-check-again {
+  justify-self: start;
+  width: auto;
+}
+
+.express-note {
+  background: color-mix(in srgb, var(--primary) 8%, var(--background-primary));
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--separator-color));
+  border-radius: var(--corner-radius-medium);
+  color: var(--text-primary);
+  line-height: 1.5;
+  margin: 0;
+  padding: var(--padding-s) var(--padding-m);
+}
+
+.express-error {
+  color: var(--error-base);
+  font-weight: 700;
+  margin: 0;
+}
+
+.express-items {
+  background: var(--background-primary);
+  border: 1px solid var(--separator-color);
+  border-radius: var(--corner-radius-medium);
+  color: var(--text-primary);
+  padding: var(--padding-m);
+}
+
+.express-items > summary,
+.express-hotkeys > summary {
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-weight: normal;
+}
+
+/* The hotkey rows are the cards, so the list itself draws no box around them. */
+.express-hotkeys {
+  color: var(--text-primary);
+}
+
+.express-hotkeys > .express-note {
+  margin: var(--padding-s) 0 0;
+}
+
+.express-hotkeys .intro-hotkey-list {
+  margin-top: var(--padding-s);
+}
+
+.express-group {
+  margin-top: var(--padding-m);
+}
+
+.express-group h3 {
+  font-size: 1rem;
+  margin: 0 0 var(--padding-s);
+}
+
+.express-item {
+  border: 1px solid var(--separator-color);
+  border-radius: var(--corner-radius-medium);
+  padding: var(--padding-s) var(--padding-m);
+}
+
+.express-item-label {
+  align-items: flex-start;
+  cursor: pointer;
+  display: flex;
+  gap: var(--padding-m);
+}
+
+.express-item-label input {
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.express-item-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.express-item-body > span {
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.express-item-size {
+  font-weight: 700;
+  margin-left: var(--padding-s);
+}
+
+.express-item-caution,
+.express-item-status {
+  font-weight: 600;
+}
+
+.express-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--padding-s);
+}
+
+.express-actions button {
+  width: auto;
+}
+
+.express-receipt {
+  background: var(--background-primary);
+  border: 1px solid var(--separator-color);
+  border-radius: var(--corner-radius-medium);
+  color: var(--text-primary);
+  display: grid;
+  gap: var(--padding-s);
+  margin-bottom: var(--padding-m);
+  padding: var(--padding-m) var(--padding-l);
+  text-align: left;
+}
+
+.express-receipt-title {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.express-receipt-row {
+  align-items: start;
+  display: grid;
+  gap: var(--padding-m);
+  grid-template-columns: 96px minmax(0, 1fr);
+}
+
+.express-receipt-state {
+  border: 1px solid var(--separator-color);
+  border-radius: 999px;
+  font-family: var(--font-family-medium);
+  font-weight: 700;
+  padding: 2px 10px;
+  text-align: center;
+}
+
+.express-receipt-row--on .express-receipt-state {
+  border-color: var(--accent-green);
+  color: var(--accent-green);
+}
+
+.express-receipt-row--partial .express-receipt-state {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.express-receipt-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.express-receipt-where {
+  font-size: var(--font-size-footnote, var(--font-size-callout));
+  font-weight: 600;
+}

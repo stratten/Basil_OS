@@ -13,7 +13,9 @@ from ..model_types import ModelCapability
 from ..model_downloader import ModelDownloader
 from config.api_keys import await_provider_keys_ready, get_api_key
 from api.core.logging.api_logger import api_logger
+from api.core.logging.chatter import chatter_logger
 from .base_reasoning import BaseReasoningModel
+from .effort_override import current_reasoning_effort_override
 from .streaming_async_bridge import async_iter_sync_stream
 from .streaming_contract import (
     GenerationBudget,
@@ -124,7 +126,8 @@ class OpenAIModel(BaseReasoningModel):
         """Get the registry-configured reasoning effort for Responses API models."""
         effort = get_reasoning_effort_default(self.model_name)
         if effort:
-            return effort
+            # A caller-scoped override (bulk background work such as memory summaries) replaces the registry default only for models that expose reasoning effort.
+            return current_reasoning_effort_override() or effort
 
         # Fallback for o-series models that are not in the registry.
         if get_model(self.model_name) is None and self.model_name.startswith(("o1", "o3", "o4")):
@@ -337,7 +340,7 @@ class OpenAIModel(BaseReasoningModel):
         elif enable_web_search:
             api_logger.warning(f"🚫 RESPONSES_API: Web search not supported for {self.model_name}")
         else:
-            api_logger.info("🚫 RESPONSES_API: Web search disabled")
+            chatter_logger.debug("🚫 RESPONSES_API: Web search disabled")
         
         # Prepare input for Responses API - use simple string format for single user turn
         if (
@@ -345,7 +348,7 @@ class OpenAIModel(BaseReasoningModel):
             and conversation_messages[0].get("role") == "user"
         ):
             input_data = conversation_messages[0]["content"]
-            api_logger.info("📝 RESPONSES_API: Using simple string input format")
+            chatter_logger.debug("📝 RESPONSES_API: Using simple string input format")
         else:
             input_messages = []
             for msg in conversation_messages:
@@ -417,7 +420,7 @@ class OpenAIModel(BaseReasoningModel):
         elif enable_web_search:
             api_logger.warning(f"🚫 CHAT_COMPLETIONS: Web search not supported for {self.model_name}")
         else:
-            api_logger.info("🚫 CHAT_COMPLETIONS: Web search disabled")
+            chatter_logger.debug("🚫 CHAT_COMPLETIONS: Web search disabled")
         
         # Make API call
         response = await self._async_client.chat.completions.create(

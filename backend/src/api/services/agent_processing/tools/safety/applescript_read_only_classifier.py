@@ -47,6 +47,9 @@ _STATEMENT_ENDERS = {"tell", "repeat", "if", "try", "timeout"}
 _SIMPLE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _WORD = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _STRING_TOKEN = re.compile(r'"__STR(\d+)__"')
+# A date held in a local variable is a value the script owns, so changing one of its parts (`set time of d0 to 0` for midnight) changes nothing outside the script. That holds only for a variable this script assigned from `current date` or a date literal, and only for these parts.
+_SET_DATE_PART = re.compile(r"^set\s+(time|hours|minutes|seconds|day|month|year)\s+of\s+([A-Za-z_][A-Za-z0-9_]*)\s+to\s+(.+)$", re.IGNORECASE)
+_DATE_SOURCE = re.compile(r'^\(?\s*(current\s+date|date\s+"__STR\d+__")\s*\)?$', re.IGNORECASE)
 _SHELL_CALL = re.compile(r'do\s+shell\s+script\s+("__STR\d+__")(?!\s*[&\w])', re.IGNORECASE)
 
 
@@ -139,6 +142,7 @@ class _Classifier:
         self.shell_is_read_only = shell_is_read_only
         self.blocks: List[str] = []
         self.known_locals: Set[str] = set()
+        self.date_locals: Set[str] = set()
 
     def _tell_depth(self) -> int:
         return sum(1 for block in self.blocks if block == "tell")
@@ -263,6 +267,11 @@ class _Classifier:
         return reason
 
     def _classify_set(self, line: str) -> Optional[str]:
+        date_part = _SET_DATE_PART.match(line)
+        if date_part:
+            if date_part.group(2) not in self.date_locals:
+                return f"sets a part of '{date_part.group(2)}', which this script did not assign from a date"
+            return self._shell_check_and_scan(date_part.group(3))
         match = re.match(r"^set\s+([A-Za-z_][A-Za-z0-9_]*)\s+to\s+(.+)$", line, re.IGNORECASE)
         if not match:
             return "sets something other than a plain variable"
@@ -276,6 +285,10 @@ class _Classifier:
         if reason:
             return reason
         self.known_locals.add(name)
+        if _DATE_SOURCE.match(expression.strip()):
+            self.date_locals.add(name)
+        else:
+            self.date_locals.discard(name)
         return None
 
     def finish(self) -> Optional[str]:

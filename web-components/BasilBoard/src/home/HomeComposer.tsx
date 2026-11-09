@@ -73,7 +73,8 @@ export default function HomeComposer({ disabled = false, voiceState, statusText,
   const submit = useCallback(async () => {
     const content = editorRef.current?.innerText.trim() ?? '';
     if (!content || inputDisabled) return;
-    const modelId = selectedModelId && selectedModelId !== defaultModelId ? selectedModelId : undefined;
+    // Always send what the picker shows, so the run is recorded on that model even when it is the current default.
+    const modelId = selectedModelId ?? defaultModelId ?? undefined;
     setSubmitting(true);
     try {
       await onSubmit({

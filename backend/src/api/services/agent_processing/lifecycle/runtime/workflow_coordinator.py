@@ -149,6 +149,26 @@ class WorkflowCoordinator:
             
             self.logger.info("✅ All services initialized")
 
+    def _record_resolved_model_id(self, context: Optional[Dict[str, Any]]) -> None:
+        """Put the model this run really uses into the run context when the task did not name one.
+
+        A task that kept the default model carries no model id, so everything keyed on it (the context window and prompt budget, the run limits, the model name in messages) saw no model. The resolved model's name is the registry id, and it is only used when the registry knows it.
+        """
+        if not isinstance(context, dict) or context.get("model_id"):
+            return
+        resolved = getattr(self._llm_model, "model_name", None)
+        if not isinstance(resolved, str) or not resolved.strip():
+            return
+        try:
+            from api.core.models.models_registry.schema import get_model
+
+            known = bool(get_model(resolved))
+        except Exception as lookup_error:
+            self.logger.debug("Could not check %s against the model registry: %s", resolved, lookup_error)
+            known = False
+        if known:
+            context["model_id"] = resolved
+
     async def _ensure_llm_components_initialized(self, context: Dict[str, Any] = None):
         """Ensure LLM-dependent components are initialized."""
         if self._llm_model is None:
@@ -157,6 +177,7 @@ class WorkflowCoordinator:
             else:
                 model_id = context.get("model_id") if context else None
                 self._llm_model = await self._get_reasoning_model(explicit_model_id=model_id)
+        self._record_resolved_model_id(context)
         
         # Hard-ensure the model is actually loaded before any component uses it.
         # In some test/integration paths a model instance can be constructed but not READY yet.

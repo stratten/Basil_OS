@@ -21,6 +21,7 @@ final class ReactHomeSettingsWebView: NSObject {
     var onUpdateSelectedTranscriptionModel: ((String, String) -> Void)?
     var onOpenSetupAssistant: ((String) -> Void)?
     var onOpenPowerUserGuide: ((String) -> Void)?
+    var onReportProblem: ((String) -> Void)?
     var onMalformedIntent: ((String) -> Void)?
 
     init(webView: WKWebView) {
@@ -101,6 +102,12 @@ final class ReactHomeSettingsWebView: NSObject {
                 return
             }
             onOpenPowerUserGuide?(requestId)
+        case "reportProblem":
+            guard let requestId = body["requestId"] as? String else {
+                onMalformedIntent?("reportProblem")
+                return
+            }
+            onReportProblem?(requestId)
         default:
             onMalformedIntent?(type)
         }

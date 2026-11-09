@@ -60,6 +60,13 @@ def build_snapshot_patterns(
             "*.pt",
             "*.pth",
         ]
+    elif handler == "mlx":
+        snapshot_allow_patterns = [
+            "*.safetensors", "*.json", "*.jinja", "*.txt", "tokenizer.model"
+        ]
+        snapshot_ignore_patterns = [
+            "*.h5", "*.bin", "*.msgpack", "*.ot", "*.gguf", "*.pt", "*.pth"
+        ]
     else:
         snapshot_allow_patterns = [
             "*.safetensors", "*.json", "*.txt", "tokenizer.model"
@@ -196,7 +203,6 @@ class SnapshotDownloader:
                             allow_patterns=snapshot_allow_patterns,
                             ignore_patterns=snapshot_ignore_patterns,
                             local_files_only=False,
-                            resume_download=True,
                             force_download=False,
                             token=None,
                             tqdm_class=tqdm,

@@ -94,6 +94,54 @@ async def test_due_follow_up_submits_a_chain_turn(repository):
     assert stored["follow_up_agent_task_id"] == call["agent_task_id"]
 
 
+class _ModelChainReader(_ChainReader):
+    """A one-turn finished chain whose last turn carries the given artifacts and result data."""
+
+    def __init__(self, *, accumulated_artifacts=None, result_data=None):
+        super().__init__(["completed"])
+        self._turn = SimpleNamespace(
+            id="turn-0", status="completed", accumulated_artifacts=accumulated_artifacts, result_data=result_data
+        )
+
+    async def get_agent_task_chain(self, root_task_id):
+        return [self._turn]
+
+
+async def _model_sent_for(repository, reader):
+    submission = _Submission()
+    await _due_row(repository)
+    await _scheduler(repository, reader, submission).run_once()
+    return submission.calls[0].get("model_id")
+
+
+@pytest.mark.asyncio
+async def test_follow_up_runs_on_the_model_the_chain_recorded(repository):
+    reader = _ModelChainReader(
+        accumulated_artifacts={"model_id": "gpt-5-mini"}, result_data={"model_used": "claude-sonnet-5-5"}
+    )
+
+    assert await _model_sent_for(repository, reader) == "gpt-5-mini"
+
+
+@pytest.mark.asyncio
+async def test_follow_up_on_an_older_chain_uses_the_model_its_last_turn_ran_on_not_the_current_default(repository):
+    reader = _ModelChainReader(accumulated_artifacts={}, result_data={"model_used": "claude-sonnet-5-5"})
+
+    assert await _model_sent_for(repository, reader) == "claude-sonnet-5-5"
+
+
+@pytest.mark.asyncio
+async def test_follow_up_does_not_move_a_chain_onto_an_emergency_fallback_or_an_unknown_model(repository):
+    fallback = _ModelChainReader(
+        accumulated_artifacts={},
+        result_data={"model_used": "claude-sonnet-5-5", "reasoning_fallback_model_used": "claude-sonnet-5-5"},
+    )
+    unknown = _ModelChainReader(accumulated_artifacts={}, result_data={"model_used": "not-a-registry-model"})
+
+    assert await _model_sent_for(repository, fallback) is None
+    assert await _model_sent_for(repository, unknown) is None
+
+
 @pytest.mark.asyncio
 async def test_future_follow_up_is_not_claimed(repository):
     row = await _due_row(repository, due_at=NOW + timedelta(minutes=5))

@@ -9,8 +9,21 @@ import { WelcomeIntro } from './WelcomeIntro'
 let container: HTMLElement
 let root: Root
 
+const onChooseManual = vi.fn()
+const onChooseSelf = vi.fn()
+const onChooseYolo = vi.fn()
+
+function renderWelcome() {
+  act(() => {
+    root.render(<WelcomeIntro onChooseManual={onChooseManual} onChooseSelf={onChooseSelf} onChooseYolo={onChooseYolo} />)
+  })
+}
+
 beforeEach(() => {
   ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+  onChooseManual.mockReset()
+  onChooseSelf.mockReset()
+  onChooseYolo.mockReset()
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
@@ -22,22 +35,19 @@ afterEach(() => {
 })
 
 describe('WelcomeIntro', () => {
-  it('describes the real structure instead of promising a few minutes', () => {
-    const onContinue = vi.fn()
-    act(() => { root.render(<WelcomeIntro onContinue={onContinue} />) })
+  it('describes the real structure instead of promising a few minutes or counting steps', () => {
+    renderWelcome()
 
     const text = container.textContent ?? ''
-    expect(text).toContain('three short preference steps')
+    expect(text).toContain('preference steps')
     expect(text).toContain('optional guided conversation')
-    expect(text).toContain('stop it any time')
+    expect(text).toContain('Going step by step is what I recommend')
     expect(text).not.toContain('few minutes')
-
-    act(() => { container.querySelector<HTMLButtonElement>('.welcome-intro-primary')!.click() })
-    expect(onContinue).toHaveBeenCalledTimes(1)
+    expect(text).not.toContain('three short')
   })
 
   it('says what stays on this Mac, where it lives, and where cloud requests go', () => {
-    act(() => { root.render(<WelcomeIntro onContinue={vi.fn()} />) })
+    renderWelcome()
 
     const note = container.querySelector('.welcome-intro-privacy')!
     expect(note.textContent).toContain('What stays on this Mac')
@@ -45,5 +55,21 @@ describe('WelcomeIntro', () => {
     expect(note.textContent).toContain('cloud model')
     expect(note.textContent).toContain('go to that provider')
     expect(note.textContent).toContain('Uninstall Basil')
+  })
+
+  it('shows the privacy note before the choice so it is read first', () => {
+    renderWelcome()
+
+    const note = container.querySelector('.welcome-intro-privacy')!
+    const chooser = container.querySelector('.setup-path')!
+    expect(note.compareDocumentPosition(chooser) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('hands the manual choice to the app when Continue is pressed', () => {
+    renderWelcome()
+
+    act(() => { container.querySelector<HTMLButtonElement>('.welcome-intro-primary')!.click() })
+
+    expect(onChooseManual).toHaveBeenCalledTimes(1)
   })
 })

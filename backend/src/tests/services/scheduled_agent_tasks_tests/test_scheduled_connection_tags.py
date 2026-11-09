@@ -223,10 +223,16 @@ def test_the_prompt_block_names_each_connection_with_its_id_and_description(conn
     assert "- Gmail: connection_id `conn-gmail`" in block
     assert "- Slack (Acme workspace): connection_id `conn-slack`" in block
     assert "approval policy still applies" in block
-    # A failing connection must be reported, never silently replaced by local Mail or AppleScript.
-    assert "Do not route around these connections" in block
+    # The connections come first, and a fallback to another tool is allowed only when the connection genuinely cannot do the job, with the reason reported.
+    assert "try them first" in block
+    assert "genuinely cannot do the job" in block
     assert "AppleScript" in block
+    # A call the user denied must never be redone through another tool.
+    assert "the denial stands" in block
+    assert "why you fell back" in block
     assert "user_action_required" in block
+    # The old rule that stopped the run on any connection failure must be gone.
+    assert "Do not route around these connections" not in block
 
 
 def test_no_connections_means_no_prompt_block():

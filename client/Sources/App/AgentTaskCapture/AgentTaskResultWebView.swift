@@ -51,6 +51,8 @@ final class AgentTaskResultWebView: NSObject, WKScriptMessageHandler, WKNavigati
     var onOpenAgentTaskOrigin: ((_ originType: String, _ originId: String) -> Void)?
     var onAgentStatusChanged: ((_ agentTaskId: String?, _ isProcessing: Bool, _ hasResult: Bool, _ isTerminal: Bool, _ supportsFollowUp: Bool) -> Void)?
     var onFocusedAgentTaskCompleted: (() -> Void)?
+    /// A task other than the focused one finished a turn while the widget was collapsed.
+    var onUnfocusedAgentTaskCompleted: (() -> Void)?
     var onValidationRunFocused: ((AgentTaskValidationRunFocusState) -> Void)?
     var lastReportedFocusedAgentStatus: (agentTaskId: String?, isProcessing: Bool)?
     

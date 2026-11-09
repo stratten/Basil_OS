@@ -8,8 +8,16 @@ from api.core.models.reasoning.model_runtime_profile import (
     is_slim_rendering,
     resolve_tool_rendering_for,
 )
+from .schema_generation import get_explicit_input_model
 
 logger = logging.getLogger(__name__)
+
+
+# One short scope sentence put in front of every tool of a service whose name a model could mistake for a connected account of the same kind.
+# Email is the case: a Gmail connection reached through external_catalog is the first route, and the local email tools only serve the Mail app and Outlook.
+SERVICE_SCOPE_NOTES: Dict[str, str] = {
+    "email_service": "Mail app or Outlook only, not Gmail or other connections. ",
+}
 
 
 def generate_tool_description(
@@ -19,7 +27,19 @@ def generate_tool_description(
     execution_principles: List[str],
     profile: Optional[RuntimeModelProfile] = None,
 ) -> str:
-    """Generate the per-tool description published to LangChain.
+    """Generate the per-tool description published to LangChain, with the service's scope note in front when it has one."""
+    description = _compose_tool_description(service_name, method_name, method_info, execution_principles, profile)
+    return f"{SERVICE_SCOPE_NOTES.get(service_name, '')}{description}"
+
+
+def _compose_tool_description(
+    service_name: str,
+    method_name: str,
+    method_info: Dict[str, Any],
+    execution_principles: List[str],
+    profile: Optional[RuntimeModelProfile] = None,
+) -> str:
+    """Compose the per-tool description published to LangChain.
 
     Under a slim rendering profile, returns the hand-authored ``slim_doc`` from
     ``method_info`` when present. Empty/missing ``slim_doc`` falls back to the
@@ -41,9 +61,14 @@ def generate_tool_description(
     base_desc = method_info.get("doc", f"Execute {method_name} on {service_name}")
     signature = method_info.get("signature", "")
 
-    description = f"{base_desc}\n\nSignature: {signature}"
+    # A method with an explicit input model already publishes every parameter, its type, and its default in the tool's JSON schema, so the Python signature would only repeat it. Dynamic schemas turn types into approximations, so the signature stays for methods that rely on one.
+    if get_explicit_input_model(service_name, method_name) is None:
+        description = f"{base_desc}\n\nSignature: {signature}"
+    else:
+        description = base_desc
 
-    if execution_principles:
+    # A service lists method names in method_info["carries_execution_principles"] = False to keep the shared principles off methods they do not govern, so one block is not repeated on every tool of the family. Absent means every method carries them.
+    if execution_principles and method_info.get("carries_execution_principles", True):
         description += f"\n\nExecution Principles:\n"
         for principle in execution_principles[:6]:  # Show first 6 principles (covers critical parameter mapping + thread deduplication + key workflow rules)
             description += f"- {principle}\n"

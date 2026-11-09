@@ -217,7 +217,11 @@ def test_max_records_stops_the_run_and_leaves_the_rest_pending(conn, monkeypatch
 def test_max_records_caps_the_run_even_when_the_chunk_is_larger(conn, monkeypatch):
     """The chunk read must not gather context for entries the run won't touch."""
     for i in range(5):
-        _card(conn, f"t{i}")
+        # A summary keeps these out of the discard sweep, which reads context only for entries with a blank summary.
+        store.insert_card(conn, ZettelDraft(
+            source_kind="agent_task", source_id=f"t{i}", event_type="agent_task_run",
+            occurred_at="2026-07-24T10:00:00+00:00", title=f"Task t{i}", summary=f"Task t{i} summary",
+        ))
     gathered: list = []
 
     class _CountingSource:

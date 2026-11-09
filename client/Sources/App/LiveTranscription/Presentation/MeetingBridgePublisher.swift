@@ -368,8 +368,8 @@ final class MeetingBridgePublisher {
             meetingSearchFilters: meetingSearchFiltersDTO(viewModel.meetingSearchFilters),
             microphoneAudioLevel: viewModel.microphoneAudioLevel,
             systemAudioLevel: viewModel.systemAudioLevel,
-            microphoneInputRecoveryState: microphoneRecoveryStateString(viewModel.microphoneInputRecoveryState),
-            microphoneInputRecoveryMessage: microphoneRecoveryMessage(viewModel.microphoneInputRecoveryState),
+            microphoneInputRecoveryState: microphoneRecoveryStateString(viewModel.microphoneInputRecoveryState, isSilent: viewModel.isMicrophoneSilent),
+            microphoneInputRecoveryMessage: microphoneRecoveryMessage(viewModel.microphoneInputRecoveryState, isSilent: viewModel.isMicrophoneSilent),
             isCapturePaused: viewModel.isCapturePaused,
             isLiveTranscriptionEnabled: viewModel.sessionLiveTranscriptionEnabled,
             liveEngineOverride: viewModel.sessionLiveEngineOverride,
@@ -601,18 +601,22 @@ final class MeetingBridgePublisher {
         }
     }
 
-    private func microphoneRecoveryStateString(_ state: MicrophoneInputRecoveryState) -> String {
+    /// A recovery that is under way or has failed takes precedence; "silent" shows only while the microphone is otherwise healthy but still delivering nothing but zeros.
+    private func microphoneRecoveryStateString(_ state: MicrophoneInputRecoveryState, isSilent: Bool) -> String {
         switch state {
-        case .idle: return "idle"
+        case .idle: return isSilent ? "silent" : "idle"
         case .reconnecting: return "reconnecting"
         case .failed: return "failed"
         }
     }
 
-    private func microphoneRecoveryMessage(_ state: MicrophoneInputRecoveryState) -> String? {
+    private func microphoneRecoveryMessage(_ state: MicrophoneInputRecoveryState, isSilent: Bool) -> String? {
         if case .failed(let message) = state { return message }
+        if case .idle = state, isSilent { return Self.silentMicrophoneMessage }
         return nil
     }
+
+    static let silentMicrophoneMessage = "Your microphone is only delivering silence. Another app, such as a call, may be using it."
 
     private func stringPayload(_ payload: [String: Any]) -> [String: String] {
         payload.reduce(into: [String: String]()) { result, pair in

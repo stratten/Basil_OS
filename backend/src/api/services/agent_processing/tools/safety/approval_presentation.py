@@ -5,6 +5,7 @@ The same dictionary is persisted in the approval's ``render_context`` and sent i
 
 from typing import Any, Dict, Mapping
 
+from .connected_tool_remember import normalize_tool_policy_scope, tool_policy_scope_of_record
 from .whitelist_eligibility import (
     REMEMBERABLE_EXECUTION_TYPE,
     WhitelistEligibility,
@@ -12,8 +13,13 @@ from .whitelist_eligibility import (
     normalize_purpose,
     normalize_whitelist_advice,
 )
+from .whitelist_pattern_selection import is_broad_pattern
 
 _PASSTHROUGH_TEXT_FIELDS = ("script_path", "script_sha256", "script_notice")
+
+PURPOSE_SOURCE_AGENT = "agent"
+PURPOSE_SOURCE_BASIL = "basil"
+"""Who wrote an approval's explanation. Text the agent supplied is labeled as the agent's; a caller that composes the sentence from facts it holds (the To-Do being closed, the address being connected) sets ``purpose_source`` to ``basil`` so the card does not attribute Basil's own wording to the agent."""
 
 
 def context_whitelist_eligibility(command: str, generalized_pattern: str, context: Mapping[str, Any]) -> WhitelistEligibility:
@@ -24,6 +30,9 @@ def context_whitelist_eligibility(command: str, generalized_pattern: str, contex
 
 def record_whitelist_eligibility(record: Mapping[str, Any]) -> WhitelistEligibility:
     """Eligibility for a persisted approval record, used when the user's decision arrives."""
+    if tool_policy_scope_of_record(record) is not None:
+        # Remembered through the tool's policy, not as a command pattern, so the pattern rules do not apply.
+        return WhitelistEligibility(True)
     return assess_whitelist_eligibility(
         str(record.get("command") or ""),
         str(record.get("generalized_pattern") or "") or None,
@@ -39,16 +48,32 @@ def approval_presentation_fields(
     """Build the explanation, remember eligibility, and script metadata for one approval card."""
     eligibility = context_whitelist_eligibility(command, generalized_pattern, context)
     purpose = normalize_purpose(context.get("purpose"))
+    tool_policy = normalize_tool_policy_scope(context.get("remember_tool_policy"))
     fields: Dict[str, Any] = {
         "whitelist": {
             "eligible": eligibility.eligible,
             "reason": eligibility.reason,
             "advice": normalize_whitelist_advice(context.get("whitelist_advice"), eligibility, purpose=purpose),
+            # What remembering would store, and whether it would also approve commands unlike this one (a single word the command goes on beyond).
+            "pattern": generalized_pattern,
+            "broad": eligibility.eligible and is_broad_pattern(generalized_pattern, command),
         }
     }
+    if tool_policy is not None:
+        # A connected tool is remembered as that one tool's policy, not as a command pattern, so there is no pattern to show and no agent advice about one.
+        fields["whitelist"] = {
+            "eligible": True,
+            "reason": "",
+            "advice": None,
+            "pattern": "",
+            "broad": False,
+            "tool_policy": tool_policy,
+        }
     if purpose is not None:
         fields["purpose"] = purpose
-    elif context.get("purpose_required"):
+        fields["purpose_source"] = PURPOSE_SOURCE_BASIL if context.get("purpose_source") == PURPOSE_SOURCE_BASIL else PURPOSE_SOURCE_AGENT
+    else:
+        # Every approval card must say what the user is approving, so a card that reaches the user without an explanation says so instead of looking complete. Callers that can ask the agent for one set ``purpose_required``, which makes the approval service ask once before the card is shown.
         fields["purpose_missing"] = True
     for key in _PASSTHROUGH_TEXT_FIELDS:
         value = context.get(key)

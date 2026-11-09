@@ -131,6 +131,8 @@ vi.mock('@/components/transitions/StageTransition', () => ({
 vi.mock('@/services/bridge', () => ({
   closeSetupAssistant: vi.fn(),
   notifySetupAssistantReady: vi.fn(),
+  isSetupNativeBridgeAvailable: vi.fn(() => false),
+  resolveSetupHotkeys: vi.fn(),
 }));
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true

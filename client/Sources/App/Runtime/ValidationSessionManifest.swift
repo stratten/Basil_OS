@@ -16,6 +16,12 @@ struct ValidationSessionManifest: Codable, Equatable {
     let credentialNamespace: String
     let createdAt: Date
     let mode: Mode
+    /// When true the session behaves like a first-time user of the real app: the first-run
+    /// permission gate, hotkeys, key monitors, and meeting and activity startup all run.
+    /// Manifests written before this field existed omit it and keep the fixture behavior.
+    var freshInstall: Bool? = nil
+    /// When true on a fresh-install session, the global hotkeys, key monitors, setup resume toast, and meeting and activity startup stay off, so the session can run next to a normal Basil without both answering the same keys. Everything else about the first-time experience (the permission gate, the private model folder, the setup assistant) is unchanged. Manifests written before this field existed omit it and keep the behavior they had.
+    var suppressAmbientBehavior: Bool? = nil
 
     func validated(sessionBaseURL: URL) throws -> ValidationSessionManifest {
         guard schemaVersion == Self.supportedSchemaVersion else {

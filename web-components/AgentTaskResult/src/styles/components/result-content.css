@@ -1,4 +1,5 @@
 @import '../../../../shared/rich-text-followup.css';
+@import '../../../../shared/markdown-table.css';
 
 /* Content area wrapper — constrains height so .main-content scrolls.
    `overflow: clip` instead of `hidden`: a clipped box cannot be scrolled by script, focus, or scrollIntoView, so nothing can leave the result surface offset sideways. */
@@ -278,22 +279,11 @@
   word-break: break-word;
 }
 
+/* Table shape, borders, rounded corners, and column minimums come from shared/markdown-table.css, the same as every other Markdown surface; only this view's width and colors are set here. */
 .result-section table {
   width: 100%;
-  margin: 10px 0 14px;
-  border: var(--border-thin) solid var(--separator-color);
-  border-collapse: collapse;
   background: var(--background-primary);
   font-size: var(--font-size-status-small);
-}
-
-.result-section th,
-.result-section td {
-  padding: var(--padding-xs) var(--padding-s);
-  border: var(--border-thin) solid var(--separator-color);
-  overflow-wrap: anywhere;
-  text-align: left;
-  vertical-align: top;
 }
 
 .result-section th {
@@ -307,13 +297,95 @@
   background: var(--background-secondary);
   border-radius: var(--corner-radius-small);
   padding: var(--padding-m);
-  padding-bottom: calc(var(--padding-m) + 10px);
   overflow-x: auto;
   overflow-y: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   margin: 8px 0 12px;
   border: var(--border-thin) solid var(--separator-color);
   max-width: 100%;
   box-sizing: border-box;
+}
+
+/* A fenced code block or quote with its own copy bar (see copyBlock in MarkdownRenderer.tsx). Text wraps instead of scrolling sideways. The whole block is one embed: a faint tint of the text color over whatever surface it sits on, with the bar a step stronger, so it reads as deliberately set into the result rather than as a strip of window background. */
+.result-section .markdown-copy-block {
+  margin: 8px 0 12px;
+  max-width: 100%;
+  box-sizing: border-box;
+  border: var(--border-thin) solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+  overflow: hidden;
+}
+
+.result-section .markdown-copy-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--padding-s);
+  padding: 2px var(--padding-s);
+  border-bottom: var(--border-thin) solid var(--separator-color);
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+}
+
+.result-section .markdown-copy-caption {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+}
+
+/* The same icon button, size, and tint as the Copy rich text and Copy markdown buttons beside the Result label (CopyButtons.tsx), so every copy control in the result looks alike. */
+.result-section .markdown-copy-button {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: var(--corner-radius-small);
+  background: transparent;
+  color: var(--secondary);
+  cursor: pointer;
+  line-height: 1;
+  opacity: 0.75;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.result-section .markdown-copy-button:hover,
+.result-section .markdown-copy-button:focus-visible {
+  opacity: 1;
+  background: color-mix(in srgb, var(--secondary) 14%, transparent);
+}
+
+.result-section .markdown-copy-button:focus-visible {
+  outline: 2px solid var(--secondary);
+  outline-offset: 1px;
+}
+
+.result-section .markdown-copy-block > pre {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  overflow-x: hidden;
+}
+
+.result-section .markdown-copy-block > blockquote {
+  margin: 0;
+  padding: var(--padding-s) var(--padding-m);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.result-section .markdown-copy-block > blockquote > :first-child {
+  margin-top: 0;
+}
+
+.result-section .markdown-copy-block > blockquote > :last-child {
+  margin-bottom: 0;
 }
 
 .result-section code {

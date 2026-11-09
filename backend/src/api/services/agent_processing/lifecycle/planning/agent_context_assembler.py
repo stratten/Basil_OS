@@ -159,16 +159,10 @@ class AgentContextAssembler:
         reference_paths = context.get("reference_paths") or []
         if reference_paths:
             body = (
-                "The user provided these files/folders as explicit reference material.\n"
-                "Resolve phrases like 'these files', 'this folder', 'these documents', 'those files', "
-                "'move them', or 'organize that folder' to these paths.\n"
-                "For file operations, these explicit paths are authoritative and outrank the frontmost "
-                "window, current Terminal tab, IDE project, or screen title.\n"
-                "Do not use current-document detection for these paths unless the user explicitly asks "
-                "for the file currently open/frontmost on screen.\n"
-                "When the request says its result should be modeled after, based on, like, or similar to something attached, "
-                "READ these paths first with read-only tools (list the folder, open the key files) and design from what they actually contain. "
-                "Do not design from the name alone or from memory:\n"
+                "The user attached these files/folders. 'This project', 'this codebase', 'this app', 'this folder', 'these files' and 'them' mean these paths, "
+                "and they are authoritative over the frontmost window, Terminal tab, IDE project, or screen title.\n"
+                "If the result should be modeled after, based on, like, or similar to something attached, "
+                "READ these paths first with read-only tools and design from what they contain, not from the name:\n"
                 + "\n".join(f"- {path}" for path in reference_paths)
             )
             sections.append(ContextSection("REFERENCE MATERIALS", body, priority=10))

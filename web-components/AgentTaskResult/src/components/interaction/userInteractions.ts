@@ -39,6 +39,17 @@ export interface UserInteraction {
   options: string[];
   /** Present only while the request is waiting and stops waiting on its own. */
   timeLimit?: ResponseTimeLimit;
+  /** For approvals: the agent's plain-language explanation of what the command does. */
+  purpose?: string;
+  /** Set to `basil` when Basil composed `purpose` itself; otherwise the agent wrote it. */
+  purposeSource?: 'basil';
+  /** For approvals recorded without an explanation, when one was required. */
+  purposeMissing?: boolean;
+  scriptPath?: string;
+  scriptNotice?: string;
+  /** The full script text, capped when recorded; `scriptTruncated` is set when the cap cut it short. */
+  scriptContent?: string;
+  scriptTruncated?: boolean;
 }
 
 export type ReasoningBlock =
@@ -94,6 +105,13 @@ function recordedInteraction(entry: TimelineEntry): UserInteraction | null {
     respondedAt: text(record.responded_at),
     options: Array.isArray(record.options) ? record.options.filter((option): option is string => typeof option === 'string') : [],
     timeLimit: status === 'waiting' ? parseResponseTimeLimit(record.time_limit) : undefined,
+    purpose: text(record.purpose),
+    purposeSource: text(record.purpose) && record.purpose_source === 'basil' ? 'basil' : undefined,
+    purposeMissing: record.purpose_missing === true ? true : undefined,
+    scriptPath: text(record.script_path),
+    scriptNotice: text(record.script_notice),
+    scriptContent: text(record.script_content),
+    scriptTruncated: record.script_truncated === true ? true : undefined,
   };
 }
 

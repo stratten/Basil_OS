@@ -84,10 +84,14 @@ export default function App() {
     <div className="basil-webkit-window-frame model-download-panel-frame">
       <div className="model-download-panel basil-webkit-window-surface" ref={panelRef} role="region" aria-label="Model download progress">
       <header className="model-download-header">
-        <span>Model Downloads</span>
         <button type="button" className="model-download-dismiss" onClick={dismissPanel} aria-label="Dismiss model download panel">
-          ×
+          <svg width="18" height="18" viewBox="0 0 22 22" aria-hidden="true">
+            <circle cx="11" cy="11" r="10" fill="var(--secondary)" fillOpacity="0.16" />
+            <line x1="7.5" y1="7.5" x2="14.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
+            <line x1="14.5" y1="7.5" x2="7.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
+          </svg>
         </button>
+        <span>Model Downloads</span>
       </header>
       <section className="model-download-summary">
         <div className={`model-download-ring${snapshot.isComplete ? ' model-download-ring--complete' : ''}`} style={{ '--progress': `${snapshot.quantizedPercentage}%` } as React.CSSProperties}>

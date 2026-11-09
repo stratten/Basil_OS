@@ -297,3 +297,18 @@
   margin: 0 0 0 auto;
   font-size: var(--font-size-status-small);
 }
+
+/* The silent-microphone warning is a sentence, not a status word, so it takes its own full-width row with a visible warning sign instead of being squeezed beside the switches. */
+.meeting-audio-recovery-notice--silent {
+  flex: 1 1 100%;
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.meeting-audio-recovery-notice-icon {
+  flex: 0 0 auto;
+  font-size: var(--font-size-callout);
+  line-height: 1;
+}

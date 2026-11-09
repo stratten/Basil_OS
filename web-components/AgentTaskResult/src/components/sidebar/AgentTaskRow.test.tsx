@@ -456,3 +456,221 @@ describe('AgentTaskRow schedule state', () => {
     expect(markup).not.toContain('agent-task-row__schedule-dot');
   });
 });
+
+describe('AgentTaskRow checklist badge', () => {
+  function markupWith(extra: Partial<React.ComponentProps<typeof AgentTaskRow>>): string {
+    return renderToStaticMarkup(
+      <AgentTaskRow
+        id="task-1"
+        title="Sort out the insurance"
+        status="completed"
+        timestamp="2026-11-03T09:00:00Z"
+        fileCount={2}
+        followUpCount={0}
+        hasUnreadResult={false}
+        isSelected={false}
+        onSelect={vi.fn()}
+        {...extra}
+      />
+    );
+  }
+
+  it('shows done over total after the file count, with a label a screen reader can use', () => {
+    const markup = markupWith({ checklistRootId: 'task-1', checklistDone: 2, checklistTotal: 5 });
+    expect(markup).toContain('agent-task-row__checklist');
+    expect(markup).toContain('aria-label="Checklist, 2 of 5 done"');
+    expect(markup).toMatch(/<svg[^>]*>.*<\/svg>2\/5/);
+    expect(markup.indexOf('2/5')).toBeGreaterThan(markup.lastIndexOf('agent-task-row__meta-item'));
+  });
+
+  it('renders nothing when the chain has no items, or the row is not a task chain', () => {
+    expect(markupWith({ checklistRootId: 'task-1', checklistDone: 0, checklistTotal: 0 })).not.toContain('agent-task-row__checklist');
+    expect(markupWith({ checklistDone: 2, checklistTotal: 5 })).not.toContain('agent-task-row__checklist');
+  });
+
+  it('still shows the badge on a row with no date and no files', () => {
+    const markup = markupWith({ timestamp: undefined, fileCount: 0, checklistRootId: 'task-1', checklistDone: 1, checklistTotal: 3 });
+    expect(markup).toContain('1/3');
+  });
+});
+
+describe('AgentTaskRow schedule activate switch and Run now', () => {
+  function mountSchedule(props: Partial<React.ComponentProps<typeof AgentTaskRow>>) {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const onSelect = vi.fn();
+    act(() => {
+      root.render(
+        <AgentTaskRow
+          id="schedule-1"
+          title="Weekly summary"
+          status="completed"
+          fileCount={0}
+          followUpCount={0}
+          hasUnreadResult={false}
+          isSelected={false}
+          onSelect={onSelect}
+          onRequestDelete={vi.fn()}
+          scheduleActive
+          {...props}
+        />,
+      );
+    });
+    const row = container.querySelector<HTMLElement>('.sidebar-row')!;
+    const hover = () => act(() => { row.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); });
+    const unmount = () => { act(() => root.unmount()); container.remove(); };
+    return { container, onSelect, hover, unmount };
+  }
+
+  const switchOf = (container: HTMLElement) => container.querySelector<HTMLButtonElement>('.agent-task-row__schedule-dot-btn');
+  const runButtonOf = (container: HTMLElement) => container.querySelector<HTMLButtonElement>('.agent-schedule-run-btn');
+
+  it('makes the status dot a switch that is always visible, with a tooltip saying what a click does', () => {
+    const active = mountSchedule({ onToggleSchedule: vi.fn() });
+    const activeSwitch = switchOf(active.container)!;
+    expect(activeSwitch.getAttribute('role')).toBe('switch');
+    expect(activeSwitch.getAttribute('aria-checked')).toBe('true');
+    expect(activeSwitch.getAttribute('title')).toBe('Active. Click to deactivate');
+    expect(activeSwitch.querySelector('.agent-task-row__schedule-dot.is-active')).not.toBeNull();
+    active.unmount();
+
+    const inactive = mountSchedule({ scheduleActive: false, onToggleSchedule: vi.fn() });
+    const inactiveSwitch = switchOf(inactive.container)!;
+    expect(inactiveSwitch.getAttribute('aria-checked')).toBe('false');
+    expect(inactiveSwitch.getAttribute('title')).toBe('Inactive. Click to activate');
+    expect(inactiveSwitch.querySelector('.agent-task-row__schedule-dot.is-inactive')).not.toBeNull();
+    inactive.unmount();
+  });
+
+  it('sends the state to set when the dot is clicked, without selecting or detaching the row', () => {
+    const onToggleSchedule = vi.fn();
+    const onDetach = vi.fn();
+    const { container, onSelect, unmount } = mountSchedule({ onToggleSchedule, onDetach });
+    const dot = switchOf(container)!;
+    act(() => dot.click());
+    act(() => { dot.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); });
+    expect(onToggleSchedule).toHaveBeenCalledWith('schedule-1', false);
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onDetach).not.toHaveBeenCalled();
+    unmount();
+
+    const inactive = mountSchedule({ scheduleActive: false, onToggleSchedule });
+    act(() => switchOf(inactive.container)!.click());
+    act(() => switchOf(inactive.container)!.click());
+    expect(onToggleSchedule).toHaveBeenNthCalledWith(2, 'schedule-1', true);
+    expect(onToggleSchedule).toHaveBeenNthCalledWith(3, 'schedule-1', true);
+    inactive.unmount();
+  });
+
+  it('keeps Enter and Space on the dot from selecting the row, so the keyboard can operate the switch', () => {
+    const { container, onSelect, unmount } = mountSchedule({ onToggleSchedule: vi.fn() });
+    const dot = switchOf(container)!;
+    for (const key of ['Enter', ' ']) {
+      act(() => { dot.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })); });
+    }
+    expect(onSelect).not.toHaveBeenCalled();
+    unmount();
+  });
+
+  it('leaves the dot a plain indicator without a handler and on rows that are not schedules', () => {
+    const noHandler = mountSchedule({});
+    expect(switchOf(noHandler.container)).toBeNull();
+    expect(noHandler.container.querySelector('.agent-task-row__schedule-dot[role="img"]')).not.toBeNull();
+    noHandler.unmount();
+
+    const notSchedule = mountSchedule({ scheduleActive: undefined, onToggleSchedule: vi.fn(), onRunSchedule: vi.fn() });
+    notSchedule.hover();
+    expect(switchOf(notSchedule.container)).toBeNull();
+    expect(runButtonOf(notSchedule.container)).toBeNull();
+    notSchedule.unmount();
+  });
+
+  it('shows the Run now button only on hover, for an active and an inactive schedule alike', () => {
+    for (const scheduleActive of [true, false]) {
+      const { container, hover, unmount } = mountSchedule({ scheduleActive, onRunSchedule: vi.fn() });
+      expect(runButtonOf(container)).toBeNull();
+      hover();
+      const button = runButtonOf(container)!;
+      expect(button.getAttribute('aria-label')).toBe('Run this schedule now');
+      expect(button.getAttribute('title')).toBe('Run now');
+      expect(button.querySelector('circle')).not.toBeNull();
+      unmount();
+    }
+  });
+
+  it('starts one run with the schedule id, without selecting the row, and says it started', async () => {
+    const onRunSchedule = vi.fn().mockResolvedValue({ ok: true });
+    const { container, onSelect, hover, unmount } = mountSchedule({ onRunSchedule });
+    hover();
+    await act(async () => { runButtonOf(container)!.click(); });
+    expect(onRunSchedule).toHaveBeenCalledTimes(1);
+    expect(onRunSchedule).toHaveBeenCalledWith('schedule-1');
+    expect(onSelect).not.toHaveBeenCalled();
+    const notice = container.querySelector('[role="status"]')!;
+    expect(notice.textContent).toBe('Run started');
+    expect(notice.className).toContain('agent-task-row__preview--waiting');
+    unmount();
+  });
+
+  it('shows the reason in the warning color when the run could not start', async () => {
+    const onRunSchedule = vi.fn().mockResolvedValue({ ok: false, message: 'Scheduled task not found' });
+    const { container, hover, unmount } = mountSchedule({ onRunSchedule });
+    hover();
+    await act(async () => { runButtonOf(container)!.click(); });
+    const notice = container.querySelector('[role="status"]')!;
+    expect(notice.textContent).toBe('Scheduled task not found');
+    expect(notice.className).toContain('agent-task-row__preview--warning');
+    unmount();
+  });
+
+  it('cannot start a second run while the first is still starting, even after the pointer leaves', async () => {
+    let finish: (outcome: { ok: boolean }) => void = () => {};
+    const onRunSchedule = vi.fn().mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    const { container, hover, unmount } = mountSchedule({ onRunSchedule });
+    hover();
+    act(() => { runButtonOf(container)!.click(); });
+    const row = container.querySelector<HTMLElement>('.sidebar-row')!;
+    act(() => { row.dispatchEvent(new MouseEvent('mouseout', { bubbles: true })); });
+    const button = runButtonOf(container)!;
+    expect(button.disabled).toBe(true);
+    expect(container.querySelector('[role="status"]')!.textContent).toBe('Starting run…');
+    act(() => button.click());
+    expect(onRunSchedule).toHaveBeenCalledTimes(1);
+    await act(async () => { finish({ ok: true }); });
+    expect(container.querySelector('[role="status"]')!.textContent).toBe('Run started');
+    unmount();
+  });
+
+  it('puts the schedule line back after the result has been shown', async () => {
+    vi.useFakeTimers();
+    try {
+      const onRunSchedule = vi.fn().mockResolvedValue({ ok: true });
+      const { container, hover, unmount } = mountSchedule({ onRunSchedule, preview: 'Recurring • next tomorrow' });
+      hover();
+      await act(async () => { runButtonOf(container)!.click(); });
+      expect(container.querySelector('[role="status"]')).not.toBeNull();
+      await act(async () => { vi.advanceTimersByTime(3100); });
+      expect(container.querySelector('[role="status"]')).toBeNull();
+      expect(container.textContent).toContain('Recurring • next tomorrow');
+      unmount();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps the activate switch and Run now independent of each other', async () => {
+    const onToggleSchedule = vi.fn();
+    const onRunSchedule = vi.fn().mockResolvedValue({ ok: true });
+    const { container, hover, unmount } = mountSchedule({ scheduleActive: false, onToggleSchedule, onRunSchedule });
+    hover();
+    await act(async () => { runButtonOf(container)!.click(); });
+    expect(onRunSchedule).toHaveBeenCalledTimes(1);
+    expect(onToggleSchedule).not.toHaveBeenCalled();
+    act(() => switchOf(container)!.click());
+    expect(onToggleSchedule).toHaveBeenCalledWith('schedule-1', true);
+    expect(onRunSchedule).toHaveBeenCalledTimes(1);
+    unmount();
+  });
+});
+

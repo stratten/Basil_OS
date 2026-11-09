@@ -5,6 +5,8 @@ import { SetupConversationMarkdown } from '@/components/conversation/SetupConver
 import { SetupWorkingIndicator } from '@/components/motion/SetupWorkingIndicator'
 import type { SetupWrapUpProposal } from '@/types'
 
+import { SetupReceiptSection } from '@/components/express/SetupReceiptSection'
+
 import { WindowBasicsTips } from './WindowBasicsTips'
 import {
   copyWrapUpReferenceMarkdown,
@@ -44,6 +46,7 @@ function SettingsPointer() {
 function WrapUpFooter() {
   return (
     <>
+      <SetupReceiptSection />
       <WindowBasicsTips />
       <SettingsPointer />
     </>

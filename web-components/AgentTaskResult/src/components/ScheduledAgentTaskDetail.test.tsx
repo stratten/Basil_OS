@@ -80,7 +80,7 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-async function render(props: { createMode: boolean; id?: string; onUpdated?: (id: string) => void }) {
+async function render(props: { createMode: boolean; id?: string; onUpdated?: (id: string) => void; scheduledListVersion?: number }) {
   await act(async () => {
     root.render(
       <ScheduledAgentTaskDetail
@@ -88,6 +88,7 @@ async function render(props: { createMode: boolean; id?: string; onUpdated?: (id
         createMode={props.createMode}
         onCreated={vi.fn()}
         onUpdated={props.onUpdated}
+        scheduledListVersion={props.scheduledListVersion}
         onExitCreateMode={vi.fn()}
       />,
     );
@@ -429,3 +430,55 @@ describe('ScheduledAgentTaskDetail active indicator', () => {
     expect(indicator().classList.contains('is-active')).toBe(true);
   });
 });
+
+describe('ScheduledAgentTaskDetail when the schedule changes elsewhere', () => {
+  const indicator = () => document.body.querySelector('[aria-label="Active"], [aria-label="Inactive"]')!;
+
+  it('fetches again when the list version changes, so a pause from the sidebar row shows here', async () => {
+    mocks.getScheduledAgentTask.mockResolvedValueOnce(scheduledTask({ is_active: true }));
+    await render({ createMode: false, id: 'sched-1', scheduledListVersion: 0 });
+    expect(buttonByText('Deactivate')).toBeTruthy();
+    expect(mocks.getScheduledAgentTask).toHaveBeenCalledTimes(1);
+
+    mocks.getScheduledAgentTask.mockResolvedValueOnce(scheduledTask({ is_active: false }));
+    await render({ createMode: false, id: 'sched-1', scheduledListVersion: 1 });
+
+    expect(mocks.getScheduledAgentTask).toHaveBeenCalledTimes(2);
+    expect(mocks.listScheduledAgentTaskRuns).toHaveBeenCalledTimes(2);
+    expect(buttonByText('Activate')).toBeTruthy();
+    expect(indicator().getAttribute('aria-label')).toBe('Inactive');
+  });
+
+  it('does not fetch again when it re-renders with the same version', async () => {
+    mocks.getScheduledAgentTask.mockResolvedValue(scheduledTask({ is_active: true }));
+    await render({ createMode: false, id: 'sched-1', scheduledListVersion: 3 });
+    await render({ createMode: false, id: 'sched-1', scheduledListVersion: 3 });
+    expect(mocks.getScheduledAgentTask).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps what the user is typing in the edit form when the version changes', async () => {
+    mocks.getScheduledAgentTask.mockResolvedValue(scheduledTask({ is_active: true }));
+    await render({ createMode: false, id: 'sched-1', scheduledListVersion: 0 });
+    await click(buttonByText('Edit'));
+    await typeTaskText('A half-typed change');
+
+    await render({ createMode: false, id: 'sched-1', scheduledListVersion: 1 });
+
+    expect(mocks.getScheduledAgentTask).toHaveBeenCalledTimes(1);
+    expect(document.body.querySelector<HTMLTextAreaElement>('textarea[placeholder="Task text"]')?.value).toBe('A half-typed change');
+  });
+
+  it('keeps the current view and reports the error when the refresh fails', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mocks.getScheduledAgentTask.mockResolvedValueOnce(scheduledTask({ is_active: true }));
+    await render({ createMode: false, id: 'sched-1', scheduledListVersion: 0 });
+
+    mocks.getScheduledAgentTask.mockRejectedValueOnce(new Error('offline'));
+    await render({ createMode: false, id: 'sched-1', scheduledListVersion: 1 });
+
+    expect(buttonByText('Deactivate')).toBeTruthy();
+    expect(error).toHaveBeenCalled();
+    error.mockRestore();
+  });
+});
+

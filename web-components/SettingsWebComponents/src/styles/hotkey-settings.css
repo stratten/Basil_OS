@@ -160,3 +160,19 @@
   display: flex;
   gap: 12px;
 }
+
+.hotkey-conflict-list {
+  background: color-mix(in srgb, var(--notice-base) 14%, var(--background-primary));
+  border: 1px solid var(--notice-base);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+}
+
+.hotkey-conflict {
+  color: var(--text-primary);
+  font-size: calc(13px * var(--text-scale, 1));
+  margin: 0;
+}

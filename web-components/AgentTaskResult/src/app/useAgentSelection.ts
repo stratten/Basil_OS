@@ -73,8 +73,9 @@ export function useAgentSelection({
   const handleViewAgentTask = useCallback(async (agentTaskId: string) => {
     const epoch = selectionEpoch.current + 1;
     selectionEpoch.current = epoch;
-    const alreadyKnown = !!agentStore.getAgent(agentTaskId);
-    if (!alreadyKnown) {
+    // A scheduled run that continues a chain is a follow-up turn, which has no entry under its own id: the chain's root holds it. Looking the id up directly would miss that and open the run as a second, separate task beside the root this window already shows.
+    const openEntryId = agentStore.findOpenEntryForTask(agentTaskId);
+    if (openEntryId === undefined) {
       agentStore.registerAgent(agentTaskId);
       // Tentative starting state — the hydrate call below will replace
       // it with the backend's actual status.
@@ -109,8 +110,8 @@ export function useAgentSelection({
     setPendingAgentTaskSelection(null);
     setSelectedScheduledAgentTaskId(null);
     setCreateScheduledMode(false);
-    agentStore.selectAgent(agentTaskId);
-    void hydrateAgentFromBackend(agentTaskId);
+    agentStore.selectAgent(openEntryId);
+    void hydrateAgentFromBackend(openEntryId);
   }, [
     setCreateScheduledMode,
     setPendingAgentTaskSelection,

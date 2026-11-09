@@ -388,6 +388,18 @@
   font-size: calc(11px * var(--text-scale, 1));
 }
 
+/* A stored single command name approves every use of that tool. Primary text on a full warning border, in line with the description under the pattern. */
+.permissions-whitelist-broad {
+  background: color-mix(in srgb, var(--warning-base, #b45309) 16%, var(--background-primary));
+  border: 1px solid var(--warning-base, #b45309);
+  border-radius: 4px;
+  color: var(--text-primary);
+  display: block;
+  font-size: calc(11px * var(--text-scale, 1));
+  margin: 5px 0 0 58px;
+  padding: 3px 6px;
+}
+
 .permissions-whitelist-description {
   display: block;
   margin: 5px 0 0 58px;

@@ -153,6 +153,67 @@ describe('AgentStore blocker handling', () => {
     expect(agent?.inlineCheckpoint).toBeUndefined();
   });
 
+  describe('an open question and the tool heartbeat', () => {
+    function storeWithOpenQuestion() {
+      const store = makeStoreWithAgent();
+      dispatch(store, {
+        event_type: 'collaborative_checkpoint_request',
+        agent_task_id: 'task-1',
+        checkpoint: { checkpoint_id: 'checkpoint-1', prompt: 'Choose a path', input_type: 'choice', options: ['Path A', 'Path B'] },
+      });
+      dispatch(store, { event_type: 'checkpoint_waiting', agent_task_id: 'task-1', message: 'Waiting for your input...' });
+      return store;
+    }
+
+    it('keeps the question open and the task waiting through both heartbeat events', () => {
+      const store = storeWithOpenQuestion();
+
+      dispatch(store, { event_type: 'agent_progress_update', agent_task_id: 'task-1', message: 'Still running request_user_input' });
+      dispatch(store, {
+        event_type: 'dynamic_step_updated',
+        agent_task_id: 'task-1',
+        step_id: 'step-1',
+        description: 'request_user_input',
+        status: 'in_progress',
+        completion_message: 'Still running request_user_input',
+      });
+
+      const agent = store.getAgent('task-1');
+      expect(agent?.status).toBe('awaitingInput');
+      expect(agent?.showCheckpointPrompt).toBe(true);
+      expect(agent?.currentCheckpoint?.checkpoint_id).toBe('checkpoint-1');
+      expect(agent?.inlineCheckpoint?.checkpoint_id).toBe('checkpoint-1');
+    });
+
+    it('still lets a step that finished show the run has moved on', () => {
+      const store = storeWithOpenQuestion();
+
+      dispatch(store, {
+        event_type: 'dynamic_step_updated',
+        agent_task_id: 'task-1',
+        step_id: 'step-1',
+        description: 'request_user_input',
+        status: 'completed',
+      });
+
+      const agent = store.getAgent('task-1');
+      expect(agent?.status).toBe('processing');
+      expect(agent?.currentCheckpoint).toBeUndefined();
+    });
+
+    it('settles a question this window just answered even when a heartbeat is the next event', () => {
+      const store = storeWithOpenQuestion();
+      store.beginCheckpointAnswer('task-1', 'checkpoint-1', 'Resuming...');
+
+      dispatch(store, { event_type: 'agent_progress_update', agent_task_id: 'task-1', message: 'Continuing' });
+
+      const agent = store.getAgent('task-1');
+      expect(agent?.status).toBe('processing');
+      expect(agent?.currentCheckpoint).toBeUndefined();
+      expect(agent?.isCheckpointResumePending).toBe(false);
+    });
+  });
+
   it('shows a new checkpoint that arrives after a resume and clears the pending flag', () => {
     const store = makeStoreWithAgent();
     store.showCheckpoint('task-1', { checkpoint_id: 'first', prompt: 'First?', input_type: 'data' });

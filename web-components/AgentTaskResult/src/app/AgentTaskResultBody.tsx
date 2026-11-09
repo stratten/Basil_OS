@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode, type Ref, type TransitionEvent } from 'react';
+import { useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode, type Ref, type TransitionEvent } from 'react';
 import type {
   AgentState,
   BubbleMode,
@@ -14,7 +14,10 @@ import { activityStatusSnapshot } from '../components/result/activityPresentatio
 import type { MissedRunToast } from './useHostBridge';
 import { AgentTaskDetailSurface } from './AgentTaskDetailSurface';
 import DetachedTaskPlaceholder from '../components/DetachedTaskPlaceholder';
+import { SurfaceActivityContext } from '../services/useFilesPickedHandler';
 import { plainMarkdownText } from '../../../shared/plainMarkdownText';
+import { agentStore } from '../store/agentStore';
+import { taskNeedsCollapsedAttention } from './useUnfocusedTaskAttention';
 
 export function SurfaceStack({ surfaceKey, children }: { surfaceKey: string; children: ReactNode }) {
   const previous = useRef({ key: surfaceKey, children });
@@ -73,7 +76,9 @@ export function SurfaceStack({ surfaceKey, children }: { surfaceKey: string; chi
             if (event.target === event.currentTarget && event.propertyName === 'opacity') setOutgoing(null);
           }}
         >
-          {outgoing.children}
+          <SurfaceActivityContext.Provider value={false}>
+            {outgoing.children}
+          </SurfaceActivityContext.Provider>
         </div>
       )}
       <div
@@ -172,6 +177,11 @@ interface AgentTaskResultBodyProps {
   isCollapseIconRotated: boolean;
   showCancelStop: boolean;
   onCancelRunningAgent: () => void;
+  /** What the header's pause control offers; undefined hides it. */
+  runPauseState: 'running' | 'paused' | undefined;
+  isPausing: boolean;
+  onPauseRunningAgent: () => void;
+  onResumeRunningAgent: () => void;
   onToggleChromeCollapsed: () => void;
   onToggleSidebar: () => void;
   onViewHistoricalAgentTask: (detail: DisplayableAgentTask) => void;
@@ -232,6 +242,10 @@ export function AgentTaskResultBody({
   isCollapseIconRotated,
   showCancelStop,
   onCancelRunningAgent,
+  runPauseState,
+  isPausing,
+  onPauseRunningAgent,
+  onResumeRunningAgent,
   onToggleChromeCollapsed,
   onToggleSidebar,
   onViewHistoricalAgentTask,
@@ -259,6 +273,14 @@ export function AgentTaskResultBody({
     selectedAgent?.showCheckpointPrompt === true ||
     selectedAgent?.status === 'awaitingInput' ||
     selectedAgent?.status === 'paused';
+  // While the widget is collapsed the sidebar is hidden, so the header bubble is the only place that can show a task other than the focused one is still working or waiting on the user. A task open in another window reports through that window, and a window showing one detached task has no other tasks to show.
+  const otherTaskProcessing = useSyncExternalStore(
+    listener => agentStore.subscribe(listener),
+    () => isChromeCollapsed && !detachedRootTaskId && agentStore.getAllAgents().some(agent =>
+      taskNeedsCollapsedAttention(agent, detachedRootsElsewhere),
+    ),
+    () => false,
+  );
   const collapsedActivityStatus = displaySource
     ? activityStatusSnapshot(displaySource.executionTimeline)
     : undefined;
@@ -277,7 +299,7 @@ export function AgentTaskResultBody({
       <div ref={rootRef} className={`widget-root basil-webkit-window-surface${embedded ? ' widget-root--embedded' : ''}${isChromeCollapsed ? ' chrome-collapsed' : ''}`}>
       <div className="agent-task-header-shell">
         <Header
-          isProcessing={displaySourceDetached ? false : isProcessing || isVerifying}
+          isProcessing={(displaySourceDetached ? false : isProcessing || isVerifying) || otherTaskProcessing}
           isCapturing={isCapturing}
           bubbleMode={displaySourceDetached ? 'ambient' : bubbleMode}
           baseColor={getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#33559B'}
@@ -285,6 +307,10 @@ export function AgentTaskResultBody({
           showCancelStop={displaySourceDetached ? false : showCancelStop}
           isCanceling={selectedAgent?.isCanceling === true}
           onCancelRunning={onCancelRunningAgent}
+          runPauseState={displaySourceDetached ? undefined : runPauseState}
+          isPausing={isPausing}
+          onPauseRunning={onPauseRunningAgent}
+          onResumeRunning={onResumeRunningAgent}
           canCollapse={!embedded}
           hideWindowControls={embedded}
           embedded={embedded}
@@ -317,6 +343,7 @@ export function AgentTaskResultBody({
               onCreateScheduledAgentTask={onCreateScheduledAgentTask}
               selectedScheduledAgentTaskId={selectedScheduledAgentTaskId}
               scheduledListVersion={scheduledListVersion}
+              onScheduledUpdated={onScheduledUpdated}
               viewedAgentTaskId={viewedDetail?.agentTaskId}
               viewedRootId={viewedDetail?.rootTaskId}
               onAgentTaskDeleted={onAgentTaskDeleted}
@@ -332,6 +359,7 @@ export function AgentTaskResultBody({
                 createMode={createScheduledMode}
                 onCreated={onScheduledCreated}
                 onUpdated={onScheduledUpdated}
+                scheduledListVersion={scheduledListVersion}
                 onExitCreateMode={onExitCreateMode}
                 onViewAgentTask={onViewAgentTask}
               />
@@ -364,6 +392,8 @@ export function AgentTaskResultBody({
                 onContinue={onContinue}
                 onSelectDetail={onSelectDetail}
                 onCancelTextFollowUp={onCancelTextFollowUp}
+                onCancelRunning={onCancelRunningAgent}
+                isCanceling={selectedAgent?.isCanceling === true}
                 onStartVoiceFollowUp={onStartVoiceFollowUp}
                 onOpenDetailTray={onOpenDetailTray}
                 onCloseDetailTray={onCloseDetailTray}

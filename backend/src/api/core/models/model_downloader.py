@@ -10,6 +10,7 @@ from .models_registry import (
 )
 from .model_download.artifacts import ModelArtifactStore
 from .model_download.direct_file_downloader import DirectFileDownloader
+from .model_download.hf_cache_cleanup import discard_cached_repo, repo_id_from_model_config
 from .model_download.progress_tracker import ProgressTracker
 from .model_download.snapshot_downloader import SnapshotDownloader, build_snapshot_patterns
 
@@ -36,6 +37,9 @@ class ModelDownloader:
             self,
         )
         self.snapshot_downloader = SnapshotDownloader(self.progress_tracker, self)
+        # Downloads in flight per Hugging Face repo id, so the cache copy of a repo is only
+        # removed when no other download is still reading it.
+        self._active_repo_downloads: Dict[str, int] = {}
 
     def get_available_models(self) -> Dict[str, Any]:
         """Get all downloadable models from registry, with installed status."""
@@ -224,8 +228,8 @@ class ModelDownloader:
         # `progress_<model_id>.json` on disk so a separate Huey worker process
         # could pick up where another left off. Post-step-1.2.6 there is no
         # JSON layer and downloads never cross a process boundary; the actual
-        # byte-level resume is handled by `snapshot_download(resume_download=
-        # True)` against the HF cache, and UI continuity across cancel/restart
+        # byte-level resume is handled by `snapshot_download` against the HF
+        # cache, and UI continuity across cancel/restart
         # is owned by `DownloadManager`'s in-memory `DownloadEntry`. So we
         # always start the local progress counter at 0.0 and let the HF cache
         # short-circuit any already-downloaded blobs.
@@ -254,9 +258,13 @@ class ModelDownloader:
         # Start heartbeat task
         heartbeat_task = asyncio.create_task(self._start_heartbeat(model_type, variant))
 
+        repo_id = repo_id_from_model_config(model_cfg)
+        if repo_id:
+            self._active_repo_downloads[repo_id] = self._active_repo_downloads.get(repo_id, 0) + 1
+
         try:
             if "repo" in model_info:
-                return await self.snapshot_downloader.download_snapshot_model(
+                installed_path = await self.snapshot_downloader.download_snapshot_model(
                     model_type,
                     variant,
                     model_id,
@@ -268,7 +276,7 @@ class ModelDownloader:
                 )
 
             else:
-                return await self.direct_file_downloader.download_direct_file(
+                installed_path = await self.direct_file_downloader.download_direct_file(
                     model_type,
                     variant,
                     model_id,
@@ -277,6 +285,11 @@ class ModelDownloader:
                     model_path,
                     cancel_event=cancel_event,
                 )
+
+            # The download finished and the files are in the models directory, so the
+            # Hugging Face cache now holds only a duplicate of them.
+            await self._discard_hf_cache_copy(model_id, repo_id)
+            return installed_path
                 
         except Exception as e:
             # Set error state and propagate exception
@@ -293,10 +306,41 @@ class ModelDownloader:
                                            metadata={"error": str(e), "type": type(e).__name__})
             raise
         finally:
+            if repo_id:
+                remaining = self._active_repo_downloads.get(repo_id, 1) - 1
+                if remaining > 0:
+                    self._active_repo_downloads[repo_id] = remaining
+                else:
+                    self._active_repo_downloads.pop(repo_id, None)
             # Clean up heartbeat task
             if 'heartbeat_task' in locals():
                 heartbeat_task.cancel()
             api_logger.info(f"[DOWNLOAD_MODEL] download_model for {model_type}-{variant} is returning at {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}")
+
+    async def _discard_hf_cache_copy(self, model_id: str, repo_id: Optional[str]) -> None:
+        """Delete the Hugging Face cache copy of a model that is now installed.
+
+        Skipped while another download from the same repo is running, because that download
+        may still be using the cached files; the last one to finish removes them. A failure
+        here is logged and never fails the finished install.
+        """
+        if not repo_id:
+            return
+        if self._active_repo_downloads.get(repo_id, 0) > 1:
+            api_logger.info(
+                "Keeping Hugging Face cache of %s: another download from this repo is running",
+                repo_id,
+            )
+            return
+        try:
+            await asyncio.to_thread(discard_cached_repo, repo_id)
+        except Exception as exc:
+            api_logger.warning(
+                "Could not remove the Hugging Face cache copy of %s after installing %s: %s",
+                repo_id,
+                model_id,
+                exc,
+            )
 
     async def _verify_checksum(self, file_path: Path, expected_sha256: str) -> bool:
         """Verify the SHA256 checksum of a downloaded file."""

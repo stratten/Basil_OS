@@ -32,7 +32,7 @@ class SetupAssistantDiscoveryService:
         """Collect setup facts that do not inspect user content."""
 
         from api.core.preferences.preferences_io import load_preferences
-        from api.routes.onboarding import STARTER_MODELS
+        from api.routes.onboarding import get_starter_models
 
         collected_at = utc_now_naive()
         facts: List[SetupDiscoveryFact] = []
@@ -111,7 +111,7 @@ class SetupAssistantDiscoveryService:
         facts.extend(self._build_hotkey_facts(preferences.hotkeys, collected_at))
         facts.extend(self._build_hardware_capability_facts(collected_at))
 
-        for starter_model in STARTER_MODELS:
+        for starter_model in get_starter_models(self.model_service):
             model_type = starter_model["model_type"]
             variant = starter_model["variant"]
             model_id = f"{model_type}-{variant}"
@@ -341,14 +341,22 @@ class SetupAssistantDiscoveryService:
             get_local_reasoning_models,
             get_transcription_models,
         )
+        from api.core.models.preference_models.defaults import (
+            _choose_local_reasoning_model,
+            _detected_free_disk_gb,
+        )
 
         collected_at = utc_now_naive()
         facts: List[SetupDiscoveryFact] = []
         hardware_profile = HardwareCapabilityService().get_profile()
+        free_disk_gb = _detected_free_disk_gb()
+        choice = _choose_local_reasoning_model(total_ram_gb=int(hardware_profile.total_ram_gb), free_disk_gb=free_disk_gb)
 
         for model_id, config in get_local_reasoning_models().items():
             if "reasoning" not in config.get("capabilities", []):
                 continue
+            model_metadata = self._build_model_metadata(config, hardware_profile)
+            model_metadata.update(self._build_model_choice_metadata(model_id, config, choice, free_disk_gb))
             facts.append(
                 SetupDiscoveryFact(
                     id=f"model-catalog-{model_id}",
@@ -360,7 +368,7 @@ class SetupAssistantDiscoveryService:
                     user_visible_summary=(
                         f"Basil found local reasoning model option {config.get('display_name', model_id)}."
                     ),
-                    metadata=self._build_model_metadata(config, hardware_profile),
+                    metadata=model_metadata,
                 )
             )
 
@@ -633,6 +641,32 @@ class SetupAssistantDiscoveryService:
             metadata.update(self._build_model_hardware_metadata(config, hardware_profile))
         return metadata
 
+    @staticmethod
+    def _build_model_choice_metadata(
+        model_id: str,
+        config: dict,
+        choice,
+        free_disk_gb: float | None,
+    ) -> dict[str, str]:
+        """Say which local reasoning model Basil picks for this Mac and whether each one fits the free disk space.
+
+        ``best_for_this_machine_memory`` marks the model this Mac's memory alone would choose, and ``recommended_for_this_machine`` marks the one Basil will actually offer. They differ only when the best model for the Mac's memory does not fit the free disk space.
+        """
+        from api.core.models.preference_models.defaults import _download_disk_required_gb
+
+        metadata = {
+            "recommended_for_this_machine": str(model_id == choice.model_id).lower(),
+            "best_for_this_machine_memory": str(model_id == choice.preferred_model_id).lower(),
+        }
+        required_gb = _download_disk_required_gb(config.get("size"))
+        if free_disk_gb is not None:
+            metadata["free_disk_gb"] = f"{free_disk_gb:.1f}"
+        if required_gb is not None:
+            metadata["download_disk_required_gb"] = f"{required_gb:.1f}"
+        if free_disk_gb is not None and required_gb is not None:
+            metadata["disk_fits_download"] = str(free_disk_gb >= required_gb).lower()
+        return metadata
+
     def _build_model_hardware_metadata(
         self,
         config: dict,
@@ -641,9 +675,10 @@ class SetupAssistantDiscoveryService:
         handler = str(config.get("handler", ""))
         features = config.get("features", [])
         recommended_ram_gb = self._parse_recommended_ram_gb(config.get("recommended_ram"))
+        # recommended_ram is the whole-machine memory Basil recommends for the model, as in the recommendation service, so it is compared with total RAM. The local-model budget is only a share of that RAM, and the load plan already limits the context window to fit it.
         fits_memory_budget = (
             recommended_ram_gb is None
-            or recommended_ram_gb <= hardware_profile.local_model_memory_budget_gb
+            or recommended_ram_gb <= hardware_profile.total_ram_gb
         )
 
         backend_hint = "cpu"
@@ -653,6 +688,8 @@ class SetupAssistantDiscoveryService:
                 if hardware_profile.gpu_backend == "metal"
                 else str(hardware_profile.gpu_backend or "gpu")
             )
+        elif handler == "mlx" and hardware_profile.gpu_available:
+            backend_hint = "mlx_metal"
         elif handler == "parakeet" and hardware_profile.prefer_coreml_onnx:
             backend_hint = "coreml_onnx"
         elif handler == "whisper" and hardware_profile.prefer_mlx_whisper:

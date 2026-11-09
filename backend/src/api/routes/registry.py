@@ -9,6 +9,7 @@ from fastapi import APIRouter, FastAPI
 from api.core.hotkey.router import HotkeyRouter
 from api.routes import websocket
 from api.routes.ambient_suggestions import router as ambient_suggestions_router
+from api.routes.app_control_routes import router as app_control_router
 from api.routes.agent_tasks import (
     execution_control_router,
     router as agent_task_router,
@@ -36,9 +37,11 @@ from api.routes.meetings import (
     router as meetings_router,
 )
 from api.routes.memory import (
+    context_import_router as memory_context_import_router,
     reconciliation_router as memory_reconciliation_router,
     router as memory_router,
 )
+from api.routes.diagnostics_routes import router as diagnostics_router
 from api.routes.onboarding import router as onboarding_router
 from api.routes.personalization import router as personalization_router
 from api.routes.provider_profiles import router as provider_profiles_router
@@ -89,9 +92,12 @@ def build_ordered_application_routers() -> list[APIRouter]:
         execution_control_router,
         personalization_router,
         memory_router,
+        memory_context_import_router,
         memory_reconciliation_router,
         onboarding_router,
+        diagnostics_router,
         setup_assistant_router,
+        app_control_router,
         todo_router,
         basil_board_router,
         custom_models_router,

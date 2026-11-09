@@ -231,6 +231,8 @@ class AgentTaskListItem(BaseModel):
     scheduled_agent_task_id: Optional[str] = None
     scheduled_agent_task_title: Optional[str] = None
     archived_at: Optional[datetime] = None  # Set when the chain is archived; NULL otherwise
+    checklist_done: int = 0  # Done items of the chain's checklist; with checklist_total drives the sidebar badge
+    checklist_total: int = 0  # Items counted by the checklist (archived and dropped items excluded); 0 when the chain has none
 
     @field_serializer('timestamp')
     def serialize_timestamp(self, timestamp: datetime) -> str:

@@ -85,6 +85,42 @@ def test_validation_runtime_detection_requires_the_exact_profile() -> None:
     assert not is_validation_runtime({})
 
 
+def test_validation_profile_is_a_fixture_session_unless_fresh_install_is_requested(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    session_root = tmp_path / "sessions" / "fresh"
+    (session_root / "home").mkdir(parents=True)
+    monkeypatch.setenv("HOME", str(session_root / "home"))
+    environment = _validation_environment(session_root)
+
+    assert ValidationRuntimeProfile.from_environment(environment).fresh_install is False
+
+    environment["BASIL_VALIDATION_FRESH_INSTALL"] = "1"
+    assert ValidationRuntimeProfile.from_environment(environment).fresh_install is True
+
+    environment["BASIL_VALIDATION_FRESH_INSTALL"] = "true"
+    assert ValidationRuntimeProfile.from_environment(environment).fresh_install is False
+
+
+def test_fresh_install_profile_uses_a_private_models_directory(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    session_root = tmp_path / "sessions" / "fresh"
+    (session_root / "home").mkdir(parents=True)
+    monkeypatch.setenv("HOME", str(session_root / "home"))
+    for key, value in {
+        **_validation_environment(session_root),
+        "BASIL_VALIDATION_FRESH_INSTALL": "1",
+    }.items():
+        monkeypatch.setenv(key, value)
+
+    from api.settings import _default_models_dir
+
+    assert _default_models_dir() == str(session_root / "home" / ".basil" / "models")
+
+
 def test_validation_fixtures_include_an_ordered_multi_run_history(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -694,3 +730,23 @@ async def test_validation_provider_permission_request_publishes_through_the_real
         },
         "root_task_id": agent_task_id,
     }]
+
+
+def test_validation_profile_reads_the_optional_read_only_model_copy_source(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    session_root = tmp_path / "sessions" / "copy-source"
+    session_home = session_root / "home"
+    session_home.mkdir(parents=True)
+    monkeypatch.setenv("HOME", str(session_home))
+    copy_source = tmp_path / "normal-basil-models"
+    environment = _validation_environment(session_root)
+
+    without_source = ValidationRuntimeProfile.from_environment(environment)
+    with_source = ValidationRuntimeProfile.from_environment(
+        {**environment, "BASIL_VALIDATION_COPY_SOURCE_MODELS_ROOT": str(copy_source)}
+    )
+
+    assert without_source.copy_source_models_root is None
+    assert with_source.copy_source_models_root == copy_source.resolve()

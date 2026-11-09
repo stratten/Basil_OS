@@ -1,0 +1,60 @@
+/* The hotkey conflict notice, its actions and its status line. The keys themselves use the .intro-hotkey-row kbd rule in setup-assistant.answer-guide.css. */
+.intro-hotkey-conflict {
+  background: color-mix(in srgb, var(--notice-base) 14%, var(--background-primary));
+  border: var(--border-thin) solid var(--notice-base);
+  border-radius: var(--corner-radius-medium);
+  color: var(--text-primary);
+  margin: 8px 0 0;
+  padding: var(--padding-m);
+}
+
+.intro-hotkey-conflict p {
+  margin: 6px 0 0;
+}
+
+.intro-hotkey-conflict strong {
+  font-family: var(--font-family-light);
+  font-weight: normal;
+}
+
+.intro-hotkey-conflict p:first-child {
+  margin-top: 0;
+}
+
+.intro-hotkey-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* Buttons on a hotkey row use the compact Settings, Hotkeys size. One font size, line height, padding and border width for all of them keeps them the same height, and the fixed line height stops the modifier symbols in the suggestion button, which come from a fallback font, from making it taller than its text-only neighbors. */
+.intro-hotkey-row button {
+  border-radius: 4px;
+  border-width: var(--border-thin);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-footnote);
+  line-height: calc(16px * var(--text-scale, 1));
+  padding: 3px var(--padding-s);
+}
+
+.intro-hotkey-row .secondary-button {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--primary) 85%, transparent);
+  color: var(--primary);
+}
+
+.intro-hotkey-status {
+  color: var(--text-primary);
+  display: block;
+  font-family: var(--font-family-light);
+  font-weight: normal;
+  margin-top: 4px;
+}
+
+.intro-hotkey-clear {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-weight: normal;
+  margin: 0;
+}

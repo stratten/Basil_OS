@@ -63,3 +63,21 @@ def test_prompt_explains_the_setup_change_resolved_observation():
 
     assert "kind: setup_change_resolved" in prompt
     assert "never claim a `failed` change" in prompt
+
+
+def test_open_interview_questions_show_what_a_good_answer_looks_like():
+    prompt = _prompt()
+
+    assert "a sentence or two is plenty" in prompt
+    assert "two or three example answers at different levels of detail" in prompt
+    assert "never repeat the question in other words" in prompt
+    assert "never ask them to be more specific before moving on" in prompt
+
+
+def test_imported_context_lets_the_interview_skip_answered_questions_without_claiming_memory():
+    prompt = _prompt()
+
+    assert "`imported_context`" in prompt
+    assert "skip every question it plausibly answers" in prompt
+    assert "never say you have remembered or saved them" in prompt
+    assert "never write memory yourself because of the import" in prompt

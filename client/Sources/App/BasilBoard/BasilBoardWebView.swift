@@ -147,6 +147,10 @@ final class BasilBoardWebView: NSObject, WKScriptMessageHandler, WKNavigationDel
         )
         configuration.userContentController.addUserScript(consoleScript)
 
+        // The conversation's document preview renders an HTML file in an iframe whose address uses this scheme, the same as the task window's tray. Without a handler registered here the frame has nothing to load and the Render view is blank. WebKit only accepts a handler before the web view exists, and this web view is shared across every conversation it shows, so the scope is the filesystem root, matching AgentTaskResultWebView and the preview window.
+        let inlinePreviewSchemeHandler = LocalPreviewFileSchemeHandler(allowedDirectory: URL(fileURLWithPath: "/"))
+        configuration.setURLSchemeHandler(inlinePreviewSchemeHandler, forURLScheme: "basil-inline-preview")
+
         let webView = FirstClickWebView(frame: .zero, configuration: configuration)
         self.webView = webView
 

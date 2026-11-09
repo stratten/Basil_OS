@@ -5,9 +5,10 @@ import { SetupStepActions } from '@/components/layout/SetupStepActions'
 import { prefersReducedMotion } from '@/components/motion/prefersReducedMotion'
 import { SetupWorkingIndicator } from '@/components/motion/SetupWorkingIndicator'
 import { useStickToBottom } from '@shared/useStickToBottom'
-import type { SetupProgressNarration } from '@/state/setupAssistantStore'
+import type { SetupImportedContextSummary, SetupProgressNarration } from '@/state/setupAssistantStore'
 import type { SetupOrientationObservation } from '@/types'
 
+import { describeImportedContext } from './importedContextCard'
 import { deriveOrientationProgress } from './orientationProgressSteps'
 import { plainMarkdownText } from '@shared/plainMarkdownText'
 
@@ -17,6 +18,8 @@ interface Props {
   isDiscoveryFetching: boolean
   isAgentStreaming: boolean
   latestProgressNarration: SetupProgressNarration | null
+  /** Background the person already imported. When there is some, it leads the step and they can continue without waiting for the rest. */
+  importedContext?: SetupImportedContextSummary | null
   onReadyForConversation: () => void
 }
 
@@ -26,6 +29,7 @@ export function OrientationInterstitial({
   isDiscoveryFetching,
   isAgentStreaming,
   latestProgressNarration,
+  importedContext = null,
   onReadyForConversation,
 }: Props) {
   const [visibleObservationCount, setVisibleObservationCount] = useState(0)
@@ -47,11 +51,14 @@ export function OrientationInterstitial({
     return 'reasoning'
   }, [isDiscoveryFetching, orientationReady, visibleObservationCount, observations.length])
 
-  const canContinue = phase === 'ready'
+  const importedCard = describeImportedContext(importedContext)
+  const isReady = phase === 'ready'
+  // Someone who already told Basil about themselves is not made to wait for the survey of their setup.
+  const canContinue = isReady || importedCard !== null
   const progress = deriveOrientationProgress({
     isDiscoveryFetching,
     isAgentStreaming,
-    isReady: canContinue,
+    isReady,
     observationCount: observations.length,
     latestProgressNarration,
     firstObservationAt,
@@ -98,6 +105,16 @@ export function OrientationInterstitial({
 
       <div ref={scrollRegionRef} className="orientation-scroll-region">
         <div ref={observationListRef} className="discovery-observation-list">
+          {importedCard && (
+            <article className="discovery-observation-card tone-profile" data-testid="orientation-imported-context">
+              <div className="discovery-observation-marker" aria-hidden="true" />
+              <div>
+                <span className="discovery-observation-label">{importedCard.label}</span>
+                <h3>{importedCard.title}</h3>
+                <p>{importedCard.detail}</p>
+              </div>
+            </article>
+          )}
           {visibleObservations.map(observation => (
             <SmoothReveal key={observation.id} open appear>
               <article className={`discovery-observation-card tone-${observation.tone}`}>
@@ -128,7 +145,14 @@ export function OrientationInterstitial({
           ))}
         </ol>
         {progress.statusLine ? (
-          <SetupWorkingIndicator label={progress.statusLine} quiet />
+          <>
+            <SetupWorkingIndicator label={progress.statusLine} quiet />
+            {importedCard && (
+              <p className="quiet-note" data-testid="orientation-skip-note">
+                You have already told me about yourself, so you can continue now and skip the rest of this. I will start from what you imported.
+              </p>
+            )}
+          </>
         ) : (
           <p className="quiet-note discovery-ready-note setup-motion-enter">
             That's the picture I'm starting with. When you're ready, let's keep going. I'll talk

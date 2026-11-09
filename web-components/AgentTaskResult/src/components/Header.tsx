@@ -5,6 +5,7 @@ import { BASIL_TEAM } from '../copy/teamIdentity';
 import { closeWidget, minimizeWidget } from '../services/bridge';
 import type { BubbleMode } from '../types';
 import { normalizeProgressStepText } from './result/progressStepText';
+import { PauseAction } from '../../../shared/PauseAction';
 import { StopAction } from '../../../shared/StopAction';
 import { plainMarkdownText } from '../../../shared/plainMarkdownText';
 import { useCaptureMeter } from '../store/captureMeterStore';
@@ -21,6 +22,12 @@ interface Props {
   taskTitle?: string;
   isCanceling?: boolean;
   onCancelRunning?: () => void;
+  /** What the pause control offers: pause while the task runs, resume while it is paused. Omit it while neither applies and the control is not drawn. */
+  runPauseState?: 'running' | 'paused';
+  /** A pause was accepted and takes effect after the current step. */
+  isPausing?: boolean;
+  onPauseRunning?: () => void;
+  onResumeRunning?: () => void;
   canCollapse?: boolean;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -49,6 +56,10 @@ export default function Header({
   taskTitle,
   isCanceling = false,
   onCancelRunning,
+  runPauseState,
+  isPausing = false,
+  onPauseRunning,
+  onResumeRunning,
   canCollapse = false,
   isCollapsed = false,
   onToggleCollapse,
@@ -105,6 +116,8 @@ export default function Header({
     ? plainMarkdownText(expandedTaskTitle) || null
     : null;
   const embeddedTaskTitle = plainMarkdownText(taskTitle);
+  const hasStopAction = showCancelStop && Boolean(onCancelRunning);
+  const showPauseAction = hasStopAction && runPauseState !== undefined && Boolean(onPauseRunning) && Boolean(onResumeRunning);
 
   if (embedded) {
     return (
@@ -157,16 +170,27 @@ export default function Header({
         </div>
       </div>
       <div
-        className={`header-right${showCancelStop && onCancelRunning ? ' has-stop-action' : ''}${isCanceling ? ' is-stopping' : ''}`}
+        className={`header-right${hasStopAction ? ' has-stop-action' : ''}${showPauseAction ? ' has-pause-action' : ''}${isCanceling ? ' is-stopping' : ''}`}
         data-agent-task-header-bubble
       >
-        {showCancelStop && onCancelRunning && (
-          <StopAction
-            className="agent-task-stop-action"
-            isStopping={isCanceling}
-            onStop={onCancelRunning}
-            title="Stop the running request"
-          />
+        {hasStopAction && onCancelRunning && (
+          <div className="header-run-actions">
+            {showPauseAction && runPauseState && onPauseRunning && onResumeRunning && (
+              <PauseAction
+                state={runPauseState}
+                isPending={isPausing}
+                onPause={onPauseRunning}
+                onResume={onResumeRunning}
+              />
+            )}
+            <StopAction
+              variant="icon"
+              className="agent-task-stop-action"
+              isStopping={isCanceling}
+              onStop={onCancelRunning}
+              title="Stop the running request"
+            />
+          </div>
         )}
         <div className="header-bubble">
           <AnimatedBubble

@@ -15,6 +15,7 @@ from .service_tooling.staged_tool_loading_repair import collect_new_tool_familie
 from .service_tooling.tool_family_catalog import (
     BASELINE_FALLBACK_FAMILY_NAMES,
     create_load_tool_family_tool,
+    family_names_for_tool_name,
     select_core_tools,
     select_tools_for_families,
 )
@@ -47,6 +48,7 @@ class ToolSurfaceTracker:
             get_available_families=self.available_families,
         )
         self.core_tool_count = len(select_core_tools(self.all_tools, self.loader_tool))
+        self._registered_names: frozenset[str] = frozenset(tool_name(item) for item in self.registered_tools())
         self._recorded_diagnostics: set[str] = set()
         self._surface_names: frozenset[str] = frozenset(tool_name(item) for item in self.surface_tools())
         self._publish_loaded_families()
@@ -89,6 +91,21 @@ class ToolSurfaceTracker:
         self._publish_loaded_families()
         return True
 
+    def load_for_call_through(self, name: str) -> list[str]:
+        """Load the families that own a registered tool the model called by name before loading it; return the families this added.
+
+        A name that is not registered, or a registered tool that no family owns, adds nothing, so the caller rejects the call as before.
+        """
+        if name not in self._registered_names:
+            return []
+        added = [family for family in family_names_for_tool_name(name) if family not in self.loaded_families]
+        if not added:
+            return []
+        self.loaded_families.extend(added)
+        self._surface_names = frozenset(tool_name(item) for item in self.surface_tools())
+        self._publish_loaded_families()
+        return added
+
     def _record_diagnostic(self, decision: Any) -> None:
         if not decision.diagnostic or self.context is None:
             return
@@ -118,6 +135,7 @@ class ToolSurfaceMiddleware(AgentMiddleware):
         self.tracker = tracker
         self.on_surface_change = on_surface_change
         self._surface_reported = False
+        self._reported_surface: frozenset[str] = frozenset()
 
     async def awrap_model_call(
         self,
@@ -125,8 +143,9 @@ class ToolSurfaceMiddleware(AgentMiddleware):
         handler: Callable[[ModelRequest], Awaitable[ModelResponse]],
     ) -> Any:
         grew = self.tracker.refresh(messages_to_intermediate_steps(request.messages))
-        if (grew or not self._surface_reported) and self.on_surface_change is not None:
+        if (grew or not self._surface_reported or self.tracker.surface_names != self._reported_surface) and self.on_surface_change is not None:
             self._surface_reported = True
+            self._reported_surface = self.tracker.surface_names
             try:
                 self.on_surface_change(self.tracker.surface_tools())
             except Exception as telemetry_error:
@@ -143,13 +162,16 @@ class ToolSurfaceMiddleware(AgentMiddleware):
         call_name = str(request.tool_call.get("name") or "")
         call_id = str(request.tool_call.get("id") or "")
         if request.tool is not None and call_name not in self.tracker.surface_names:
-            available = ", ".join(sorted(self.tracker.surface_names))
-            return ToolMessage(
-                content=f"{call_name} is not a valid tool, try one of [{available}].",
-                tool_call_id=call_id,
-                name=call_name,
-                status="error",
-            )
+            added = self.tracker.load_for_call_through(call_name)
+            if not added:
+                available = ", ".join(sorted(self.tracker.surface_names))
+                return ToolMessage(
+                    content=f"{call_name} is not a valid tool, try one of [{available}].",
+                    tool_call_id=call_id,
+                    name=call_name,
+                    status="error",
+                )
+            logger.info(f"[AgentTelemetry] tool-call-through tool={call_name} loaded_families={added}")
         try:
             return await handler(request)
         except Exception as error:

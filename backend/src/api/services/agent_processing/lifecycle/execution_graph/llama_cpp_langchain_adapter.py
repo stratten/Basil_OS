@@ -22,6 +22,7 @@ import os
 import re
 import time
 import threading
+import uuid
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from langchain_core.callbacks import CallbackManagerForLLMRun
@@ -37,6 +38,7 @@ from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_core.tools import BaseTool
 from pydantic import Field, PrivateAttr
 
+from api.core.models.reasoning.mlx_prompt_cache import PromptCacheStats
 from api.core.models.reasoning.model_runtime_profile import (
     TOOL_RENDERING_SLIM_TEXT_CATALOG,
     RuntimeModelProfile,
@@ -56,6 +58,7 @@ from .slim_catalog_renderer import (
     parse_slim_catalog_tool_calls,
     render_slim_catalog_preamble,
 )
+from api.core.models.reasoning.local_model_failure import LocalModelDecodeError, parse_decode_failure
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +100,89 @@ def _emit_runtime_trace(event: str, **fields: Any) -> None:
     )
 
 
+def _last_prompt_stats(llama_instance: Any) -> Optional[PromptCacheStats]:
+    """How the engine's prompt cache served its latest call, or None for engines that report nothing."""
+    stats = getattr(llama_instance, "last_prompt_stats", None)
+    return stats if isinstance(stats, PromptCacheStats) else None
+
+
+def _prompt_cache_trace_fields(stats: Optional[PromptCacheStats]) -> Dict[str, Any]:
+    """Trace fields describing how the engine's prompt cache served one call. Empty when there are none."""
+    if stats is None:
+        return {}
+    return {
+        "prompt_cache_path": stats.path,
+        "prompt_tokens": stats.prompt_tokens,
+        "prompt_cache_reused_tokens": stats.reused_tokens,
+        "prompt_cache_prefill_tokens": stats.prefill_tokens,
+        "prompt_tokens_per_second": stats.prompt_tps,
+        "generation_tokens_per_second": stats.generation_tps,
+    }
+
+
+class _ReplyTally:
+    """Tallies how much of one streamed reply is thinking and how much is the answer, from the text alone."""
+
+    def __init__(self) -> None:
+        self._reasoning_chars = 0
+        self._content_parts: List[str] = []
+
+    def add(self, chunk: Any) -> None:
+        try:
+            delta = chunk["choices"][0].get("delta") or {}
+        except (KeyError, IndexError, TypeError, AttributeError):
+            return
+        reasoning = delta.get("reasoning_content")
+        if isinstance(reasoning, str):
+            self._reasoning_chars += len(reasoning)
+        content = delta.get("content")
+        if isinstance(content, str):
+            self._content_parts.append(content)
+
+    def thinking_and_answer_chars(self) -> tuple[int, int]:
+        text = "".join(self._content_parts)
+        end = text.find("</think>")
+        if end >= 0:
+            return self._reasoning_chars + end, len(text) - end - len("</think>")
+        if text.lstrip().startswith("<think>"):
+            return self._reasoning_chars + len(text), 0
+        return self._reasoning_chars, len(text)
+
+
+def describe_model_call(
+    *,
+    native_seconds: float,
+    chunk_count: int,
+    stopped: bool,
+    stats: Optional[PromptCacheStats],
+    tally: _ReplyTally,
+) -> str:
+    """One prompt-free line saying where a model call's time went: reading the prompt, thinking, or answering."""
+
+    def number(value: Optional[float], spec: str) -> str:
+        return "n/a" if value is None else format(value, spec)
+
+    thinking_chars, answer_chars = tally.thinking_and_answer_chars()
+    fields = [
+        f"seconds={native_seconds:.1f}",
+        f"chunks={chunk_count}",
+        f"stopped={str(stopped).lower()}",
+        f"thinking_chars={thinking_chars}",
+        f"answer_chars={answer_chars}",
+    ]
+    if stats is not None:
+        fields[1:1] = [
+            f"first_token_seconds={number(stats.first_token_seconds, '.1f')}",
+            f"prompt_tokens={stats.prompt_tokens}",
+            f"reused_tokens={stats.reused_tokens}",
+            f"prefill_tokens={stats.prefill_tokens}",
+            f"prefill_tps={number(stats.prompt_tps, '.0f')}",
+            f"completion_tokens={stats.generation_tokens}",
+            f"decode_tps={number(stats.generation_tps, '.1f')}",
+        ]
+    return "[ModelCall] " + " ".join(fields)
+
+
 def _message_plain_text(message: BaseMessage) -> str:
     """Flatten a message's content and tool_calls to plain text for token
     counting. Not the exact rendering llama.cpp's chat template produces --
@@ -129,6 +215,25 @@ def _count_tokens(llama_instance: Any, text: str) -> int:
         return len(llama_instance.tokenize(text.encode("utf-8", errors="ignore"), add_bos=False))
     except Exception:
         return max(1, len(text) // 4)
+
+
+def _estimate_prompt_tokens(llama_instance: Any, messages: List[Dict[str, Any]], tools: Any = None) -> Optional[int]:
+    """Token count of the request about to be read, for progress display only. The chat template adds a little, so callers present it as approximate."""
+    try:
+        text = "\n".join(_converted_message_plain_text(message) for message in messages)
+        if tools:
+            text += "\n" + json.dumps(tools, default=str)
+        return _count_tokens(llama_instance, text)
+    except Exception:
+        return None
+
+
+def with_unique_tool_call_ids(tool_calls: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Give every parsed tool call an id no other call in the run shares.
+
+    The local parsers number calls by position within one reply, so a model that makes one call per reply produced the same id on every turn, and anything that pairs results to calls by id kept only the last result. Cloud providers and Ollama already issue a fresh id per call; the readable prefix is kept so logs still show which tool the id belongs to.
+    """
+    return [{**call, "id": f"{call.get('id') or 'call'}_{uuid.uuid4().hex[:8]}"} for call in tool_calls]
 
 
 _CONTEXT_TRIM_TOKEN_MARGIN = 512
@@ -286,6 +391,8 @@ class LlamaCppLangChainAdapter(BaseChatModel):
     reasoning_mode: str = Field(default="tagged", description="Local reasoning marker mode")
 
     _llama_instance: Any = None  # llama_cpp.Llama object
+    # The LlamaCppModel that owns the native context. It lets a failed decode reload the context at a smaller size, and keeps this adapter pointed at the live context after any reload.
+    _llama_wrapper: Any = None
     _bound_tools: Optional[List[Dict[str, Any]]] = None
     # Plan B.3: the original BaseTool list as bound. Needed so the slim
     # text-catalog renderer can introspect args_schema for signature
@@ -294,6 +401,8 @@ class LlamaCppLangChainAdapter(BaseChatModel):
     # passed in pre-rendered OpenAI tool dicts directly.
     _bound_tools_raw: Optional[List[Any]] = None
     _activity_callback: Any = None  # Optional[Callable[[int, Optional[str], bool], None]] — (tokens, thinking_text, thinking_complete)
+    # Optional[Callable[[str], None]]: called with the tail of everything streamed so far at each heartbeat, whether or not the model wraps its reasoning in think tags. Used by callers that show the model's live output.
+    _stream_preview_callback: Any = None
     _native_execution_lock: Any = PrivateAttr(default_factory=threading.RLock)
     # Plan B.2: the active RuntimeModelProfile is threaded through so the
     # adapter can branch on `tool_rendering` for *delivery* (e.g. drop the
@@ -360,9 +469,11 @@ class LlamaCppLangChainAdapter(BaseChatModel):
             reasoning_mode=self.reasoning_mode,
         )
         new_instance._llama_instance = self._llama_instance
+        new_instance._llama_wrapper = self._llama_wrapper
         new_instance._bound_tools = openai_tools
         new_instance._bound_tools_raw = raw_tools
         new_instance._activity_callback = self._activity_callback
+        new_instance._stream_preview_callback = self._stream_preview_callback
         new_instance._native_execution_lock = self._native_execution_lock
         # Carry the rendering profile across the bind boundary so the
         # generation path keeps the same delivery decisions the factory made.
@@ -484,8 +595,22 @@ class LlamaCppLangChainAdapter(BaseChatModel):
             )
 
     _HEARTBEAT_INTERVAL_SECONDS = 5.0
+    _STREAM_PREVIEW_CHARS = 4000
     _QUEUE_POLL_SECONDS = 10.0
     _MID_STREAM_STALL_SECONDS = 180.0
+
+    def _follow_wrapper_context(self) -> None:
+        """Point this adapter at the wrapper's live native context.
+
+        A decode failure elsewhere can reload the context at a smaller size and close the old one, so an adapter built earlier would otherwise keep a closed handle.
+        """
+        wrapper = self._llama_wrapper
+        live = getattr(wrapper, "llm", None) if wrapper is not None else None
+        if live is not None and live is not self._llama_instance:
+            self._llama_instance = live
+            native_context = getattr(live, "n_ctx", None)
+            if callable(native_context):
+                self.context_window = int(native_context())
 
     async def _agenerate(
         self,
@@ -503,6 +628,7 @@ class LlamaCppLangChainAdapter(BaseChatModel):
         """
         if self._llama_instance is None:
             raise RuntimeError("LlamaCpp model not initialized - no Llama instance available")
+        self._follow_wrapper_context()
 
         messages = compact_scratchpad_for_context_window(
             self._llama_instance, messages, self.max_tokens
@@ -571,9 +697,13 @@ class LlamaCppLangChainAdapter(BaseChatModel):
         queue: asyncio.Queue = asyncio.Queue()
         loop = asyncio.get_running_loop()
         stop_event = threading.Event()
-        stream_state: Dict[str, Any] = {"phase": "waiting_for_model"}
+        stream_state: Dict[str, Any] = {
+            "phase": "waiting_for_model",
+            "phase_started_at": time.monotonic(),
+            "prompt_tokens_estimate": None,
+        }
 
-        def _stream_worker() -> None:
+        def _stream_attempt(allow_reload: bool, reloaded_to: Optional[int] = None) -> None:
             waiting_at = time.monotonic()
             chunk_count = 0
             try:
@@ -592,6 +722,10 @@ class LlamaCppLangChainAdapter(BaseChatModel):
                         )
                         return
                     stream_state["phase"] = "processing_prompt"
+                    stream_state["phase_started_at"] = time.monotonic()
+                    stream_state["prompt_tokens_estimate"] = _estimate_prompt_tokens(
+                        self._llama_instance, converted_messages, call_kwargs.get("tools")
+                    )
                     native_started_at = time.monotonic()
                     _emit_runtime_trace(
                         "adapter_native_stream_started",
@@ -601,6 +735,7 @@ class LlamaCppLangChainAdapter(BaseChatModel):
                         message_count=len(converted_messages),
                         tool_count=len(self._bound_tools or []),
                     )
+                    reply_tally = _ReplyTally()
                     stream = self._llama_instance.create_chat_completion(**call_kwargs)
                     for chunk in stream:
                         if stop_event.is_set():
@@ -613,20 +748,41 @@ class LlamaCppLangChainAdapter(BaseChatModel):
                         chunk_count += 1
                         if chunk_count == 1:
                             stream_state["phase"] = "generating"
+                            stream_state["phase_started_at"] = time.monotonic()
+                            logger.info(
+                                "LlamaCpp read the prompt (about %s tokens) in %.1fs before the first token",
+                                stream_state.get("prompt_tokens_estimate"),
+                                time.monotonic() - native_started_at,
+                            )
+                            prompt_cache_stats = _last_prompt_stats(self._llama_instance)
+                            if prompt_cache_stats is not None:
+                                logger.info("[PromptCache] %s", prompt_cache_stats.describe())
                             _emit_runtime_trace(
                                 "adapter_native_stream_first_chunk",
                                 model_name=self.model_name,
                                 first_chunk_seconds=time.monotonic() - native_started_at,
                             )
+                        reply_tally.add(chunk)
                         loop.call_soon_threadsafe(queue.put_nowait, chunk)
                     close_stream = getattr(stream, "close", None)
                     if stop_event.is_set() and callable(close_stream):
                         close_stream()
+                    logger.info(
+                        "%s",
+                        describe_model_call(
+                            native_seconds=time.monotonic() - native_started_at,
+                            chunk_count=chunk_count,
+                            stopped=stop_event.is_set(),
+                            stats=_last_prompt_stats(self._llama_instance),
+                            tally=reply_tally,
+                        ),
+                    )
                     _emit_runtime_trace(
                         "adapter_native_stream_completed",
                         model_name=self.model_name,
                         native_duration_seconds=time.monotonic() - native_started_at,
                         chunk_count=chunk_count,
+                        **_prompt_cache_trace_fields(_last_prompt_stats(self._llama_instance)),
                     )
             except Exception as exc:
                 _emit_runtime_trace(
@@ -635,6 +791,24 @@ class LlamaCppLangChainAdapter(BaseChatModel):
                     error_type=type(exc).__name__,
                     chunk_count=chunk_count,
                 )
+                decode_failure = parse_decode_failure(exc)
+                if decode_failure is not None:
+                    retried_context: Optional[int] = reloaded_to
+                    # Only a failure before the first chunk can be retried: nothing has been streamed, so the whole call can run again.
+                    if allow_reload and chunk_count == 0 and self._llama_wrapper is not None:
+                        retried_context = self._llama_wrapper._reload_after_memory_failure(decode_failure)
+                        if retried_context is not None and self._llama_wrapper.llm is not None:
+                            self._llama_instance = self._llama_wrapper.llm
+                            self.context_window = retried_context
+                            _stream_attempt(False, retried_context)
+                            return
+                    exc = LocalModelDecodeError(
+                        code=decode_failure.code,
+                        kind=decode_failure.kind,
+                        model_name=self.model_name,
+                        n_ctx=self.context_window,
+                        retried_at_context=retried_context,
+                    )
                 # Diagnostic-only: dump the exact request shape that crashed the
                 # model's own chat-template rendering, so a failure like this GGUF's
                 # Jinja "Can only get item pairs from a mapping" can be reproduced
@@ -664,6 +838,10 @@ class LlamaCppLangChainAdapter(BaseChatModel):
                         actual_tokens, max_tokens = overflow
                         exc = LocalModelContextWindowExceeded(actual_tokens, max_tokens)
                 loop.call_soon_threadsafe(queue.put_nowait, exc)
+
+        def _stream_worker() -> None:
+            try:
+                _stream_attempt(True)
             finally:
                 loop.call_soon_threadsafe(queue.put_nowait, None)
 
@@ -694,7 +872,13 @@ class LlamaCppLangChainAdapter(BaseChatModel):
                         raise LocalModelGenerationStalled(
                             f"Local model produced no output for {silent_for:.0f}s mid-generation"
                         )
-                    self._fire_heartbeat(tokens_generated, content_parts, phase=phase)
+                    self._fire_heartbeat(
+                        tokens_generated,
+                        content_parts,
+                        phase=phase,
+                        prompt_tokens=stream_state.get("prompt_tokens_estimate"),
+                        phase_seconds=time.monotonic() - float(stream_state.get("phase_started_at") or time.monotonic()),
+                    )
                     continue
 
                 if chunk is None:
@@ -796,6 +980,7 @@ class LlamaCppLangChainAdapter(BaseChatModel):
             + (f", {len(parse_errors)} parse errors" if parse_errors else "")
         )
 
+        tool_calls = with_unique_tool_call_ids(tool_calls)
         if tool_calls:
             ai_message = AIMessage(
                 content=content,
@@ -831,6 +1016,8 @@ class LlamaCppLangChainAdapter(BaseChatModel):
         tokens_generated: int,
         content_parts: Optional[List[str]] = None,
         phase: str = "generating",
+        prompt_tokens: Optional[int] = None,
+        phase_seconds: Optional[float] = None,
     ) -> None:
         """Invoke the activity callback and log a content preview.
 
@@ -838,8 +1025,14 @@ class LlamaCppLangChainAdapter(BaseChatModel):
         through the callback so callers (e.g. the heartbeat in
         agent_executor_factory) can stream it to the frontend.
         """
+        preview_callback = self._stream_preview_callback
+        if preview_callback is not None and content_parts:
+            try:
+                preview_callback("".join(content_parts)[-self._STREAM_PREVIEW_CHARS:])
+            except Exception:
+                pass
         if self.reasoning_mode == "none":
-            self._invoke_activity_callback(tokens_generated, None, False, phase)
+            self._invoke_activity_callback(tokens_generated, None, False, phase, prompt_tokens, phase_seconds)
             return
         thinking_text: Optional[str] = None
         thinking_complete = False
@@ -872,7 +1065,7 @@ class LlamaCppLangChainAdapter(BaseChatModel):
                     f"LlamaCpp stream [{tokens_generated} tokens]: {preview}"
                 )
 
-        self._invoke_activity_callback(tokens_generated, thinking_text, thinking_complete, phase)
+        self._invoke_activity_callback(tokens_generated, thinking_text, thinking_complete, phase, prompt_tokens, phase_seconds)
 
     def _invoke_activity_callback(
         self,
@@ -880,12 +1073,23 @@ class LlamaCppLangChainAdapter(BaseChatModel):
         thinking_text: Optional[str],
         thinking_complete: bool,
         phase: str,
+        prompt_tokens: Optional[int] = None,
+        phase_seconds: Optional[float] = None,
     ) -> None:
         callback = self._activity_callback
         if not callback:
             return
         try:
-            if getattr(callback, "accepts_phase", False):
+            if getattr(callback, "accepts_prompt_progress", False):
+                callback(
+                    tokens_generated,
+                    thinking_text,
+                    thinking_complete,
+                    phase=phase,
+                    prompt_tokens=prompt_tokens,
+                    phase_seconds=phase_seconds,
+                )
+            elif getattr(callback, "accepts_phase", False):
                 callback(tokens_generated, thinking_text, thinking_complete, phase=phase)
             else:
                 callback(tokens_generated, thinking_text, thinking_complete)
@@ -899,6 +1103,7 @@ def create_langchain_llm_from_llama_cpp(
     profile: Optional[RuntimeModelProfile] = None,
     purpose: str = "agent_execution",
     requested_output_tokens: Optional[int] = None,
+    stream_preview_callback: Optional[Callable[[str], None]] = None,
 ) -> LlamaCppLangChainAdapter:
     """Create a local LangChain model with one resolved workload budget."""
     from api.core.models.reasoning.streaming_contract import resolve_generation_budget
@@ -933,7 +1138,9 @@ def create_langchain_llm_from_llama_cpp(
         context_window=int(context_window),
     )
     adapter._llama_instance = llama_cpp_model.llm
+    adapter._llama_wrapper = llama_cpp_model
     adapter._native_execution_lock = llama_cpp_model.native_execution_lock
     adapter._activity_callback = activity_callback
+    adapter._stream_preview_callback = stream_preview_callback
     adapter._tool_rendering_profile = active_profile
     return adapter

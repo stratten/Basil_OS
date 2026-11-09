@@ -58,6 +58,7 @@ def build_default_retrieval_registry() -> RetrievalSourceRegistry:
                 "conversation",
                 "screen_block",
                 "meeting",
+                "imported_context",
             )),
         ]
     )

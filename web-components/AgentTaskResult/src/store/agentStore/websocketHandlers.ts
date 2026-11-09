@@ -3,6 +3,7 @@ import type {
   CommandInputMetadata,
   ProviderPermissionApprovalMetadata,
   ResultSeverity,
+  SettingsChangeApprovalMetadata,
   StepDetailEntry,
   StructuredFile,
   ThinkingSegment,
@@ -17,17 +18,27 @@ import { parseAgentTaskArtifactEvent } from './artifactTimelineReconciliation';
 import { deriveResultSeverity } from './timelineDetails';
 import { noteLiveEvent } from '../liveActivityClock';
 import { readSuggestedFollowUps } from './suggestedFollowUps';
+import { isBackgroundStartEvent } from './backgroundOrigin';
 import {
   isLiveProgressEvent,
   isTerminalProgressEvent,
   isWaitingPhaseEvent,
   isWaitingUserInteractionEvent,
   parseProgressEvent,
+  settledInteractionId,
   timedOutInteractionId,
 } from './progressEvent';
 
+const SCHEDULED_RUN_ENVELOPE_EVENTS: ReadonlySet<string> = new Set([
+  'scheduled_agent_task_run_started',
+  'scheduled_agent_task_run_completed',
+  'scheduled_agent_task_missed',
+]);
+
+// A question is accepted while paused: a paused run cannot ask one, so receiving it proves the run was resumed and this window missed that. Dropping it would leave the timeline saying "waiting for your answer" with nothing to answer.
 const PAUSED_ACCEPTED_EVENTS = new Set([
   'agent_task_paused',
+  'collaborative_checkpoint_request',
   'checkpoint_resumed',
   'agent_task_step_detail',
   'agent_task_origin',
@@ -79,12 +90,20 @@ export class AgentStore extends BlockerEventAgentStore {
         }
       }
 
-      a.status = 'processing';
+      // A question the user has not answered stays open through the backend's heartbeat. It sends an agent_progress_update and an in-progress dynamic_step_updated every 20 seconds for a running tool call, and the question is asked from inside one, so they keep arriving while it waits and say nothing about the user having answered. Other progress (a new phase, streamed text, a new step) still shows the run has moved on, and an answer this window has just submitted (isCheckpointResumePending) is settled as before.
+      const isToolHeartbeat = eventType === 'agent_progress_update'
+        || (eventType === 'dynamic_step_updated' && event.status === 'in_progress');
+      const holdsOpenQuestion = isToolHeartbeat
+        && Boolean(a.currentCheckpoint)
+        && !a.isCheckpointResumePending
+        && priorStatus === 'awaitingInput';
+
+      if (!holdsOpenQuestion) a.status = 'processing';
       a.errorMessage = undefined;
       a.isRetryPending = false;
       // A live event proves the resume was accepted, so durable reads are trustworthy again.
       a.isCheckpointResumePending = false;
-      if (isActiveExecutionEvent) {
+      if (isActiveExecutionEvent && !holdsOpenQuestion) {
         // A real execution event is authoritative evidence that a previously
         // shown checkpoint is no longer awaiting input. This self-heals a
         // missed checkpoint_resumed event and prevents a stale overlay from
@@ -128,6 +147,9 @@ export class AgentStore extends BlockerEventAgentStore {
       : undefined;
     if (eventType === 'agent_task_artifact' && !artifactTimelineEntry) return;
 
+    // These announce a schedule's run to the Scheduled Runs panel and the missed-run toast, which read the socket themselves. They carry the run's task id and arrive before agent_task_origin, so treating one as a task event would register the run and select it ahead of the event that marks it as Basil's own, pulling the reader away from whatever they have open.
+    if (SCHEDULED_RUN_ENVELOPE_EVENTS.has(eventType)) return;
+
     const sourceAgentTaskId = event.agent_task_id;
     if (typeof sourceAgentTaskId !== 'string' || !sourceAgentTaskId.trim()) return;
     let agentTaskId = sourceAgentTaskId;
@@ -136,6 +158,7 @@ export class AgentStore extends BlockerEventAgentStore {
     const rootTaskId = event.root_task_id as string | undefined;
     const previousTaskId = event.previous_task_id as string | undefined;
     const explicitRootId = rootTaskId;
+    const backgroundStart = isBackgroundStartEvent(eventType, event);
 
     if (explicitRootId && explicitRootId !== agentTaskId) {
       const originalId = agentTaskId;
@@ -145,14 +168,15 @@ export class AgentStore extends BlockerEventAgentStore {
         ? this.resolveCanonicalRootId(explicitRootId)
         : this.resolveCanonicalRootId(originalId);
       if (isFirstMapping) {
-        this.beginFollowUpTurn(originalId, rootId);
+        // A turn first met through a live event is never allowed to discard the reader's unsent text: this window may have loaded mid-run and missed the origin event, so a scheduled run can look exactly like a follow-up the reader sent. Turns the reader sends register through TextFollowUp or the host bridge with readerStarted.
+        this.beginFollowUpTurn(originalId, rootId, undefined, undefined, undefined, { background: backgroundStart });
       }
       agentTaskId = rootId;
       if (!this.agents.has(agentTaskId)) {
-        this.registerAgent(agentTaskId);
+        this.registerAgent(agentTaskId, '', { select: !backgroundStart });
       }
       this.recordChainIdentity(agentTaskId, rootId, previousTaskId);
-      if (isFirstMapping) {
+      if (isFirstMapping && !backgroundStart) {
         this.selectedAgentId = rootId;
       }
     } else if (this.followUpToParent.has(agentTaskId)) {
@@ -166,7 +190,7 @@ export class AgentStore extends BlockerEventAgentStore {
           return;
         }
         console.log(`[AgentStore] WS new agent created: ${agentTaskId}`);
-        this.registerAgent(agentTaskId);
+        this.registerAgent(agentTaskId, '', { select: !backgroundStart });
       }
       this.recordChainIdentity(agentTaskId, rootTaskId, previousTaskId);
     }
@@ -626,7 +650,12 @@ export class AgentStore extends BlockerEventAgentStore {
     const step = parsed.progressStep?.step;
     const status = event.status as string | undefined;
     if (step) {
-      const isActive = !status || status === 'started' || status === 'in_progress';
+      // While a question is open and unanswered this event is the tool heartbeat. Marking its step active would move the task out of "waiting for your answer" and replace the step the question is waiting on.
+      const agent = this.getAgent(agentTaskId);
+      const questionIsOpen = agent?.status === 'awaitingInput'
+        && Boolean(agent.currentCheckpoint)
+        && !agent.isCheckpointResumePending;
+      const isActive = !questionIsOpen && (!status || status === 'started' || status === 'in_progress');
       const isComplete = status === 'completed';
 
       // Heartbeat messages contain a changing token count (e.g. "Reasoning… (~355 tokens)").
@@ -691,6 +720,12 @@ export class AgentStore extends BlockerEventAgentStore {
       // The backend gave up waiting, so the card asking for an answer no longer has anything to answer.
       const timedOutRequestId = timedOutInteractionId(parsed.timelineEntry);
       if (timedOutRequestId) this.removeApproval(agentTaskId, timedOutRequestId);
+      // A request settled in another window (approved, denied, or answered there) must leave this window too, or its card stays up and blocks the run from here until the task ends.
+      const settledRequestId = settledInteractionId(parsed.timelineEntry);
+      if (settledRequestId && settledRequestId !== timedOutRequestId) {
+        this.removeApproval(agentTaskId, settledRequestId);
+        this.settleAnsweredCheckpoint(agentTaskId, settledRequestId);
+      }
       this.upsertTimelineEntry(agentTaskId, parsed.timelineEntry);
       this.setCurrentActivityPhase(agentTaskId, parsed.currentPhase);
       return;
@@ -743,7 +778,9 @@ export class AgentStore extends BlockerEventAgentStore {
         | 'browser_sensitive_fill'
         | 'provider_permission'
         | 'command_input'
+        | 'settings_change'
         | undefined,
+      settings_change: event.settings_change as SettingsChangeApprovalMetadata | undefined,
       browser_metadata: event.browser_metadata as Record<string, unknown> | undefined,
       provider_permission: event.provider_permission as ProviderPermissionApprovalMetadata | undefined,
       command_input: event.command_input as CommandInputMetadata | undefined,

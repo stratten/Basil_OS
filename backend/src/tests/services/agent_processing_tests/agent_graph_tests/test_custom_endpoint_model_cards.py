@@ -192,7 +192,7 @@ async def test_openai_compatible_adapter_parses_function_parameter_text_tool_cal
 
     message = result.generations[0].message
     assert len(message.tool_calls) == 1
-    assert message.tool_calls[0]["id"] == "call_0_record_result"
+    assert message.tool_calls[0]["id"].startswith("call_0_record_result_")
     assert message.tool_calls[0]["name"] == "record_result"
     assert message.tool_calls[0]["args"] == {"value": "basil-local-eval"}
 

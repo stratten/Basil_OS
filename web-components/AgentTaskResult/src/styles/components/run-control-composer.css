@@ -118,6 +118,42 @@
   color: var(--secondary);
 }
 
+.run-control-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--padding-xs);
+}
+
+/* Stop and Pause share one size, and their icons come from the shared circle icon set, which has no size of its own. */
+.run-control-pause svg,
+.run-control-stop svg {
+  width: 16px;
+  height: 16px;
+}
+
+.text-followup-action-btn.run-control-stop {
+  width: 28px;
+  min-height: 28px;
+  justify-content: center;
+  padding: 0;
+  border: var(--border-thin) solid color-mix(in srgb, var(--error-base) 60%, transparent);
+  background: color-mix(in srgb, var(--error-base) 12%, var(--background-primary));
+  color: var(--text-primary);
+}
+
+.text-followup-action-btn.run-control-stop:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--error-base) 22%, var(--background-primary));
+}
+
+.text-followup-action-btn.run-control-stop:disabled {
+  opacity: 0.6;
+}
+
+.run-control-stop:focus-visible {
+  outline: var(--border-thin) solid var(--error-base);
+  outline-offset: 1px;
+}
+
 .text-followup-action-btn.run-control-pause:hover:not(:disabled) {
   background: color-mix(in srgb, var(--secondary) 10%, var(--background-primary));
 }

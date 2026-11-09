@@ -136,7 +136,7 @@ describe('AgentStore provider permission approval handling', () => {
     expect(agent.showApprovalPrompt).toBe(true);
   });
 
-  it('keeps the approval card for other resolutions, which the decision flow removes itself', () => {
+  it('removes the approval card when the request is settled, so a window that did not make the decision does not keep it', () => {
     const store = new AgentStore();
     store.registerAgent('task-1');
     store.handleWSEvent({
@@ -161,7 +161,7 @@ describe('AgentStore provider permission approval handling', () => {
       },
     });
 
-    expect(store.getAgent('task-1')!.approvalRequests).toHaveLength(1);
+    expect(store.getAgent('task-1')!.approvalRequests).toHaveLength(0);
   });
 
   it('clears stale approval and checkpoint presentation before retrying', () => {
@@ -327,5 +327,32 @@ describe('AgentStore command input requests', () => {
       prompt: 'Password:',
       secret: true,
     });
+  });
+});
+
+describe('AgentStore settings change approval handling', () => {
+  it('stores the settings diff and a context that forbids remembering', () => {
+    const store = new AgentStore();
+    store.registerAgent('task-1');
+
+    store.handleWSEvent({
+      event_type: 'execution_approval_request',
+      agent_task_id: 'task-1',
+      approval_id: 'settings-1',
+      command: 'Change Basil settings. Open turns: single to multiple',
+      reason: 'Compare turns',
+      risk_level: 'medium',
+      execution_type: 'settings_change',
+      context: { whitelist: { eligible: false, reason: 'Settings changes are approved one at a time and cannot be remembered.', advice: null } },
+      settings_change: {
+        tier: 'behavioral',
+        changes: [{ key: 'appearance.agent_task_chain_expansion', label: 'Open turns', before: 'single', after: 'multiple' }],
+      },
+    });
+
+    const approval = store.getAgent('task-1')?.approvalRequests[0];
+    expect(approval?.execution_type).toBe('settings_change');
+    expect(approval?.settings_change?.changes[0]).toMatchObject({ before: 'single', after: 'multiple' });
+    expect(approval?.whitelist?.eligible).toBe(false);
   });
 });

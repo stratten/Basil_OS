@@ -4,7 +4,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--settings-card-gap);
-  max-width: 650px;
+  max-width: 930px;
   width: 100%;
 }
 
@@ -12,9 +12,25 @@
   align-items: flex-start;
 }
 
-.home-settings-shell > .home-settings-section {
-  max-width: 100%;
-  width: fit-content;
+/* The main column keeps the original two-column cards. The right rail holds Quick Presets first and Support second. */
+.home-settings-layout {
+  align-items: start;
+  display: grid;
+  gap: var(--settings-card-gap);
+  grid-template-columns: minmax(0, 1fr) 260px;
+  width: 100%;
+}
+
+.home-settings-main,
+.home-settings-rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--settings-card-gap);
+  min-width: 0;
+}
+
+.home-settings-rail > .home-settings-section {
+  width: 100%;
 }
 
 .home-settings-overview-grid {
@@ -81,7 +97,6 @@
 .home-settings-setup-notice {
   background: color-mix(in srgb, var(--notice-base) 14%, var(--background-primary));
   border: 1px solid var(--notice-base);
-  border-left-width: 4px;
   border-radius: 8px;
   display: flex;
   flex-direction: column;
@@ -237,7 +252,23 @@
   width: auto;
 }
 
+/* Below this width the rail drops under the main column and its two cards sit side by side. */
+@container home-settings (max-width: 840px) {
+  .home-settings-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-settings-rail {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @container home-settings (max-width: 560px) {
+  .home-settings-rail {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .home-settings-overview-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -280,3 +311,90 @@
   gap: 12px;
   max-width: 650px;
 }
+
+.home-settings-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.home-settings-preset-status {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: calc(13px * var(--text-scale, 1));
+  margin: 0;
+  padding: 8px 12px;
+}
+
+.home-settings-preset-status.is-error {
+  background: color-mix(in srgb, var(--notice-base) 14%, var(--background-primary));
+  border-color: var(--notice-base);
+  font-weight: 700;
+}
+
+.home-settings-preset {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.home-settings-preset-details summary {
+  color: var(--primary);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: calc(12px * var(--text-scale, 1));
+}
+
+.home-settings-preset-details p {
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: calc(12px * var(--text-scale, 1));
+  line-height: 1.4;
+  margin: 6px 0 0;
+}
+
+/* A switch and its circled "?" share one row, with the "?" at the right end so the shared tooltip stays inside the card. */
+.home-settings-switch-row {
+  align-items: center;
+  align-self: stretch;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.hint-tooltip {
+  flex: 0 0 auto;
+}
+
+.hint-tooltip-trigger {
+  align-items: center;
+  background: var(--background-primary);
+  border: 1px solid var(--primary);
+  border-radius: 50%;
+  color: var(--primary);
+  cursor: help;
+  display: inline-flex;
+  font-family: var(--font-family-medium);
+  font-size: calc(11px * var(--text-scale, 1));
+  height: 18px;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  width: 18px;
+}
+
+.hint-tooltip-trigger:hover,
+.hint-tooltip-trigger:focus-visible {
+  background: var(--primary);
+  color: var(--text-on-primary, var(--background-primary));
+}
+
+.hint-tooltip-trigger:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+

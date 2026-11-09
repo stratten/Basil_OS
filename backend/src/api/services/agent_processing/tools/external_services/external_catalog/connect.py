@@ -65,6 +65,7 @@ async def request_connection_setup_approval(plan: ConnectionSetupPlan) -> bool:
         "execution_type": CONNECT_EXECUTION_TYPE,
         "require_explicit_approval": True,
         "purpose": describe_connection_approval(plan),
+        "purpose_source": "basil",
         "description": "Connecting a service needs your explicit approval every time",
         "friendly_name": plan.friendly_name,
         "server_url": plan.server_url,

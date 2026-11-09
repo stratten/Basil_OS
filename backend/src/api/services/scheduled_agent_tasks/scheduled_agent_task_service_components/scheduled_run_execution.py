@@ -33,7 +33,7 @@ from typing import Any, Dict, Iterator, Optional, TYPE_CHECKING
 
 from api.dependencies import get_sqlite_knowledge_service
 
-from . import scheduled_chain_runtime, scheduled_connection_tags, scheduled_run_lifecycle
+from . import scheduled_chain_runtime, scheduled_checklist_carry, scheduled_connection_tags, scheduled_run_lifecycle
 from .schedule_time_math import utc_now
 from .scheduled_run_outcome import (
     OUTCOME_FAILED,
@@ -488,8 +488,12 @@ async def execute_scheduled_run(
     db: "SQLiteKnowledgeService",
     scheduled_agent_task_id: str,
     run_id: str,
+    allow_inactive: bool = False,
 ) -> Dict[str, Any]:
-    """Execute a queued scheduled run and persist completion status."""
+    """Execute a queued scheduled run and persist completion status.
+
+    A run whose schedule has been deactivated is skipped, because deactivating is how the user stops a schedule firing. ``allow_inactive`` is set only for a run the user started with Run now, which they asked for by name, so it runs even though the schedule is inactive. The schedule stays inactive afterward: finalizing a run only re-arms the next occurrence of an active schedule.
+    """
     # Defensive idempotency: a run can reach this method via the
     # in-process runner's timer after the run row was already
     # canceled, missed, or finalized by another path (e.g. user
@@ -523,7 +527,7 @@ async def execute_scheduled_run(
         )
         return {"success": False, "error": "Scheduled task not found"}
 
-    if not scheduled_agent_task["is_active"]:
+    if not scheduled_agent_task["is_active"] and not allow_inactive:
         await repo.update_scheduled_run(
             run_id,
             status="skipped",
@@ -623,7 +627,16 @@ async def execute_scheduled_run(
             run_model_id, model_notice = await _resolve_scheduled_model(
                 scheduled_agent_task, scheduled_agent_task_id
             )
-            run_start_notice = " ".join(part for part in (model_notice, chain_plan.notice) if part)
+            # Seeded before submission so the run's first turn already sees the carried items.
+            carry_notice = await scheduled_checklist_carry.carry_checklist_into_run(
+                repo,
+                scheduled_agent_task,
+                run_id=run_id,
+                new_root_task_id=agent_task_id,
+                continuing_chain=bool(chain_plan.root_task_id),
+                knowledge_service=db,
+            )
+            run_start_notice = " ".join(part for part in (model_notice, chain_plan.notice, carry_notice) if part)
             if run_start_notice:
                 await repo.update_scheduled_run(run_id, notice=run_start_notice)
             agent_task_text = scheduled_agent_task["agent_task_text"]

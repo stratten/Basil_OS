@@ -15,6 +15,10 @@ from api.core.security.execution_approval_risk import (
 )
 from api.services.agent_processing.tools.safety import ExecutionApprovalService
 from api.services.agent_processing.tools.safety.approval_presentation import record_whitelist_eligibility
+from api.services.agent_processing.tools.safety.connected_tool_remember import (
+    remember_always_allow,
+    tool_policy_scope_of_record,
+)
 
 from .execution_models import (
     AddWhitelistRequest,
@@ -107,6 +111,7 @@ async def process_approval_decision(
             pattern_type=request.pattern_type,
             agent_task_id=request.agent_task_id,
             expected_revision=request.expected_revision,
+            user_note=request.user_note,
         )
         
         logger.info(f"Approval decision processed: approval_id={request.approval_id}, approved={request.approved}")
@@ -119,19 +124,32 @@ async def process_approval_decision(
         )
 
         remember_blocked_reason = ""
-        if request.approved and request.remember_choice and durable_approval is not None:
+        remembered_tool_message = ""
+        # A connected-tool approval is remembered as that tool's policy, from the scope the backend stored with the approval, never as a command pattern and never from the request body.
+        tool_scope = tool_policy_scope_of_record(durable_approval) if durable_approval is not None else None
+        if request.approved and request.remember_choice and tool_scope is not None:
+            try:
+                remembered_tool_message = remember_always_allow(tool_scope)
+            except ValueError as exc:
+                remember_blocked_reason = str(exc)
+        elif request.approved and request.remember_choice and durable_approval is not None:
             eligibility = record_whitelist_eligibility(durable_approval)
             if not eligibility.eligible:
                 remember_blocked_reason = eligibility.reason
 
-        if request.approved and request.remember_choice and durable_approval is not None and not remember_blocked_reason:
+        if remembered_tool_message:
+            message = remembered_tool_message
+        elif request.approved and request.remember_choice and durable_approval is not None and tool_scope is None and not remember_blocked_reason:
             approved_command = str(durable_approval["command"])
+            # Store the pattern the card showed (chosen when the approval was requested and kept in the durable record), as a whole-word prefix. Records from before that choice was kept have none, and fall back to choosing again.
+            shown_pattern = str(durable_approval.get("generalized_pattern") or "").strip()
             pattern = await approval_service.add_to_whitelist(
                 command=approved_command,
-                pattern_type=request.pattern_type,
+                pattern_type='prefix' if shown_pattern else request.pattern_type,
                 description=request.description or f"User-approved: {approved_command}",
                 risk_level='low',  # User-approved commands are considered low risk
                 record_initial_use=True,
+                pattern=shown_pattern or None,
             )
             pattern_id = pattern.id
             message = "Command approved and added to whitelist"
@@ -343,7 +361,8 @@ async def add_whitelist_pattern(
             command=request.pattern,
             pattern_type=request.pattern_type,
             description=request.description,
-            risk_level=request.risk_level
+            risk_level=request.risk_level,
+            pattern=request.pattern,
         )
         
         return WhitelistPattern(

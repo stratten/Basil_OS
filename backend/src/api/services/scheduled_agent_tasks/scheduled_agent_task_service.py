@@ -224,8 +224,15 @@ class ScheduledAgentTaskService:
             user_timezone=user_timezone,
         )
 
-    async def execute_scheduled_run(self, scheduled_agent_task_id: str, run_id: str) -> Dict[str, Any]:
+    async def execute_scheduled_run(
+        self,
+        scheduled_agent_task_id: str,
+        run_id: str,
+        allow_inactive: bool = False,
+    ) -> Dict[str, Any]:
         """Delegate to ``scheduled_run_execution.execute_scheduled_run``.
+
+        ``allow_inactive`` is set only for a run the user started with Run now, so it runs even when the schedule is deactivated.
 
         See that module for the full submission/await/finalize contract,
         including the process-singleton ``_PENDING_AGENT_TASK_COMPLETIONS``
@@ -233,7 +240,7 @@ class ScheduledAgentTaskService:
         awaiting run.
         """
         return await scheduled_run_execution.execute_scheduled_run(
-            self._repo, self.db, scheduled_agent_task_id, run_id
+            self._repo, self.db, scheduled_agent_task_id, run_id, allow_inactive=allow_inactive
         )
 
 

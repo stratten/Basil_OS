@@ -24,8 +24,10 @@ from ..models.reasoning.auth_proxy_model import AuthProxyModel
 from ..models.reasoning.openai_compatible_model import OpenAICompatibleModel
 from ..models.reasoning.anthropic_compatible_model import AnthropicCompatibleModel
 from ..logging.api_logger import api_logger
+from ..logging.chatter import chatter_logger
 from ...settings import get_models_dir
 from ..models.reasoning.llama_cpp_model import LlamaCppModel
+from ..models.reasoning.mlx_model import MlxModel
 from ...services.auth_service_client import should_route_through_auth_service
 from ..models.models_registry import ModelHandler
 
@@ -37,6 +39,7 @@ from ..models.models_registry import ModelHandler
 HANDLER_CLASS_MAP: Dict[ModelHandler, Type[BaseAIModel]] = {
     # Local handlers.
     ModelHandler.LLAMA_CPP: LlamaCppModel,
+    ModelHandler.MLX: MlxModel,  # MLX checkpoint folders; Apple Silicon only.
     ModelHandler.HUGGINGFACE: QwenModel,  # HuggingFace transformers models use QwenModel.
     # ModelHandler.WHISPER: Handled separately in transcription/model_lifecycle.py.
 
@@ -410,7 +413,7 @@ class ModelService:
         """Load a downloaded model into memory and reset idle timer."""
         # Special handling for API-based models which don't need to be downloaded
         if model_type in ["openai", "claude", "gemini"]:
-            api_logger.info(f"Loading API model: {model_type}-{variant}")
+            chatter_logger.debug(f"Loading API model: {model_type}-{variant}")
             model_id = f"{model_type}-{variant}"
             
             # Check if we should route through auth service
@@ -585,7 +588,7 @@ class ModelService:
 
         handler = cfg.get("handler")
         provider = cfg.get("provider")
-        api_logger.info(f"Loading model '{model_id}' via handler '{handler}'")
+        chatter_logger.debug(f"Loading model '{model_id}' via handler '{handler}'")
         
         # Route to appropriate loader based on handler
         # Strip provider prefix from model_id since load_model will add it back
@@ -598,7 +601,12 @@ class ModelService:
         elif handler in (ModelHandler.GEMINI_API.value, ModelHandler.GEMINI_API):
             variant = model_id[7:] if model_id.startswith("gemini-") else model_id
             return await self.load_model("gemini", variant, capabilities, registry_model_id=model_id)
-        elif handler in (ModelHandler.LLAMA_CPP.value, ModelHandler.LLAMA_CPP):
+        elif handler in (
+            ModelHandler.LLAMA_CPP.value,
+            ModelHandler.LLAMA_CPP,
+            ModelHandler.MLX.value,
+            ModelHandler.MLX,
+        ):
             # Local model - split model_id into provider/variant
             parts = model_id.split("-", 1) if "-" in model_id else (model_id, model_id)
             return await self.load_model(parts[0], parts[1], capabilities)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+import re
 from typing import Any, Callable, Optional, Sequence
 
 from langchain.agents.middleware import AgentMiddleware, hook_config
@@ -13,7 +14,7 @@ from api.core.logging.api_logger import api_logger
 from .agent_loop_messages import ai_message_text, messages_to_intermediate_steps, tool_call_action
 from .agent_loop_model_recovery import AgentRunFlags
 from .agent_loop_tool_surface import ToolSurfaceTracker
-from .conversation_turns import current_turn_messages
+from .conversation_turns import current_turn_messages, request_text, turn_input_text
 from .discovery_handoff import build_discovery_handoff
 from .service_tooling.staged_tool_loading_repair import scripting_floor_owed
 
@@ -40,8 +41,26 @@ HANDOFF_CHECK_PROMPT = (
     "- If a requirement is unmet and you have a tool or approach that could meet it, do that work now instead of answering.\n"
     "- If you truly cannot meet it, say so plainly in your answer and name what is missing. Do not present a simpler substitute as the requested result."
 )
+HANDS_BACK_PROMPT = (
+    "You answered without calling any tool, and your answer tells the user to run the commands themselves or says you cannot run them.\n"
+    "- The user asked you to do the work, and shell and script tools are bound and available right now.\n"
+    "- Run the commands yourself with the shell tool, one step at a time, and report what actually happened.\n"
+    "- Only after a real attempt fails may you say it cannot be done; then name the exact command you ran and its error."
+)
 MAX_INVALID_TOOL_CALL_REPAIRS = 2
 _SCRIPTING_TOOL_PREFIXES = ("applescript_service_", "shell_service_")
+# Answers that give the work back to the user: "you'll need to run ...", "to run this app, you would need to ...", "I cannot execute these commands".
+_HANDS_BACK_REPLY = re.compile(
+    r"\byou(?:'ll|\s+will|\s+would)\s+need\s+to\b"
+    r"|\byou\s+(?:need|have)\s+to\s+(?:run|install|execute|navigate)\b"
+    r"|\b(?:i|we)\s+(?:cannot|can't|can\s+not|am\s+unable\s+to|am\s+not\s+able\s+to)\s+(?:directly\s+)?(?:run|execute)\b",
+    re.IGNORECASE,
+)
+# A request that asks a question or for an explanation wants words, not actions, so a how-to answer is not a hand-back.
+_INFORMATION_REQUEST = re.compile(
+    r"^(?:(?:okay|ok|yeah|yes|so|and|hey|please|now)\b[\s,.!-]*)*(?:how|what|why|when|where|which|who|whom|whose|explain|describe|tell\s+me|show\s+me)\b",
+    re.IGNORECASE,
+)
 
 
 def default_source_catalog() -> list[dict[str, Any]]:
@@ -83,6 +102,7 @@ class CompletionNudgeMiddleware(AgentMiddleware):
         self.discovery_handoff_used = False
         self.scripting_floor_used = False
         self.handoff_check_used = False
+        self.hands_back_used = False
         self.invalid_tool_call_repairs = 0
 
     async def abefore_model(self, state: Any, runtime: Any) -> Optional[dict[str, Any]]:
@@ -137,6 +157,10 @@ class CompletionNudgeMiddleware(AgentMiddleware):
                 self.tracker.loaded_families,
             )
             return {"messages": [HumanMessage(content=SCRIPTING_FLOOR_PROMPT)], "jump_to": "model"}
+        if not steps and self._hands_back_owed(messages, last):
+            self.hands_back_used = True
+            logger.info("[AgentTelemetry] hands-back-nudge triggered=True")
+            return {"messages": [HumanMessage(content=HANDS_BACK_PROMPT)], "jump_to": "model"}
         if not self._handoff_check_owed(steps):
             return None
         self.handoff_check_used = True
@@ -146,6 +170,15 @@ class CompletionNudgeMiddleware(AgentMiddleware):
     def _handoff_check_owed(self, steps: Sequence[Any]) -> bool:
         """The check is asked once, and only after work was done: an answer with no tool use has nothing to compare against its request."""
         return not self.handoff_check_used and bool(steps)
+
+    def _hands_back_owed(self, messages: Sequence[Any], last: AIMessage) -> bool:
+        """Asked once, when a turn that used no tool answers an instruction by handing the commands back to the user while shell or script tools are bound."""
+        if self.hands_back_used or not self._scripting_tools_available():
+            return False
+        request = " ".join(request_text(turn_input_text(messages)).split())
+        if not request or _INFORMATION_REQUEST.match(request):
+            return False
+        return bool(_HANDS_BACK_REPLY.search(ai_message_text(last)))
 
     def _scripting_tools_available(self) -> bool:
         return any(name.startswith(_SCRIPTING_TOOL_PREFIXES) for name in self.tracker.surface_names)

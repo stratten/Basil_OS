@@ -709,6 +709,13 @@ export function reportAgentStatus(
   });
 }
 
+/**
+ * Tells native that a task other than the focused one has finished a turn while the widget is collapsed. Native expands the widget only when the user's auto-reopen-on-completion setting is on, the same rule it applies to the focused task, so the setting is read in one place.
+ */
+export function reportUnfocusedAgentTaskCompleted() {
+  postToSwift({ type: 'unfocusedAgentTaskCompleted' });
+}
+
 export function requestTokenConnect(payload: {
   requestId: string;
   friendlyName: string;

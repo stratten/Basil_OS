@@ -31,6 +31,24 @@ final class ModelDownloadMiniPanelWebView: NSObject, WKScriptMessageHandler, WKN
         if #available(macOS 12.0, *) {
             webView.underPageBackgroundColor = .clear
         }
+        installDragArea()
+    }
+
+    /// Overlay a transparent ``WindowDragAreaView`` across the header and the summary ring so AppKit can drag the borderless host from there. The leading width keeps the close button clickable, and the rows below stay free for their own buttons.
+    private func installDragArea() {
+        let panelTopPadding: CGFloat = 10
+        let headerHeight: CGFloat = 18
+        let summaryHeight: CGFloat = 52
+        let closeButtonClearance = WebKitWindowChromeAppearance.frameInset + 12 + 18 + 8
+        let dragView = WindowDragAreaView(leadingInteractiveWidth: closeButtonClearance, trailingInteractiveWidth: 0)
+        dragView.translatesAutoresizingMaskIntoConstraints = false
+        webView.addSubview(dragView)
+        NSLayoutConstraint.activate([
+            dragView.topAnchor.constraint(equalTo: webView.topAnchor),
+            dragView.leadingAnchor.constraint(equalTo: webView.leadingAnchor),
+            dragView.trailingAnchor.constraint(equalTo: webView.trailingAnchor),
+            dragView.heightAnchor.constraint(equalToConstant: WebKitWindowChromeAppearance.frameInset + panelTopPadding + headerHeight + summaryHeight),
+        ])
     }
 
     func loadContent(snapshot: ModelDownloadPanelSnapshot) {

@@ -9,6 +9,7 @@ from .browser_inspect_tool import create_browser_inspect_tool, _get_default_brow
 from .browser_interact_tool import create_browser_interact_tool
 from .browser_highlight_tool import create_browser_highlight_tool
 from .browser_screenshot_tool import create_browser_screenshot_tool
+from .browser_native_input_tool import create_browser_native_input_tool
 from .browser_tabs_tool import create_browser_tabs_tool
 from .browser_session_runtime import BrowserSessionMode
 from .basil_automation_browser_runtime import (
@@ -21,6 +22,7 @@ __all__ = [
     'create_browser_highlight_tool',
     'create_browser_inspect_tool',
     'create_browser_interact_tool',
+    'create_browser_native_input_tool',
     'create_browser_screenshot_tool',
     'create_browser_tabs_tool',
     'BrowserSessionMode',

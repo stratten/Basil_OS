@@ -25,6 +25,11 @@ class ValidationRuntimeProfile:
     manifest_token: str
     shared_models_root: Path | None
     force_approval_prompts: bool = False
+    # A fresh-install session behaves like a first-time user of the real app: no seeded
+    # fixtures, and the background services a normal run starts stay on.
+    fresh_install: bool = False
+    # A fresh-install session has a private, empty model folder. When this is set, the setup assistant offers to copy an installed model from this folder (the normal Basil's model folder) instead of downloading it again. It is never written to.
+    copy_source_models_root: Path | None = None
 
     @classmethod
     def from_environment(
@@ -92,6 +97,12 @@ class ValidationRuntimeProfile:
         force_approval_prompts = (
             selected_environment.get("BASIL_VALIDATION_FORCE_APPROVAL_PROMPTS") == "1"
         )
+        raw_copy_source = selected_environment.get("BASIL_VALIDATION_COPY_SOURCE_MODELS_ROOT")
+        copy_source_models_root = (
+            Path(raw_copy_source).expanduser().resolve()
+            if raw_copy_source
+            else None
+        )
         return cls(
             session_root=session_root,
             session_home=session_home,
@@ -99,6 +110,8 @@ class ValidationRuntimeProfile:
             manifest_token=manifest_token,
             shared_models_root=shared_models_root,
             force_approval_prompts=force_approval_prompts,
+            fresh_install=selected_environment.get("BASIL_VALIDATION_FRESH_INSTALL") == "1",
+            copy_source_models_root=copy_source_models_root,
         )
 
     @property

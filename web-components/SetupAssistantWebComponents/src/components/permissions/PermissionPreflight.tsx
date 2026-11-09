@@ -72,31 +72,31 @@ const permissionCards = [
   {
     kind: 'microphone' as const,
     title: 'Microphone Access',
-    description: 'Basil needs microphone access for audio transcription and Paprika tasks.',
+    description: 'Lets Basil hear you, so it can turn what you say into text and take spoken requests.',
     icon: <MicrophoneIcon />,
   },
   {
     kind: 'accessibility' as const,
     title: 'Accessibility',
-    description: 'Basil needs Accessibility access to simulate keystrokes for pasting text and to understand on-screen context for some features.',
+    description: 'Lets Basil type for you, for example to paste text into the app you are using, and read what is on your screen for some features.',
     icon: <AccessibilityIcon />,
   },
   {
     kind: 'input_monitoring' as const,
     title: 'Input Monitoring',
-    description: 'Basil needs Input Monitoring so global hotkeys and double-tap modifier gestures work even when another app is focused.',
+    description: 'Lets Basil notice your hotkeys, including pressing a modifier key twice, while you are working in another app.',
     icon: <InputMonitoringIcon />,
   },
   {
     kind: 'apple_events' as const,
     title: 'Apple Events',
-    description: 'Basil needs to control other applications (like Finder or your web browser) for certain automation tasks and screen capture.',
+    description: 'Lets Basil control other apps, such as Finder or your web browser, for tasks you ask it to do and for screen capture.',
     icon: <AutomationIcon />,
   },
   {
     kind: 'screen_recording' as const,
     title: 'Screen Recording',
-    description: "Required for enhanced suggestions and OCR by capturing screen content. macOS may require an app restart after granting this permission.",
+    description: 'Lets Basil see what is on your screen, so it can offer suggestions and read text in screenshots. macOS may ask you to restart Basil after you allow this.',
     icon: <ScreenRecordingIcon />,
   },
 ]

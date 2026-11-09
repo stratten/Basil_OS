@@ -11,6 +11,7 @@ import {
   cancelRunningAgentTask,
   registerEmbeddedFlagHandler,
   registerExpandChromeForTaskCompletionHandler,
+  reportUnfocusedAgentTaskCompleted,
   startFollowUpCapture,
 } from './services/bridge';
 import * as api from './services/api';
@@ -21,7 +22,9 @@ import { useHostBridge } from './app/useHostBridge';
 import type { MissedRunToast } from './app/useHostBridge';
 import { useAgentSelection } from './app/useAgentSelection';
 import { useAgentStatusReporting } from './app/useAgentStatusReporting';
+import { useRunPauseControl } from './app/useRunPauseControl';
 import { useResultWidgetSizing } from './app/useResultWidgetSizing';
+import { useUnfocusedTaskAttention } from './app/useUnfocusedTaskAttention';
 import { useCollapseShortcut } from '@shared/useCollapseShortcut';
 import { AgentTaskResultBody } from './app/AgentTaskResultBody';
 import { BackendLivenessBanner } from '@shared/BackendLivenessBanner';
@@ -41,6 +44,7 @@ function logDetailTrayDiagnostic(event: string, payload: Record<string, unknown>
 
 export default function App() {
   const selectedAgent = useSelectedAgent() ?? null;
+  const runPause = useRunPauseControl(selectedAgent);
   const [viewedDetail, setViewedDetail] = useState<DisplayableAgentTask | null>(null);
   const [pendingAgentTaskSelection, setPendingAgentTaskSelection] = useState<{ agentTaskId: string; epoch: number } | null>(null);
   const [selectedScheduledAgentTaskId, setSelectedScheduledAgentTaskId] = useState<string | null>(null);
@@ -181,6 +185,14 @@ export default function App() {
   useEffect(() => {
     registerExpandChromeForTaskCompletionHandler(expandChrome);
   }, [expandChrome]);
+
+  // A collapsed widget hides the sidebar, so a task other than the focused one that needs the user or finishes a turn would otherwise go unnoticed. Needing the user expands the widget directly, like the focused task does; finishing goes through native so the auto-reopen setting is honored.
+  useUnfocusedTaskAttention({
+    enabled: isChromeCollapsed && !detachedRootTaskId,
+    detachedRootsElsewhere,
+    onNeedsInput: expandChrome,
+    onTurnCompleted: reportUnfocusedAgentTaskCompleted,
+  });
 
   useEffect(() => {
     const previous = previousDetailTrayOpenRef.current;
@@ -430,6 +442,10 @@ export default function App() {
       isCollapseIconRotated={isCollapseIconRotated}
       showCancelStop={isInFlightAgentStatus(selectedAgent?.status) || selectedAgent?.status === 'paused' || selectedAgent?.status === 'awaitingInput'}
       onCancelRunningAgent={handleCancelRunningAgent}
+      runPauseState={runPause.state}
+      isPausing={runPause.isPausing}
+      onPauseRunningAgent={runPause.pause}
+      onResumeRunningAgent={runPause.resume}
       onToggleChromeCollapsed={() => {
         logDetailTrayDiagnostic('chrome-collapse toggle invoked', {
           detailTrayOpen,

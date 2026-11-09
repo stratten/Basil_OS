@@ -6,7 +6,7 @@ execution path for local llama.cpp models.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 
@@ -36,8 +36,13 @@ async def call_agent_model_with_messages(
     enable_web_search: bool = True,
     max_tokens: Optional[int] = None,
     purpose: str = "general",
+    activity_callback: Optional[Callable[[int, Optional[str], bool], None]] = None,
+    stream_preview_callback: Optional[Callable[[str], None]] = None,
 ) -> str:
-    """Call one agent-compatible model with an optional local workload purpose."""
+    """Call one agent-compatible model with an optional local workload purpose.
+
+    ``activity_callback`` receives (tokens written so far, thinking text, thinking complete) while a local model streams, so a caller can show that a long answer is still being written. Cloud models do not stream through this path and never call it. ``stream_preview_callback`` receives the tail of the text a local model has streamed so far, including reasoning it writes as plain text, about every five seconds.
+    """
     supports_search = getattr(model, "_supports_web_search", None)
     if not enable_web_search and callable(supports_search) and supports_search():
         return await model.generate_from_messages(
@@ -53,13 +58,15 @@ async def call_agent_model_with_messages(
     except Exception:
         pass
 
-    if engine_source.lower() == "llama.cpp":
+    if engine_source.lower() in {"llama.cpp", "mlx"}:
         profile = resolve_runtime_model_profile(model)
         adapter = create_langchain_llm_from_llama_cpp(
             model,
             profile=profile,
             purpose=purpose,
             requested_output_tokens=max_tokens,
+            activity_callback=activity_callback,
+            stream_preview_callback=stream_preview_callback,
         )
         response = await adapter.ainvoke(_to_langchain_messages(messages))
         return str(getattr(response, "content", "") or "")

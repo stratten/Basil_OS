@@ -58,6 +58,8 @@ from .external_catalog.envelopes import (
     make_external_catalog_not_found as _envelope_not_found,
     make_external_catalog_permission_denied as _make_permission_denied,
 )
+from ..internal_basil_tools.stored_result.spill import spill_result
+from .external_catalog.output_cap import cap_external_catalog_result
 from .external_catalog.rate_limits import try_rate_limit_wait_and_retry as _try_rate_limit_wait_and_retry
 
 logger = logging.getLogger(__name__)
@@ -103,6 +105,13 @@ class ExternalCatalogInput(BaseModel):
         default=None,
         description="JSON object of arguments to pass to the tool; required for call_tool."
     )
+    purpose: Optional[str] = Field(
+        default=None,
+        description=(
+            "call_tool: one or two plain sentences telling the user what this call does and why, shown on the approval card. "
+            "Include it on every call to a tool that needs the user's approval. It goes beside arguments, never inside them, and is not sent to the service."
+        ),
+    )
     server_url: Optional[str] = Field(
         default=None,
         description=(
@@ -120,7 +129,7 @@ class ExternalCatalogInput(BaseModel):
     )
 
 
-def create_external_catalog_tool(profile=None) -> StructuredTool:
+def create_external_catalog_tool(profile=None, max_output_chars: Optional[int] = None) -> StructuredTool:
     """Build the LangChain StructuredTool wrapping the catalog dispatcher.
 
     Under a slim rendering profile the description is swapped to the
@@ -132,13 +141,83 @@ def create_external_catalog_tool(profile=None) -> StructuredTool:
     full_description = build_full_external_catalog_description(connection_inventory)
     description = select_description_for_profile(profile, full_description, SLIM_DESCRIPTION)
 
+    # A result over max_output_chars (the limit the service tools use, or a default) is saved whole and replaced by a preview, an outline, and a result_id for the stored_result tool, so one oversized connector response cannot fill the model's context window. If it cannot be saved it is clipped instead.
+    async def _capped_external_catalog(
+        action: str,
+        connection_id: Optional[str] = None,
+        tool_name: Optional[str] = None,
+        arguments: Optional[Dict[str, Any]] = None,
+        server_url: Optional[str] = None,
+        friendly_name: Optional[str] = None,
+        description: Optional[str] = None,
+        purpose: Optional[str] = None,
+    ) -> str:
+        encoded = await _external_catalog_impl(
+            action=action,
+            connection_id=connection_id,
+            tool_name=tool_name,
+            arguments=arguments,
+            server_url=server_url,
+            friendly_name=friendly_name,
+            description=description,
+            purpose=purpose,
+        )
+        capped = cap_external_catalog_result(encoded, max_output_chars, spill=spill_result)
+        if capped is not encoded:
+            logger.warning(
+                "external_catalog result clipped from %s to %s characters (action=%s, tool=%s)",
+                f"{len(encoded):,}", f"{len(capped):,}", action, tool_name,
+            )
+        return capped
+
     return StructuredTool.from_function(
-        func=_external_catalog_impl,
+        func=_capped_external_catalog,
         name=CATALOG_TOOL_NAME,
         description=description,
         args_schema=ExternalCatalogInput,
-        coroutine=_external_catalog_impl,
+        coroutine=_capped_external_catalog,
     )
+
+
+_NESTED_ENVELOPE_FIELDS = ("connection_id", "tool_name")
+_NESTED_ENVELOPE_EXTRA_KEYS = ("server_url", "action")
+
+
+def _hoist_nested_envelope_fields(
+    connection_id: Optional[str],
+    tool_name: Optional[str],
+    arguments: Optional[Dict[str, Any]],
+) -> tuple[Optional[str], Optional[str], Optional[Dict[str, Any]]]:
+    """Recover a call whose envelope fields were nested inside ``arguments``.
+
+    Small models sometimes put ``connection_id`` and ``tool_name`` (and ``server_url``) inside ``arguments`` instead of beside it. A missing top-level field is filled from a non-empty string in ``arguments``, the keys that were moved are removed, and ``server_url``/``action`` are dropped with them, since they belong to the envelope and no remote tool takes them in this shape. An inner ``arguments`` object is unwrapped as the real arguments. Nothing changes when both fields are already present at the top level, so a remote tool with a parameter of the same name is untouched.
+    """
+
+    if not isinstance(arguments, dict):
+        return connection_id, tool_name, arguments
+    if connection_id and tool_name:
+        return connection_id, tool_name, arguments
+
+    resolved = {"connection_id": connection_id, "tool_name": tool_name}
+    moved: list[str] = []
+    for field_name in _NESTED_ENVELOPE_FIELDS:
+        nested_value = arguments.get(field_name)
+        if not resolved[field_name] and isinstance(nested_value, str) and nested_value.strip():
+            resolved[field_name] = nested_value.strip()
+            moved.append(field_name)
+    if not moved:
+        return connection_id, tool_name, arguments
+
+    remaining = {
+        key: value
+        for key, value in arguments.items()
+        if key not in moved and key not in _NESTED_ENVELOPE_EXTRA_KEYS
+    }
+    inner_arguments = remaining.get("arguments")
+    if isinstance(inner_arguments, dict) and len(remaining) == 1:
+        remaining = inner_arguments
+    logger.info("external_catalog: recovered %s nested inside arguments", ",".join(moved))
+    return resolved["connection_id"], resolved["tool_name"], remaining
 
 
 async def _external_catalog_impl(
@@ -149,6 +228,7 @@ async def _external_catalog_impl(
     server_url: Optional[str] = None,
     friendly_name: Optional[str] = None,
     description: Optional[str] = None,
+    purpose: Optional[str] = None,
 ) -> str:
     """Dispatch the catalog action and return a JSON-encoded envelope.
 
@@ -158,6 +238,10 @@ async def _external_catalog_impl(
     at WARNING with the envelope kind so SRE-style triage is easy.
     """
     try:
+        if action in (ACTION_DESCRIBE, ACTION_CALL):
+            connection_id, tool_name, arguments = _hoist_nested_envelope_fields(
+                connection_id, tool_name, arguments
+            )
         if action == ACTION_LIST:
             return _encode(await _list_servers())
         if action == ACTION_DESCRIBE:
@@ -167,7 +251,7 @@ async def _external_catalog_impl(
         if action == ACTION_CALL:
             if not (connection_id and tool_name):
                 return _encode(_envelope_invalid("call_tool requires connection_id and tool_name"))
-            return _encode(await _call_tool(connection_id, tool_name, arguments or {}))
+            return _encode(await _call_tool(connection_id, tool_name, arguments or {}, purpose=purpose))
         if action == ACTION_CONNECT:
             return _encode(await _connect_server(server_url, friendly_name))
         if action == ACTION_CONNECT_WITH_TOKEN:

@@ -22,7 +22,7 @@ def test_manual_cloud_backlog_uses_fixed_parallelism(monkeypatch):
     assert policy.processing_strategy == "api_parallel"
 
 
-def test_scheduled_cloud_run_remains_sequential(monkeypatch):
+def test_scheduled_cloud_run_uses_fixed_parallelism(monkeypatch):
     monkeypatch.setattr(
         "api.services.zettel.narrative.narrative_processing_run_policy.get_model",
         lambda model_id: {"location": "cloud"} if model_id == "cloud-model" else None,
@@ -30,6 +30,21 @@ def test_scheduled_cloud_run_remains_sequential(monkeypatch):
 
     policy = resolve_narrative_processing_run_policy(
         "cloud-model",
+        is_manual_backlog_run=False,
+    )
+
+    assert policy.analysis_concurrency == API_BACKLOG_NARRATIVE_CONCURRENCY
+    assert policy.processing_strategy == "api_parallel"
+
+
+def test_scheduled_local_run_remains_sequential(monkeypatch):
+    monkeypatch.setattr(
+        "api.services.zettel.narrative.narrative_processing_run_policy.get_model",
+        lambda model_id: {"location": "local"} if model_id == "local-model" else None,
+    )
+
+    policy = resolve_narrative_processing_run_policy(
+        "local-model",
         is_manual_backlog_run=False,
     )
 

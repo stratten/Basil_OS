@@ -1,0 +1,37 @@
+.local-model-failure-banner {
+  background: var(--background-primary);
+  border: var(--border-thin) solid var(--error-base);
+  border-radius: var(--corner-radius-medium);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: var(--padding-m);
+  padding: var(--padding-m) var(--padding-l);
+}
+
+.setup-card > .local-model-failure-banner {
+  flex: 0 0 auto;
+}
+
+.local-model-failure-banner__message {
+  font-weight: 600;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.local-model-failure-banner__status {
+  color: var(--primary);
+  font-weight: 600;
+  margin: 0;
+}
+
+.local-model-failure-banner__status--failed {
+  color: var(--error-text);
+}
+
+.local-model-failure-banner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--padding-s);
+}

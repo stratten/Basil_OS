@@ -598,7 +598,8 @@ class Model(pl.LightningModule):
                     map_location = lambda storage, loc: storage.cpu()
                 
                 # Load the weights
-                state_dict = torch.load(pytorch_model_path, map_location=map_location)
+                # Pyannote checkpoints pickle library classes; weights_only=False keeps the torch 2.5 behavior. Only bundled or user-local files reach this call.
+                state_dict = torch.load(pytorch_model_path, map_location=map_location, weights_only=False)
                 
                 # Adjust state_dict if needed
                 if hasattr(state_dict, "items"):

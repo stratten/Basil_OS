@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 
-import type { SetupProgressNarration } from '@/state/setupAssistantStore'
+import type { SetupImportedContextSummary, SetupProgressNarration } from '@/state/setupAssistantStore'
 import type { SetupOrientationObservation } from '@/types'
 
 import { OrientationInterstitial } from './OrientationInterstitial'
@@ -18,6 +18,8 @@ interface RenderProps {
   isDiscoveryFetching?: boolean
   isAgentStreaming?: boolean
   latestProgressNarration?: SetupProgressNarration | null
+  importedContext?: SetupImportedContextSummary | null
+  onReadyForConversation?: () => void
 }
 
 function render(props: RenderProps = {}) {
@@ -29,7 +31,8 @@ function render(props: RenderProps = {}) {
         isDiscoveryFetching={props.isDiscoveryFetching ?? false}
         isAgentStreaming={props.isAgentStreaming ?? false}
         latestProgressNarration={props.latestProgressNarration ?? null}
-        onReadyForConversation={vi.fn()}
+        importedContext={props.importedContext ?? null}
+        onReadyForConversation={props.onReadyForConversation ?? vi.fn()}
       />,
     )
   })
@@ -108,5 +111,56 @@ describe('OrientationInterstitial progress steps', () => {
     expect(stepStates()).toEqual(['is-done', 'is-done', 'is-done', 'is-done'])
     expect(statusText()).toBeNull()
     expect(container.querySelector('.discovery-ready-note')).not.toBeNull()
+  })
+})
+
+describe('OrientationInterstitial with imported context', () => {
+  const imported: SetupImportedContextSummary = {
+    entries_added: 0,
+    facts_proposed: 0,
+    fact_titles: [],
+    note_titles: [],
+    profile_updated: true,
+    profile_summary: 'You are a designer in Boston.',
+  }
+  const continueButton = () => Array.from(container.querySelectorAll<HTMLButtonElement>('button')).find(button => button.textContent === 'Continue with setup')!
+
+  it('leads with a card about what the person imported and lets them continue before the sweep finishes', () => {
+    const onReadyForConversation = vi.fn()
+    render({ importedContext: imported, isDiscoveryFetching: true, onReadyForConversation })
+
+    const card = container.querySelector('[data-testid="orientation-imported-context"]')!
+    expect(card.textContent).toContain('From what you imported')
+    expect(card.textContent).toContain('Your profile is already in place')
+    expect(card.textContent).toContain('You are a designer in Boston.')
+    expect(container.querySelector('[data-testid="orientation-skip-note"]')!.textContent).toContain('you can continue now')
+    expect(continueButton().disabled).toBe(false)
+
+    act(() => { continueButton().click() })
+    expect(onReadyForConversation).toHaveBeenCalledTimes(1)
+  })
+
+  it('puts the imported card before the observations and drops the skip note once the step is ready', () => {
+    render({ importedContext: imported, observations: [observation], orientationReady: true })
+
+    const titles = Array.from(container.querySelectorAll('.discovery-observation-card h3')).map(heading => heading.textContent)
+    expect(titles).toEqual(['Your profile is already in place', 'Outlook is connected'])
+    expect(container.querySelector('[data-testid="orientation-skip-note"]')).toBeNull()
+  })
+
+  it('keeps waiting for the sweep, with no card and a disabled Continue, when nothing was imported', () => {
+    render({ isDiscoveryFetching: true })
+    expect(container.querySelector('[data-testid="orientation-imported-context"]')).toBeNull()
+    expect(continueButton().disabled).toBe(true)
+
+    render({ importedContext: { ...imported, profile_updated: false, profile_summary: undefined }, isDiscoveryFetching: true })
+    expect(container.querySelector('[data-testid="orientation-imported-context"]')).toBeNull()
+    expect(continueButton().disabled).toBe(true)
+  })
+
+  it('keeps the orientation steps honest while continuing is allowed early', () => {
+    render({ importedContext: imported, isDiscoveryFetching: true })
+
+    expect(stepStates()).toEqual(['is-active', 'is-pending', 'is-pending', 'is-pending'])
   })
 })

@@ -33,10 +33,10 @@ def find_matching_turns(conn: sqlite3.Connection, root_task_id: str, query: Opti
         """
         SELECT *
         FROM agent_tasks
-        WHERE COALESCE(root_task_id, id) = ?
+        WHERE root_task_id = ? OR (root_task_id IS NULL AND id = ?)
         ORDER BY chain_sequence_number ASC, timestamp ASC, id ASC
         """,
-        (root_task_id,),
+        (root_task_id, root_task_id),
     ).fetchall()
     if not any(row["id"] == root_task_id for row in rows):
         return None

@@ -106,15 +106,7 @@ extension AgentTaskResultWidgetController {
             referenceMirror.store(in: &followUpCancellables)
         }
 
-        // Honor size-update requests so the widget resizes when the
-        // user toggles into text-mode follow-up. The VM publishes a
-        // (width, height) tuple; convert to NSSize at the boundary.
-        captureVM.sizeUpdateRequest
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] newSize in
-                self?.resizePanelForFollowUp(NSSize(width: newSize.width, height: newSize.height))
-            }
-            .store(in: &followUpCancellables)
+        // Deliberately not subscribed to `captureVM.sizeUpdateRequest`. That publisher sizes the standalone capture panel (160 or 280 points wide) and fires whenever a file is dropped, so honoring it here snapped the whole result widget to the capture panel's size. This recording is the inline bar in the web layout, which has no text mode and lists dropped files itself.
 
         webView?.sendCaptureStateChanged(
             type: "followUp", isCapturing: true,
@@ -136,20 +128,6 @@ extension AgentTaskResultWidgetController {
         webView?.sendCaptureStateChanged(
             type: "followUp", isCapturing: false,
             wordsDetected: "", audioLevel: 0, silenceProgress: 0
-        )
-    }
-
-    func resizePanelForFollowUp(_ newSize: NSSize) {
-        guard let panel = panel else { return }
-        let minSize = panel.minSize
-        let width = max(newSize.width, minSize.width)
-        let height = max(newSize.height, minSize.height)
-        let frame = panel.frame
-        let originY = frame.origin.y + frame.height - height
-        panel.setFrame(
-            NSRect(x: frame.origin.x, y: originY, width: width, height: height),
-            display: true,
-            animate: true
         )
     }
 

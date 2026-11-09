@@ -8,6 +8,7 @@ import type {
 import { useAllAgents, useSelectAgent, agentStore } from '../store/agentStore';
 import * as api from '../services/api';
 import { openDetachedAgentTask, startNewAgentTaskCapture } from '../services/bridge';
+import { startScheduledRunNow } from '../services/scheduledRunNow';
 import NativeSymbolIcon from '../../../shared/NativeSymbolIcon';
 import { AgentTaskRow } from './sidebar/AgentTaskRow';
 import type { AgentTaskRowProps } from './sidebar/AgentTaskRow';
@@ -57,6 +58,8 @@ interface Props {
   // with `selectedScheduledAgentTaskId`, highlights as selected — without the
   // user having to toggle views to force a refresh.
   scheduledListVersion?: number;
+  // Fired after a schedule is paused or resumed from its row, so the parent can bump `scheduledListVersion` and an open schedule view shows the new state. Without it the sidebar reloads its own list.
+  onScheduledUpdated?: (scheduledAgentTaskId: string) => void;
   viewedAgentTaskId?: string | null;
   viewedRootId?: string | null;
   onAgentTaskDeleted?: (agentTaskId: string) => void;
@@ -75,6 +78,7 @@ export default function Sidebar({
   onCreateScheduledAgentTask,
   selectedScheduledAgentTaskId,
   scheduledListVersion,
+  onScheduledUpdated,
   viewedAgentTaskId,
   viewedRootId,
   onAgentTaskDeleted,
@@ -474,11 +478,23 @@ export default function Sidebar({
       .catch((err) => console.error('[Sidebar] Failed to delete scheduled agent task', err));
   }, [loadScheduled]);
 
+  // Sets the schedule to the state its status dot asked for. Deactivating cancels its pending runs and activating re-enqueues them, the same as the Deactivate and Activate button in the schedule's own view.
+  const toggleScheduled = useCallback((scheduledAgentTaskId: string, nextActive: boolean) => {
+    api.updateScheduledAgentTask(scheduledAgentTaskId, { is_active: nextActive })
+      .then(() => {
+        if (onScheduledUpdated) onScheduledUpdated(scheduledAgentTaskId);
+        else loadScheduled();
+      })
+      .catch((err) => console.error('[Sidebar] Failed to update scheduled agent task', err));
+  }, [loadScheduled, onScheduledUpdated]);
+
   const scheduledItems: AgentTaskRowProps[] = buildScheduledItems({
     scheduled,
     selectedScheduledAgentTaskId,
     onViewScheduledAgentTask,
     deleteScheduledAgentTask: requestDelete,
+    toggleScheduledAgentTask: toggleScheduled,
+    runScheduledAgentTask: startScheduledRunNow,
   });
 
   const unifiedItems: AgentTaskRowProps[] = viewMode !== 'scheduled'

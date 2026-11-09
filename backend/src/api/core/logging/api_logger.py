@@ -164,6 +164,10 @@ def setup_api_logger(
 
     return logger
 
+# The HTTP clients log one INFO line per request ("HTTP Request: POST ... 200 OK"). Bulk jobs make thousands of requests, and the lines bury real errors; failures still log as warnings and errors.
+for _http_client_logger in ("httpx", "httpx2", "httpcore"):
+    logging.getLogger(_http_client_logger).setLevel(logging.WARNING)
+
 _original_stdout = sys.stdout # Define before api_logger uses it for setup messages
 _original_stderr = sys.stderr
 

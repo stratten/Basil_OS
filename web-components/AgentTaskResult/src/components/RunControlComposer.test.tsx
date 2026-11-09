@@ -634,3 +634,49 @@ describe('RunControlComposer keeps what was typed', () => {
     expect(editor().innerHTML).toBe('Typed before the root was known');
   });
 });
+
+describe('RunControlComposer Stop beside Pause', () => {
+  function renderWithStop(isCanceling = false, withCancelHandler = true) {
+    const onCancelRunning = withCancelHandler ? vi.fn() : undefined;
+    act(() => {
+      root.render(
+        <RunControlComposer turnTaskId="turn-1" rootTaskId="root-1" mode="running" deliveredNoteIds={NONE} onCancelRunning={onCancelRunning} isCanceling={isCanceling} />,
+      );
+    });
+    return onCancelRunning;
+  }
+
+  it('puts an icon Stop immediately left of Pause at the bottom of the note box and calls cancel', async () => {
+    const onCancelRunning = renderWithStop();
+    const stop = button('Stop');
+    const pause = button('Pause');
+    expect(stop.textContent).toBe('');
+    expect(stop.querySelector('svg')).not.toBeNull();
+    expect(stop.nextElementSibling).toBe(pause);
+    await click(stop);
+    expect(onCancelRunning).toHaveBeenCalledTimes(1);
+    expect(mocks.pauseSession).not.toHaveBeenCalled();
+  });
+
+  it('disables Stop and calls it Stopping while the cancel is in flight', () => {
+    renderWithStop(true);
+    const stop = button('Stopping');
+    expect(stop.disabled).toBe(true);
+  });
+
+  it('shows Stop beside Pause in the folded bar and keeps one Stop in each state', () => {
+    renderWithStop();
+    expect(container.querySelectorAll('button[aria-label="Stop"]')).toHaveLength(1);
+    act(() => button('Collapse the note box').click());
+    const row = container.querySelector('.run-control-collapsed-actions')!;
+    expect(row.querySelectorAll('button[aria-label="Stop"]')).toHaveLength(1);
+    expect(row.querySelector('button[aria-label="Stop"]')?.nextElementSibling).toBe(row.querySelector('button[aria-label="Pause"]'));
+  });
+
+  it('has no Stop when no cancel handler is given', () => {
+    renderWithStop(false, false);
+    expect(container.querySelector('button[aria-label="Stop"]')).toBeNull();
+    expect(container.querySelector('button[aria-label="Pause"]')).not.toBeNull();
+  });
+});
+

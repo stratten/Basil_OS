@@ -297,7 +297,7 @@ def select_args_schema_for_profile(
 
 
 def _is_local_reasoning_profile(profile: RuntimeModelProfile) -> bool:
-    return profile.location == "local" and profile.handler in {"llama_cpp", "huggingface"}
+    return profile.location == "local" and profile.handler in {"llama_cpp", "huggingface", "mlx"}
 
 
 def resolve_local_reasoning_mode(profile: RuntimeModelProfile) -> str:

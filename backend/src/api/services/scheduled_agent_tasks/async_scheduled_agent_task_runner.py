@@ -56,8 +56,11 @@ class AsyncScheduledAgentTaskRunner:
         run_id: str,
         eta_utc: datetime,
         quiet: bool = False,
+        allow_inactive: bool = False,
     ) -> None:
         """Schedule (or reschedule) a run for execution at ``eta_utc``.
+
+        ``allow_inactive`` is passed only for a run the user started with Run now, which executes even when the schedule is deactivated. Every timer-driven firing leaves it off, so a deactivated schedule still never fires on its own.
 
         Cancels any existing in-memory task for the same
         ``scheduled_agent_task_id`` before installing the new one. The DB-side
@@ -87,7 +90,7 @@ class AsyncScheduledAgentTaskRunner:
             )
 
         task = asyncio.create_task(
-            self._sleep_then_execute(scheduled_agent_task_id, run_id, eta_utc),
+            self._sleep_then_execute(scheduled_agent_task_id, run_id, eta_utc, allow_inactive),
             name=f"scheduled-run:{scheduled_agent_task_id}:{run_id}",
         )
         self._tasks[scheduled_agent_task_id] = task
@@ -163,6 +166,7 @@ class AsyncScheduledAgentTaskRunner:
         scheduled_agent_task_id: str,
         run_id: str,
         eta_utc: datetime,
+        allow_inactive: bool = False,
     ) -> None:
         try:
             now = datetime.now(timezone.utc)
@@ -177,7 +181,9 @@ class AsyncScheduledAgentTaskRunner:
             from .scheduled_agent_task_service import ScheduledAgentTaskService
 
             service = ScheduledAgentTaskService()
-            await service.execute_scheduled_run(scheduled_agent_task_id, run_id)
+            # Passed only for a run started with Run now, so every timer-driven firing calls the service exactly as it always has.
+            run_options = {"allow_inactive": True} if allow_inactive else {}
+            await service.execute_scheduled_run(scheduled_agent_task_id, run_id, **run_options)
         except asyncio.CancelledError:
             logger.debug(
                 "AsyncScheduledAgentTaskRunner: task for scheduled_agent_task_id=%s run_id=%s canceled",

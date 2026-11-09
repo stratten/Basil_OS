@@ -8,7 +8,8 @@ from typing import Any, Mapping, Optional
 from urllib.parse import urlparse
 
 SENSITIVE_FIELD_PATTERN = re.compile(
-    r"password|passcode|token|secret|credential|one-time|otp|2fa|mfa",
+    r"password|passcode|token|secret|credential|one-time|otp|2fa|mfa"
+    r"|cc-number|cc-csc|cc-exp|card[ _-]?(?:number|num)|credit[ _-]?card|cvv|cvc|security[ _-]?code",
     re.IGNORECASE,
 )
 CAPTCHA_PATTERN = re.compile(r"captcha|recaptcha|hcaptcha|verify you are human", re.IGNORECASE)

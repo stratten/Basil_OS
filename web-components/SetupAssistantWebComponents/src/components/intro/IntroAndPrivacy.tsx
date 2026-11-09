@@ -1,14 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
 
+import { DownloadProgress } from '@shared/DownloadProgress'
 import TokenizedSelect from '@shared/TokenizedSelect'
 
+import { reportedBytes } from '@/components/layout/starterDownloads'
 import { SetupStepActions } from '@/components/layout/SetupStepActions'
 import { prefersReducedMotion } from '@/components/motion/prefersReducedMotion'
 import { SmoothReveal } from './SmoothReveal'
 import { BasilCloudAccountModal } from './BasilCloudAccountModal'
+import { ModelComparison } from './ModelComparison'
+import { IntroDownloadsStep } from './IntroDownloadsStep'
+import { LocalModelChooser } from './LocalModelChooser'
+import { IntroContextImport } from './IntroContextImport'
+import { IntroHotkeysStep } from './IntroHotkeysStep'
+import { IntroTrustNote } from './IntroTrustNote'
 import { hasInteractionStyleSelection, IntroInteractionStyle } from './IntroInteractionStyle'
 
 import {
+  copyLocalModelFromNormalBasil,
   fetchInteractionStyleCatalog,
   fetchMemoryIntelligenceSettings,
   fetchLocalModelDownloadProgress,
@@ -19,6 +28,7 @@ import {
   updateMemoryIntelligenceSettings,
 } from '@/services/api'
 import type { InteractionStyleGroup, InteractionStyleSelections } from '@/services/api'
+import type { SetupImportedContextSummary } from '@/state/setupAssistantStore'
 import type {
   SetupAgentModelAccess,
   SetupAgentModelAccessMode,
@@ -29,26 +39,32 @@ interface Props {
   selectedModelAccess: SetupAgentModelAccess | null
   onSelectModelAccess: (modelAccess: SetupAgentModelAccess) => void
   onContinue: (initialMessage: string, interactionStyle?: string[]) => void
+  /** The step to open first. Express opens 'model' when it cannot set up the thinking model itself. Defaults to the first step. */
+  initialStep?: 'downloads' | 'model'
+  /** Returns to the first screen, where the user picks how to set up. When given, Back on the first step goes there. */
+  onBackToStart?: () => void
+  onContextImported?: (summary: SetupImportedContextSummary) => void
+  onContextImportUndone?: () => void
 }
 
-type IntroStepName = 'model' | 'learning' | 'note'
+type IntroStepName = 'downloads' | 'model' | 'learning' | 'hotkeys' | 'note'
 type CaptureSettingsLoadState = 'loading' | 'ready' | 'unavailable'
 
-const STEP_ORDER: readonly IntroStepName[] = ['model', 'learning', 'note'] as const
+const STEP_ORDER: readonly IntroStepName[] = ['downloads', 'model', 'learning', 'hotkeys', 'note'] as const
 const STEP_TRANSITION_MS = 220
 
 const modelChoices: Record<SetupAgentModelAccessMode, { title: string; detail: string }> = {
   local: {
-    title: 'Local on this machine',
-    detail: 'Private. Nothing leaves this machine.',
+    title: 'On this Mac',
+    detail: 'Private. Nothing leaves this Mac.',
   },
   provider_key: {
     title: 'My own API key',
-    detail: 'Use your own provider account.',
+    detail: 'Use your own account with an AI company.',
   },
   basil_cloud: {
     title: 'Basil Cloud',
-    detail: 'Fastest, through your Basil account.',
+    detail: 'Fastest. Basil hosts the model, and usage is billed to a card through your Basil account.',
   },
 }
 
@@ -68,6 +84,10 @@ export function IntroAndPrivacy({
   selectedModelAccess,
   onSelectModelAccess,
   onContinue,
+  initialStep = 'downloads',
+  onBackToStart,
+  onContextImported,
+  onContextImportUndone,
 }: Props) {
   const [freeformNote, setFreeformNote] = useState('')
   const [styleGroups, setStyleGroups] = useState<InteractionStyleGroup[]>([])
@@ -79,11 +99,14 @@ export function IntroAndPrivacy({
   const [isConfirmingModelAccess, setIsConfirmingModelAccess] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const [currentStep, setCurrentStep] = useState<IntroStepName>('model')
+  // The local thinking model a validation build's tester picked. Null means the machine's default. Both the downloads step and the model step read it, so a download there is the model chosen here.
+  const [chosenLocalModelId, setChosenLocalModelId] = useState<string | null>(null)
+  const [currentStep, setCurrentStep] = useState<IntroStepName>(initialStep)
   const [pendingStep, setPendingStep] = useState<IntroStepName | null>(null)
   const transitionTimerRef = useRef<number | null>(null)
 
   const stepIndex = STEP_ORDER.indexOf(currentStep)
+  const isBackHidden = stepIndex === 0 && !onBackToStart
   const isFinalStep = currentStep === 'note'
   const isTransitioning = pendingStep !== null
   const isModelAccessResolved = Boolean(selectedModelAccess?.resolved)
@@ -147,7 +170,10 @@ export function IntroAndPrivacy({
   }
 
   const goBack = () => {
-    if (stepIndex === 0) return
+    if (stepIndex === 0) {
+      onBackToStart?.()
+      return
+    }
     advanceTo(STEP_ORDER[stepIndex - 1])
   }
 
@@ -188,11 +214,19 @@ export function IntroAndPrivacy({
       <h2>Let's shape how I work around how <em className="emphasis-you">you</em> work.</h2>
 
       <div className={stepWrapperClass} key={currentStep} aria-live="polite">
+        {currentStep === 'downloads' && (
+          <IntroDownloadsStep
+            chosenLocalModelId={chosenLocalModelId}
+            onChosenLocalModelIdChange={setChosenLocalModelId}
+          />
+        )}
         {currentStep === 'model' && (
           <IntroModelStep
             selectedModelAccess={selectedModelAccess}
             onSelectModelAccess={onSelectModelAccess}
             onConfirmingChange={setIsConfirmingModelAccess}
+            chosenLocalModelId={chosenLocalModelId}
+            onChosenLocalModelIdChange={setChosenLocalModelId}
           />
         )}
         {currentStep === 'learning' && (
@@ -202,8 +236,12 @@ export function IntroAndPrivacy({
             captureSettingsLoadState={captureSettingsLoadState}
             onMemoryChange={setMemoryAfterTaskEnabled}
             onSkillChange={setSkillAfterTaskEnabled}
+            onContextImported={onContextImported}
+            onContextImportUndone={onContextImportUndone}
+            selectedModelAccess={selectedModelAccess}
           />
         )}
+        {currentStep === 'hotkeys' && <IntroHotkeysStep />}
         {currentStep === 'note' && (
           <IntroNoteStep
             freeformNote={freeformNote}
@@ -228,14 +266,14 @@ export function IntroAndPrivacy({
       )}
 
       <SetupStepActions>
-        {/* Stays in the row on the first step so Continue does not shift when Back appears. */}
+        {/* Stays in the row on the first step so Continue does not shift when Back appears. With a way back to the first screen it is a real button there too. */}
         <button
           type="button"
-          className={`intro-step-back ${stepIndex === 0 ? 'intro-step-back--placeholder' : ''}`.trim()}
+          className={`intro-step-back ${isBackHidden ? 'intro-step-back--placeholder' : ''}`.trim()}
           onClick={goBack}
-          disabled={stepIndex === 0 || isTransitioning || isContinuing}
-          aria-hidden={stepIndex === 0 || undefined}
-          tabIndex={stepIndex === 0 ? -1 : undefined}
+          disabled={isBackHidden || isTransitioning || isContinuing}
+          aria-hidden={isBackHidden || undefined}
+          tabIndex={isBackHidden ? -1 : undefined}
         >
           ← Back
         </button>
@@ -265,7 +303,9 @@ export function IntroAndPrivacy({
           {currentStep === 'model' && !isModelAccessResolved
             ? (selectedModelAccess?.mode === 'provider_key'
               ? 'Validate your API key to continue'
-              : 'Choose a confirmed reasoning route')
+              : selectedModelAccess
+              ? 'Finish confirming your choice above'
+              : 'Select one of the options above to continue')
             : currentStep === 'learning' && captureSettingsLoadState === 'loading'
             ? 'Loading preferences…'
             : isFinalStep
@@ -281,6 +321,8 @@ interface IntroModelStepProps {
   selectedModelAccess: SetupAgentModelAccess | null
   onSelectModelAccess: (modelAccess: SetupAgentModelAccess) => void
   onConfirmingChange: (isConfirming: boolean) => void
+  chosenLocalModelId: string | null
+  onChosenLocalModelIdChange: (modelId: string) => void
 }
 
 type KeyValidationState = 'idle' | 'checking' | 'valid' | 'invalid'
@@ -288,11 +330,14 @@ type LocalDownloadPhase = 'idle' | 'starting' | 'downloading' | 'stopped'
 
 export const LOCAL_DOWNLOAD_POLL_INTERVAL_MS = 1000
 const ACTIVE_DOWNLOAD_STATUSES: readonly string[] = ['queued', 'downloading']
+const NO_DOWNLOAD_BYTES = { downloaded: null, total: null }
 
 function IntroModelStep({
   selectedModelAccess,
   onSelectModelAccess,
   onConfirmingChange,
+  chosenLocalModelId,
+  onChosenLocalModelIdChange,
 }: IntroModelStepProps) {
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'unavailable'>('loading')
   const [options, setOptions] = useState<SetupAgentModelAccessOption[]>([])
@@ -309,11 +354,14 @@ function IntroModelStep({
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const [downloadPhase, setDownloadPhase] = useState<LocalDownloadPhase>('idle')
   const [downloadPercent, setDownloadPercent] = useState(0)
+  const [downloadBytes, setDownloadBytes] = useState<{ downloaded: number | null, total: number | null }>(NO_DOWNLOAD_BYTES)
   const [downloadError, setDownloadError] = useState<string | null>(null)
   const isMountedRef = useRef(true)
   const isWatchingDownloadRef = useRef(false)
   const awaitingCloudSelectionRef = useRef(false)
   const accountCheckedRef = useRef(false)
+  const chosenLocalModelIdRef = useRef(chosenLocalModelId)
+  chosenLocalModelIdRef.current = chosenLocalModelId
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false)
   const [isCheckingAccount, setIsCheckingAccount] = useState(false)
 
@@ -360,7 +408,8 @@ function IntroModelStep({
           const progress = await fetchLocalModelDownloadProgress(modelType, variant)
           status = progress.status
           if (isMountedRef.current && typeof progress.progress === 'number') {
-            setDownloadPercent(Math.max(0, Math.min(100, Math.round(progress.progress * 100))))
+            setDownloadPercent(Math.max(0, Math.min(100, progress.progress * 100)))
+            setDownloadBytes({ downloaded: reportedBytes(progress.total_downloaded), total: reportedBytes(progress.total_size) })
           }
         } catch {
           break
@@ -369,13 +418,14 @@ function IntroModelStep({
         await new Promise<void>(resolve => window.setTimeout(resolve, LOCAL_DOWNLOAD_POLL_INTERVAL_MS))
       }
       if (!isMountedRef.current) return
-      const refreshed = await fetchModelAccessOptions(accountCheckedRef.current)
+      const refreshed = await fetchModelAccessOptions(accountCheckedRef.current, chosenLocalModelIdRef.current)
       if (!isMountedRef.current) return
       setOptions(refreshed.options)
       const refreshedLocal = refreshed.options.find(option => option.mode === 'local')
       if (refreshedLocal?.downloaded) {
         setDownloadPhase('idle')
         setDownloadPercent(0)
+        setDownloadBytes(NO_DOWNLOAD_BYTES)
       } else {
         setDownloadPhase('stopped')
       }
@@ -386,9 +436,22 @@ function IntroModelStep({
     }
   }
 
+  // A download started earlier in this launch (on the downloads step, or for the model chosen before) keeps running; pick it back up instead of offering a second start.
+  const resumeRunningDownload = (localOption: SetupAgentModelAccessOption | undefined, isStillCurrent: () => boolean) => {
+    if (localOption?.downloaded !== false || !localOption.local_model_type || !localOption.local_model_variant) return
+    const { local_model_type: modelType, local_model_variant: variant } = localOption
+    void fetchLocalModelDownloadProgress(modelType, variant)
+      .then(progress => {
+        if (isStillCurrent() && ACTIVE_DOWNLOAD_STATUSES.includes(progress.status)) {
+          void watchLocalDownload(modelType, variant)
+        }
+      })
+      .catch(() => undefined)
+  }
+
   useEffect(() => {
     let isCurrent = true
-    void fetchModelAccessOptions()
+    void fetchModelAccessOptions(false, chosenLocalModelIdRef.current)
       .then(response => {
         if (!isCurrent) return
         setOptions(response.options)
@@ -397,18 +460,7 @@ function IntroModelStep({
         if (providerOption?.provider) {
           setProvider(providerOption.provider)
         }
-        const localOption = response.options.find(option => option.mode === 'local')
-        if (localOption?.downloaded === false && localOption.local_model_type && localOption.local_model_variant) {
-          const { local_model_type: modelType, local_model_variant: variant } = localOption
-          // A download started earlier in this launch keeps running; pick it back up instead of offering a second start.
-          void fetchLocalModelDownloadProgress(modelType, variant)
-            .then(progress => {
-              if (isCurrent && ACTIVE_DOWNLOAD_STATUSES.includes(progress.status)) {
-                void watchLocalDownload(modelType, variant)
-              }
-            })
-            .catch(() => undefined)
-        }
+        resumeRunningDownload(response.options.find(option => option.mode === 'local'), () => isCurrent)
       })
       .catch(() => {
         if (isCurrent) setLoadState('unavailable')
@@ -422,7 +474,7 @@ function IntroModelStep({
   const refreshAccountOptions = async () => {
     awaitingCloudSelectionRef.current = true
     accountCheckedRef.current = true
-    const refreshed = await fetchModelAccessOptions(true)
+    const refreshed = await fetchModelAccessOptions(true, chosenLocalModelIdRef.current)
     if (!isMountedRef.current) return
     setOptions(refreshed.options)
   }
@@ -488,21 +540,51 @@ function IntroModelStep({
     error instanceof Error && error.message ? error.message : fallback
   )
 
-  const startDownload = async (option: SetupAgentModelAccessOption) => {
+  const startDownload = async (option: SetupAgentModelAccessOption, method: 'download' | 'copy' = 'download') => {
     const modelType = option.local_model_type
     const variant = option.local_model_variant
     if (!modelType || !variant || downloadPhase === 'starting' || downloadPhase === 'downloading') return
     setDownloadError(null)
     setDownloadPercent(0)
+    setDownloadBytes(NO_DOWNLOAD_BYTES)
     setDownloadPhase('starting')
     try {
-      await startLocalModelDownload(modelType, variant)
+      if (method === 'copy') await copyLocalModelFromNormalBasil(modelType, variant)
+      else await startLocalModelDownload(modelType, variant)
     } catch (error) {
-      setDownloadError(errorText(error, 'I couldn’t start that download. Please try again.'))
+      setDownloadError(errorText(
+        error,
+        method === 'copy' ? 'I couldn’t start that copy. Please try again.' : 'I couldn’t start that download. Please try again.',
+      ))
       setDownloadPhase('idle')
       return
     }
     await watchLocalDownload(modelType, variant)
+  }
+
+  // Validation builds only. Re-reads the Local route for the newly chosen model, picks up a download already running for it, and moves a confirmed Local choice onto the new model, or marks it unconfirmed when that model is not on disk yet.
+  const handleLocalModelChange = async (modelId: string) => {
+    if (pendingMode) return
+    chosenLocalModelIdRef.current = modelId
+    onChosenLocalModelIdChange(modelId)
+    setDownloadError(null)
+    setDownloadPercent(0)
+    setDownloadBytes(NO_DOWNLOAD_BYTES)
+    setDownloadPhase('idle')
+    setErrorMessage(null)
+    try {
+      const refreshed = await fetchModelAccessOptions(accountCheckedRef.current, modelId)
+      if (!isMountedRef.current || chosenLocalModelIdRef.current !== modelId) return
+      setOptions(refreshed.options)
+      const refreshedLocal = refreshed.options.find(option => option.mode === 'local')
+      resumeRunningDownload(refreshedLocal, () => isMountedRef.current && chosenLocalModelIdRef.current === modelId)
+      if (selectedModelAccess?.mode === 'local' && refreshedLocal) {
+        if (refreshedLocal.available) await selectRoute(refreshedLocal)
+        else onSelectModelAccess({ mode: 'local', local_model_id: modelId, resolved: false })
+      }
+    } catch (error) {
+      if (isMountedRef.current) setErrorMessage(errorText(error, 'I couldn’t switch the local model. Please try again.'))
+    }
   }
 
   const markProviderKeyPending = (providerId: string) => {
@@ -587,7 +669,7 @@ function IntroModelStep({
       setIsEnteringNewKey(false)
       resetKeyValidation()
     } catch (error) {
-      setErrorMessage(errorText(error, 'I couldn’t confirm that reasoning route. Please try again.'))
+      setErrorMessage(errorText(error, 'I couldn’t confirm that choice. Please try again.'))
     } finally {
       setPendingMode(null)
     }
@@ -614,23 +696,23 @@ function IntroModelStep({
 
   return (
     <div className="intro-step-body">
-      <h3>Reasoning during setup</h3>
+      <h3>How I think during setup</h3>
       <p className="intro-step-lede">Pick how I should think during setup.</p>
 
       <SmoothReveal open={loadState === 'loading'} className="intro-step-reveal">
         <div className="intro-step-reveal-body">
-          <p role="status">Checking available reasoning routes…</p>
+          <p role="status">Checking which ways I can think…</p>
         </div>
       </SmoothReveal>
       <SmoothReveal open={loadState === 'unavailable'} className="intro-step-reveal">
         <div className="intro-step-reveal-body">
           <p role="alert" style={{ color: 'var(--error-base)' }}>
-            I couldn’t reach the setup service to check available reasoning routes.
+            I couldn’t reach the setup service to check which ways I can think.
           </p>
         </div>
       </SmoothReveal>
       <SmoothReveal open={loadState === 'ready'} className="intro-step-reveal">
-        <div className="intro-step-reveal-body choice-list" role="group" aria-label="Setup reasoning preference">
+        <div className="intro-step-reveal-body choice-list" role="radiogroup" aria-label="Where my thinking happens during setup">
           {options.map(option => {
             const choice = modelChoices[option.mode]
             const selected = selectedModelAccess?.mode === option.mode
@@ -647,7 +729,8 @@ function IntroModelStep({
                     `choice-option--${option.mode}`,
                     selected ? 'selected' : '',
                   ].join(' ')}
-                  aria-pressed={selected}
+                  role="radio"
+                  aria-checked={selected}
                   disabled={
                     (!option.available && !opensAccountDialog) || pendingMode !== null || isCheckingAccount
                   }
@@ -660,6 +743,11 @@ function IntroModelStep({
                         ? 'Checking your Basil account…'
                         : pendingMode === option.mode && !isKeyFormOpen ? 'Confirming…' : choice.detail}
                     </span>
+                    {selected && !selectedModelAccess?.resolved && (
+                      <span className="choice-option-pending-note" data-testid={`choice-selected-${option.mode}`}>
+                        Selected. Finish confirming below.
+                      </span>
+                    )}
                     {option.mode === 'local' && selected && option.display_name && (
                       <span className="choice-option-model-name">
                         Model: <strong>{option.display_name}</strong>
@@ -674,28 +762,52 @@ function IntroModelStep({
                       <span className="choice-option-unavailable">{option.unavailable_reason}</span>
                     )}
                   </div>
+                  <span className="choice-option-indicator" aria-hidden="true" />
                 </button>
+                {option.mode === 'local' && (
+                  <LocalModelChooser
+                    choices={option.local_model_choices ?? []}
+                    value={option.local_model_id ?? null}
+                    onChange={modelId => void handleLocalModelChange(modelId)}
+                    disabled={pendingMode !== null || downloadPhase === 'starting' || downloadPhase === 'downloading'}
+                  />
+                )}
                 {option.mode === 'local' && option.downloaded === false && option.local_model_type && option.local_model_variant && (
                   <div className="choice-option-reveal-body choice-option-download">
                     {downloadPhase === 'starting' || downloadPhase === 'downloading' ? (
                       <div className="choice-option-download-progress" role="status">
                         <span>
-                          {downloadPhase === 'starting' ? 'Starting download…' : `Downloading… ${downloadPercent}%`}
-                          {' '}You can keep going with another route while this finishes.
+                          {downloadPhase === 'starting' ? 'Starting download… ' : ''}
+                          You can keep going with another route while this finishes.
                         </span>
-                        <div className="choice-option-download-bar" aria-hidden="true">
-                          <div className="choice-option-download-bar-fill" style={{ width: `${downloadPercent}%` }} />
-                        </div>
+                        <DownloadProgress
+                          label={option.display_name ?? 'Local model'}
+                          percent={downloadPercent}
+                          downloadedBytes={downloadBytes.downloaded}
+                          totalBytes={downloadBytes.total}
+                        />
                       </div>
                     ) : (
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        disabled={pendingMode !== null}
-                        onClick={() => void startDownload(option)}
-                      >
-                        {`Download ${option.display_name ?? 'the local model'}${option.download_size_description ? ` (${option.download_size_description})` : ''}`}
-                      </button>
+                      <div className="choice-option-download-actions">
+                        <button
+                          type="button"
+                          className="secondary-button model-downloads__button"
+                          disabled={pendingMode !== null}
+                          onClick={() => void startDownload(option)}
+                        >
+                          {`Download ${option.display_name ?? 'the local model'}${option.download_size_description ? ` (${option.download_size_description})` : ''}`}
+                        </button>
+                        {option.can_copy_from_normal_basil && (
+                          <button
+                            type="button"
+                            className="secondary-button model-downloads__button"
+                            disabled={pendingMode !== null}
+                            onClick={() => void startDownload(option, 'copy')}
+                          >
+                            {`Copy ${option.display_name ?? 'the local model'} from my Basil`}
+                          </button>
+                        )}
+                      </div>
                     )}
                     {downloadPhase === 'stopped' && (
                       <p className="choice-option-key-status choice-option-key-status--invalid" role="alert">
@@ -722,13 +834,13 @@ function IntroModelStep({
                 <SmoothReveal open={isExpandedProviderKey && isKeyFormOpen}>
                   <div className="choice-option-reveal-body choice-option-provider-key-form">
                     <div className="choice-option-provider-field">
-                      <span>Provider</span>
+                      <span>AI company</span>
                       <TokenizedSelect
                         value={provider}
                         options={Object.entries(providerLabels).map(([value, label]) => ({ value, label }))}
                         onValueChange={handleProviderChange}
                         disabled={pendingMode !== null}
-                        ariaLabel="Provider"
+                        ariaLabel="AI company"
                         className="choice-option-provider-select"
                       />
                     </div>
@@ -771,7 +883,7 @@ function IntroModelStep({
                       </SmoothReveal>
                     </div>
                     <p className="choice-option-key-help">
-                      Setup requests go straight to {providerLabels[provider]} using this key. Don't have one yet?{' '}
+                      An API key is a password-like code that lets Basil use your account with {providerLabels[provider]}. Setup requests go straight to {providerLabels[provider]} using this key. Don't have one yet?{' '}
                       <a href={providerKeyHelpUrls[provider]} target="_blank" rel="noreferrer">
                         Get an API key from {providerLabels[provider]}
                       </a>
@@ -825,6 +937,8 @@ function IntroModelStep({
         </div>
       </SmoothReveal>
 
+      <p className="intro-step-later">You can change my main models any time in Settings, Models.</p>
+
       <div className={`intro-help${isHelpOpen ? ' intro-help--open' : ''}`}>
         <button
           type="button"
@@ -842,27 +956,23 @@ function IntroModelStep({
               <div>
                 <dt>{modelChoices.local.title}</dt>
                 <dd>
-                  I reason here using a local model on your disk. Slower than the cloud option and I
-                  use some memory while I'm thinking, but this setup conversation stays on this
-                  machine.
+                  I think using an AI model stored on this Mac. Slower than the cloud option, and I use some of your Mac's memory while I'm thinking, but this setup conversation stays on this Mac.
                 </dd>
               </div>
               <div>
                 <dt>{modelChoices.basil_cloud.title}</dt>
                 <dd>
-                  I reason through a stronger model hosted by Basil Cloud. Faster and smarter, but
-                  the contents of this conversation are routed through Basil Cloud while I am
-                  working.
+                  I think using a stronger model that runs on Basil's servers. Faster and smarter, but this conversation is sent to Basil Cloud while I am working.
                 </dd>
               </div>
               <div>
                 <dt>{modelChoices.provider_key.title}</dt>
-                <dd>I’ll send setup requests directly to the provider you choose using the API key you enter here.</dd>
+                <dd>I’ll send setup requests straight to the AI company you choose, using the key you enter here.</dd>
               </div>
             </dl>
+            {isHelpOpen && <ModelComparison />}
             <p className="intro-help-footnote">
-              This only governs how I think during setup. It does not lock in how I reason later —
-              you can change my main models any time in Settings.
+              This only decides how I think during setup.
             </p>
           </div>
         </SmoothReveal>
@@ -884,6 +994,9 @@ interface IntroLearningStepProps {
   captureSettingsLoadState: CaptureSettingsLoadState
   onMemoryChange: (value: boolean) => void
   onSkillChange: (value: boolean) => void
+  onContextImported?: (summary: SetupImportedContextSummary) => void
+  onContextImportUndone?: () => void
+  selectedModelAccess: SetupAgentModelAccess | null
 }
 
 function IntroLearningStep({
@@ -892,6 +1005,9 @@ function IntroLearningStep({
   captureSettingsLoadState,
   onMemoryChange,
   onSkillChange,
+  onContextImported,
+  onContextImportUndone,
+  selectedModelAccess,
 }: IntroLearningStepProps) {
   const settingsUnavailable = captureSettingsLoadState === 'unavailable'
 
@@ -918,9 +1034,10 @@ function IntroLearningStep({
             />
             <span className="intro-capture-toggle-body">
               <strong>Memory after tasks</strong>
-              <span>I'll propose personal-profile updates after work we do together.</span>
+              <span>After work we do together, I'll suggest notes to add to your profile.</span>
             </span>
           </label>
+          <p className="intro-toggle-later">Change this later in <em>Personalization &gt; Personal Context</em>.</p>
           <details className="intro-toggle-details">
             <summary>What does this mean?</summary>
             <p>
@@ -928,7 +1045,7 @@ function IntroLearningStep({
               updates to a personal profile: facts like what you do, who you write to most, the
               tone you prefer, and the kinds of questions you ask. You review every proposed
               memory before anything is saved, and you can edit or remove items any time in
-              Settings. Change this later in <em>Personalization &gt; Personal Context</em>.
+              Settings.
             </p>
           </details>
         </div>
@@ -943,9 +1060,10 @@ function IntroLearningStep({
             />
             <span className="intro-capture-toggle-body">
               <strong>Reusable workflows</strong>
-              <span>I'll propose named skills when a task goes well and seems repeatable.</span>
+              <span>When a task goes well and could be repeated, I'll suggest saving it as a skill, a named set of steps I can run again.</span>
             </span>
           </label>
+          <p className="intro-toggle-later">Change this later in <em>Capabilities &gt; Automation &amp; Agents &gt; Skills</em>.</p>
           <details className="intro-toggle-details">
             <summary>What does this mean?</summary>
             <p>
@@ -960,11 +1078,13 @@ function IntroLearningStep({
             </p>
             <p>
               You approve or edit each skill before it joins your catalog, and skills are easy
-              to rewrite or delete later. Change this later in <em>Capabilities &gt; Automation &amp; Agents &gt; Skills</em>.
+              to rewrite or delete later.
             </p>
           </details>
         </div>
       </fieldset>
+      <IntroContextImport modelAccess={selectedModelAccess} onContextImported={onContextImported} onContextImportUndone={onContextImportUndone} />
+      <IntroTrustNote />
     </div>
   )
 }
@@ -991,8 +1111,8 @@ function IntroNoteStep({
       <h3>{hasStyleGroups ? 'How should I work with you?' : 'Anything else I should know?'}</h3>
       <p className="intro-step-lede">
         {hasStyleGroups
-          ? 'Pick whatever is true of you. All optional.'
-          : 'Optional. Tell me anything that helps me set things up your way.'}
+          ? 'Pick whatever is true of you. All optional, and you can change any of this later in Settings.'
+          : 'Optional. Tell me anything that helps me set things up your way. You can change your preferences later in Settings.'}
       </p>
 
       <IntroInteractionStyle

@@ -31,7 +31,7 @@ from api.core.models.reasoning.ollama_native_chat import (
     stream_ollama_chat,
     uses_ollama_native_chat,
 )
-from .llama_cpp_langchain_adapter import LocalModelContextWindowExceeded
+from .llama_cpp_langchain_adapter import LocalModelContextWindowExceeded, with_unique_tool_call_ids
 
 from api.core.models.reasoning.model_runtime_profile import (
     TOOL_RENDERING_SLIM_TEXT_CATALOG,
@@ -311,6 +311,7 @@ class OpenAICompatibleLangChainAdapter(BaseChatModel):
         if parse_errors:
             logger.warning("OpenAI-compatible custom tool parse errors: %s", parse_errors)
 
+        tool_calls = with_unique_tool_call_ids(tool_calls)
         ai_message = self._build_ai_message(content, tool_calls)
         logger.info(
             "OpenAI-compatible custom response: %s chars, %s tool calls",

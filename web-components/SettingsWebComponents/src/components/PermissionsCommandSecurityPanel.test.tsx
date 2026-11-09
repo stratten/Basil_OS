@@ -89,6 +89,22 @@ describe('PermissionsCommandSecurityPanel', () => {
     expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'requestDeleteWhitelistPattern', id: 'pat-1' }))
   })
 
+  it('flags a stored single-command pattern as allowing every use of that tool, and nothing more specific', () => {
+    act(() => {
+      window.basilPermissionsCommandSecurity!.onEvent(
+        initEvent({}, [
+          { id: 'pat-1', pattern: 'gh', patternType: 'prefix', description: '', addedDate: null, lastUsed: null, useCount: 3, riskLevel: 'low' },
+          { id: 'pat-2', pattern: 'gh gist view', patternType: 'prefix', description: '', addedDate: null, lastUsed: null, useCount: 1, riskLevel: 'low' },
+          { id: 'pat-3', pattern: 'gh', patternType: 'exact', description: '', addedDate: null, lastUsed: null, useCount: 0, riskLevel: 'low' },
+        ]),
+      )
+    })
+    const items = container.querySelectorAll('.permissions-whitelist-item')
+    expect(items[0].querySelector('.permissions-whitelist-broad')?.textContent).toContain('Allows every gh command.')
+    expect(items[1].querySelector('.permissions-whitelist-broad')).toBeNull()
+    expect(items[2].querySelector('.permissions-whitelist-broad')).toBeNull()
+  })
+
   it('opens an edit form directly below the selected whitelist item', () => {
     act(() => {
       window.basilPermissionsCommandSecurity!.onEvent(

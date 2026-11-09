@@ -85,13 +85,29 @@ describe('agent task run focus', () => {
   it('labels turns Basil started itself as agent revisions, numbered apart from user follow-ups', () => {
     expect(agentTaskRunLabels([undefined, 'agent_follow_up', 'agent_follow_up', undefined, 'agent_follow_up', undefined])).toEqual([
       'Initial request',
-      'Agent revision 1.1',
-      'Agent revision 1.2',
+      'Agent revision 1 of the initial request',
+      'Agent revision 2 of the initial request',
       'Follow-up 1',
-      'Agent revision 2.1',
+      'Agent revision 1 of Follow-up 1',
       'Follow-up 2',
     ]);
     expect(agentTaskRunLabels([])).toEqual([]);
+  });
+
+  it('names a revision for the follow-up it revises rather than for its position in the chain', () => {
+    const labels = agentTaskRunLabels([undefined, undefined, undefined, undefined, undefined, 'agent_follow_up', 'agent_follow_up', undefined]);
+
+    expect(labels).toEqual([
+      'Initial request',
+      'Follow-up 1',
+      'Follow-up 2',
+      'Follow-up 3',
+      'Follow-up 4',
+      'Agent revision 1 of Follow-up 4',
+      'Agent revision 2 of Follow-up 4',
+      'Follow-up 5',
+    ]);
+    expect(labels.join(' ')).not.toMatch(/revision 5/i);
   });
 
   it('numbers non-revision turns 1, 2, 3 and agent revisions parent.k', () => {
@@ -123,7 +139,7 @@ describe('agent task run focus', () => {
 
     expect(runs.map(run => [run.ordinal, run.displayNumber, run.label])).toEqual([
       [1, '1', 'Initial request'],
-      [2, '1.1', 'Agent revision 1.1'],
+      [2, '1.1', 'Agent revision 1 of the initial request'],
       [3, '2', 'Follow-up 1'],
     ]);
   });
@@ -148,7 +164,11 @@ describe('agent task run focus', () => {
 
     const runs = deriveAgentTaskRunFocusSummaries(source, false);
 
-    expect(runs.map(run => run.label)).toEqual(['Initial request', 'Agent revision 1.1', 'Agent revision 1.2']);
+    expect(runs.map(run => run.label)).toEqual([
+      'Initial request',
+      'Agent revision 1 of the initial request',
+      'Agent revision 2 of the initial request',
+    ]);
     expect(runs.map(run => run.displayNumber)).toEqual(['1', '1.1', '1.2']);
   });
 

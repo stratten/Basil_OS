@@ -55,6 +55,12 @@ export default defineConfig({
       '../shared/inlineDeleteConfirm.contract.test.ts',
       '../shared/formatClockSeconds.test.ts',
       '../shared/ExpandableClamp.test.tsx',
+      '../shared/ContextImportPanel.test.tsx',
+      '../shared/ProfileImportPanel.test.tsx',
+      '../shared/ImportDialogs.test.tsx',
+      '../shared/ImportJobProgress.test.tsx',
+      '../shared/useContextImportJob.test.tsx',
+      '../shared/contextImportClient.test.ts',
     ],
   },
 })

@@ -8,6 +8,8 @@ import logging
 from types import SimpleNamespace
 from typing import Any, Callable, Dict, Optional
 
+from api.core.models.reasoning.local_model_failure import find_local_model_failure
+
 from ...runtime.workflow_coordinator import WorkflowCoordinator
 from ....shared.serialization import convert_to_serializable_dict
 
@@ -138,6 +140,17 @@ class AgentTaskWorkflowResultService:
             raise
         except Exception as exc:
             self.logger.error("Enhanced multi-step workflow execution failed: %s", exc, exc_info=True)
+            local_failure = find_local_model_failure(exc)
+            if local_failure is not None:
+                # The user reads this text in the task and the conversation, so it carries the plain-language explanation and the recovery options instead of the native decode message.
+                return SimpleNamespace(
+                    operation="multi_step_workflow",
+                    success=False,
+                    data=None,
+                    user_feedback=str(local_failure),
+                    error_message=str(local_failure),
+                    widget_content_delivered=False,
+                )
             return SimpleNamespace(
                 operation="multi_step_workflow",
                 success=False,

@@ -222,6 +222,14 @@ MENU_BAR_INVENTORY: List[MenuBarItem] = [
         ),
     ),
     MenuBarItem(
+        title="Report a Problem\u2026",
+        description=(
+            "Saves a diagnostics bundle with Basil's logs on this Mac, shows "
+            "it in Finder, and opens a pre-filled GitHub issue. Nothing is "
+            "sent until the user submits the issue."
+        ),
+    ),
+    MenuBarItem(
         title="Quit",
         description="Quits the Basil app.",
     ),

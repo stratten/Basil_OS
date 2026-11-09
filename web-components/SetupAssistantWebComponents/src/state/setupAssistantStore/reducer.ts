@@ -44,6 +44,7 @@ import { applySetupAgentEvent } from './helpers/setupAgentEventReducer'
 export const initialState: SetupAssistantState = {
   setupStage: 'welcome',
   setupAgentModelAccess: null,
+  expressComfort: null,
   observations: [],
   messages: [],
   artifacts: [],
@@ -51,6 +52,7 @@ export const initialState: SetupAssistantState = {
   currentChips: [],
   currentChipsMultiSelect: false,
   interactionStyle: [],
+  importedContext: null,
   isStreaming: false,
   discoveryFacts: [],
   wasSkipped: false,
@@ -74,8 +76,37 @@ export function reducer(
       return { ...state, setupStage: action.setupStage }
     case 'set_interaction_style':
       return { ...state, interactionStyle: action.interactionStyle }
+    case 'merge_imported_context': {
+      const previous = state.importedContext
+      const mergeTitles = (existing: string[] | undefined, incoming: string[]) => [...new Set([...(existing ?? []), ...incoming])].slice(0, 10)
+      return {
+        ...state,
+        importedContext: {
+          entries_added: (previous?.entries_added ?? 0) + action.summary.entries_added,
+          facts_proposed: (previous?.facts_proposed ?? 0) + action.summary.facts_proposed,
+          fact_titles: mergeTitles(previous?.fact_titles, action.summary.fact_titles),
+          note_titles: mergeTitles(previous?.note_titles, action.summary.note_titles),
+          ...(previous?.profile_updated || action.summary.profile_updated
+            ? { profile_updated: true, profile_summary: action.summary.profile_summary ?? previous?.profile_summary ?? '' }
+            : {}),
+        },
+      }
+    }
+    case 'clear_imported_profile': {
+      const previous = state.importedContext
+      if (!previous) return state
+      const remaining = {
+        entries_added: previous.entries_added,
+        facts_proposed: previous.facts_proposed,
+        fact_titles: previous.fact_titles,
+        note_titles: previous.note_titles,
+      }
+      return { ...state, importedContext: remaining.entries_added > 0 || remaining.facts_proposed > 0 ? remaining : null }
+    }
     case 'set_model_access':
       return { ...state, setupAgentModelAccess: action.setupAgentModelAccess }
+    case 'set_express_comfort':
+      return { ...state, expressComfort: action.expressComfort }
     case 'append_user_message':
       return {
         ...state,

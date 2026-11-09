@@ -41,6 +41,10 @@ logger = logging.getLogger(__name__)
 REPAIR_OBSERVATION_REPEAT_COUNT = 3
 STOP_REPEAT_COUNT = 6
 
+# Tools whose identical call returning an identical result is a loop rather than progress. Kept to an explicit list because polling and status tools can legitimately repeat.
+_IDENTICAL_RESULT_GUARDED_TOOLS = frozenset({"external_catalog"})
+_IDENTICAL_RESULT_KIND = "repeated_identical_result"
+
 _GUARD_STATE_KEY = "tool_call_repetition_guard"
 _GUARD_EVENTS_KEY = "tool_call_repetition_guard_events"
 _ORIGINAL_TOOL_ATTR = "basil_original_tool"
@@ -113,6 +117,20 @@ def _deterministic_failure_kind(payload: dict[str, Any]) -> Optional[str]:
     return None
 
 
+def _ok_envelope_invalid_arguments_message(payload: dict[str, Any]) -> Optional[str]:
+    """Return the message of an ``{"ok": false, "error": {"kind": "invalid_arguments"}}`` envelope, else None.
+
+    ``external_catalog`` reports malformed calls in this envelope rather than the ``success: false`` shape, so without this the guard never counted its repeated invalid calls.
+    """
+
+    if payload.get("ok") is not False:
+        return None
+    error = payload.get("error")
+    if not isinstance(error, dict) or error.get("kind") != "invalid_arguments":
+        return None
+    return str(error.get("message") or "invalid_arguments")
+
+
 def _top_level_keys(tool_input: Any) -> list[str]:
     if isinstance(tool_input, dict):
         return sorted(str(key) for key in tool_input.keys())
@@ -151,9 +169,13 @@ def classify_invalid_tool_observation(
 
     payload = _parse_json_object(observation_text)
     if payload is not None:
-        if payload.get("success") is not False:
+        envelope_error = _ok_envelope_invalid_arguments_message(payload)
+        if envelope_error is None and payload.get("success") is not False:
             return None
-        error_text = str(payload.get("error", "") or "")
+        if envelope_error is not None:
+            error_text = envelope_error
+        else:
+            error_text = str(payload.get("error", "") or "")
         lowered = error_text.lower()
         if "requires an action" in lowered:
             invalid_kind = "missing_action"
@@ -163,6 +185,8 @@ def classify_invalid_tool_observation(
             token.lower() in lowered for token in _REQUIRED_ARGUMENT_TOKENS
         ):
             invalid_kind = "missing_required_argument"
+        elif envelope_error is not None:
+            invalid_kind = "invalid_arguments"
         else:
             deterministic_kind = _deterministic_failure_kind(payload)
             if deterministic_kind is None:
@@ -196,6 +220,36 @@ def classify_invalid_tool_observation(
     if validation_fields:
         diagnostic["validation_fields"] = validation_fields
     return diagnostic
+
+
+def classify_identical_result_call(
+    tool_name: str,
+    tool_input: Any,
+    observation: Any,
+) -> Optional[dict[str, Any]]:
+    """Return a diagnostic for a call on an opted-in tool, keyed by its input and its result.
+
+    The guard counts a call only when both the input and the result match an earlier one, so a changed query or a changed result starts a fresh count. Only tools in ``_IDENTICAL_RESULT_GUARDED_TOOLS`` are covered, because some tools legitimately return the same result repeatedly (polling, status checks, reads of changing state).
+    """
+
+    if tool_name not in _IDENTICAL_RESULT_GUARDED_TOOLS:
+        return None
+    observation_text = _coerce_observation_to_text(observation)
+    if observation_text is None:
+        return None
+    input_hash = _input_hash(tool_input)
+    result_hash = hashlib.sha256(observation_text.encode("utf-8")).hexdigest()
+    digest = hashlib.sha256(
+        "|".join([tool_name, _IDENTICAL_RESULT_KIND, input_hash, result_hash]).encode("utf-8")
+    ).hexdigest()
+    return {
+        "tool_name": tool_name,
+        "invalid_kind": _IDENTICAL_RESULT_KIND,
+        "input_keys": _top_level_keys(tool_input),
+        "input_hash": input_hash,
+        "signature": f"{tool_name}:{_IDENTICAL_RESULT_KIND}:{digest}",
+        "error": "The identical call returned the identical result.",
+    }
 
 
 def _input_hash(tool_input: Any) -> str:
@@ -262,10 +316,15 @@ def _next_actions_for_kind(diagnostic: dict[str, Any]) -> list[str]:
     invalid_kind = diagnostic.get("invalid_kind")
     if invalid_kind in {"missing_action", "missing_or_invalid_action"}:
         return [
-            "Choose exactly one action from: click, fill, select, navigate, scroll, wait.",
+            "Choose exactly one action from: click, fill, select, navigate, scroll, wait, fill_form, capture_captcha, submit_captcha.",
             "If you are unsure which element to act on, call browser_inspect instead of browser_interact.",
         ]
-    if invalid_kind == "missing_required_argument":
+    if invalid_kind == _IDENTICAL_RESULT_KIND:
+        return [
+            "Do not repeat the identical call: change the query or the arguments, or use a different tool.",
+            "If the result is empty or does not hold what the user asked for, say what is missing instead of searching again.",
+        ]
+    if invalid_kind in {"missing_required_argument", "invalid_arguments"}:
         return [
             "Re-send the call including the required argument named in the error text.",
             "Do not repeat the same incomplete arguments; if unsure, inspect the target first.",
@@ -303,6 +362,9 @@ def build_guard_repair_observation(diagnostic: dict[str, Any], repeat_count: int
                 f"This exact call failed {repeat_count} times with the same error: "
                 f"{diagnostic.get('error')}. Repeating it will not work."
                 if diagnostic.get("invalid_kind") in _DETERMINISTIC_FAILURE_ERROR_TYPES
+                else f"This exact call has been made {repeat_count} times and returned the same "
+                f"result each time, so it is not shown again. Repeating it will not produce anything new."
+                if diagnostic.get("invalid_kind") == _IDENTICAL_RESULT_KIND
                 else f"This call was rejected {repeat_count} times with the same invalid "
                 f"arguments. Repeating it will not work."
             ),
@@ -314,6 +376,13 @@ def build_guard_repair_observation(diagnostic: dict[str, Any], repeat_count: int
 
 def _build_stop_agent_output(diagnostic: dict[str, Any], repeat_count: int) -> str:
     next_actions = _next_actions_for_kind(diagnostic)
+    if diagnostic.get("invalid_kind") == _IDENTICAL_RESULT_KIND:
+        return (
+            f"Stopped: the tool '{diagnostic.get('tool_name')}' was called with the same "
+            f"arguments and returned the same result {repeat_count} times without the approach changing. "
+            "I could not complete this task because repeating the call produced nothing new. "
+            "Suggested next steps: " + " ".join(next_actions)
+        )
     return (
         f"Stopped: the tool '{diagnostic.get('tool_name')}' was called with the same "
         f"invalid arguments {repeat_count} times without correction. "
@@ -374,7 +443,7 @@ class RepetitionGuardedTool(StructuredTool):
             try:
                 diagnostic = classify_invalid_tool_observation(
                     self.name, tool_input, observation
-                )
+                ) or classify_identical_result_call(self.name, tool_input, observation)
             except Exception as classify_error:  # pragma: no cover - defensive
                 logger.debug("Repetition guard classification failed: %s", classify_error)
                 return observation

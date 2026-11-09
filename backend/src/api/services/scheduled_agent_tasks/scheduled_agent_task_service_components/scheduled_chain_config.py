@@ -17,9 +17,10 @@ class ChainConfig:
     """What the runner needs to know about a schedule's chain."""
 
     mode: str = CHAIN_MODE_INDEPENDENT
-    max_runs: Optional[int] = None
+    max_runs: Optional[int] = None  # Stored under this name for compatibility; it limits the total turns in the conversation, not only scheduled runs.
     max_age_minutes: Optional[int] = None
     carry_over: bool = True
+    carry_checklist: bool = False  # Applies to independent and chained schedules: open checklist items (and notes) of the previous run seed the next run.
 
     @property
     def is_chained(self) -> bool:
@@ -49,12 +50,18 @@ def normalize_chain_config(raw: Any) -> Dict[str, Any]:
     mode = str(raw.get("mode") or CHAIN_MODE_INDEPENDENT).strip().lower()
     if mode not in (CHAIN_MODE_INDEPENDENT, CHAIN_MODE_CHAINED):
         raise ValueError("The chain mode must be independent or chained.")
+    carry_checklist = raw.get("carry_checklist", False)
+    if not isinstance(carry_checklist, bool):
+        raise ValueError("carry_checklist must be true or false.")
     if mode == CHAIN_MODE_INDEPENDENT:
-        return {"mode": CHAIN_MODE_INDEPENDENT}
-    max_runs = _optional_limit(raw.get("max_runs"), "The run limit", MAX_CHAIN_RUNS_LIMIT)
+        independent: Dict[str, Any] = {"mode": CHAIN_MODE_INDEPENDENT}
+        if carry_checklist:
+            independent["carry_checklist"] = True
+        return independent
+    max_runs = _optional_limit(raw.get("max_runs"), "The turn limit", MAX_CHAIN_RUNS_LIMIT)
     max_age = _optional_limit(raw.get("max_age_minutes"), "The time limit", MAX_CHAIN_AGE_MINUTES_LIMIT)
     if max_runs is None and max_age is None:
-        raise ValueError("A chained schedule needs a run limit, a time limit, or both, so one conversation cannot grow without end.")
+        raise ValueError("A chained schedule needs a turn limit, a time limit, or both, so one conversation cannot grow without end.")
     carry_over = raw.get("carry_over", True)
     if not isinstance(carry_over, bool):
         raise ValueError("carry_over must be true or false.")
@@ -63,6 +70,8 @@ def normalize_chain_config(raw: Any) -> Dict[str, Any]:
         config["max_runs"] = max_runs
     if max_age is not None:
         config["max_age_minutes"] = max_age
+    if carry_checklist:
+        config["carry_checklist"] = True
     return config
 
 
@@ -77,11 +86,13 @@ def parse_chain_config(raw: Any) -> ChainConfig:
         normalized = normalize_chain_config(raw)
     except ValueError:
         return ChainConfig()
+    carry_checklist = bool(normalized.get("carry_checklist", False))
     if normalized["mode"] != CHAIN_MODE_CHAINED:
-        return ChainConfig()
+        return ChainConfig(carry_checklist=carry_checklist)
     return ChainConfig(
         mode=CHAIN_MODE_CHAINED,
         max_runs=normalized.get("max_runs"),
         max_age_minutes=normalized.get("max_age_minutes"),
         carry_over=bool(normalized.get("carry_over", True)),
+        carry_checklist=carry_checklist,
     )

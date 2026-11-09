@@ -184,6 +184,7 @@ RETIRED_CLOUD_MODEL_REPLACEMENTS = {
 RETIRED_LOCAL_MODEL_REPLACEMENTS = {
     "Solar-solar": "Qwen-qwen35-9b-q4km",
     "solar/solar": "qwen/qwen35-9b-q4km",
+    "upstage/SOLAR-10.7B-Instruct-v1.0": "Qwen-qwen35-9b-q4km",
     "Mistral-mistral-nemo": "Mistral-ministral3-8b-instruct-q4km",
     "mistral/mistral-nemo": "mistral/ministral3-8b-instruct-q4km",
     "Mistral-mistral-7b-v03": "Mistral-ministral3-8b-instruct-q4km",
@@ -249,6 +250,35 @@ def migrate_retired_cloud_model_ids_in_data(data: dict) -> bool:
     if migrated:
         logger.info(f"📦 Retired cloud models: migrated {len(migrated)} saved model preferences: {migrated}")
     return bool(migrated)
+
+
+def migrate_legacy_transcription_model_in_data(data: dict) -> bool:
+    """Replace the retired shorthand transcription default "base" with a model the Settings picker and the transcription services can resolve, in place.
+
+    "base" is not a registry id or display name, so Settings listed it as unavailable and the local loader could not resolve it. A machine that already has Whisper Base installed keeps using it as "Whisper Base". Any other machine gets the starter model the first-run download installs. Returns True when anything changed so the caller can persist the file. Only the exact legacy values "base" and an empty string are rewritten, so a real selection is never touched, and running it again changes nothing.
+    """
+    models_data = data.get("models")
+    if not isinstance(models_data, dict):
+        return False
+    current = models_data.get("transcription_model")
+    if not isinstance(current, str) or current.strip() not in ("base", ""):
+        return False
+
+    from .defaults import LEGACY_BASE_TRANSCRIPTION_MODEL_NAME, _get_default_transcription_model_name
+
+    replacement = _get_default_transcription_model_name()
+    try:
+        from api.settings import get_models_dir
+
+        base_dir = get_models_dir() / "whisper-base"
+        if any((base_dir / marker).exists() for marker in ("config.json", ".downloaded")):
+            replacement = LEGACY_BASE_TRANSCRIPTION_MODEL_NAME
+    except Exception as exc:
+        logger.debug(f"Could not check for an installed Whisper Base model: {exc}")
+
+    models_data["transcription_model"] = replacement
+    logger.info(f"📦 Transcription default: migrated models.transcription_model {current!r} -> {replacement!r}")
+    return True
 
 
 def _normalize_api_key_preference(value: Any):

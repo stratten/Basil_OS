@@ -1,7 +1,7 @@
 export type ConnectionStateDTO = 'ready' | 'recording' | 'error' | 'connecting';
 export type TranscriptionStateDTO = 'loadingModels' | 'idle' | 'listening' | 'transcribing';
 export type SystemAudioCaptureModeDTO = 'none' | 'selectedProcess' | 'globalOutput';
-export type MicrophoneInputRecoveryStateDTO = 'idle' | 'reconnecting' | 'failed';
+export type MicrophoneInputRecoveryStateDTO = 'idle' | 'reconnecting' | 'failed' | 'silent';
 export type WindowRetranscriptionPhaseDTO = 'running' | 'applying' | 'completed' | 'failed';
 export type AudioSourceKindDTO = 'Microphone' | 'SystemAudio';
 

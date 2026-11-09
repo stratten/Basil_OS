@@ -22,6 +22,7 @@ export default defineConfig({
     include: [
       'src/**/*.{test,spec}.{ts,tsx}',
       '../shared/ExecutionDisclosureChevron.test.tsx',
+      '../shared/CircleControlIcons.test.tsx',
       '../shared/appearanceTokenContract.test.ts',
       '../shared/webTheme.test.ts',
       '../shared/paletteFixtures.test.ts',

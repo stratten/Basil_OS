@@ -268,10 +268,17 @@ class SimulStreamingASR():
                 fw_model = str(self._resolved_model_path)
             else:
                 fw_model = self.model_name
+            # A bare model name makes faster-whisper download Systran weights, so keep that download under the Basil models directory instead of the shared Hugging Face cache. A resolved local path is already loaded from disk and needs no download root.
+            fw_download_root = None
+            if self._resolved_model_path is None:
+                from api.settings import get_models_dir
+
+                fw_download_root = str(get_models_dir() / "faster-whisper-cache")
             self.fw_encoder = WhisperModel(
                 fw_model,
                 device='auto',
                 compute_type='auto',
+                download_root=fw_download_root,
             )
 
         self._model_pool = ModelPool(

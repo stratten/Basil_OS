@@ -47,6 +47,23 @@ describe('PermissionPreflight copy', () => {
     expect(container.textContent).not.toContain('Last step')
   })
 
+  it('explains each permission in plain words and keeps the names macOS uses as titles', () => {
+    render(false)
+
+    const text = container.textContent ?? ''
+    for (const title of ['Microphone Access', 'Accessibility', 'Input Monitoring', 'Apple Events', 'Screen Recording']) {
+      expect(text).toContain(title)
+    }
+    expect(text).toContain('Lets Basil hear you, so it can turn what you say into text and take spoken requests.')
+    expect(text).toContain('Lets Basil type for you, for example to paste text into the app you are using, and read what is on your screen for some features.')
+    expect(text).toContain('Lets Basil notice your hotkeys, including pressing a modifier key twice, while you are working in another app.')
+    expect(text).toContain('Lets Basil control other apps, such as Finder or your web browser, for tasks you ask it to do and for screen capture.')
+    expect(text).toContain('Lets Basil see what is on your screen, so it can offer suggestions and read text in screenshots.')
+    for (const phrase of ['simulate keystrokes', 'modifier gestures', 'Paprika tasks', 'OCR']) {
+      expect(text).not.toContain(phrase)
+    }
+  })
+
   it('keeps the returning-user copy for a user whose permissions need rechecking', () => {
     render(true)
 

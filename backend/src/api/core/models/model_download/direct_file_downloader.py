@@ -102,7 +102,6 @@ class DirectFileDownloader:
                         revision=revision,
                         local_files_only=False,
                         force_download=False,
-                        resume_download=True,
                     )
 
                 downloaded_path = await asyncio.to_thread(download_file)
@@ -159,7 +158,6 @@ class DirectFileDownloader:
                 revision=revision,
                 local_files_only=False,
                 force_download=False,
-                resume_download=True,
             )
 
         downloaded_path = Path(await asyncio.to_thread(download_file))
@@ -419,7 +417,6 @@ class DirectFileDownloader:
                         revision=revision,
                         local_files_only=False,
                         force_download=False,
-                        resume_download=True,
                     )
 
                 api_logger.info(f"Downloading {filename} from {repo_id}...")

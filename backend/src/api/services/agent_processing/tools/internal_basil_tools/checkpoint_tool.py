@@ -27,6 +27,7 @@ class CheckpointRequest(Exception):
 
 MAX_CHECKPOINT_ID_BYTES = 128
 MAX_CHECKPOINT_METADATA_BYTES = 2_000
+MAX_CHECKPOINT_DETAILS_CHARS = 8_000
 
 
 def _validate_checkpoint_extensions(
@@ -50,6 +51,16 @@ def _validate_checkpoint_extensions(
             )
 
 
+def _bounded_details(details_markdown: Optional[str]) -> str:
+    """The review content for the "Show details" section, trimmed and cut with a visible marker when it is too long."""
+    if not isinstance(details_markdown, str):
+        return ""
+    text = details_markdown.strip()
+    if len(text) <= MAX_CHECKPOINT_DETAILS_CHARS:
+        return text
+    return f"{text[:MAX_CHECKPOINT_DETAILS_CHARS].rstrip()}\n\n*[Cut here: the full content is longer than can be shown.]*"
+
+
 @tool
 def request_user_input(
     prompt: str,
@@ -66,6 +77,7 @@ def request_user_input(
     checkpoint_id: Optional[str] = None,
     metadata: Optional[Dict[str, Any]] = None,
     allow_multiple: bool = False,
+    details_markdown: Optional[str] = None,
 ) -> str:
     """
     Request input or approval from the user before proceeding.
@@ -95,16 +107,17 @@ def request_user_input(
             Do not add an "Other" option; the UI always offers a typed Other answer.
         context_summary: Brief summary of what's been done so far to provide context
         allow_multiple: Set True only with "selection" or "choice" when the user may reasonably pick several options at once (for example, which reports to include). Leave False when exactly one answer drives the next step.
+        details_markdown: The exact content the user needs in order to decide, shown in a "Show details" section under the question so the question stays short. REQUIRED for any approval before an email or message is sent, a post is published, or a change is made that cannot be undone: put the recipients (To, Cc, Bcc), the subject, and the full body (or the first part of a very long body, saying that it is cut) for a message, or the exact items and values for a change. Also use it for a draft or file you ask the user to review. Copy the content from the draft or tool result you read; never paraphrase it or write it from memory. Markdown is rendered; up to 8,000 characters.
         
     Returns:
         The user's reply. A single pick arrives as the bare option value. Several picks, or a pick plus typed text, arrive as "Selected: A; B" and/or "Other: <typed text>" on separate lines. Act on every selected option, and treat "Other:" text as the user's own answer or as an added instruction that refines the selection.
         
     Examples:
-        - request_user_input("Should I send this draft email?", "yes_no")
         - request_user_input("Which client should I prioritize?", "selection", ["Client A", "Client B", "Client C"])
         - request_user_input("Which reports should I include?", "selection", ["Sales", "Support", "Operations"], allow_multiple=True)
         - request_user_input("How many emails should I process?", "numeric")
         - request_user_input("Any changes to the draft before I save it?", "text")
+        - request_user_input("Send this reply to Mariam now?", "yes_no", details_markdown="**To:** mariam@example.com\\n**Subject:** Re: Storage limits\\n\\nHi Mariam, ...")
     """
     _validate_checkpoint_extensions(checkpoint_id, metadata)
     checkpoint_data = {
@@ -114,6 +127,7 @@ def request_user_input(
         "options": options or [],
         "allow_multiple": bool(allow_multiple) and input_type in ("selection", "choice"),
         "context_summary": context_summary or "",
+        "details_markdown": _bounded_details(details_markdown),
         "metadata": metadata or {},
         "step_type": "user_input_request",
     }
@@ -141,6 +155,8 @@ SLIM_DESCRIPTION = (
     "multiple-choice, clarifications, numeric inputs, or pre-send confirmation; "
     "do not use for state that tools can inspect after loading the right family; "
     "set allow_multiple=true with selection when several options may apply; "
+    "put the exact content to review in details_markdown (required before sending a message, "
+    "publishing, or any irreversible change: recipients, subject, and full body copied from the draft); "
     "the UI always offers a typed Other answer, and replies may read "
     "'Selected: A; B' and/or 'Other: <text>'; "
     "returns the user's reply (do NOT call to insert your own commentary)."

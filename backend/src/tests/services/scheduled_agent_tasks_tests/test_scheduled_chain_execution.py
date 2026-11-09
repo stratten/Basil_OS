@@ -66,7 +66,7 @@ async def test_a_continued_run_is_submitted_on_the_chain_root_with_the_visible_p
     plan = chain_runtime.ChainPlan(
         action=chain_runtime.ACTION_START,
         handoff_block="PREVIOUS SCHEDULED CONVERSATION (read-only background):\nlast result",
-        notice="Started a new conversation because the previous one reached its limit of 3 runs.",
+        notice="Started a new conversation because the previous one reached its limit of 3 turns.",
     )
     monkeypatch.setattr(chain_runtime, "plan_chain_run", AsyncMock(return_value=plan))
     monkeypatch.setattr(sre.scheduled_run_lifecycle, "finalize_run_after_execution", AsyncMock())
@@ -79,7 +79,7 @@ async def test_a_continued_run_is_submitted_on_the_chain_root_with_the_visible_p
     assert kwargs["display_prompt_markdown"] == "Check my inbox"
     assert "root_task_id" not in kwargs
     notice_calls = [call.kwargs.get("notice") for call in repo.update_scheduled_run.await_args_list if call.kwargs.get("notice")]
-    assert notice_calls == ["Started a new conversation because the previous one reached its limit of 3 runs."]
+    assert notice_calls == ["Started a new conversation because the previous one reached its limit of 3 turns."]
 
 
 @pytest.mark.asyncio
@@ -103,3 +103,35 @@ async def test_a_continue_plan_passes_the_root_task_id(monkeypatch):
     assert kwargs["root_task_id"] == "root-9"
     assert kwargs["agent_task"] == "Check my inbox"
     assert kwargs["origin_type"] == "scheduled_task" and kwargs["origin_id"] == "schedule-1"
+
+
+@pytest.mark.asyncio
+async def test_a_scheduled_firing_of_an_inactive_schedule_is_still_skipped(monkeypatch):
+    submission_service = SimpleNamespace(process_agent_task_direct=AsyncMock(), broadcast=AsyncMock())
+    monkeypatch.setattr("api.main.app", SimpleNamespace(state=SimpleNamespace(agent_task_submission_service=submission_service)))
+    repo = _repo(is_active=False)
+
+    result = await sre.execute_scheduled_run(repo, SimpleNamespace(), "schedule-1", "run-1")
+
+    assert result == {"success": False, "error": "Scheduled task is inactive"}
+    assert repo.update_scheduled_run.await_args.kwargs["status"] == "skipped"
+    submission_service.process_agent_task_direct.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_a_run_now_of_an_inactive_schedule_runs_and_leaves_it_inactive(monkeypatch):
+    submission_service = SimpleNamespace(
+        process_agent_task_direct=AsyncMock(return_value={"success": False, "error": "stop here"}),
+        broadcast=AsyncMock(),
+    )
+    monkeypatch.setattr("api.main.app", SimpleNamespace(state=SimpleNamespace(agent_task_submission_service=submission_service)))
+    monkeypatch.setattr(sre, "_prevent_idle_system_sleep_for_scheduled_run", lambda **_kwargs: nullcontext())
+    monkeypatch.setattr(chain_runtime, "plan_chain_run", AsyncMock(return_value=chain_runtime.ChainPlan(action=chain_runtime.ACTION_START)))
+    monkeypatch.setattr(sre.scheduled_run_lifecycle, "finalize_run_after_execution", AsyncMock())
+    repo = _repo(is_active=False)
+
+    await sre.execute_scheduled_run(repo, SimpleNamespace(), "schedule-1", "run-1", allow_inactive=True)
+
+    submission_service.process_agent_task_direct.assert_awaited_once()
+    skipped = [call for call in repo.update_scheduled_run.await_args_list if call.kwargs.get("status") == "skipped"]
+    assert skipped == []

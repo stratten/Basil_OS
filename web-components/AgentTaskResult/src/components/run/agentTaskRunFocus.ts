@@ -47,15 +47,21 @@ export function isRevisionNumber(displayNumber: string): boolean {
   return displayNumber.includes('.');
 }
 
-// Labels one turn per entry. User follow-ups are counted on their own and agent revisions carry the parent-based number, so an automatic turn is never mistaken for something the user asked and the label matches the rail.
+// Labels one turn per entry. User follow-ups are counted on their own, and an agent revision is named for the turn it revises ("Agent revision 2 of Follow-up 4"), so an automatic turn is never mistaken for something the user asked and its label points at text that is visible in the same chain. Several revisions of one turn count up from 1.
 export function agentTaskRunLabels(originTypes: ReadonlyArray<string | undefined>): string[] {
-  const numbers = agentTaskRunNumbers(originTypes);
   let userFollowUps = 0;
+  let revisedTurnName = 'the initial request';
+  let revisionsOfTurn = 0;
   return originTypes.map((originType, index) => {
     if (index === 0) return 'Initial request';
-    if (originType === AGENT_REVISION_ORIGIN_TYPE) return `Agent revision ${numbers[index]}`;
+    if (originType === AGENT_REVISION_ORIGIN_TYPE) {
+      revisionsOfTurn += 1;
+      return `Agent revision ${revisionsOfTurn} of ${revisedTurnName}`;
+    }
     userFollowUps += 1;
-    return `Follow-up ${userFollowUps}`;
+    revisedTurnName = `Follow-up ${userFollowUps}`;
+    revisionsOfTurn = 0;
+    return revisedTurnName;
   });
 }
 

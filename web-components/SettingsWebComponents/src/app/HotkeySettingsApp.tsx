@@ -9,7 +9,7 @@ import {
   startHotkeyCapture,
   toggleEnableMonitoringAtStartup,
 } from '../services/hotkeyBridge'
-import type { HotkeyBinding, HotkeyRowSnapshot } from '../types'
+import type { HotkeyBinding, HotkeyRowSnapshot, HotkeySystemConflict } from '../types'
 
 interface PendingBinding {
   id: string
@@ -19,6 +19,7 @@ interface PendingBinding {
 export function HotkeySettingsApp() {
   const [rows, setRows] = useState<HotkeyRowSnapshot[]>([])
   const [enableMonitoringAtStartup, setEnableMonitoringAtStartup] = useState(false)
+  const [systemConflicts, setSystemConflicts] = useState<HotkeySystemConflict[]>([])
   const [isLoaded, setIsLoaded] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [editingRowId, setEditingRowId] = useState<string | null>(null)
@@ -40,6 +41,7 @@ export function HotkeySettingsApp() {
       if (event.type === 'init' || event.type === 'snapshot') {
         setRows(event.rows)
         setEnableMonitoringAtStartup(event.enableMonitoringAtStartup)
+        setSystemConflicts(event.systemConflicts ?? [])
         setIsLoaded(true)
         setLoadError(null)
         return
@@ -145,6 +147,15 @@ export function HotkeySettingsApp() {
 
       <section className="hotkey-settings-section">
         <h2>Hotkeys</h2>
+        {systemConflicts.length > 0 && (
+          <div className="hotkey-conflict-list" role="status" aria-label="Shortcut conflicts with macOS">
+            {systemConflicts.map((conflict) => (
+              <p key={`${conflict.hotkeyId}-${conflict.source}`} className="hotkey-conflict">
+                <strong>{conflict.certainty === 'exact' ? `Conflict with ${conflict.source}.` : `Possible conflict with ${conflict.source}.`}</strong> {conflict.message}
+              </p>
+            ))}
+          </div>
+        )}
         {!isLoaded && !loadError && <p className="hotkey-settings-status" role="status">Loading hotkeys...</p>}
         {loadError && (
           <div className="hotkey-load-error">

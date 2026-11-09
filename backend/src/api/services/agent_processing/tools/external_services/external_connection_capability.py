@@ -197,3 +197,83 @@ def _render_actions_summary(item: "ExternalConnectionInventoryItem") -> str:
     if remaining > 0:
         summary += f", … {remaining} more"
     return f"{summary} (require approval)"
+
+
+def _compact_group_key(item: "ExternalConnectionInventoryItem") -> Optional[tuple]:
+    """Return the key under which connections to one server share a body, or ``None`` when sharing would be unsafe.
+
+    Connections with no cached tool names are never grouped, because "same tools" would claim more than is known. The
+    key holds everything the shared lines are rendered from (server, instructions, tool names with their descriptions,
+    tool count, and action names), so connections share a body only when printing it once loses nothing.
+    """
+    names = tuple(getattr(item, "cached_tool_names", ()) or ())
+    if not names:
+        return None
+    return (
+        getattr(item, "server_name", None),
+        getattr(item, "server_url", ""),
+        getattr(item, "server_instructions", None),
+        int(getattr(item, "cached_tool_count", 0) or 0),
+        names,
+        tuple(getattr(item, "cached_tool_briefs", ()) or ()),
+        tuple(getattr(item, "cached_action_tool_names", ()) or ()),
+    )
+
+
+def _compact_header_lines(item: "ExternalConnectionInventoryItem") -> list[str]:
+    """Render the identity lines every connection keeps: name, id, count, and the user's own description."""
+    friendly_name = getattr(item, "friendly_name", "") or "Unnamed connection"
+    connection_id = getattr(item, "connection_id", "") or ""
+    cached_tool_count = int(getattr(item, "cached_tool_count", 0) or 0)
+    lines = [f"- {friendly_name} (connection_id={connection_id}, cached_tools={cached_tool_count})"]
+    description = getattr(item, "description", None)
+    if isinstance(description, str) and description.strip():
+        lines.append(f"  description: {_truncate(description, MAX_USER_DESCRIPTION_CHARS)}")
+    return lines
+
+
+def _compact_body_lines(item: "ExternalConnectionInventoryItem") -> list[str]:
+    """Render the server, guidance, tools, and action lines that connections to one server share, exactly as the full block does."""
+    friendly_name = getattr(item, "friendly_name", "") or "Unnamed connection"
+    cached_tool_count = int(getattr(item, "cached_tool_count", 0) or 0)
+    lines: list[str] = []
+    server_name = getattr(item, "server_name", None)
+    if _server_name_is_informative(friendly_name, server_name):
+        lines.append(f"  server: {server_name.strip()}")
+    instructions = getattr(item, "server_instructions", None)
+    if isinstance(instructions, str) and instructions.strip():
+        lines.append(f"  guidance: {_truncate(instructions, MAX_INSTRUCTIONS_CHARS)}")
+    lines.append(f"  tools: {_render_tools_summary(item, cached_tool_count)}")
+    actions_summary = _render_actions_summary(item)
+    if actions_summary:
+        lines.append(f"  actions: {actions_summary}")
+    return lines
+
+
+def render_compact_connection_blocks(items: list[Any]) -> str:
+    """Render every connection's capability block, printing a body once when several connections would repeat it exactly.
+
+    This drops no information. A connection that shares no body with another renders exactly as
+    ``render_connection_capability_block`` renders it. Connections that do share one (separate accounts on one server,
+    with the same instructions, tools, tool descriptions, and actions) each keep their own identity lines (name,
+    connection_id, tool count, the user's description), and the server, guidance, tools, and actions follow once.
+    """
+    groups: list[list[Any]] = []
+    group_index_by_key: dict[tuple, int] = {}
+    for item in items:
+        key = _compact_group_key(item)
+        if key is not None and key in group_index_by_key:
+            groups[group_index_by_key[key]].append(item)
+            continue
+        if key is not None:
+            group_index_by_key[key] = len(groups)
+        groups.append([item])
+
+    lines: list[str] = []
+    for members in groups:
+        for member in members:
+            lines.extend(_compact_header_lines(member))
+        if len(members) > 1:
+            lines.append("  (the connections above are separate accounts on one server; the lines below apply to each of them)")
+        lines.extend(_compact_body_lines(members[0]))
+    return "\n".join(lines)

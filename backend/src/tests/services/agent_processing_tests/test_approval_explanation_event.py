@@ -218,6 +218,63 @@ async def test_a_remembered_choice_for_an_eligible_command_is_kept(monkeypatch) 
 
 
 @pytest.mark.asyncio
+async def test_the_agents_proposed_pattern_is_what_the_card_and_the_durable_record_carry(monkeypatch) -> None:
+    repository = _Repository()
+    websocket = _WebSocket()
+    _patch(monkeypatch, repository)
+    request = asyncio.create_task(
+        _manager(websocket).request_approval(
+            command="gh gist view 8edb73ec --files",
+            decision=_DECISION,
+            context={
+                "agent_task_id": "task-1",
+                "purpose": "Lists the files in the gist.",
+                "whitelist_advice": {"recommend": True, "reason": "Read-only.", "pattern": "gh gist view"},
+            },
+        )
+    )
+    await websocket.published.wait()
+    event = websocket.events[0]
+
+    assert event["generalized_pattern"] == "gh gist view"
+    assert repository.created["generalized_pattern"] == "gh gist view"
+    assert event["options"]["show_remember"] is True
+    assert event["context"]["whitelist"]["pattern"] == "gh gist view"
+    assert event["context"]["whitelist"]["broad"] is False
+
+    request.cancel()
+    await asyncio.gather(request, return_exceptions=True)
+
+
+@pytest.mark.asyncio
+async def test_a_bare_gh_without_a_valid_proposal_cannot_be_remembered_and_says_why(monkeypatch) -> None:
+    repository = _Repository()
+    websocket = _WebSocket()
+    _patch(monkeypatch, repository)
+    request = asyncio.create_task(
+        _manager(websocket).request_approval(
+            command="gh gist view 8edb73ec --files",
+            decision=_DECISION,
+            context={
+                "agent_task_id": "task-1",
+                "purpose": "Lists the files in the gist.",
+                "whitelist_advice": {"recommend": True, "reason": "Read-only.", "pattern": "gh repo delete"},
+            },
+        )
+    )
+    await websocket.published.wait()
+    event = websocket.events[0]
+
+    assert event["generalized_pattern"] == "gh"
+    assert event["options"]["show_remember"] is False
+    assert "would approve every gh command" in event["context"]["whitelist"]["reason"]
+    assert event["context"]["whitelist"]["advice"]["recommend"] is False
+
+    request.cancel()
+    await asyncio.gather(request, return_exceptions=True)
+
+
+@pytest.mark.asyncio
 async def test_an_unexplained_command_is_flagged_and_gets_no_advice(monkeypatch) -> None:
     repository = _Repository()
     websocket = _WebSocket()
@@ -267,6 +324,62 @@ async def test_a_recovered_approval_carries_the_same_explanation_fields(monkeypa
     recovered_context = response.approvals[0].context
     for key in ("purpose", "whitelist", "script_path", "script_notice"):
         assert recovered_context[key] == live_context[key]
+    request.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await request
+
+
+@pytest.mark.asyncio
+async def test_recorded_interaction_carries_the_explanation_and_script_for_the_transcript(monkeypatch) -> None:
+    repository = _Repository()
+    websocket = _WebSocket()
+    _patch(monkeypatch, repository)
+    recorder = AsyncMock()
+    monkeypatch.setattr(interactive_approval, "record_user_interaction_asked", recorder)
+    request = asyncio.create_task(
+        _manager(websocket).request_approval(
+            command="python3 /tmp/report.py",
+            decision=_DECISION,
+            context={
+                "agent_task_id": "task-1",
+                "purpose": "Builds the weekly report.",
+                "script_content": "print('report')\n",
+                "script_path": "/tmp/report.py",
+            },
+        )
+    )
+    await websocket.published.wait()
+
+    recorder.assert_awaited_once()
+    presentation = recorder.await_args.kwargs["presentation"]
+    assert recorder.await_args.kwargs["prompt"] == "python3 /tmp/report.py"
+    assert presentation["purpose"] == "Builds the weekly report."
+    assert presentation["script_path"] == "/tmp/report.py"
+    assert presentation["script_content"] == "print('report')\n"
+    request.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await request
+
+
+@pytest.mark.asyncio
+async def test_recorded_interaction_flags_a_missing_explanation(monkeypatch) -> None:
+    repository = _Repository()
+    websocket = _WebSocket()
+    _patch(monkeypatch, repository)
+    recorder = AsyncMock()
+    monkeypatch.setattr(interactive_approval, "record_user_interaction_asked", recorder)
+    request = asyncio.create_task(
+        _manager(websocket).request_approval(
+            command="git status",
+            decision=_DECISION,
+            context={"agent_task_id": "task-1", "purpose_required": True},
+        )
+    )
+    await websocket.published.wait()
+
+    presentation = recorder.await_args.kwargs["presentation"]
+    assert presentation["purpose_missing"] is True
+    assert "purpose" not in presentation
     request.cancel()
     with pytest.raises(asyncio.CancelledError):
         await request

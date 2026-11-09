@@ -440,12 +440,15 @@ def test_legacy_completed_with_warnings_projects_as_success():
 
 
 def test_system_prompt_describes_strategy_promotion_without_forcing_batches():
+    from api.services.agent_processing.tools.internal_basil_tools.iterative_work_tool import create_iterative_work_tool
+
+    ledger_description = create_iterative_work_tool().description
     assert "start with a simple bounded first pass" in AGENT_SYSTEM_PROMPT_TEMPLATE
-    assert "Do not force batching for small jobs" in AGENT_SYSTEM_PROMPT_TEMPLATE
     assert "iterative_work" in AGENT_SYSTEM_PROMPT_TEMPLATE
-    assert "ledger every discovered item" in AGENT_SYSTEM_PROMPT_TEMPLATE
-    assert "not hardcoded string matching" in AGENT_SYSTEM_PROMPT_TEMPLATE
-    assert "discovered, reviewed, expanded, acted_on, skipped, failed, and unresolved" in AGENT_SYSTEM_PROMPT_TEMPLATE
+    assert "Do not force batching for small jobs" in ledger_description
+    assert "ledger every discovered item" in ledger_description
+    assert "not hardcoded string matching" in ledger_description
+    assert "discovered, reviewed, expanded, acted_on, skipped, failed, and unresolved" in ledger_description
 
 
 def test_iterative_work_tool_exposes_compact_action_interface():
@@ -679,9 +682,12 @@ def test_successful_finalization_is_not_downgraded_by_recovered_tool_errors():
 
 
 def test_system_prompt_describes_adaptive_email_recovery_without_fixed_batching():
-    assert "iterative_work` is a durable ledger, not the strategy itself" in AGENT_SYSTEM_PROMPT_TEMPLATE
-    assert "Do not blindly walk backwards from today" in AGENT_SYSTEM_PROMPT_TEMPLATE
-    assert "coverage is ambiguous or unresolved" in AGENT_SYSTEM_PROMPT_TEMPLATE
+    from api.services.agent_processing.tools.internal_basil_tools.iterative_work_tool import create_iterative_work_tool
+
+    ledger_description = create_iterative_work_tool().description
+    assert "iterative_work` is a durable ledger, not the strategy itself" in ledger_description
+    assert "Do not blindly walk backwards from today" in ledger_description
+    assert "coverage is ambiguous or unresolved" in ledger_description
     assert "do not treat an unverified empty result as clean success" in AGENT_SYSTEM_PROMPT_TEMPLATE
 
 

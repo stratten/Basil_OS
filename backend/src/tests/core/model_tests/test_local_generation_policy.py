@@ -7,7 +7,7 @@ from api.core.models.reasoning.streaming_contract import resolve_generation_budg
 class _LocalCoder:
     model_name = "Qwen-qwen3-coder-30b-a3b-instruct-q4km"
     model_path = Path("qwen3-coder-30b-a3b-instruct-q4km.gguf")
-    max_context_length = 32768
+    max_context_length = 262144
     max_tokens_to_sample = 65536
 
 
@@ -61,7 +61,7 @@ def test_context_residual_clamps_local_output() -> None:
     budget = resolve_generation_budget(
         model,
         purpose="final_synthesis",
-        input_token_estimate=32000,
+        input_token_estimate=261376,
     )
     assert budget.effective_output_tokens == 768
 

@@ -167,11 +167,11 @@ describe('creating a schedule with chain and quiet-hours settings', () => {
     await render({ createMode: true });
     await typeTaskText('Summarize new email');
     await chooseRunMode('Runs continue one conversation');
-    await click(byLabel('Limit the number of runs'));
+    await click(byLabel('Limit the number of turns'));
     await click(byLabel('Limit how long one conversation lasts'));
 
     expect(buttonByText('Create Schedule').disabled).toBe(true);
-    expect(document.body.textContent).toContain('Choose a run limit, a time limit, or both');
+    expect(document.body.textContent).toContain('Choose a turn limit, a time limit, or both');
     expect(mocks.createScheduledAgentTask).not.toHaveBeenCalled();
   });
 
@@ -195,7 +195,7 @@ describe('reading and editing a schedule that has chain and quiet-hours settings
     await render({ createMode: false, id: 'sched-1' });
 
     expect(document.body.textContent).toContain('10:00 PM to 7:00 AM');
-    expect(document.body.textContent).toContain('Continues one conversation, starting a new one after 8 runs or 6 hours, carrying the last result over');
+    expect(document.body.textContent).toContain('Continues one conversation, starting a new one after 8 turns or 6 hours, carrying the last result over');
   });
 
   it('shows neither row for a schedule that has neither setting', async () => {

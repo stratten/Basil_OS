@@ -327,9 +327,9 @@ export class ProgressTimelineAgentStore extends FollowUpAgentStore {
   }
 
   /** Adds persisted progress entries the live feed never delivered, from `sinceMs` onward; see backfillDurableTimelineEntries. */
-  backfillDurableTimeline(agentTaskId: string, timeline: TimelineEntry[], sinceMs: number) {
+  backfillDurableTimeline(agentTaskId: string, timeline: TimelineEntry[], sinceMs: number, untilMs?: number) {
     this.updateAgent(agentTaskId, agent => {
-      const merged = backfillDurableTimelineEntries(agent.executionTimeline, timeline, sinceMs);
+      const merged = backfillDurableTimelineEntries(agent.executionTimeline, timeline, sinceMs, untilMs);
       if (merged === agent.executionTimeline) return;
       agent.executionTimeline = merged;
       agent.stepDetails = detailsFromTimeline(merged);
@@ -614,7 +614,7 @@ export class ProgressTimelineAgentStore extends FollowUpAgentStore {
       if (!item.errorMessage && a.errorMessage) {
         item.errorMessage = a.errorMessage;
       }
-      a.agentTaskHistory.push(item);
+      a.agentTaskHistory = [...a.agentTaskHistory, item];
     });
   }
 

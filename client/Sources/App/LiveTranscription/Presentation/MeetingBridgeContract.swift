@@ -430,7 +430,7 @@ struct MeetingUIStateDTO: Codable, Equatable {
     var meetingSearchFilters: MeetingHistorySearchFiltersDTO
     var microphoneAudioLevel: Float
     var systemAudioLevel: Float
-    var microphoneInputRecoveryState: String // "idle" | "reconnecting" | "failed"
+    var microphoneInputRecoveryState: String // "idle" | "reconnecting" | "failed" | "silent"
     var microphoneInputRecoveryMessage: String?
     var isCapturePaused: Bool
     var isLiveTranscriptionEnabled: Bool

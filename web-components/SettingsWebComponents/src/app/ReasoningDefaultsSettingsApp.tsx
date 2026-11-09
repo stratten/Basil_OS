@@ -274,7 +274,7 @@ export function ReasoningDefaultsSettingsApp() {
           checked={s.agentTaskAutoReopenOnCompletion}
           onChange={(checked) => { setSettings({ ...s, agentTaskAutoReopenOnCompletion: checked }); submit(requestUpdateAgentTaskAutoReopenOnCompletion(checked)) }}
         />
-        <p className="reasoning-defaults-field-hint">When a focused Paprika task completes or fails while its result window is collapsed, reopen the window to show the final update.</p>
+        <p className="reasoning-defaults-field-hint">When any Paprika task completes or fails while its result window is collapsed, reopen the window to show the final update. A task other than the one the window is showing is not switched to, so its unread entry is what you see. A task that needs your approval or input reopens the window whatever this setting is.</p>
         <Switch
           id="reasoning-defaults-agent-task-ptt"
           label="Enable push-to-talk mode"

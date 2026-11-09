@@ -90,6 +90,8 @@ function surface(source: DisplayableAgentTask) {
       onContinue={() => {}}
       onSelectDetail={() => {}}
       onCancelTextFollowUp={() => {}}
+      onCancelRunning={() => {}}
+      isCanceling={false}
       onStartVoiceFollowUp={() => {}}
       onOpenDetailTray={() => {}}
       onCloseDetailTray={() => {}}

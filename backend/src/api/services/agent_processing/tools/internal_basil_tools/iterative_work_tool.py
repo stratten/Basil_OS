@@ -339,7 +339,10 @@ SLIM_DESCRIPTION = (
     "finish only succeeds when claimable unresolved items are cleared - "
     "otherwise it returns an incomplete_coverage response and you must "
     "continue with claim_next, update_strategy, or explicitly finish as "
-    "partial/blocked/budget_exhausted."
+    "partial/blocked/budget_exhausted. "
+    "Do not force batching for small jobs. Narrow by the request's own interval, folder, account, or sender, "
+    "and do not blindly walk backwards from today. Ledger every discovered item with a model-written reason "
+    "before excluding it, and finish with counts for discovered, reviewed, expanded, acted_on, skipped, failed, and unresolved."
 )
 
 _FULL_DESCRIPTION = """Manage a durable iterative work session for large or unknown-cardinality tasks.
@@ -348,6 +351,15 @@ Use this when a task starts to look too large for one direct pass: many items, r
 actions per item, long tool outputs, timeouts, or a need to preserve coverage across
 batches. Start simple first when the task is small; promote to this ledger when scale
 or context pressure is evident.
+
+Strategy:
+- Do not force batching for small jobs. Use the most direct bounded tool call first when the likely item count is small, and promote to this ledger when the first pass reveals scale, cost, or coverage uncertainty: high candidate count, truncated outputs, retrieval timeouts, repeated actions per item, ambiguous coverage metadata, or a need to preserve partial progress.
+- `iterative_work` is a durable ledger, not the strategy itself. Choose the next narrowing dimension from the user's actual request and the failure evidence: date interval, folder, account, sender, subject, thread, read/unread state, recency, or another meaningful constraint.
+- Do not blindly walk backwards from today just because the user specified a time period. If the user asks for "two weeks ago", first treat that as the requested interval. If it fails or coverage is ambiguous, subdivide inside that requested scope or choose another useful constraint.
+- For collection work where only metadata or partial details are available, ledger every discovered item before excluding it from further work. Status and reasons must come from your evaluation of the available record, not hardcoded string matching or tool-specific skip rules. If an item might matter but metadata is insufficient, mark it needs_detail or unresolved and use bounded expansion or batching instead of silently excluding it.
+- For email triage or reply drafting, use metadata-first retrieval when available, ledger the full discovered set with model-written status and reason fields, then expand bounded batches of candidate or uncertain message ids before drafting replies.
+- Report "none found" as a clean success only if the checked coverage actually supports the absence. If coverage is ambiguous or unresolved, report the uncertainty instead.
+- Final handoffs for ledgered work should include counts for discovered, reviewed, expanded, acted_on, skipped, failed, and unresolved items.
 
 Actions:
 - start: create a session with goal, collection_type, strategy, budgets, and cursor.

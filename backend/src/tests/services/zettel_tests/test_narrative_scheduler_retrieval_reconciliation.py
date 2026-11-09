@@ -16,6 +16,8 @@ class _Result:
     still_open: int
     failed: int
     errors: list[str]
+    discarded: int = 0
+    completed: bool = True
 
 
 @pytest.mark.asyncio
@@ -113,7 +115,7 @@ async def test_run_now_resolves_manual_backlog_policy():
 
 
 @pytest.mark.asyncio
-async def test_scheduled_trigger_never_resolves_manual_policy():
+async def test_scheduled_trigger_with_a_cloud_model_resolves_the_parallel_policy():
     scheduler = ZettelNarrativeScheduler()
     runtime = MagicMock()
     runtime.reconcile_after_narrative_pass = AsyncMock()
@@ -144,4 +146,4 @@ async def test_scheduled_trigger_never_resolves_manual_policy():
         await scheduler._run_once()
 
     _, kwargs = enricher.run_pass.await_args
-    assert kwargs["run_policy"].processing_strategy == "sequential"
+    assert kwargs["run_policy"].processing_strategy == "api_parallel"

@@ -16,6 +16,7 @@ import traceback
 import logging
 
 from .audio_utils import rms_normalize_audio
+from .whisper_language import whisper_language_kwargs
 from ..local_model.model_lifecycle import ModelManager
 from . import transcription_lifecycle
 
@@ -174,13 +175,10 @@ class TranscriptionProcessor:
                 print("🔄 Starting Whisper pipeline...")
                 with self.model_manager.acquire_warm_pipeline(priority="live") as pipe:
                     inference_kwargs = dict(transcription_kwargs)
-                    if language and language != 'auto':
+                    language_kwargs = whisper_language_kwargs(getattr(pipe, "model", None), language)
+                    if language_kwargs:
                         print(f"🔤 Setting language for transcription: {language}")
-                        if hasattr(pipe, 'model') and hasattr(pipe.model.config, 'lang_to_id'):
-                            if language in pipe.model.config.lang_to_id:
-                                inference_kwargs["language"] = language
-                            else:
-                                print(f"⚠️ Language '{language}' not supported by model")
+                        inference_kwargs.update(language_kwargs)
                     if audio_for_whisper is not None:
                         print("🎵 Using audio array for Whisper (preferred method)")
                         whisper_input = audio_for_whisper

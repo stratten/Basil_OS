@@ -144,3 +144,132 @@ def test_special_characters_in_strings_do_not_confuse_the_parser():
     script = 'tell application "Mail" to get (count of (messages of inbox whose subject contains "a \\" -- # (* quote"))'
 
     assert _classify(script).is_read_only is True
+
+
+DATE_PART_ALLOWED = {
+    "midnight on a date the script created": (
+        "set d0 to current date\n"
+        "set time of d0 to 0\n"
+        "return d0"
+    ),
+    "midnight inside a tell block": (
+        'tell application "Calendar"\n'
+        "  set d0 to current date\n"
+        "  set time of d0 to 0\n"
+        "  return summary of every event whose start date is greater than d0\n"
+        "end tell"
+    ),
+    "an hour on a date literal": (
+        'set d0 to date "Monday, January 1, 2024 12:00:00 AM"\n'
+        "set hours of d0 to 9\n"
+        "return d0"
+    ),
+    "a part set from arithmetic": (
+        "set d0 to (current date)\n"
+        "set day of d0 to (day of d0) - 1\n"
+        "return d0"
+    ),
+}
+
+DATE_PART_DENIED = {
+    "a variable the script never assigned from a date": "set time of d0 to 0\nreturn d0",
+    "a part of an application object": 'tell application "Mail"\n  set day of m1 to 3\nend tell',
+    "a property that is not a date part": 'tell application "Mail"\n  set d0 to current date\n  set read status of d0 to true\nend tell',
+    "a variable reassigned away from a date": "set d0 to current date\nset d0 to 5\nset time of d0 to 0\nreturn d0",
+    "a date taken from an application object": (
+        'tell application "Calendar"\n'
+        "  set d0 to start date of event 1\n"
+        "  set time of d0 to 0\n"
+        "end tell"
+    ),
+    "a mutating command inside the new value": 'set d0 to current date\nset time of d0 to (do shell script "rm /tmp/x")\nreturn d0',
+}
+
+
+@pytest.mark.parametrize("name", sorted(DATE_PART_ALLOWED))
+def test_changing_a_part_of_a_date_the_script_created_is_read_only(name):
+    verdict = _classify(DATE_PART_ALLOWED[name])
+
+    assert verdict.is_read_only is True, verdict.reason
+
+
+@pytest.mark.parametrize("name", sorted(DATE_PART_DENIED))
+def test_changing_a_part_of_anything_else_is_not_read_only(name):
+    assert _classify(DATE_PART_DENIED[name]).is_read_only is False
+
+
+ACCUMULATOR_ALLOWED = {
+    "accumulator declared before the tell block": (
+        'set out to ""\n'
+        'tell application "Mail"\n'
+        "  repeat with m in (messages of inbox)\n"
+        "    set out to out & subject of m & linefeed\n"
+        "  end repeat\n"
+        "end tell\n"
+        "return out"
+    ),
+    "camelCase accumulator first set inside the tell block": (
+        'tell application "Mail"\n'
+        '  set outText to ""\n'
+        "  repeat with m in (messages of inbox)\n"
+        "    set outText to outText & subject of m & linefeed\n"
+        "  end repeat\n"
+        "  return outText\n"
+        "end tell"
+    ),
+}
+
+
+@pytest.mark.parametrize("name", sorted(ACCUMULATOR_ALLOWED))
+def test_the_accumulator_shapes_the_tool_description_recommends_are_read_only(name):
+    verdict = _classify(ACCUMULATOR_ALLOWED[name])
+
+    assert verdict.is_read_only is True, verdict.reason
+
+
+def test_a_plain_word_accumulator_first_set_inside_a_tell_block_still_asks_for_approval():
+    script = (
+        'tell application "Mail"\n'
+        '  set out to ""\n'
+        "  repeat with m in (messages of inbox)\n"
+        "    set out to out & subject of m & linefeed\n"
+        "  end repeat\n"
+        "  return out\n"
+        "end tell"
+    )
+
+    verdict = _classify(script)
+
+    assert verdict.is_read_only is False
+    assert "application property" in verdict.reason
+
+
+def test_the_recommendation_reaches_every_surface_a_script_writer_reads():
+    from pathlib import Path
+
+    import api.services.agent_processing.tools.direct_application_interactions.applescript_automation.generic_applescript_service as service_module
+    from api.services.agent_processing.tools.direct_application_interactions.applescript_automation.generic_applescript_service import GenericAppleScriptService
+
+    capabilities = GenericAppleScriptService().get_service_capabilities()
+    slim_doc = capabilities["supported_methods"]["execute_applescript"]["slim_doc"]
+
+    assert "declare accumulators before the 'tell' block" in slim_doc
+    assert any("declare accumulator variables before the 'tell' block" in principle for principle in capabilities["execution_principles"])
+    assert "16. In a read-only script, declare accumulator variables before the 'tell' block" in Path(service_module.__file__).read_text()
+
+
+def test_the_activate_default_and_retry_wording_reaches_every_surface_a_script_writer_reads():
+    from pathlib import Path
+
+    import api.services.agent_processing.tools.direct_application_interactions.applescript_automation.generic_applescript_service as service_module
+    from api.services.agent_processing.tools.direct_application_interactions.applescript_automation.generic_applescript_service import GenericAppleScriptService
+
+    capabilities = GenericAppleScriptService().get_service_capabilities()
+    slim_doc = capabilities["supported_methods"]["execute_applescript"]["slim_doc"]
+    source = Path(service_module.__file__).read_text()
+
+    assert "Leave 'activate' out of a read-only script on the first attempt" in slim_doc
+    assert "only on a retry" in slim_doc
+    assert any("leave 'activate' out on the first attempt" in principle for principle in capabilities["execution_principles"])
+    assert "6. Include 'activate' only when the user asked to see or focus the application." in source
+    assert "If the target application needs to be activated" not in source

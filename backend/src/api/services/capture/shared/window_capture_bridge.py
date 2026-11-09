@@ -20,12 +20,14 @@ async def request_swift_window_capture(
     capture_reason: str = "agent_task",
     *,
     excluded_bundle_ids: Optional[List[str]] = None,
+    window_target: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Internal function to trigger Swift WindowCaptureService capture.
 
     Args:
         capture_reason: The reason for the capture (e.g., "agent_task", "automatic activity capture")
+        window_target: Optional `{"owner_name", "bounds": {"x", "y", "width", "height"}, "title"}` naming one specific window to capture by window id instead of the frontmost window. The client never activates the owning app.
 
     Returns:
         Dict with capture results including file path
@@ -70,6 +72,8 @@ async def request_swift_window_capture(
             "message": message,
             "capture_reason": capture_reason,
         }
+        if window_target is not None:
+            capture_request["window_target"] = window_target
         if capture_reason == "automatic activity capture" and excluded_bundle_ids is not None:
             capture_request["capture_policy"] = {
                 "excluded_bundle_ids": excluded_bundle_ids,

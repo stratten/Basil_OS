@@ -1,0 +1,27 @@
+@import '../../../shared/markdown-table.css';
+
+/* Side-by-side comparison of the reasoning routes, shown inside the "What's the difference?" help. The table's borders, rounded corners, cell padding, and header shading come from shared/markdown-table.css, the same as every Markdown table; only its width, text color, and text size are set here. The table has no fill of its own, so it takes the color of the open help panel it sits in, as a Markdown table does. */
+.model-comparison {
+  margin-top: var(--padding-m);
+  overflow-x: auto;
+}
+
+.model-comparison-table {
+  color: var(--text-primary);
+  font-size: var(--font-size-callout);
+  margin: 0;
+  width: 100%;
+}
+
+.model-comparison-table caption {
+  color: var(--text-primary);
+  font-weight: 700;
+  padding-bottom: 6px;
+  text-align: left;
+}
+
+.model-comparison-note {
+  color: var(--text-primary);
+  font-size: var(--font-size-callout);
+  margin: var(--padding-s) 0 0;
+}

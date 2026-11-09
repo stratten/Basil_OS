@@ -504,7 +504,7 @@ def build_tool_call(proposal_id: str, tool_name: str) -> SetupToolCall:
     )
 
 
-def _build_agenda_tool_and_events():
+def _build_agenda_tool_and_events(phase=None):
     events: list[SetupAgentEvent] = []
 
     async def emit_event(event: SetupAgentEvent) -> None:
@@ -513,6 +513,7 @@ def _build_agenda_tool_and_events():
     factory = SetupAgentToolFactory(
         event_emitter=emit_event,
         proposal_store=SetupPendingProposalStore(),
+        phase=phase,
     )
     tools = factory.create_setup_agent_tools()
     propose = next(tool for tool in tools if tool.name == "propose_session_agenda")
@@ -546,6 +547,127 @@ async def test_propose_agenda_over_length_intent_returns_corrective_observation(
     assert "intent" in observation
     # Nothing was applied: no agenda proposal event should have been emitted.
     assert [event.kind for event in events] == []
+
+
+def _build_observation_tool_and_events():
+    events: list[SetupAgentEvent] = []
+
+    async def emit_event(event: SetupAgentEvent) -> None:
+        events.append(event)
+
+    factory = SetupAgentToolFactory(event_emitter=emit_event, proposal_store=SetupPendingProposalStore())
+    note = next(tool for tool in factory.create_setup_agent_tools() if tool.name == "note_observation")
+    return note, events
+
+
+@pytest.mark.asyncio
+async def test_a_repeated_observation_is_refused_and_not_shown_twice() -> None:
+    note, events = _build_observation_tool_and_events()
+    first = {"label": "Local setup", "title": "M5 Max with 128GB RAM", "detail": "Local models are ready.", "tone": "tools"}
+
+    assert await note.arun(first) == "Observation surfaced."
+    repeat = await note.arun({**first, "title": "  m5 max with 128GB RAM! ", "detail": "A different sentence."})
+    same_detail = await note.arun({**first, "title": "Another title", "detail": "local models are READY"})
+
+    assert "already showed this observation" in repeat
+    assert "already showed this observation" in same_detail
+    assert len(events) == 1
+
+
+@pytest.mark.asyncio
+async def test_distinct_observations_are_all_shown() -> None:
+    note, events = _build_observation_tool_and_events()
+
+    for index in range(3):
+        result = await note.arun(
+            {"label": "Label", "title": f"Title {index}", "detail": f"Detail number {index}.", "tone": "tools"}
+        )
+        assert result == "Observation surfaced."
+
+    assert len(events) == 3
+
+
+@pytest.mark.asyncio
+async def test_propose_agenda_is_refused_during_orientation() -> None:
+    from api.routes.setup_assistant.models import SetupAssistantPhase
+
+    propose, events = _build_agenda_tool_and_events(SetupAssistantPhase.deterministic_discovery)
+
+    observation = await propose.arun(
+        {
+            "items": [
+                {
+                    "id": "intro_paprika",
+                    "title": "Show what Paprika can do",
+                    "intent": "Let the user hand Paprika a first task.",
+                    "kind": "demo",
+                }
+            ]
+        }
+    )
+
+    assert "conversation phase" in observation
+    assert "Do not call propose_session_agenda now" in observation
+    assert [event.kind for event in events] == []
+
+
+@pytest.mark.asyncio
+async def test_agenda_items_sent_as_one_json_string_are_accepted() -> None:
+    import json
+
+    from api.routes.setup_assistant.models import SetupAgentEventKind, SetupAssistantPhase
+
+    propose, events = _build_agenda_tool_and_events(SetupAssistantPhase.agent_synthesis)
+    items = [
+        {"id": "intro_paprika", "title": "Show what Paprika can do", "intent": "Hand Paprika a first task.", "kind": "demo", "source": "catalog", "status": "pending"},
+        {"id": "intro_dill", "title": "Show what Dill can do", "intent": "Draft a reply to a real email.", "kind": "demo", "source": "catalog", "status": "pending"},
+    ]
+
+    observation = await propose.arun({"items": json.dumps(items)})
+
+    assert observation == "Session agenda set with 2 item(s)."
+    assert [event.kind for event in events] == [SetupAgentEventKind.agenda_proposed]
+
+
+@pytest.mark.asyncio
+async def test_chips_sent_as_one_json_string_are_accepted() -> None:
+    import json
+
+    events: list[SetupAgentEvent] = []
+
+    async def emit_event(event: SetupAgentEvent) -> None:
+        events.append(event)
+
+    factory = SetupAgentToolFactory(event_emitter=emit_event, proposal_store=SetupPendingProposalStore())
+    set_chips = next(tool for tool in factory.create_setup_agent_tools() if tool.name == "set_chips")
+    chips = [{"id": "try_dill", "label": "Try Dill on an email", "message": "Show me what Dill can do with an email."}]
+
+    result = await set_chips.arun({"chips": json.dumps(chips)})
+
+    assert "rejected" not in result.lower()
+    assert len(events) == 1
+
+
+@pytest.mark.asyncio
+async def test_propose_agenda_still_works_in_the_conversation_phase() -> None:
+    from api.routes.setup_assistant.models import SetupAgentEventKind, SetupAssistantPhase
+
+    propose, events = _build_agenda_tool_and_events(SetupAssistantPhase.agent_synthesis)
+
+    await propose.arun(
+        {
+            "items": [
+                {
+                    "id": "intro_paprika",
+                    "title": "Show what Paprika can do",
+                    "intent": "Let the user hand Paprika a first task.",
+                    "kind": "demo",
+                }
+            ]
+        }
+    )
+
+    assert [event.kind for event in events] == [SetupAgentEventKind.agenda_proposed]
 
 
 @pytest.mark.asyncio

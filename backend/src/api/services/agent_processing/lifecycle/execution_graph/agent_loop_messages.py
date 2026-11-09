@@ -56,20 +56,28 @@ def tool_call_action(call: dict[str, Any], text: str) -> AgentAction:
 
 
 def messages_to_intermediate_steps(messages: Sequence[BaseMessage]) -> list[tuple[AgentAction, str]]:
-    """Pair each answered tool call with its result; calls without a result are skipped."""
-    results_by_call_id = {
-        str(message.tool_call_id): message
-        for message in messages
-        if isinstance(message, ToolMessage) and message.tool_call_id
-    }
+    """Pair each answered tool call with its result; calls without a result are skipped.
+
+    A call's results are the tool messages between its own AI message and the next AI message, taken in order, never a lookup of every tool message by id. Some model adapters have reused one id on every turn, and an id lookup then gave every call the last result of the run.
+    """
+    messages = list(messages)
     steps: list[tuple[AgentAction, str]] = []
-    for message in messages:
+    for index, message in enumerate(messages):
         if not isinstance(message, AIMessage) or not message.tool_calls:
             continue
+        turn_end = next(
+            (later for later in range(index + 1, len(messages)) if isinstance(messages[later], AIMessage)),
+            len(messages),
+        )
+        unused_results = [
+            result for result in messages[index + 1:turn_end] if isinstance(result, ToolMessage) and result.tool_call_id
+        ]
         text = ai_message_text(message)
         for call in message.tool_calls:
-            result = results_by_call_id.get(str(call.get("id") or ""))
+            call_id = str(call.get("id") or "")
+            result = next((candidate for candidate in unused_results if str(candidate.tool_call_id) == call_id), None)
             if result is not None:
+                unused_results.remove(result)
                 steps.append((tool_call_action(call, text), tool_message_text(result)))
     return steps
 

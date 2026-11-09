@@ -24,6 +24,7 @@ from .browser_target_runtime import (
     resolve_preferred_user_browser,
 )
 from .browser_trace import record_browser_trace
+from .browser_window_handoff import HANDOFF_ACTIONS, handle_handoff_action
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +36,21 @@ class BrowserTabsInput(BaseModel):
         default=None,
         description="Browser to manage: 'Safari', 'Chrome', 'Edge', or empty to auto-detect.",
     )
-    action: Literal["list", "create", "switch", "close", "ensure_automation_window"] = Field(
+    action: Literal[
+        "list",
+        "create",
+        "switch",
+        "close",
+        "ensure_automation_window",
+        "reveal_automation_window",
+        "release_automation_window",
+        "request_human_help",
+    ] = Field(
         description="Tab action to perform.",
+    )
+    reason: Optional[str] = Field(
+        default=None,
+        description="For request_human_help: one plain sentence telling the user what they need to do, for example 'Please solve the CAPTCHA'.",
     )
     url: Optional[str] = Field(
         default=None,
@@ -173,7 +187,6 @@ def _ensure_automation_window_script(browser: str, url: Optional[str], pinned_wi
         create_block = f'''    set targetWindow to make new window
     set URL of active tab of targetWindow to "{safe_url}"
     set active tab index of targetWindow to 1
-    set index of targetWindow to 1
     return "created_window|" & (id of targetWindow as text) & "|{safe_url}"'''
     reuse_block = ""
     if pinned_window_id is not None:
@@ -189,7 +202,6 @@ def _ensure_automation_window_script(browser: str, url: Optional[str], pinned_wi
         reuse_block = f'''    if exists {window_ref} then
         set targetWindow to {window_ref}
 {url_lines}
-        set index of targetWindow to 1
         return "reused_window|" & (id of targetWindow as text) & "|" & currentUrl
     end if
 '''
@@ -275,6 +287,7 @@ async def _browser_tabs_impl(
     window_index: int = 1,
     tab_index: Optional[int] = None,
     session_mode: str = "user_browser",
+    reason: Optional[str] = None,
 ) -> str:
     try:
         if is_background_browser_session(session_mode):
@@ -287,6 +300,9 @@ async def _browser_tabs_impl(
             browser = await resolve_preferred_user_browser()
         else:
             browser = normalize_browser_name(browser)
+
+        if action in HANDOFF_ACTIONS:
+            return await handle_handoff_action(action, browser=browser, reason=reason)
 
         if action == "list":
             script = _list_tabs_script(browser)
@@ -428,12 +444,18 @@ SLIM_DESCRIPTION = (
     "After ensure_automation_window, browser_inspect/browser_interact/browser_highlight use that "
     "window automatically; navigate inside it instead of opening new tabs. If it was closed, call "
     "ensure_automation_window again. Leave browser empty to auto-detect. If multiple tabs plausibly "
-    "match the task, ask the user to pick with request_user_input selection options before switching."
+    "match the task, ask the user to pick with request_user_input selection options before switching. "
+    "Handoff actions follow the user's foreground policy: request_human_help (reason=what the user must do) "
+    "brings Basil's window forward when allowed, asks the user to finish the step, and waits; "
+    "reveal_automation_window and release_automation_window bring it forward and restore the previous app. "
+    "If foreground control is blocked, the user is told which window to open."
 )
 
 _FULL_DESCRIPTION = """List, create, switch, or conservatively close tabs in the user's browser.
 
 Use this for browser UI state, not page content. For browser tasks, prefer action="ensure_automation_window": Basil gets one dedicated window for this task (reused on later calls and follow-ups while it stays open) and a browser_automation_target. After that, browser_inspect, browser_interact, and browser_highlight act on that window's current tab even if the user switches windows; navigate within it rather than opening new tabs. If a tool reports the window was closed, call ensure_automation_window again. In list results, basil_window marks the tabs in Basil's window. For page content use browser_inspect and browser_interact. The close action refuses to close the final tab in a window.
+
+Handoff actions (they follow the user's foreground policy and may ask for approval): action="request_human_help" with a reason brings Basil's window to the front when allowed, asks the user to finish a step only they can do (a sign-in, a CAPTCHA that is not a simple text image, a block page), and waits for them. If bringing the window forward is blocked or declined, it still asks and tells the user which window to open. After the user answers, call browser_inspect to confirm the step is done (the `challenge` field is gone), then call action="release_automation_window", which restores the app that was in front before, but only if the browser is still in front. action="reveal_automation_window" only brings the window forward.
 
 If more than one plausible tab matches the user's target, call request_user_input with
 selection options built from the listed tabs before switching or interacting.

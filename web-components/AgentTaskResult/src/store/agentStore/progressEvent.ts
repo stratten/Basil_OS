@@ -70,6 +70,14 @@ export function timedOutInteractionId(entry: TimelineEntry): string | null {
   return typeof interaction.interaction_id === 'string' && interaction.interaction_id ? interaction.interaction_id : null;
 }
 
+/** The id of the request a timeline entry reports as settled (approved, denied, answered, timed out, canceled, or otherwise no longer waiting), or null for any other entry, including one still waiting. The backend broadcasts this to every window, which is how a window that did not receive the answer learns the card it is showing has nothing left to answer. Approvals, command inputs, and questions all use their own id as the interaction id. */
+export function settledInteractionId(entry: TimelineEntry): string | null {
+  if (entry.detail_kind !== 'user_interaction') return null;
+  const interaction = isRecord(entry.metadata?.user_interaction) ? entry.metadata.user_interaction : undefined;
+  if (!interaction || typeof interaction.status !== 'string' || interaction.status === 'waiting') return null;
+  return typeof interaction.interaction_id === 'string' && interaction.interaction_id ? interaction.interaction_id : null;
+}
+
 function asText(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value : undefined;
 }

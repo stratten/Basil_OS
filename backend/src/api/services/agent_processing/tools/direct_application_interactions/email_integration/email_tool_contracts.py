@@ -221,6 +221,28 @@ class SearchEmailsArgs(BaseModel):
     client_name: Optional[str] = Field(default=None, description="Optional target email client.")
     deduplicate_threads: bool = Field(default=False, description="Return only the newest message per thread.")
 
+    @model_validator(mode="before")
+    @classmethod
+    def move_misplaced_folder_and_limit(cls, data: Any) -> Any:
+        """Put ``folder`` and ``limit`` where this contract accepts them.
+
+        ``folder`` belongs inside ``criteria`` and ``limit`` belongs at the top level, but ``get_emails`` takes both at the top level, so a model often carries that shape over. Each key moves only when it has exactly one valid home and the other level does not already set it, so a genuine conflict still fails validation.
+        """
+        if not isinstance(data, dict):
+            return data
+        criteria = data.get("criteria")
+        if not isinstance(criteria, dict):
+            return data
+
+        normalized = dict(data)
+        normalized_criteria = dict(criteria)
+        if "folder" in normalized and "folder" not in normalized_criteria:
+            normalized_criteria["folder"] = normalized.pop("folder")
+        if "limit" in normalized_criteria and "limit" not in normalized:
+            normalized["limit"] = normalized_criteria.pop("limit")
+        normalized["criteria"] = normalized_criteria
+        return normalized
+
 
 class GetEmailMetadataArgs(BaseModel):
     """Agent-facing contract for metadata-first email retrieval."""

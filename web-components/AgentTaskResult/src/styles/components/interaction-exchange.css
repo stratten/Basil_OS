@@ -145,6 +145,83 @@
   user-select: text;
 }
 
+.interaction-approval {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* The agent's explanation leads the card. Primary text on the card surface with a full tinted border keeps it legible and marks it as the agent's words. */
+.interaction-approval-explanation {
+  margin-top: var(--padding-xs);
+  padding: var(--padding-s) var(--padding-m);
+  border: var(--border-thin) solid color-mix(in srgb, var(--primary) 45%, transparent);
+  border-radius: var(--corner-radius-small);
+  background: var(--background-secondary);
+  color: var(--text-primary);
+}
+
+.interaction-approval-explanation__label {
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  font-weight: 600;
+}
+
+.interaction-approval-explanation__text {
+  margin: var(--padding-xs) 0;
+  font-size: var(--font-size-footnote);
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.interaction-approval-explanation__source {
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-small);
+}
+
+.interaction-approval-missing {
+  margin: var(--padding-xs) 0 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-footnote);
+  font-weight: 600;
+}
+
+.interaction-approval-toggle {
+  align-self: flex-start;
+  padding: var(--padding-xs) 0;
+  border: none;
+  background: none;
+  color: var(--primary);
+  cursor: pointer;
+  font-size: var(--font-size-status-small);
+  text-decoration: underline;
+}
+
+.interaction-approval-script {
+  display: flex;
+  flex-direction: column;
+}
+
+.interaction-approval-script-text {
+  max-height: 300px;
+}
+
+.interaction-approval-script-path {
+  color: var(--text-primary);
+  font-size: var(--font-size-status-small);
+  overflow-wrap: anywhere;
+}
+
+.interaction-approval-script-path__label {
+  color: var(--text-secondary);
+}
+
+.interaction-approval-script-notice {
+  margin: var(--padding-xs) 0 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-footnote);
+}
+
 .interaction-exchange-response-text {
   margin-top: 3px;
   font-family: var(--font-family-light);

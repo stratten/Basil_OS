@@ -28,6 +28,8 @@ import type {
 
 import type {
   SetupAgendaConfirmationRequest,
+  SetupLocalModelFailure,
+  SetupLocalModelFailureActionId,
   SetupAgendaItemMark,
   SetupSessionAgendaItem,
   SetupSessionAgendaItemStatus,
@@ -226,5 +228,43 @@ export function normalizeInlineVisualFromSse(
     kind,
     relatedAgendaItemId,
     captionOverride,
+  }
+}
+
+
+const LOCAL_MODEL_FAILURE_KINDS: ReadonlySet<SetupLocalModelFailure['kind']> = new Set([
+  'memory',
+  'context_full',
+  'invalid_input',
+])
+const LOCAL_MODEL_FAILURE_ACTION_IDS: ReadonlySet<SetupLocalModelFailureActionId> = new Set([
+  'retry',
+  'smaller_model',
+  'cloud_or_key',
+  'show_logs',
+  'report',
+])
+
+/** Reads the backend's `local_model_failure` error payload, dropping unknown kinds and actions. Returns undefined when the payload is not a usable failure. */
+export function normalizeLocalModelFailureFromSse(raw: unknown): SetupLocalModelFailure | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  const record = raw as Record<string, unknown>
+  const kind = record.kind
+  const message = typeof record.message === 'string' ? record.message.trim() : ''
+  if (typeof kind !== 'string' || !LOCAL_MODEL_FAILURE_KINDS.has(kind as SetupLocalModelFailure['kind']) || !message) {
+    return undefined
+  }
+  const actions = (Array.isArray(record.actions) ? record.actions : []).flatMap(item => {
+    if (!item || typeof item !== 'object') return []
+    const { id, label } = item as Record<string, unknown>
+    if (typeof id !== 'string' || !LOCAL_MODEL_FAILURE_ACTION_IDS.has(id as SetupLocalModelFailureActionId)) return []
+    if (typeof label !== 'string' || !label.trim()) return []
+    return [{ id: id as SetupLocalModelFailureActionId, label: label.trim() }]
+  })
+  return {
+    kind: kind as SetupLocalModelFailure['kind'],
+    message,
+    detail: typeof record.detail === 'string' ? record.detail : '',
+    actions,
   }
 }

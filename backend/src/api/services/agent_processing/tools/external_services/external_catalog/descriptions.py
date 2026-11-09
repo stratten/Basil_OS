@@ -23,7 +23,8 @@ logger = logging.getLogger(__name__)
 #   either documented in the schema or learned from a single error round).
 SLIM_DESCRIPTION = (
     "discover/invoke tools on remote MCP services the user has connected "
-    "(e.g. Linear, GitHub, Slack); use native tools for local email/files/"
+    "(e.g. Gmail, Google Calendar, Linear, GitHub, Slack), including connected email accounts; "
+    "use native email tools only for the Mail app or Outlook on this Mac, native tools for local files/"
     "activity, web_search for the open web. tool_name is a FIELD inside an "
     "external_catalog call (action='call_tool'), never a top-level tool - "
     "if 'X is not a valid tool' matches a name from describe_server, "
@@ -59,8 +60,10 @@ def build_full_external_catalog_description(connection_inventory: str) -> str:
         "service the user has connected via Settings → Connections (e.g. Linear, GitHub).\n"
         "\n"
         "**DECISIONING RULE:**\n"
-        "If the answer or action lives in the user's own machine (files, email, calendar, screen\n"
-        "history), use the corresponding native tool instead. If it lives on the open web with no\n"
+        "If the answer or action lives in the user's own machine (files, the Mail app or Outlook,\n"
+        "calendar, screen history), use the corresponding native tool instead. A mailbox the user has\n"
+        "connected here (for example Gmail) is a connected service, not the Mail app: use this tool\n"
+        "for it, even when the request does not name the connection. If it lives on the open web with no\n"
         "specific account context, use web_search instead. If it lives in a third-party service\n"
         "the user has authenticated with, use external_catalog.\n"
         "\n"
@@ -71,7 +74,8 @@ def build_full_external_catalog_description(connection_inventory: str) -> str:
         "- USE: 'comment on the GitHub PR I opened yesterday' → GitHub MCP connection.\n"
         "- USE: 'ask <service> to pull the latest install link' → an action tool on that\n"
         "  connection (e.g. *_create_request / *_run_recipe), subject to approval.\n"
-        "- DO NOT USE: 'find my last email from Sarah' → email_service, not MCP.\n"
+        "- USE: 'what is my most recent email' when a Gmail connection is enabled → that connection.\n"
+        "- DO NOT USE: 'find my last email from Sarah in the Mail app' → email_service, not MCP.\n"
         "- DO NOT USE: 'what was I working on this morning' → query_activities, not MCP.\n"
         "- DO NOT USE: 'what is the React 19 changelog' → web_search, not MCP.\n"
         "\n"
@@ -203,7 +207,7 @@ def format_connection_inventory_for_description() -> str:
     try:
         from ..external_connection_inventory import render_connection_inventory_for_description
 
-        return render_connection_inventory_for_description()
+        return render_connection_inventory_for_description(compact=True)
     except Exception as exc:
         logger.warning("Could not load MCP connection inventory for tool description: %s", exc)
         return "**CURRENT CONNECTIONS:** Unable to load the user's current connection list."

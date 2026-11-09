@@ -1,0 +1,64 @@
+/* One look for a Markdown table in every web view that renders Markdown, so a table never has square corners on one surface and rounded corners on another. A hand-built table that sits beside Markdown tables (the setup assistant's model comparison) is listed the same way. Add a new Markdown surface's container class to the list in each rule below; markdownTable.contract.test.ts fails when a renderer's container is missing from it.
+
+Borders are separate (not collapsed) so the table can have rounded corners like the code blocks and cards around it: the table draws the outer edge and every cell draws only its top and left edge, with the outermost cells dropping the edge the table already draws.
+
+:where() keeps the specificity of these rules at the element level, so a surface can override a color, width, or margin with an ordinary class selector. Every token has a fallback because each web view defines its own theme. A surface can also set --markdown-table-line, --markdown-table-head-background, and --markdown-table-head-color on its container. */
+
+:where(.result-section, .home-markdown, .meeting-markdown, .writing-examples-markdown, .assistant-output-history-detail__output, .model-comparison) table {
+  max-width: 100%;
+  margin: 10px 0 14px;
+  border: var(--border-thin, 1px) solid var(--markdown-table-line, var(--separator-color, color-mix(in srgb, currentColor 35%, transparent)));
+  border-radius: var(--corner-radius-small, 6px);
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* min-width keeps a narrow column (a count, a percentage, a two-digit number) from being squeezed until its digits break across lines; text columns still shrink and wrap because overflow-wrap lets them break long words. */
+:where(.result-section, .home-markdown, .meeting-markdown, .writing-examples-markdown, .assistant-output-history-detail__output, .model-comparison) :is(th, td) {
+  min-width: 3ch;
+  padding: var(--padding-xs, 4px) var(--padding-s, 8px);
+  border-top: var(--border-thin, 1px) solid var(--markdown-table-line, var(--separator-color, color-mix(in srgb, currentColor 35%, transparent)));
+  border-left: var(--border-thin, 1px) solid var(--markdown-table-line, var(--separator-color, color-mix(in srgb, currentColor 35%, transparent)));
+  overflow-wrap: break-word;
+  /* word-break is inherited and the legacy value break-word, which several containers around a table set (a past turn's result card, for one), makes a column's minimum width one character. Setting it on the cell itself keeps a column from shrinking below its longest word, so it is the wide text columns that give up space instead. */
+  word-break: normal;
+  text-align: left;
+  vertical-align: top;
+}
+
+/* break-word (unlike anywhere) does not let a column shrink below its longest word, so ordinary words are never split mid-word. A link or code span has no natural break points and can be arbitrarily long, so only those may break anywhere. */
+:where(.result-section, .home-markdown, .meeting-markdown, .writing-examples-markdown, .assistant-output-history-detail__output, .model-comparison) :is(td, th) :is(a, code) {
+  overflow-wrap: anywhere;
+}
+
+:where(.result-section, .home-markdown, .meeting-markdown, .writing-examples-markdown, .assistant-output-history-detail__output, .model-comparison) tr > :first-child {
+  border-left: 0;
+}
+
+:where(.result-section, .home-markdown, .meeting-markdown, .writing-examples-markdown, .assistant-output-history-detail__output, .model-comparison) :is(thead tr:first-child, tbody:first-child tr:first-child) > * {
+  border-top: 0;
+}
+
+:where(.result-section, .home-markdown, .meeting-markdown, .writing-examples-markdown, .assistant-output-history-detail__output, .model-comparison) :is(thead tr:first-child, tbody:first-child tr:first-child) > :first-child {
+  border-top-left-radius: calc(var(--corner-radius-small, 6px) - var(--border-thin, 1px));
+}
+
+:where(.result-section, .home-markdown, .meeting-markdown, .writing-examples-markdown, .assistant-output-history-detail__output, .model-comparison) :is(thead tr:first-child, tbody:first-child tr:first-child) > :last-child {
+  border-top-right-radius: calc(var(--corner-radius-small, 6px) - var(--border-thin, 1px));
+}
+
+:where(.result-section, .home-markdown, .meeting-markdown, .writing-examples-markdown, .assistant-output-history-detail__output, .model-comparison) tbody tr:last-child > :first-child {
+  border-bottom-left-radius: calc(var(--corner-radius-small, 6px) - var(--border-thin, 1px));
+}
+
+:where(.result-section, .home-markdown, .meeting-markdown, .writing-examples-markdown, .assistant-output-history-detail__output, .model-comparison) tbody tr:last-child > :last-child {
+  border-bottom-right-radius: calc(var(--corner-radius-small, 6px) - var(--border-thin, 1px));
+}
+
+/* Header words are short, so they keep each word whole: a column is never squeezed narrower than its own heading ("Count", "Total"), which also keeps the numbers under it readable. */
+:where(.result-section, .home-markdown, .meeting-markdown, .writing-examples-markdown, .assistant-output-history-detail__output, .model-comparison) th {
+  background: var(--markdown-table-head-background, color-mix(in srgb, currentColor 10%, transparent));
+  color: var(--markdown-table-head-color, inherit);
+  font-weight: 600;
+  overflow-wrap: break-word;
+}

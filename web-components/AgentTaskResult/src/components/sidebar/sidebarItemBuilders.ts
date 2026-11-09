@@ -1,5 +1,6 @@
 import type { MouseEvent } from 'react';
 import type { AgentState, AgentTaskListItem, ScheduledAgentTask } from '../../types';
+import type { ScheduledRunNowOutcome } from '../../services/scheduledRunNow';
 import type { AgentTaskRowProps } from './AgentTaskRow';
 import { plainSidebarText, stripStepMarkers, truncateTitle } from './sidebarUtils';
 
@@ -64,6 +65,11 @@ interface BuildHistoryItemsArgs {
   pendingFollowUps?: Readonly<Record<string, string>>;
 }
 
+/** The label of the clock badge for a task that a schedule started. Falls back to a generic label when the API didn't fill in the schedule's title (older rows, or scheduled agent tasks that have since been deleted). */
+function scheduledRunLabel(item: Pick<AgentTaskListItem, 'scheduled_agent_task_title'>): string {
+  return plainSidebarText(item.scheduled_agent_task_title || '') || 'Scheduled task';
+}
+
 export function buildHistoryItems({
   allAgents,
   history,
@@ -84,6 +90,8 @@ export function buildHistoryItems({
   preserveHistoryOrder = false,
   pendingFollowUps = {},
 }: BuildHistoryItemsArgs): AgentTaskRowProps[] {
+  // A task a schedule started keeps its badge for as long as it exists. A task that is open in this window, or that has had turns here, is shown from the live store instead of the history list, and the live state has no record of where the task came from, so the backend's history entry for the same task supplies it.
+  const scheduledHistoryById = new Map(history.filter(item => item.is_scheduled_run).map(item => [item.id, item]));
   const historyItems: AgentTaskRowProps[] = [
     ...allAgents.map((agent): AgentTaskRowProps => {
       // While this task's root is open in a detached window, that window owns
@@ -101,6 +109,7 @@ export function buildHistoryItems({
           : agent.status;
       const active = isActiveStatus(rowStatus);
       const attentionPreview = isDetachedElsewhere ? undefined : sidebarAttentionPreview(agent);
+      const scheduledSource = scheduledHistoryById.get(rootId) ?? scheduledHistoryById.get(agent.agentTaskId);
       return {
         id: agent.agentTaskId,
         title: agent.agentTaskHistory.length > 0 && agent.agentTaskHistory[0].agentTaskText
@@ -127,10 +136,12 @@ export function buildHistoryItems({
         onArchive: !active ? archiveAgentTask : undefined,
         archiveLabel,
         onContextMenu: openContextMenuForId,
+        scheduledRunSourceTitle: scheduledSource ? scheduledRunLabel(scheduledSource) : undefined,
         originSourceLabel: agent.originType === 'conversation'
           ? 'From Conversation'
           : undefined,
         nextFollowUpAt: pendingFollowUps[rootId] ?? pendingFollowUps[agent.agentTaskId],
+        checklistRootId: rootId,
       };
     }),
     ...history
@@ -166,16 +177,15 @@ export function buildHistoryItems({
         archiveLabel,
         onContextMenu: openContextMenuForId,
         // Surface the scheduled-run provenance to the row itself so it can
-        // render the clock badge inline next to the title. Falls back to a
-        // generic label when the API didn't fill in scheduled_agent_task_title
-        // (older rows, or scheduled agent tasks that have since been deleted).
-        scheduledRunSourceTitle: item.is_scheduled_run
-          ? (plainSidebarText(item.scheduled_agent_task_title || '') || 'Scheduled task')
-          : undefined,
+        // render the clock badge inline next to the title.
+        scheduledRunSourceTitle: item.is_scheduled_run ? scheduledRunLabel(item) : undefined,
         originSourceLabel: item.origin_type === 'conversation'
           ? 'From Conversation'
           : undefined,
         nextFollowUpAt: pendingFollowUps[item.id],
+        checklistRootId: item.id,
+        checklistDone: item.checklist_done ?? 0,
+        checklistTotal: item.checklist_total ?? 0,
       })),
   ];
 
@@ -199,6 +209,10 @@ interface BuildScheduledItemsArgs {
   selectedScheduledAgentTaskId?: string | null;
   onViewScheduledAgentTask: (scheduledAgentTaskId: string) => void;
   deleteScheduledAgentTask: (scheduledAgentTaskId: string) => void;
+  /** Activates or deactivates a schedule from its status dot. Without it the dot is a plain indicator. */
+  toggleScheduledAgentTask?: (scheduledAgentTaskId: string, nextActive: boolean) => void;
+  /** Starts one run of a schedule now, whether or not it is active. Without it the rows have no Run now button. */
+  runScheduledAgentTask?: (scheduledAgentTaskId: string) => Promise<ScheduledRunNowOutcome>;
 }
 
 export function buildScheduledItems({
@@ -206,6 +220,8 @@ export function buildScheduledItems({
   selectedScheduledAgentTaskId,
   onViewScheduledAgentTask,
   deleteScheduledAgentTask,
+  toggleScheduledAgentTask,
+  runScheduledAgentTask,
 }: BuildScheduledItemsArgs): AgentTaskRowProps[] {
   const scheduledItems: AgentTaskRowProps[] = scheduled.map((item): AgentTaskRowProps => {
     const kindLabel = item.schedule_type === 'one_time' ? 'One-time' : 'Recurring';
@@ -238,6 +254,8 @@ export function buildScheduledItems({
       onSelect: onViewScheduledAgentTask,
       onRequestDelete: deleteScheduledAgentTask,
       scheduleActive: item.is_active,
+      onToggleSchedule: toggleScheduledAgentTask,
+      onRunSchedule: runScheduledAgentTask,
       deleteConfirmLabel: 'Delete this schedule?',
     };
   });

@@ -11,6 +11,16 @@ export function timelineTimestampMs(timestamp: string | undefined): number | und
   return Number.isNaN(parsed) ? undefined : parsed;
 }
 
+/** The timestamp of the oldest local entry that has a usable one, or undefined when there is none. */
+export function earliestTimelineMs(timeline: TimelineEntry[]): number | undefined {
+  let earliest: number | undefined;
+  for (const entry of timeline) {
+    const atMs = timelineTimestampMs(entry.timestamp);
+    if (atMs !== undefined && (earliest === undefined || atMs < earliest)) earliest = atMs;
+  }
+  return earliest;
+}
+
 function normalizedContent(entry: TimelineEntry): string {
   return (entry.content || entry.summary || '').replace(/\s+/g, ' ').trim().toLowerCase();
 }
@@ -28,18 +38,21 @@ function isAlreadyShown(local: TimelineEntry[], durable: TimelineEntry, durableA
 /**
  * Adds durable timeline entries that the live feed never delivered.
  *
- * Only entries at or after `sinceMs` (less the same-event window) are considered, so a task whose feed was never interrupted is left exactly as it is. Artifact entries are skipped because their own reconciliation owns them. Added entries are placed by timestamp among the local ones; the original array is returned untouched when nothing was added.
+ * Only entries at or after `sinceMs` (less the same-event window) are considered, so a task whose feed was never interrupted is left exactly as it is. When `untilMs` is given, entries within the same-event window before it, or after it, are ignored too, which lets a caller restore just the history that predates what the live feed has delivered without adding a differently worded persisted twin of the first live entry. Artifact entries are skipped because their own reconciliation owns them. Added entries are placed by timestamp among the local ones; the original array is returned untouched when nothing was added.
  */
 export function backfillDurableTimelineEntries(
   local: TimelineEntry[],
   durable: TimelineEntry[],
   sinceMs: number,
+  untilMs?: number,
 ): TimelineEntry[] {
   const missing = durable
     .filter(entry => entry.type !== 'artifact' && normalizedContent(entry) !== '')
     .map(entry => ({ entry, atMs: timelineTimestampMs(entry.timestamp) }))
     .filter((item): item is { entry: TimelineEntry; atMs: number } => (
-      item.atMs !== undefined && item.atMs >= sinceMs - SAME_EVENT_WINDOW_MS
+      item.atMs !== undefined
+      && item.atMs >= sinceMs - SAME_EVENT_WINDOW_MS
+      && (untilMs === undefined || item.atMs < untilMs - SAME_EVENT_WINDOW_MS)
     ))
     .filter(item => !isAlreadyShown(local, item.entry, item.atMs))
     .sort((a, b) => a.atMs - b.atMs);

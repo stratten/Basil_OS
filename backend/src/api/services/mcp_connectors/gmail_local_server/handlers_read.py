@@ -36,6 +36,20 @@ from .schemas import (
 _THREAD_FETCH_CONCURRENCY = 8
 """Threads fetched at once while building a search result. Bounded so one search cannot burst past Gmail's per-user rate limit."""
 
+_PREVIEW_NOTICE = (
+    " These are previews only: the subject and a short, often cut-off snippet of each message, and no message body has been read."
+    " If the task is to answer, summarize, or draft a reply or follow-up, read the threads it depends on with get_thread yourself, without asking the user first."
+    " Stay with the previews only when they already settle the question, such as counting or listing."
+)
+
+_DEFAULT_SEARCH_QUERY = "in:inbox"
+
+_DEFAULT_INBOX_NOTICE = (
+    " No query was given, so this searched the inbox only."
+    " To search all mail instead (this also includes spam, trash, and drafts), call search_threads again with query 'in:anywhere'."
+    " If the user named another folder, label, sender, or date range, pass that restriction in query."
+)
+
 _MESSAGES_PER_THREAD_PREVIEW = 5
 
 
@@ -59,11 +73,13 @@ def _thread_message_format(requested: str) -> str:
 
 async def handle_search_threads(api: GmailApiClient, args: dict) -> dict:
     parsed = SearchThreadsInput.model_validate(args)
+    requested_query = (parsed.query or "").strip()
+    effective_query = requested_query or _DEFAULT_SEARCH_QUERY
     listing = await api.request(
         "GET",
         "/threads",
         params={
-            "q": _without_drafts(parsed.query),
+            "q": _without_drafts(effective_query),
             "maxResults": parsed.page_size,
             "pageToken": parsed.page_token,
             "includeSpamTrash": "true" if parsed.include_trash else None,
@@ -97,7 +113,11 @@ async def handle_search_threads(api: GmailApiClient, args: dict) -> dict:
     structured: Dict[str, Any] = {"threads": threads}
     if listing.get("nextPageToken"):
         structured["nextPageToken"] = listing["nextPageToken"]
-    summary = f"Found {len(threads)} thread(s) for {parsed.query or 'all mail'!r}."
+    summary = f"Found {len(threads)} thread(s) for {effective_query!r}."
+    if not requested_query:
+        summary += _DEFAULT_INBOX_NOTICE
+    if threads:
+        summary += _PREVIEW_NOTICE
     if listing.get("nextPageToken"):
         summary += " More are available: pass nextPageToken to continue."
     return {"text": "\n".join([summary, *lines]) if threads else summary, "structured": structured}

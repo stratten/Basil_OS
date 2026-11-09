@@ -143,6 +143,10 @@ class MCPCachedTool(BaseModel):
         default=False,
         description="Server-declared hint that this tool does not mutate state (drives default policy)"
     )
+    is_destructive_hint: Optional[bool] = Field(
+        default=None,
+        description="Server-declared destructiveHint annotation, or None when the server declared none (it is then unknown, not false). True adds a warning to the approval card."
+    )
     input_schema: Dict[str, Any] = Field(
         default_factory=dict,
         description="JSON Schema of the tool's parameters as advertised by the server; empty when the server exposes none"
@@ -305,6 +309,7 @@ class ZettelSettings(BaseModel):
     # Narrative: the model-driven pass that finalizes cards into narratives.
     narrative_enabled: bool = Field(default=True, description="Run the model finalizing pass over non-final cards")
     narrative_model: str = Field(default="", description="Model id for narrative synthesis; empty uses the default reasoning model")
+    narrative_reasoning_effort: str = Field(default="low", description="Reasoning effort for OpenAI reasoning models during narrative synthesis: none, low, medium, or high; empty uses the model's registry default")
     narrative_mode: str = Field(default="scheduled", description="'scheduled' for a daily run or 'continuous' for an interval")
     narrative_scheduled_time: str = Field(default="02:00", description="Local HH:MM time for the daily narrative pass in scheduled mode")
     narrative_interval_minutes: int = Field(default=30, ge=1, le=1440, description="Minutes between narrative passes in continuous mode")

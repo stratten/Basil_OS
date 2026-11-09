@@ -103,6 +103,102 @@ final class BasilRuntimeProfileTests: XCTestCase {
         XCTAssertEqual(result, .failure("Validation launch rejected: Unsupported validation manifest schema version 99."))
     }
 
+    func testNormalProfileNeverSuppressesAmbientBehavior() {
+        XCTAssertFalse(BasilRuntimeProfile.isValidation)
+        XCTAssertFalse(BasilRuntimeProfile.isFreshInstall)
+        XCTAssertFalse(BasilRuntimeProfile.suppressesAmbientBehavior)
+    }
+
+    func testFixtureValidationSessionSuppressesAmbientBehavior() throws {
+        for freshInstall in [nil, false] as [Bool?] {
+            let manifestURL = try writeManifest(freshInstall: freshInstall)
+            let result = BasilRuntimeProfile.bootstrap(
+                arguments: ["BasilClient", "--validation-session", manifestURL.path],
+                sessionBaseURL: sessionBaseURL
+            )
+            guard case .success(let profile) = result else {
+                return XCTFail("Expected a validation profile")
+            }
+            BasilRuntimeProfile.install(profile)
+
+            XCTAssertTrue(BasilRuntimeProfile.isValidation)
+            XCTAssertFalse(BasilRuntimeProfile.isFreshInstall)
+            XCTAssertTrue(BasilRuntimeProfile.suppressesAmbientBehavior)
+        }
+    }
+
+    func testFreshInstallValidationSessionKeepsAmbientBehaviorOn() throws {
+        let manifestURL = try writeManifest(freshInstall: true)
+        let result = BasilRuntimeProfile.bootstrap(
+            arguments: ["BasilClient", "--validation-session", manifestURL.path],
+            sessionBaseURL: sessionBaseURL
+        )
+        guard case .success(let profile) = result else {
+            return XCTFail("Expected a validation profile")
+        }
+        BasilRuntimeProfile.install(profile)
+
+        XCTAssertTrue(BasilRuntimeProfile.isValidation)
+        XCTAssertTrue(BasilRuntimeProfile.isFreshInstall)
+        XCTAssertFalse(BasilRuntimeProfile.suppressesAmbientBehavior)
+    }
+
+    func testFreshInstallSessionLaunchedToCoexistKeepsAmbientBehaviorOffButShowsThePermissionGate() throws {
+        let manifestURL = try writeManifest(freshInstall: true, suppressAmbientBehavior: true)
+        let result = BasilRuntimeProfile.bootstrap(
+            arguments: ["BasilClient", "--validation-session", manifestURL.path],
+            sessionBaseURL: sessionBaseURL
+        )
+        guard case .success(let profile) = result else {
+            return XCTFail("Expected a validation profile")
+        }
+        BasilRuntimeProfile.install(profile)
+
+        XCTAssertTrue(BasilRuntimeProfile.isFreshInstall)
+        XCTAssertTrue(BasilRuntimeProfile.suppressesAmbientBehavior)
+        XCTAssertFalse(BasilRuntimeProfile.skipsFirstRunPermissionGate)
+    }
+
+    func testOnlyAFixtureSessionSkipsTheFirstRunPermissionGate() throws {
+        XCTAssertFalse(BasilRuntimeProfile.skipsFirstRunPermissionGate)
+
+        for (freshInstall, expectedSkip) in [(nil, true), (false, true), (true, false)] as [(Bool?, Bool)] {
+            let manifestURL = try writeManifest(freshInstall: freshInstall)
+            let result = BasilRuntimeProfile.bootstrap(
+                arguments: ["BasilClient", "--validation-session", manifestURL.path],
+                sessionBaseURL: sessionBaseURL
+            )
+            guard case .success(let profile) = result else {
+                return XCTFail("Expected a validation profile")
+            }
+            BasilRuntimeProfile.install(profile)
+
+            XCTAssertEqual(BasilRuntimeProfile.skipsFirstRunPermissionGate, expectedSkip)
+        }
+    }
+
+    func testManifestWithoutSuppressAmbientBehaviorFieldStillDecodesAndKeepsFreshInstallAmbientOn() throws {
+        let manifestURL = try writeManifest(freshInstall: true)
+        let data = try Data(contentsOf: manifestURL)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertNil(json["suppressAmbientBehavior"])
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        XCTAssertNil(try decoder.decode(ValidationSessionManifest.self, from: data).suppressAmbientBehavior)
+    }
+
+    func testManifestWithoutFreshInstallFieldStillDecodes() throws {
+        let manifestURL = try writeManifest()
+        let data = try Data(contentsOf: manifestURL)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertNil(json["freshInstall"])
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        XCTAssertNil(try decoder.decode(ValidationSessionManifest.self, from: data).freshInstall)
+    }
+
     func testValidationDefaultsAndCredentialKeysDoNotUseNormalNamespaces() throws {
         let manifestURL = try writeManifest()
         let result = BasilRuntimeProfile.bootstrap(
@@ -129,7 +225,9 @@ final class BasilRuntimeProfileTests: XCTestCase {
     private func writeManifest(
         schemaVersion: Int = ValidationSessionManifest.supportedSchemaVersion,
         sessionRoot: URL? = nil,
-        backendURL: URL = URL(string: "http://127.0.0.1:8765")!
+        backendURL: URL = URL(string: "http://127.0.0.1:8765")!,
+        freshInstall: Bool? = nil,
+        suppressAmbientBehavior: Bool? = nil
     ) throws -> URL {
         let resolvedSessionRoot = sessionRoot ?? sessionBaseURL.appendingPathComponent("live-preview")
         try FileManager.default.createDirectory(at: resolvedSessionRoot, withIntermediateDirectories: true)
@@ -143,7 +241,9 @@ final class BasilRuntimeProfileTests: XCTestCase {
             probeURL: resolvedSessionRoot.appendingPathComponent("probe.json"),
             credentialNamespace: "com.stratten.basil.validation.live-preview.",
             createdAt: Date(timeIntervalSince1970: 0),
-            mode: .developerLocal
+            mode: .developerLocal,
+            freshInstall: freshInstall,
+            suppressAmbientBehavior: suppressAmbientBehavior
         )
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601

@@ -23,8 +23,10 @@ from api.core.security.protected_runtime_paths import (
 
 from .models import ExecutionApprovalDecision, ExecutionApprovalOutcome
 from .risk_assessment import RiskAssessor
+from .workspace_scope import judge_workspace_command
 from .command_generalization import CommandGeneralizer
 from .pattern_matcher import PatternMatcher
+from .whitelist_eligibility import CONNECTED_TOOL_ASK_REASON, is_connected_tool_command
 from .whitelist_manager import WhitelistManager
 from .interactive_approval import InteractiveApprovalManager
 from .explanation_gate import (
@@ -133,6 +135,22 @@ class ExecutionApprovalService:
                     risk_level=risk_level
                 )
 
+            scope = (context or {}).get("workspace_scope")
+            if isinstance(scope, dict):
+                verdict = judge_workspace_command(
+                    scope.get("argv"),
+                    workspace=scope.get("workspace"),
+                    cwd=scope.get("cwd"),
+                    has_env_overrides=bool(scope.get("has_env_overrides")),
+                )
+                if verdict.allowed:
+                    logger.debug(f"Command auto-approved (inside the task workspace): {command}")
+                    return ExecutionApprovalDecision(
+                        needs_approval=False,
+                        reason=verdict.reason,
+                        risk_level='low'
+                    )
+
             if settings.auto_approve_read_only and self.risk_assessor.is_read_only_command(command):
                 logger.debug(f"Command auto-approved (read-only): {command}")
                 return ExecutionApprovalDecision(
@@ -141,13 +159,18 @@ class ExecutionApprovalService:
                     risk_level='low'
                 )
 
-            generalized_command = self.generalizer.generalize_command(command)
             logger.info(f"🔍 Checking whitelist for command: '{command}' (whitelist has {len(settings.whitelisted_commands)} patterns)")
-            if generalized_command != command:
-                logger.info(f"🔧 Generalized command for whitelist matching: '{generalized_command}'")
 
-            matched_pattern = self.pattern_matcher.check_whitelist(generalized_command, settings.whitelisted_commands)
+            # The raw command is matched, word by word: a shortened copy would make every `gh ...` command look like `gh`.
+            matched_pattern = self.pattern_matcher.check_whitelist(command, settings.whitelisted_commands)
             if matched_pattern:
+                if self.risk_assessor.is_high_risk(command):
+                    logger.info(f"⚠️ High-risk command matched '{matched_pattern.pattern}'; asking again")
+                    return ExecutionApprovalDecision(
+                        needs_approval=True,
+                        reason=f"This matches the remembered pattern '{matched_pattern.pattern}', but the command is high risk, so it needs your approval again",
+                        risk_level='high',
+                    )
                 logger.info(f"✅ Command matched whitelist pattern: '{matched_pattern.pattern}' (type: {matched_pattern.pattern_type})")
                 return ExecutionApprovalDecision(
                     needs_approval=False,
@@ -158,9 +181,11 @@ class ExecutionApprovalService:
 
             logger.info("❌ Command did not match any whitelist pattern")
             logger.debug(f"Command requires approval (not whitelisted): {command}")
+            # A connected tool is never matched against the whitelist; it reaches here because its policy is Always ask.
+            reason = CONNECTED_TOOL_ASK_REASON if is_connected_tool_command(command) else "Command not in whitelist"
             return ExecutionApprovalDecision(
                 needs_approval=True,
-                reason="Command not in whitelist",
+                reason=reason,
                 risk_level=risk_level
             )
 
@@ -229,7 +254,11 @@ class ExecutionApprovalService:
                 decision=decision,
             )
 
-        approved, remember, pattern_type = await self.interactive_manager.request_approval(command, decision, context or {})
+        note_sink: Dict[str, str] = {}
+        approved, remember, pattern_type = await self.interactive_manager.request_approval(
+            command, decision, context or {}, note_sink=note_sink
+        )
+        user_note = note_sink.get("user_note", "")
         if approved:
             return ExecutionApprovalOutcome(
                 approved=True,
@@ -238,6 +267,7 @@ class ExecutionApprovalService:
                 status="approved",
                 reason="User approved command execution.",
                 decision=decision,
+                user_note=user_note,
             )
         if pattern_type == "timeout_retry_hint":
             return ExecutionApprovalOutcome(
@@ -262,6 +292,7 @@ class ExecutionApprovalService:
             status="user_denied",
             reason="Command execution was denied by user.",
             decision=decision,
+            user_note=user_note,
         )
 
     async def add_to_whitelist(
@@ -270,11 +301,23 @@ class ExecutionApprovalService:
         pattern_type: str = 'exact',
         description: str = '',
         risk_level: str = 'low',
-        record_initial_use: bool = False
+        record_initial_use: bool = False,
+        *,
+        pattern: Optional[str] = None,
+        proposed_pattern: Optional[str] = None,
     ) -> CommandPattern:
-        """Add a command to the whitelist."""
+        """Add a command to the whitelist.
+
+        ``pattern`` stores exactly that text with the given type (a pattern the user typed, or one already chosen for an approval card). ``proposed_pattern`` is the agent's suggestion for a remembered approval, validated against ``command`` before it is used.
+        """
         return await self.whitelist_manager.add_to_whitelist(
-            command, pattern_type, description, risk_level, record_initial_use=record_initial_use
+            command,
+            pattern_type,
+            description,
+            risk_level,
+            record_initial_use=record_initial_use,
+            pattern=pattern,
+            proposed_pattern=proposed_pattern,
         )
 
     async def update_whitelist_pattern(
@@ -306,6 +349,7 @@ class ExecutionApprovalService:
         *,
         agent_task_id: str | None = None,
         expected_revision: int | None = None,
+        user_note: str | None = None,
     ) -> None:
         """Process user's approval response from frontend."""
         if self.interactive_manager:
@@ -316,6 +360,7 @@ class ExecutionApprovalService:
                 pattern_type,
                 agent_task_id=agent_task_id,
                 expected_revision=expected_revision,
+                user_note=user_note,
             )
         else:
             logger.info(f"Calling InteractiveApprovalManager class method directly for approval_id={approval_id}")
@@ -334,4 +379,5 @@ class ExecutionApprovalService:
                 pattern_type,
                 agent_task_id=agent_task_id,
                 expected_revision=expected_revision,
+                user_note=user_note,
             )

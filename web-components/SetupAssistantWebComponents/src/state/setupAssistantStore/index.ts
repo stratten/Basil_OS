@@ -9,9 +9,12 @@ import type {
   SetupWrapUpProposal,
 } from '@/types'
 
+import type { ComfortLevel } from '@/components/express/expressTypes'
+
 import { initialState, reducer } from './reducer'
 import type {
   SetupAgendaConfirmationResolution,
+  SetupImportedContextSummary,
   SetupInlineDillDraft,
   SetupStage,
   SetupUserAcknowledgment,
@@ -36,9 +39,12 @@ export function useSetupAssistantStore() {
     setModelAccess: (setupAgentModelAccess: SetupAgentModelAccess | null) => (
       dispatch({ type: 'set_model_access', setupAgentModelAccess })
     ),
+    setExpressComfort: (expressComfort: ComfortLevel | null) => dispatch({ type: 'set_express_comfort', expressComfort }),
     setInteractionStyle: (interactionStyle: string[]) => (
       dispatch({ type: 'set_interaction_style', interactionStyle })
     ),
+    mergeImportedContext: (summary: SetupImportedContextSummary) => dispatch({ type: 'merge_imported_context', summary }),
+    clearImportedProfile: () => dispatch({ type: 'clear_imported_profile' }),
     appendUserMessage: (content: string) => dispatch({ type: 'append_user_message', content }),
     applyEvent: (event: SetupAgentEvent) => dispatch({ type: 'apply_event', event }),
     setError: (errorMessage?: string) => dispatch({ type: 'set_error', errorMessage }),

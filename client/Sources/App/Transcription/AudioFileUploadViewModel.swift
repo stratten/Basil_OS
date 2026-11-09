@@ -149,6 +149,8 @@ final class AudioFileUploadViewModel: ObservableObject {
                 errorDescription = "Invalid URL for audio file"
             case .serverError(let statusCode):
                 errorDescription = "Server error (Status \(statusCode))"
+            case .serverMessage(_, let message):
+                errorDescription = message
             }
         default:
             errorDescription = error.localizedDescription

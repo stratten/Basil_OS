@@ -89,6 +89,20 @@ class ModelManager:
 
         return _DEFAULT_MODEL_DISPLAY_NAME
 
+    @staticmethod
+    def _resolve_source_or_default(name: str) -> WhisperModelSource:
+        """Resolve ``name`` to a Whisper source, falling back to the default model when the name is not a registered local model (for example a stale saved preference)."""
+        try:
+            return resolve_whisper_source(name)
+        except ValueError:
+            logger.warning(
+                "Transcription model '%s' is not a registered local whisper model; "
+                "falling back to '%s'",
+                name,
+                _DEFAULT_MODEL_DISPLAY_NAME,
+            )
+            return resolve_whisper_source(_DEFAULT_MODEL_DISPLAY_NAME)
+
     # -- HF pipeline construction (the single builder) ---------------------
 
     @staticmethod
@@ -168,7 +182,7 @@ class ModelManager:
         post-processing retranscription path uses too.
         """
         name = self._resolve_requested_name(model_id)
-        source = resolve_whisper_source(name)
+        source = self._resolve_source_or_default(name)
 
         # The HuggingFace service can only load a local-dir or HF-repo whisper
         # model. A cloud-only selection (e.g. "Whisper (OpenAI API)", no repo) or
@@ -207,7 +221,7 @@ class ModelManager:
     ) -> Iterator[Any]:
         """Borrow the requested HF pipeline for one inference operation."""
         name = self._resolve_requested_name(model_id)
-        source = resolve_whisper_source(name)
+        source = self._resolve_source_or_default(name)
         if not source.exists_locally and not source.repo_id:
             logger.warning(
                 "Model '%s' is not a loadable local/HF whisper model; "

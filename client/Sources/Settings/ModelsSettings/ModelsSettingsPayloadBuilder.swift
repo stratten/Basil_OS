@@ -47,6 +47,10 @@ enum ModelsSettingsPayloadBuilder {
             "size": model.size ?? NSNull(),
         ]
 
+        if let formatTag = model.formatTag {
+            item["format"] = formatTag
+        }
+
         if let liveProgress = downloadProgress[model.id] {
             item["statusKind"] = "downloading"
             item["progress"] = liveProgress

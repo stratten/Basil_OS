@@ -33,6 +33,11 @@ const mocks = vi.hoisted(() => ({
   filesPickedHandler: null as ((paths: string[]) => void) | null,
   registerFilesPickedHandler: vi.fn<(handler: (paths: string[]) => void) => () => void>(() => () => {}),
   pickFiles: vi.fn(),
+  openChecklistWindow: vi.fn(),
+}));
+
+vi.mock('../store/checklistViewStore', () => ({
+  openChecklistWindow: mocks.openChecklistWindow,
 }));
 
 vi.mock('../services/api', () => ({
@@ -220,6 +225,44 @@ describe('TextFollowUp', () => {
     mocks.getAgent.mockReturnValue(undefined);
   });
 
+  async function submitFollowUpFromPicker(): Promise<void> {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root.render(<TextFollowUp agentTaskId="task-1" onCancel={vi.fn()} />);
+    });
+    await act(async () => { await Promise.resolve(); });
+
+    const editor = container.querySelector('[role="textbox"][aria-label="Message"]') as HTMLDivElement;
+    Object.defineProperty(editor, 'innerText', { configurable: true, value: 'Follow up' });
+    await act(async () => {
+      editor.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await act(async () => {
+      editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true }));
+    });
+  }
+
+  it('sends the picker model even when it is the current default, so nothing is inherited or re-resolved', async () => {
+    mocks.getAgent.mockReturnValue(undefined);
+
+    await submitFollowUpFromPicker();
+
+    expect(mocks.processAgentTask).toHaveBeenCalledWith(expect.objectContaining({ model_id: 'local-qwen-3.5' }));
+  });
+
+  it('preselects the model the previous turn ran on when no request was recorded, instead of the current default', async () => {
+    mocks.getAgent.mockReturnValue({ modelUsed: 'gpt-5-mini' });
+
+    await submitFollowUpFromPicker();
+
+    expect(container.querySelector('.rich-text-model-picker-trigger')?.textContent).toContain('GPT-5 mini');
+    expect(mocks.processAgentTask).toHaveBeenCalledWith(expect.objectContaining({ model_id: 'gpt-5-mini' }));
+    mocks.getAgent.mockReturnValue(undefined);
+  });
+
   it('carries the whole reopened chain into the new follow-up instead of only the latest turn', async () => {
     const historyItem = (id: string) => ({ id, agentTaskText: `prompt ${id}`, result: `answer ${id}`, files: [], reference_paths: [], timestamp: '2026-10-24T00:00:00.000Z' });
     const viewedChain = {
@@ -297,9 +340,17 @@ describe('TextFollowUp collapsing', () => {
     expect(region().getAttribute('aria-hidden')).toBeNull();
     const toolbarEnd = container.querySelector('.rich-text-composer-toolbar-end') as HTMLElement;
     const buttons = Array.from(toolbarEnd.querySelectorAll('button')).map(button => button.getAttribute('aria-label'));
-    expect(buttons).toEqual(['Attach files or folders', 'Collapse the follow-up box']);
+    expect(buttons).toEqual(['Attach files or folders', 'Open the checklist', 'Collapse the follow-up box']);
     expect(collapseButton()!.getAttribute('aria-expanded')).toBe('true');
     expect(collapseButton()!.getAttribute('aria-controls')).toBe(region().id);
+  });
+
+  it('opens the checklist window for the chain from the toolbar, even before the chain has any items', async () => {
+    await mount();
+
+    (container.querySelector('button[aria-label="Open the checklist"]') as HTMLButtonElement).click();
+
+    expect(mocks.openChecklistWindow).toHaveBeenCalledWith('task-1');
   });
 
   it('folds to the one-line bar and keeps the draft, shown as a preview on the bar', async () => {

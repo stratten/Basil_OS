@@ -99,7 +99,53 @@ describe('updateScrollEdgeAttributes', () => {
   })
 })
 
+describe('fade depth', () => {
+  it('is never deeper than the content that is hidden', () => {
+    const element = document.createElement('div')
+    const geometry: Geometry = { scrollHeight: 120, clientHeight: 100, scrollTop: 0 }
+    installGeometry(element, geometry)
+
+    updateScrollEdgeAttributes(element)
+    expect(element.style.getPropertyValue('--setup-scroll-fade-bottom')).toBe('20px')
+    expect(element.style.getPropertyValue('--setup-scroll-fade-top')).toBe('')
+
+    geometry.scrollHeight = 600
+    geometry.scrollTop = 10
+    updateScrollEdgeAttributes(element)
+    expect(element.style.getPropertyValue('--setup-scroll-fade-bottom')).toBe('32px')
+    expect(element.style.getPropertyValue('--setup-scroll-fade-top')).toBe('10px')
+  })
+
+  it('is removed once the region reaches an edge', () => {
+    const element = document.createElement('div')
+    const geometry: Geometry = { scrollHeight: 600, clientHeight: 100, scrollTop: 0 }
+    installGeometry(element, geometry)
+    updateScrollEdgeAttributes(element)
+
+    geometry.scrollTop = 500
+    updateScrollEdgeAttributes(element)
+    expect(element.style.getPropertyValue('--setup-scroll-fade-bottom')).toBe('')
+    expect(element.style.getPropertyValue('--setup-scroll-fade-top')).toBe('32px')
+  })
+})
+
 describe('useScrollEdgeFades', () => {
+  it('re-measures when an animation or transition ends', () => {
+    act(() => { root.render(<Harness showMessages />) })
+    const geometry: Geometry = { scrollHeight: 400, clientHeight: 100, scrollTop: 0 }
+    installGeometry(messages(), geometry)
+    messages().dispatchEvent(new Event('scroll'))
+    expect(edges(messages())).toEqual({ top: false, bottom: true })
+
+    geometry.scrollHeight = 100
+    messages().dispatchEvent(new Event('animationend', { bubbles: true }))
+    expect(edges(messages())).toEqual({ top: false, bottom: false })
+
+    geometry.scrollHeight = 400
+    messages().dispatchEvent(new Event('transitionend', { bubbles: true }))
+    expect(edges(messages())).toEqual({ top: false, bottom: true })
+  })
+
   it('updates a tracked region when it scrolls', () => {
     act(() => { root.render(<Harness showMessages />) })
     const geometry: Geometry = { scrollHeight: 400, clientHeight: 100, scrollTop: 0 }
@@ -153,5 +199,6 @@ describe('useScrollEdgeFades', () => {
 
     act(() => { root.render(<></>) })
     expect(edges(element)).toEqual({ top: false, bottom: false })
+    expect(element.style.getPropertyValue('--setup-scroll-fade-bottom')).toBe('')
   })
 })

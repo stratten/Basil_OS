@@ -29,6 +29,9 @@ from ...settings import Settings, get_settings
 from ...core.models.preferences import Preferences
 from ...services.model_usage_service import ModelUsageService
 
+# pytesseract spawns Tesseract itself, so route it through posix_spawn instead of the fork path (see safe_spawn).
+safe_spawn.install_pytesseract_posix_spawn()
+
 # Preserve the established explicit request for cloud and unregistered models.
 # Registry-backed local models resolve the activity_analysis workload budget instead.
 ANALYSIS_MAX_TOKENS = 4096
@@ -39,7 +42,7 @@ def resolve_activity_analysis_output_tokens(model: BaseAIModel) -> int:
     profile = resolve_runtime_model_profile(model)
     if (
         getattr(profile, "location", None) == "local"
-        and getattr(profile, "handler", None) in {"llama_cpp", "huggingface"}
+        and getattr(profile, "handler", None) in {"llama_cpp", "huggingface", "mlx"}
     ):
         return resolve_generation_budget(
             model,

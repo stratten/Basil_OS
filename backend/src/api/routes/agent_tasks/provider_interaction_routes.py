@@ -127,7 +127,7 @@ class PendingProviderInteractionResponseModel(BaseModel):
 
 
 # Explanation fields persisted with an approval so a recovered card matches the live one.
-_APPROVAL_PRESENTATION_KEYS = ("purpose", "purpose_missing", "whitelist", "script_path", "script_notice")
+_APPROVAL_PRESENTATION_KEYS = ("purpose", "purpose_source", "purpose_missing", "whitelist", "script_path", "script_notice")
 
 
 @router.get(

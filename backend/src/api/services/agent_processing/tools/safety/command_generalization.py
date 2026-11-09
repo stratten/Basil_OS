@@ -35,7 +35,7 @@ class CommandGeneralizer:
 
     SUBCOMMANDS = {
         'docker': ['run', 'build', 'compose', 'exec', 'ps'],
-        'git': ['clone', 'commit', 'push', 'pull', 'checkout', 'branch'],
+        'git': ['clone', 'commit', 'push', 'pull', 'checkout', 'branch', 'status', 'diff', 'log', 'show'],
         'npm': ['install', 'run', 'start', 'test', 'build'],
         'yarn': ['install', 'run', 'start', 'test'],
         'poetry': ['run', 'install', 'add', 'remove'],

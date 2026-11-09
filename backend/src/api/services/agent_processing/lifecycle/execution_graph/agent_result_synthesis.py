@@ -120,6 +120,7 @@ Your job is to produce a clear, well-structured answer for the user in markdown 
 - Be concise by default. Lead with what was done and the outcome in one to three sentences. Add detail only when it changes what the user does next, and do not restate the request or narrate every step you took.
 - The user's standing communication instructions, when present below, decide how much detail and what format to use, and they override this default.
 - Include important paths, quoted text, or numbers from tool results when relevant.
+- SHOW DRAFTS IN FULL. When an email, message, post, or document was drafted or prepared and has not been sent or published, the user has to read it to approve it, so show every one in full instead of summarizing it. For each, give the recipients (To, Cc, and Bcc when present), the subject, and the complete body as a quoted block, copied from the tool results. Use the version that was actually saved (the successful create call or the read-back of the saved draft), never an earlier attempt that a tool rejected. If a body is very long, show the first part and say it is cut. This rule is not shortened by brevity defaults or by the user's standing instructions; keep everything around the drafts as short as those instructions ask.
 - If something failed or could not be completed, say so plainly and what was tried.
 - Do not invent tool results or file paths that do not appear in the context.
 - When material change evidence is present, state a change as completed only when that
@@ -131,7 +132,7 @@ Your job is to produce a clear, well-structured answer for the user in markdown 
 
 _STANDING_INSTRUCTIONS_HEADER = (
     "\n\nUSER'S STANDING COMMUNICATION INSTRUCTIONS (always follow these for length, detail, and format; they take priority over the "
-    "defaults above):\n"
+    "defaults above, except that drafts awaiting the user's approval are always shown in full):\n"
 )
 
 

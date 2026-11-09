@@ -9,6 +9,8 @@
   position: absolute;
   inset: 0;
   z-index: 20;
+  /* This region only positions the question over the pane. The modal backdrop inside it is what blocks the thread, so while the question is docked to "See work so far" the thread under it can still be scrolled and its earlier turns opened. */
+  pointer-events: none;
 }
 
 .checkpoint-presence-region[data-presence-phase='entering'],
@@ -18,17 +20,9 @@
   pointer-events: none;
 }
 
+/* The backdrop and card look (blur, 1px border, radius, shadow, entrance) comes from shared/basil-modal-dialog.css via the basil-modal-backdrop and basil-modal-dialog classes. Only this dialog's own layout is here. */
 .agent-task-input-backdrop {
-  position: absolute;
-  inset: 0;
-  z-index: 60;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--padding-xl);
-  background: rgba(0, 0, 0, 0.18);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  pointer-events: auto;
 }
 
 .agent-task-input-dialog {
@@ -37,24 +31,6 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: var(--padding-l);
-  background: var(--background-primary);
-  border: var(--border-thin) solid var(--separator-color);
-  border-radius: var(--corner-radius-large);
-  box-shadow: var(--shadow-dark);
-  animation: checkpoint-dialog-enter 0.16s ease-out;
-}
-
-@keyframes checkpoint-dialog-enter {
-  from {
-    opacity: 0;
-    transform: translateY(8px) scale(0.98);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
 }
 
 .agent-task-input-eyebrow {
@@ -320,6 +296,39 @@
 .checkpoint-prompt .result-section--checkpoint pre {
   margin: var(--padding-s) 0;
   padding: var(--padding-s);
+}
+
+/* The exact content the user is asked to review or approve (for example the email about to be sent). It sits under the short question, open for approvals and closed otherwise, and scrolls on its own so a long body never pushes the answer controls out of view. */
+.checkpoint-details {
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--primary) 55%, transparent);
+  border-radius: var(--corner-radius-medium);
+  background: color-mix(in srgb, var(--primary) 8%, var(--background-primary));
+}
+
+.checkpoint-details-summary {
+  padding: var(--padding-s) var(--padding-m);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-footnote);
+  line-height: 1.35;
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkpoint-details-summary:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+  border-radius: var(--corner-radius-medium);
+}
+
+.checkpoint-details-body {
+  max-height: 260px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--padding-s) var(--padding-m) var(--padding-m);
+  border-top: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
+  overflow-wrap: anywhere;
 }
 
 .browser-permission-repair {

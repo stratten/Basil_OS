@@ -279,10 +279,12 @@ async def run_scheduled_agent_task_now(
         scheduled_for=now.isoformat(),
         status="scheduled",
     )
+    # The user asked for this run by name, so it runs even when the schedule is deactivated. The schedule stays as it was: finalizing re-arms the next occurrence only for an active schedule.
     get_async_scheduled_agent_task_runner().schedule(
         scheduled_agent_task_id,
         run["id"],
         now,
+        allow_inactive=True,
     )
     return run["id"]
 

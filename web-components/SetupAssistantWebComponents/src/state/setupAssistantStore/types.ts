@@ -12,6 +12,7 @@ import type {
   SetupToolApprovalState,
   SetupWrapUpProposal,
 } from '@/types'
+import type { ComfortLevel } from '@/components/express/expressTypes'
 
 export type SetupAgentTaskOutcomeKind = 'agent_task_progress' | 'agent_task_terminal'
 
@@ -179,7 +180,19 @@ export interface SetupUserAcknowledgment {
   createdAt: string
 }
 
-export type SetupStage = 'welcome' | 'intro_and_privacy' | 'orientation' | 'conversation' | 'wrap_up'
+export type SetupStage = 'welcome' | 'express' | 'intro_and_privacy' | 'orientation' | 'conversation' | 'wrap_up'
+
+export interface SetupImportedContextSummary {
+  entries_added: number
+  facts_proposed: number
+  // Short titles drawn from the imported text, a handful per kind, never the full text.
+  fact_titles: string[]
+  note_titles: string[]
+  // Set when the person reviewed and saved a rewrite of their profile files during setup.
+  profile_updated?: boolean
+  // One sentence from the model saying what the saved profile covers.
+  profile_summary?: string
+}
 
 export interface SetupConversationMessage {
   id: string
@@ -220,9 +233,27 @@ export interface SetupStreamActivity {
   at: number
 }
 
+export type SetupLocalModelFailureActionId = 'retry' | 'smaller_model' | 'cloud_or_key' | 'show_logs' | 'report'
+
+export interface SetupLocalModelFailureAction {
+  id: SetupLocalModelFailureActionId
+  label: string
+}
+
+// A local model that could not run on this Mac, described by the backend in plain language with the recovery actions it offers.
+// `detail` carries the native return code for the diagnostics bundle and never contains prompt or conversation text.
+export interface SetupLocalModelFailure {
+  kind: 'memory' | 'context_full' | 'invalid_input'
+  message: string
+  detail: string
+  actions: SetupLocalModelFailureAction[]
+}
+
 export interface SetupAssistantState {
   setupStage: SetupStage
   setupAgentModelAccess: SetupAgentModelAccess | null
+  // The comfort level chosen on the first screen for Self-setup or YOLO (YOLO is all_in). Null on the manual path.
+  expressComfort: ComfortLevel | null
   observations: SetupOrientationObservation[]
   messages: SetupConversationMessage[]
   activeArtifact?: SetupArtifact
@@ -231,8 +262,11 @@ export interface SetupAssistantState {
   currentChips: SetupSuggestionChip[]
   currentChipsMultiSelect: boolean
   interactionStyle: string[]
+  // What the user imported in the optional personal context step, so the interview can skip what it already answers. Null until something is imported.
+  importedContext: SetupImportedContextSummary | null
   isStreaming: boolean
   errorMessage?: string
+  localModelFailure?: SetupLocalModelFailure
   discoveryFacts: SetupDiscoveryFact[]
   wasSkipped: boolean
   wrapUpProposal?: SetupWrapUpProposal
@@ -266,7 +300,10 @@ export interface SetupAssistantState {
 export type SetupAssistantAction =
   | { type: 'set_stage'; setupStage: SetupStage }
   | { type: 'set_model_access'; setupAgentModelAccess: SetupAgentModelAccess | null }
+  | { type: 'set_express_comfort'; expressComfort: ComfortLevel | null }
   | { type: 'set_interaction_style'; interactionStyle: string[] }
+  | { type: 'merge_imported_context'; summary: SetupImportedContextSummary }
+  | { type: 'clear_imported_profile' }
   | { type: 'append_user_message'; content: string }
   | { type: 'apply_event'; event: SetupAgentEvent }
   | { type: 'set_error'; errorMessage?: string }

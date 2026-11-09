@@ -275,6 +275,8 @@ export async function submitApprovalDecision(params: {
   description?: string;
   agent_task_id?: string;
   expected_revision?: number;
+  /** Optional guidance typed with the decision; the agent reads it in the same turn, whether the command was approved or denied. */
+  user_note?: string;
 }): Promise<{ success: boolean; message: string }> {
   return request('POST', '/api/v1/agent-tasks/approval/decide', params);
 }
@@ -286,6 +288,13 @@ export async function submitBrowserSensitiveFillApproval(params: {
   sensitive_value?: string;
 }): Promise<{ success: boolean; message: string }> {
   return request('POST', '/settings/browser-automation/sensitive-value/approve', params);
+}
+
+export async function submitSettingsChangeApproval(params: {
+  approval_id: string;
+  approved: boolean;
+}): Promise<{ success: boolean; message: string }> {
+  return request('POST', '/app-control/settings-change/approve', params);
 }
 
 export async function submitProviderPermissionDecision(params: {

@@ -236,6 +236,13 @@ class LiveTranscriptionViewModel: ObservableObject {
     var microphoneLivenessWatchdogTask: Task<Void, Never>?
     // Consecutive stall recoveries that produced no audio; reset once buffers flow again.
     var microphoneStallRecoveryCount = 0
+    // Detects a microphone that delivers buffers on schedule but filled with exact zeros, which is what macOS gives a recorder while a call app such as WhatsApp holds the input with voice processing. The stall watchdog above cannot see this because buffers keep arriving.
+    let microphoneSilenceTracker = SilentInputTracker()
+    let microphoneSilencePolicy = SilentInputPolicy()
+    // Reclaim attempts since the microphone last delivered signal; reset once real audio flows again.
+    var microphoneSilenceReclaimAttempts = 0
+    // True while the microphone is still silent after the reclaim attempts, so the meeting window can warn that the input is being withheld.
+    @Published var isMicrophoneSilent = false
     var microphoneWebSocketRecoveryTask: Task<Void, Never>?
     var microphoneRecoveryGeneration = 0
     @Published var microphoneInputRecoveryState: MicrophoneInputRecoveryState = .idle
@@ -660,6 +667,9 @@ class LiveTranscriptionViewModel: ObservableObject {
         microphoneRecoveryGeneration &+= 1
         microphoneReconnectInFlight = false
         microphoneInputRecoveryState = .idle
+        microphoneSilenceTracker.disarm()
+        microphoneSilenceReclaimAttempts = 0
+        isMicrophoneSilent = false
         
         // Clear cached audio data
         if #available(macOS 14.0, *) {

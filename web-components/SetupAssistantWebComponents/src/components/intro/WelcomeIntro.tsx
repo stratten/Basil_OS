@@ -1,8 +1,13 @@
+import { SetupPathChooser } from './SetupPathChooser'
+import type { ComfortLevel } from '@/components/express/expressTypes'
+
 interface Props {
-  onContinue: () => void
+  onChooseManual: () => void
+  onChooseSelf: (comfort: ComfortLevel) => void
+  onChooseYolo: () => void
 }
 
-export function WelcomeIntro({ onContinue }: Props) {
+export function WelcomeIntro({ onChooseManual, onChooseSelf, onChooseYolo }: Props) {
   return (
     <section className="phase-section welcome-intro">
       <img className="welcome-intro-logo" src="/images/basil-logo.png" alt="" aria-hidden="true" />
@@ -17,8 +22,10 @@ export function WelcomeIntro({ onContinue }: Props) {
           Sometimes it's a longer task you'd rather hand off entirely.
         </p>
         <p>
-          Next come three short preference steps. After that is an optional guided
-          conversation where I help you set things up. You can stop it any time.
+          Next you choose how to set up. Going step by step is what I recommend: a few short
+          preference steps, then an optional guided conversation where I help you set things up.
+          If you'd rather I did the work, I can set up this Mac based on how comfortable you are,
+          and you see the full list before anything changes.
         </p>
       </div>
       <p className="welcome-intro-privacy">
@@ -28,9 +35,7 @@ export function WelcomeIntro({ onContinue }: Props) {
         they go to that provider. The download also includes an Uninstall Basil script that removes
         all of it.
       </p>
-      <button type="button" className="primary-button welcome-intro-primary" onClick={onContinue}>
-        Start setup
-      </button>
+      <SetupPathChooser onChooseManual={onChooseManual} onChooseSelf={onChooseSelf} onChooseYolo={onChooseYolo} />
     </section>
   )
 }

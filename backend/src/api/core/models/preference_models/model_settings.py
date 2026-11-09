@@ -6,6 +6,9 @@ from pydantic import BaseModel, Field
 
 from .defaults import (
     _get_anthropic_model_defaults,
+    _get_default_local_reasoning_model_id,
+    _get_default_local_vision_model_id,
+    _get_default_transcription_model_name,
     _get_gemini_model_defaults,
     _get_openai_model_defaults,
     _get_openai_transcription_model_defaults,
@@ -45,7 +48,7 @@ class ModelSettings(BaseModel):
         ),
     )
     local_vision_model_id: str = Field(
-        default="Qwen-qwen3vl-8b-instruct-q4km",
+        default_factory=_get_default_local_vision_model_id,
         description=(
             "Registry model id for the local vision fallback (must match files in the models directory)."
         ),
@@ -70,15 +73,15 @@ class ModelSettings(BaseModel):
         ),
     )
     language_model: str = Field(
-        default="qwen/qwen35-9b-q4km",
+        default_factory=_get_default_local_reasoning_model_id,
         description="Model to use for language processing tasks (can be either local or API model)"
     )
     reasoning_model: str = Field(
-        default="qwen/qwen35-9b-q4km",
+        default_factory=_get_default_local_reasoning_model_id,
         description="Model to use for reasoning tasks (can be either local or API model)"
     )
     transcription_model: str = Field(
-        default="base",
+        default_factory=_get_default_transcription_model_name,
         description="Model to use for audio transcription"
     )
 

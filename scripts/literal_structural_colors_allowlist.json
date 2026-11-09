@@ -26,20 +26,26 @@
         "value": "var(--background-primary, #ffffff)"
       }
     ],
-    "web-components/AgentTaskResult/src/styles/components/checkpoint-flow.css": [
-      {
-        "property": "background",
-        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
-        "selector": ".agent-task-input-backdrop",
-        "value": "rgba(0, 0, 0, 0.18)"
-      }
-    ],
     "web-components/AgentTaskResult/src/styles/components/overlays-and-approvals.css": [
       {
         "property": "background",
         "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
         "selector": ".overlay-backdrop",
         "value": "rgba(0, 0, 0, 0.3)"
+      }
+    ],
+    "web-components/AgentTaskResult/src/styles/components/request-display.css": [
+      {
+        "property": "-webkit-mask-image",
+        "reason": "The #000 in a mask-image gradient is an alpha mask for the fade, not a visible color, so it has no theme token.",
+        "selector": ".request-display-content.has-overflow:not(.is-expanded)",
+        "value": "linear-gradient(to bottom, #000 calc(100% - var(--request-display-fade)), transparent)"
+      },
+      {
+        "property": "mask-image",
+        "reason": "The #000 in a mask-image gradient is an alpha mask for the fade, not a visible color, so it has no theme token.",
+        "selector": ".request-display-content.has-overflow:not(.is-expanded)",
+        "value": "linear-gradient(to bottom, #000 calc(100% - var(--request-display-fade)), transparent)"
       }
     ],
     "web-components/AgentTaskResult/src/styles/components/result-content.css": [
@@ -240,6 +246,14 @@
         "value": "rgba(0, 0, 0, 0.5)"
       }
     ],
+    "web-components/SettingsWebComponents/src/styles/models-settings.css": [
+      {
+        "property": "color",
+        "reason": "White text on the fixed blue MLX tag background (#1d4ed8). The background does not change with the theme, so the text must stay white in light and dark modes and no theme token applies.",
+        "selector": ".models-settings-format-tag-mlx",
+        "value": "#ffffff"
+      }
+    ],
     "web-components/TranscriptionWidget/src/styles/audio-file-upload.css": [
       {
         "property": "background",
@@ -254,6 +268,22 @@
         "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
         "selector": ".transcription-body",
         "value": "var(--background-primary, #fff)"
+      }
+    ],
+    "web-components/shared/basil-modal-dialog.css": [
+      {
+        "property": "background",
+        "reason": "Accepted in the original literal-color audit (Packages 4B/5/6). The dim backdrop moved from checkpoint-flow.css into the shared modal stylesheet unchanged.",
+        "selector": ".basil-modal-backdrop",
+        "value": "rgba(0, 0, 0, 0.18)"
+      }
+    ],
+    "web-components/shared/context-import-panel.css": [
+      {
+        "property": "background",
+        "reason": "The moving highlight on the import progress bar is white at partial opacity over the bar fill in both themes. It is a light sweep, not a surface color, so no theme token applies.",
+        "selector": ".context-import-progress-fill::after",
+        "value": "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent)"
       }
     ],
     "web-components/shared/expandable-list.css": [

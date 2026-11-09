@@ -72,6 +72,7 @@ class ApprovalDecisionRequest(BaseModel):
     description: Optional[str] = None
     agent_task_id: Optional[str] = Field(default=None, description="Owning Agent Task for stale decision rejection")
     expected_revision: Optional[int] = Field(default=None, description="Last known durable approval revision")
+    user_note: Optional[str] = Field(default=None, max_length=2000, description="Optional guidance the user typed with this decision; delivered to the agent in the same turn")
 
 
 class PendingExecutionApprovalModel(BaseModel):

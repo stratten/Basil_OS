@@ -16,6 +16,7 @@ from api.services.agent_processing.lifecycle.execution_graph.tool_run_watchdog i
 
 from .models import BaseModel, BaseTool
 from .tool_result_shaper import shape_tool_envelope
+from api.services.agent_processing.tools.internal_basil_tools.stored_result.service_cap import cap_service_tool_output
 
 
 def classify_error(error_value: Any) -> str:
@@ -276,41 +277,33 @@ def create_tool_function(
                 )
                 output_str = str(result)
 
-            # TRUNCATION: Prevent oversized tool outputs from exceeding context limits
-            # This is critical for preventing token limit errors when tools return large files
+            # Over the ceiling: save the whole result and show a preview plus a stored_result id (falls back to the old lossy clip when saving is impossible).
             if len(output_str) > max_output_chars:
                 original_size = len(output_str)
-                # Reserve space for truncation metadata (~1000 chars)
-                preview_size = max_output_chars - 1500
-
-                # Try to preserve structure - look for JSON boundaries
-                preview_content = output_str[:preview_size]
-
-                truncated_info = {
-                    "truncated": True,
-                    "original_size_chars": original_size,
-                    "original_size_bytes": len(output_str.encode('utf-8')),
-                    "truncated_to_chars": max_output_chars,
-                    "context_limit_tokens": context_tokens,
-                    "message": (
-                        f"Tool output truncated from {original_size:,} chars to {max_output_chars:,} chars "
-                        f"to fit context window ({context_tokens:,} tokens). "
-                        f"The full content was too large to include in agent memory."
-                    ),
-                    "content_preview": preview_content + "\n\n...[CONTENT TRUNCATED]...",
-                    **published_result_fields(result),
-                }
-                output_str = json.dumps(truncated_info, ensure_ascii=False)
-                tool_logger.warning(
-                    f"⚠️ TOOL OUTPUT TRUNCATED: {service_name}.{method_name} - "
-                    f"{original_size:,} chars → {len(output_str):,} chars "
-                    f"(limit: {max_output_chars:,} based on {context_tokens:,} token context)"
+                capped = cap_service_tool_output(
+                    output_str,
+                    max_output_chars,
+                    context_tokens=context_tokens,
+                    published_fields=published_result_fields(result),
                 )
-                tool_error_log.append({
-                    "tool": f"{service_name}.{method_name}",
-                    "error": f"Output truncated from {original_size:,} to {max_output_chars:,} chars — agent may not see all results",
-                    "type": "truncation"
-                })
+                output_str = capped.text
+                if capped.stored:
+                    tool_logger.info(
+                        f"Tool output stored: {service_name}.{method_name} - "
+                        f"{original_size:,} chars saved as {capped.result_id}, {len(output_str):,} chars shown "
+                        f"(limit: {max_output_chars:,} based on {context_tokens:,} token context)"
+                    )
+                else:
+                    tool_logger.warning(
+                        f"⚠️ TOOL OUTPUT TRUNCATED: {service_name}.{method_name} - "
+                        f"{original_size:,} chars → {len(output_str):,} chars "
+                        f"(limit: {max_output_chars:,} based on {context_tokens:,} token context)"
+                    )
+                    tool_error_log.append({
+                        "tool": f"{service_name}.{method_name}",
+                        "error": f"Output truncated from {original_size:,} to {max_output_chars:,} chars — agent may not see all results",
+                        "type": "truncation"
+                    })
 
             record_tool_progress(
                 agent_task_id=agent_task_id,

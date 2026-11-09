@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import * as api from '../services/api';
 import ReasoningModelPicker from '../../../shared/ReasoningModelPicker';
-import { pickFiles, registerFilesPickedHandler } from '../services/bridge';
+import { pickFiles } from '../services/bridge';
+import type { CheckpointData } from '../types';
+import { answerQuestionWithNote } from './interaction/answerWithNote';
+import { useFilesPickedHandler } from '../services/useFilesPickedHandler';
 import { editorHtmlToDisplayMarkdown } from './request/requestMarkdown';
 import FollowUpReferences from './FollowUpReferences';
 import RichTextComposer from '../../../shared/RichTextComposer';
 import AttachmentDropZone from '../../../shared/AttachmentDropZone';
 import CollapsibleRegion from '../../../shared/CollapsibleRegion';
+import { PauseCircleIcon, StopCircleIcon } from '../../../shared/CircleControlIcons';
 import ExecutionDisclosureChevron from '../../../shared/ExecutionDisclosureChevron';
 import { useFollowUpComposerCollapsed } from '../store/followUpComposerViewStore';
 import {
@@ -31,10 +35,17 @@ interface Props {
   turnTaskId: string;
   /** The chain this turn belongs to. The fold state is kept per chain, shared with the follow-up box that replaces this one when the run finishes, so a folded box stays folded. Falls back to the turn when absent. */
   rootTaskId?: string;
-  mode: 'running' | 'paused';
+  /** `awaiting` is a run parked on a question: nothing is running to pause or read a note, so what is typed answers the question in `awaitingCheckpoint`. */
+  mode: 'running' | 'paused' | 'awaiting';
+  /** The question a run in `awaiting` mode is waiting on. */
+  awaitingCheckpoint?: CheckpointData;
   deliveredNoteIds: ReadonlySet<string>;
   /** The run paused because Basil lost its connection to the model, not because you paused it. */
   connectionLost?: boolean;
+  /** Ends the running task, the same action as the Stop button in the window header. Stop appears next to Pause only when this is given. */
+  onCancelRunning?: () => void;
+  /** A stop has been requested and is taking effect. */
+  isCanceling?: boolean;
 }
 
 function plainError(error: unknown, fallback: string): string {
@@ -47,15 +58,6 @@ function readNote(editor: HTMLDivElement | null): string {
   const plain = editor.innerText.trim();
   if (!plain) return '';
   return editorHtmlToDisplayMarkdown(editor).trim() || plain;
-}
-
-function PauseGlyph() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-      <rect x="3.5" y="2.5" width="3" height="11" rx="0.75" />
-      <rect x="9.5" y="2.5" width="3" height="11" rx="0.75" />
-    </svg>
-  );
 }
 
 function AttachGlyph() {
@@ -75,7 +77,7 @@ function ResumeGlyph() {
 }
 
 /** The regular rich follow-up box, wired to steer a run that is still working or to resume one that is paused. */
-export default function RunControlComposer({ turnTaskId, rootTaskId, mode, deliveredNoteIds, connectionLost = false }: Props) {
+export default function RunControlComposer({ turnTaskId, rootTaskId, mode, awaitingCheckpoint, deliveredNoteIds, connectionLost = false, onCancelRunning, isCanceling = false }: Props) {
   const editorRef = useRef<HTMLDivElement>(null);
   const draftKey = rootTaskId || turnTaskId;
   const [folded, setFolded] = useFollowUpComposerCollapsed(draftKey);
@@ -122,9 +124,9 @@ export default function RunControlComposer({ turnTaskId, rootTaskId, mode, deliv
     };
   }, [switching, models.length]);
 
-  useEffect(() => registerFilesPickedHandler((paths) => {
+  useFilesPickedHandler((paths) => {
     setReferencePaths(previous => [...new Set([...previous, ...paths])].slice(0, MAX_ATTACHMENTS));
-  }), []);
+  });
 
   // Follows the reader's own fold and unfold only. A run pausing unfolds the box by itself and must not pull focus into it. The fold control sits inside the region that just became inert, so focus moves to the bar that replaces it.
   useEffect(() => {
@@ -183,6 +185,12 @@ export default function RunControlComposer({ turnTaskId, rootTaskId, mode, deliv
     setBusy(true);
     setError(null);
     try {
+      if (mode === 'awaiting') {
+        if (!awaitingCheckpoint) throw new Error('Basil has no question open to answer.');
+        await answerQuestionWithNote(turnTaskId, awaitingCheckpoint, note);
+        clearEditor();
+        return;
+      }
       const response = await api.sendRunMessage(turnTaskId, note, referencePaths);
       const attachmentCount = referencePaths.length;
       setPendingNotes(current => [
@@ -239,6 +247,7 @@ export default function RunControlComposer({ turnTaskId, rootTaskId, mode, deliv
   };
 
   const isPaused = mode === 'paused';
+  const isAwaiting = mode === 'awaiting';
   const needsModelChoice = connectionLost && switching && !switchModelId;
   const resumeTitle = needsModelChoice
     ? 'Choose a model to continue with'
@@ -262,8 +271,27 @@ export default function RunControlComposer({ turnTaskId, rootTaskId, mode, deliv
       title={pauseRequested ? 'Pausing after this step' : 'Pause after the current step'}
       aria-label={pauseRequested ? 'Pausing after this step' : 'Pause'}
     >
-      <PauseGlyph />
+      <PauseCircleIcon />
     </button>
+  );
+  // Stop sits immediately left of Pause. It is the same action as the header's Stop, so a run can be ended from the bottom without scrolling back up.
+  const stopButton = onCancelRunning ? (
+    <button
+      type="button"
+      className="text-followup-action-btn run-control-stop"
+      onClick={onCancelRunning}
+      disabled={isCanceling}
+      title="Stop the running request"
+      aria-label={isCanceling ? 'Stopping' : 'Stop'}
+    >
+      <StopCircleIcon />
+    </button>
+  ) : null;
+  const runControls = (
+    <span className="run-control-buttons">
+      {stopButton}
+      {pauseButton}
+    </span>
   );
 
   return (
@@ -284,7 +312,7 @@ export default function RunControlComposer({ turnTaskId, rootTaskId, mode, deliv
             <span className="text-followup-bar-title">Note for Basil</span>
             {draftPreviewText !== '' && <span className="text-followup-bar-draft">Draft: {draftPreviewText}</span>}
           </button>
-          <div className="run-control-collapsed-actions">{pauseButton}</div>
+          <div className="run-control-collapsed-actions">{runControls}</div>
         </>
       )}
       <CollapsibleRegion expanded={!collapsed} id={bodyId}>
@@ -308,9 +336,9 @@ export default function RunControlComposer({ turnTaskId, rootTaskId, mode, deliv
               <RichTextComposer
                 editorRef={editorRef}
                 editorClassName="text-followup-editor"
-                editorAriaLabel={isPaused ? 'Note for when Basil resumes' : 'Note for Basil'}
+                editorAriaLabel={isPaused ? 'Note for when Basil resumes' : isAwaiting ? 'Answer to the question Basil asked' : 'Note for Basil'}
                 disabled={resumeRequested}
-                placeholder={isPaused ? pausedPlaceholder : 'Send Basil a note while it works…'}
+                placeholder={isPaused ? pausedPlaceholder : isAwaiting ? 'Basil asked a question. Type your answer here, or use Stop to end the task…' : 'Send Basil a note while it works…'}
                 submitDisabled={isPaused ? busy || resumeRequested || needsModelChoice : busy || !hasNote}
                 onDraftChange={setDraft}
                 onHtmlChange={rememberDraftHtml}
@@ -327,7 +355,7 @@ export default function RunControlComposer({ turnTaskId, rootTaskId, mode, deliv
                     >
                       <AttachGlyph />
                     </button>
-                    {!isPaused && (
+                    {mode === 'running' && (
                       <button
                         type="button"
                         className="text-followup-action-btn text-followup-collapse-btn"
@@ -360,6 +388,8 @@ export default function RunControlComposer({ turnTaskId, rootTaskId, mode, deliv
                       </button>
                     )}
                   </>
+                ) : isAwaiting ? (
+                  <span className="run-control-status" role="status">Waiting for your answer</span>
                 ) : undefined}
                 bottomEnd={isPaused ? (connectionLost && switching ? (
                   <ReasoningModelPicker
@@ -370,7 +400,7 @@ export default function RunControlComposer({ turnTaskId, rootTaskId, mode, deliv
                     ariaLabel="Model to continue with"
                     placeholder="Choose model"
                   />
-                ) : undefined) : pauseButton}
+                ) : undefined) : isAwaiting ? undefined : runControls}
                 sendReplacement={isPaused ? (
                   <div className="rich-text-composer-send-control">
                     <button

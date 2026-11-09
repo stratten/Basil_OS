@@ -191,6 +191,7 @@ async def finalize_agent_task_result(
     should_retry = False
     pending_work: Optional[Dict[str, Any]] = None
     continuation_instructions: Optional[str] = None
+    checklist_review: Optional[Dict[str, Any]] = None
     suggested_follow_ups: List[str] = []
     failure_basis = ""
     has_tool_errors = bool(tool_error_history)
@@ -231,6 +232,7 @@ async def finalize_agent_task_result(
             failure_basis = evaluation.failure_basis
             pending_work = evaluation.pending_work
             continuation_instructions = evaluation.continuation_instructions
+            checklist_review = evaluation.checklist_review
             suggested_follow_ups = list(evaluation.suggested_follow_ups)
             if (
                 evaluation.coverage_status == "incomplete"
@@ -493,6 +495,9 @@ async def finalize_agent_task_result(
     elif continuation_instructions and outcome == "partial":
         # Same transient hand-off: the async verifier turns it into an automatic continuation turn and removes the key.
         envelope["continuation"] = continuation_instructions
+    if checklist_review:
+        # Transient hand-off for the async verifier, which applies it to the checklist and removes the key.
+        envelope["checklist_review"] = checklist_review
     return envelope
 
 

@@ -1,23 +1,14 @@
 /** The outline icon set shared by every Notetaker surface: 16px viewBox, `currentColor`, thin strokes. Sizing comes from the button class that hosts the icon. */
 
+/** Stop, pause, and play are shared with the Agent Task windows, so they live in `shared/CircleControlIcons.tsx` and are re-exported here for the Notetaker. */
+export { StopCircleIcon, PlayCircleIcon, PauseCircleIcon } from '../../../shared/CircleControlIcons';
+
 export function RecordCircleIcon() {
   return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true"><circle cx="8" cy="8" r="5.7" /><circle cx="8" cy="8" r="2.4" fill="currentColor" stroke="none" /></svg>;
 }
 
-export function StopCircleIcon() {
-  return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true"><circle cx="8" cy="8" r="5.7" /><rect x="5.5" y="5.5" width="5" height="5" rx=".5" fill="currentColor" stroke="none" /></svg>;
-}
-
-export function PlayCircleIcon() {
-  return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true"><circle cx="8" cy="8" r="5.7" /><path d="m6.5 5.3 4.3 2.7-4.3 2.7V5.3Z" fill="currentColor" stroke="none" /></svg>;
-}
-
 export function PlusCircleIcon() {
   return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true"><circle cx="8" cy="8" r="5.7" /><path d="M8 5v6M5 8h6" strokeLinecap="round" /></svg>;
-}
-
-export function PauseCircleIcon() {
-  return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true"><circle cx="8" cy="8" r="5.7" /><path d="M6.6 5.6v4.8M9.4 5.6v4.8" strokeLinecap="round" /></svg>;
 }
 
 export function CancelCircleIcon() {

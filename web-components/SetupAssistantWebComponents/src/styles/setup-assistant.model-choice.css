@@ -1,0 +1,7 @@
+/* Shown under a selected route only while it still needs something before it works, such as a download or a key. Once the route is ready the checked box says everything, so nothing is added. */
+.choice-option-pending-note {
+  color: var(--text-primary);
+  font-size: var(--font-size-footnote, var(--font-size-callout));
+  font-weight: 700;
+  margin-top: 6px;
+}

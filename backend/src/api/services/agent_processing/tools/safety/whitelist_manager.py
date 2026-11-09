@@ -12,6 +12,7 @@ from typing import Optional
 from api.core.models.preferences import CommandPattern
 
 from .whitelist_eligibility import assess_whitelist_eligibility
+from .whitelist_pattern_selection import select_remember_pattern
 
 logger = logging.getLogger(__name__)
 
@@ -34,14 +35,24 @@ class WhitelistManager:
         pattern_type: str = 'exact',
         description: str = '',
         risk_level: str = 'low',
-        record_initial_use: bool = False
+        record_initial_use: bool = False,
+        *,
+        pattern: Optional[str] = None,
+        proposed_pattern: Optional[str] = None,
     ) -> CommandPattern:
         """Add a command to the whitelist.
 
         ``record_initial_use`` counts the approved execution that created the pattern; manual additions leave it unset.
+
+        ``pattern`` stores exactly that text with ``pattern_type``: it is a pattern the user typed, or one already chosen for an approval card, so its specificity is the caller's decision. Without it, the pattern is chosen from ``command`` (the agent's ``proposed_pattern`` when it is a valid leading run of the command's own words, otherwise the heuristic) and is always stored as a whole-word prefix.
         """
         try:
-            pattern_to_save = self.generalizer.generalize_command(command)
+            if pattern is not None and pattern.strip():
+                pattern_to_save = pattern.strip()
+                stored_type = pattern_type if pattern_type in ('exact', 'prefix', 'regex') else 'prefix'
+            else:
+                pattern_to_save = select_remember_pattern(command, proposed_pattern, self.generalizer).pattern
+                stored_type = 'prefix'
 
             if self.pattern_matcher.is_naked_wrapper(pattern_to_save):
                 error_msg = (
@@ -52,7 +63,7 @@ class WhitelistManager:
                 logger.error(f"🚨 SECURITY REJECTION: {error_msg}")
                 raise ValueError(error_msg)
 
-            eligibility = assess_whitelist_eligibility(command, pattern_to_save)
+            eligibility = assess_whitelist_eligibility(command, pattern_to_save, enforce_specificity=pattern is None)
             if not eligibility.eligible:
                 logger.error(f"🚨 SECURITY REJECTION: '{pattern_to_save}' cannot be whitelisted: {eligibility.reason}")
                 raise ValueError(f"Cannot whitelist '{pattern_to_save}': {eligibility.reason}")
@@ -61,7 +72,7 @@ class WhitelistManager:
             preferences = load_preferences()
 
             for existing_pattern in preferences.tool_execution.whitelisted_commands:
-                if existing_pattern.pattern == pattern_to_save and existing_pattern.pattern_type == 'prefix':
+                if existing_pattern.pattern == pattern_to_save and existing_pattern.pattern_type == stored_type:
                     logger.info(f"Pattern '{pattern_to_save}' already exists in whitelist, skipping duplicate")
                     return existing_pattern
 
@@ -69,7 +80,7 @@ class WhitelistManager:
             new_pattern = CommandPattern(
                 id=str(uuid.uuid4()),
                 pattern=pattern_to_save,
-                pattern_type='prefix',
+                pattern_type=stored_type,
                 description=description or f"Generalized from: {command[:100]}...",
                 added_date=added_at,
                 risk_level=risk_level,
@@ -80,7 +91,7 @@ class WhitelistManager:
             preferences.tool_execution.whitelisted_commands.append(new_pattern)
             save_preferences(preferences)
 
-            logger.info(f"✅ Added command to whitelist: {pattern_to_save} (type: prefix, original: {command[:100]}...)")
+            logger.info(f"✅ Added command to whitelist: {pattern_to_save} (type: {stored_type}, original: {command[:100]}...)")
             return new_pattern
 
         except ValueError:
@@ -98,7 +109,7 @@ class WhitelistManager:
     ) -> Optional[CommandPattern]:
         """Update an existing whitelist pattern."""
         try:
-            eligibility = assess_whitelist_eligibility(command, command)
+            eligibility = assess_whitelist_eligibility(command, command, enforce_specificity=False)
             if not eligibility.eligible:
                 raise ValueError(f"Cannot whitelist '{command}': {eligibility.reason}")
 

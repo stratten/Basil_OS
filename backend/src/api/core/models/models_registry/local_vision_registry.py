@@ -24,6 +24,7 @@ def _qwen3_vl_instruct_entry(
     recommended_ram: str,
     display_order: int,
     description: str,
+    default_local_vision_fallback: bool = False,
 ) -> Dict[str, Any]:
     """Build a registry entry for one Qwen3-VL Instruct size from Qwen's official GGUF repository."""
     repo_url = f"https://huggingface.co/Qwen/Qwen3-VL-{size_label}-Instruct-GGUF/resolve/main/"
@@ -56,6 +57,7 @@ def _qwen3_vl_instruct_entry(
         "visible": True,
         "display_order": display_order,
         "description": description,
+        "default_local_vision_fallback": default_local_vision_fallback,
     }
 
 
@@ -93,6 +95,7 @@ LOCAL_VISION_MODELS: Dict[str, Any] = {
         total_size="6.2GB",
         recommended_ram="16GB",
         display_order=50,
+        default_local_vision_fallback=True,
         description=(
             "Default local multimodal fallback for analyze_with_vision when the agent model has no native "
             "vision. Downloads Qwen's official Qwen3-VL 8B GGUF and its required mmproj companion file "

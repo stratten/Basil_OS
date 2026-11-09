@@ -117,6 +117,28 @@ def make_external_catalog_permission_denied(tool_name: str, reason: str) -> Dict
     }
 
 
+def make_external_catalog_explanation_required(tool_name: str) -> Dict[str, Any]:
+    """Corrective envelope: the approval card must say what the call does before the user is asked.
+
+    A self-correcting handshake like the schema guard, not a denial: nothing was shown to the user and nothing was refused, and the immediate repeat with ``purpose`` is expected to proceed.
+    """
+    return {
+        "ok": False,
+        "error": {
+            "kind": "explanation_required",
+            "message": (
+                f"'{tool_name}' needs the user's approval, and the approval card must say what it does. "
+                "Call external_catalog again with the same connection_id, tool_name and arguments, and add `purpose` beside them, "
+                "not inside arguments: one or two plain sentences on what this call does and why. "
+                "The user was not asked yet and nothing was denied."
+            ),
+            "retryable": True,
+            "user_action_required": None,
+            "raw": {"tool_name": tool_name},
+        },
+    }
+
+
 def make_external_catalog_not_attributed(tool_name: str) -> Dict[str, Any]:
     """Refusal for a restoration tool when Basil has no record of making the change it would reverse."""
     return {

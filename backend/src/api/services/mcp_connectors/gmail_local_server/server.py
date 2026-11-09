@@ -62,7 +62,7 @@ def _write(name: str, description: str, model: Type[BaseModel], handler: Handler
 _TOOL_REGISTRY: List[_ToolDescriptor] = [
     _read(
         "search_threads",
-        "Lists email threads from the user's Gmail account that match a Gmail search query, newest first, with up to 5 recent messages per thread (sender, recipients, date, labels, subject, snippet). Full bodies are not returned: use get_thread with a thread id. Results page with nextPageToken. Archived and sent mail is included; drafts are excluded unless the query says in:draft.",
+        "Lists email threads from the user's Gmail account that match a Gmail search query, newest first, with up to 5 recent messages per thread (sender, recipients, date, labels, subject, snippet). Full bodies are not returned, and the snippet is only a short, often cut-off preview. The previews are enough for counting, listing, or spotting which threads matter. When an accurate, fully contextualized answer, summary, or reply needs what the messages actually say, read the thread with get_thread yourself rather than answering from the snippet or asking the user whether to; read the threads that matter together in the same turn. Results page with nextPageToken. Archived and sent mail is included; drafts are excluded unless the query says in:draft.",
         schemas.SearchThreadsInput,
         handlers_read.handle_search_threads,
     ),

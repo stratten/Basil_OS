@@ -193,7 +193,6 @@ async def test_model_downloader_downloads_local_vision_companion(
         revision: str,
         local_files_only: bool,
         force_download: bool,
-        resume_download: bool,
     ) -> str:
         cached_file = cache_dir / Path(filename).name
         cached_file.write_bytes(b"mmproj")

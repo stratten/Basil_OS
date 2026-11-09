@@ -319,6 +319,11 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
                                     #endif
                                     self.handleAudioActivityProbe(json)
 
+                                case "native_command":
+                                    // An agent asked the app to do one allowed thing, such as
+                                    // opening the Settings window on a tab.
+                                    self.handleNativeCommand(json)
+
                                 case "meeting_calendar_probe":
                                     // Calendar-only meeting detection probe: report joinable
                                     // calendar events without touching audio or Activity Capture.

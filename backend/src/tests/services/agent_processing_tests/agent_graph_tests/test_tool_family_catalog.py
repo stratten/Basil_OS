@@ -120,6 +120,36 @@ def test_family_routing_catalog_labels_connection_with_served_system(monkeypatch
     assert "Speakeasy - Custom (salesforce-mcp)" in catalog
 
 
+def test_a_connected_service_is_the_first_route_even_when_the_request_does_not_name_it(monkeypatch):
+    from api.services.agent_processing.tools.external_services import external_connection_inventory
+
+    fake_preferences = SimpleNamespace(
+        connections=SimpleNamespace(
+            mcp_connections=[
+                SimpleNamespace(
+                    id="gmail-id",
+                    friendly_name="Gmail - Basil",
+                    server_url="https://gmail.example/mcp",
+                    enabled=True,
+                    cached_tools=[SimpleNamespace(name="search_threads", description="Search Gmail threads.")],
+                ),
+            ]
+        )
+    )
+    monkeypatch.setattr(external_connection_inventory, "_load_preferences", lambda: fake_preferences)
+
+    descriptions = describe_tool_families()
+    external = next(item for item in descriptions if item["name"] == "external")
+    email = next(item for item in descriptions if item["name"] == "email")
+
+    assert "Gmail - Basil" in external["when_to_load"]
+    assert "first route for any request it can serve, even when the request does not name it" in external["when_to_load"]
+    assert "only when the user asks for the local app, or the connection fails or does not cover the work" in external["when_to_load"]
+    assert "names one of these services" not in external["when_to_load"]
+    assert "use that connection first" in email["when_to_load"]
+    assert "the user asks for the Mail app, the connection fails or does not cover the work" in email["when_to_load"]
+
+
 def test_loader_description_contains_family_routing_catalog(monkeypatch):
     from api.services.agent_processing.tools.external_services import external_connection_inventory
 
@@ -138,12 +168,15 @@ def test_loader_description_contains_family_routing_catalog(monkeypatch):
     )
     monkeypatch.setattr(external_connection_inventory, "_load_preferences", lambda: fake_preferences)
 
-    loader = create_load_tool_family_tool([_tool("external_catalog")])
+    loader = create_load_tool_family_tool([_tool("external_catalog"), _tool("browser_inspect")])
 
-    assert "Available tool families for first-pass routing" in loader.description
-    assert "external:" in loader.description
-    assert "Speakeasy - Custom" in loader.description
-    assert "browser:" in loader.description
+    assert loader.description.startswith("Tool index.")
+    assert "- external:" in loader.description
+    assert "external_catalog()" in loader.description
+    assert "Currently enabled external services: Speakeasy - Custom." in loader.description
+    assert "A connected service is the first route for any request it can serve" in loader.description
+    assert "- browser:" in loader.description
+    assert "browser_inspect()" in loader.description
 
 
 def test_core_surface_keeps_loader_and_collaborative_tools_only():
@@ -560,3 +593,65 @@ def test_service_tool_factory_disables_provider_catalog_for_delegation_continuat
     assert factory.allow_provider_catalog is False
     assert should_register_provider_catalog(factory) is False
     assert should_register_provider_catalog(SimpleNamespace()) is True
+
+
+_ALWAYS_BOUND_FAMILIES = ("core", "shell", "automation", "follow_up", "retrieval", "recall")
+
+
+def test_loader_description_lists_only_families_that_can_be_loaded():
+    loader = create_load_tool_family_tool(
+        [
+            _tool("browser_inspect"),
+            _tool("shell_service_execute_command"),
+            _tool("recall_agent_tasks"),
+            _tool("applescript_service_execute_applescript"),
+        ]
+    )
+    description = loader.description
+
+    for name in _ALWAYS_BOUND_FAMILIES:
+        assert f"\n- {name}:" not in description
+    assert "\n- browser:" in description
+    assert "shell_service_execute_command" not in description
+    assert "recall_agent_tasks" not in description
+    assert "applescript_service_execute_applescript" not in description
+    assert len(description) < len(render_family_routing_catalog())
+
+
+def test_loader_description_omits_families_that_own_no_registered_tool():
+    description = create_load_tool_family_tool([_tool("browser_inspect")]).description
+
+    assert "\n- browser:" in description
+    for name in ("file", "email", "external", "schedule", "provider"):
+        assert f"\n- {name}:" not in description
+
+
+def test_full_catalog_still_lists_every_family_for_other_consumers():
+    catalog = render_family_routing_catalog()
+
+    for name in get_family_names():
+        assert f"\n- {name}:" in catalog
+    assert "never load them" not in catalog
+
+
+@pytest.mark.asyncio
+async def test_load_result_names_families_without_repeating_the_catalog():
+    loader = create_load_tool_family_tool([_tool("browser_inspect")], get_available_families=lambda: {"automation", "shell"})
+
+    data = json.loads(await loader.ainvoke({"family_names": ["browser"], "reason": "Need page automation"}))
+
+    assert data["available_families"] == get_family_names()
+    assert all(isinstance(name, str) for name in data["available_families"])
+    assert "when_to_load" not in json.dumps(data)
+
+
+@pytest.mark.asyncio
+async def test_load_result_for_an_unknown_family_still_points_at_valid_names():
+    loader = create_load_tool_family_tool([_tool("browser_inspect")])
+
+    data = json.loads(await loader.ainvoke({"family_names": ["not_a_family"], "reason": ""}))
+
+    assert data["success"] is False
+    assert data["invalid_families"] == ["not_a_family"]
+    assert "browser" in data["available_families"]
+    assert "available_families" in data["next_step"]

@@ -1,6 +1,7 @@
 @import '../../../AgentTaskResult/src/styles/theme.css';
 @import '../../../shared/webkit-window-chrome.css';
 @import '../../../shared/basil-window-chrome.css';
+@import '../../../shared/basil-modal-dialog.css';
 
 * {
   box-sizing: border-box;
@@ -339,34 +340,27 @@ button:disabled {
   outline-offset: 2px;
 }
 
+/* One compact button size across the setup window, the same height as the agent task action buttons and the shared modal buttons. */
 .primary-button,
 .secondary-button,
 .warning-button {
-  padding: 10px 14px;
+  padding: calc(var(--padding-xs) + 2px) var(--padding-m);
 }
 
 .primary-button {
   background: var(--primary);
   border: 0.5px solid color-mix(in srgb, var(--primary) 82%, var(--text-primary));
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--primary) 24%, transparent);
   color: var(--text-on-primary, var(--background-primary));
 }
 
 .secondary-button {
   background: color-mix(in srgb, var(--primary) 7%, var(--background-primary));
   border: 0.5px solid color-mix(in srgb, var(--primary) 28%, var(--separator-color));
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.045);
   color: var(--text-primary);
-}
-
-.primary-button:hover:not(:disabled),
-.secondary-button:hover:not(:disabled) {
-  transform: translateY(-1px);
 }
 
 .primary-button:hover:not(:disabled) {
   background: color-mix(in srgb, var(--primary) 92%, var(--text-primary));
-  box-shadow: 0 10px 22px color-mix(in srgb, var(--primary) 30%, transparent);
 }
 
 .secondary-button:hover:not(:disabled) {

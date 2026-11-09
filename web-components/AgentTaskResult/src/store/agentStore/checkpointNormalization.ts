@@ -142,6 +142,10 @@ export function normalizeCheckpointData(
     Object.assign(metadata, checkpointRecord.metadata as Record<string, unknown>);
   }
 
+  const rawDetails = checkpointRecord.details_markdown;
+  const detailsMarkdown =
+    typeof rawDetails === 'string' && rawDetails.trim().length > 0 ? rawDetails.trim() : undefined;
+
   const allowMultiple = inputType === 'choice' && checkpointRecord.allow_multiple === true;
   const valueKind: CheckpointData['value_kind'] =
     inputType === 'data' && rawInputType === 'numeric' ? 'numeric' : undefined;
@@ -156,6 +160,7 @@ export function normalizeCheckpointData(
     ...(valueKind ? { value_kind: valueKind } : {}),
     fields,
     default_value: defaultValue,
+    ...(detailsMarkdown ? { details_markdown: detailsMarkdown } : {}),
     metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
   };
 }

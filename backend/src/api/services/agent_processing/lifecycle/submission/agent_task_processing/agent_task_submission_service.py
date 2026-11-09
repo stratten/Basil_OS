@@ -104,6 +104,17 @@ class AgentTaskSubmissionService:
             raise
         return {"success": True, "agent_task_id": child_agent_task_id, "status": "routing", "reservation": reservation}
 
+    async def _default_reasoning_model_id(self) -> Optional[str]:
+        """The reasoning model that applies when a task names none, or None when it cannot be determined."""
+        try:
+            from api.services.reasoning_model_catalog import heal_stored_reasoning_model
+
+            resolved = await heal_stored_reasoning_model()
+        except Exception as lookup_error:
+            self.logger.warning("Could not resolve the default reasoning model for a new task: %s", lookup_error)
+            return None
+        return resolved.strip() if isinstance(resolved, str) and resolved.strip() else None
+
     async def process_agent_task(
         self,
         agent_task: str,
@@ -155,6 +166,11 @@ class AgentTaskSubmissionService:
                 artifacts.pop("connection_ids", None)
             if model_id:
                 artifacts["model_id"] = model_id
+            elif not artifacts.get("model_id"):
+                # Nothing was chosen and the chain has no model yet, so record the one that applies now. Left blank, the task silently follows whatever the default is later, and everything keyed on the model id (its context window, limits, and label) sees no model.
+                default_model_id = await self._default_reasoning_model_id()
+                if default_model_id:
+                    artifacts["model_id"] = default_model_id
             if conversation_id:
                 artifacts["conversation_id"] = conversation_id
             if todo_workspace_context:

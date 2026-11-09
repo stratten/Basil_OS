@@ -249,9 +249,44 @@
   transition: width 0.15s ease;
 }
 
+/* Room for the bubble (44px), one 24px round action, and a 6px gap; Pause and Resume add another 24px action and a 4px gap. */
 .widget-header:hover .header-right.has-stop-action,
+.header-right.has-stop-action:focus-within,
 .header-right.has-stop-action.is-stopping {
-  width: 120px;
+  width: 74px;
+}
+
+.widget-header:hover .header-right.has-stop-action.has-pause-action,
+.header-right.has-stop-action.has-pause-action:focus-within,
+.header-right.has-stop-action.has-pause-action.is-stopping {
+  width: 102px;
+}
+
+/* Pause or Resume, then Stop, appear together on hover or keyboard focus, in the expanded and the collapsed window alike. */
+.header-run-actions {
+  position: absolute;
+  left: 0;
+  top: 10px;
+  z-index: 1002;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.widget-header:hover .header-run-actions,
+.header-run-actions:focus-within,
+.header-right.is-stopping .header-run-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.header-run-actions .agent-task-stop-action {
+  position: static;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .header-bubble {

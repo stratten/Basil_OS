@@ -150,17 +150,27 @@ export interface HotkeyRowSnapshot {
   binding: HotkeyBinding
 }
 
+// A Basil hotkey that shares its keys with a macOS shortcut that is turned on. 'possible' means macOS reports the shortcut as on but its exact keys could not be read.
+export interface HotkeySystemConflict {
+  hotkeyId: string
+  source: string
+  certainty: 'exact' | 'possible'
+  message: string
+}
+
 export interface HotkeyInitEvent {
   type: 'init'
   protocolVersion: 1
   rows: HotkeyRowSnapshot[]
   enableMonitoringAtStartup: boolean
+  systemConflicts?: HotkeySystemConflict[]
 }
 
 export interface HotkeySnapshotEvent {
   type: 'snapshot'
   rows: HotkeyRowSnapshot[]
   enableMonitoringAtStartup: boolean
+  systemConflicts?: HotkeySystemConflict[]
 }
 
 export interface HotkeyLoadErrorEvent {
@@ -381,6 +391,8 @@ export type WritingExamplesNativeEvent =
 
 export type ModelStatusKind = 'available' | 'downloadable' | 'downloading' | 'error'
 
+export type ModelFormat = 'GGUF' | 'MLX'
+
 export interface ModelSummary {
   id: string
   modelType: string
@@ -388,6 +400,8 @@ export interface ModelSummary {
   name: string
   capabilities: string[]
   size: number | null
+  /** File format of a local language model, shown as a tag next to the size. Absent for other models. */
+  format?: ModelFormat
   statusKind: ModelStatusKind
   progress?: number
   errorMessage?: string

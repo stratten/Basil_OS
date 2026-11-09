@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import basilLogo from '@shared/assets/basil-logo.png';
 import type { BoardInquirySummary } from '../contracts';
 import { hydrateBasilBoard, submitHomeTurn } from '../services/api';
 import { enqueueAgentTaskOriginNavigation, showAgentTaskFromHome } from '../services/bridge';
@@ -76,6 +77,7 @@ export default function HomeView() {
   return (
     <section className="home-view home-front-door">
       <div className="home-front-door-column">
+        <img className="home-front-door-logo" src={basilLogo} alt="" aria-hidden="true" />
         <h1 className="home-front-door-title">What can I do for you?</h1>
         <p className="home-front-door-hint">
           Ask a question or hand over a task. I'll open a chat or start an agent for you.

@@ -29,6 +29,7 @@ from api.services.agent_processing.tools.direct_application_interactions.email_i
     ExpandEmailDetailsArgs,
     GetEmailMetadataArgs,
     GetEmailsArgs,
+    SearchEmailsArgs,
     normalize_email_search_criteria,
 )
 from api.services.agent_processing.tools.direct_application_interactions.email_integration.mail_app.mail_app_service import (
@@ -109,6 +110,79 @@ def test_get_emails_args_accepts_criteria_alias():
 
     assert args.search_criteria is not None
     assert args.search_criteria.to_email_search_criteria().date_from == datetime(2026, 4, 30, 0, 0, 0)
+
+
+def test_search_emails_args_moves_top_level_folder_into_criteria():
+    args = SearchEmailsArgs.model_validate({
+        "criteria": {"date_from": "2026-11-05T23:00:00Z"},
+        "limit": 5,
+        "folder": "inbox",
+    })
+
+    assert args.criteria.folder == "inbox"
+    assert args.limit == 5
+
+
+def test_search_emails_args_moves_criteria_limit_to_top_level():
+    args = SearchEmailsArgs.model_validate({
+        "criteria": {"date_from": "2026-11-05T23:00:00Z", "limit": 5, "folder": "inbox"},
+    })
+
+    assert args.limit == 5
+    assert args.criteria.folder == "inbox"
+
+
+def test_search_emails_args_handles_both_misplacements_in_one_call():
+    args = SearchEmailsArgs.model_validate({
+        "criteria": {"date_from": "2026-11-05T23:00:00Z", "limit": 5},
+        "folder": "inbox",
+    })
+
+    assert args.limit == 5
+    assert args.criteria.folder == "inbox"
+
+
+def test_search_emails_args_keeps_properly_placed_arguments_unchanged():
+    args = SearchEmailsArgs.model_validate({
+        "criteria": {"sender": "ana@example.com", "folder": "Sent"},
+        "limit": 7,
+    })
+
+    assert (args.criteria.sender, args.criteria.folder, args.limit) == ("ana@example.com", "Sent", 7)
+
+
+def test_search_emails_args_rejects_conflicting_folder_values():
+    with pytest.raises(ValidationError) as captured:
+        SearchEmailsArgs.model_validate({"criteria": {"folder": "Sent"}, "folder": "inbox"})
+
+    assert [error["loc"] for error in captured.value.errors()] == [("folder",)]
+
+
+def test_search_emails_args_rejects_conflicting_limit_values():
+    with pytest.raises(ValidationError) as captured:
+        SearchEmailsArgs.model_validate({"criteria": {"limit": 3}, "limit": 5})
+
+    assert [error["loc"] for error in captured.value.errors()] == [("criteria", "limit")]
+
+
+def test_search_emails_args_does_not_invent_criteria():
+    with pytest.raises(ValidationError) as captured:
+        SearchEmailsArgs.model_validate({"folder": "inbox", "limit": 5})
+
+    assert {error["loc"] for error in captured.value.errors()} == {("criteria",), ("folder",)}
+
+
+def test_search_emails_args_still_rejects_unknown_fields():
+    with pytest.raises(ValidationError):
+        SearchEmailsArgs.model_validate({"criteria": {"bogus": 1}})
+
+
+def test_search_emails_args_moves_do_not_mutate_the_caller_payload():
+    payload = {"criteria": {"limit": 5}, "folder": "inbox"}
+
+    SearchEmailsArgs.model_validate(payload)
+
+    assert payload == {"criteria": {"limit": 5}, "folder": "inbox"}
 
 
 def test_metadata_and_expansion_contracts_bound_email_body_work():

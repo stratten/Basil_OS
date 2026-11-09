@@ -10,7 +10,7 @@ import Sidebar, { isLiveAgentTaskStatus } from './Sidebar';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
-const { listAgentTasks, getAgentTaskDetail, deleteAgentTask, archiveAgentTask, unarchiveAgentTask, searchAgentTasks, listScheduledAgentTasks, deleteScheduledAgentTask } = vi.hoisted(() => ({
+const { listAgentTasks, getAgentTaskDetail, deleteAgentTask, archiveAgentTask, unarchiveAgentTask, searchAgentTasks, listScheduledAgentTasks, deleteScheduledAgentTask, updateScheduledAgentTask, runScheduledAgentTaskNow } = vi.hoisted(() => ({
   listAgentTasks: vi.fn(),
   getAgentTaskDetail: vi.fn(),
   deleteAgentTask: vi.fn(),
@@ -19,6 +19,8 @@ const { listAgentTasks, getAgentTaskDetail, deleteAgentTask, archiveAgentTask, u
   searchAgentTasks: vi.fn(),
   listScheduledAgentTasks: vi.fn(),
   deleteScheduledAgentTask: vi.fn(),
+  updateScheduledAgentTask: vi.fn(),
+  runScheduledAgentTaskNow: vi.fn(),
 }));
 
 // Mutable holder so individual tests can control the agent list returned by
@@ -44,6 +46,8 @@ vi.mock('../services/api', () => ({
   listAgentTasks,
   listScheduledAgentTasks,
   deleteScheduledAgentTask,
+  updateScheduledAgentTask,
+  runScheduledAgentTaskNow,
 }));
 
 vi.mock('../store/agentStore', () => ({
@@ -112,6 +116,8 @@ describe('Sidebar', () => {
     searchAgentTasks.mockReset();
     listScheduledAgentTasks.mockReset();
     deleteScheduledAgentTask.mockReset();
+    updateScheduledAgentTask.mockReset();
+    runScheduledAgentTaskNow.mockReset();
     deleteScheduledAgentTask.mockResolvedValue({ success: true });
   });
 
@@ -418,6 +424,183 @@ describe('Sidebar', () => {
       await act(async () => root.unmount());
       container.remove();
     }
+  });
+
+  describe('activating, deactivating and running a schedule from its row', () => {
+    const schedule = (id: string, title: string, is_active: boolean) => ({
+      id,
+      title,
+      agent_task_text: 'Do the thing',
+      schedule_type: 'recurring',
+      schedule_config: {},
+      timezone: 'UTC',
+      is_active,
+      source_type: 'manual',
+      reference_paths: [],
+      created_at: '2026-10-01T00:00:00Z',
+      updated_at: '2026-10-01T00:00:00Z',
+      run_count: 0,
+      next_run_at: is_active ? '2026-10-29T13:00:00Z' : null,
+    });
+
+    async function openScheduled(root: ReturnType<typeof createRoot>, container: HTMLElement, onScheduledUpdated?: (id: string) => void) {
+      await act(async () => {
+        root.render(
+          <Sidebar
+            isExpanded
+            canLoadData
+            onToggle={() => {}}
+            onViewHistoricalAgentTask={() => {}}
+            onViewAgentTask={() => {}}
+            onViewScheduledAgentTask={() => {}}
+            onCreateScheduledAgentTask={() => {}}
+            onScheduledUpdated={onScheduledUpdated}
+          />,
+        );
+      });
+      await act(async () => {
+        container.querySelector<HTMLButtonElement>('button[title="View scheduled tasks"]')?.click();
+      });
+      await vi.waitFor(() => {
+        expect(container.querySelectorAll('.sidebar-row').length).toBe(1);
+      });
+      await vi.waitFor(() => {
+        expect(container.querySelector('.agent-task-row__schedule-dot-btn')).not.toBeNull();
+      });
+    }
+
+    function hoverRow(container: HTMLElement) {
+      act(() => {
+        container.querySelector<HTMLElement>('.sidebar-row')?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+      });
+    }
+
+    it('deactivates an active schedule and tells the parent so an open schedule view refreshes', async () => {
+      listAgentTasks.mockResolvedValue({ agentTasks: [], total_count: 0, has_more: false });
+      listScheduledAgentTasks.mockResolvedValue({ agent_tasks: [schedule('sched-live', 'Live schedule', true)] });
+      updateScheduledAgentTask.mockResolvedValue(schedule('sched-live', 'Live schedule', false));
+      const onScheduledUpdated = vi.fn();
+      const container = document.createElement('div');
+      const root = createRoot(container);
+      try {
+        await openScheduled(root, container, onScheduledUpdated);
+        await act(async () => {
+          container.querySelector<HTMLButtonElement>('.agent-task-row__schedule-dot-btn')?.click();
+        });
+        expect(updateScheduledAgentTask).toHaveBeenCalledWith('sched-live', { is_active: false });
+        expect(onScheduledUpdated).toHaveBeenCalledWith('sched-live');
+      } finally {
+        await act(async () => root.unmount());
+        container.remove();
+      }
+    });
+
+    it('reloads its own list when no parent callback is given, then shows the new state', async () => {
+      listAgentTasks.mockResolvedValue({ agentTasks: [], total_count: 0, has_more: false });
+      listScheduledAgentTasks.mockResolvedValueOnce({ agent_tasks: [schedule('sched-off', 'Stopped schedule', false)] });
+      updateScheduledAgentTask.mockResolvedValue(schedule('sched-off', 'Stopped schedule', true));
+      const container = document.createElement('div');
+      const root = createRoot(container);
+      try {
+        await openScheduled(root, container);
+        listScheduledAgentTasks.mockResolvedValue({ agent_tasks: [schedule('sched-off', 'Stopped schedule', true)] });
+        await act(async () => {
+          container.querySelector<HTMLButtonElement>('.agent-task-row__schedule-dot-btn')?.click();
+        });
+        expect(updateScheduledAgentTask).toHaveBeenCalledWith('sched-off', { is_active: true });
+        await vi.waitFor(() => {
+          expect(container.querySelectorAll('.agent-task-row__schedule-dot.is-active').length).toBe(1);
+        });
+      } finally {
+        await act(async () => root.unmount());
+        container.remove();
+      }
+    });
+
+    it('leaves the row as it was and logs when the update fails', async () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+      listAgentTasks.mockResolvedValue({ agentTasks: [], total_count: 0, has_more: false });
+      listScheduledAgentTasks.mockResolvedValue({ agent_tasks: [schedule('sched-live', 'Live schedule', true)] });
+      updateScheduledAgentTask.mockRejectedValue(new Error('offline'));
+      const onScheduledUpdated = vi.fn();
+      const container = document.createElement('div');
+      const root = createRoot(container);
+      try {
+        await openScheduled(root, container, onScheduledUpdated);
+        await act(async () => {
+          container.querySelector<HTMLButtonElement>('.agent-task-row__schedule-dot-btn')?.click();
+        });
+        expect(onScheduledUpdated).not.toHaveBeenCalled();
+        expect(error).toHaveBeenCalled();
+        expect(container.querySelectorAll('.agent-task-row__schedule-dot.is-active').length).toBe(1);
+      } finally {
+        error.mockRestore();
+        await act(async () => root.unmount());
+        container.remove();
+      }
+    });
+
+    it('runs a deactivated schedule now without activating it', async () => {
+      listAgentTasks.mockResolvedValue({ agentTasks: [], total_count: 0, has_more: false });
+      listScheduledAgentTasks.mockResolvedValue({ agent_tasks: [schedule('sched-off', 'Stopped schedule', false)] });
+      runScheduledAgentTaskNow.mockResolvedValue({ success: true, run_id: 'run-1' });
+      const container = document.createElement('div');
+      const root = createRoot(container);
+      try {
+        await openScheduled(root, container);
+        hoverRow(container);
+        await act(async () => {
+          container.querySelector<HTMLButtonElement>('.agent-schedule-run-btn')?.click();
+        });
+        expect(runScheduledAgentTaskNow).toHaveBeenCalledTimes(1);
+        expect(runScheduledAgentTaskNow).toHaveBeenCalledWith('sched-off');
+        expect(updateScheduledAgentTask).not.toHaveBeenCalled();
+        expect(container.querySelector('[role="status"]')?.textContent).toBe('Run started');
+        expect(container.querySelectorAll('.agent-task-row__schedule-dot.is-inactive').length).toBe(1);
+      } finally {
+        await act(async () => root.unmount());
+        container.remove();
+      }
+    });
+
+    it('shows the backend reason on the row when a run does not start, instead of reporting success', async () => {
+      listAgentTasks.mockResolvedValue({ agentTasks: [], total_count: 0, has_more: false });
+      listScheduledAgentTasks.mockResolvedValue({ agent_tasks: [schedule('sched-live', 'Live schedule', true)] });
+      runScheduledAgentTaskNow.mockResolvedValue({ success: false, error: 'Scheduled task not found' });
+      const container = document.createElement('div');
+      const root = createRoot(container);
+      try {
+        await openScheduled(root, container);
+        hoverRow(container);
+        await act(async () => {
+          container.querySelector<HTMLButtonElement>('.agent-schedule-run-btn')?.click();
+        });
+        expect(container.querySelector('[role="status"]')?.textContent).toBe('Scheduled task not found');
+        expect(container.textContent).not.toContain('Run started');
+      } finally {
+        await act(async () => root.unmount());
+        container.remove();
+      }
+    });
+
+    it('shows a plain message when the request itself fails', async () => {
+      listAgentTasks.mockResolvedValue({ agentTasks: [], total_count: 0, has_more: false });
+      listScheduledAgentTasks.mockResolvedValue({ agent_tasks: [schedule('sched-live', 'Live schedule', true)] });
+      runScheduledAgentTaskNow.mockRejectedValue(new Error('offline'));
+      const container = document.createElement('div');
+      const root = createRoot(container);
+      try {
+        await openScheduled(root, container);
+        hoverRow(container);
+        await act(async () => {
+          container.querySelector<HTMLButtonElement>('.agent-schedule-run-btn')?.click();
+        });
+        expect(container.querySelector('[role="status"]')?.textContent).toBe('offline');
+      } finally {
+        await act(async () => root.unmount());
+        container.remove();
+      }
+    });
   });
 
   it('archives a finished history row from the context menu and moves it to the Archived view, where it can be unarchived', async () => {

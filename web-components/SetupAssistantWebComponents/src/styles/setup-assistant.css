@@ -8,5 +8,12 @@
 @import './setup-assistant.conversation.proposals.css';
 @import './setup-assistant.conversation.inline-cards.css';
 @import './setup-assistant.agenda.css';
+@import './setup-assistant.local-model-failure.css';
+@import './setup-assistant.starter-downloads.css';
+@import './setup-assistant.express.css';
+@import './setup-assistant.hotkeys.css';
+@import './setup-assistant.model-choice.css';
+@import './setup-assistant.answer-guide.css';
+@import './setup-assistant.model-comparison.css';
 @import './setup-assistant.responsive.css';
 @import './setup-assistant.motion.css';

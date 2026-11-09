@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import faulthandler
+import os
+import signal
 import subprocess
 import sys
 import textwrap
@@ -131,3 +134,72 @@ async def test_a_healthy_loop_writes_nothing_to_the_stall_log(tmp_path):
         await watchdog.stop()
 
     assert (tmp_path / "loop_stalls.log").read_text(encoding="utf-8") == ""
+
+
+def _wait_for_text(path: Path, needle: str, timeout: float = 3.0) -> str:
+    deadline = time.monotonic() + timeout
+    text = ""
+    while time.monotonic() < deadline:
+        text = path.read_text(encoding="utf-8") if path.exists() else ""
+        if needle in text:
+            return text
+        time.sleep(0.02)
+    return text
+
+
+@pytest.mark.asyncio
+@pytest.mark.skipif(not hasattr(signal, "SIGUSR1"), reason="SIGUSR1 is not available on this platform")
+async def test_sigusr1_writes_the_function_a_blocked_thread_is_waiting_in(tmp_path):
+    import threading
+
+    held = threading.Lock()
+    held.acquire()
+    started = threading.Event()
+
+    def waits_for_the_model_lock_forever():
+        started.set()
+        held.acquire()
+
+    worker = threading.Thread(target=waits_for_the_model_lock_forever, name="stuck-worker", daemon=True)
+    worker.start()
+    assert started.wait(2.0)
+
+    watchdog = EventLoopWatchdog(
+        heartbeat_interval=0.05,
+        stall_dump_seconds=30.0,
+        diagnostics_dir=tmp_path,
+        publisher=lambda payload: asyncio.sleep(0),
+        capture_native_sample=False,
+    )
+    await watchdog.start()
+    try:
+        await asyncio.sleep(0.2)
+        assert watchdog.stall_log_path.read_text(encoding="utf-8") == ""
+
+        os.kill(os.getpid(), signal.SIGUSR1)
+        dump = _wait_for_text(watchdog.stall_log_path, "waits_for_the_model_lock_forever")
+    finally:
+        await watchdog.stop()
+        held.release()
+        worker.join(timeout=2.0)
+
+    assert "most recent call first" in dump
+    assert "waits_for_the_model_lock_forever" in dump
+
+
+@pytest.mark.asyncio
+@pytest.mark.skipif(not hasattr(signal, "SIGUSR1"), reason="SIGUSR1 is not available on this platform")
+async def test_the_signal_handler_is_removed_when_the_watchdog_stops(tmp_path):
+    watchdog = EventLoopWatchdog(
+        heartbeat_interval=0.05,
+        stall_dump_seconds=30.0,
+        diagnostics_dir=tmp_path,
+        publisher=lambda payload: asyncio.sleep(0),
+        capture_native_sample=False,
+    )
+    await watchdog.start()
+    assert watchdog._stack_dump_signal == int(signal.SIGUSR1)
+    await watchdog.stop()
+
+    assert watchdog._stack_dump_signal is None
+    assert faulthandler.unregister(signal.SIGUSR1) is False

@@ -65,6 +65,60 @@ describe('useAgentSelection', () => {
     }
   });
 
+  it('opens a scheduled run that continues an open chain on that chain instead of as a second task', async () => {
+    const rootId = 'chain-root';
+    const turnId = 'chain-scheduled-turn';
+    agentStore.registerAgent(rootId);
+    agentStore.beginFollowUpTurn(turnId, rootId);
+    agentStore.deselectAgent();
+    const pendingSelections = vi.fn();
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    let selectTask: ((taskId: string) => Promise<void>) | undefined;
+
+    function ChainHarness() {
+      const { handleViewAgentTask } = useAgentSelection({
+        setViewedDetail: noOp,
+        setSelectedScheduledAgentTaskId: noOp,
+        setCreateScheduledMode: noOp,
+        setScheduledListVersion: noOp,
+        setPendingAgentTaskSelection: pendingSelections,
+        selectedAgent: null,
+        viewedDetail: null,
+      });
+
+      useEffect(() => {
+        selectTask = handleViewAgentTask;
+      }, [handleViewAgentTask]);
+
+      return null;
+    }
+
+    try {
+      await act(async () => {
+        root.render(<ChainHarness />);
+      });
+
+      await act(async () => {
+        await selectTask?.(turnId);
+      });
+
+      expect(agentStore.getSelectedAgentId()).toBe(rootId);
+      expect(agentStore.getAgent(turnId)).toBeUndefined();
+      expect(hydrateAgentFromBackend).toHaveBeenCalledTimes(1);
+      expect(hydrateAgentFromBackend).toHaveBeenCalledWith(rootId);
+      // Nothing was opened as a new task, so there is no pending selection to wait for.
+      expect(pendingSelections).toHaveBeenCalledWith(null);
+      expect(pendingSelections).not.toHaveBeenCalledWith(expect.objectContaining({ agentTaskId: turnId }));
+    } finally {
+      act(() => {
+        root.unmount();
+        agentStore.removeAgent(rootId);
+      });
+      container.remove();
+    }
+  });
+
   it('keeps a new selection pending through a superseded hydration request', async () => {
     const agentTaskId = 'newly-selected-task';
     const pendingSelections = vi.fn();

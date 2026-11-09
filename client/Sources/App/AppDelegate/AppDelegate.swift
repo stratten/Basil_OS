@@ -145,13 +145,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSLog("🚀 BASIL APP HAS LAUNCHED - applicationDidFinishLaunching anfang") // German for beginning :)
         URLProtocol.registerClass(BackendAuthorizationURLProtocol.self)
 
-        applyRuntimeCircularDockIcon()
         configureBackendStartupFromArguments()
         initializeLaunchServices()
+        // The runtime Dock icon must be applied after initializeLaunchServices() switches the app from an agent to a regular app. Before that the app has no Dock tile, and macOS silently ignores the image and shows the bundle icon with its own plate, size and effects.
+        applyRuntimeCircularDockIcon()
         logBundleDebugInformation()
         MainThreadStallWatchdog.shared.start()
 
-        if !BasilRuntimeProfile.isValidation {
+        if !BasilRuntimeProfile.suppressesAmbientBehavior {
             // Set up diagnostic local key monitor
             setupLocalKeyMonitor()
             plainTextPasteShortcutMonitor = PlainTextPasteShortcutMonitor()
@@ -167,6 +168,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if AppDelegate.shouldStartBackend && !BasilRuntimeProfile.isValidation {
             startBackendTask()
+            BackendResponsivenessMonitor.shared.start { [weak self] in
+                await self?.startBackendProcess()
+            }
         }
 
         let api = APIClient.shared
@@ -194,19 +198,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // connection is kicked off; the actual AppDelegate-side observer
         // doesn't depend on WS state, only on the NotificationCenter signal
         // that WebSocketService posts when those event types arrive.
-        if !BasilRuntimeProfile.isValidation {
+        if !BasilRuntimeProfile.suppressesAmbientBehavior {
             registerScheduledRunMiniPanelObserver()
             registerAmbientSuggestionsObserver()
             registerMeetingDetectedMiniPanelObserver()
             registerRecordingDidStartObserver()
-        } else {
+        }
+        if BasilRuntimeProfile.isValidation {
             configureValidationLaunch()
         }
 
         // Surface the "want to resume your setup?" toast on the next runloop
         // tick, with a small delay so the backend has a chance to come up and
         // so the menu-bar status item has been positioned (we anchor to it).
-        if !BasilRuntimeProfile.isValidation {
+        if !BasilRuntimeProfile.suppressesAmbientBehavior {
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 3_500_000_000)
                 self.presentSetupAssistantResumeToastIfPendingFromDelegate()
@@ -223,7 +228,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Check if this activation is from a URL event
         // If it is, the URL handler should have already been called
         
-        if !BasilRuntimeProfile.isValidation {
+        if !BasilRuntimeProfile.suppressesAmbientBehavior {
             // Ensure the local key monitor is set up
             setupLocalKeyMonitor()
         }

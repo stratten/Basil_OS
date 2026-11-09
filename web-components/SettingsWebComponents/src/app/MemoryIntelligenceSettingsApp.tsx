@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ContextImportPanel } from '@shared/ContextImportPanel'
+import { ProfileImportPanel } from '@shared/ProfileImportPanel'
 import { Switch } from '@shared/Switch'
 import TokenizedSelect from '@shared/TokenizedSelect'
 import {
@@ -10,6 +12,7 @@ import {
   runMemoryIntelligenceNow,
   updateMemorySetting,
 } from '../services/memoryIntelligenceBridge'
+import { settingsContextImportClient } from '../services/contextImportClient'
 import type { MemoryDocument, MemoryIntelligenceSettings, MemoryProposal, MemoryReasoningModelOption, MemorySettingField } from '../types'
 import { useOptimisticSettings } from './useOptimisticSettings'
 
@@ -31,6 +34,8 @@ function cadenceSummary(settings: MemoryIntelligenceSettings): string {
   return `Runs ${parts.join(' and ')}. All writes still require approval.`
 }
 
+const SETTINGS_IMPORT_NOTICE = 'Basil reads this text with the Evaluator model above, or your default reasoning model when that is not set. A model that runs on this Mac keeps your text here. A cloud or provider model receives it.'
+
 function formatDocumentSize(document: MemoryDocument): string {
   if (document.capBytes && document.capBytes > 0) {
     return `${document.sizeBytes} / ${document.capBytes} bytes`
@@ -48,6 +53,7 @@ export function MemoryIntelligenceSettingsApp() {
   const [pending, setPending] = useState<PendingRequest | null>(null)
   const pendingRef = useRef<PendingRequest | null>(null)
   pendingRef.current = pending
+  const importClient = useMemo(settingsContextImportClient, [])
 
   useEffect(() => {
     const unsubscribe = onMemoryIntelligenceEvent((event) => {
@@ -175,6 +181,16 @@ export function MemoryIntelligenceSettingsApp() {
             {statusMessage.text}
           </p>
         )}
+      </section>
+
+      <section className="memory-intelligence-section" aria-labelledby="context-import-heading">
+        <h2 id="context-import-heading">Import Personal Context</h2>
+        <ContextImportPanel client={importClient} routeNotice={SETTINGS_IMPORT_NOTICE} showPastImports />
+      </section>
+
+      <section className="memory-intelligence-section" aria-labelledby="profile-import-heading">
+        <h2 id="profile-import-heading">Build Your Profile From Existing Data</h2>
+        <ProfileImportPanel client={importClient} routeNotice={SETTINGS_IMPORT_NOTICE} />
       </section>
 
       <section className="memory-intelligence-section" aria-labelledby="memory-proposals-heading">

@@ -14,13 +14,17 @@ export const ACCOUNT_POLL_INTERVAL_MS = 3000
 export const ACCOUNT_POLL_LIMIT_MS = 5 * 60 * 1000
 export const MINIMUM_PASSWORD_LENGTH = 8
 
-type AccountFormMode = 'signIn' | 'signUp'
+export type AccountFormMode = 'signIn' | 'signUp'
 type WaitingFor = 'google' | 'payment' | null
 
 interface Props {
   option: SetupAgentModelAccessOption
   /** Re-reads the model-access options so the Basil Cloud row reflects the account's new state. */
   refreshOptions: () => Promise<void>
+  /** When given, each row of actions starts with a Cancel button that calls it, so the dialog can be dismissed without reaching for Escape. */
+  onCancel?: () => void
+  /** Called with the form's mode on mount and whenever it changes, so the dialog around the panel can title itself to match. */
+  onModeChange?: (mode: AccountFormMode) => void
 }
 
 export function validateAccountForm(
@@ -49,7 +53,7 @@ function errorText(error: unknown, fallback: string): string {
  * Lets someone sign in, create an account, and add a payment method for Basil Cloud without leaving setup.
  * Password sign-in and sign-up complete in the app; Google sign-in and the Stripe payment page complete in the browser, so the panel watches the account until it becomes eligible.
  */
-export function BasilCloudAccountPanel({ option, refreshOptions }: Props) {
+export function BasilCloudAccountPanel({ option, refreshOptions, onCancel, onModeChange }: Props) {
   const [mode, setMode] = useState<AccountFormMode>('signIn')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -62,6 +66,12 @@ export function BasilCloudAccountPanel({ option, refreshOptions }: Props) {
   const isMountedRef = useRef(true)
   const refreshOptionsRef = useRef(refreshOptions)
   refreshOptionsRef.current = refreshOptions
+  const onModeChangeRef = useRef(onModeChange)
+  onModeChangeRef.current = onModeChange
+
+  useEffect(() => {
+    onModeChangeRef.current?.(mode)
+  }, [mode])
 
   const needsSignIn = Boolean(option.requires_sign_in)
   const needsPayment = !needsSignIn && Boolean(option.requires_payment_method)
@@ -185,35 +195,22 @@ export function BasilCloudAccountPanel({ option, refreshOptions }: Props) {
 
   if (!needsSignIn && !needsPayment) return null
 
+  const cancelButton = onCancel && (
+    <button type="button" className="basil-modal-button basil-modal-button--quiet" disabled={isBusy} onClick={onCancel}>
+      Cancel
+    </button>
+  )
+
   return (
-    <div className="choice-option-reveal-body basil-cloud-account" data-testid="basil-cloud-account-panel">
+    <div className="basil-cloud-account" data-testid="basil-cloud-account-panel">
       {needsSignIn && (
         <>
-          <div className="basil-cloud-account-tabs" role="group" aria-label="Basil account">
-            <button
-              type="button"
-              className="basil-cloud-account-tab"
-              aria-pressed={mode === 'signIn'}
-              disabled={isBusy}
-              onClick={() => { setMode('signIn'); resetMessages() }}
-            >
-              Sign in
-            </button>
-            <button
-              type="button"
-              className="basil-cloud-account-tab"
-              aria-pressed={mode === 'signUp'}
-              disabled={isBusy}
-              onClick={() => { setMode('signUp'); resetMessages() }}
-            >
-              Create account
-            </button>
-          </div>
           <form className="basil-cloud-account-form" onSubmit={event => void submit(event)}>
             <label>
               <span>Email</span>
               <input
                 type="email"
+                className="basil-modal-input"
                 value={email}
                 onChange={event => setEmail(event.target.value)}
                 autoComplete="email"
@@ -224,6 +221,7 @@ export function BasilCloudAccountPanel({ option, refreshOptions }: Props) {
               <span>Password</span>
               <input
                 type="password"
+                className="basil-modal-input"
                 value={password}
                 onChange={event => setPassword(event.target.value)}
                 autoComplete={mode === 'signIn' ? 'current-password' : 'new-password'}
@@ -235,6 +233,7 @@ export function BasilCloudAccountPanel({ option, refreshOptions }: Props) {
                 <span>Confirm password</span>
                 <input
                   type="password"
+                  className="basil-modal-input"
                   value={confirmPassword}
                   onChange={event => setConfirmPassword(event.target.value)}
                   autoComplete="new-password"
@@ -242,17 +241,29 @@ export function BasilCloudAccountPanel({ option, refreshOptions }: Props) {
                 />
               </label>
             )}
-            <div className="basil-cloud-account-actions">
-              <button type="submit" className="secondary-button" disabled={isBusy}>
-                {isBusy ? 'Working…' : mode === 'signIn' ? 'Sign in' : 'Create account'}
-              </button>
-              <button type="button" className="secondary-button" disabled={isBusy} onClick={() => void continueWithGoogle()}>
+            <div className="basil-modal-actions">
+              {cancelButton}
+              <button type="button" className="basil-modal-button basil-modal-button--quiet" disabled={isBusy} onClick={() => void continueWithGoogle()}>
                 Continue with Google
+              </button>
+              <button type="submit" className="basil-modal-button" disabled={isBusy}>
+                {isBusy ? 'Working…' : mode === 'signIn' ? 'Sign in' : 'Create account'}
               </button>
             </div>
           </form>
+          <p className="basil-cloud-account-switch">
+            {mode === 'signIn' ? 'New to Basil? ' : 'Already have an account? '}
+            <button
+              type="button"
+              className="basil-modal-link"
+              disabled={isBusy}
+              onClick={() => { setMode(mode === 'signIn' ? 'signUp' : 'signIn'); resetMessages() }}
+            >
+              {mode === 'signIn' ? 'Create account' : 'Sign in'}
+            </button>
+          </p>
           {mode === 'signUp' && (
-            <p className="choice-option-note">
+            <p className="basil-cloud-account-note">
               After you create your account, you’ll add a payment method on a secure Stripe page in your browser. Basil never sees your card.
             </p>
           )}
@@ -260,41 +271,42 @@ export function BasilCloudAccountPanel({ option, refreshOptions }: Props) {
       )}
       {needsPayment && (
         <div className="basil-cloud-account-payment">
-          <p className="choice-option-note">
+          <p className="basil-cloud-account-note">
             You’re signed in. Basil Cloud bills usage to a card, so add a payment method on a secure Stripe page in your browser. Basil never sees your card.
           </p>
-          <div className="basil-cloud-account-actions">
-            <button type="button" className="secondary-button" disabled={isBusy} onClick={() => void addPaymentMethod()}>
-              Add payment method
-            </button>
-            <button type="button" className="secondary-button" disabled={isBusy} onClick={() => void checkAgain()}>
+          <div className="basil-modal-actions">
+            {cancelButton}
+            <button type="button" className="basil-modal-button basil-modal-button--quiet" disabled={isBusy} onClick={() => void checkAgain()}>
               I’ve added it
+            </button>
+            <button type="button" className="basil-modal-button" disabled={isBusy} onClick={() => void addPaymentMethod()}>
+              Add payment method
             </button>
           </div>
         </div>
       )}
       {waitingFor && (
-        <p className="choice-option-note" role="status">
+        <p className="basil-cloud-account-note" role="status">
           {statusMessage ?? 'Waiting for you to finish in your browser…'}
         </p>
       )}
       {waitingFor === 'google' && (
-        <div className="basil-cloud-account-actions">
-          <button type="button" className="secondary-button" disabled={isBusy} onClick={() => void checkAgain()}>
+        <div className="basil-modal-actions">
+          <button type="button" className="basil-modal-button" disabled={isBusy} onClick={() => void checkAgain()}>
             I’ve signed in
           </button>
         </div>
       )}
       {!waitingFor && statusMessage && !errorMessage && (
-        <p className="choice-option-note" role="status">{statusMessage}</p>
+        <p className="basil-cloud-account-note" role="status">{statusMessage}</p>
       )}
       {pollTimedOut && (
-        <p className="choice-option-note" role="status">
+        <p className="basil-cloud-account-note" role="status">
           I stopped waiting. {needsPayment ? 'Press “I’ve added it”' : 'Press “Continue with Google” again or sign in with your password'} when you’re ready.
         </p>
       )}
       {errorMessage && (
-        <p className="choice-option-key-status choice-option-key-status--invalid" role="alert">{errorMessage}</p>
+        <p className="basil-cloud-account-error" role="alert">{errorMessage}</p>
       )}
     </div>
   )

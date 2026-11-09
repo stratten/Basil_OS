@@ -110,3 +110,86 @@ def test_context_window_exceeded_text_names_the_model_window_and_fix():
         + budget.CONTEXT_WINDOW_FIX_HINT
     )
     assert unknown.startswith("This task needed more context than the selected model's context window holds. ")
+
+
+def test_context_trimmed_notice_names_the_characters_removed_and_protects_attachments():
+    notice = budget.context_trimmed_notice(
+        {"model": "Local Qwen", "window_tokens": 32_768, "request_chars_removed": 4_000, "fixed_over_limit": False}
+    )
+
+    assert notice == (
+        "To fit Local Qwen's 32,768-token context window, Basil removed about 4,000 characters of earlier context from your request "
+        "(files and folders you attached are never removed), so the answer may miss details from it. "
+        + budget.CONTEXT_WINDOW_FIX_HINT
+    )
+
+
+def test_context_trimmed_notice_says_when_the_tools_alone_fill_the_window():
+    notice = budget.context_trimmed_notice(
+        {"model": "Local Qwen", "window_tokens": 32_768, "fixed_prompt_tokens": 30_100, "request_chars_removed": 0, "fixed_over_limit": True}
+    )
+
+    assert notice == (
+        "Basil's system prompt and tools alone use about 30,100 tokens of Local Qwen's 32,768-token context window, "
+        "so there is little or no room for your request and the answer may be incomplete or fail. "
+        + budget.CONTEXT_WINDOW_FIX_HINT
+    )
+
+
+def test_context_trimmed_notice_combines_both_causes_in_one_message():
+    notice = budget.context_trimmed_notice(
+        {"model": "Local Qwen", "window_tokens": 32_768, "fixed_prompt_tokens": 30_100, "request_chars_removed": 1_500, "fixed_over_limit": True}
+    )
+
+    assert notice.count(budget.CONTEXT_WINDOW_FIX_HINT) == 1
+    assert "tools alone use about 30,100 tokens" in notice
+    assert "removed about 1,500 characters" in notice
+
+
+def test_context_trimmed_notice_is_empty_when_nothing_was_cut_and_the_fixed_prompt_fits():
+    assert budget.context_trimmed_notice({"model": "Local Qwen", "request_chars_removed": 0, "fixed_over_limit": False}) == ""
+    assert budget.context_trimmed_notice({}) == ""
+
+
+def test_the_answer_gets_the_notice_appended_after_a_blank_line():
+    details = {"model": "Local Qwen", "window_tokens": 32_768, "request_chars_removed": 4_000, "fixed_over_limit": False}
+
+    text = budget.with_context_trimmed_notice("The answer.\n", {"output": "x", "context_trimmed": details})
+
+    assert text == "The answer.\n\n" + budget.context_trimmed_notice(details)
+
+
+def test_the_answer_is_unchanged_without_a_cut_or_after_a_context_overflow_or_when_already_noted():
+    details = {"model": "Local Qwen", "window_tokens": 32_768, "request_chars_removed": 4_000}
+    notice = budget.context_trimmed_notice(details)
+
+    assert budget.with_context_trimmed_notice("The answer.", {"output": "x"}) == "The answer."
+    assert budget.with_context_trimmed_notice("The answer.", None) == "The answer."
+    assert budget.with_context_trimmed_notice("The answer.", {"context_trimmed": "not a dict"}) == "The answer."
+    assert budget.with_context_trimmed_notice("The answer.", {"context_trimmed": {"request_chars_removed": 0}}) == "The answer."
+    assert (
+        budget.with_context_trimmed_notice("Stopped.", {"context_window_exceeded": {"model": "Local Qwen"}, "context_trimmed": details})
+        == "Stopped."
+    )
+    already = f"The answer.\n\n{notice}"
+    assert budget.with_context_trimmed_notice(already, {"context_trimmed": details}) == already
+
+
+def test_a_context_cut_recorded_by_the_run_flags_reaches_the_answer_text():
+    from api.services.agent_processing.lifecycle.execution_graph.agent_loop_model_recovery import AgentRunFlags
+
+    flags = AgentRunFlags(
+        context_trimmed={"model": "Local Qwen", "window_tokens": 32_768, "fixed_prompt_tokens": 30_100, "request_chars_removed": 0, "fixed_over_limit": True}
+    )
+    result = {"output": "x", **flags.as_result_fields()}
+
+    text = budget.with_context_trimmed_notice("The answer.", result)
+
+    assert text.startswith("The answer.\n\nBasil's system prompt and tools alone use about 30,100 tokens")
+    assert text.endswith(budget.CONTEXT_WINDOW_FIX_HINT)
+
+
+def test_context_trimmed_notice_falls_back_to_generic_wording_when_the_model_and_window_are_unknown():
+    notice = budget.context_trimmed_notice({"request_chars_removed": 2_000})
+
+    assert notice.startswith("To fit the selected model's context window, Basil removed about 2,000 characters")

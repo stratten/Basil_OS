@@ -1,4 +1,4 @@
-import type { AgentStatus, AgentTaskDetail, CheckpointData, TimelineEntry } from '../types';
+import type { AgentStatus, AgentTaskDetail, CheckpointData, PersistedThinkingSegment, TimelineEntry } from '../types';
 import { normalizePersistedThinkingSegments } from '../types';
 import { parseAgentTaskPresentationSummaryForTask } from '../artifacts/artifactContract';
 import * as api from '../services/api';
@@ -6,6 +6,8 @@ import { approvalExplanationFromContext } from '../services/approvalExplanation'
 import { responseTimeLimitFromContext } from '../components/interaction/responseTimeLimit';
 import { agentStore } from '../store/agentStore';
 import { normalizeCheckpointData } from '../store/agentStore/checkpointNormalization';
+import { earliestTimelineMs } from '../store/agentStore/timelineBackfill';
+import { mergeEarlierThinkingSegments } from '../store/agentStore/thinkingBackfill';
 import { clearLiveGap, liveGapStart } from '../store/liveActivityClock';
 import { buildDurableFollowUpHistoryBeforeActiveChild } from './followUpHistory';
 
@@ -232,10 +234,23 @@ async function restorePendingProviderInteraction(
 // While a task is live, WebSocket progress is the freshest source, but a dropped socket loses events for good. The backend persists progress as it happens, so when the feed was interrupted (or a window opened mid-run and shows nothing yet) the persisted entries are merged back in. A task whose feed never broke is left alone: live and persisted entries are separate records, and merging them when nothing was lost would risk near-duplicate rows.
 function backfillProgressMissedByLiveFeed(agentTaskId: string, durableTimeline: TimelineEntry[]): void {
   const gapStart = liveGapStart(agentTaskId);
-  const showsNothingYet = (agentStore.getAgent(agentTaskId)?.executionTimeline.length ?? 0) === 0;
-  if (gapStart === undefined && !showsNothingYet) return;
+  const localTimeline = agentStore.getAgent(agentTaskId)?.executionTimeline ?? [];
+  const showsNothingYet = localTimeline.length === 0;
+  if (gapStart === undefined && !showsNothingYet) {
+    // A window opened mid-run is handed the live feed from that moment on, so the first event to land (often the question the run is waiting on) can arrive before this hydration and leave the thread showing only that. Nothing the feed delivers can ever precede its first event, so everything persisted before it is history this window missed.
+    const firstLiveMs = earliestTimelineMs(localTimeline);
+    if (firstLiveMs !== undefined) agentStore.backfillDurableTimeline(agentTaskId, durableTimeline, 0, firstLiveMs);
+    return;
+  }
   agentStore.backfillDurableTimeline(agentTaskId, durableTimeline, gapStart ?? 0);
   clearLiveGap(agentTaskId);
+}
+
+// Persisted reasoning exists for a run that is paused, finished, or parked on a question. A window opened mid-run holds only the reasoning streamed since it opened, so the earlier persisted segments are restored in front of it.
+function restoreEarlierThinkingSegments(agentTaskId: string, persisted: PersistedThinkingSegment[] | undefined): void {
+  const local = agentStore.getAgent(agentTaskId)?.thinkingSegments ?? [];
+  const merged = mergeEarlierThinkingSegments(local, normalizePersistedThinkingSegments(persisted));
+  if (merged !== local) agentStore.setThinkingSegments(agentTaskId, merged);
 }
 
 // A chain opened through the live path starts as a bare store entry, and only the newest turn is hydrated into it, so the turns before it were missing from the thread (and from the sidebar's chain title) until the window was reopened from history. The durable turns before the active one are loaded here. They only replace what the entry already holds when they are more complete, so history accumulated live is never shortened.
@@ -440,6 +455,7 @@ export function hydrateAgentFromBackend(agentTaskId: string): Promise<HydrationO
           agentStore.reconcileDurableArtifactTimeline(agentTaskId, turn.execution_timeline);
           backfillProgressMissedByLiveFeed(agentTaskId, turn.execution_timeline);
         }
+        restoreEarlierThinkingSegments(agentTaskId, turn.thinking_history);
         // While the task is live, WebSocket progress is the freshest source.
         return 'hydrated';
       }

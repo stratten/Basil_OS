@@ -32,7 +32,12 @@ class DiscoveryHandoff:
             + json.dumps(payload, ensure_ascii=False)
             + "\nUse the original request and this prepared input to select the relevant "
             "authoritative records before any material write. The record catalog is metadata; "
-            "call retrieve_basil_history with browse, search, aggregate, or detail to collect evidence."
+            "call retrieve_basil_history with browse, search, aggregate, or detail to collect evidence. "
+            "Select records by what they can establish, not by a matching label alone: user-provided files are claims to compare, "
+            "a record marked primary is its Basil-owned authority, a record marked derived is supporting context, "
+            "and a scheduled calendar event is not proof that an event occurred. Query every selected available record type "
+            "through retrieve_basil_history; if one is unavailable or coverage is limited, state that limitation "
+            "rather than silently substituting another source."
         )
 
 

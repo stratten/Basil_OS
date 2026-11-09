@@ -3,13 +3,19 @@
 One function decides, and it is enforced in three places: the approval event (so the card hides the checkbox), the approval response (so a forged ``remember`` is dropped), and ``WhitelistManager.add_to_whitelist`` (so no caller can store the pattern). Stored patterns that fail the check are also skipped when matching, so an old entry cannot approve arbitrary code.
 """
 
-import os
-import re
 import shlex
 from dataclasses import dataclass
 from typing import Any, Dict, Mapping, Optional
 
-SHELL_WRAPPERS = frozenset({"bash", "sh", "zsh", "fish", "dash", "ksh"})
+from .command_words import (
+    SHELL_WRAPPERS,
+    effective_command,
+    is_shell_wrapper,
+    normalized_command_name,
+    pattern_words,
+)
+
+__all__ = ["SHELL_WRAPPERS", "is_shell_wrapper", "normalized_command_name"]
 
 INTERPRETERS = frozenset({"python", "python3", "node", "ruby", "perl", "php", "lua", "osascript", "swift"})
 
@@ -21,7 +27,22 @@ REMEMBERABLE_EXECUTION_TYPE = "shell"
 MAX_ADVICE_REASON_CHARS = 500
 MAX_PURPOSE_CHARS = 1000
 
-_VERSION_SUFFIX = re.compile(r"[\d.]+$")
+# A connected-tool call is described to the approval service as `mcp:<connection name>:<tool>(<arguments>)`. As a command pattern that text either carries one call's arguments (and never matches again) or shrinks to the first word of the connection's name (and covers every tool on it), so connected tools are remembered per tool through the connection's tool policy instead.
+CONNECTED_TOOL_COMMAND_PREFIX = "mcp:"
+CONNECTED_TOOL_ASK_REASON = "This tool is set to ask before it runs"
+CONNECTED_TOOL_REMEMBER_REASON = "A connected tool cannot be remembered as a command pattern, because the pattern would cover every tool on that connection. Set this tool to Always allow in Settings → Connections instead."
+
+
+def is_connected_tool_command(text: str) -> bool:
+    """True when the text is the synthetic command Basil builds for a connected-tool call, or a pattern derived from it."""
+    return text.lstrip().startswith(CONNECTED_TOOL_COMMAND_PREFIX)
+
+# Tools with many unrelated subcommands, some of which delete, publish, or send data. Remembering only the bare name would approve all of them, so a specific form (git status, gh gist view) is required instead.
+BROAD_ONLY_COMMANDS = frozenset({
+    "git", "gh", "docker", "kubectl", "helm", "terraform", "aws", "gcloud", "az",
+    "curl", "wget", "ssh", "scp", "sftp", "rsync", "nc", "ncat",
+    "brew", "npm", "npx", "yarn", "pnpm", "pip", "cargo", "make",
+})
 
 
 @dataclass(frozen=True)
@@ -30,17 +51,6 @@ class WhitelistEligibility:
 
     eligible: bool
     reason: str = ""
-
-
-def normalized_command_name(token: str) -> str:
-    """Return the lowercase executable name without its directory or trailing version digits (python3.11 becomes python)."""
-    base = os.path.basename(token.strip()).lower()
-    stripped = _VERSION_SUFFIX.sub("", base)
-    return stripped or base
-
-
-def is_shell_wrapper(token: str) -> bool:
-    return normalized_command_name(token) in SHELL_WRAPPERS
 
 
 def is_interpreter(token: str) -> bool:
@@ -64,13 +74,41 @@ def assess_whitelist_eligibility(
     generalized_pattern: Optional[str] = None,
     *,
     execution_type: str = REMEMBERABLE_EXECUTION_TYPE,
+    enforce_specificity: bool = True,
 ) -> WhitelistEligibility:
-    """Decide whether the pattern generalized from ``command`` may ever be remembered."""
+    """Decide whether the pattern chosen for ``command`` may ever be remembered.
+
+    ``enforce_specificity`` additionally refuses a bare name such as ``git`` or ``gh`` that would approve every subcommand. It applies when a pattern is chosen for the user; it is switched off when re-checking a stored pattern (so an older entry keeps working and is only flagged as broad) and for a pattern the user typed themselves.
+    """
     if execution_type != REMEMBERABLE_EXECUTION_TYPE:
         return WhitelistEligibility(False, "Scripts and app automation are reviewed every time, so this choice cannot be remembered.")
 
+    if is_connected_tool_command(command) or is_connected_tool_command(generalized_pattern or ""):
+        return WhitelistEligibility(False, CONNECTED_TOOL_REMEMBER_REASON)
+
+    if effective_command(command).chained:
+        return WhitelistEligibility(
+            False,
+            "This command chains, pipes, redirects, or substitutes other commands, so Basil asks every time instead of remembering it.",
+        )
+
     pattern = generalized_pattern if generalized_pattern is not None else command
-    return _assess_pattern(pattern)
+    eligibility = _assess_pattern(pattern)
+    if eligibility.eligible and enforce_specificity:
+        return _assess_specificity(pattern)
+    return eligibility
+
+
+def _assess_specificity(pattern: str) -> WhitelistEligibility:
+    words = pattern_words(pattern)
+    if words is not None and len(words) == 1:
+        name = normalized_command_name(words[0])
+        if name in BROAD_ONLY_COMMANDS:
+            return WhitelistEligibility(
+                False,
+                f"Remembering only {name} would approve every {name} command, so Basil asks every time unless the agent names a specific form such as {name} followed by its subcommand.",
+            )
+    return WhitelistEligibility(True)
 
 
 def _assess_pattern(pattern: str) -> WhitelistEligibility:

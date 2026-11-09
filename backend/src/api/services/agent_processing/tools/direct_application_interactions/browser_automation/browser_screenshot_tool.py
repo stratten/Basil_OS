@@ -21,6 +21,7 @@ from .browser_target_runtime import (
     resolve_browser_target_inputs,
     resolve_preferred_user_browser,
 )
+from .browser_window_capture_target import resolve_window_capture_target
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ class BrowserScreenshotInput(BaseModel):
     tab_index: Optional[int] = Field(default=None, description="Optional expected 1-based tab index.")
     browser_automation_target: Optional[Dict[str, Any]] = Field(
         default=None,
-        description="Structured target returned by browser_tabs.ensure_automation_window. Screenshot capture still uses the active window.",
+        description="Structured target returned by browser_tabs.ensure_automation_window. When it names a Basil automation window, that exact window is captured in the background without bringing the browser forward. Without one, the active window is captured.",
     )
 
 
@@ -82,7 +83,18 @@ async def _browser_screenshot_impl(
         if browser is None or browser.strip() == "":
             browser = await resolve_preferred_user_browser()
 
-        capture = await request_swift_window_capture("browser_screenshot")
+        window_target = None
+        if target is not None and target.window_id is not None:
+            # A pinned Basil window is captured by its own window id, so the browser is never activated and the frontmost app is irrelevant.
+            window_target, window_error = await resolve_window_capture_target(target)
+            if window_target is None:
+                return json.dumps({
+                    "success": False,
+                    "error": window_error,
+                    "browser_automation_target": target.to_result(),
+                }, ensure_ascii=False)
+
+        capture = await request_swift_window_capture("browser_screenshot", window_target=window_target)
         logger.info(
             "BROWSER_AUDIT action=screenshot expected_browser=%s success=%s app=%s",
             browser,
@@ -108,10 +120,13 @@ async def _browser_screenshot_impl(
         }
         if target is not None:
             result["browser_automation_target"] = target.to_result()
-            result["warning"] = (
-                "Screenshot capture uses the active browser window; verify it matches "
-                "browser_automation_target before relying on visual analysis."
-            )
+            if window_target is not None:
+                result["capture_scope"] = "automation_window"
+            else:
+                result["warning"] = (
+                    "Screenshot capture uses the active browser window; verify it matches "
+                    "browser_automation_target before relying on visual analysis."
+                )
         elif window_index is not None or tab_index is not None:
             result["browser_automation_target"] = {
                 "browser": browser,
@@ -146,17 +161,21 @@ async def _browser_screenshot_impl(
 
 
 SLIM_DESCRIPTION = (
-    "Capture the active browser window as an image using Basil's Swift window "
-    "capture bridge. Returns image_path for analyze_with_vision. Optional "
-    "browser only checks whether the active captured app matches."
+    "Capture the Basil automation window (pass browser_automation_target) as an image "
+    "without bringing the browser forward, or the active browser window when no target "
+    "is given. Returns image_path for analyze_with_vision. Never activate or raise the "
+    "browser to take a screenshot."
 )
 
-_FULL_DESCRIPTION = """Capture the active browser window and return a local image path.
+_FULL_DESCRIPTION = """Capture a browser window and return a local image path.
 
 Use this when DOM inspection cannot see the target or when visual context is required.
-Pass the returned image_path to analyze_with_vision for visual reasoning. This captures
-the active window through Basil's existing Swift capture bridge, so the user may need
-Screen Recording permission enabled.
+Pass the returned image_path to analyze_with_vision for visual reasoning. When you pass the
+browser_automation_target returned by browser_tabs ensure_automation_window, Basil captures
+that exact window in the background, even if another app is frontmost or the window is covered.
+Do not run AppleScript to activate, raise, or focus the browser before capturing: that is not
+needed and takes over the user's screen. Without a target, the active window is captured.
+Basil needs Screen Recording permission enabled.
 """
 
 

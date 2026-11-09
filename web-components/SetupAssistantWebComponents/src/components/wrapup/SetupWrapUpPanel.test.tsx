@@ -9,6 +9,11 @@ vi.mock('./wrapUpReferenceExport', () => ({
   downloadWrapUpReferencePdf: vi.fn().mockResolvedValue('PDF saved.'),
 }))
 
+vi.mock('@/services/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/api')>()),
+  fetchExpressReceipt: vi.fn().mockResolvedValue({ items: [] }),
+}))
+
 import { SetupWrapUpPanel, type SetupWrapUpPanelProps } from './SetupWrapUpPanel'
 
 let container: HTMLElement

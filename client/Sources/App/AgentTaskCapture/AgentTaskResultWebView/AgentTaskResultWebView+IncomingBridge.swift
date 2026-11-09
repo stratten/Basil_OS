@@ -381,6 +381,9 @@ extension AgentTaskResultWebView {
             if didFocusedTaskFinish {
                 onFocusedAgentTaskCompleted?()
             }
+        case "unfocusedAgentTaskCompleted":
+            // Pushed from the React app when a task other than the focused one finishes a turn while the widget is collapsed. The sidebar that would show it is hidden, so the owner decides whether to expand the widget.
+            onUnfocusedAgentTaskCompleted?()
         default:
             #if DEBUG
             DevLogger.shared.info("[AgentTaskResultWebView \(instanceId)] Unknown message type: \(type)", context: "AgentTaskCapture")

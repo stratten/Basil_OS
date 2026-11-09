@@ -198,7 +198,7 @@ def test_provider_published_replacements(retired_id, replacement):
 def test_migration_is_idempotent_and_leaves_other_models_alone():
     data = {
         "models": {"reasoning_model": "gpt-5.6-terra", "vision_model": ""},
-        "activity_capture": {"processing_model": "upstage/SOLAR-10.7B-Instruct-v1.0"},
+        "activity_capture": {"processing_model": "Qwen-qwen35-9b-q4km"},
         "zettel": {"narrative_model": ""},
     }
     before = json.loads(json.dumps(data))
@@ -256,12 +256,16 @@ def test_enabled_state_carries_over_to_the_replacement_model():
     assert migrate_retired_cloud_model_ids_in_data(data) is False
 
 
+# Hugging Face repository ids that old defaults stored verbatim; they map straight to a registry id rather than to a slash-form preference id.
+HUGGING_FACE_STYLE_RETIRED_IDS = frozenset({"upstage/SOLAR-10.7B-Instruct-v1.0"})
+
+
 @pytest.mark.parametrize("retired_id", sorted(RETIRED_LOCAL_MODEL_REPLACEMENTS))
 def test_every_retired_local_id_is_absent_and_replaced_by_a_registry_model(retired_id):
     replacement = RETIRED_LOCAL_MODEL_REPLACEMENTS[retired_id]
     assert replacement not in RETIRED_LOCAL_MODEL_REPLACEMENTS
     # Slash-form ids are how preferences spell a local model; only the dash form is a registry key.
-    if "/" in retired_id:
+    if "/" in retired_id and retired_id not in HUGGING_FACE_STYLE_RETIRED_IDS:
         assert "/" in replacement
         return
     assert get_model(retired_id) is None
@@ -273,6 +277,7 @@ def test_every_retired_local_id_is_absent_and_replaced_by_a_registry_model(retir
     [
         ("Solar-solar", "Qwen-qwen35-9b-q4km"),
         ("solar/solar", "qwen/qwen35-9b-q4km"),
+        ("upstage/SOLAR-10.7B-Instruct-v1.0", "Qwen-qwen35-9b-q4km"),
         ("Mistral-mistral-nemo", "Mistral-ministral3-8b-instruct-q4km"),
         ("Qwen-qwen25vl-3b-instruct-q4km", "Qwen-qwen3vl-4b-instruct-q4km"),
         ("Qwen-qwen25vl-7b-instruct-q4k", "Qwen-qwen3vl-8b-instruct-q4km"),
@@ -284,6 +289,16 @@ def test_saved_local_model_preferences_move_to_replacements(retired_id, replacem
 
     assert migrate_retired_cloud_model_ids_in_data(data) is True
     assert data["models"] == {"reasoning_model": replacement, "local_vision_model_id": replacement}
+    assert migrate_retired_cloud_model_ids_in_data(data) is False
+
+
+def test_saved_solar_activity_processing_model_moves_to_a_registry_model():
+    data = {"activity_capture": {"processing_model": "upstage/SOLAR-10.7B-Instruct-v1.0"}, "zettel": {"narrative_model": "custom/own-model"}}
+
+    assert migrate_retired_cloud_model_ids_in_data(data) is True
+    assert data["activity_capture"]["processing_model"] == "Qwen-qwen35-9b-q4km"
+    assert get_model(data["activity_capture"]["processing_model"]) is not None
+    assert data["zettel"]["narrative_model"] == "custom/own-model"
     assert migrate_retired_cloud_model_ids_in_data(data) is False
 
 

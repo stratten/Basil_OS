@@ -113,7 +113,7 @@ class PyannoteLoader:
                                     )
                                     
                                     # Load state dict
-                                    state_dict = torch.load(model_file, map_location='cpu')
+                                    state_dict = torch.load(model_file, map_location='cpu', weights_only=False)  # Pyannote checkpoints pickle library classes; this keeps the torch 2.5 behavior for bundled or user-local files.
                                     
                                     # Handle different state dict formats
                                     if isinstance(state_dict, dict) and "state_dict" in state_dict:
@@ -173,7 +173,7 @@ class PyannoteLoader:
                                     )
                                     
                                     # Load state dict
-                                    state_dict = torch.load(model_file, map_location='cpu')
+                                    state_dict = torch.load(model_file, map_location='cpu', weights_only=False)  # Pyannote checkpoints pickle library classes; this keeps the torch 2.5 behavior for bundled or user-local files.
                                     
                                     # Handle different state dict formats
                                     if isinstance(state_dict, dict) and "state_dict" in state_dict:

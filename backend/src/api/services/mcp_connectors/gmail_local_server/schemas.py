@@ -42,7 +42,7 @@ class _MutatingInput(_GmailInput):
 
 
 class SearchThreadsInput(_GmailInput):
-    query: Optional[str] = Field(default=None, description=_QUERY_DESCRIPTION)
+    query: Optional[str] = Field(default=None, description=_QUERY_DESCRIPTION + " When omitted, the search covers the inbox only (in:inbox); pass in:anywhere to search all mail.")
     page_size: int = Field(default=20, ge=1, le=50, alias="pageSize", description="Optional. Threads to return, 1 to 50. Defaults to 20.")
     page_token: Optional[str] = Field(default=None, alias="pageToken", description="Optional. The nextPageToken from the previous call, to fetch the next page.")
     view: Literal["THREAD_VIEW_UNSPECIFIED", "THREAD_VIEW_METADATA_ONLY", "THREAD_VIEW_MINIMAL"] = Field(

@@ -34,3 +34,34 @@ describe('checkpoint multi-select and numeric normalization', () => {
     expect(normalizeCheckpointData('task-1', { prompt: 'Notes?', input_type: 'text' })).not.toHaveProperty('value_kind');
   });
 });
+
+describe('checkpoint details normalization', () => {
+  it('keeps trimmed details for any input type', () => {
+    const approval = normalizeCheckpointData('task-1', {
+      prompt: 'Send this reply to Mariam now?',
+      input_type: 'yes_no',
+      details_markdown: '  **To:** mariam@example.com\n\nHi Mariam  ',
+    });
+    expect(approval?.input_type).toBe('confirmation');
+    expect(approval?.details_markdown).toBe('**To:** mariam@example.com\n\nHi Mariam');
+
+    const text = normalizeCheckpointData('task-1', {
+      prompt: 'Any changes?',
+      input_type: 'text',
+      details_markdown: 'Draft body',
+    });
+    expect(text?.details_markdown).toBe('Draft body');
+  });
+
+  it('drops blank and non-string details', () => {
+    expect(
+      normalizeCheckpointData('task-1', { prompt: 'Send it?', input_type: 'yes_no', details_markdown: '   \n ' }),
+    ).not.toHaveProperty('details_markdown');
+    expect(
+      normalizeCheckpointData('task-1', { prompt: 'Send it?', input_type: 'yes_no', details_markdown: 42 }),
+    ).not.toHaveProperty('details_markdown');
+    expect(normalizeCheckpointData('task-1', { prompt: 'Send it?', input_type: 'yes_no' })).not.toHaveProperty(
+      'details_markdown',
+    );
+  });
+});

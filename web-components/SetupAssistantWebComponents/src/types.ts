@@ -124,14 +124,31 @@ export interface SetupAgentModelAccessOption {
   download_size_description?: string | null
   local_model_type?: string | null
   local_model_variant?: string | null
+  /** Filled only in a validation build, where it lists the local models a tester can choose between. Empty or missing means no chooser. */
+  local_model_choices?: SetupLocalModelChoice[]
+  /** True only in a fresh validation session whose normal Basil holds a complete copy of the model this option names. */
+  can_copy_from_normal_basil?: boolean
   requires_sign_in?: boolean
   requires_account_check?: boolean
   requires_payment_method?: boolean
 }
 
+export interface SetupLocalModelChoice {
+  model_id: string
+  model_type: string
+  variant: string
+  display_name: string
+  size_description?: string | null
+  downloaded: boolean
+  can_copy_from_normal_basil: boolean
+}
+
 export interface SetupLocalModelDownloadProgress {
   status: string
   progress?: number
+  /** Bytes received so far and bytes in the whole download. Zero until the download has reported them. */
+  total_downloaded?: number
+  total_size?: number
 }
 
 export interface SetupAgentProviderModelChoice {

@@ -255,3 +255,132 @@ describe('ReasoningWithInteractions', () => {
     expect(markup).toContain('2 reasoning passes');
   });
 });
+
+describe('InteractionExchange approval card', () => {
+  const longCommand = `osascript -e 'tell application "Mail" to make new outgoing message with properties {subject:"Hello there"}'\nsecond line`;
+  const approval: UserInteraction = {
+    id: 'ap',
+    entryId: 'user_interaction_ap',
+    kind: 'approval',
+    status: 'approved',
+    prompt: longCommand,
+    askedAt: '2026-10-04T23:40:02+00:00',
+    respondedAt: '2026-10-04T23:41:00+00:00',
+    responseHidden: false,
+    options: [],
+    purpose: 'Creates a draft email in Mail so you can review it.',
+  };
+
+  it('leads with the agent explanation and shows only a short command preview', () => {
+    const markup = renderToStaticMarkup(<InteractionExchange interaction={approval} />);
+
+    expect(markup).toContain('What this does');
+    expect(markup).toContain('Creates a draft email in Mail so you can review it.');
+    expect(markup.indexOf('What this does')).toBeLessThan(markup.indexOf('interaction-exchange-command'));
+    expect(markup).toContain('Show full command');
+    expect(markup).toContain('…</pre>');
+    expect(markup).not.toContain('second line');
+  });
+
+  it('offers the full script behind an expander and keeps its text hidden until opened', () => {
+    const markup = renderToStaticMarkup(
+      <InteractionExchange
+        interaction={{
+          ...approval,
+          scriptPath: '/tmp/run.scpt',
+          scriptContent: 'tell application "Mail"\nactivate\nend tell',
+        }}
+      />,
+    );
+
+    expect(markup).toContain('View full script (3 lines)');
+    expect(markup).toContain('/tmp/run.scpt');
+    expect(markup).not.toContain('activate');
+  });
+
+  it('credits the explanation to the agent, or to Basil when Basil wrote it', () => {
+    const agents = renderToStaticMarkup(<InteractionExchange interaction={approval} />);
+    const basils = renderToStaticMarkup(<InteractionExchange interaction={{ ...approval, purposeSource: 'basil' }} />);
+
+    expect(agents).toContain('The agent&#x27;s explanation');
+    expect(basils).toContain('Basil&#x27;s explanation');
+    expect(basils).not.toContain('The agent&#x27;s explanation');
+  });
+
+  it('says so when the agent gave no explanation, and stays quiet for older records', () => {
+    const missing = renderToStaticMarkup(<InteractionExchange interaction={{ ...approval, purpose: undefined, purposeMissing: true }} />);
+    const older = renderToStaticMarkup(<InteractionExchange interaction={{ ...approval, purpose: undefined }} />);
+
+    expect(missing).toContain('The agent did not explain this command.');
+    expect(older).not.toContain('did not explain');
+    expect(older).not.toContain('What this does');
+    expect(older).toContain('Show full command');
+  });
+
+  it('shows a short command in full with no expander', () => {
+    const markup = renderToStaticMarkup(<InteractionExchange interaction={{ ...approval, prompt: 'git status' }} />);
+
+    expect(markup).toContain('<pre class="interaction-exchange-command">git status</pre>');
+    expect(markup).not.toContain('Show full command');
+  });
+});
+
+describe('InteractionExchange attached files', () => {
+  const listing = "Attached for you to look at (local paths on the user's Mac):\n- /Users/me/Downloads/Meeting-2026-11-05-analysis.md\n- /Users/me/Projects/";
+  const note: UserInteraction = {
+    ...answered,
+    kind: 'guidance',
+    status: 'resolved',
+    prompt: `I'm dropping the analysis here directly.\n\n${listing}`,
+    response: undefined,
+  };
+
+  it('shows attached files as chips with the file name instead of a bulleted path list', () => {
+    const markup = renderToStaticMarkup(<InteractionExchange interaction={note} />);
+
+    expect(markup).toContain("I'm dropping the analysis here directly.");
+    expect(markup).toContain('attachment-list__row-name');
+    expect(markup).toContain('>Meeting-2026-11-05-analysis.md<');
+    expect(markup).toContain('title="/Users/me/Downloads/Meeting-2026-11-05-analysis.md"');
+    expect(markup).toContain('>Projects<');
+    expect(markup).not.toContain('Attached for you to look at');
+    expect(markup).not.toContain('<li>');
+  });
+
+  it('shows files attached to a resume note the same way', () => {
+    const resumed: UserInteraction = { ...answered, kind: 'pause', status: 'resolved', response: `Carry on.\n\n${listing}` };
+    const markup = renderToStaticMarkup(<InteractionExchange interaction={resumed} />);
+
+    expect(markup).toContain('Carry on.');
+    expect(markup).toContain('>Meeting-2026-11-05-analysis.md<');
+    expect(markup).not.toContain('Attached for you to look at');
+  });
+
+  it('shows only the chips when the note had no text', () => {
+    const markup = renderToStaticMarkup(<InteractionExchange interaction={{ ...note, prompt: listing }} />);
+
+    expect(markup).toContain('>Meeting-2026-11-05-analysis.md<');
+  });
+});
+
+describe('splitAttachedReferences', () => {
+  it('leaves ordinary text, and a heading that is not a clean listing, untouched', async () => {
+    const { splitAttachedReferences } = await import('./InteractionExchange');
+    const heading = "Attached for you to look at (local paths on the user's Mac):";
+
+    expect(splitAttachedReferences('Use the Paris office')).toEqual({ body: 'Use the Paris office', paths: [] });
+    expect(splitAttachedReferences(`${heading}\nnot a bullet`)).toEqual({ body: `${heading}\nnot a bullet`, paths: [] });
+    expect(splitAttachedReferences(`${heading}\n-`)).toEqual({ body: `${heading}\n-`, paths: [] });
+    expect(splitAttachedReferences(`I wrote ${heading}\n- /a`)).toEqual({ body: `I wrote ${heading}\n- /a`, paths: [] });
+  });
+
+  it('keeps paths with spaces and special characters whole', async () => {
+    const { splitAttachedReferences } = await import('./InteractionExchange');
+    const heading = "Attached for you to look at (local paths on the user's Mac):";
+
+    expect(splitAttachedReferences(`Hi\n\n${heading}\n- /Users/me/My Files/report (final) #2.pdf`)).toEqual({
+      body: 'Hi',
+      paths: ['/Users/me/My Files/report (final) #2.pdf'],
+    });
+  });
+});

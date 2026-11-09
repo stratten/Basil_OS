@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import List
 
+from .checklist_schema import get_agent_checklist_schema_statements
+
 
 def get_agent_work_schema_statements() -> List[str]:
     """Return agent-work tables and indexes for new SQLite databases."""
@@ -148,4 +150,5 @@ def get_agent_work_schema_statements() -> List[str]:
             session_id, source_item_id, target_item_id, relationship_type
         )
         """,
+        *get_agent_checklist_schema_statements(),
     ]

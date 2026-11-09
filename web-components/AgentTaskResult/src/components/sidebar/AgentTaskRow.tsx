@@ -1,9 +1,11 @@
-import { memo, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent, MouseEvent } from 'react';
+import type { ScheduledRunNowOutcome } from '../../services/scheduledRunNow';
 import { useHistoryRowRevealDelete } from '@shared/useHistoryRowRevealDelete';
 import { InlineDeleteConfirm } from '@shared/InlineDeleteConfirm';
 import AgentTaskActiveIndicator from '@shared/AgentTaskActiveIndicator';
 import NativeSymbolIcon from '@shared/NativeSymbolIcon';
+import { PlayCircleIcon } from '@shared/CircleControlIcons';
 import {
   BranchIcon,
   ConversationOriginIcon,
@@ -15,6 +17,7 @@ import {
 } from './SidebarIcons';
 import { formatTimestampForDisplay, useDateDisplayStyle } from '../../app/dateDisplay';
 import { describeFollowUpDue } from '../../app/followUpTime';
+import { useChecklistCounts } from '../../store/checklistStore';
 
 export interface AgentTaskRowProps {
   id: string;
@@ -60,12 +63,30 @@ export interface AgentTaskRowProps {
   nextFollowUpAt?: string;
   // Set only on rows that represent a schedule itself. True shows a solid green dot, false a hollow ring, so a schedule that has stopped firing is distinguishable at a glance.
   scheduleActive?: boolean;
+  // Makes the schedule's status dot a switch, so a schedule can be activated or deactivated without opening it and scrolling to its Activate or Deactivate button. Receives the schedule's id and the active state to set, so a repeated click sends the same value instead of flipping it back.
+  onToggleSchedule?: (id: string, nextActive: boolean) => void;
+  // Offered on a schedule row, on hover, as a play button that starts one run now, whether or not the schedule is active. Resolves with whether the run started; the row shows the result in place of its preview line for a few seconds.
+  onRunSchedule?: (id: string) => Promise<ScheduledRunNowOutcome>;
   // Question shown while this row awaits delete confirmation; defaults to the task wording.
   deleteConfirmLabel?: string;
+  // The chain root whose checklist counter this row shows after the file count. Rows that are not a task chain (a schedule) leave it unset.
+  checklistRootId?: string;
+  // The counter from the history list, shown until a live update for the chain arrives.
+  checklistDone?: number;
+  checklistTotal?: number;
 }
 
 // Archive and Delete are revealed side by side, 60px each.
 const SWIPE_ACTION_WIDTH_WITH_ARCHIVE = 120;
+
+// How long a Run now result stays in place of the row's preview line. A failure stays longer because it says what to do.
+const RUN_STARTED_NOTICE_MS = 3000;
+const RUN_FAILED_NOTICE_MS = 6000;
+
+interface RunNowNotice {
+  kind: 'starting' | 'started' | 'failed';
+  text: string;
+}
 
 function AgentTaskRowImpl({
   id,
@@ -95,13 +116,29 @@ function AgentTaskRowImpl({
   onConfirmDelete,
   onCancelDeleteRequest,
   scheduleActive,
+  onToggleSchedule,
+  onRunSchedule,
   deleteConfirmLabel = 'Delete this task?',
+  checklistRootId,
+  checklistDone = 0,
+  checklistTotal = 0,
 }: AgentTaskRowProps) {
+  const checklist = useChecklistCounts(checklistRootId, { done: checklistDone, total: checklistTotal });
+  const showChecklist = Boolean(checklistRootId) && checklist.total > 0;
+  const checklistLabel = `Checklist, ${checklist.done} of ${checklist.total} done${checklist.waitingUser > 0 ? `, ${checklist.waitingUser} waiting on you` : ''}`;
   const [hovered, setHovered] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const isActive = ['processing', 'routing', 'capturing', 'awaitingInput', 'paused'].includes(status);
   const showCancel = isActive && hovered && !isSelected && !!onCancel;
   const showTrash = !isActive && hovered && !!onRequestDelete;
+  const [runNotice, setRunNotice] = useState<RunNowNotice | null>(null);
+  const runNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const runStarting = runNotice?.kind === 'starting';
+  // Stays on screen while a run is starting, so moving the pointer away does not hide the button that was just pressed.
+  const showRunNow = scheduleActive !== undefined && !!onRunSchedule && (hovered || runStarting);
+  useEffect(() => () => {
+    if (runNoticeTimer.current) clearTimeout(runNoticeTimer.current);
+  }, []);
   const revealDelete = useHistoryRowRevealDelete({
     enabled: !isActive && !!onRequestDelete,
     actionWidth: onArchive ? SWIPE_ACTION_WIDTH_WITH_ARCHIVE : undefined,
@@ -130,6 +167,17 @@ function AgentTaskRowImpl({
 
   const handleDoubleClick = () => {
     if (!revealDelete.isOpen) onDetach?.(id);
+  };
+
+  const handleRunNow = async () => {
+    if (!onRunSchedule || runStarting) return;
+    if (runNoticeTimer.current) clearTimeout(runNoticeTimer.current);
+    setRunNotice({ kind: 'starting', text: 'Starting run…' });
+    const outcome = await onRunSchedule(id);
+    setRunNotice(outcome.ok
+      ? { kind: 'started', text: 'Run started' }
+      : { kind: 'failed', text: outcome.message || 'Basil could not start this run.' });
+    runNoticeTimer.current = setTimeout(() => setRunNotice(null), outcome.ok ? RUN_STARTED_NOTICE_MS : RUN_FAILED_NOTICE_MS);
   };
 
   if (isPendingDelete) {
@@ -231,12 +279,28 @@ function AgentTaskRowImpl({
               </span>
             ) : scheduleActive !== undefined ? (
               <>
-                <span
-                  className={`agent-task-row__schedule-dot ${scheduleActive ? 'is-active' : 'is-inactive'}`}
-                  role="img"
-                  aria-label={scheduleActive ? 'Schedule active' : 'Schedule inactive'}
-                  title={scheduleActive ? 'Active' : 'Inactive'}
-                />
+                {onToggleSchedule ? (
+                  <button
+                    type="button"
+                    className="agent-task-row__schedule-dot-btn"
+                    role="switch"
+                    aria-checked={scheduleActive}
+                    aria-label="Schedule active"
+                    title={scheduleActive ? 'Active. Click to deactivate' : 'Inactive. Click to activate'}
+                    onClick={(e) => { e.stopPropagation(); e.preventDefault(); onToggleSchedule(id, !scheduleActive); }}
+                    onDoubleClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  >
+                    <span className={`agent-task-row__schedule-dot ${scheduleActive ? 'is-active' : 'is-inactive'}`} aria-hidden="true" />
+                  </button>
+                ) : (
+                  <span
+                    className={`agent-task-row__schedule-dot ${scheduleActive ? 'is-active' : 'is-inactive'}`}
+                    role="img"
+                    aria-label={scheduleActive ? 'Schedule active' : 'Schedule inactive'}
+                    title={scheduleActive ? 'Active' : 'Inactive'}
+                  />
+                )}
                 {status === 'failed' && <StatusIcon status={status} resultSeverity={resultSeverity} size={8} />}
               </>
             ) : (
@@ -273,12 +337,19 @@ function AgentTaskRowImpl({
               </div>
               {needsApproval && !isSelected ? (
                 <div className="row-preview agent-task-row__preview--warning">{attentionPreview || 'Approval needed'}</div>
+              ) : runNotice ? (
+                <div
+                  className={runNotice.kind === 'failed' ? 'row-preview agent-task-row__preview--warning' : 'row-preview agent-task-row__preview--waiting'}
+                  role="status"
+                >
+                  {runNotice.text}
+                </div>
               ) : rowPreview ? (
                 <div className={isPaused ? 'row-preview agent-task-row__preview--paused' : followUpDue ? 'row-preview agent-task-row__preview--waiting' : 'row-preview'}>{rowPreview}</div>
               ) : null}
             </div>
 
-            {(needsApproval && !isSelected) || showCancel || (hasUnreadResult && !isSelected) ? (
+            {(needsApproval && !isSelected) || showCancel || showRunNow || (hasUnreadResult && !isSelected) ? (
               <span className="agent-task-row__trailing">
                 {needsApproval && !isSelected ? (
                   <svg className="agent-task-row__alert-icon" width="12" height="12" viewBox="0 0 16 16" fill="var(--warning-base)">
@@ -294,6 +365,18 @@ function AgentTaskRowImpl({
                       <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm2.12 4.88a.75.75 0 0 0-1.06 0L8 5.94 6.94 4.88a.75.75 0 1 0-1.06 1.06L6.94 7 5.88 8.06a.75.75 0 1 0 1.06 1.06L8 8.06l1.06 1.06a.75.75 0 1 0 1.06-1.06L9.06 7l1.06-1.06a.75.75 0 0 0 0-1.06z"/>
                     </svg>
                   </button>
+                ) : showRunNow ? (
+                  <button
+                    className="agent-schedule-run-btn"
+                    disabled={runStarting}
+                    onClick={(e) => { e.stopPropagation(); e.preventDefault(); void handleRunNow(); }}
+                    onDoubleClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                    title="Run now"
+                    aria-label="Run this schedule now"
+                  >
+                    <PlayCircleIcon />
+                  </button>
                 ) : (
                   <div className="unread-badge agent-task-row__unread" />
                 )}
@@ -301,14 +384,27 @@ function AgentTaskRowImpl({
             ) : null}
           </div>
 
-          {(dateStr || fileCount > 0 || followUpCount > 0) && (
+          {(dateStr || fileCount > 0 || showChecklist || followUpCount > 0) && (
             <div className="row-meta agent-task-row__meta">
-              {(dateStr || fileCount > 0) && (
+              {(dateStr || fileCount > 0 || showChecklist) && (
                 <div className="agent-task-row__meta-line">
                   {dateStr && <span>{dateStr}</span>}
                   {fileCount > 0 && (
                     <span className="agent-task-row__meta-item">
                       <DocIcon /> {fileCount}
+                    </span>
+                  )}
+                  {showChecklist && (
+                    <span
+                      className={`agent-task-row__meta-item agent-task-row__checklist${checklist.waitingUser > 0 ? ' is-attention' : ''}`}
+                      title={checklistLabel}
+                      aria-label={checklistLabel}
+                    >
+                      <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <rect x="2" y="2" width="12" height="12" rx="2.5" />
+                        <path d="m5 8.2 2 2 4-4.4" />
+                      </svg>
+                      {checklist.done}/{checklist.total}
                     </span>
                   )}
                 </div>

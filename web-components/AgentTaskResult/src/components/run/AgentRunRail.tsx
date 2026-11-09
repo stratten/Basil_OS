@@ -5,6 +5,7 @@ import { interactionSummary, runControlStageClass, runControlTone } from '../int
 import { isRevisionNumber, type AgentTaskRunFocusSummary } from './agentTaskRunFocus';
 import { presentRunStatus, RUN_STATUS_TONE_CLASS } from './agentRunMapPresentation';
 import { scrollVerticallyIntoView } from '../scrollVerticallyIntoView';
+import ChecklistRailPill from '../checklist/ChecklistRailPill';
 
 function RailGlyph({ stage }: { stage: AgentRunOverviewPresentation['stages'][number] }) {
   if (stage.kind === 'interaction') {
@@ -50,6 +51,8 @@ interface AgentRunRailProps {
   runs?: AgentTaskRunFocusSummary[];
   locationRunId?: string;
   onNavigateRun?: (runId: string) => void;
+  /** The chain whose checklist counter sits above the first turn. Omitted, the rail shows no checklist. */
+  checklistRootId?: string;
 }
 
 const STARTING_STAGE: AgentRunOverviewPresentation['stages'][number] = {
@@ -70,6 +73,7 @@ export function AgentRunRail({
   runs = [],
   locationRunId,
   onNavigateRun,
+  checklistRootId,
 }: AgentRunRailProps) {
   const phaseCount = overview.stages.filter(stage => stage.kind === 'phase').length;
   const interactionCount = overview.stages.filter(stage => stage.kind === 'interaction').length;
@@ -123,6 +127,7 @@ export function AgentRunRail({
   if (!showTurns || !onNavigateRun) {
     return (
       <aside className="agent-run-rail" aria-label="Run overview">
+        {checklistRootId && <ChecklistRailPill rootTaskId={checklistRootId} />}
         {flowToggle}
       </aside>
     );
@@ -156,6 +161,7 @@ export function AgentRunRail({
         }
       }}
     >
+      {checklistRootId && <ChecklistRailPill rootTaskId={checklistRootId} />}
       <nav className="agent-run-rail-turns" aria-label="Turns">
         {runs.map(run => {
           if (run.id === expandedRunId) {

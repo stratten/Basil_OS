@@ -92,7 +92,8 @@ def render_connection_tag_block(records: Iterable[Any]) -> str:
         "CONNECTIONS FOR THIS SCHEDULE:\n"
         "The user tied this scheduled task to the connections below. Use these exact connections through `external_catalog` (you can skip `list_servers` and go straight to `describe_server` with the connection_id) and do not substitute a different connection. "
         "Each tool's approval policy still applies, so a denied call stays denied.\n"
-        "Do not route around these connections. If a tool on one of them fails (access not enabled, signed out, denied, or any other error), do not get the same data a different way, such as the local Mail app, AppleScript, other email or messaging tools, or a browser. "
-        "Stop, tell the user which connection failed and quote the error and its user_action_required text, and finish the run with that report instead of a result.\n"
+        "Prefer these connections for everything they support, and try them first. Do not reach for a local app, AppleScript, a shell script, or a browser just because it is easier or more familiar when the connection can do the job.\n"
+        "Fall back to another tool only when the connection genuinely cannot do the job: it has no tool for the operation (for example, a connection that can read and draft email but has no tool to accept a calendar invite), it is broken (access not enabled, signed out, or an error that persists), or you have made a reasonable number of real attempts with its tools and they still fail. When a fallback is justified and the intent is clear, accomplish it with whatever other available tool can, such as a local app, AppleScript, a script, or a browser, keep using the connection for the rest, and do not hand the step back to the user. A call the user denied is not a failure: the denial stands, so do not redo it through another tool.\n"
+        "In your final report, name each step you did outside these connections, which connection and tool it was meant to use, and why you fell back, quoting the error and its user_action_required text when there was one.\n"
         + "\n".join(lines)
     )

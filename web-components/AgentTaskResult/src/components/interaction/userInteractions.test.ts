@@ -367,3 +367,54 @@ describe('run-control tone', () => {
     expect(runControlStageClass({ kind: 'phase', state: 'waiting' })).toBe('');
   });
 });
+
+describe('approval explanation fields', () => {
+  it('reads the explanation and script details recorded with an approval', () => {
+    const [interaction] = userInteractionsFromTimeline([
+      interactionEntry('a1', {
+        kind: 'approval',
+        status: 'approved',
+        prompt: 'osascript run.scpt',
+        purpose: 'Opens the draft in Mail.',
+        script_path: '/tmp/run.scpt',
+        script_notice: 'Saved for review.',
+        script_content: 'tell application "Mail"\nactivate\nend tell',
+        script_truncated: true,
+      }),
+    ]);
+
+    expect(interaction).toMatchObject({
+      purpose: 'Opens the draft in Mail.',
+      scriptPath: '/tmp/run.scpt',
+      scriptNotice: 'Saved for review.',
+      scriptContent: 'tell application "Mail"\nactivate\nend tell',
+      scriptTruncated: true,
+    });
+    expect(interaction.purposeMissing).toBeUndefined();
+  });
+
+  it('keeps who wrote an approval\'s explanation only when Basil did', () => {
+    const [basil, agent, unknown, blank] = userInteractionsFromTimeline([
+      interactionEntry('b1', { kind: 'approval', status: 'approved', prompt: 'connect-mcp-server', purpose: 'Connects Example.', purpose_source: 'basil' }),
+      interactionEntry('a1', { kind: 'approval', status: 'approved', prompt: 'ls', purpose: 'Lists it.', purpose_source: 'agent' }, '2026-10-04T23:41:03+00:00'),
+      interactionEntry('u1', { kind: 'approval', status: 'approved', prompt: 'ls', purpose: 'Lists it.', purpose_source: 'system' }, '2026-10-04T23:41:04+00:00'),
+      interactionEntry('x1', { kind: 'approval', status: 'approved', prompt: 'ls', purpose: '  ', purpose_source: 'basil' }, '2026-10-04T23:41:05+00:00'),
+    ]);
+
+    expect(basil.purposeSource).toBe('basil');
+    expect(agent.purposeSource).toBeUndefined();
+    expect(unknown.purposeSource).toBeUndefined();
+    expect(blank.purposeSource).toBeUndefined();
+  });
+
+  it('flags an approval recorded without the explanation it needed, and leaves older records unflagged', () => {
+    const [missing, older] = userInteractionsFromTimeline([
+      interactionEntry('m1', { kind: 'approval', status: 'denied', prompt: 'rm -rf build', purpose_missing: true }),
+      interactionEntry('o1', { kind: 'approval', status: 'approved', prompt: 'ls' }, '2026-10-04T23:41:02+00:00'),
+    ]);
+
+    expect(missing.purposeMissing).toBe(true);
+    expect(older.purpose).toBeUndefined();
+    expect(older.purposeMissing).toBeUndefined();
+  });
+});

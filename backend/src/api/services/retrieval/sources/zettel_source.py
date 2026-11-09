@@ -75,6 +75,15 @@ class ZettelBackedRetrievalSource:
             detail_guidance="Use detail for metadata, meeting analyses, and the merged transcript. Pass sections=['analyses'] to read analyses without the transcript, and page the transcript with transcript_offset.",
             supported_actions=("browse", "search", "aggregate", "detail"),
         ),
+        "imported_context": RetrievalSourceDescriptor(
+            source_kind="imported_context",
+            display_name="Imported personal context",
+            authority="primary",
+            evidence_kind="text the user chose to import, such as notes, memories or a spreadsheet of activities",
+            browse_guidance="Use for imported notes and records in a time range. Undated imports are stamped with the day they were imported, so prefer search for those.",
+            detail_guidance="Detail returns the imported entry as stored.",
+            supported_actions=("browse", "search", "aggregate", "detail"),
+        ),
     }
 
     def __init__(self, source_kind: str) -> None:

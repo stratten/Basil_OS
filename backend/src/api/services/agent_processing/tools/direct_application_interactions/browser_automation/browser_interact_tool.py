@@ -19,6 +19,7 @@ from api.core.security.protected_runtime_paths import (
     log_protected_runtime_refusal,
     references_protected_runtime_path,
 )
+from api.services.agent_processing.shared.agent_runtime_context import get_current_agent_context
 from api.services.agent_processing.tools.internal_basil_tools.checkpoint_tool import CheckpointRequest
 
 from .browser_interact_descriptions import FULL_DESCRIPTION, SLIM_DESCRIPTION
@@ -27,6 +28,10 @@ from .browser_runtime import (
     handle_browser_permission_issue,
     run_applescript,
 )
+from .browser_captcha import capture_captcha, submit_captcha_text
+from .browser_interact_batch import build_form_readback_js, fill_form_batch
+from .browser_interact_diagnostics import attach_not_found_diagnostics
+from .browser_page_settle import NON_NAVIGATING_INPUT_TYPES, settle_after_click, wait_for_selector
 from .browser_safety import is_sensitive_field_metadata
 from .browser_session_runtime import (
     background_browser_not_available_result,
@@ -54,9 +59,14 @@ class BrowserInteractInput(BaseModel):
         default=None,
         description="Browser to interact with: 'Safari', 'Chrome', 'Edge', or leave empty to auto-detect the user's default browser"
     )
-    action: Optional[Literal["click", "fill", "select", "navigate", "scroll", "wait"]] = Field(
+    action: Optional[
+        Literal["click", "fill", "select", "navigate", "scroll", "wait", "fill_form", "capture_captcha", "submit_captcha"]
+    ] = Field(
         default=None,
-        description="Required browser action to perform."
+        description=(
+            "Required browser action to perform. fill_form fills several fields from 'fields'. "
+            "capture_captcha and submit_captcha handle a type-the-characters image CAPTCHA only."
+        ),
     )
     selector: Optional[str] = Field(
         default=None,
@@ -67,7 +77,15 @@ class BrowserInteractInput(BaseModel):
     )
     value: Optional[str] = Field(
         default=None,
-        description="Value for 'fill' or 'select' actions"
+        description="Value for 'fill' or 'select' actions, or the characters read from the image for 'submit_captcha'."
+    )
+    fields: Optional[Dict[str, str]] = Field(
+        default=None,
+        description=(
+            "For 'fill_form': an object mapping each CSS selector from browser_inspect to the value to type, "
+            "for example {\"#first-name\": \"Ada\", \"#email\": \"ada@example.com\"}. At most 25 fields. "
+            "Filling stops at the first failure, and the filled values are read back. Sensitive fields still need approval."
+        ),
     )
     session_mode: Literal["user_browser", "basil_automation_browser"] = Field(
         default="user_browser",
@@ -178,7 +196,7 @@ function isCredentialLike(el, selectorText) {{
         el.getAttribute('aria-label'),
         el.getAttribute('placeholder')
     ].filter(Boolean).join(' ').toLowerCase();
-    return /password|passcode|token|secret|credential|one-time|otp|2fa|mfa/.test(attrs);
+    return /password|passcode|token|secret|credential|one-time|otp|2fa|mfa|cc-number|cc-csc|cc-exp|card[ _-]?(?:number|num)|credit[ _-]?card|cvv|cvc|security[ _-]?code/.test(attrs);
 }}
 
 function dispatchClick(el) {{
@@ -318,11 +336,9 @@ function dispatchClick(el) {{
     
     elif action == "wait":
         return f'''
-(async function() {{
+(function() {{
     {common_helpers}
-    const maxAttempts = 10;
-    const interval = 500;
-    for (let attempts = 1; attempts <= maxAttempts; attempts++) {{
+    try {{
         const el = queryDeep(selector);
         if (el && isVisible(el)) {{
             return JSON.stringify(Object.assign({{
@@ -330,17 +346,17 @@ function dispatchClick(el) {{
                 action: 'wait',
                 selector: selector,
                 found: true,
-                attempts: attempts
+                attempts: 1
             }}, elementInfo(el)));
         }}
-        await new Promise(resolve => setTimeout(resolve, interval));
+        return JSON.stringify(Object.assign({{
+            success: false,
+            action: 'wait',
+            error: 'Element not visible yet: {escaped_selector}'
+        }}, elementInfo(el)));
+    }} catch (e) {{
+        return JSON.stringify({{success: false, action: 'wait', error: 'Wait failed: ' + e.message}});
     }}
-    return JSON.stringify(Object.assign({{
-        success: false,
-        found: false,
-        attempts: maxAttempts,
-        error: 'Element not found after ' + (maxAttempts * interval / 1000) + 's: {escaped_selector}'
-    }}, elementInfo(null)));
 }})();
 '''
     
@@ -393,7 +409,7 @@ def _build_element_metadata_js(selector: str) -> str:
             el.getAttribute('aria-label'),
             el.getAttribute('placeholder')
         ].filter(Boolean).join(' ').toLowerCase();
-        return /password|passcode|token|secret|credential|one-time|otp|2fa|mfa/.test(attrs);
+        return /password|passcode|token|secret|credential|one-time|otp|2fa|mfa|cc-number|cc-csc|cc-exp|card[ _-]?(?:number|num)|credit[ _-]?card|cvv|cvc|security[ _-]?code/.test(attrs);
     }}
     try {{
         const el = queryDeep(selector);
@@ -443,6 +459,12 @@ async def _run_browser_js(
     try:
         return json.loads(stdout)
     except json.JSONDecodeError:
+        if not stdout.strip():
+            return {
+                "success": False,
+                "empty_response": True,
+                "error": "The browser returned no response, which usually means the page was navigating while the action ran.",
+            }
         logger.warning(f"Could not parse browser output as JSON: {stdout[:200]}")
         return {"success": False, "error": f"Invalid response from browser: {stdout[:200]}"}
 
@@ -456,6 +478,7 @@ async def _browser_interact_impl(
     window_index: Optional[int] = None,
     tab_index: Optional[int] = None,
     browser_automation_target: Optional[Dict[str, Any]] = None,
+    fields: Optional[Dict[str, str]] = None,
 ) -> str:
     """Implementation of browser interact tool.
     
@@ -501,7 +524,7 @@ async def _browser_interact_impl(
             logger.info(f"🖱️ Browser interact requested: browser={browser}, action={action}, selector={selector[:50]}")
         
         # Validate action
-        valid_actions = ['click', 'fill', 'select', 'navigate', 'scroll', 'wait']
+        valid_actions = ['click', 'fill', 'select', 'navigate', 'scroll', 'wait', 'fill_form', 'capture_captcha', 'submit_captcha']
         if not action:
             return json.dumps({
                 "success": False,
@@ -525,13 +548,73 @@ async def _browser_interact_impl(
             }, ensure_ascii=False)
         
         # Validate value for actions that require it
-        if action in ['fill', 'select'] and not value:
+        if action in ['fill', 'select', 'submit_captcha'] and not value:
             return json.dumps({
                 "success": False,
                 "action": action,
                 "error": f"Action '{action}' requires a 'value' parameter."
             }, ensure_ascii=False)
         
+        async def perform_sub_action(sub_action: str, sub_selector: str, sub_value: Optional[str]) -> Dict[str, Any]:
+            raw_result = await _browser_interact_impl(
+                browser=browser,
+                action=sub_action,
+                selector=sub_selector,
+                value=sub_value,
+                session_mode=session_mode,
+                window_index=window_index,
+                tab_index=tab_index,
+                browser_automation_target=browser_automation_target,
+            )
+            try:
+                parsed_result = json.loads(raw_result)
+            except json.JSONDecodeError:
+                return {"success": False, "error": str(raw_result)[:200]}
+            return parsed_result if isinstance(parsed_result, dict) else {"success": False, "error": "Unexpected interaction result."}
+
+        if action in ("fill_form", "capture_captcha", "submit_captcha"):
+            if action == "fill_form":
+                batch_result = await fill_form_batch(
+                    lambda form_selector, form_value: _browser_interact_impl(
+                        browser=browser,
+                        action="fill",
+                        selector=form_selector,
+                        value=form_value,
+                        session_mode=session_mode,
+                        window_index=window_index,
+                        tab_index=tab_index,
+                        browser_automation_target=browser_automation_target,
+                    ),
+                    lambda filled_selectors: _run_browser_js(
+                        browser,
+                        build_form_readback_js(filled_selectors),
+                        window_index=window_index,
+                        tab_index=tab_index,
+                    ),
+                    fields,
+                )
+            elif action == "capture_captcha":
+                batch_result = await capture_captcha(
+                    _run_browser_js,
+                    browser,
+                    window_index=window_index,
+                    tab_index=tab_index,
+                    target=target,
+                )
+            else:
+                batch_result = await submit_captcha_text(
+                    perform_sub_action,
+                    _run_browser_js,
+                    browser,
+                    value,
+                    window_index=window_index,
+                    tab_index=tab_index,
+                )
+            batch_result["browser"] = browser
+            if target is not None:
+                batch_result["browser_automation_target"] = target.to_result()
+            return json.dumps(batch_result, ensure_ascii=False, indent=2)
+
         allow_sensitive_fill = False
         redact_value = False
         sensitive_domain = None
@@ -552,6 +635,8 @@ async def _browser_interact_impl(
                         selector=selector,
                         url=str(metadata.get("url") or ""),
                         field_metadata=metadata,
+                        agent_task_id=get_current_agent_context().get("agent_task_id"),
+                        websocket_manager=get_current_agent_context().get("websocket_manager"),
                     )
                 )
                 if not decision.allowed:
@@ -593,13 +678,79 @@ async def _browser_interact_impl(
             redact_value=redact_value,
         )
         timeout = 45.0 if action == 'wait' else 30.0
-        result = await _run_browser_js(
-            browser,
-            js_code,
-            timeout=timeout,
-            window_index=window_index,
-            tab_index=tab_index,
-        )
+        if action == "wait" and selector.strip():
+            result = await wait_for_selector(
+                _run_browser_js,
+                browser,
+                js_code,
+                selector,
+                window_index=window_index,
+                tab_index=tab_index,
+            )
+        else:
+            result = await _run_browser_js(
+                browser,
+                js_code,
+                timeout=timeout,
+                window_index=window_index,
+                tab_index=tab_index,
+            )
+            if isinstance(result, dict) and result.get("empty_response"):
+                if action in ("wait", "scroll"):
+                    await asyncio.sleep(1.0)
+                    result = await _run_browser_js(
+                        browser,
+                        js_code,
+                        timeout=timeout,
+                        window_index=window_index,
+                        tab_index=tab_index,
+                    )
+                else:
+                    unknown_outcome = await settle_after_click(
+                        _run_browser_js,
+                        browser,
+                        before_url=None,
+                        before_title=None,
+                        window_index=window_index,
+                        tab_index=tab_index,
+                    )
+                    unknown_outcome.pop("navigated", None)
+                    result = {
+                        "success": False,
+                        "action": action,
+                        "outcome_unknown": True,
+                        "error": (
+                            "The page started navigating while the action ran, so it may have taken effect. "
+                            "Basil did not repeat it, to avoid doing it twice. Read the page summary below, "
+                            "then call browser_inspect before deciding whether to repeat it."
+                        ),
+                        **unknown_outcome,
+                    }
+        if isinstance(result, dict):
+            if action == "click" and result.get("success") and result.get("type") not in NON_NAVIGATING_INPUT_TYPES:
+                settled_page = await settle_after_click(
+                    _run_browser_js,
+                    browser,
+                    before_url=result.get("newUrl"),
+                    before_title=result.get("newTitle"),
+                    window_index=window_index,
+                    tab_index=tab_index,
+                )
+                result.update(settled_page)
+                page_summary = settled_page.get("page") or {}
+                if page_summary.get("url"):
+                    result["newUrl"] = page_summary["url"]
+                if page_summary.get("title"):
+                    result["newTitle"] = page_summary["title"]
+            else:
+                await attach_not_found_diagnostics(
+                    _run_browser_js,
+                    browser,
+                    selector,
+                    result,
+                    window_index=window_index,
+                    tab_index=tab_index,
+                )
 
         # Add browser info to result
         if isinstance(result, dict):

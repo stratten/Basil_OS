@@ -439,3 +439,49 @@ async def test_pending_work_takes_precedence_over_a_continuation():
 
     schedule.assert_awaited_once()
     schedule.gap.assert_not_awaited()
+
+
+def _success_envelope_with_checklist_review():
+    return {
+        "success": True,
+        "outcome": "success",
+        "summary_text": "Five proposals.",
+        "result_payload": {"outcome": "success", "files": []},
+        "checklist_review": {"items": [{"item": "abcd1234", "status": "waiting_user", "reason": "Only proposed.", "waiting_on": ""}], "new_items": []},
+    }
+
+
+@pytest.mark.asyncio
+async def test_checklist_review_is_applied_to_this_chain_and_never_stored_or_broadcast():
+    apply_review = AsyncMock(return_value={"updated": 1, "created": 0, "skipped": []})
+    with patch("api.services.agent_processing.lifecycle.runtime.agent_checklist_signoff.apply_checklist_review", new=apply_review):
+        _schedule, mock_update, ws_manager = await _run_verification_with(_success_envelope_with_checklist_review(), follow_up=None)
+
+    apply_review.assert_awaited_once()
+    _knowledge, ids, review = apply_review.await_args.args
+    assert ids == {"root_task_id": "root-1", "agent_task_id": "task-123"}
+    assert review["items"][0]["status"] == "waiting_user"
+    stored = mock_update.await_args.kwargs["result_data"]["finalizer_result"]
+    assert "checklist_review" not in stored and stored["success"] is True
+    assert "checklist_review" not in ws_manager.broadcast.await_args.args[0].get("result", "")
+
+
+@pytest.mark.asyncio
+async def test_a_failing_checklist_sign_off_never_changes_the_verified_outcome():
+    apply_review = AsyncMock(side_effect=RuntimeError("database offline"))
+    with patch("api.services.agent_processing.lifecycle.runtime.agent_checklist_signoff.apply_checklist_review", new=apply_review):
+        _schedule, mock_update, _ws = await _run_verification_with(_success_envelope_with_checklist_review(), follow_up=None)
+
+    apply_review.assert_awaited_once()
+    stored = mock_update.await_args.kwargs["result_data"]["finalizer_result"]
+    assert stored["success"] is True and stored["result_payload"]["outcome"] == "success" and "checklist_review" not in stored
+
+
+@pytest.mark.asyncio
+async def test_a_verdict_without_a_checklist_review_never_touches_the_checklist():
+    apply_review = AsyncMock()
+    refined = {"success": True, "summary_text": "Done.", "result_payload": {"outcome": "success", "files": []}}
+    with patch("api.services.agent_processing.lifecycle.runtime.agent_checklist_signoff.apply_checklist_review", new=apply_review):
+        await _run_verification_with(refined, follow_up=None)
+
+    apply_review.assert_not_awaited()

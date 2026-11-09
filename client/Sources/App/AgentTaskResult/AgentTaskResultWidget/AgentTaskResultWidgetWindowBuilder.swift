@@ -197,6 +197,11 @@ extension AgentTaskResultWidgetController {
             guard APIClient.shared.getCachedAgentTaskSettings().autoReopenOnCompletion else { return }
             webView?.sendExpandChromeForTaskCompletion()
         }
+        // The same setting governs a task the widget is not showing: the web app only reports it while the widget is collapsed.
+        webView.onUnfocusedAgentTaskCompleted = { [weak webView] in
+            guard APIClient.shared.getCachedAgentTaskSettings().autoReopenOnCompletion else { return }
+            webView?.sendExpandChromeForTaskCompletion()
+        }
 
         webView.onMinimize = { [weak newPanel] in
             DispatchQueue.main.async { newPanel?.miniaturize(nil) }

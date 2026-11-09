@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 _SOURCE_KINDS = (
     "agent_task", "transcription", "assistant_output", "scheduled_run",
-    "conversation", "screen_block", "meeting",
+    "conversation", "screen_block", "meeting", "imported_context",
 )
 
 _DATE_ONLY = re.compile(r"\d{4}-\d{2}-\d{2}")
@@ -43,7 +43,7 @@ class UnifiedHistoryInput(BaseModel):
         description=(
             "Restrict to these kinds of activity: agent_task, transcription, "
             "assistant_output, scheduled_run, conversation, screen_block, "
-            "meeting. Omit for everything."
+            "meeting, imported_context. Omit for everything."
         ),
     )
     outcome: Optional[Literal["succeeded", "failed", "canceled", "skipped"]] = Field(

@@ -14,6 +14,7 @@ from ..generated_processing_colors import (
     DEFAULT_PROCESSING_BASE,
     DEFAULT_PROCESSING_ACCENT,
 )
+from .defaults import _get_default_local_reasoning_model_id
 
 
 # The text-size steps the app offers (90%, 100%, 110%, 125%, 140%); the Swift TextScaleStep helper mirrors this list.
@@ -79,7 +80,7 @@ class AgentTaskPreferences(BaseModel):
     )
     auto_reopen_on_completion: bool = Field(
         default=True,
-        description="Whether a collapsed agent-task result window reopens when its focused task reaches a terminal outcome"
+        description="Whether a collapsed agent-task result window reopens when any task, focused or not, reaches a terminal outcome. A task that needs approval or input reopens it regardless"
     )
 
 
@@ -121,8 +122,8 @@ class ActivityCaptureSettings(BaseModel):
         description="Frequency of automatic captures in minutes (0.5-1440, supports fractional)"
     )
     processing_model: str = Field(
-        default="upstage/SOLAR-10.7B-Instruct-v1.0",
-        description="Model to use for processing captured activities"
+        default_factory=_get_default_local_reasoning_model_id,
+        description="Model to use for processing captured activities; defaults to the registry model flagged recommended_for_onboarding"
     )
     processing_mode: str = Field(
         default="scheduled",

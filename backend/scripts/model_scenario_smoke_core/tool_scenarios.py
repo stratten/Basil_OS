@@ -376,6 +376,31 @@ TOOL_SCENARIO_SPECS: dict[str, ToolScenarioSpec] = {
         expected_service_methods=(("direct_tool", "schedule_agent_follow_up"),),
         cleanup=_cleanup_follow_ups,
     ),
+    "tool_app_settings": ToolScenarioSpec(
+        scenario_id="tool_app_settings",
+        family="app_settings",
+        build_prompt=lambda _sandbox: (
+            "Use your Basil settings tool to look up the setting for Basil's text size and tell me its current value. "
+            "Only look it up: do not change any setting."
+        ),
+        expected_service_methods=(("direct_tool", "app_settings"),),
+    ),
+    "tool_app_settings_overview": ToolScenarioSpec(
+        scenario_id="tool_app_settings_overview",
+        family="app_settings",
+        build_prompt=lambda _sandbox: (
+            "What parts of Basil can you change for me? Use your Basil settings tool to find out, and do not change any setting."
+        ),
+        expected_service_methods=(("direct_tool", "app_settings"),),
+    ),
+    "tool_schedule_review": ToolScenarioSpec(
+        scenario_id="tool_schedule_review",
+        family="schedule",
+        build_prompt=lambda _sandbox: (
+            "List the scheduled agent tasks Basil has, using your schedule review tool. Only list them: do not pause, change or create any schedule."
+        ),
+        expected_service_methods=(("direct_tool", "manage_scheduled_agent_tasks"),),
+    ),
     "tool_activity": ToolScenarioSpec(
         scenario_id="tool_activity",
         family="activity",
@@ -419,6 +444,15 @@ TOOL_SCENARIO_SPECS: dict[str, ToolScenarioSpec] = {
             "The child should report only whether the marker is present; do not modify files or contact external services."
         ),
         expected_service_methods=(("direct_tool", "delegated_agent"),),
+    ),
+    "tool_separate_task": ToolScenarioSpec(
+        scenario_id="tool_separate_task",
+        family="separate_task",
+        build_prompt=lambda sandbox: (
+            f"Split one independent piece of work off into its own standalone task: a task whose only job is to reply with the single word {sandbox.marker}. "
+            "That task must not modify files, send messages, or contact external services, and you do not need its result."
+        ),
+        expected_service_methods=(("direct_tool", "start_separate_agent_task"),),
     ),
     "tool_retrieval": ToolScenarioSpec(
         scenario_id="tool_retrieval",

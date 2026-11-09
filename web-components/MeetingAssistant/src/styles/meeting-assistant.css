@@ -5,6 +5,7 @@
 @import '../../../shared/collapsible-sidebar.css';
 @import '../../../shared/collapsible-region.css';
 @import '../../../shared/new-items-pill.css';
+@import '../../../shared/markdown-table.css';
 @import '../../../shared/undo-notice.css';
 @import './meeting-assistant/foundation.css';
 @import './meeting-assistant/base-content.css';

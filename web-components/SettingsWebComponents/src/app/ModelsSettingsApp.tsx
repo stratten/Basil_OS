@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { DownloadProgress } from '@shared/DownloadProgress'
 import { Switch } from '@shared/Switch'
 import ExecutionDisclosureChevron from '@shared/ExecutionDisclosureChevron'
 import TokenizedSelect from '@shared/TokenizedSelect'
@@ -422,6 +423,11 @@ function ModelRow({ model, pendingKind, logs, onDownload, onCancel, onDelete }: 
         <div className="models-settings-row-meta">
           {model.statusKind === 'available' && <span className="models-settings-installed-badge">Installed</span>}
           {model.size !== null && <span className="models-settings-row-size">{formatBytes(model.size)}</span>}
+          {model.format && (
+            <span className={`models-settings-format-tag models-settings-format-tag-${model.format.toLowerCase()}`} title={`${model.format} model file format`}>
+              {model.format}
+            </span>
+          )}
         </div>
       </div>
       <div className="models-settings-row-capabilities">
@@ -444,10 +450,12 @@ function ModelRow({ model, pendingKind, logs, onDownload, onCancel, onDelete }: 
 
       {isDownloading ? (
         <div className="models-settings-progress-row">
-          <div className="models-settings-progress-track">
-            <div className="models-settings-progress-fill" style={{ width: `${Math.round((model.progress ?? 0) * 100)}%` }} />
-          </div>
-          <span className="models-settings-progress-label">{Math.round((model.progress ?? 0) * 100)}%</span>
+          <DownloadProgress
+            label={model.name}
+            percent={(model.progress ?? 0) * 100}
+            downloadedBytes={model.totalDownloaded}
+            totalBytes={model.totalSize}
+          />
           <button type="button" className="models-settings-cancel-button" disabled={pendingKind === 'cancel'} onClick={onCancel}>
             Cancel
           </button>

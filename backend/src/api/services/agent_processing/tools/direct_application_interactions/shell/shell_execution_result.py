@@ -64,6 +64,9 @@ def build_approval_failure_result(
         stderr = f"Command blocked by safety policy: {reason}"
     elif status == "user_denied":
         stderr = "Command execution was denied by user"
+    user_note = (getattr(outcome, "user_note", "") or "").strip()
+    if user_note and status == "user_denied":
+        stderr = f"{stderr}. The user added this guidance with the denial: {user_note}"
 
     result: Dict[str, Any] = {
         "success": False,
@@ -83,6 +86,8 @@ def build_approval_failure_result(
         "approval_decision_reason": reason,
         "error_type": status,
     }
+    if user_note:
+        result["approval_user_note"] = user_note
     if file_artifact_declarations is not None:
         result["file_artifact_declarations"] = file_artifact_declarations
     return result

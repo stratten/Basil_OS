@@ -14,11 +14,12 @@ let container: HTMLElement
 let root: Root
 let api: SetupAgentStreamApi | null = null
 
-function Harness({ interactionStyle }: { interactionStyle: string[] }) {
+function Harness({ interactionStyle, importedContext = null }: { interactionStyle: string[]; importedContext?: typeof initialState.importedContext }) {
   const store = {
     state: {
       ...initialState,
       interactionStyle,
+      importedContext,
       setupAgentModelAccess: { mode: 'local', resolved: true },
     },
   }
@@ -60,5 +61,18 @@ describe('interaction style in the setup agent request', () => {
     act(() => { root.render(<Harness interactionStyle={[]} />) })
 
     expect(api!.buildRequest('hello').current_step_context.interaction_style).toEqual([])
+  })
+
+  it('sends what the user imported so the interview can skip what it answers', () => {
+    const importedContext = { entries_added: 4, facts_proposed: 2, fact_titles: ['Works as a nurse'], note_titles: [] }
+    act(() => { root.render(<Harness interactionStyle={[]} importedContext={importedContext} />) })
+
+    expect(api!.buildRequest('hello').current_step_context.imported_context).toEqual(importedContext)
+  })
+
+  it('omits imported context when nothing was imported', () => {
+    act(() => { root.render(<Harness interactionStyle={[]} />) })
+
+    expect('imported_context' in api!.buildRequest('hello').current_step_context).toBe(false)
   })
 })

@@ -124,11 +124,12 @@ export class AgentStoreCore {
     this.emit();
   }
 
-  registerAgent(agentTaskId: string, agentTaskText = '') {
+  registerAgent(agentTaskId: string, agentTaskText = '', options: { select?: boolean } = {}) {
     if (!this.agents.has(agentTaskId)) {
       console.log(`[AgentStore] registerAgent: NEW agent ${agentTaskId}, agentTask='${agentTaskText.substring(0, 40)}', agentCount=${this.agents.size + 1}, selected=${this.selectedAgentId}`);
       this.agents.set(agentTaskId, createAgentState(agentTaskId, agentTaskText));
-      if (!this.selectedAgentId) {
+      // A run Basil started on its own passes select: false, so it appears without taking over whatever the reader is looking at.
+      if (!this.selectedAgentId && options.select !== false) {
         this.selectedAgentId = agentTaskId;
       }
       this.emit();
