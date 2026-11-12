@@ -23,6 +23,7 @@ from api.core.security.protected_runtime_paths import (
 
 from .models import ExecutionApprovalDecision, ExecutionApprovalOutcome
 from .risk_assessment import RiskAssessor
+from .python_read_only_command import classify_python_command_read_only
 from .workspace_scope import judge_workspace_command
 from .command_generalization import CommandGeneralizer
 from .pattern_matcher import PatternMatcher
@@ -158,6 +159,22 @@ class ExecutionApprovalService:
                     reason="Read-only command auto-approved",
                     risk_level='low'
                 )
+
+            if settings.auto_approve_read_only:
+                # A Python one-liner is judged by its parsed script, not by its command name, and needs the working directory to rule out a module that shadows the standard library.
+                python_scope = scope if isinstance(scope, dict) else {}
+                python_verdict = classify_python_command_read_only(
+                    command,
+                    working_directory=python_scope.get("cwd"),
+                    has_env_overrides=bool(python_scope.get("has_env_overrides")),
+                )
+                if python_verdict.is_read_only:
+                    logger.debug(f"Command auto-approved (read-only Python script): {command}")
+                    return ExecutionApprovalDecision(
+                        needs_approval=False,
+                        reason="Read-only Python script auto-approved",
+                        risk_level='low'
+                    )
 
             logger.info(f"🔍 Checking whitelist for command: '{command}' (whitelist has {len(settings.whitelisted_commands)} patterns)")
 

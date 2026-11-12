@@ -2,6 +2,8 @@ import { useState } from 'react';
 import type { ExecutionApprovalRequest } from '../types';
 import * as api from '../services/api';
 import { agentStore } from '../store/agentStore';
+import { ContinueCircleIcon, StopCircleIcon } from '@shared/CircleControlIcons';
+import { DecisionActions, DecisionButton } from './interaction/DecisionButton';
 import ResponseCountdown from './interaction/ResponseCountdown';
 import { parseResponseTimeLimit } from './interaction/responseTimeLimit';
 
@@ -142,14 +144,24 @@ export default function CommandInputRequestCard({ agentTaskId, approval, embedde
             </div>
           )}
         </div>
-        <div className="overlay-actions">
-          <button type="button" className="action-btn danger" onClick={() => void submit('cancel')} disabled={submitting}>
-            Stop Command
-          </button>
-          <button type="submit" className="action-btn success" disabled={submitting}>
-            Send
-          </button>
-        </div>
+        <DecisionActions>
+          <DecisionButton
+            tone="deny"
+            icon={<StopCircleIcon />}
+            label="Stop Command"
+            onClick={() => void submit('cancel')}
+            disabled={submitting}
+            title="end the command without sending anything"
+          />
+          <DecisionButton
+            tone="approve"
+            icon={<ContinueCircleIcon />}
+            label="Send"
+            submit
+            disabled={submitting}
+            title="send your reply to the command"
+          />
+        </DecisionActions>
       </form>
     </div>
   );

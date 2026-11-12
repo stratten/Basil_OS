@@ -23,6 +23,8 @@ export interface StarterDownloadRow {
   isVoiceModel: boolean
   /** True only in a validation session whose normal Basil holds this model, so it can be copied instead of downloaded. */
   canCopy: boolean
+  /** What the backend is doing right now while the model downloads. The progress bar shows it only until the first bytes arrive. */
+  waitingNote?: string | null
 }
 
 const VOICE_MODEL_ROLES: Record<string, string> = {
@@ -89,6 +91,7 @@ export function describeStarterDownloads(progress: StarterDownloadProgress): Sta
       totalBytes: reportedBytes(record.total_size),
       isVoiceModel: voiceRole !== undefined,
       canCopy: record.can_copy_from_normal_basil === true,
+      waitingNote: record.message?.trim() || null,
     }
   })
   return rows.sort((a, b) => Number(b.isVoiceModel) - Number(a.isVoiceModel))
@@ -100,6 +103,8 @@ export interface LiveLocalDownload {
   percent: number
   downloadedBytes: number | null
   totalBytes: number | null
+  /** What the backend is doing right now, or null when it did not say. */
+  message?: string | null
 }
 
 /** The reasoning-model row for the model the Local route describes, or null when the route names no model. `live` is the latest read of that model's own download, when one has been started. */
@@ -125,6 +130,7 @@ export function reasoningRowFromOption(
     totalBytes: state === 'downloading' && live ? live.totalBytes : null,
     isVoiceModel: false,
     canCopy: option.can_copy_from_normal_basil === true,
+    waitingNote: state === 'downloading' && live ? live.message?.trim() || null : null,
   }
 }
 

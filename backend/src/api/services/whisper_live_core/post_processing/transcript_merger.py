@@ -396,6 +396,14 @@ async def save_transcript_to_file(
 
     await loop.run_in_executor(None, save_sync)
 
+    # Post-processing and live upgrades change a recording's text after the call ended, so the call's readable transcript file is refreshed here too. Best-effort: a folder without metadata is skipped and a failure never fails the save.
+    try:
+        from .meeting_transcript_file import ensure_meeting_transcript_markdown
+
+        await loop.run_in_executor(None, ensure_meeting_transcript_markdown, Path(path).parent)
+    except Exception as markdown_error:
+        logger.warning(f"Could not refresh the transcript file beside {path}: {markdown_error}")
+
 
 def load_transcript_from_file(path: Path) -> Dict[str, Any]:
     """

@@ -72,7 +72,7 @@ class ZettelBackedRetrievalSource:
             authority="primary",
             evidence_kind="observed Basil meeting recording and transcript",
             browse_guidance="Use for recorded meetings in a requested time range; cards are grouped logical meetings.",
-            detail_guidance="Use detail for metadata, meeting analyses, and the merged transcript. Pass sections=['analyses'] to read analyses without the transcript, and page the transcript with transcript_offset.",
+            detail_guidance="Use detail for metadata, meeting analyses, and the merged transcript. Pass sections=['analyses'] to read analyses without the transcript, and page the transcript with transcript_offset. To read or file the whole call, use the transcript_markdown_path it returns: an export-format Markdown file of the full interleaved transcript.",
             supported_actions=("browse", "search", "aggregate", "detail"),
         ),
         "imported_context": RetrievalSourceDescriptor(
@@ -196,6 +196,13 @@ class ZettelBackedRetrievalSource:
             return None
         source = sources_by_kind().get(self.source_kind)
         context = source.gather_context(conn, [source_id]) if source else {}
+        if self.source_kind == "meeting" and context.get(source_id):
+            # The readable, export-format transcript of the whole call, created or refreshed now so it matches the recordings on disk. None when it cannot be produced.
+            from api.services.whisper_live_core.post_processing.meeting_transcript_file import (
+                meeting_transcript_markdown_path,
+            )
+
+            context[source_id]["transcript_markdown_path"] = meeting_transcript_markdown_path(source_id)
         return {
             "source_kind": self.source_kind,
             "source_id": source_id,

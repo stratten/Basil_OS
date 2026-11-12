@@ -402,11 +402,19 @@ export interface ModelSummary {
   size: number | null
   /** File format of a local language model, shown as a tag next to the size. Absent for other models. */
   format?: ModelFormat
+  /** Relative speed from 1 to 10, from the model registry. Absent for models that do not list one. */
+  speedRating?: number
+  /** Relative quality from 1 to 10, from the model registry. Absent for models that do not list one. */
+  accuracyRating?: number
+  /** Memory the registry recommends for this model, such as "16GB". Absent for models that do not list one. */
+  recommendedRam?: string
   statusKind: ModelStatusKind
   progress?: number
   errorMessage?: string
   totalDownloaded?: number
   totalSize?: number
+  /** What the backend is doing right now while the model downloads, such as "Waiting for Hugging Face to start sending data (20s)...". The row shows it only until the first bytes arrive. */
+  statusMessage?: string
   currentFile?: string
   filesCompleted?: number
   totalFiles?: number
@@ -423,6 +431,8 @@ export interface ModelsInitEvent {
   isLoadingModels: boolean
   localVisionFallbackEnabled: boolean
   isLocalVisionFallbackModelInstalled: boolean
+  /** This Mac's memory in gigabytes. Absent when the backend could not report it, in which case no fit indicator is shown. */
+  deviceMemoryGb?: number
   reasoningFallbackEnabled: boolean
   reasoningFallbackModelId: string
   reasoningGroups: ModelProviderGroup[]
@@ -434,6 +444,8 @@ export interface ModelsSnapshotEvent {
   isLoadingModels: boolean
   localVisionFallbackEnabled: boolean
   isLocalVisionFallbackModelInstalled: boolean
+  /** This Mac's memory in gigabytes. Absent when the backend could not report it, in which case no fit indicator is shown. */
+  deviceMemoryGb?: number
   reasoningFallbackEnabled: boolean
   reasoningFallbackModelId: string
   reasoningGroups: ModelProviderGroup[]

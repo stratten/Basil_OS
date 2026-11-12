@@ -20,9 +20,10 @@ enum HotkeyTestSupport {
     static func system(
         functionKeysAreStandard: Bool = true,
         symbolic: [String: Any]? = nil,
-        siri: [String: Any]? = nil
+        siri: [String: Any]? = nil,
+        macOSMajorVersion: Int = 27
     ) -> HotkeySystemState {
-        HotkeySystemState(symbolicHotKeys: symbolic, siriPreferences: siri, functionKeysAreStandard: functionKeysAreStandard)
+        HotkeySystemState(symbolicHotKeys: symbolic, siriPreferences: siri, functionKeysAreStandard: functionKeysAreStandard, macOSMajorVersion: macOSMajorVersion)
     }
 
     static func symbolic(_ identifier: String, keyCode: Int, mask: Int, enabled: Bool = true) -> [String: Any] {

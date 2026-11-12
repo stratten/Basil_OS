@@ -8,6 +8,8 @@ import {
   clearFilePreview,
   __resetCaptureStateBridgeForTests,
   openAgentTaskOrigin,
+  reportProblem,
+  showDiagnosticLogs,
   openFilePreviewWindow,
   reportAgentStatus,
   reportUnfocusedAgentTaskCompleted,
@@ -91,6 +93,25 @@ describe('file preview availability bridge', () => {
     });
 
     await expect(request).resolves.toEqual(new Set(['/private/reports/present.md']));
+  });
+});
+
+describe('problem report bridge', () => {
+  it('posts the report and show-logs actions with the run card source and the failure text', () => {
+    const postMessage = vi.fn();
+    window.webkit = {
+      messageHandlers: {
+        agentTaskBridge: { postMessage },
+      },
+    };
+
+    reportProblem('The model could not continue.');
+    showDiagnosticLogs('The model could not continue.');
+    reportProblem();
+
+    expect(postMessage).toHaveBeenNthCalledWith(1, { type: 'reportProblem', source: 'agent_task_run_card', detail: 'The model could not continue.' });
+    expect(postMessage).toHaveBeenNthCalledWith(2, { type: 'showDiagnosticLogs', source: 'agent_task_run_card', detail: 'The model could not continue.' });
+    expect(postMessage).toHaveBeenNthCalledWith(3, { type: 'reportProblem', source: 'agent_task_run_card', detail: undefined });
   });
 });
 

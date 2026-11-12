@@ -74,6 +74,7 @@ export function IntroDownloadsStep({ chosenLocalModelId, onChosenLocalModelIdCha
           percent: (progress.progress ?? 0) * 100,
           downloadedBytes: reportedBytes(progress.total_downloaded),
           totalBytes: reportedBytes(progress.total_size),
+          message: progress.message ?? null,
         }
       } catch {
         live = null

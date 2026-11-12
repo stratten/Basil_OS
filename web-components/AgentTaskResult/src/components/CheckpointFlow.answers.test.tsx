@@ -208,24 +208,55 @@ describe('CheckpointFlow provider target authorization answers', () => {
 });
 
 describe('CheckpointFlow confirmation answers', () => {
-  it('submits Yes immediately as the bare value', async () => {
+  it('offers Yes and No as single-select choices with one Continue button and no separate answer buttons', () => {
     render(confirmation);
-    expect(container.querySelectorAll('.checkpoint-choice-indicator')).toHaveLength(0);
+    expect(container.querySelectorAll('.checkpoint-choice-indicator--radio')).toHaveLength(2);
+    expect(container.querySelectorAll('.checkpoint-choice-indicator--checkbox')).toHaveLength(0);
+    expect(Array.from(container.querySelectorAll('.checkpoint-choice-title')).map(node => node.textContent)).toEqual(['Yes', 'No']);
+    expect(container.querySelector('.checkpoint-submit-actions button.decision-btn--approve')).toBeNull();
+    expect(container.querySelector('.checkpoint-submit-actions button.decision-btn--deny')).toBeNull();
+    expect(actionButton('Continue').disabled).toBe(true);
+  });
+
+  it('selecting Yes does not send anything until Continue, then sends the bare value', async () => {
+    render(confirmation);
     await click(card('Yes'));
+    expect(mocks.continueSession).not.toHaveBeenCalled();
+    expect(card('Yes').getAttribute('aria-pressed')).toBe('true');
+    await click(actionButton('Continue'));
     expect(mocks.continueSession).toHaveBeenCalledWith('task-1', 'yes');
   });
 
-  it('labels a typed note sent with No', async () => {
+  it('switching from Yes to No keeps only No selected', async () => {
     render(confirmation);
-    typeInto(otherInput(), 'Wait until Friday');
+    await click(card('Yes'));
     await click(card('No'));
+    expect(card('Yes').getAttribute('aria-pressed')).toBe('false');
+    await click(actionButton('Continue'));
+    expect(mocks.continueSession).toHaveBeenCalledWith('task-1', 'no');
+  });
+
+  it('sends a typed note together with the selected answer, labeled, for a yes with a caveat', async () => {
+    render(confirmation);
+    await click(card('Yes'));
+    typeInto(otherInput(), 'But only to Mariam, not the whole team');
+    await click(actionButton('Continue'));
+    expect(mocks.continueSession).toHaveBeenCalledWith('task-1', 'Selected: yes\nOther: But only to Mariam, not the whole team');
+  });
+
+  it('sends a typed note together with No, for a no with instructions', async () => {
+    render(confirmation);
+    await click(card('No'));
+    typeInto(otherInput(), 'Wait until Friday');
+    await click(actionButton('Continue'));
     expect(mocks.continueSession).toHaveBeenCalledWith('task-1', 'Selected: no\nOther: Wait until Friday');
   });
 
-  it('requires Other text for Continue and sends it labeled', async () => {
+  it('sends typed text alone, labeled, when neither Yes nor No is chosen', async () => {
     render(confirmation);
     expect(actionButton('Continue').disabled).toBe(true);
     typeInto(otherInput(), 'Only send the summary');
+    expect(actionButton('Continue').disabled).toBe(false);
     await click(actionButton('Continue'));
     expect(mocks.continueSession).toHaveBeenCalledWith('task-1', 'Other: Only send the summary');
   });

@@ -98,7 +98,7 @@ def _by_id(result):
 
 
 @pytest.mark.asyncio
-async def test_cautious_starts_the_three_downloads_in_order_and_writes_the_two_learning_settings():
+async def test_cautious_starts_the_small_voice_downloads_before_the_thinking_model_and_writes_the_two_learning_settings():
     manager, writer = _Manager(), _Writer()
     request = ExpressApplyRequest(
         comfort="cautious",
@@ -107,7 +107,14 @@ async def test_cautious_starts_the_three_downloads_in_order_and_writes_the_two_l
 
     result = await _applier(manager, writer).apply(request)
 
-    assert manager.started == [("Qwen", "qwen35-9b-q4km"), ("OpenAI", "whisper-tiny.en"), ("NVIDIA", "parakeet-tdt-0.6b-v3-quantized")]
+    assert manager.started == [("OpenAI", "whisper-tiny.en"), ("NVIDIA", "parakeet-tdt-0.6b-v3-quantized"), ("Qwen", "qwen35-9b-q4km")]
+    assert [item.id for item in result.results] == [
+        DOWNLOAD_THINKING,
+        DOWNLOAD_VOICE_FAST,
+        DOWNLOAD_VOICE_QUALITY,
+        LEARN_MEMORY,
+        LEARN_SKILLS,
+    ]
     assert writer.applied == [
         ("memory_intelligence", {"memory_after_task_enabled": True}),
         ("memory_intelligence", {"skill_after_task_enabled": True}),

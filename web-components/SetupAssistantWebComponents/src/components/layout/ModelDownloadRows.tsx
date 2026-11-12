@@ -73,7 +73,13 @@ export function ModelDownloadRows({ rows, startingIds, error, onStart, onStartAl
               </div>
               {row.state === 'downloading' && (
                 <div className="model-downloads__progress">
-                  <DownloadProgress label={row.title} percent={row.percent} downloadedBytes={row.downloadedBytes} totalBytes={row.totalBytes} />
+                  <DownloadProgress
+                    label={row.title}
+                    percent={row.percent}
+                    downloadedBytes={row.downloadedBytes}
+                    totalBytes={row.totalBytes}
+                    waitingNote={row.waitingNote}
+                  />
                 </div>
               )}
             </li>

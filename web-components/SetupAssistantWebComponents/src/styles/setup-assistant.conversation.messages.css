@@ -27,7 +27,7 @@
   display: block;
   font-family: var(--font-family-medium);
   font-size: var(--font-size-status-small);
-  font-weight: 600;
+  font-weight: normal;
   margin-bottom: 4px;
 }
 
@@ -87,7 +87,7 @@
   display: inline-flex;
   font-family: var(--font-family-medium);
   font-size: var(--font-size-status-small);
-  font-weight: 600;
+  font-weight: normal;
   gap: 6px;
   line-height: 1;
   white-space: nowrap;

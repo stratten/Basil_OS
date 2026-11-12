@@ -39,6 +39,9 @@ from typing import Callable, Dict, List, Optional
 
 from ...logging.api_logger import api_logger
 
+#: Seconds between the heartbeats that keep registered progress callbacks firing when no bytes are arriving.
+HEARTBEAT_INTERVAL_SECONDS = 5.0
+
 
 class ProgressTracker:
     """In-memory progress state for model downloads + callback fan-out."""
@@ -185,6 +188,18 @@ class ProgressTracker:
                     f"[PROGRESS_CB] error invoking callback for {model_id}: {exc}"
                 )
 
+    def _is_waiting_for_first_bytes(self, model_id: str, operation: str, metadata: dict) -> bool:
+        """Whether a download is running but no byte of it has arrived yet.
+
+        Hugging Face's xet transfer can spend a long time setting up before the first byte, and nothing is reported meanwhile. A download that names a current file (the artifact manifest path) or has reported bytes is moving, so only the quiet state before that counts.
+        """
+        return (
+            operation == "downloading"
+            and self.get_progress(model_id) <= 0.0
+            and not metadata.get("total_downloaded")
+            and not metadata.get("current_file")
+        )
+
     async def _start_heartbeat(self, model_type: str, variant: str) -> None:
         """Periodic re-emit so registered callbacks keep firing during slow ticks.
 
@@ -194,15 +209,20 @@ class ProgressTracker:
         model_id = f"{model_type}-{variant}"
         terminal = {"completed", "error", "canceled", "user_canceled", "failed"}
         api_logger.debug(f"[HEARTBEAT] started for {model_id}")
+        started_at = time.monotonic()
         try:
             while self._current_operations.get(model_id) not in terminal:
-                await asyncio.sleep(5)
+                await asyncio.sleep(HEARTBEAT_INTERVAL_SECONDS)
                 current_op = self._current_operations.get(model_id)
                 if current_op in terminal or current_op is None:
                     break
                 metadata = dict(self._progress_metadata.get(model_id, {}))
                 metadata["heartbeat"] = True
                 metadata["current_operation"] = current_op
+                if self._is_waiting_for_first_bytes(model_id, current_op, metadata):
+                    waited_seconds = int(time.monotonic() - started_at)
+                    metadata["message"] = f"Waiting for Hugging Face to start sending data ({waited_seconds}s)..."
+                    api_logger.info(f"[{model_id}] {metadata['message']}")
                 await self._update_progress(
                     model_type,
                     variant,

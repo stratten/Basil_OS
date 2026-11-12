@@ -33,6 +33,27 @@ from ...logging.api_logger import api_logger
 from ..models_registry import get_model, get_repo_info
 
 
+#: Suffixes huggingface_hub 2.x adds to a file name for the two bars of one xet download.
+_XET_BAR_SUFFIXES = (": reconstructing file", ": downloading bytes")
+#: Labels of the shared snapshot bars, which cover every file of the model and so name no single file.
+_AGGREGATE_BAR_PREFIXES = ("reconstructing", "reconstruction", "downloading bytes", "download complete", "fetching")
+
+
+def _display_file_name(bar_description: str) -> str:
+    """Turn a progress bar label into a file name a person can read.
+
+    A xet bar is labeled "model.gguf: downloading bytes", so the suffix is dropped. A snapshot's shared bars name no single file, so they are reported as "model files".
+    """
+    label = str(bar_description or "").strip()
+    lowered = label.lower()
+    if lowered.startswith(_AGGREGATE_BAR_PREFIXES):
+        return "model files"
+    for suffix in _XET_BAR_SUFFIXES:
+        if lowered.endswith(suffix):
+            return label[: -len(suffix)]
+    return label or "model files"
+
+
 class CustomHFCallback:
     """Aggregates per-file tqdm ticks into a single download-progress fraction."""
 
@@ -91,8 +112,9 @@ class CustomHFCallback:
             int(100 * downloaded_bytes / total_bytes) if total_bytes else 0
         )
 
-        total_downloaded = sum(self.file_progress.values())
-        actual_total_from_hf = sum(self.actual_file_totals.values())
+        # Several bars describe the same bytes at once, so take the furthest-along bar and never add the bars together. huggingface_hub 2.x reports each xet download through a "downloading bytes" bar (what the network has delivered) and a "reconstructing file" bar (what has been written to disk), and snapshot_download adds an aggregate bar of each kind plus a "Fetching N files" counter. Summing them reported about twice the real size and, for a GGUF file, a progress fraction that mixed the two.
+        total_downloaded = max(self.file_progress.values(), default=0)
+        actual_total_from_hf = max(self.actual_file_totals.values(), default=0)
         # Use the larger of (HF-reported actual) and (registry estimate) so
         # progress doesn't sail past 95% before all per-file totals are known.
         if actual_total_from_hf > 0:
@@ -107,9 +129,10 @@ class CustomHFCallback:
             return
         self.last_update_time = now
 
+        display_name = _display_file_name(file_name)
         metadata = {
-            "message": f"Downloading {file_name}...",
-            "current_file": file_name,
+            "message": f"Downloading {display_name}...",
+            "current_file": display_name,
             "current_file_percent": per_file_percent,
             "files_completed": files_completed,
             "total_files": total_files,

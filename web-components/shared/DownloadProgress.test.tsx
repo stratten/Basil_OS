@@ -89,6 +89,51 @@ describe('DownloadProgress', () => {
   })
 })
 
+describe('DownloadProgress waiting note', () => {
+  const note = () => container.querySelector('.download-progress__note')
+  const WAITING = 'Waiting for Hugging Face to start sending data (20s)...'
+
+  it('shows the note while the bar is at zero and no bytes have arrived', () => {
+    render({ percent: 0, downloadedBytes: 0, totalBytes: 2_740_000_000, label: 'Model', waitingNote: WAITING })
+
+    expect(note()!.textContent).toBe(WAITING)
+    expect(note()!.getAttribute('role')).toBe('status')
+  })
+
+  it('shows the note when the amount is not known at all', () => {
+    render({ percent: 0, label: 'Model', waitingNote: WAITING })
+
+    expect(note()!.textContent).toBe(WAITING)
+  })
+
+  it('hides the note as soon as any bytes have arrived, even if the whole percent is still zero', () => {
+    render({ percent: 0.4, downloadedBytes: 11_000_000, totalBytes: 2_740_000_000, label: 'Model', waitingNote: WAITING })
+
+    expect(note()).toBeNull()
+  })
+
+  it('hides the note once the bar has moved', () => {
+    render({ percent: 3, label: 'Model', waitingNote: WAITING })
+
+    expect(note()).toBeNull()
+  })
+
+  it('shows nothing for a missing, null, empty or blank note', () => {
+    for (const waitingNote of [undefined, null, '', '   ']) {
+      render({ percent: 0, label: 'Model', waitingNote })
+      expect(note()).toBeNull()
+    }
+  })
+
+  it('trims the note and removes it again when the next update carries none', () => {
+    render({ percent: 0, label: 'Model', waitingNote: `  ${WAITING}  ` })
+    expect(note()!.textContent).toBe(WAITING)
+
+    render({ percent: 0, label: 'Model', waitingNote: null })
+    expect(note()).toBeNull()
+  })
+})
+
 describe('wholePercent', () => {
   it('rounds down, so a download never reads as finished early, and survives floating-point error', () => {
     expect(wholePercent(99.9)).toBe(99)

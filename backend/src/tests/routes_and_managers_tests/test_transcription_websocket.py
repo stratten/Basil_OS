@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from api.routes.websocket_routes import transcription
+from api.services.transcription.plain_failure_message import plain_transcription_failure_message
 
 
 @pytest.fixture(autouse=True)
@@ -344,6 +345,49 @@ async def test_transcription_failure_publishes_failed_event() -> None:
         ("transcription_started", None),
         ("transcription_failed", "transcription failed"),
     ]
+
+
+@pytest.mark.asyncio
+async def test_unregistered_model_failure_publishes_plain_advice_not_the_internal_error() -> None:
+    sent: list[tuple[str, object]] = []
+
+    async def send_status(event: str, data=None) -> None:
+        sent.append((event, data))
+
+    await transcription.handle_audio_transcription(
+        _WebSocket(),
+        {"bytes": b"audio"},
+        _TranscriptionService(ValueError("Whisper transcription model is not registered: 'base'")),
+        send_status,
+        transcription.paste_transcribed_text,
+        _Preferences,
+    )
+
+    assert sent == [
+        ("transcription_started", None),
+        ("transcription_failed", plain_transcription_failure_message(ValueError("model is not registered"))),
+    ]
+    assert "base" not in sent[-1][1]
+
+
+class _UnregisteredModelService:
+    def is_model_loaded(self) -> bool:
+        return False
+
+    def load_model(self) -> None:
+        raise ValueError("Whisper transcription model is not registered: 'base'")
+
+
+@pytest.mark.asyncio
+async def test_unregistered_model_during_start_up_publishes_plain_advice() -> None:
+    sent: list[tuple[str, object]] = []
+
+    async def send_status(event: str, data=None) -> None:
+        sent.append((event, data))
+
+    await transcription.handle_init_transcription(_WebSocket(), _UnregisteredModelService(), send_status)
+
+    assert sent == [("transcription_failed", plain_transcription_failure_message(ValueError("model is not registered")))]
 
 
 @pytest.mark.asyncio

@@ -15,7 +15,8 @@
 
 .model-comparison-table caption {
   color: var(--text-primary);
-  font-weight: 700;
+  font-family: var(--font-family-medium);
+  font-weight: normal;
   padding-bottom: 6px;
   text-align: left;
 }

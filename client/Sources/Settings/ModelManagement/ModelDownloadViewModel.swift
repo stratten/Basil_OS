@@ -15,6 +15,8 @@ final class ModelDownloadViewModel: ObservableObject {
     @Published var localVisionModelId: String = ModelDownloadViewModel.localVisionFallbackModelId
     @Published var reasoningFallbackEnabled: Bool = true
     @Published var reasoningFallbackModelId: String = ""
+    /// This Mac's memory in gigabytes from `GET /models/system-info`. Nil until it loads or when the backend cannot report it, in which case the Settings model rows show no fit indicator.
+    @Published var deviceMemoryGB: Int?
     
     let api = APIClient.shared
     var progressTimers: [String: Task<Void, Never>] = [:]

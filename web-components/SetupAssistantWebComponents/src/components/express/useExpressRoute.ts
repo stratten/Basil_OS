@@ -12,7 +12,7 @@ const POLL_MS = 2000
 
 export type ExpressRouteState = 'waiting' | 'selecting' | 'ready' | 'needs_manual'
 
-export const NO_THINKING_MODEL_MESSAGE = "I couldn't set up the thinking model, so you'll choose how I think on the next screen."
+export const NO_THINKING_MODEL_MESSAGE = "I'm not setting up a thinking model here, so you'll choose how I think on the next screen."
 export const FAILED_DOWNLOAD_MESSAGE = "The thinking model didn't download. You can try again here, or choose another way for me to think."
 export const UNRESOLVED_ROUTE_MESSAGE = "I couldn't confirm the local model as how I think. You can choose that yourself on the next screen."
 export const MISSING_ROW_MESSAGE = "I can't see the thinking model's download. You can choose how I think on the next screen."

@@ -38,6 +38,8 @@ class RiskAssessor:
         'sort', 'uniq', 'cut', 'tr', 'diff', 'jq', 'shasum', 'basename', 'dirname', 'realpath', 'readlink',
         # Facts about the machine and its processes.
         'uname', 'sw_vers', 'hostname', 'id', 'uptime', 'lsof', 'pgrep',
+        # Spotlight lookups: `mdfind` searches the index and `mdls` prints a file's metadata. Neither has an option that writes; changing the index belongs to `mdutil`, which stays off this list.
+        'mdfind', 'mdls',
         # Shell builtins that change nothing outside the shell, and the loop and conditional words that only frame other commands.
         'cd', 'test', 'sleep', 'printf', 'for', 'done', 'fi',
     }

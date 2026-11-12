@@ -14,6 +14,12 @@ enum ModelsSettingsPayloadBuilder {
         }
     }
 
+    /// The one payload entry that tells the web page how much memory this Mac has. Empty when the memory is unknown or not positive, so the page shows no fit indicator instead of a wrong one.
+    static func makeDeviceMemoryEntry(_ deviceMemoryGB: Int?) -> [String: Any] {
+        guard let deviceMemoryGB, deviceMemoryGB > 0 else { return [:] }
+        return ["deviceMemoryGb": deviceMemoryGB]
+    }
+
     static func makeCapabilityGroups(
         modelGroups: [String: [ModelDownloadInfo]],
         capability: ModelCapabilityType,
@@ -51,6 +57,18 @@ enum ModelsSettingsPayloadBuilder {
             item["format"] = formatTag
         }
 
+        if let speedRating = model.speedRating {
+            item["speedRating"] = speedRating
+        }
+
+        if let accuracyRating = model.accuracyRating {
+            item["accuracyRating"] = accuracyRating
+        }
+
+        if let recommendedRam = model.recommendedRam?.trimmingCharacters(in: .whitespacesAndNewlines), !recommendedRam.isEmpty {
+            item["recommendedRam"] = recommendedRam
+        }
+
         if let liveProgress = downloadProgress[model.id] {
             item["statusKind"] = "downloading"
             item["progress"] = liveProgress
@@ -72,6 +90,7 @@ enum ModelsSettingsPayloadBuilder {
         if let metadata = downloadProgressMetadata[model.id] {
             if let totalDownloaded = metadata["total_downloaded"] as? Int64 { item["totalDownloaded"] = totalDownloaded }
             if let totalSize = metadata["total_size"] as? Int64 { item["totalSize"] = totalSize }
+            if let message = metadata["message"] as? String, !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { item["statusMessage"] = message }
             if let currentFile = metadata["current_file"] as? String, !currentFile.isEmpty { item["currentFile"] = currentFile }
             if let filesCompleted = metadata["files_completed"] as? Int { item["filesCompleted"] = filesCompleted }
             if let totalFiles = metadata["total_files"] as? Int { item["totalFiles"] = totalFiles }

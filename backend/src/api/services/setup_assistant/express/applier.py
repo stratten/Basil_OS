@@ -82,20 +82,21 @@ class ExpressApplier:
             raise ValueError(f"These items are not part of this setup: {', '.join(unknown)}.")
 
         wanted = set(request.selected_item_ids)
-        results: List[ExpressItemResult] = []
-        # Catalog order puts the downloads first (thinking model, then the two voice models), then settings.
-        for entry in CATALOG:
+        results_by_id: Dict[str, ExpressItemResult] = {}
+        # The download manager runs one download at a time in the order they start, so the thinking model, which is by far the largest, starts last. The two small voice models then finish in minutes instead of waiting behind a download that can take an hour. The results below still follow catalog order, which is also the order the screen and the receipt list the items in.
+        for entry in sorted(CATALOG, key=lambda candidate: candidate.id == DOWNLOAD_THINKING):
             if entry.id not in wanted or entry.native:
                 continue
             item = items_by_id[entry.id]
             if item.already_done:
-                results.append(ExpressItemResult(id=item.id, outcome="skipped", message=f"{item.title} is already on."))
+                results_by_id[item.id] = ExpressItemResult(id=item.id, outcome="skipped", message=f"{item.title} is already on.")
             elif item.unavailable_reason:
-                results.append(ExpressItemResult(id=item.id, outcome="skipped", message=item.unavailable_reason))
+                results_by_id[item.id] = ExpressItemResult(id=item.id, outcome="skipped", message=item.unavailable_reason)
             elif entry.group == "downloads":
-                results.append(await self._start_download(item))
+                results_by_id[item.id] = await self._start_download(item)
             else:
-                results.append(await self._write_settings(item, request.comfort))
+                results_by_id[item.id] = await self._write_settings(item, request.comfort)
+        results: List[ExpressItemResult] = [results_by_id[entry.id] for entry in CATALOG if entry.id in results_by_id]
 
         thinking = items_by_id.get(DOWNLOAD_THINKING)
         thinking_ready = thinking is not None and (thinking.already_done or (thinking.selected and DOWNLOAD_THINKING in wanted))

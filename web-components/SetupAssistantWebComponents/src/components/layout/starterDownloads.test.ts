@@ -249,3 +249,38 @@ describe('describeStarterDownloads byte counts', () => {
     expect(rows.find(row => row.id === 'NVIDIA-parakeet-tdt-0.6b-v3-quantized')).toMatchObject({ downloadedBytes: null, totalBytes: null })
   })
 })
+
+describe('waiting note', () => {
+  const WAITING = 'Waiting for Hugging Face to start sending data (20s)...'
+
+  it('carries the backend line onto a starter row and trims it', () => {
+    const rows = describeStarterDownloads({
+      all_complete: false,
+      models: { 'OpenAI-whisper-tiny.en': { status: 'downloading', progress: 0, message: `  ${WAITING}  ` } },
+    })
+
+    expect(rows[0].waitingNote).toBe(WAITING)
+  })
+
+  it('gives a row with no line, or a blank one, a null note', () => {
+    const rows = describeStarterDownloads({
+      all_complete: false,
+      models: {
+        'OpenAI-whisper-tiny.en': { status: 'downloading', progress: 0 },
+        'NVIDIA-parakeet-tdt-0.6b-v3-quantized': { status: 'downloading', progress: 0, message: '   ' },
+      },
+    })
+
+    expect(rows.map(row => row.waitingNote)).toEqual([null, null])
+  })
+
+  it('carries the live line onto the thinking-model row only while it downloads', () => {
+    const live = { status: 'downloading', percent: 0, downloadedBytes: null, totalBytes: null, message: WAITING }
+
+    expect(reasoningRowFromOption(LOCAL_OPTION, live)?.waitingNote).toBe(WAITING)
+    expect(reasoningRowFromOption(LOCAL_OPTION, { ...live, status: 'failed' })?.waitingNote).toBeNull()
+    expect(reasoningRowFromOption({ ...LOCAL_OPTION, downloaded: true }, live)?.waitingNote).toBeNull()
+    expect(reasoningRowFromOption(LOCAL_OPTION, null)?.waitingNote).toBeNull()
+    expect(reasoningRowFromOption(LOCAL_OPTION, { ...live, message: null })?.waitingNote).toBeNull()
+  })
+})

@@ -48,7 +48,7 @@ extension ReactModelsSettingsWebView: ReactModelsSettingsBridgeOutput {
     }
 
     private func stateEvent(type: String, viewModel: ModelDownloadViewModel) -> [String: Any] {
-        [
+        var event: [String: Any] = [
             "type": type,
             "isLoadingModels": !viewModel.isLoaded,
             "localVisionFallbackEnabled": viewModel.localVisionFallbackEnabled,
@@ -68,5 +68,7 @@ extension ReactModelsSettingsWebView: ReactModelsSettingsBridgeOutput {
                 downloadProgressMetadata: viewModel.downloadProgressMetadata
             ),
         ]
+        event.merge(ModelsSettingsPayloadBuilder.makeDeviceMemoryEntry(viewModel.deviceMemoryGB)) { current, _ in current }
+        return event
     }
 }

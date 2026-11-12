@@ -17,6 +17,8 @@ from api.services.retrieval.contracts import (
 from api.services.retrieval.detail_shaping import DEFAULT_TRANSCRIPT_LIMIT, MAX_TRANSCRIPT_LIMIT
 from api.services.retrieval.factory import get_unified_retrieval_service
 
+from .unified_history_tool import refresh_memory_stream
+
 _DESCRIPTION = (
     "Discover and query Basil's local record types. Call action='catalog' when "
     "source selection depends on newly discovered input; then use browse, search, "
@@ -35,7 +37,19 @@ _DESCRIPTION = (
     "analysis (the latest unless analysis_index is set), and one page of the transcript. "
     "To read analyses without the transcript, pass sections=['analyses']. To read the "
     "transcript, pass sections=['transcript'] and follow transcript_range.next_offset "
-    "with transcript_offset until next_offset is null."
+    "with transcript_offset until next_offset is null. To read or file a whole call, use "
+    "the transcript_markdown_path that detail on a meeting returns: it is a Markdown "
+    "file of the full interleaved transcript in the same layout as the analysis "
+    "window's Export (one [timestamp] Label header per turn, the lines indented under "
+    "it), kept current with the recordings, and you can read it with the file tools or "
+    "copy it as is instead of rebuilding the layout from pages. Its Microphone and "
+    "System Audio labels name the recording track, not the person, and Basil does not "
+    "identify individual voices. Records appear in search, browse, and aggregate a few "
+    "minutes after they finish: when the user refers to a meeting, task, or dictation "
+    "that just finished and it is missing, repeat the call with refresh_first=true "
+    "instead of concluding it was not recorded. Recorded meetings are also stored one "
+    "folder per recording under ~/.basil/meetings/ if the refresh still does not "
+    "surface one."
 )
 
 
@@ -83,6 +97,12 @@ class RetrievalToolInput(BaseModel):
         default=-1,
         description="detail on a meeting: which analysis to return, by index from analysis_catalog; -1 is the latest.",
     )
+    refresh_first: bool = Field(
+        default=False,
+        description=(
+            "search, browse, and aggregate only: collect any records that have not been indexed yet before running. Set true when the user refers to something that just finished (a meeting that ended, a task that completed) and it is missing from the results. Costs no model tokens, takes a few seconds, and is skipped if it already ran in the last 30 seconds. The response reports what happened under memory_refresh."
+        ),
+    )
 
     @model_validator(mode="after")
     def validate_action(self):
@@ -99,6 +119,9 @@ class RetrievalToolInput(BaseModel):
 
 async def _retrieve_basil_history(max_output_chars: Optional[int] = None, **kwargs) -> str:
     args = RetrievalToolInput(**kwargs)
+    memory_refresh = None
+    if args.refresh_first and args.action in ("search", "browse", "aggregate"):
+        memory_refresh = await refresh_memory_stream()
     service = get_unified_retrieval_service()
     if args.action == "catalog":
         result = service.catalog()
@@ -125,6 +148,8 @@ async def _retrieve_basil_history(max_output_chars: Optional[int] = None, **kwar
             transcript_offset=args.transcript_offset, transcript_limit=args.transcript_limit,
             analysis_index=args.analysis_index,
         ))
+    if memory_refresh is not None and isinstance(result, dict):
+        result["memory_refresh"] = memory_refresh
     return json.dumps(result, ensure_ascii=False, default=str)
 
 

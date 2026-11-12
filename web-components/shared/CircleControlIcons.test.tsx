@@ -4,7 +4,16 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { PauseCircleIcon, PlayCircleIcon, StopCircleIcon } from './CircleControlIcons'
+import {
+  ApproveCircleIcon,
+  ContinueCircleIcon,
+  DenyCircleIcon,
+  PauseCircleIcon,
+  PlayCircleIcon,
+  SkipCircleIcon,
+  StopCircleIcon,
+  WorkLogCircleIcon,
+} from './CircleControlIcons'
 import { PauseAction } from './PauseAction'
 import { StopAction } from './StopAction'
 
@@ -44,6 +53,20 @@ describe('circle control icons', () => {
       expect(svg.getAttribute('width')).toBeNull()
       expect(svg.querySelector('circle')).not.toBeNull()
     })
+  })
+
+  it('draws the decision circles the same way, and every one differs from the others', () => {
+    mount(<><ApproveCircleIcon /><DenyCircleIcon /><StopCircleIcon /><ContinueCircleIcon /><SkipCircleIcon /><WorkLogCircleIcon /></>)
+    const svgs = Array.from(container.querySelectorAll('svg'))
+    expect(svgs).toHaveLength(6)
+    svgs.forEach((svg) => {
+      expect(svg.getAttribute('viewBox')).toBe('0 0 16 16')
+      expect(svg.getAttribute('aria-hidden')).toBe('true')
+      expect(svg.getAttribute('width')).toBeNull()
+      expect(svg.querySelector('circle')).not.toBeNull()
+    })
+    const markup = svgs.map((svg) => svg.innerHTML)
+    expect(new Set(markup).size).toBe(6)
   })
 })
 

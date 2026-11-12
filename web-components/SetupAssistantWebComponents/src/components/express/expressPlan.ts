@@ -17,14 +17,17 @@ const PERMISSION_LABELS: Record<string, string> = {
 const PERMISSION_ORDER = ['screen_recording', 'microphone'] as const
 
 /** The plain summary shown first on the confirm screen for each comfort level. */
-export function summaryForComfort(level: ComfortLevel): string {
+export function summaryForComfort(level: ComfortLevel, isYolo = false): string {
   if (level === 'cautious') {
     return 'Everything here stays on this Mac and needs no new macOS permission.'
   }
   if (level === 'balanced') {
     return 'This adds Activity Capture and Meeting and Call Detection to the Basil menu. They are switched on but do not start by themselves, and macOS asks for permission the first time you use them.'
   }
-  return 'This turns on everything: Activity Capture, Meeting and Call Detection and the Voice Listener all start every time Basil launches. macOS will ask for screen recording and microphone access. Everything stays on this Mac while I think with the local model.'
+  if (isYolo) {
+    return 'This turns on everything useful and downloads the models this Mac can run. Untick anything below that you do not want. Anything under Listening and capture starts every time Basil launches.'
+  }
+  return 'This turns on everything you leave ticked below. Anything under Listening and capture starts every time Basil launches.'
 }
 
 export function comfortTitle(level: ComfortLevel): string {

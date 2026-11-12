@@ -113,7 +113,7 @@ final class HotkeyConflictEvaluatorTests: XCTestCase {
     func testTheSiriPossibleClashIsCarriedThrough() {
         let found = conflicts(system: HotkeyTestSupport.system(siri: HotkeyTestSupport.unreadableSiri))
 
-        XCTAssertEqual(Set(found.map(\.hotkeyId)), ["transcribe_audio", "assistant_session", "agent_task"])
+        XCTAssertEqual(Set(found.map(\.hotkeyId)), ["transcribe_audio", "agent_task"])
         XCTAssertTrue(found.allSatisfy { $0.source == "Siri" && $0.certainty == .possible })
     }
 

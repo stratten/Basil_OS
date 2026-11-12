@@ -98,9 +98,17 @@ describe('ExpressReview heading and summary', () => {
     renderReview()
 
     expect(container.querySelector('h2')!.textContent).toBe("Here is what I'll do on this Mac.")
-    expect(container.querySelector('.express-review-summary')!.textContent).toContain('Voice Listener')
+    expect(container.querySelector('.express-review-summary')!.textContent).toContain('everything you leave ticked')
     expect(container.querySelector('.express-review-device')!.textContent).toBe('This Mac: Apple M2, 16 GB of memory, 100 GB free.')
     expect(container.querySelector('.express-note')!.textContent).toContain('stays on this Mac')
+  })
+
+  it('says YOLO downloads models and the all-in summary does not', () => {
+    renderReview({ isYolo: true })
+    expect(container.querySelector('.express-review-summary')!.textContent).toContain('downloads the models this Mac can run')
+
+    renderReview({ isYolo: false })
+    expect(container.querySelector('.express-review-summary')!.textContent).not.toContain('downloads')
   })
 })
 

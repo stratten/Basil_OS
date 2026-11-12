@@ -48,7 +48,7 @@
 .inline-email-context-eyebrow {
   color: color-mix(in srgb, var(--primary) 70%, var(--text-secondary));
   font-family: var(--font-family-medium);
-  font-size: calc(11px * var(--text-scale, 1));
+  font-size: var(--font-size-status-small);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -56,14 +56,14 @@
 .inline-email-context-subject {
   color: var(--text-primary);
   font-family: var(--font-family-medium);
-  font-size: calc(15px * var(--text-scale, 1));
+  font-size: var(--font-size-headline);
   line-height: 1.3;
   margin: 0;
 }
 
 .inline-email-context-meta {
   color: var(--text-secondary);
-  font-size: calc(12px * var(--text-scale, 1));
+  font-size: var(--font-size-footnote);
   line-height: 1.4;
   margin: 0;
 }
@@ -83,7 +83,7 @@
   border-left: 2px solid color-mix(in srgb, var(--primary) 30%, var(--separator-color));
   border-radius: var(--corner-radius-small);
   color: var(--text-primary);
-  font-size: calc(13px * var(--text-scale, 1));
+  font-size: var(--font-size-callout);
   line-height: 1.5;
   margin: 0;
   max-height: 320px;
@@ -111,7 +111,7 @@
   color: var(--text-secondary);
   display: flex;
   flex-wrap: wrap;
-  font-size: calc(12px * var(--text-scale, 1));
+  font-size: var(--font-size-footnote);
   gap: 10px;
   justify-content: flex-start;
 }
@@ -167,7 +167,7 @@
 .inline-dill-draft-eyebrow {
   color: color-mix(in srgb, var(--primary) 70%, var(--text-secondary));
   font-family: var(--font-family-medium);
-  font-size: calc(11px * var(--text-scale, 1));
+  font-size: var(--font-size-status-small);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -181,7 +181,7 @@
   border-radius: 999px;
   color: color-mix(in srgb, var(--primary) 80%, var(--text-primary));
   font-family: var(--font-family-medium);
-  font-size: calc(11px * var(--text-scale, 1));
+  font-size: var(--font-size-status-small);
   letter-spacing: 0.04em;
   padding: 2px 8px;
   text-transform: uppercase;
@@ -195,7 +195,7 @@
 .inline-dill-draft-heading {
   color: var(--text-primary);
   font-family: var(--font-family-medium);
-  font-size: calc(15px * var(--text-scale, 1));
+  font-size: var(--font-size-headline);
   line-height: 1.3;
   margin: 0;
 }
@@ -203,7 +203,7 @@
 .inline-dill-draft-application {
   color: var(--text-secondary);
   font-family: var(--font-family-regular);
-  font-size: calc(12px * var(--text-scale, 1));
+  font-size: var(--font-size-footnote);
   margin: 0;
 }
 
@@ -212,7 +212,7 @@
   border-left: 2px solid color-mix(in srgb, var(--primary) 30%, var(--separator-color));
   border-radius: var(--corner-radius-small);
   color: var(--text-primary);
-  font-size: calc(13px * var(--text-scale, 1));
+  font-size: var(--font-size-callout);
   margin: 0;
   overflow-y: auto;
   padding: 10px 12px;
@@ -241,7 +241,7 @@
   border-left: 2px solid color-mix(in srgb, var(--danger, #c0392b) 50%, var(--separator-color));
   border-radius: var(--corner-radius-small);
   color: var(--text-primary);
-  font-size: calc(13px * var(--text-scale, 1));
+  font-size: var(--font-size-callout);
   line-height: 1.5;
   margin: 0;
   padding: 10px 12px;
@@ -254,7 +254,7 @@
   color: var(--text-secondary);
   display: flex;
   flex-wrap: wrap;
-  font-size: calc(12px * var(--text-scale, 1));
+  font-size: var(--font-size-footnote);
   gap: 10px;
   justify-content: flex-start;
 }
@@ -305,7 +305,7 @@
 .inline-setup-visual-eyebrow {
   color: color-mix(in srgb, var(--primary) 70%, var(--text-secondary));
   font-family: var(--font-family-medium);
-  font-size: calc(11px * var(--text-scale, 1));
+  font-size: var(--font-size-status-small);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -379,13 +379,13 @@
 .inline-setup-bubble-label {
   color: var(--text-primary);
   font-family: var(--font-family-medium);
-  font-size: calc(12.5px * var(--text-scale, 1));
+  font-size: var(--font-size-callout);
   line-height: 1.2;
 }
 
 .inline-setup-bubble-description {
   color: var(--text-secondary);
-  font-size: calc(11.5px * var(--text-scale, 1));
+  font-size: var(--font-size-footnote);
   line-height: 1.35;
   margin: 0;
 }
@@ -414,7 +414,7 @@
 
 .inline-setup-visual-caption {
   color: var(--text-secondary);
-  font-size: calc(12.5px * var(--text-scale, 1));
+  font-size: var(--font-size-callout);
   line-height: 1.45;
   margin: 0;
 }
@@ -466,7 +466,7 @@
   bottom: 8px;
   color: var(--text-on-primary, var(--background-primary));
   font-family: var(--font-family-medium);
-  font-size: calc(11px * var(--text-scale, 1));
+  font-size: var(--font-size-status-small);
   padding: 3px 9px;
   pointer-events: none;
   position: absolute;
@@ -538,7 +538,7 @@
   color: var(--text-on-primary, var(--background-primary));
   cursor: pointer;
   font: inherit;
-  font-size: calc(20px * var(--text-scale, 1));
+  font-size: var(--font-size-title2);
   height: 32px;
   line-height: 1;
   position: absolute;

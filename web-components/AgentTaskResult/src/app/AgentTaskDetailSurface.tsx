@@ -632,6 +632,8 @@ export function AgentTaskDetailSurface({
               agentTaskId={retainedInteractiveAgentId.current}
               approvals={retainedApprovals.current}
               rememberChoice={retainedRememberApprovalChoice.current}
+              onStopTask={onCancelRunning}
+              isStopping={isCanceling}
             />
           </div>
         )}

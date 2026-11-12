@@ -1,6 +1,8 @@
 import { agentStore } from '../store/agentStore';
 import type { CheckpointData } from '../types';
 import { checkpointPromptSummary } from './CheckpointFlow';
+import { ContinueCircleIcon } from '@shared/CircleControlIcons';
+import { DecisionButton } from './interaction/DecisionButton';
 
 interface Props {
   agentTaskId: string;
@@ -19,13 +21,14 @@ export default function CheckpointReopenCard({ agentTaskId, checkpoint }: Props)
           </div>
           {summary && <div className="agent-task-input-dock-summary">{summary}</div>}
         </div>
-        <button
-          type="button"
-          className="action-btn primary agent-task-input-dock-action"
+        <DecisionButton
+          tone="primary"
+          icon={<ContinueCircleIcon />}
+          label="Answer now"
           onClick={() => agentStore.showCheckpoint(agentTaskId, checkpoint)}
-        >
-          Answer now
-        </button>
+          className="agent-task-input-dock-action"
+          title="bring the question back so you can answer"
+        />
       </div>
     </section>
   );

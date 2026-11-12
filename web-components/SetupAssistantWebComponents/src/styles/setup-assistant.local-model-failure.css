@@ -15,14 +15,16 @@
 }
 
 .local-model-failure-banner__message {
-  font-weight: 600;
+  font-family: var(--font-family-medium);
+  font-weight: normal;
   line-height: 1.45;
   margin: 0;
 }
 
 .local-model-failure-banner__status {
   color: var(--primary);
-  font-weight: 600;
+  font-family: var(--font-family-medium);
+  font-weight: normal;
   margin: 0;
 }
 

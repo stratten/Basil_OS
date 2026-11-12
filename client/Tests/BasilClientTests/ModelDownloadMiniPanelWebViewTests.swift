@@ -66,6 +66,26 @@ final class ModelDownloadMiniPanelWebViewTests: XCTestCase {
         XCTAssertNil(snapshot.jsonObject(includeAppIcon: false)["appIconDataUrl"])
     }
 
+    func testSnapshotSerializesTheWaitingMessageAndLeavesItNullWhenAbsent() throws {
+        let snapshot = ModelDownloadPanelSnapshot(
+            phaseMessage: "Downloading models…",
+            isComplete: false,
+            quantizedPercentage: 0,
+            appIconDataUrl: nil,
+            models: [
+                .init(modelId: "waiting", status: "downloading", progress: 0, totalDownloaded: 0, totalSize: 0, isRetrying: false, message: "Waiting for Hugging Face to start sending data (20s)..."),
+                .init(modelId: "quiet", status: "downloading", progress: 0, totalDownloaded: 0, totalSize: 0, isRetrying: false),
+            ]
+        )
+
+        let data = try JSONSerialization.data(withJSONObject: snapshot.jsonObject())
+        let object = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let models = object?["models"] as? [[String: Any]]
+
+        XCTAssertEqual(models?.first?["message"] as? String, "Waiting for Hugging Face to start sending data (20s)...")
+        XCTAssertTrue(models?.last?["message"] is NSNull)
+    }
+
     func testReadyAndNavigationFailureUseTheirDedicatedCallbacks() {
         let host = ModelDownloadMiniPanelWebView()
         var didReceiveReady = false

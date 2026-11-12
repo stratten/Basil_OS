@@ -88,6 +88,44 @@ describe('SetupStepActions', () => {
     }
   })
 
+  it('adds a quiet Report a problem link on its own row below the step actions only when asked', () => {
+    renderShell('intro_and_privacy')
+    expect(container.querySelector('.setup-report-link')).toBeNull()
+
+    const onReportProblem = vi.fn()
+    act(() => {
+      root.render(
+        <SetupShell setupStage="intro_and_privacy" hasActiveArtifact={false} onSkip={vi.fn()} onReportProblem={onReportProblem}>
+          <SetupStepActions>
+            <button type="button" className="step-continue">Continue</button>
+          </SetupStepActions>
+        </SetupShell>,
+      )
+    })
+
+    const footer = container.querySelector('.setup-navigation')!
+    expect(Array.from(footer.children).map(child => child.className)).toEqual(['setup-navigation-step', 'setup-report-row'])
+    const link = footer.querySelector<HTMLButtonElement>('.setup-report-row .setup-report-link')!
+    expect(link.textContent).toBe('Report a problem')
+    expect(container.querySelector('.setup-navigation-step .step-continue')).not.toBeNull()
+    act(() => link.click())
+    expect(onReportProblem).toHaveBeenCalledOnce()
+  })
+
+  it('shows the link on every setup screen, including the first and the last', () => {
+    const stages: SetupStage[] = ['welcome', 'express', 'intro_and_privacy', 'orientation', 'conversation', 'wrap_up']
+    for (const stage of stages) {
+      act(() => {
+        root.render(
+          <SetupShell setupStage={stage} hasActiveArtifact={false} onSkip={vi.fn()} onReportProblem={vi.fn()}>
+            <div />
+          </SetupShell>,
+        )
+      })
+      expect(container.querySelector('.setup-report-link'), stage).not.toBeNull()
+    }
+  })
+
   it('renders in place when there is no shell footer', () => {
     act(() => {
       root.render(

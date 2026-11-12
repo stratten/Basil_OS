@@ -67,6 +67,9 @@ struct ModelDownloadInfo: Identifiable, Codable, Equatable {
     var size: Int64?           // Size in bytes
     let variants: [String: [String]]
     var handler: String? = nil  // Registry runtime handler (e.g., "llama_cpp", "mlx"); nil for models without one.
+    var speedRating: Int? = nil  // Registry speed rating from 1 to 10; nil for models that do not list one.
+    var accuracyRating: Int? = nil  // Registry quality rating from 1 to 10; nil for models that do not list one.
+    var recommendedRam: String? = nil  // Registry memory recommendation such as "16GB"; nil for models that do not list one.
 
     /// The local-model file format shown next to the size in Settings: "MLX" or "GGUF". Nil for every other kind of model.
     var formatTag: String? {
@@ -77,7 +80,7 @@ struct ModelDownloadInfo: Identifiable, Codable, Equatable {
         }
     }
     
-    init(id: String, modelType: String, variantId: String, name: String, capabilities: [ModelCapabilityType], status: ModelDownloadStatus = .downloadable, size: Int64? = nil, variants: [String: [String]], handler: String? = nil) {
+    init(id: String, modelType: String, variantId: String, name: String, capabilities: [ModelCapabilityType], status: ModelDownloadStatus = .downloadable, size: Int64? = nil, variants: [String: [String]], handler: String? = nil, speedRating: Int? = nil, accuracyRating: Int? = nil, recommendedRam: String? = nil) {
         self.id = id
         self.modelType = modelType
         self.variantId = variantId
@@ -87,6 +90,9 @@ struct ModelDownloadInfo: Identifiable, Codable, Equatable {
         self.size = size
         self.variants = variants
         self.handler = handler
+        self.speedRating = speedRating
+        self.accuracyRating = accuracyRating
+        self.recommendedRam = recommendedRam
     }
     
     private enum CodingKeys: String, CodingKey {

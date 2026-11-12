@@ -3,11 +3,14 @@ import { useState } from 'react'
 import { plainMarkdownText } from '@shared/plainMarkdownText'
 import { SetupConversationMarkdown } from '@/components/conversation/SetupConversationMarkdown'
 import { SetupWorkingIndicator } from '@/components/motion/SetupWorkingIndicator'
+import type { SetupImportedContextSummary } from '@/state/setupAssistantStore'
 import type { SetupWrapUpProposal } from '@/types'
 
 import { SetupReceiptSection } from '@/components/express/SetupReceiptSection'
 
 import { WindowBasicsTips } from './WindowBasicsTips'
+import { WrapUpProblemNotice, type WrapUpProblem } from './WrapUpProblemNotice'
+import { WrapUpSavedChoices } from './WrapUpSavedChoices'
 import {
   copyWrapUpReferenceMarkdown,
   downloadWrapUpReferencePdf,
@@ -20,7 +23,7 @@ import {
 //   - wrapUpProposal present + recap non-empty: model produced a recap
 //   - isFinalizingWrapUp: the finalize stream is still in flight
 //   - finalizeError: finalize stream failed
-//   - (fallback) nothing happened to land any setup steps this round
+//   - (fallback) nothing happened to land any setup steps this round; when a setup problem is still unresolved, it says so instead of reading as a calm "all set"
 //
 // All four variants share the same `<WrapUpFooter>` (shortcut tips plus settings pointer) so the
 // "Settings > General > Application Setup" copy is identical wherever
@@ -31,6 +34,14 @@ export interface SetupWrapUpPanelProps {
   wrapUpProposal?: SetupWrapUpProposal
   isFinalizingWrapUp: boolean
   finalizeError: string | null
+  /** Reply preferences saved to the profile during setup. Shown under "Saved during setup" in every variant that has a footer. */
+  savedInteractionStyle?: string[]
+  /** What the person's import added during setup. Shown under "Saved during setup" in every variant that has a footer. */
+  importedContext?: SetupImportedContextSummary | null
+  /** A setup problem that was never resolved. Only the fallback variant shows it, in place of the calm "all set" copy. */
+  problem?: WrapUpProblem | null
+  onShowLogs?: (detail?: string) => void
+  onReport?: (detail?: string) => void
 }
 
 function SettingsPointer() {
@@ -43,9 +54,10 @@ function SettingsPointer() {
 }
 
 // Shared footer for every variant that ends with the settings pointer, so the shortcut tips cannot be missed in one of them.
-function WrapUpFooter() {
+function WrapUpFooter({ savedInteractionStyle, importedContext }: Pick<SetupWrapUpPanelProps, 'savedInteractionStyle' | 'importedContext'>) {
   return (
     <>
+      <WrapUpSavedChoices interactionStyle={savedInteractionStyle} importedContext={importedContext} />
       <SetupReceiptSection />
       <WindowBasicsTips />
       <SettingsPointer />
@@ -58,7 +70,13 @@ export function SetupWrapUpPanel({
   wrapUpProposal,
   isFinalizingWrapUp,
   finalizeError,
+  savedInteractionStyle,
+  importedContext,
+  problem,
+  onShowLogs,
+  onReport,
 }: SetupWrapUpPanelProps) {
+  const footer = <WrapUpFooter savedInteractionStyle={savedInteractionStyle} importedContext={importedContext} />
   const [exportStatus, setExportStatus] = useState<string | null>(null)
 
   const handleDownloadPdf = (proposal: SetupWrapUpProposal) => {
@@ -83,7 +101,7 @@ export function SetupWrapUpPanel({
           No pressure. I'll bring this back up the next time you launch the app, and you can
           resume from Settings any time.
         </p>
-        <WrapUpFooter />
+        {footer}
       </section>
     )
   }
@@ -141,7 +159,7 @@ export function SetupWrapUpPanel({
           </div>
         </details>
 
-        <WrapUpFooter />
+        {footer}
       </section>
     )
   }
@@ -171,7 +189,22 @@ export function SetupWrapUpPanel({
           Something got in the way when I tried to summarize what we landed on. You can resume
           the Setup Assistant any time and pick this back up.
         </p>
-        <WrapUpFooter />
+        {footer}
+      </section>
+    )
+  }
+
+  if (problem) {
+    return (
+      <section key="problem" className="setup-complete-panel setup-motion-enter">
+        <p className="setup-complete-eyebrow">Setup stopped early</p>
+        <h1>Setup didn't finish.</h1>
+        <WrapUpProblemNotice problem={problem} onShowLogs={onShowLogs} onReport={onReport} />
+        <p>
+          Because of that, I couldn't land any setup steps this round. You can start again any
+          time, and I'll only act on things you approve.
+        </p>
+        {footer}
       </section>
     )
   }
@@ -184,7 +217,7 @@ export function SetupWrapUpPanel({
         We didn't land any concrete setup steps this round, but that's fine — you can come back
         to this any time, and I'll only act on things you approve.
       </p>
-      <WrapUpFooter />
+      {footer}
     </section>
   )
 }

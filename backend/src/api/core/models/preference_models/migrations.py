@@ -252,16 +252,24 @@ def migrate_retired_cloud_model_ids_in_data(data: dict) -> bool:
     return bool(migrated)
 
 
+# The two saved fields that can hold the retired "base" default: the model Basil transcribes with, and the choice the live transcription settings carry.
+_LEGACY_TRANSCRIPTION_MODEL_FIELDS = (("models", "transcription_model"), ("transcription", "selected_model"))
+
+
 def migrate_legacy_transcription_model_in_data(data: dict) -> bool:
     """Replace the retired shorthand transcription default "base" with a model the Settings picker and the transcription services can resolve, in place.
 
-    "base" is not a registry id or display name, so Settings listed it as unavailable and the local loader could not resolve it. A machine that already has Whisper Base installed keeps using it as "Whisper Base". Any other machine gets the starter model the first-run download installs. Returns True when anything changed so the caller can persist the file. Only the exact legacy values "base" and an empty string are rewritten, so a real selection is never touched, and running it again changes nothing.
+    "base" is not a registry id or display name, so Settings listed it as unavailable and the local loader could not resolve it. The rewrite covers `models.transcription_model` and `transcription.selected_model`. A machine that already has Whisper Base installed keeps using it as "Whisper Base". Any other machine gets the starter model the first-run download installs. Returns True when anything changed so the caller can persist the file. Only the exact legacy values "base" and an empty string are rewritten, so a real selection is never touched, and running it again changes nothing.
     """
-    models_data = data.get("models")
-    if not isinstance(models_data, dict):
-        return False
-    current = models_data.get("transcription_model")
-    if not isinstance(current, str) or current.strip() not in ("base", ""):
+    stale_fields = []
+    for section, field in _LEGACY_TRANSCRIPTION_MODEL_FIELDS:
+        section_data = data.get(section)
+        if not isinstance(section_data, dict):
+            continue
+        current = section_data.get(field)
+        if isinstance(current, str) and current.strip() in ("base", ""):
+            stale_fields.append((section, section_data, field, current))
+    if not stale_fields:
         return False
 
     from .defaults import LEGACY_BASE_TRANSCRIPTION_MODEL_NAME, _get_default_transcription_model_name
@@ -276,8 +284,9 @@ def migrate_legacy_transcription_model_in_data(data: dict) -> bool:
     except Exception as exc:
         logger.debug(f"Could not check for an installed Whisper Base model: {exc}")
 
-    models_data["transcription_model"] = replacement
-    logger.info(f"📦 Transcription default: migrated models.transcription_model {current!r} -> {replacement!r}")
+    for section, section_data, field, current in stale_fields:
+        section_data[field] = replacement
+        logger.info(f"📦 Transcription default: migrated {section}.{field} {current!r} -> {replacement!r}")
     return True
 
 

@@ -73,7 +73,7 @@ def test_larger_local_reasoning_models_are_downloadable() -> None:
             "download_url": "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q4_K_M.gguf",
             "on_disk_name": "qwen35-4b-q4km",
             "context_window": 262144,
-            "size": "2.78GB",
+            "size": "2.74GB",
             "features": ["gpu_acceleration", "quantization", "function_calling"],
         },
         "Qwen-qwen36-35b-a3b-ud-q4km": {
@@ -83,7 +83,7 @@ def test_larger_local_reasoning_models_are_downloadable() -> None:
             ),
             "on_disk_name": "qwen36-35b-a3b-ud-q4km",
             "context_window": 262144,
-            "size": "18GB",
+            "size": "22.1GB",
             "features": ["gpu_acceleration", "quantization", "function_calling"],
         },
         "Google-gemma4-e4b-it-qat-q4_0": {
@@ -98,7 +98,7 @@ def test_larger_local_reasoning_models_are_downloadable() -> None:
         },
         "Microsoft-phi4-mini-q4km": {
             "download_url": (
-                "https://huggingface.co/tensorblock/Phi-4-mini-instruct-GGUF/resolve/main/"
+                "https://huggingface.co/unsloth/Phi-4-mini-instruct-GGUF/resolve/main/"
                 "Phi-4-mini-instruct-Q4_K_M.gguf"
             ),
             "on_disk_name": "phi4-mini-instruct-q4km",

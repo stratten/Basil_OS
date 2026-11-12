@@ -355,6 +355,7 @@ function IntroModelStep({
   const [downloadPhase, setDownloadPhase] = useState<LocalDownloadPhase>('idle')
   const [downloadPercent, setDownloadPercent] = useState(0)
   const [downloadBytes, setDownloadBytes] = useState<{ downloaded: number | null, total: number | null }>(NO_DOWNLOAD_BYTES)
+  const [downloadNote, setDownloadNote] = useState<string | null>(null)
   const [downloadError, setDownloadError] = useState<string | null>(null)
   const isMountedRef = useRef(true)
   const isWatchingDownloadRef = useRef(false)
@@ -410,6 +411,7 @@ function IntroModelStep({
           if (isMountedRef.current && typeof progress.progress === 'number') {
             setDownloadPercent(Math.max(0, Math.min(100, progress.progress * 100)))
             setDownloadBytes({ downloaded: reportedBytes(progress.total_downloaded), total: reportedBytes(progress.total_size) })
+            setDownloadNote(progress.message ?? null)
           }
         } catch {
           break
@@ -426,6 +428,7 @@ function IntroModelStep({
         setDownloadPhase('idle')
         setDownloadPercent(0)
         setDownloadBytes(NO_DOWNLOAD_BYTES)
+        setDownloadNote(null)
       } else {
         setDownloadPhase('stopped')
       }
@@ -547,6 +550,7 @@ function IntroModelStep({
     setDownloadError(null)
     setDownloadPercent(0)
     setDownloadBytes(NO_DOWNLOAD_BYTES)
+    setDownloadNote(null)
     setDownloadPhase('starting')
     try {
       if (method === 'copy') await copyLocalModelFromNormalBasil(modelType, variant)
@@ -570,6 +574,7 @@ function IntroModelStep({
     setDownloadError(null)
     setDownloadPercent(0)
     setDownloadBytes(NO_DOWNLOAD_BYTES)
+    setDownloadNote(null)
     setDownloadPhase('idle')
     setErrorMessage(null)
     try {
@@ -785,6 +790,7 @@ function IntroModelStep({
                           percent={downloadPercent}
                           downloadedBytes={downloadBytes.downloaded}
                           totalBytes={downloadBytes.total}
+                          waitingNote={downloadNote}
                         />
                       </div>
                     ) : (

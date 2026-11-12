@@ -84,7 +84,7 @@ export function ExpressReview({
     <section className="phase-section express-review">
       <p className="eyebrow">{isYolo ? 'Everything' : `${comfortTitle(plan.comfort)} setup`}</p>
       <h2>Here is what I'll do on this Mac.</h2>
-      <p className="express-review-summary">{summaryForComfort(plan.comfort)}</p>
+      <p className="express-review-summary">{summaryForComfort(plan.comfort, isYolo)}</p>
       <p className="express-review-device">This Mac: {plan.device.summary}.</p>
 
       <ul className="express-checks" aria-label="Checks before I start">

@@ -100,3 +100,81 @@ describe('SetupWrapUpPanel window shortcut tips', () => {
     expect(container.querySelector('.setup-wrapup-window-basics')).toBeNull()
   })
 })
+
+const PROBLEM = { message: 'The local model ran out of memory on this Mac.', detail: 'llama_decode returned -3' }
+
+describe('SetupWrapUpPanel unresolved setup problem', () => {
+  it('says setup stopped early instead of "all set", with Show logs and Report a problem but no Retry', () => {
+    const onShowLogs = vi.fn()
+    const onReport = vi.fn()
+    render({ problem: PROBLEM, onShowLogs, onReport })
+
+    expect(container.querySelector('h1')!.textContent).toBe("Setup didn't finish.")
+    expect(container.textContent).not.toContain("I'm ready when you are.")
+    expect(container.querySelector('[role="alert"]')!.textContent).toContain(PROBLEM.message)
+    const labels = [...container.querySelectorAll('.setup-wrapup-problem button')].map(button => button.textContent)
+    expect(labels).toEqual(['Show logs', 'Report a problem'])
+    expect(container.textContent).not.toContain('Retry')
+    expectTipsAndPointer()
+
+    act(() => { container.querySelectorAll<HTMLButtonElement>('.setup-wrapup-problem button')[0].click() })
+    expect(onShowLogs).toHaveBeenCalledWith('llama_decode returned -3')
+  })
+
+  it('keeps the calm fallback when there is no problem', () => {
+    render({ problem: null })
+
+    expect(container.querySelector('h1')!.textContent).toBe("I'm ready when you are.")
+    expect(container.querySelector('.setup-wrapup-problem')).toBeNull()
+  })
+
+  it('does not show the problem over a recap, a skip, or a failed recap', () => {
+    render({ problem: PROBLEM, wrapUpProposal: { recap: 'We set up your model.', recommended_next_steps: [], optional_breadth: null } })
+    expect(container.querySelector('.setup-wrapup-problem')).toBeNull()
+    expect(container.textContent).toContain('We set up your model.')
+
+    render({ problem: PROBLEM, wasSkipped: true })
+    expect(container.querySelector('.setup-wrapup-problem')).toBeNull()
+    expect(container.querySelector('h1')!.textContent).toBe('I saved your spot.')
+
+    render({ problem: PROBLEM, finalizeError: 'boom' })
+    expect(container.querySelector('.setup-wrapup-problem')).toBeNull()
+  })
+})
+
+describe('SetupWrapUpPanel saved choices', () => {
+  const STYLE = ['Keep replies short.']
+  const IMPORT = { entries_added: 2, facts_proposed: 0, fact_titles: [], note_titles: [] }
+
+  it('lists the saved preferences in the nothing-landed fallback', () => {
+    render({ savedInteractionStyle: STYLE })
+
+    expect(container.querySelector('.setup-wrapup-saved-choices')!.textContent).toContain('Keep replies short.')
+    expect(container.querySelector('h1')!.textContent).toBe("I'm ready when you are.")
+  })
+
+  it('lists the saved preferences and the import in every variant that has a footer', () => {
+    const variants: Partial<SetupWrapUpPanelProps>[] = [
+      { wasSkipped: true },
+      { wrapUpProposal: { recap: 'We set up your model.', recommended_next_steps: [], optional_breadth: null } },
+      { finalizeError: 'boom' },
+      { problem: PROBLEM },
+      {},
+    ]
+    for (const variant of variants) {
+      render({ ...variant, savedInteractionStyle: STYLE, importedContext: IMPORT })
+      const block = container.querySelector('.setup-wrapup-saved-choices')
+      expect(block, JSON.stringify(variant)).not.toBeNull()
+      expect(block!.textContent).toContain('Keep replies short.')
+      expect(block!.textContent).toContain('2 notes are in your searchable history.')
+    }
+  })
+
+  it('shows no saved-choices block when nothing was saved, and none while the recap is being prepared', () => {
+    render({})
+    expect(container.querySelector('.setup-wrapup-saved-choices')).toBeNull()
+
+    render({ isFinalizingWrapUp: true, savedInteractionStyle: STYLE })
+    expect(container.querySelector('.setup-wrapup-saved-choices')).toBeNull()
+  })
+})

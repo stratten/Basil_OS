@@ -170,14 +170,17 @@ final class ModelDownloadWindowController: NSObject, NSWindowDelegate, Appearanc
         let readyCount = entries.filter { readyStatuses.contains($0.status) }.count
         let isComplete = !entries.isEmpty && readyCount == entries.count
         let hasFailedEntry = entries.contains { $0.status == "failed" || $0.status == "user_canceled" }
+        let waitingStatuses: Set<String> = ["queued", "downloading"]
         let rows = entries.map { entry in
+            let trimmedMessage = entry.message.trimmingCharacters(in: .whitespacesAndNewlines)
             return ModelDownloadPanelSnapshot.Row(
                 modelId: entry.modelId,
                 status: entry.status,
                 progress: entry.progress * 100,
                 totalDownloaded: entry.totalDownloaded,
                 totalSize: entry.totalSize,
-                isRetrying: false
+                isRetrying: false,
+                message: waitingStatuses.contains(entry.status) && !trimmedMessage.isEmpty ? trimmedMessage : nil
             )
         }
         return ModelDownloadPanelSnapshot(

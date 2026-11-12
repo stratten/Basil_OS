@@ -19,7 +19,7 @@
 
   .phase-pill {
     flex: 0 0 auto;
-    font-size: calc(11px * var(--text-scale, 1));
+    font-size: var(--font-size-status-small);
     min-width: 148px;
   }
 

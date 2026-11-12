@@ -11,6 +11,8 @@ export interface DownloadProgressProps {
   /** What the progress bar is for, read out by screen readers, such as the model's name. */
   label: string
   className?: string
+  /** A short line that says why nothing has moved yet, such as the backend's "Waiting for Hugging Face to start sending data (20s)...". It is shown only while no bytes have arrived and the bar is at 0%, so it disappears as soon as the download starts. */
+  waitingNote?: string | null
 }
 
 function clampPercent(value: number): number {
@@ -26,9 +28,12 @@ export function wholePercent(value: number): number {
  * The one download progress display used by the mini widget, the Setup Assistant and Settings: a slim track, then a single row with the amount downloaded on the left and the percentage on the right.
  * A surface that needs it smaller sets the --download-progress-* custom properties described in download-progress.css on a parent element, so it never needs its own copy of the markup or the styling.
  */
-export function DownloadProgress({ percent, downloadedBytes, totalBytes, label, className }: DownloadProgressProps) {
+export function DownloadProgress({ percent, downloadedBytes, totalBytes, label, className, waitingNote }: DownloadProgressProps) {
   const clamped = clampPercent(percent)
   const hasAmount = typeof downloadedBytes === 'number' && downloadedBytes >= 0 && typeof totalBytes === 'number' && totalBytes > 0
+  const hasReceivedBytes = typeof downloadedBytes === 'number' && downloadedBytes > 0
+  const note = waitingNote?.trim()
+  const showWaitingNote = Boolean(note) && wholePercent(clamped) === 0 && !hasReceivedBytes
 
   return (
     <div className={className ? `download-progress ${className}` : 'download-progress'}>
@@ -46,6 +51,7 @@ export function DownloadProgress({ percent, downloadedBytes, totalBytes, label, 
         {hasAmount && <span className="download-progress__amount">{formatBytes(downloadedBytes)} / {formatBytes(totalBytes)}</span>}
         <span className="download-progress__percent">{wholePercent(clamped)}%</span>
       </div>
+      {showWaitingNote && <p className="download-progress__note" role="status">{note}</p>}
     </div>
   )
 }

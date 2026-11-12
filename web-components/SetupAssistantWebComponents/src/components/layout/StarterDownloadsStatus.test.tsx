@@ -103,6 +103,24 @@ describe('StarterDownloadsStatus', () => {
     expect(container.querySelector('.download-progress__percent')?.textContent).toBe('42%')
   })
 
+  it('says why a download has not moved yet, and stops saying it once bytes arrive', async () => {
+    const waiting = progress('completed', 'completed', 'downloading', 0)
+    waiting.models[REASONING] = { ...waiting.models[REASONING], message: 'Waiting for Hugging Face to start sending data (20s)...' } as typeof waiting.models[typeof REASONING]
+    fetchStarterDownloadProgress.mockResolvedValue(waiting)
+    await renderPanel()
+
+    expect(container.querySelector('.download-progress__note')?.textContent).toBe('Waiting for Hugging Face to start sending data (20s)...')
+
+    act(() => { root.unmount() })
+    root = createRoot(container)
+    const flowing = progress('completed', 'completed', 'downloading', 0)
+    flowing.models[REASONING] = { ...flowing.models[REASONING], message: 'Downloading model.gguf...', total_downloaded: 11_000_000, total_size: 5_680_000_000 } as typeof flowing.models[typeof REASONING]
+    fetchStarterDownloadProgress.mockResolvedValue(flowing)
+    await renderPanel()
+
+    expect(container.querySelector('.download-progress__note')).toBeNull()
+  })
+
   it('renders nothing when every download is ready', async () => {
     fetchStarterDownloadProgress.mockResolvedValue(progress('completed', 'completed', 'completed'))
 

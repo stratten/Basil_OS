@@ -57,6 +57,7 @@ export default function ModelRow({ row, isActionPending, onRetry, onCancel }: Pr
           percent={row.progress}
           downloadedBytes={row.totalDownloaded}
           totalBytes={row.totalSize}
+          waitingNote={row.message}
         />
       )}
     </div>

@@ -44,6 +44,8 @@ struct ModelVariant: Codable {
     let path: String?
     let valid: Bool?
     let handler: String?  // Registry runtime handler (for example "llama_cpp" or "mlx"); drives the format tag in Settings.
+    let speedRating: Int?  // Registry speed rating from 1 to 10; shown in the Settings model row.
+    let accuracyRating: Int?  // Registry quality rating from 1 to 10; shown in the Settings model row.
 }
 
 struct RepoInfo: Codable {

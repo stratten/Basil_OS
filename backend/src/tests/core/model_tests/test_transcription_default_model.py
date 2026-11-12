@@ -10,6 +10,7 @@ from api.core.models.preference_models.defaults import (
 )
 from api.core.models.preference_models.migrations import migrate_legacy_transcription_model_in_data
 from api.core.models.preference_models.model_settings import ModelSettings
+from api.core.models.preference_models.transcription import TranscriptionSettings
 from api.routes.onboarding import _TRANSCRIPTION_STARTER_MODELS
 from api.services.transcription.local_model import model_lifecycle
 from api.services.transcription.local_model.whisper_source_resolver import resolve_whisper_source
@@ -105,3 +106,34 @@ def test_the_loader_still_resolves_a_registered_name() -> None:
     source = model_lifecycle.ModelManager._resolve_source_or_default("Whisper Tiny (English)")
 
     assert source.local_dir.name == "whisper-tiny.en"
+
+
+def test_the_transcription_settings_choice_defaults_to_the_starter_model_not_the_removed_base() -> None:
+    assert TranscriptionSettings().selected_model == _get_default_transcription_model_name()
+    assert TranscriptionSettings().selected_model != LEGACY_BASE_TRANSCRIPTION_MODEL_NAME
+
+
+def test_a_stale_base_in_the_transcription_settings_choice_is_replaced_too(models_dir) -> None:
+    data = {"models": {"transcription_model": "Whisper Large V3 Turbo"}, "transcription": {"selected_model": "base"}}
+
+    assert migrate_legacy_transcription_model_in_data(data) is True
+
+    assert data["transcription"]["selected_model"] == _get_default_transcription_model_name()
+    assert data["models"]["transcription_model"] == "Whisper Large V3 Turbo"
+
+
+def test_both_stale_fields_get_the_same_replacement(models_dir) -> None:
+    _install_whisper_base(models_dir)
+    data = {"models": {"transcription_model": "base"}, "transcription": {"selected_model": "base"}}
+
+    assert migrate_legacy_transcription_model_in_data(data) is True
+
+    assert data["models"]["transcription_model"] == LEGACY_BASE_TRANSCRIPTION_MODEL_NAME
+    assert data["transcription"]["selected_model"] == LEGACY_BASE_TRANSCRIPTION_MODEL_NAME
+
+
+def test_a_real_transcription_settings_choice_is_never_rewritten(models_dir) -> None:
+    data = {"transcription": {"selected_model": "Whisper Large V3 Turbo"}}
+
+    assert migrate_legacy_transcription_model_in_data(data) is False
+    assert data["transcription"]["selected_model"] == "Whisper Large V3 Turbo"

@@ -45,6 +45,41 @@ final class ReactModelsSettingsPayloadTests: XCTestCase {
         XCTAssertNil(wireFormat(handler: nil))
     }
 
+    func test_makeModelWireItem_includesTheRegistryComparisonFactsOnlyWhenListed() {
+        let rated = ModelDownloadInfo(id: "Qwen-r", modelType: "Qwen", variantId: "r", name: "Qwen R", capabilities: [.reasoning], variants: [:], speedRating: 7, accuracyRating: 8, recommendedRam: " 16GB ")
+        let ratedItem = ModelsSettingsPayloadBuilder.makeModelWireItem(rated, downloadProgress: [:], downloadProgressMetadata: [:])
+        XCTAssertEqual(ratedItem["speedRating"] as? Int, 7)
+        XCTAssertEqual(ratedItem["accuracyRating"] as? Int, 8)
+        XCTAssertEqual(ratedItem["recommendedRam"] as? String, "16GB")
+
+        let blankRam = ModelDownloadInfo(id: "Qwen-b", modelType: "Qwen", variantId: "b", name: "Qwen B", capabilities: [.reasoning], variants: [:], recommendedRam: "   ")
+        let blankItem = ModelsSettingsPayloadBuilder.makeModelWireItem(blankRam, downloadProgress: [:], downloadProgressMetadata: [:])
+        XCTAssertNil(blankItem["recommendedRam"])
+
+        let plain = makeModel(id: "Qwen-p", modelType: "Qwen", variantId: "p", name: "Qwen P", capabilities: [.reasoning])
+        let plainItem = ModelsSettingsPayloadBuilder.makeModelWireItem(plain, downloadProgress: [:], downloadProgressMetadata: [:])
+        XCTAssertNil(plainItem["speedRating"])
+        XCTAssertNil(plainItem["accuracyRating"])
+        XCTAssertNil(plainItem["recommendedRam"])
+    }
+
+    func test_modelVariant_decodesRegistryRatingsFromTheBackendCatalog() throws {
+        let json = """
+        {"name": "Qwen R", "size": "5.0GB", "speed_rating": 7, "accuracy_rating": 8, "recommended_ram": "16GB", "handler": "llama_cpp"}
+        """
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let variant = try decoder.decode(ModelVariant.self, from: Data(json.utf8))
+        XCTAssertEqual(variant.speedRating, 7)
+        XCTAssertEqual(variant.accuracyRating, 8)
+        XCTAssertEqual(variant.recommendedRam, "16GB")
+
+        let bare = try decoder.decode(ModelVariant.self, from: Data(#"{"name": "Cloud", "size": "0"}"#.utf8))
+        XCTAssertNil(bare.speedRating)
+        XCTAssertNil(bare.accuracyRating)
+        XCTAssertNil(bare.recommendedRam)
+    }
+
     func test_makeModelWireItem_downloadingStatusPrefersLiveProgressOverModelStatus() {
         let model = makeModel(id: "Qwen-b", modelType: "Qwen", variantId: "b", name: "Qwen B", capabilities: [.reasoning], status: .downloading(progress: 0.2))
         let item = ModelsSettingsPayloadBuilder.makeModelWireItem(model, downloadProgress: ["Qwen-b": 0.55], downloadProgressMetadata: [:])
@@ -72,6 +107,25 @@ final class ReactModelsSettingsPayloadTests: XCTestCase {
         XCTAssertEqual(item["totalFiles"] as? Int, 2)
     }
 
+    func test_makeModelWireItem_carriesTheBackendStatusMessageWhileDownloading() {
+        let model = makeModel(id: "Qwen-e", modelType: "Qwen", variantId: "e", name: "Qwen E", capabilities: [.reasoning], status: .downloading(progress: 0))
+        let metadata: [String: [String: Any]] = [
+            "Qwen-e": ["message": "Waiting for Hugging Face to start sending data (20s)..."],
+        ]
+        let item = ModelsSettingsPayloadBuilder.makeModelWireItem(model, downloadProgress: ["Qwen-e": 0], downloadProgressMetadata: metadata)
+        XCTAssertEqual(item["statusMessage"] as? String, "Waiting for Hugging Face to start sending data (20s)...")
+    }
+
+    func test_makeModelWireItem_leavesOutABlankOrMissingStatusMessage() {
+        let model = makeModel(id: "Qwen-f", modelType: "Qwen", variantId: "f", name: "Qwen F", capabilities: [.reasoning], status: .downloading(progress: 0))
+        let blank = ModelsSettingsPayloadBuilder.makeModelWireItem(model, downloadProgress: ["Qwen-f": 0], downloadProgressMetadata: ["Qwen-f": ["message": "  \n"]])
+        let missing = ModelsSettingsPayloadBuilder.makeModelWireItem(model, downloadProgress: ["Qwen-f": 0], downloadProgressMetadata: ["Qwen-f": ["total_downloaded": Int64(0)]])
+        let notAString = ModelsSettingsPayloadBuilder.makeModelWireItem(model, downloadProgress: ["Qwen-f": 0], downloadProgressMetadata: ["Qwen-f": ["message": 5]])
+        XCTAssertNil(blank["statusMessage"])
+        XCTAssertNil(missing["statusMessage"])
+        XCTAssertNil(notAString["statusMessage"])
+    }
+
     func test_makeCapabilityGroups_filtersByCapabilityAndDropsEmptyGroups() {
         let groups: [String: [ModelDownloadInfo]] = [
             "Qwen": [makeModel(id: "Qwen-a", modelType: "Qwen", variantId: "a", name: "Qwen A", capabilities: [.reasoning])],
@@ -80,6 +134,18 @@ final class ReactModelsSettingsPayloadTests: XCTestCase {
         let reasoningGroups = ModelsSettingsPayloadBuilder.makeCapabilityGroups(modelGroups: groups, capability: .reasoning, downloadProgress: [:], downloadProgressMetadata: [:])
         XCTAssertEqual(reasoningGroups.count, 1)
         XCTAssertEqual(reasoningGroups.first?["provider"] as? String, "Qwen")
+    }
+
+    func test_makeDeviceMemoryEntry_includesPositiveMemory() {
+        let entry = ModelsSettingsPayloadBuilder.makeDeviceMemoryEntry(16)
+        XCTAssertEqual(entry["deviceMemoryGb"] as? Int, 16)
+        XCTAssertEqual(entry.count, 1)
+    }
+
+    func test_makeDeviceMemoryEntry_omitsUnknownOrNonPositiveMemory() {
+        XCTAssertTrue(ModelsSettingsPayloadBuilder.makeDeviceMemoryEntry(nil).isEmpty)
+        XCTAssertTrue(ModelsSettingsPayloadBuilder.makeDeviceMemoryEntry(0).isEmpty)
+        XCTAssertTrue(ModelsSettingsPayloadBuilder.makeDeviceMemoryEntry(-8).isEmpty)
     }
 
     func test_alertFactory_informativeTextWithSizeIncludesFreedSpaceEstimate() {

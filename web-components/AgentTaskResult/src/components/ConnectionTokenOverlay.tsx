@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { TokenConnectRequest } from '../types';
 import { agentStore } from '../store/agentStore';
+import { ApproveCircleIcon, DenyCircleIcon } from '@shared/CircleControlIcons';
+import { DecisionActions, DecisionButton } from './interaction/DecisionButton';
 import {
   registerTokenConnectResultHandler,
   requestTokenConnect,
@@ -196,14 +198,24 @@ export default function ConnectionTokenOverlay({ agentTaskId, request }: Props) 
             </div>
           ) : null}
         </div>
-        <div className="overlay-actions">
-          <button type="button" className="action-btn danger" onClick={cancel} disabled={submitting}>
-            Cancel
-          </button>
-          <button type="submit" className="action-btn success" disabled={!canSubmit}>
-            Connect
-          </button>
-        </div>
+        <DecisionActions>
+          <DecisionButton
+            tone="deny"
+            icon={<DenyCircleIcon />}
+            label="Cancel"
+            onClick={cancel}
+            disabled={submitting}
+            title="close this without connecting"
+          />
+          <DecisionButton
+            tone="approve"
+            icon={<ApproveCircleIcon />}
+            label="Connect"
+            submit
+            disabled={!canSubmit}
+            title="save this connection"
+          />
+        </DecisionActions>
       </form>
     </div>
   );

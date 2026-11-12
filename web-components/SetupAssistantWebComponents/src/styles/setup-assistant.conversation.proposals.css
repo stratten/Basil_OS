@@ -32,7 +32,7 @@
 .recommendation-review > h3 {
   color: var(--text-primary);
   font-family: var(--font-family-medium);
-  font-size: var(--font-size-headline);
+  font-size: var(--font-size-title3);
   margin: var(--padding-l) 0 0;
 }
 
@@ -47,7 +47,7 @@
   display: inline-flex;
   font-family: var(--font-family-medium);
   font-size: var(--font-size-status-small);
-  font-weight: 600;
+  font-weight: normal;
   padding: 6px 9px;
 }
 
@@ -179,7 +179,7 @@
 
 .appearance-change-arrow {
   color: var(--text-secondary);
-  font-size: calc(12px * var(--text-scale, 1));
+  font-size: var(--font-size-footnote);
 }
 
 .appearance-change-font-name {

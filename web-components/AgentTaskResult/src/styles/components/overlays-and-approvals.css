@@ -11,6 +11,80 @@
   opacity: 0;
 }
 
+/* This region only positions the approval over the pane. The backdrop inside it is what blocks the thread, so while the approval is docked to "See work so far" the thread under it can still be scrolled and its earlier turns opened. */
+.approval-presence-region {
+  pointer-events: none;
+}
+
+.approval-presence-region .overlay-backdrop {
+  pointer-events: auto;
+}
+
+/* The backdrop sets its own display, which would otherwise beat the hidden attribute that keeps a docked approval mounted but out of sight. */
+.overlay-backdrop[hidden] {
+  display: none;
+}
+
+.overlay-backdrop.overlay-backdrop--docked {
+  align-items: flex-end;
+  justify-content: center;
+  padding: var(--padding-s) var(--padding-l);
+  background: transparent;
+  pointer-events: none;
+}
+
+.approval-dock {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-m);
+  width: min(720px, 100%);
+  min-width: 0;
+  padding: var(--padding-s) var(--padding-m);
+  background: var(--background-primary);
+  border: var(--border-thin) solid var(--warning-base);
+  border-radius: var(--corner-radius-large);
+  box-shadow: var(--shadow-dark);
+  color: var(--text-primary);
+  pointer-events: auto;
+}
+
+.approval-dock__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.approval-dock__eyebrow {
+  margin-bottom: 2px;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  color: var(--text-primary);
+}
+
+.approval-dock__summary {
+  overflow: hidden;
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-status-small);
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.approval-dock__actions {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+}
+
+/* The shared row under a stack of several approvals, with the controls that belong to the whole stack rather than to one item. */
+.approval-set-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  margin-top: var(--padding-m);
+  padding-top: var(--padding-m);
+  border-top: var(--border-thin) solid var(--separator-color);
+  background: var(--background-primary);
+}
+
 .progress-step {
   display: flex;
   align-items: center;

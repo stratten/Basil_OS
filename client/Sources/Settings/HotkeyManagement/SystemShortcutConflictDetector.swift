@@ -21,7 +21,7 @@ struct SystemShortcutConflict: Equatable {
 
 /// Reads the macOS keyboard shortcut preferences and reports which Basil hotkeys collide with the ones that are turned on.
 ///
-/// The detection is read-only: it never changes a macOS setting. Spotlight, input source and Dictation shortcuts that use a key are stored as a key code plus a modifier mask, so they are compared exactly. Dictation can also be set to start when one modifier key is pressed twice, which is stored as the modifier alone, so a Basil double-press on the same modifier is reported as a possible conflict. Siri's shortcut is stored in a Siri-specific format, so an unreadable value is reported as a possible conflict with the keys Siri's options use (a held or doubled Command or Option, or those keys with Space).
+/// The detection is read-only: it never changes a macOS setting. Spotlight, input source and Dictation shortcuts that use a key are stored as a key code plus a modifier mask, so they are compared exactly. Dictation can also be set to start when one modifier key is pressed twice, which is stored as the modifier alone, so a Basil double-press on the same modifier is reported as a possible conflict. Siri's shortcut is stored in a Siri-specific format, so an unreadable value is reported as a possible conflict with the keys Siri's options use (a doubled Command, or a held Command or Option with Space). On macOS 15 through 26 Siri's shortcut is on by default as a doubled Command, and Siri may write no preference until someone changes it, so a Mac with no Siri shortcut preference and Siri turned on is treated as having that default. A Dictation shortcut on a doubled Command is stored as the plain Command flag, or with extra low bits when it is limited to the left or right Command key, so only the modifier bits are compared.
 enum SystemShortcutConflictDetector {
     private static let spaceKeyCode = 49
     private static let modifierBits: [String: Int] = [
@@ -41,6 +41,15 @@ enum SystemShortcutConflictDetector {
     ]
 
     /// The symbolic hotkey macOS keeps for Dictation. Its entry is a key plus modifiers when customized, or a single modifier (type "modifier") for the press-a-modifier-twice choices.
+    private static let siriShortcutKeys = ["KeyboardShortcutSAE", "KeyboardShortcutPreSAE"]
+    private static let assistantEnabledKey = "AssistantEnabled"
+    /// The macOS versions where Siri's keyboard shortcut is on by default as a doubled Command. macOS 27 removed it.
+    private static let siriDefaultShortcutVersions = 15...26
+
+    static var currentMacOSMajorVersion: Int {
+        ProcessInfo.processInfo.operatingSystemVersion.majorVersion
+    }
+
     private static let dictationIdentifier = "164"
     private static let dictationSource = "the macOS Dictation shortcut"
 
@@ -48,7 +57,8 @@ enum SystemShortcutConflictDetector {
         bindings: [String: HotkeyBinding],
         rows: [HotkeyRowDefinition],
         symbolicHotKeys: [String: Any]?,
-        siriPreferences: [String: Any]?
+        siriPreferences: [String: Any]?,
+        macOSMajorVersion: Int = currentMacOSMajorVersion
     ) -> [SystemShortcutConflict] {
         var found: [SystemShortcutConflict] = []
 
@@ -103,6 +113,13 @@ enum SystemShortcutConflictDetector {
                         message: "Siri's keyboard shortcut is turned on, and \(name) uses keys that Siri's shortcut options can also use. If this hotkey also opens Siri, choose another shortcut for it here, or change Siri's shortcut in System Settings, Siri."
                     ))
                 }
+            } else if usesDoubledCommand(binding), siriShortcutIsOnByDefault(siriPreferences, macOSMajorVersion: macOSMajorVersion) {
+                found.append(SystemShortcutConflict(
+                    hotkeyId: row.id,
+                    source: "Siri",
+                    certainty: .possible,
+                    message: "Siri's keyboard shortcut is on by default on this version of macOS, and its default is pressing Command twice, which is also \(name). If Siri opens when you use this hotkey, choose another shortcut for it here, or change Siri's shortcut in System Settings, Apple Intelligence & Siri."
+                ))
             }
         }
         return found
@@ -120,10 +137,13 @@ enum SystemShortcutConflictDetector {
     static func readSystemState() -> (symbolicHotKeys: [String: Any]?, siriPreferences: [String: Any]?) {
         let symbolic = CFPreferencesCopyAppValue("AppleSymbolicHotKeys" as CFString, "com.apple.symbolichotkeys" as CFString) as? [String: Any]
         var siri: [String: Any] = [:]
-        for key in ["KeyboardShortcutSAE", "KeyboardShortcutPreSAE"] {
+        for key in siriShortcutKeys {
             if let value = CFPreferencesCopyAppValue(key as CFString, "com.apple.Siri" as CFString) {
                 siri[key] = value
             }
+        }
+        if let assistantEnabled = CFPreferencesCopyAppValue("Assistant Enabled" as CFString, "com.apple.assistant.support" as CFString) {
+            siri[assistantEnabledKey] = assistantEnabled
         }
         return (symbolic, siri.isEmpty ? nil : siri)
     }
@@ -157,12 +177,13 @@ enum SystemShortcutConflictDetector {
               (value["type"] as? String) == "modifier",
               let parameters = value["parameters"] as? [Any],
               let first = parameters.first,
-              intValue(first) == mask else { return false }
+              let storedModifier = intValue(first),
+              storedModifier & modifierMask == mask else { return false }
         return true
     }
 
     private static func enabledSiriShortcut(_ preferences: [String: Any]?) -> [String: Any]? {
-        for key in ["KeyboardShortcutSAE", "KeyboardShortcutPreSAE"] {
+        for key in siriShortcutKeys {
             if let entry = preferences?[key] as? [String: Any], isEnabled(entry["enabled"]) {
                 return entry
             }
@@ -181,9 +202,20 @@ enum SystemShortcutConflictDetector {
         return mask & modifierMask
     }
 
+    private static func usesDoubledCommand(_ binding: HotkeyBinding) -> Bool {
+        binding.isDoublePress && binding.doublePressKey?.lowercased() == "command"
+    }
+
+    /// True when this Mac has no Siri shortcut preference at all, Siri has not been turned off, and the macOS version turns the doubled-Command shortcut on by default.
+    private static func siriShortcutIsOnByDefault(_ preferences: [String: Any]?, macOSMajorVersion: Int) -> Bool {
+        guard siriDefaultShortcutVersions.contains(macOSMajorVersion) else { return false }
+        if let assistantEnabled = preferences?[assistantEnabledKey] as? NSNumber, !assistantEnabled.boolValue { return false }
+        return !siriShortcutKeys.contains { preferences?[$0] != nil }
+    }
+
     private static func usesKeysSiriCanUse(_ binding: HotkeyBinding) -> Bool {
         if binding.isDoublePress {
-            return ["command", "option"].contains(binding.doublePressKey?.lowercased() ?? "")
+            return usesDoubledCommand(binding)
         }
         guard binding.key.caseInsensitiveCompare("Space") == .orderedSame else { return false }
         let modifiers = Set(binding.modifiers.map { $0.lowercased() })

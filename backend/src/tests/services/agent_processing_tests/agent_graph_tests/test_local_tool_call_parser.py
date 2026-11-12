@@ -216,6 +216,69 @@ def test_extract_function_parameter_tags_strips_complete_think_block_from_argume
     assert tool_calls[0]["args"]["self_assessment"] == "The task completed successfully."
 
 
+def test_unfinished_say_call_with_the_real_message_after_it_does_not_leak_the_markup() -> None:
+    """Regression for the Qwen3.5-4B reply that opened a say call, never closed it, and then wrote the message. No complete block exists, so nothing was extracted and the opening tags reached the person as text."""
+    content = "<tool_call>\n<function=say>\n<parameter=content>\nWelcome. Let's get you set up."
+
+    tool_calls, cleaned = extract_text_tool_calls(
+        content, TOOL_CALL_FORMAT_FUNCTION_PARAMETER_TAGS
+    )
+
+    assert tool_calls == []
+    assert cleaned == "Welcome. Let's get you set up."
+
+
+def test_an_unfinished_opener_next_to_a_complete_call_is_removed_and_the_call_is_kept() -> None:
+    content = (
+        "<tool_call><function=say><parameter=content>Hello there.\n"
+        "<tool_call>\n<function=narrate_progress>\n<parameter=message>\nLooking around.\n"
+        "</parameter>\n</function>\n</tool_call>"
+    )
+
+    tool_calls, cleaned = extract_text_tool_calls(
+        content, TOOL_CALL_FORMAT_FUNCTION_PARAMETER_TAGS
+    )
+
+    assert [call["name"] for call in tool_calls] == ["narrate_progress"]
+    assert tool_calls[0]["args"] == {"message": "Looking around."}
+    assert cleaned == "Hello there."
+
+
+def test_an_empty_say_call_leaves_no_markup_behind() -> None:
+    content = "</think>\n\n<tool_call>\n<function=say>\n</function>\n</tool_call>"
+
+    tool_calls, cleaned = extract_text_tool_calls(
+        content, TOOL_CALL_FORMAT_FUNCTION_PARAMETER_TAGS
+    )
+
+    assert [call["name"] for call in tool_calls] == ["say"]
+    assert "<" not in cleaned
+
+
+def test_prose_that_only_mentions_a_similar_word_is_left_exactly_as_written() -> None:
+    """Negative: only the exact tag shapes are removed, so a message about a functional tool or a parameter list is not touched."""
+    content = "A <functional> idea: pass the parameter list to the tool."
+
+    tool_calls, cleaned = extract_text_tool_calls(
+        content, TOOL_CALL_FORMAT_FUNCTION_PARAMETER_TAGS
+    )
+
+    assert tool_calls == []
+    assert cleaned == content
+
+
+def test_the_json_format_does_not_get_the_function_tag_clean_up() -> None:
+    """Negative: the clean-up is limited to the function/parameter format."""
+    content = "Use <function=x> literally."
+
+    tool_calls, cleaned = extract_text_tool_calls(
+        content, TOOL_CALL_FORMAT_JSON_TOOL_CALL
+    )
+
+    assert tool_calls == []
+    assert cleaned == content
+
+
 def test_extract_json_tool_call_format_strips_leaked_reasoning_from_nested_list_argument() -> None:
     """The JSON tool-call path (used by models that speak native JSON
     arguments) must strip leaked reasoning from every string in a list-typed

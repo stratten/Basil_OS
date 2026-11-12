@@ -5,6 +5,7 @@ import MarkdownRenderer from '../MarkdownRenderer';
 import NativeSymbolIcon from '../../../../shared/NativeSymbolIcon';
 import ReasoningModelPicker from '../../../../shared/ReasoningModelPicker';
 import { getReasoningModels, type ReasoningModel } from '../../services/api';
+import { reportProblem, showDiagnosticLogs } from '../../services/bridge';
 import { normalizeProgressStepText } from '../result/progressStepText';
 import { ProgressStepsSection, type ActivityStatusDisplay } from '../result/ExecutionTimeline';
 import { statusToneOfPhase, type RunPhase } from './runPhase';
@@ -56,6 +57,14 @@ export function reasonRepeatsResult(errorMessage: string | undefined, result: st
   const shown = collapsedPlainText(result);
   if (!reason || !shown) return false;
   return reason === shown || shown.includes(reason) || reason.includes(shown);
+}
+
+const PROBLEM_DETAIL_LIMIT = 500;
+
+/** The short failure text sent with a problem report, or undefined when the run reported none. */
+export function problemDetailFor(agentTask: DisplayableAgentTask): string | undefined {
+  const text = collapsedPlainText(agentTask.errorMessage);
+  return text ? text.slice(0, PROBLEM_DETAIL_LIMIT) : undefined;
 }
 
 function reasonFor(agentTask: DisplayableAgentTask, phase: RunPhase): string {
@@ -114,6 +123,7 @@ function RecoveryActions({
   onRetry: (modelId?: string) => void;
   onContinue: () => void;
 }) {
+  const problemDetail = problemDetailFor(agentTask);
   const [models, setModels] = useState<ReasoningModel[]>([]);
   const [modelId, setModelId] = useState<string | undefined>(
     agentTask.selectedModelId ?? agentTask.originalModelId,
@@ -155,6 +165,16 @@ function RecoveryActions({
         <NativeSymbolIcon name="retry" style={{ verticalAlign: '-2px' }} />
         {' '}{isCanceled ? 'Run again' : 'Retry'}
       </button>
+      {isCanceled ? null : (
+        <>
+          <button type="button" className="action-btn secondary" onClick={() => showDiagnosticLogs(problemDetail)}>
+            Show logs
+          </button>
+          <button type="button" className="action-btn secondary" onClick={() => reportProblem(problemDetail)}>
+            Report a problem
+          </button>
+        </>
+      )}
     </div>
   );
 }

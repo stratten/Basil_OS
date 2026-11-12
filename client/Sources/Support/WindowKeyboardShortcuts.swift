@@ -15,9 +15,10 @@ final class WindowKeyboardShortcuts {
     
     private func setupMonitor() {
         localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            // Every window that uses this helper installs its own app-wide monitor, and AppKit runs all of them for every keystroke. Act only when the keystroke was delivered to this helper's own window, which is the key window the user is typing in. The old test (`isKeyWindow || isMainWindow`) let a window that was merely "main" (such as the Agent Task Result window) close itself on Cmd+W while a different window was the one in front, because a panel can be key without ever being main.
             guard let self = self,
                   let window = self.window,
-                  window.isKeyWindow || window.isMainWindow else {
+                  event.window === window else {
                 return event
             }
             

@@ -112,15 +112,10 @@
 }
 
 .models-settings-row-header {
-  align-items: center;
-  display: flex;
-  justify-content: space-between;
-}
-
-.models-settings-row-meta {
-  align-items: center;
+  align-items: flex-start;
   display: flex;
   gap: 8px;
+  justify-content: space-between;
 }
 
 .models-settings-row-name {
@@ -161,11 +156,133 @@
   padding: 2px 6px;
 }
 
-.models-settings-row-capabilities {
+.models-settings-row-facts {
+  align-items: center;
+  display: grid;
+  flex-shrink: 0;
+  gap: 0 8px;
+  grid-template-columns: auto 72px;
+  margin: 0 0 0 18px;
+}
+
+.models-settings-row-fact {
+  align-items: center;
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  position: relative;
+}
+
+.models-settings-row-fact dt {
+  color: var(--text-secondary);
+  position: relative;
+  font-family: var(--font-family-light);
+  font-size: calc(12px * var(--text-scale, 1));
+  margin: 0;
+}
+
+.models-settings-fact-bar {
+  background: color-mix(in srgb, var(--primary) 14%, var(--background-primary));
+  border-radius: 999px;
+  height: 6px;
+  position: relative;
+}
+
+.models-settings-fact-bar-marker {
+  background: var(--background-primary);
+  border: 1px solid var(--text-primary);
+  border-radius: 2px;
+  height: 12px;
+  margin-left: -1.5px;
+  position: absolute;
+  top: -3px;
+  width: 3px;
+}
+
+.models-settings-fact-bar-fill {
+  background: var(--primary);
+  border-radius: 999px;
+  display: block;
+  height: 100%;
+}
+
+/* The fit icon hangs in the margin to the left of the label, so the label and its bar stay exactly where they are without it. */
+.models-settings-fit-icon {
+  align-items: center;
+  display: inline-flex;
+  margin-right: 4px;
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.models-settings-fit-icon svg {
+  fill: none;
+  height: 13px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+  width: 13px;
+}
+
+.models-settings-fit-icon-comfortable {
+  color: var(--success-base, #1a7f37);
+}
+
+.models-settings-fit-icon-tight {
+  color: var(--warning-text);
+}
+
+.models-settings-fit-icon-too-large {
+  color: var(--error-text);
+}
+
+.models-settings-row-footer {
+  align-items: center;
+  border-top: 1px solid color-mix(in srgb, var(--field-border) 55%, transparent);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  padding-top: 8px;
+}
+
+.models-settings-icon-button {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  padding: 6px;
+  width: 30px;
+}
+
+.models-settings-icon-button svg {
+  fill: none;
+  height: 16px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  width: 16px;
+}
+
+.models-settings-row-footer-start,
+.models-settings-row-footer-end {
   align-items: center;
   display: flex;
   gap: 8px;
-  justify-content: space-between;
+}
+
+.models-settings-row-footer-start,
+.models-settings-row-footer-end {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.models-settings-row-footer-end {
+  justify-content: flex-end;
+  margin-left: auto;
 }
 
 .models-settings-row-capabilities-chips {
@@ -221,11 +338,6 @@
   flex: 1;
   font-family: var(--font-family-light);
   font-size: calc(12px * var(--text-scale, 1));
-}
-
-.models-settings-row > .models-settings-delete-button,
-.models-settings-row > .secondary-button {
-  align-self: flex-end;
 }
 
 .models-settings-status,

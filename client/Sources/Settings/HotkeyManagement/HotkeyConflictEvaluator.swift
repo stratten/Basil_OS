@@ -34,6 +34,8 @@ struct HotkeySystemState {
     var siriPreferences: [String: Any]?
     /// True when this Mac sends F1 to F12 as ordinary function keys. When false they act as media keys unless fn is held.
     var functionKeysAreStandard: Bool
+    /// The macOS major version, which decides whether Siri's doubled-Command shortcut is on by default. Tests set it so results do not depend on the Mac running them.
+    var macOSMajorVersion: Int = SystemShortcutConflictDetector.currentMacOSMajorVersion
 }
 
 /// Reports which of the person's Basil hotkeys clash with something else, read-only. It wraps `SystemShortcutConflictDetector` for the Space and Siri cases and adds clashes on any other key, the media keys, and two Basil hotkeys sharing keys.
@@ -72,7 +74,8 @@ enum HotkeyConflictEvaluator {
             bindings: bindings,
             rows: rows,
             symbolicHotKeys: system.symbolicHotKeys,
-            siriPreferences: system.siriPreferences
+            siriPreferences: system.siriPreferences,
+            macOSMajorVersion: system.macOSMajorVersion
         ).map { conflict in
             HotkeyConflict(
                 hotkeyId: conflict.hotkeyId,

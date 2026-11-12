@@ -753,6 +753,14 @@ class MeetingAnalyzer:
                     json.dump(metadata.to_dict(), f, indent=2)
                 
                 logger.info(f"Updated metadata with analysis entry: {filename}")
+
+            # A call is most likely to be read right after it is analyzed, so make sure its readable transcript file exists and matches the recordings now. Best-effort: it never fails an analysis that already succeeded.
+            try:
+                from .meeting_transcript_file import ensure_meeting_transcript_markdown_async
+
+                await ensure_meeting_transcript_markdown_async(self.meeting_dir)
+            except Exception as markdown_error:
+                logger.warning(f"Could not write the transcript file for meeting {self.meeting_id}: {markdown_error}")
             
         except Exception as e:
             logger.error(f"Failed to save analysis: {e}")

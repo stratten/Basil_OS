@@ -802,7 +802,9 @@ export type SwiftMessage =
       isOverviewOpen: boolean;
     }
   | { type: 'requestTokenConnect'; requestId: string; friendlyName: string; description?: string; token: string }
-  | { type: 'requestTokenConnectCancel'; requestId: string };
+  | { type: 'requestTokenConnectCancel'; requestId: string }
+  | { type: 'reportProblem'; source: string; detail?: string }
+  | { type: 'showDiagnosticLogs'; source: string; detail?: string };
 
 export interface TokenConnectRequest {
   requestId: string;

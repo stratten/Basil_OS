@@ -102,8 +102,30 @@ describe('ApprovalOverlay provider permission presentation', () => {
       />
     );
 
-    expect(markup).toContain('action-btn success');
+    expect(markup).toContain('decision-btn decision-btn--approve');
     expect(markup).toContain('disabled=""');
+  });
+
+  it('has no Cancel button, and Deny selects the provider reject option', async () => {
+    submitProviderPermissionDecision.mockResolvedValue({ success: true, message: 'ok' });
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(<ApprovalOverlay agentTaskId="task-1" approval={providerApproval} rememberChoice={false} />);
+    });
+
+    const labels = Array.from(container.querySelectorAll('button')).map(button => button.textContent);
+    expect(labels).toEqual(['Deny', 'Approve']);
+
+    await act(async () => {
+      Array.from(container.querySelectorAll('button')).find(button => button.textContent === 'Deny')?.click();
+    });
+    expect(submitProviderPermissionDecision).toHaveBeenCalledWith({
+      agent_task_id: 'task-1',
+      interaction_id: 'permission-1',
+      selected_option_id: 'reject-once',
+    });
+    act(() => root.unmount());
   });
 });
 
@@ -508,12 +530,12 @@ describe('ApprovalOverlay compact command presentation', () => {
     expect(markup.indexOf('The agent did not explain this command.')).toBeLessThan(markup.indexOf('osascript get-inbox'));
   });
 
-  it('keeps Approve, Deny, Cancel and the dangerous-change warning', () => {
+  it('keeps Approve, Deny and the dangerous-change warning, with no duplicate Cancel', () => {
     const markup = render({ ...withPurpose, risk_level: 'high' });
 
     expect(markup).toContain('Approve');
     expect(markup).toContain('Deny');
-    expect(markup).toContain('Cancel');
+    expect(markup).not.toContain('>Cancel<');
     expect(markup).toContain('This command may cause permanent changes');
   });
 });
@@ -570,12 +592,11 @@ describe('ApprovalOverlay decision note', () => {
     unmount();
   });
 
-  it('sends the note with Cancel, which denies a shell command', async () => {
+  it('offers only Deny and Approve to decide with, and the note label names exactly those', async () => {
     const { container, unmount } = await renderShellApproval();
-    await typeNote(container, 'Wrong directory.');
-    await press(container, 'Cancel');
 
-    expect(submitApprovalDecision.mock.calls[0][0]).toMatchObject({ approved: false, user_note: 'Wrong directory.' });
+    expect(Array.from(container.querySelectorAll('button')).map(button => button.textContent)).toEqual(['Deny', 'Approve']);
+    expect(container.textContent).toContain('Note to the agent (optional, sent with Approve or Deny)');
     unmount();
   });
 

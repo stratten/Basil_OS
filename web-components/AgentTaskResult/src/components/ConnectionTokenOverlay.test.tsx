@@ -69,6 +69,12 @@ describe('ConnectionTokenOverlay', () => {
     container.remove();
   });
 
+  it('puts the negative button before the positive one, so Connect is the right-most', () => {
+    render();
+    const labels = Array.from(container.querySelectorAll('.decision-actions button')).map(button => button.textContent);
+    expect(labels).toEqual(['Cancel', 'Connect']);
+  });
+
   it('uses the Paprika overlay card and names the destination host', () => {
     render();
     expect(container.querySelector('.overlay-backdrop')).not.toBeNull();
@@ -77,7 +83,7 @@ describe('ConnectionTokenOverlay', () => {
     expect(container.textContent).toContain('https://huggingface.co/mcp');
     expect((container.querySelector('input[aria-label="Connection name"]') as HTMLInputElement).value).toBe('Hugging Face');
     expect((container.querySelector('input[aria-label="Connection description"]') as HTMLInputElement).value).toBe('Suggested note');
-    expect((container.querySelector('button.action-btn.success') as HTMLButtonElement).disabled).toBe(true);
+    expect((container.querySelector('button.decision-btn--approve') as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('sends the edited name and description with the token', () => {
@@ -88,7 +94,7 @@ describe('ConnectionTokenOverlay', () => {
       setInput('Token or API key', 'hf_abc');
     });
     act(() => {
-      (container.querySelector('button.action-btn.success') as HTMLButtonElement).click();
+      (container.querySelector('button.decision-btn--approve') as HTMLButtonElement).click();
     });
     expect(requestTokenConnect).toHaveBeenCalledWith({
       requestId: 'r1',
@@ -102,9 +108,9 @@ describe('ConnectionTokenOverlay', () => {
     render({ ...REQUEST, existingNames: ['Hugging Face', 'Linear'], alreadyConnectedAs: 'Hugging Face' });
     expect(container.textContent).toContain('You already have Hugging Face connected');
     act(() => setInput('Token or API key', 'hf_abc'));
-    expect((container.querySelector('button.action-btn.success') as HTMLButtonElement).disabled).toBe(true);
+    expect((container.querySelector('button.decision-btn--approve') as HTMLButtonElement).disabled).toBe(true);
     act(() => {
-      (container.querySelector('button.action-btn.success') as HTMLButtonElement).click();
+      (container.querySelector('button.decision-btn--approve') as HTMLButtonElement).click();
     });
     expect(requestTokenConnect).not.toHaveBeenCalled();
   });
@@ -113,21 +119,21 @@ describe('ConnectionTokenOverlay', () => {
     render();
     act(() => setInput('Token or API key', 'hf_abc'));
     act(() => {
-      (container.querySelector('button.action-btn.success') as HTMLButtonElement).click();
+      (container.querySelector('button.decision-btn--approve') as HTMLButtonElement).click();
     });
     act(() => {
       resultHandler?.({ requestId: 'r1', status: 'failed', message: 'The service rejected the token.' });
     });
     expect(agentStore.hideTokenConnect).not.toHaveBeenCalled();
     expect(container.textContent).toContain('The service rejected the token.');
-    expect((container.querySelector('button.action-btn.success') as HTMLButtonElement).disabled).toBe(false);
+    expect((container.querySelector('button.decision-btn--approve') as HTMLButtonElement).disabled).toBe(false);
   });
 
   it('Cancel does not send a token', () => {
     render();
     act(() => setInput('Token or API key', 'hf_abc'));
     act(() => {
-      (container.querySelector('button.action-btn.danger') as HTMLButtonElement).click();
+      (container.querySelector('button.decision-btn--deny') as HTMLButtonElement).click();
     });
     expect(requestTokenConnectCancel).toHaveBeenCalledWith('r1');
     expect(requestTokenConnect).not.toHaveBeenCalled();

@@ -23,6 +23,7 @@ from ...services.transcription.backends.parakeet_components import (
 from ...services.transcription.output_text_replacements import (
     apply_text_replacements,
 )
+from ...services.transcription.plain_failure_message import plain_transcription_failure_message
 
 logger = logging.getLogger(__name__)
 processed_transcription_audio_digests: OrderedDict[str, None] = OrderedDict()
@@ -176,7 +177,7 @@ async def handle_init_transcription(websocket, transcription_service, send_trans
         logger.info("=== Transcription Initialized ===\n")
     except Exception as e:
         logger.error(f"Error initializing transcription: {e}")
-        await send_transcription_status("transcription_failed", str(e))
+        await send_transcription_status("transcription_failed", plain_transcription_failure_message(e))
 
 async def handle_initialize_transcription(websocket, transcription_service, send_transcription_status, cancel_model_unload, Preferences, msg_data):
     logger = logging.getLogger(__name__)
@@ -356,7 +357,7 @@ async def handle_audio_transcription(websocket, message, transcription_service, 
         logger.error("Traceback:")
         logger.error(traceback.format_exc())
         logger.error("=== End Error ===\n")
-        await send_transcription_status("transcription_failed", str(e))
+        await send_transcription_status("transcription_failed", plain_transcription_failure_message(e))
 
 # Global variable to store the scheduled model unload task
 model_unload_task: Optional[asyncio.Task] = None 

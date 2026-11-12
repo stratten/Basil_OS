@@ -42,7 +42,7 @@ Actions:
 - read: the text of one part. Pass path and, to continue a long part, offset. At most max_chars (default 8000, up to 20000) come back, with has_more and next_offset.
 - search: find a word or value. Pass query, and path to search inside one part. Returns the offset of each match with surrounding text; read the same path from that offset to see more.
 
-The same data is also saved as a file in the task workspace (the stored envelope names it), which shell commands such as grep and head can read when the shell tools are loaded. Saved results are kept for 14 days and can be read only from the task they came from."""
+The same data is also saved as a file in the task workspace (the stored envelope names it), which shell commands such as grep and head can read when the shell tools are loaded. To pick fields out of a JSON file, use jq if `command -v jq` finds it, because a Python script for the same job would ask the user for approval. Saved results are kept for 14 days and can be read only from the task they came from."""
 
 
 class StoredResultInput(BaseModel):

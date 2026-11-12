@@ -20,7 +20,7 @@ def test_default_registry_exposes_stable_source_descriptors():
         "authority": "primary",
         "evidence_kind": "observed Basil meeting recording and transcript",
         "browse_guidance": "Use for recorded meetings in a requested time range; cards are grouped logical meetings.",
-        "detail_guidance": "Use detail for metadata, meeting analyses, and the merged transcript. Pass sections=['analyses'] to read analyses without the transcript, and page the transcript with transcript_offset.",
+        "detail_guidance": "Use detail for metadata, meeting analyses, and the merged transcript. Pass sections=['analyses'] to read analyses without the transcript, and page the transcript with transcript_offset. To read or file the whole call, use the transcript_markdown_path it returns: an export-format Markdown file of the full interleaved transcript.",
         "supported_actions": ["browse", "search", "aggregate", "detail"],
     }
     assert by_kind["assistant_output"]["authority"] == "derived"

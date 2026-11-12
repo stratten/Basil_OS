@@ -475,6 +475,11 @@ class WhisperLiveService:
                         # recording teardown.
                         from api.services.meetings import meeting_search_indexer
                         meeting_search_indexer.reindex(metadata['id'])
+                        # Write the call's readable transcript file and have the memory scheduler collect the finished meeting now instead of on its next timer tick. Best-effort too: it swallows its own errors.
+                        from api.services.whisper_live_core.post_processing.meeting_transcript_file import (
+                            refresh_after_recording_stopped,
+                        )
+                        await refresh_after_recording_stopped(metadata['id'])
                 except Exception as e:
                     logger.error(f"Error stopping meeting recording: {e}", exc_info=True)
 

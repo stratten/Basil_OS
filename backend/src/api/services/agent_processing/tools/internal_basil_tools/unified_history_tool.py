@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 import re
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Literal, Optional
 
@@ -68,6 +69,12 @@ class UnifiedHistoryInput(BaseModel):
         default="compact",
         description="compact (default) returns title, one bounded summary, outcome, and back-reference; full adds narrative, raw_summary, and payload.",
     )
+    refresh_first: bool = Field(
+        default=False,
+        description=(
+            "Collect any records that have not been indexed yet before querying. Set true when the user refers to something that just finished (a meeting that ended, a task that completed) and it is missing from the results. Costs no model tokens, takes a few seconds, and is skipped if it already ran in the last 30 seconds. The response reports what happened under memory_refresh."
+        ),
+    )
 
 
 def _relative(token: str) -> Optional[datetime]:
@@ -113,9 +120,62 @@ def _parse_time(value: Optional[str], default: datetime) -> str:
     return parsed.astimezone(timezone.utc).isoformat()
 
 
-async def _query_unified_history_impl(*args: Any, **kwargs: Any) -> str:
+MEMORY_REFRESH_COOLDOWN_SECONDS = 30.0
+MEMORY_REFRESH_TIMEOUT_SECONDS = 45.0
+_last_memory_refresh_finished: Optional[float] = None
+
+
+async def refresh_memory_stream() -> Dict[str, Any]:
+    """Run one memory-collection pass now so records that just finished become searchable.
+
+    The pass is the same model-free one the scheduler runs on a timer. It never raises: the caller's query must still run, so every outcome is reported as a status. A pass the scheduler is already running is waited for rather than doubled, a second request inside the cooldown is skipped, and a pass that outlasts the timeout is left running in the background under the scheduler's own overlap guard.
+    """
+    global _last_memory_refresh_finished
+    try:
+        from api.core.preferences.preferences_io import load_preferences
+        from api.services.zettel.scheduler import get_zettel_scheduler
+
+        zettel_settings = getattr(load_preferences(), "zettel", None)
+        if not bool(getattr(zettel_settings, "carding_enabled", True)):
+            return {"status": "carding_disabled", "note": "The user turned memory collection off, so nothing was refreshed."}
+
+        last_finished = _last_memory_refresh_finished
+        if last_finished is not None:
+            elapsed = time.monotonic() - last_finished
+            if elapsed < MEMORY_REFRESH_COOLDOWN_SECONDS:
+                return {"status": "skipped_recent", "seconds_since_last_refresh": round(elapsed, 1)}
+
+        scheduler = get_zettel_scheduler()
+        deadline = time.monotonic() + MEMORY_REFRESH_TIMEOUT_SECONDS
+        while scheduler.get_status().is_running_now:
+            if time.monotonic() >= deadline:
+                return {"status": "timed_out", "note": "A collection pass was already running and had not finished yet."}
+            await asyncio.sleep(0.25)
+
+        pass_task = asyncio.ensure_future(scheduler.run_now())
+        try:
+            error = await asyncio.wait_for(asyncio.shield(pass_task), timeout=max(0.0, deadline - time.monotonic()))
+        except asyncio.TimeoutError:
+            return {"status": "timed_out", "note": "The collection pass is still running in the background."}
+
+        _last_memory_refresh_finished = time.monotonic()
+        if error:
+            text = str(error)
+            if text.endswith("is already running."):
+                return {"status": "already_running", "note": text}
+            return {"status": "completed_with_errors", "error": text[:300]}
+        return {"status": "completed"}
+    except Exception as exc:
+        logger.warning("Memory refresh before history query failed: %s", exc, exc_info=True)
+        return {"status": "error", "error": str(exc)[:300]}
+
+
+async def _query_unified_history_impl(*args: Any, refresh_first: bool = False, **kwargs: Any) -> str:
     """Run the query on a worker thread: it reads SQLite and the zettel store synchronously and must not hold the event loop."""
-    return await asyncio.to_thread(_query_unified_history_sync, *args, **kwargs)
+    memory_refresh = await refresh_memory_stream() if refresh_first else None
+    return await asyncio.to_thread(
+        _query_unified_history_sync, *args, memory_refresh=memory_refresh, **kwargs
+    )
 
 
 def _query_unified_history_sync(
@@ -128,6 +188,7 @@ def _query_unified_history_sync(
     cursor: Optional[str] = None,
     view: str = "compact",
     max_output_chars: Optional[int] = None,
+    memory_refresh: Optional[Dict[str, Any]] = None,
 ) -> str:
     try:
         from api.core.knowledge.sqlite.sqlite_knowledge_service_component_services.infrastructure.connection import (
@@ -187,6 +248,8 @@ def _query_unified_history_sync(
             "next_cursor": page["next_cursor"],
             "truncated": page["next_cursor"] is not None,
         }
+        if memory_refresh is not None:
+            response["memory_refresh"] = memory_refresh
         if grouped is not None:
             # Counted in SQL over the whole range, so these stay accurate even
             # when the event list below was cut off by the limit.
@@ -211,7 +274,11 @@ SLIM_DESCRIPTION = (
     "Results are newest-first pages; when next_cursor is not null, call again "
     "with the same filters and cursor=next_cursor, and compare count with "
     "total_in_range before claiming full coverage. Date-only values mean local "
-    "midnight. For screen-only questions about OCR'd text, prefer query_activities."
+    "midnight. For screen-only questions about OCR'd text, prefer query_activities. "
+    "Records appear here a few minutes after they finish: a meeting that ended "
+    "moments ago may be missing. When the user refers to something that just "
+    "finished and it is not in the results, repeat the query with "
+    "refresh_first=true instead of concluding it was not recorded."
 )
 
 _FULL_DESCRIPTION = """Query the unified event stream spanning every Basil subsystem.
@@ -230,6 +297,9 @@ holds the answer.
   valid associated analysis when you need more than the quick note.
 - PREFER query_activities: "What was the exact text on screen in Chrome?" ->
   the stream stores a bounded block summary, not full OCR text.
+
+**RECENT RECORDS AND refresh_first:**
+Records join this stream when a collection pass indexes them, which happens on a timer (about every 15 minutes). A meeting that ended a few minutes ago, a task that just completed, or a dictation from moments ago may not be here yet. Do NOT conclude that something was not recorded, and do not ask the user to confirm that, when the user refers to something that just finished and it is missing. Repeat the query with `refresh_first=true`: it runs one collection pass first (no model tokens, a few seconds, skipped if one ran in the last 30 seconds) and reports the outcome under `memory_refresh` (`completed`, `skipped_recent`, `carding_disabled`, `timed_out`, `already_running`, `completed_with_errors`, or `error`). Only use it when something expected is missing; leave it off for ordinary history questions. Recorded meetings are also stored on disk, one folder per meeting under `~/.basil/meetings/<meeting id>/`, if the refresh still does not surface one.
 
 **WHAT EACH EVENT CONTAINS:**
 - `source_kind` and `source_id`: back-reference to the owning record.

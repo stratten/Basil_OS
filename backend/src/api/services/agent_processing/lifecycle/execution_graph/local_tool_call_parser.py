@@ -14,7 +14,10 @@ from api.core.models.reasoning.model_runtime_profile import (
 
 logger = logging.getLogger(__name__)
 
-_TOOL_CALL_RE = re.compile(r"<tool_call>\s*(.*?)\s*</tool_call>", re.DOTALL)
+# A wrapper never contains another opening <tool_call>. Without that, a call the model opened and abandoned (for example an unfinished say) merged with the complete call after it, and the second call's raw tags ended up inside the first call's text, which is the message the person reads.
+_TOOL_CALL_RE = re.compile(
+    r"<tool_call>\s*((?:(?!<tool_call>).)*?)\s*</tool_call>", re.DOTALL
+)
 _THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
 _FUNCTION_TAG_RE = re.compile(
     r"<function=([^\s>]+)>\s*(.*?)\s*</function>", re.DOTALL
@@ -28,6 +31,11 @@ _PARAMETER_TAG_RE = re.compile(
 # already been recovered below -- this targets the exact wrapper tag, not
 # free prose.
 _STRAY_TOOL_CALL_TAG_RE = re.compile(r"</?tool_call>", re.IGNORECASE)
+# Every structural tag of the function/parameter format, opening or closing. A small model sometimes opens a call and never finishes it (for example an opening <tool_call><function=say><parameter=content> followed by the real message), and the extraction below only removes complete blocks, so these tags would otherwise reach the person as text. Only these exact tag shapes are removed, never the words between them.
+_LEFTOVER_CALL_MARKUP_RE = re.compile(
+    r"</?(?:tool_call|function|parameter)(?:=[^\s>]*)?>", re.IGNORECASE
+)
+_LEFTOVER_MARKUP_LOG_HEAD_CHARS = 300
 
 
 def safe_parse_json(
@@ -150,6 +158,7 @@ def extract_text_tool_calls(
 
         cleaned = _TOOL_CALL_RE.sub("", content)
         cleaned = strip_think_sections(cleaned)
+        cleaned = _remove_leftover_call_markup(cleaned, tool_call_format)
 
         logger.info(
             "Extracted %s tool call(s) from text content (%s raw blocks, format=%s)",
@@ -164,7 +173,27 @@ def extract_text_tool_calls(
         if recovered is not None:
             return recovered
 
-    return [], strip_think_sections(content)
+    return [], _remove_leftover_call_markup(
+        strip_think_sections(content), tool_call_format
+    )
+
+
+def _remove_leftover_call_markup(text: str, tool_call_format: str) -> str:
+    """Drop tool-call tags left in text that is about to be shown as the message.
+
+    Applies only to the function/parameter format, and logs the start of the text whenever it removes something, so a malformed reply that still gets through is captured instead of guessed at.
+    """
+    if tool_call_format != TOOL_CALL_FORMAT_FUNCTION_PARAMETER_TAGS:
+        return text
+    scrubbed = _LEFTOVER_CALL_MARKUP_RE.sub("", text)
+    if scrubbed == text:
+        return text
+    logger.warning(
+        "Removed leftover tool-call markup from a model reply (format=%s). Reply started: %r",
+        tool_call_format,
+        text[:_LEFTOVER_MARKUP_LOG_HEAD_CHARS],
+    )
+    return scrubbed.strip()
 
 
 def _extract_bare_function_tag_tool_calls(
@@ -190,6 +219,9 @@ def _extract_bare_function_tag_tool_calls(
     cleaned = _FUNCTION_TAG_RE.sub("", content)
     cleaned = _STRAY_TOOL_CALL_TAG_RE.sub("", cleaned)
     cleaned = strip_think_sections(cleaned)
+    cleaned = _remove_leftover_call_markup(
+        cleaned, TOOL_CALL_FORMAT_FUNCTION_PARAMETER_TAGS
+    )
 
     logger.info(
         "Recovered %s tool call(s) from bare <function=...> tag(s) missing the "

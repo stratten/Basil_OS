@@ -114,19 +114,6 @@
   gap: var(--padding-s);
 }
 
-.checkpoint-review-output-action {
-  margin-right: auto;
-  background: var(--background-primary);
-  border: var(--border-thin) solid var(--warning-base);
-  color: var(--text-primary);
-}
-
-.checkpoint-review-output-action:hover:not(:disabled),
-.checkpoint-review-output-action[aria-pressed='true'] {
-  background: color-mix(in srgb, var(--warning-base) 16%, var(--background-primary));
-  opacity: 1;
-}
-
 .checkpoint-flow-content {
   display: flex;
   flex-direction: column;
@@ -147,10 +134,12 @@
   min-width: 0;
 }
 
+/* The question and its details give up space more slowly than the answer options (shrink 0.6 against 1), and keep a floor of their own, so a long option list cannot squeeze the exact text being approved down to a sliver. The options keep a floor too, enough for the hint, a couple of choices, and the buttons. */
 .checkpoint-flow-content--overlay .checkpoint-prompt-details {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 1 0.6 auto;
+  min-height: min(160px, 20vh);
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding-right: var(--padding-xs);
 }
 
@@ -184,7 +173,7 @@
 
 .checkpoint-flow-content--overlay .checkpoint-response-controls {
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: min(220px, 30vh);
   margin-top: var(--padding-m);
   padding-top: var(--padding-m);
   border-top: var(--border-thin) solid var(--separator-color);
@@ -331,6 +320,12 @@
   overflow-wrap: anywhere;
 }
 
+/* In the overlay the whole question area already scrolls, so the details body must not scroll inside it as well. Two nested scrollbars made the text hard to read through. The 260px cap above still applies to the inline card, which has no scrolling parent. */
+.checkpoint-flow-content--overlay .checkpoint-details-body {
+  max-height: none;
+  overflow-y: visible;
+}
+
 .browser-permission-repair {
   padding: var(--padding-m);
   background: color-mix(in srgb, var(--primary) 8%, transparent);
@@ -385,28 +380,16 @@
   gap: var(--padding-s);
 }
 
-/* Horizontal layout for binary Yes/No confirmation cards. */
-.checkpoint-options-row {
+/* Short options with no descriptions, such as Yes and No, sit side by side and wrap only when the card is too narrow. */
+.checkpoint-options--inline {
   flex-direction: row;
+  flex-wrap: wrap;
 }
 
-.checkpoint-options-row .checkpoint-choice-card {
-  flex: 1;
-  justify-content: center;
-}
-
-.checkpoint-options-row .checkpoint-choice-body {
+.checkpoint-options--inline .checkpoint-choice-card {
+  flex: 1 1 140px;
+  width: auto;
   align-items: center;
-}
-
-.checkpoint-options-row .checkpoint-choice-indicator {
-  display: none;
-}
-
-@media (max-width: 360px) {
-  .checkpoint-options-row {
-    flex-direction: column;
-  }
 }
 
 .checkpoint-choice-card {

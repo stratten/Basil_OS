@@ -35,7 +35,10 @@ def _stored_envelope(encoded: str, stored: Dict[str, Any], *, preview_chars: int
     preview = encoded[:preview_chars]
     result_id = stored["result_id"]
     file_name = stored.get("file")
-    where = f" It is also a file named {file_name} in this task's workspace folder, which shell commands such as grep and head can read." if file_name else ""
+    where = (
+        f" It is also a file named {file_name} in this task's workspace folder, which shell commands such as grep and head can read."
+        " To pick fields out of a JSON file, use jq if `command -v jq` finds it, because a Python script for the same job would ask the user for approval."
+    ) if file_name else ""
     envelope: Dict[str, Any] = {
         "ok": True,
         "stored": True,

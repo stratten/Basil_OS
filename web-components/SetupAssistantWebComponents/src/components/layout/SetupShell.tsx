@@ -11,6 +11,8 @@ interface Props {
   setupStage: SetupStage
   hasActiveArtifact: boolean
   onSkip: () => void
+  /** Starts a problem report from any setup screen. The link shows only when this is given. */
+  onReportProblem?: () => void
   children: ReactNode
 }
 
@@ -52,6 +54,7 @@ export function SetupShell({
   setupStage,
   hasActiveArtifact,
   onSkip,
+  onReportProblem,
   children,
 }: Props) {
   const isWrappedUp = setupStage === 'wrap_up'
@@ -107,6 +110,13 @@ export function SetupShell({
 
           <footer className="setup-navigation">
             <div ref={setStepActionsSlot} className="setup-navigation-step" />
+            {onReportProblem && (
+              <div className="setup-report-row">
+                <button type="button" className="setup-report-link" onClick={onReportProblem}>
+                  Report a problem
+                </button>
+              </div>
+            )}
           </footer>
         </section>
       </main>

@@ -7,6 +7,7 @@ import { CustomModelsPanel } from '../components/CustomModelsPanel'
 import { ReasoningApiModelsPanel } from '../components/ReasoningApiModelsPanel'
 import { TranscriptionApiModelsPanel } from '../components/TranscriptionApiModelsPanel'
 import { CloudMeetingTranscriptionPanel } from '../components/CloudMeetingTranscriptionPanel'
+import { DeleteIcon, DownloadIcon, ModelFitIcon } from '../components/ModelActionIcons'
 import {
   notifyModelsSettingsReady,
   onModelsEvent,
@@ -17,6 +18,7 @@ import {
   requestUpdateReasoningFallback,
 } from '../services/modelsBridge'
 import type { ModelProviderGroup, ModelSummary } from '../types'
+import { modelFacts, type ModelFact } from './modelFacts'
 
 export type ModelsSubTab = 'reasoning' | 'transcription'
 
@@ -57,6 +59,7 @@ export function ModelsSettingsApp({
   const [reasoningGroups, setReasoningGroups] = useState<ModelProviderGroup[]>([])
   const [transcriptionGroups, setTranscriptionGroups] = useState<ModelProviderGroup[]>([])
   const [isLoadingModels, setIsLoadingModels] = useState(false)
+  const [deviceMemoryGb, setDeviceMemoryGb] = useState<number | null>(null)
   const [visionFallbackEnabled, setVisionFallbackEnabled] = useState(false)
   const [visionFallbackInstalled, setVisionFallbackInstalled] = useState(false)
   const [visionFallbackPending, setVisionFallbackPending] = useState<string | null>(null)
@@ -91,6 +94,7 @@ export function ModelsSettingsApp({
         setReasoningGroups(event.reasoningGroups)
         setTranscriptionGroups(event.transcriptionGroups)
         setIsLoadingModels(event.isLoadingModels)
+        setDeviceMemoryGb(typeof event.deviceMemoryGb === 'number' ? event.deviceMemoryGb : null)
         setVisionFallbackEnabled(event.localVisionFallbackEnabled)
         setVisionFallbackInstalled(event.isLocalVisionFallbackModelInstalled)
         setReasoningFallbackEnabled(event.reasoningFallbackEnabled)
@@ -334,6 +338,7 @@ export function ModelsSettingsApp({
                       <ModelRow
                         key={model.id}
                         model={model}
+                        deviceMemoryGb={deviceMemoryGb}
                         pendingKind={pendingByModel[model.id]?.kind ?? null}
                         logs={logsByModel[model.id] ?? []}
                         onDownload={() => handleDownload(model.id)}
@@ -403,8 +408,21 @@ export function ModelsSettingsApp({
   )
 }
 
+/** The hover text for a measurement: its value, this Mac's memory when it is the Memory line, and the fit verdict when there is one. */
+function factTooltip(fact: ModelFact): string {
+  const base = fact.note ? `${fact.label}: ${fact.value} (${fact.note})` : `${fact.label}: ${fact.value}`
+  return fact.fit ? `${base}. ${fact.fit.verdict}` : base
+}
+
+/** The same information as plain text for screen readers, because the bar and the fit icon are drawn only. */
+function factSpokenText(fact: ModelFact): string {
+  const parts = [fact.value, fact.note, fact.fit?.verdict].filter((part): part is string => Boolean(part))
+  return parts.join('. ')
+}
+
 interface ModelRowProps {
   model: ModelSummary
+  deviceMemoryGb: number | null
   pendingKind: 'download' | 'cancel' | 'delete' | null
   logs: string[]
   onDownload: () => void
@@ -412,40 +430,74 @@ interface ModelRowProps {
   onDelete: () => void
 }
 
-function ModelRow({ model, pendingKind, logs, onDownload, onCancel, onDelete }: ModelRowProps) {
+function ModelRow({ model, deviceMemoryGb, pendingKind, logs, onDownload, onCancel, onDelete }: ModelRowProps) {
   const isDownloading = model.statusKind === 'downloading'
   const isBusy = pendingKind !== null
+  const facts = modelFacts(model, deviceMemoryGb)
 
   return (
     <li className="models-settings-row">
       <div className="models-settings-row-header">
         <span className="models-settings-row-name">{model.name}</span>
-        <div className="models-settings-row-meta">
-          {model.statusKind === 'available' && <span className="models-settings-installed-badge">Installed</span>}
-          {model.size !== null && <span className="models-settings-row-size">{formatBytes(model.size)}</span>}
+        {facts.length > 0 && (
+          <dl className="models-settings-row-facts">
+            {facts.map((fact) => (
+              <div key={fact.label} className="models-settings-row-fact" data-tooltip={factTooltip(fact)}>
+                <dt>
+                  {fact.fit && <span className={`models-settings-fit-icon models-settings-fit-icon-${fact.fit.kind.replace('_', '-')}`}><ModelFitIcon kind={fact.fit.kind} /></span>}
+                  {fact.label}
+                </dt>
+                <div className="models-settings-fact-bar" aria-hidden="true">
+                  {fact.fraction !== null && <span className="models-settings-fact-bar-fill" style={{ width: `${Math.round(fact.fraction * 100)}%` }} />}
+                  {fact.markerFraction !== undefined && <span className="models-settings-fact-bar-marker" style={{ left: `${Math.round(fact.markerFraction * 100)}%` }} />}
+                </div>
+                <dd className="settings-visually-hidden">{factSpokenText(fact)}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </div>
+      <div className="models-settings-row-footer">
+        <div className="models-settings-row-footer-start">
+          <div className="models-settings-row-capabilities-chips">
+            {model.capabilities.map((capability) => (
+              <span key={capability} className="models-settings-capability-chip">{capability}</span>
+            ))}
+          </div>
           {model.format && (
             <span className={`models-settings-format-tag models-settings-format-tag-${model.format.toLowerCase()}`} title={`${model.format} model file format`}>
               {model.format}
             </span>
           )}
         </div>
-      </div>
-      <div className="models-settings-row-capabilities">
-        <div className="models-settings-row-capabilities-chips">
-          {model.capabilities.map((capability) => (
-            <span key={capability} className="models-settings-capability-chip">{capability}</span>
-          ))}
+        <div className="models-settings-row-footer-end">
+          {model.size !== null && <span className="models-settings-row-size">{formatBytes(model.size)}</span>}
+          {model.statusKind === 'available' && <span className="models-settings-installed-badge">Installed</span>}
+          {model.statusKind === 'available' && (
+            <button
+              type="button"
+              className="models-settings-delete-button models-settings-icon-button"
+              disabled={isBusy}
+              onClick={onDelete}
+              aria-label={pendingKind === 'delete' ? `Deleting ${model.name}` : `Delete ${model.name}`}
+              data-tooltip={pendingKind === 'delete' ? 'Deleting...' : 'Delete'}
+            >
+              <DeleteIcon />
+            </button>
+          )}
+          {model.statusKind === 'downloadable' && (
+            <button
+              type="button"
+              className="secondary-button models-settings-icon-button"
+              disabled={isBusy}
+              onClick={onDownload}
+              aria-label={pendingKind === 'download' ? `Starting download of ${model.name}` : `Download ${model.name}`}
+              data-tooltip={pendingKind === 'download' ? 'Starting...' : 'Download'}
+            >
+              <DownloadIcon />
+            </button>
+          )}
         </div>
-        {model.statusKind === 'available' && (
-          <button type="button" className="models-settings-delete-button" disabled={isBusy} onClick={onDelete}>
-            {pendingKind === 'delete' ? 'Deleting...' : 'Delete'}
-          </button>
-        )}
-        {model.statusKind === 'downloadable' && (
-          <button type="button" className="secondary-button" disabled={isBusy} onClick={onDownload}>
-            {pendingKind === 'download' ? 'Starting...' : 'Download'}
-          </button>
-        )}
       </div>
 
       {isDownloading ? (
@@ -455,6 +507,7 @@ function ModelRow({ model, pendingKind, logs, onDownload, onCancel, onDelete }: 
             percent={(model.progress ?? 0) * 100}
             downloadedBytes={model.totalDownloaded}
             totalBytes={model.totalSize}
+            waitingNote={model.statusMessage}
           />
           <button type="button" className="models-settings-cancel-button" disabled={pendingKind === 'cancel'} onClick={onCancel}>
             Cancel

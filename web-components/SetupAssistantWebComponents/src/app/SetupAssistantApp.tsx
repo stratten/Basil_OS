@@ -15,6 +15,7 @@ import { SetupStepActions } from '@/components/layout/SetupStepActions'
 import { StarterDownloadsStatus } from '@/components/layout/StarterDownloadsStatus'
 import { StageTransition } from '@/components/transitions/StageTransition'
 import { SetupWrapUpPanel } from '@/components/wrapup/SetupWrapUpPanel'
+import { wrapUpProblemFrom } from '@/components/wrapup/WrapUpProblemNotice'
 import { closeSetupAssistant, notifySetupAssistantReady, reportProblem, showDiagnosticLogs } from '@/services/bridge'
 import {
   type SetupAgendaConfirmationResolution,
@@ -315,6 +316,11 @@ export function SetupAssistantApp() {
           wrapUpProposal={store.state.wrapUpProposal}
           isFinalizingWrapUp={store.state.isFinalizingWrapUp}
           finalizeError={store.state.finalizeError}
+          savedInteractionStyle={store.state.interactionStyle}
+          importedContext={store.state.importedContext}
+          problem={wrapUpProblemFrom(store.state.localModelFailure, store.state.errorMessage)}
+          onShowLogs={detail => showDiagnosticLogs('setup_assistant', detail)}
+          onReport={detail => reportProblem('setup_assistant', detail)}
         />
         <SetupStepActions>
           <button type="button" className="primary-button setup-close-button" onClick={closeSetupAssistant}>
@@ -330,8 +336,10 @@ export function SetupAssistantApp() {
       setupStage={store.state.setupStage}
       hasActiveArtifact={hasActiveArtifact}
       onSkip={handleSkip}
+      onReportProblem={() => reportProblem('setup_assistant_footer')}
     >
-      {store.state.localModelFailure ? (
+      {/* On the wrap-up screen the conversation is over, so the banner's Try again has nothing to retry. The wrap-up panel shows an unresolved problem itself. */}
+      {store.state.setupStage !== 'wrap_up' && (store.state.localModelFailure ? (
         <LocalModelFailureBanner
           failure={store.state.localModelFailure}
           onRetry={handleRetryLastTurn}
@@ -341,7 +349,7 @@ export function SetupAssistantApp() {
         />
       ) : (
         store.state.errorMessage && <div className="error-banner">{store.state.errorMessage}</div>
-      )}
+      ))}
 
       {/* The first screen has its own Model downloads step, so this status panel appears only on the wrap-up screen. */}
       {store.state.setupStage === 'wrap_up' && <StarterDownloadsStatus />}

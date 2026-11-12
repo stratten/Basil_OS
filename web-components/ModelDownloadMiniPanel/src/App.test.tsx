@@ -79,6 +79,17 @@ describe('ModelDownloadMiniPanel', () => {
     expect(container.querySelector('[aria-label="Retry unrecognized-model"]')).toBeNull()
   })
 
+  it('says why a download has not moved yet, only until bytes arrive', () => {
+    const waiting = 'Waiting for Hugging Face to start sending data (20s)...'
+    act(() => state.initHandler!({ theme, fonts, snapshot: makeSnapshot([
+      { modelId: 'Qwen-qwen35-9b-q4km', status: 'downloading', progress: 0, totalDownloaded: 0, totalSize: 0, isRetrying: false, message: waiting },
+      { modelId: 'NVIDIA-parakeet-tdt-0.6b-v3-quantized', status: 'downloading', progress: 0, totalDownloaded: 5_000_000, totalSize: 670_000_000, isRetrying: false, message: 'Downloading model...' },
+    ]) }))
+
+    const notes = [...container.querySelectorAll('.download-progress__note')]
+    expect(notes.map(note => note.textContent)).toEqual([waiting])
+  })
+
   it('shows completed state and invokes native dismiss', () => {
     act(() => state.initHandler!({ theme, fonts, snapshot: makeSnapshot([], { isComplete: true, quantizedPercentage: 100 }) }))
 

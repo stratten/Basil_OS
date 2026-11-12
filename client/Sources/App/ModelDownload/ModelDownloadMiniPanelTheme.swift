@@ -10,6 +10,8 @@ struct ModelDownloadPanelSnapshot {
         let totalDownloaded: Int64?
         let totalSize: Int64?
         let isRetrying: Bool
+        /// What the backend is doing right now, such as waiting for Hugging Face to send the first bytes. The row shows it only until bytes arrive.
+        var message: String? = nil
 
         var jsonObject: [String: Any] {
             [
@@ -19,6 +21,7 @@ struct ModelDownloadPanelSnapshot {
                 "totalDownloaded": totalDownloaded.map(NSNumber.init(value:)) ?? NSNull(),
                 "totalSize": totalSize.map(NSNumber.init(value:)) ?? NSNull(),
                 "isRetrying": isRetrying,
+                "message": message ?? NSNull(),
             ]
         }
     }

@@ -68,6 +68,9 @@
   border: var(--border-thin) solid var(--separator-color);
   background: var(--background-primary);
   color: var(--text-primary);
+  /* The same font and size as the note box, in place of the browser's default form font. */
+  font: inherit;
+  font-size: var(--font-size-footnote);
 }
 
 .approval-note-input {
@@ -79,6 +82,8 @@
   background: var(--background-primary);
   color: var(--text-primary);
   font: inherit;
+  /* Set after the font shorthand, which resets the size. Without it the box and its placeholder took the card's 14px body size, larger than the 11px and 12px text around them. */
+  font-size: var(--font-size-footnote);
   resize: vertical;
 }
 

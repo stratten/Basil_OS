@@ -673,6 +673,19 @@ export function pickFiles() {
   postToSwift({ type: 'pickFiles' });
 }
 
+/** The source label Swift records with a problem report started from a failed run card. */
+const RUN_CARD_PROBLEM_SOURCE = 'agent_task_run_card';
+
+/** Gathers the diagnostic report and opens a prefilled issue, the same action as Report a Problem in the menu bar. `detail` is the short failure text the person is looking at. */
+export function reportProblem(detail?: string) {
+  postToSwift({ type: 'reportProblem', source: RUN_CARD_PROBLEM_SOURCE, detail });
+}
+
+/** Gathers the diagnostic report and reveals it without opening an issue. */
+export function showDiagnosticLogs(detail?: string) {
+  postToSwift({ type: 'showDiagnosticLogs', source: RUN_CARD_PROBLEM_SOURCE, detail });
+}
+
 /**
  * Push the current sidebar focus state to Swift. Read by the agentTask
  * hotkey handler (gate logic in `HotkeyHandler_AgentTask.swift`) to decide

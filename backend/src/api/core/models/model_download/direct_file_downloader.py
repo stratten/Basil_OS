@@ -326,7 +326,7 @@ class DirectFileDownloader:
         await self.update_progress(
             model_type,
             variant,
-            0.05,
+            0.0,
             status="downloading",
             metadata={"message": "Starting file download..."},
         )
@@ -377,9 +377,9 @@ class DirectFileDownloader:
             await self.update_progress(
                 model_type,
                 variant,
-                0.02,
+                0.0,
                 status="downloading",
-                metadata={"message": f"Downloading {filename}..."},
+                metadata={"message": f"Contacting Hugging Face for {filename}..."},
             )
 
             main_event_loop = asyncio.get_event_loop()

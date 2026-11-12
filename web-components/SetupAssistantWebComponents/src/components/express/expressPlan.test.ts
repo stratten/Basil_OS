@@ -18,8 +18,11 @@ describe('summaryForComfort', () => {
     expect(summaryForComfort('cautious')).toContain('stays on this Mac')
     expect(summaryForComfort('cautious')).toContain('no new macOS permission')
     expect(summaryForComfort('balanced')).toContain('do not start by themselves')
-    expect(summaryForComfort('all_in')).toContain('Voice Listener')
+    expect(summaryForComfort('all_in')).toContain('everything you leave ticked')
     expect(summaryForComfort('all_in')).toContain('every time Basil launches')
+    expect(summaryForComfort('all_in')).not.toContain('macOS will ask')
+    expect(summaryForComfort('all_in', true)).toContain('downloads the models this Mac can run')
+    expect(summaryForComfort('all_in', true)).toContain('every time Basil launches')
   })
 })
 

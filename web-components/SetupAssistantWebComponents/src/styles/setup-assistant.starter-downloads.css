@@ -41,19 +41,18 @@
 
 .model-downloads__name {
   font-family: var(--font-family-medium);
-  font-weight: 700;
+  font-weight: normal;
   overflow-wrap: anywhere;
 }
 
 .model-downloads__role {
   color: var(--text-primary);
-  font-size: var(--font-size-footnote, var(--font-size-callout));
-  font-weight: 600;
+  font-size: var(--font-size-footnote);
 }
 
 .model-downloads__detail {
   color: var(--text-secondary);
-  font-size: var(--font-size-footnote, var(--font-size-callout));
+  font-size: var(--font-size-footnote);
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
@@ -101,7 +100,8 @@
 
 .model-downloads__error {
   color: var(--error-base);
-  font-weight: 700;
+  font-family: var(--font-family-medium);
+  font-weight: normal;
   margin: 0;
 }
 
@@ -123,8 +123,9 @@
 }
 
 .starter-downloads__title {
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: var(--font-size-title3);
+  font-family: var(--font-family-medium);
+  font-weight: normal;
   margin: 0;
 }
 
@@ -146,7 +147,7 @@
 
 .intro-downloads-ready {
   color: var(--accent-green);
-  font-weight: 700;
+  font-family: var(--font-family-medium);
   margin: 0;
 }
 

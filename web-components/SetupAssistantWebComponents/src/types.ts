@@ -149,6 +149,8 @@ export interface SetupLocalModelDownloadProgress {
   /** Bytes received so far and bytes in the whole download. Zero until the download has reported them. */
   total_downloaded?: number
   total_size?: number
+  /** What the backend is doing right now, such as "Waiting for Hugging Face to start sending data (20s)...". */
+  message?: string
 }
 
 export interface SetupAgentProviderModelChoice {

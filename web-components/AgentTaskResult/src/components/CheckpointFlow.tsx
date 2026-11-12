@@ -3,6 +3,13 @@ import type { BrowserPermissionRepairMetadata, CheckpointData, CheckpointField, 
 import * as api from '../services/api';
 import { agentStore } from '../store/agentStore';
 import AgentTaskInputSurface from './AgentTaskInputSurface';
+import { DecisionActions, DecisionButton } from './interaction/DecisionButton';
+import {
+  ContinueCircleIcon,
+  SkipCircleIcon,
+  StopCircleIcon,
+  WorkLogCircleIcon,
+} from '@shared/CircleControlIcons';
 import { plainMarkdownText } from '@shared/plainMarkdownText';
 import MarkdownRenderer from './MarkdownRenderer';
 import {
@@ -36,7 +43,7 @@ interface ChoiceCardProps {
   onSelect: (value: string) => void;
 }
 
-// A single selectable checkpoint option, rendered as a card. A radio or checkbox indicator marks single- or multi-select choices; confirmation cards submit on click and show no indicator.
+// A single selectable checkpoint option, rendered as a card. A radio or checkbox indicator marks single- or multi-select choices; a confirmation is a single-select choice between Yes and No.
 function CheckpointChoiceCard({ option, selected, disabled, indicator, onSelect }: ChoiceCardProps) {
   const variantClass =
     option.variant && option.variant !== 'default' ? ` ${option.variant}` : '';
@@ -64,13 +71,19 @@ function CheckpointChoiceCard({ option, selected, disabled, indicator, onSelect 
   );
 }
 
-// Yes/No options for binary confirmation checkpoints. Rendered as cards that
-// submit on click (no separate Continue step) using explicit values, which
-// avoids the prior setUserInput-then-submit state race.
+// A confirmation checkpoint is a single-select choice between Yes and No, answered with the same Continue button as every other question. Whatever is typed in "Other" is sent along with the selection, so "yes, but..." and "no, do this instead" reach the agent intact.
 const CONFIRMATION_OPTIONS: CheckpointOption[] = [
-  { id: 'yes', label: 'Yes', value: 'yes', variant: 'primary' },
-  { id: 'no', label: 'No', value: 'no', variant: 'default' },
+  { id: 'yes', label: 'Yes', value: 'yes' },
+  { id: 'no', label: 'No', value: 'no' },
 ];
+
+/** The longest label that still sits comfortably beside another option on one line. */
+const INLINE_OPTION_LABEL_LIMIT = 24;
+
+/** True when every option is a short label with no description, such as Yes and No, so the options can sit side by side instead of each taking a full row. */
+export function optionsFitOnOneLine(options: CheckpointOption[]): boolean {
+  return options.length > 0 && options.every(option => !option.description && option.label.length <= INLINE_OPTION_LABEL_LIMIT);
+}
 
 function isBrowserPermissionRepairMetadata(
   metadata: CheckpointData['metadata']
@@ -227,23 +240,20 @@ export default function CheckpointFlow({ agentTaskId, checkpoint, mode }: Props)
   const labeledAnswers = !targetAuthorizationMetadata;
   const allowMultiple = isChoiceCheckpoint && checkpoint.allow_multiple === true && labeledAnswers;
   const trimmedOtherText = otherText.trim();
+  const choiceOptions = isConfirmationCheckpoint ? CONFIRMATION_OPTIONS : (checkpoint.options || []);
   const numericInputInvalid = isNumericCheckpoint && userInput.trim() !== '' && !isValidNumericAnswer(userInput);
   const canSubmit = isProviderFormCheckpoint
     ? !missingRequiredProviderField
-    : isChoiceCheckpoint
+    : isChoiceCheckpoint || isConfirmationCheckpoint
       ? selectedValues.length > 0 || trimmedOtherText.length > 0
-      : isConfirmationCheckpoint
-        ? trimmedOtherText.length > 0
-        : userInput.trim().length > 0 && !numericInputInvalid;
+      : userInput.trim().length > 0 && !numericInputInvalid;
 
-  // Accepts an explicit value so card clicks (especially Yes/No) submit the
-  // intended response immediately instead of relying on async setUserInput
-  // having flushed before submission.
+  // Accepts an explicit value for the provider-delegation cancel button, which submits a fixed answer without relying on async state having flushed.
   const handleSubmit = async (explicitValue?: string) => {
     const response = explicitValue ?? (
       isChoiceCheckpoint || isConfirmationCheckpoint
         ? formatCheckpointAnswer({
-          selectedValues: orderSelectedValues(checkpoint.options || [], selectedValues),
+          selectedValues: orderSelectedValues(choiceOptions, selectedValues),
           otherText,
           labeled: labeledAnswers,
         })
@@ -393,33 +403,13 @@ export default function CheckpointFlow({ agentTaskId, checkpoint, mode }: Props)
               />
             ))}
           </div>
-        ) : isConfirmationCheckpoint ? (
-          <div className="checkpoint-choice-with-clarification">
-            <div className="checkpoint-options checkpoint-options-row">
-              {CONFIRMATION_OPTIONS.map(option => (
-                <CheckpointChoiceCard
-                  key={option.id}
-                  option={option}
-                  selected={false}
-                  disabled={submitting}
-                  indicator="none"
-                  onSelect={value => handleSubmit(formatCheckpointAnswer({
-                    selectedValues: [value],
-                    otherText,
-                    labeled: true,
-                  }))}
-                />
-              ))}
-            </div>
-            {otherField}
-          </div>
-        ) : isChoiceCheckpoint ? (
+        ) : isChoiceCheckpoint || isConfirmationCheckpoint ? (
           <div className="checkpoint-choice-with-clarification">
             {allowMultiple && (
               <p className="checkpoint-choice-hint">Select all that apply.</p>
             )}
-            <div className="checkpoint-options">
-              {(checkpoint.options || []).map(option => (
+            <div className={`checkpoint-options${optionsFitOnOneLine(choiceOptions) ? ' checkpoint-options--inline' : ''}`}>
+              {choiceOptions.map(option => (
                 <CheckpointChoiceCard
                   key={option.id}
                   option={option}
@@ -475,39 +465,48 @@ export default function CheckpointFlow({ agentTaskId, checkpoint, mode }: Props)
       </div>
 
       </div>
-      <div className="agent-task-input-actions checkpoint-submit-actions">
+      <DecisionActions className="agent-task-input-actions checkpoint-submit-actions">
         {mode === 'overlay' && (
-          <button
-            type="button"
-            className="action-btn checkpoint-review-output-action"
+          <DecisionButton
+            tone="neutral"
+            icon={<WorkLogCircleIcon />}
+            label={isReviewingOutput ? 'Back to question' : 'See work so far'}
             onClick={handleReviewOutput}
-            aria-pressed={isReviewingOutput}
+            pressed={isReviewingOutput}
             disabled={submitting}
-            title="Look over the work Basil has done so far before you answer"
-          >
-            {isReviewingOutput ? 'Back to question' : 'See work so far'}
-          </button>
+            lead={!targetAuthorizationMetadata}
+            title="look over what Basil has done before you answer"
+            className="checkpoint-review-output-action"
+          />
         )}
         {targetAuthorizationMetadata && (
-          <button
-            className="action-btn"
+          <DecisionButton
+            tone="neutral"
+            icon={<StopCircleIcon />}
+            label="Cancel delegation"
             onClick={() => handleSubmit(targetAuthorizationMetadata.cancel_value)}
             disabled={submitting}
-          >
-            Cancel delegation
-          </button>
+            lead
+            title="stop handing this work over and tell Basil so"
+          />
         )}
-        <button className="action-btn" onClick={handleCancel} disabled={submitting}>
-          Skip
-        </button>
-        <button
-          className="action-btn primary"
+        <DecisionButton
+          tone="neutral"
+          icon={<SkipCircleIcon />}
+          label="Skip"
+          onClick={handleCancel}
+          disabled={submitting}
+          title="set this question aside without answering. You can reopen it"
+        />
+        <DecisionButton
+          tone="primary"
+          icon={<ContinueCircleIcon />}
+          label={submitting ? 'Submitting...' : 'Continue'}
           onClick={() => handleSubmit()}
           disabled={submitting || !canSubmit}
-        >
-          {submitting ? 'Submitting...' : 'Continue'}
-        </button>
-      </div>
+          title="send your answer (Command-Return)"
+        />
+      </DecisionActions>
     </div>
   );
 

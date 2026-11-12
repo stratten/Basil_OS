@@ -114,8 +114,8 @@
 
 .permission-row-heading h3 {
   font-family: var(--font-family-medium);
-  font-size: calc(18px * var(--text-scale, 1));
-  font-weight: 500;
+  font-size: var(--font-size-title3);
+  font-weight: normal;
   line-height: 1.22;
   margin: 0;
 }
@@ -123,7 +123,7 @@
 .permission-row p {
   color: var(--text-secondary);
   font-family: var(--font-family-light);
-  font-size: calc(13px * var(--text-scale, 1));
+  font-size: var(--font-size-callout);
   font-weight: 300;
   line-height: 1.35;
   margin: 6px 0 0;
@@ -134,7 +134,7 @@
   border-radius: 6px;
   display: inline-flex;
   font-family: var(--font-family-light);
-  font-size: calc(12px * var(--text-scale, 1));
+  font-size: var(--font-size-footnote);
   font-weight: 300;
   gap: 4px;
   padding: 3px 8px;
@@ -180,7 +180,7 @@
 .permissions-restart-secondary {
   border-radius: 6px;
   font-family: var(--font-family-light);
-  font-size: calc(12px * var(--text-scale, 1));
+  font-size: var(--font-size-footnote);
   font-weight: 300;
   padding: 6px 12px;
   white-space: nowrap;
@@ -218,7 +218,7 @@
 .permissions-restart-card p {
   color: var(--text-primary);
   font-family: var(--font-family-light);
-  font-size: calc(13px * var(--text-scale, 1));
+  font-size: var(--font-size-callout);
   font-weight: 300;
   line-height: 1.35;
   margin: 0;

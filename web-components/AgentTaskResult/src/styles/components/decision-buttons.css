@@ -1,0 +1,124 @@
+/* Decision buttons: Approve, Deny, Yes, No, Continue, Skip, Stop task and the work-review toggle. Each is a small icon-only button the size and shape of the Send button in the follow-up box (28px), drawing the same 14px icon as the Stop and Pause controls, with its name in a tooltip and, hidden from view, in the page for screen readers. Colors come from the theme tokens, and the solid tones carry a light shadow so they read as raised, never flat. */
+.decision-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--padding-xs);
+}
+
+.decision-btn {
+  position: relative;
+  flex: 0 0 auto;
+  width: 28px;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: var(--border-thin) solid var(--secondary);
+  border-radius: var(--corner-radius-small);
+  background: var(--background-primary);
+  color: var(--secondary);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+}
+
+/* A button marked lead pushes itself and the buttons before it to the left of the row. */
+.decision-btn--lead {
+  margin-right: auto;
+}
+
+.decision-btn__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.decision-btn__icon svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+/* A light ring on a solid button looks larger and heavier than a dark ring on white, even at the same size, so the solid tones draw their icon one pixel smaller (13px against 14px) to match the outlined buttons beside them. */
+.decision-btn--primary .decision-btn__icon svg,
+.decision-btn--approve .decision-btn__icon svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* The word stays available to screen readers and to find-in-page, but is not drawn. */
+.decision-btn__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.decision-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--secondary) 10%, var(--background-primary));
+}
+
+.decision-btn[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--secondary) 14%, var(--background-primary));
+}
+
+.decision-btn:focus-visible {
+  outline: var(--border-thin) solid var(--secondary);
+  outline-offset: 1px;
+}
+
+.decision-btn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.decision-btn--primary {
+  background: var(--secondary);
+  color: var(--text-on-secondary, var(--background-primary));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--text-primary) 35%, transparent);
+}
+
+.decision-btn--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--secondary) 88%, var(--text-primary));
+}
+
+.decision-btn--approve {
+  border-color: var(--success-base);
+  background: var(--success-base);
+  color: var(--background-primary);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--text-primary) 35%, transparent);
+}
+
+.decision-btn--approve:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--success-base) 88%, var(--text-primary));
+}
+
+.decision-btn--approve:focus-visible {
+  outline-color: var(--success-base);
+}
+
+.decision-btn--deny {
+  border-color: color-mix(in srgb, var(--error-base) 60%, transparent);
+  background: color-mix(in srgb, var(--error-base) 12%, var(--background-primary));
+  color: var(--text-primary);
+}
+
+.decision-btn--deny:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--error-base) 22%, var(--background-primary));
+}
+
+.decision-btn--deny:focus-visible {
+  outline-color: var(--error-base);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .decision-btn {
+    transition-duration: 0.01ms !important;
+  }
+}

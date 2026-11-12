@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { hydrateAgentFromBackend } from '../app/agentHydration';
 import { agentStore } from '../store/agentStore';
 import { checkpointPromptSummary } from './CheckpointFlow';
+import { ContinueCircleIcon } from '@shared/CircleControlIcons';
+import { DecisionButton } from './interaction/DecisionButton';
 
 interface Props {
   agentTaskId: string;
@@ -65,14 +67,15 @@ export default function CheckpointRecoveryCard({ agentTaskId, prompt, questionKe
             {summary || (loading ? 'Loading the question Basil asked…' : 'Basil is waiting for your answer.')}
           </div>
         </div>
-        <button
-          type="button"
-          className="action-btn primary agent-task-input-dock-action"
+        <DecisionButton
+          tone="primary"
+          icon={<ContinueCircleIcon />}
+          label={loading ? 'Loading…' : 'Answer now'}
           onClick={() => void load()}
           disabled={loading}
-        >
-          {loading ? 'Loading…' : 'Answer now'}
-        </button>
+          className="agent-task-input-dock-action"
+          title="load the question so you can answer"
+        />
       </div>
     </section>
   );

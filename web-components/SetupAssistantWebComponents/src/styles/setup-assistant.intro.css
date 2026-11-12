@@ -35,7 +35,7 @@
 .welcome-intro-copy {
   color: var(--text-secondary);
   display: grid;
-  font-size: calc(18px * var(--text-scale, 1));
+  font-size: var(--font-size-headline);
   gap: var(--padding-m);
   line-height: 1.6;
   margin-bottom: var(--padding-xl, 40px);
@@ -50,7 +50,7 @@
   border: 0.5px solid color-mix(in srgb, var(--primary) 30%, var(--separator-color));
   border-radius: var(--corner-radius-medium);
   color: var(--text-primary);
-  font-size: calc(15px * var(--text-scale, 1));
+  font-size: var(--font-size-body);
   line-height: 1.55;
   margin: 0 0 var(--padding-l, 28px);
   padding: var(--padding-m) var(--padding-l);
@@ -181,7 +181,7 @@
 
 .choice-option-unavailable {
   color: var(--text-secondary);
-  font-size: var(--font-size-footnote, var(--font-size-callout));
+  font-size: var(--font-size-footnote);
 }
 
 .choice-option-provider-key-form {
@@ -194,7 +194,7 @@
 .choice-option-provider-field {
   color: var(--text-secondary);
   display: grid;
-  font-size: var(--font-size-footnote, var(--font-size-callout));
+  font-size: var(--font-size-footnote);
   gap: 4px;
 }
 
@@ -225,7 +225,7 @@
 .choice-option-note {
   color: var(--text-secondary);
   display: block;
-  font-size: var(--font-size-footnote, var(--font-size-callout));
+  font-size: var(--font-size-footnote);
   margin-top: 4px;
 }
 
@@ -239,7 +239,7 @@
   color: var(--primary);
   cursor: pointer;
   font: inherit;
-  font-size: var(--font-size-footnote, var(--font-size-callout));
+  font-size: var(--font-size-footnote);
   justify-self: start;
   padding: 0;
   text-decoration: underline;
@@ -253,7 +253,7 @@
 
 .choice-option-model-note {
   color: var(--text-secondary);
-  font-size: var(--font-size-footnote, var(--font-size-callout));
+  font-size: var(--font-size-footnote);
   margin: 0;
 }
 
@@ -263,7 +263,7 @@
 
 .choice-option-key-help {
   color: var(--text-secondary);
-  font-size: var(--font-size-footnote, var(--font-size-callout));
+  font-size: var(--font-size-footnote);
   grid-column: 1 / -1;
   margin: 0;
 }
@@ -280,7 +280,7 @@
 }
 
 .choice-option-key-status {
-  font-size: var(--font-size-footnote, var(--font-size-callout));
+  font-size: var(--font-size-footnote);
 }
 
 .choice-option-key-status--valid {
@@ -429,7 +429,7 @@
 .intro-help-footnote {
   border-top: 0.5px solid color-mix(in srgb, var(--separator-color) 60%, transparent);
   color: var(--text-secondary);
-  font-size: var(--font-size-footnote, var(--font-size-callout));
+  font-size: var(--font-size-footnote);
   line-height: 1.45;
   margin: 12px 0 0;
   padding-top: 10px;
@@ -445,7 +445,7 @@
 .intro-step-body h3 {
   color: var(--text-primary);
   font-family: var(--font-family-medium);
-  font-size: var(--font-size-headline);
+  font-size: var(--font-size-title3);
   font-weight: normal;
   letter-spacing: -0.01em;
   margin: var(--padding-s) 0 0;
@@ -459,8 +459,6 @@
 
 .intro-step-lede em {
   color: var(--text-primary);
-  font-style: normal;
-  font-family: var(--font-family-medium);
 }
 
 .intro-step-primary {
@@ -668,7 +666,7 @@
   color: var(--text-primary);
   display: flex;
   flex-direction: column;
-  font-size: var(--font-size-footnote, var(--font-size-callout));
+  font-size: var(--font-size-footnote);
   gap: var(--padding-xs);
 }
 
@@ -715,7 +713,7 @@
 .choice-option-model-name {
   color: var(--text-primary);
   display: block;
-  font-size: var(--font-size-footnote, var(--font-size-callout));
+  font-size: var(--font-size-footnote);
   margin-top: 4px;
 }
 

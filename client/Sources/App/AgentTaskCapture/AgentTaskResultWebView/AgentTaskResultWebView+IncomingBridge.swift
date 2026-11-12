@@ -305,6 +305,14 @@ extension AgentTaskResultWebView {
                let originId = dict["originId"] as? String, !originId.isEmpty {
                 onOpenAgentTaskOrigin?(originType, originId)
             }
+        case "reportProblem", "showDiagnosticLogs":
+            let source = (dict["source"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? "agent_task_run_card"
+            let trimmedDetail = (dict["detail"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let detail: String? = trimmedDetail.isEmpty ? nil : trimmedDetail
+            let opensIssue = type == "reportProblem"
+            Task { @MainActor in
+                await ProblemReportService.report(source: source, detail: detail, openIssue: opensIssue)
+            }
         case "pickFiles":
             let panel = NSOpenPanel()
             panel.applyBasilThemedAppearance()

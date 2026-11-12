@@ -323,6 +323,9 @@ async def get_all_download_progress(
             record["total_downloaded"] = entry.bytes_downloaded
         if entry.total_bytes:
             record["total_size"] = entry.total_bytes
+        if status in ("queued", "downloading") and entry.message:
+            # The setup page shows this line under the bar while nothing has downloaded yet, such as "Waiting for Hugging Face to start sending data (20s)...".
+            record["message"] = entry.message
         progress_data[model_id] = record
 
     overall_progress = total_progress / total_models if total_models else 0

@@ -136,7 +136,7 @@ def test_the_starter_pack_keeps_one_reasoning_model_and_its_description_names_th
     models = get_starter_models(_starter_service(set()))
 
     assert len(models) == 3 and models[2]["priority"] == 3
-    assert "2.9GB" in models[2]["description"]
+    assert "3.1GB" in models[2]["description"]
 
 
 def test_every_declared_fallback_exists_and_is_smaller_than_the_model_it_replaces():
@@ -228,7 +228,7 @@ async def test_use_smaller_model_starts_the_download_when_it_is_not_installed(mo
     assert result.status == "downloading"
     assert result.model_id == MLX_4B
     assert manager.started == [("Qwen", "qwen35-4b-mlx-4bit")]
-    assert "2.9GB" in result.message
+    assert "3.1GB" in result.message
 
 
 @pytest.mark.use_temp_home
@@ -294,7 +294,7 @@ async def test_use_smaller_model_steps_the_thirty_five_b_down_to_the_nine_b_and_
     assert result.status == "downloading"
     assert result.model_id == MLX_9B
     assert manager.started == [("Qwen", "qwen35-9b-mlx-4bit")]
-    assert "5.6GB" in result.message
+    assert "6.0GB" in result.message
 
 
 @pytest.mark.asyncio

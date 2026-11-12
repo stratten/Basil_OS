@@ -20,6 +20,42 @@ const checkpoint: CheckpointData = {
   input_type: 'confirmation',
 };
 
+describe('side-by-side options', () => {
+  const opt = (label: string, description?: string) => ({ id: label, label, value: label, description });
+
+  it('puts Yes and No on one line', () => {
+    const markup = renderToStaticMarkup(
+      <CheckpointFlow agentTaskId="task-1" checkpoint={checkpoint} mode="overlay" />
+    );
+    expect(markup).toContain('checkpoint-options checkpoint-options--inline');
+  });
+
+  it('keeps long or described options stacked', async () => {
+    const { optionsFitOnOneLine } = await import('./CheckpointFlow');
+    expect(optionsFitOnOneLine([opt('Yes'), opt('No')])).toBe(true);
+    expect(optionsFitOnOneLine([opt('Today'), opt('Tomorrow'), opt('Next week')])).toBe(true);
+    expect(optionsFitOnOneLine([opt('Yes'), opt('No', 'Do not send it')])).toBe(false);
+    expect(optionsFitOnOneLine([opt('Yes'), opt('Use the staging workspace instead')])).toBe(false);
+    expect(optionsFitOnOneLine([])).toBe(false);
+  });
+
+  it('does not use the inline layout for a choice question with described options', () => {
+    const markup = renderToStaticMarkup(
+      <CheckpointFlow
+        agentTaskId="task-1"
+        checkpoint={{
+          checkpoint_id: 'c2',
+          prompt: 'Which one?',
+          input_type: 'choice',
+          options: [opt('A', 'First thing'), opt('B', 'Second thing')],
+        } as CheckpointData}
+        mode="overlay"
+      />
+    );
+    expect(markup).not.toContain('checkpoint-options--inline');
+  });
+});
+
 describe('CheckpointFlow presentation', () => {
   it('uses compact checkpoint markdown and separate overlay regions', () => {
     const markup = renderToStaticMarkup(
@@ -36,7 +72,7 @@ describe('CheckpointFlow presentation', () => {
     expect(markup).toContain('Skip');
   });
 
-  it('keeps the work-review button on the same row as Skip and Continue', () => {
+  it('keeps every control in one bottom row: the work-review tool first, then Skip and Continue', () => {
     const container = document.createElement('div');
     document.body.appendChild(container);
     const root = createRoot(container);
@@ -297,5 +333,22 @@ describe('CheckpointFlow provider target authorization presentation', () => {
     expect(markup).toContain('checkpoint-choice-indicator--radio');
     expect(markup).toContain('Fixture Provider — Workspace grant-a');
     expect(markup).not.toContain('checkpoint-provider-form');
+  });
+
+  it('lists the tools first (work review, then Cancel delegation), then Skip and Continue, with none marked lead twice', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    try {
+      act(() => {
+        root.render(<CheckpointFlow agentTaskId="task-1" checkpoint={targetAuthorizationCheckpoint} mode="overlay" />);
+      });
+      const buttons = Array.from(container.querySelectorAll<HTMLButtonElement>('.checkpoint-submit-actions button'));
+      expect(buttons.map(button => button.textContent)).toEqual(['See work so far', 'Cancel delegation', 'Skip', 'Continue']);
+      expect(buttons.filter(button => button.className.includes('decision-btn--lead')).map(button => button.textContent)).toEqual(['Cancel delegation']);
+    } finally {
+      act(() => root.unmount());
+      container.remove();
+    }
   });
 });

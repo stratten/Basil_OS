@@ -248,7 +248,7 @@ final class SetupHotkeyWorkflowTests: XCTestCase {
         XCTAssertEqual(outcome.changes.map(\.id), ["agent_task"])
         XCTAssertEqual(outcome.changes.first?.to.modifiers, ["option", "shift"])
         XCTAssertEqual(outcome.changes.first?.reason, "Siri")
-        XCTAssertEqual(outcome.unresolved.map(\.id), ["transcribe_audio", "assistant_session"])
+        XCTAssertEqual(outcome.unresolved.map(\.id), ["transcribe_audio"])
         XCTAssertTrue(outcome.unresolved.allSatisfy { !$0.message.isEmpty })
         XCTAssertEqual(store.saved.count, 1)
         XCTAssertEqual(store.saved[0]["transcribe_audio"]?.doublePressKey, "command")

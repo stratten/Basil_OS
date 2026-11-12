@@ -14,6 +14,7 @@
 @import './components/artifact-review-workspace.css';
 @import './components/file-preview.css';
 @import './components/local-web-preview.css';
+@import './components/decision-buttons.css';
 @import './components/overlays-and-approvals.css';
 @import './components/detail-tray/checklist.css';
 @import './components/checkpoint-flow.css';

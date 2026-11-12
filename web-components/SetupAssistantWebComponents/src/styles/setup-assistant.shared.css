@@ -62,6 +62,21 @@ button:disabled {
   opacity: 0.45;
 }
 
+/* Type roles for the whole flow, as plain element rules so any component rule still wins. Bold is never used: a title is the medium face at normal weight, and the body is the light face. A section heading (h3) is one step below the step heading (h2) and always larger than the text under it, which is why it uses the title3 size and not the headline size. */
+strong,
+b,
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-family-medium);
+  font-weight: normal;
+}
+
+h3 {
+  font-size: var(--font-size-title3);
+}
+
 .setup-shell {
   display: grid;
   grid-template-columns: minmax(0, 820px);
@@ -82,7 +97,7 @@ button:disabled {
 }
 
 .phase-section {
-  font-size: calc(17px * var(--text-scale, 1));
+  font-size: var(--font-size-body);
 }
 
 .setup-stage-frame {
@@ -308,6 +323,7 @@ button:disabled {
   align-items: center;
   display: flex;
   flex: 0 0 auto;
+  flex-wrap: wrap;
   justify-content: center;
   margin-top: auto;
   padding-top: var(--padding-m);
@@ -336,6 +352,35 @@ button:disabled {
 }
 
 .setup-skip-button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary) 55%, transparent);
+  outline-offset: 2px;
+}
+
+/* A quiet link on its own row under the step buttons, so it never competes with them or squeezes them. */
+.setup-report-row {
+  display: flex;
+  flex: 1 0 100%;
+  justify-content: center;
+}
+
+.setup-report-link {
+  background: transparent;
+  border: 0.5px solid transparent;
+  color: var(--primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  padding: 4px 8px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.setup-report-link:hover {
+  background: color-mix(in srgb, var(--background-secondary) 60%, transparent);
+  border-color: var(--separator-color);
+  color: var(--text-primary);
+}
+
+.setup-report-link:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--primary) 55%, transparent);
   outline-offset: 2px;
 }

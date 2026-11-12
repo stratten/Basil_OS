@@ -47,7 +47,10 @@ extension ModelDownloadViewModel {
                         status: status,
                         size: sizeBytes,
                         variants: ["variants": modelCapabilities.map { $0.rawValue }],
-                        handler: variant.handler
+                        handler: variant.handler,
+                        speedRating: variant.speedRating,
+                        accuracyRating: variant.accuracyRating,
+                        recommendedRam: variant.recommendedRam
                     )
                     modelInfos.append(modelInfo)
                 }
@@ -62,6 +65,7 @@ extension ModelDownloadViewModel {
             }
             await loadLocalVisionFallbackSettings()
             await loadReasoningFallbackSettings()
+            await loadDeviceMemory()
             await restoreActiveDownloadsFromBackend()
         } catch {
             Self.logger.error("❌ Failed to load models: \(error)")
@@ -83,6 +87,17 @@ extension ModelDownloadViewModel {
             )
         }
         return settings
+    }
+
+    /// Reads this Mac's memory so each local model can say whether it fits. A failure leaves the value nil, which hides the indicator rather than guessing.
+    func loadDeviceMemory() async {
+        do {
+            let info = try await api.getSystemInfo()
+            deviceMemoryGB = info.totalRamGB > 0 ? info.totalRamGB : nil
+        } catch {
+            deviceMemoryGB = nil
+            Self.logger.error("❌ Failed to load device memory for model fit: \(error.localizedDescription)")
+        }
     }
 
     func loadLocalVisionFallbackSettings() async {

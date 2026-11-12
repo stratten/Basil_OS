@@ -164,6 +164,13 @@ describe('CommandInputRequestCard', () => {
     act(() => root.unmount());
   });
 
+  it('puts Stop Command before Send, so Send is the right-most', () => {
+    const { container, root } = mount(secretRequest);
+    const labels = Array.from(container.querySelectorAll('.decision-actions button')).map(button => button.textContent);
+    expect(labels).toEqual(['Stop Command', 'Send']);
+    act(() => root.unmount());
+  });
+
   it('stops the command without sending a value', async () => {
     submitCommandInput.mockResolvedValue({ success: true, message: 'Input request canceled' });
     const { container, root } = mount(secretRequest);

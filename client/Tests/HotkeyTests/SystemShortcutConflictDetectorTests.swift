@@ -12,8 +12,9 @@ final class SystemShortcutConflictDetectorTests: XCTestCase {
         [identifier: ["enabled": enabled ? 1 : 0, "value": ["type": "standard", "parameters": [32, keyCode, mask]]]]
     }
 
-    private func detect(symbolicHotKeys: [String: Any]? = nil, siri: [String: Any]? = nil, bindings: [String: HotkeyBinding]? = nil) -> [SystemShortcutConflict] {
-        SystemShortcutConflictDetector.conflicts(bindings: bindings ?? defaults, rows: rows, symbolicHotKeys: symbolicHotKeys, siriPreferences: siri)
+    /// Runs the detector as macOS 27 unless a version is given, so a result never depends on the Mac running the tests.
+    private func detect(symbolicHotKeys: [String: Any]? = nil, siri: [String: Any]? = nil, bindings: [String: HotkeyBinding]? = nil, macOS: Int = 27) -> [SystemShortcutConflict] {
+        SystemShortcutConflictDetector.conflicts(bindings: bindings ?? defaults, rows: rows, symbolicHotKeys: symbolicHotKeys, siriPreferences: siri, macOSMajorVersion: macOS)
     }
 
     func testNothingIsReportedWhenNoSystemShortcutIsOn() {
@@ -51,12 +52,45 @@ final class SystemShortcutConflictDetectorTests: XCTestCase {
         XCTAssertEqual(conflicts.first?.certainty, .exact)
     }
 
-    func testAnUnreadableSiriShortcutIsAPossibleConflictForDoubledCommandAndOptionAndOptionSpace() {
+    func testAnUnreadableSiriShortcutIsAPossibleConflictForDoubledCommandAndOptionSpaceButNotDoubledOption() {
         let siri: [String: Any] = ["KeyboardShortcutSAE": ["enabled": 1, "value": ["type": "SAE1.0"]]]
         let conflicts = detect(siri: siri)
 
-        XCTAssertEqual(Set(conflicts.map(\.hotkeyId)), ["transcribe_audio", "assistant_session", "agent_task"])
+        XCTAssertEqual(Set(conflicts.map(\.hotkeyId)), ["transcribe_audio", "agent_task"])
+        XCTAssertFalse(conflicts.contains { $0.hotkeyId == "assistant_session" })
         XCTAssertTrue(conflicts.allSatisfy { $0.certainty == .possible && $0.source == "Siri" })
+    }
+
+    func testAMacWithNoSiriShortcutPreferenceHasTheDoubledCommandDefaultOnMacOS15And26() {
+        for version in [15, 26] {
+            let conflicts = detect(siri: nil, macOS: version)
+
+            XCTAssertEqual(conflicts.map(\.hotkeyId), ["transcribe_audio"], "macOS \(version)")
+            XCTAssertEqual(conflicts.first?.source, "Siri")
+            XCTAssertEqual(conflicts.first?.certainty, .possible)
+            XCTAssertTrue(conflicts.first?.message.contains("on by default") == true)
+        }
+    }
+
+    func testTheSiriDefaultDoesNotApplyBeforeMacOS15OrFromMacOS27() {
+        XCTAssertTrue(detect(siri: nil, macOS: 14).isEmpty)
+        XCTAssertTrue(detect(siri: nil, macOS: 27).isEmpty)
+    }
+
+    func testTheSiriDefaultIsNotAssumedWhenSiriIsOffOrTheShortcutHasAStoredValue() {
+        XCTAssertTrue(detect(siri: ["AssistantEnabled": 0], macOS: 26).isEmpty)
+        XCTAssertEqual(detect(siri: ["AssistantEnabled": 1], macOS: 26).map(\.hotkeyId), ["transcribe_audio"])
+        XCTAssertTrue(detect(siri: ["KeyboardShortcutSAE": ["enabled": 0, "value": ["type": "SAE1.0"]]], macOS: 26).isEmpty)
+        XCTAssertTrue(detect(siri: ["KeyboardShortcutPreSAE": ["enabled": 0]], macOS: 26).isEmpty)
+    }
+
+    func testTheSiriDefaultOnlyAppliesToADoubledCommandHotkey() {
+        var bindings = defaults
+        bindings["transcribe_audio"] = HotkeyBinding(key: "", enabled: true, modifiers: [], isDoublePress: true, doublePressKey: "control")
+        XCTAssertTrue(detect(siri: nil, bindings: bindings, macOS: 26).isEmpty)
+
+        bindings["transcribe_audio"] = HotkeyBinding(key: "", enabled: false, modifiers: [], isDoublePress: true, doublePressKey: "command")
+        XCTAssertTrue(detect(siri: nil, bindings: bindings, macOS: 26).isEmpty)
     }
 
     func testASiriShortcutThatIsTurnedOffReportsNothing() {
@@ -76,6 +110,15 @@ final class SystemShortcutConflictDetectorTests: XCTestCase {
         XCTAssertEqual(conflicts.first?.source, "the macOS Dictation shortcut")
         XCTAssertEqual(conflicts.first?.certainty, .possible)
         XCTAssertTrue(conflicts.first?.message.contains("System Settings, Keyboard, Dictation") == true)
+    }
+
+    func testADictationShortcutLimitedToTheLeftOrRightCommandKeyIsStillAPossibleConflict() {
+        for stored in [1_048_584, 1_048_592] {
+            let conflicts = detect(symbolicHotKeys: dictationModifier(stored))
+
+            XCTAssertEqual(conflicts.map(\.hotkeyId), ["transcribe_audio"], "stored value \(stored)")
+            XCTAssertEqual(conflicts.first?.certainty, .possible)
+        }
     }
 
     func testADictationShortcutOnAnotherModifierDisabledOrOnFnReportsNothing() {

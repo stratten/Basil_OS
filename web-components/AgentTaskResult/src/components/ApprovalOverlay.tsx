@@ -8,6 +8,8 @@ import SettingsChangeApprovalDetails from './approval/SettingsChangeApprovalDeta
 import ApprovalExplanationSection, { approvalCanBeRemembered } from './approval/ApprovalExplanationSection';
 import ResponseCountdown from './interaction/ResponseCountdown';
 import { COMMAND_PREVIEW_CHARS, previewCommand } from './approval/commandPreview';
+import { ApproveCircleIcon, DenyCircleIcon, StopCircleIcon, WorkLogCircleIcon } from '@shared/CircleControlIcons';
+import { DecisionActions, DecisionButton } from './interaction/DecisionButton';
 
 export { COMMAND_PREVIEW_CHARS, previewCommand };
 
@@ -16,9 +18,22 @@ interface Props {
   approval: ExecutionApprovalRequest;
   rememberChoice: boolean;
   embedded?: boolean;
+  /** Docks the approval to a slim bar so the work behind it can be seen. Absent where the host cannot dock, such as inside a stack of approvals. */
+  onMinimize?: () => void;
+  /** Ends the whole task, the same action as the header Stop. Absent where the host cannot stop the task. */
+  onStopTask?: () => void;
+  isStopping?: boolean;
 }
 
-export default function ApprovalOverlay({ agentTaskId, approval, rememberChoice, embedded = false }: Props) {
+export default function ApprovalOverlay({
+  agentTaskId,
+  approval,
+  rememberChoice,
+  embedded = false,
+  onMinimize,
+  onStopTask,
+  isStopping = false,
+}: Props) {
   const [remember, setRemember] = useState(rememberChoice);
   const [submitting, setSubmitting] = useState(false);
   const [commandExpanded, setCommandExpanded] = useState(false);
@@ -115,32 +130,6 @@ export default function ApprovalOverlay({ agentTaskId, approval, rememberChoice,
           hydrateAgentFromBackend(agentTaskId);
         }
       }
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleCancel = async () => {
-    if (!isProviderPermission) {
-      await handleDecision(false);
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const permission = approval.provider_permission;
-      if (!permission) {
-        throw new Error('Provider permission approval is missing its interaction metadata');
-      }
-      await api.submitProviderPermissionDecision({
-        agent_task_id: permission.agent_task_id,
-        interaction_id: permission.interaction_id,
-        outcome: 'cancel',
-      });
-      agentStore.removeApproval(agentTaskId, approval.approval_id);
-      agentStore.updateProgressStep(agentTaskId, 'Permission canceled, continuing...', true, false);
-    } catch (err) {
-      console.error('[Approval] Provider permission cancellation failed:', err);
     } finally {
       setSubmitting(false);
     }
@@ -307,7 +296,7 @@ export default function ApprovalOverlay({ agentTaskId, approval, rememberChoice,
           {noteAllowed && (
             <div className="approval-section">
               <label className="approval-field-label" htmlFor={`approval-note-${approval.approval_id}`}>
-                Note to the agent (optional, sent with Approve, Deny, or Cancel)
+                Note to the agent (optional, sent with Approve or Deny)
               </label>
               <textarea
                 id={`approval-note-${approval.approval_id}`}
@@ -357,25 +346,46 @@ export default function ApprovalOverlay({ agentTaskId, approval, rememberChoice,
           {approval.time_limit && <ResponseCountdown timeLimit={approval.time_limit} />}
         </div>
 
-        <div className="overlay-actions">
-          <button className="action-btn" onClick={handleCancel} disabled={submitting}>
-            Cancel
-          </button>
-          <button
-            className="action-btn danger"
+        <DecisionActions className="approval-actions">
+          {onMinimize && (
+            <DecisionButton
+              tone="neutral"
+              icon={<WorkLogCircleIcon />}
+              label="See work so far"
+              onClick={onMinimize}
+              disabled={submitting}
+              lead={!onStopTask}
+              title="look over what Basil has done before you decide"
+            />
+          )}
+          {onStopTask && (
+            <DecisionButton
+              tone="neutral"
+              icon={<StopCircleIcon />}
+              label={isStopping ? 'Stopping' : 'Stop task'}
+              onClick={onStopTask}
+              disabled={isStopping}
+              lead
+              title="ends the whole task, the same as Stop in the header"
+            />
+          )}
+          <DecisionButton
+            tone="deny"
+            icon={<DenyCircleIcon />}
+            label="Deny"
             onClick={() => handleDecision(false)}
             disabled={submitting}
-          >
-            Deny
-          </button>
-          <button
-            className="action-btn success"
+            title="refuse this one request. The task carries on and the agent can try another way"
+          />
+          <DecisionButton
+            tone="approve"
+            icon={<ApproveCircleIcon />}
+            label="Approve"
             onClick={() => handleDecision(true)}
             disabled={submitting || !canApprove}
-          >
-            Approve
-          </button>
-        </div>
+            title="let Basil run this"
+          />
+        </DecisionActions>
       </div>
     </div>
   );

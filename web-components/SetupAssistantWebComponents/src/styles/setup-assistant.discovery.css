@@ -211,7 +211,7 @@
 .discovery-observation-card h3 {
   color: var(--text-primary);
   font-family: var(--font-family-medium);
-  font-size: var(--font-size-headline);
+  font-size: var(--font-size-title3);
   letter-spacing: -0.01em;
   margin: 0 0 4px;
 }

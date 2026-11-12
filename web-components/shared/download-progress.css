@@ -45,6 +45,16 @@
   white-space: nowrap;
 }
 
+/* The line that says why nothing has moved yet. It uses the data row's size and color, so it stays readable on every surface that sets those properties. */
+.download-progress__note {
+  color: var(--download-progress-data-color, var(--text-primary));
+  font-family: var(--font-family-light);
+  font-size: var(--download-progress-font-size, calc(12px * var(--text-scale, 1)));
+  line-height: 1.3;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 /* With no amount to show, the percentage still sits on the right. */
 .download-progress__percent {
   margin-left: auto;

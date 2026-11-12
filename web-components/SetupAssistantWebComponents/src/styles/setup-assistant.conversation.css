@@ -191,7 +191,7 @@
 }
 
 .chip-multi .chip-check {
-  font-size: calc(10px * var(--text-scale, 1));
+  font-size: var(--font-size-status-tiny);
   left: 4px;
   line-height: 1;
   opacity: 0;

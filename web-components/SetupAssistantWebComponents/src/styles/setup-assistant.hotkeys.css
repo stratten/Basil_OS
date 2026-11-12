@@ -4,6 +4,7 @@
   border: var(--border-thin) solid var(--notice-base);
   border-radius: var(--corner-radius-medium);
   color: var(--text-primary);
+  font-size: var(--font-size-footnote);
   margin: 8px 0 0;
   padding: var(--padding-m);
 }
@@ -48,6 +49,7 @@
   color: var(--text-primary);
   display: block;
   font-family: var(--font-family-light);
+  font-size: var(--font-size-footnote);
   font-weight: normal;
   margin-top: 4px;
 }

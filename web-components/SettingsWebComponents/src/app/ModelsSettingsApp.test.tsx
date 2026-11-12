@@ -98,7 +98,73 @@ describe('ModelsSettingsApp', () => {
     expect(tags).toEqual(['GGUF', 'MLX'])
     const rows = Array.from(container.querySelectorAll('.models-settings-row'))
     expect(rows[2].querySelector('.models-settings-format-tag')).toBeNull()
-    expect(rows[1].querySelector('.models-settings-row-size')?.nextElementSibling?.textContent).toBe('MLX')
+    expect(rows[1].querySelector('.models-settings-row-footer-start .models-settings-format-tag')?.textContent).toBe('MLX')
+    expect(rows[1].querySelector('.models-settings-row-footer-end .models-settings-format-tag')).toBeNull()
+    const footerStart = rows[1].querySelector('.models-settings-row-footer-start')!
+    expect(footerStart.firstElementChild?.className).toBe('models-settings-row-capabilities-chips')
+    expect(footerStart.lastElementChild?.textContent).toBe('MLX')
+  })
+
+  it('shows speed, quality and memory with bars for a model that lists them, and nothing for one that does not', () => {
+    sendInit({
+      reasoningGroups: [
+        {
+          provider: 'Qwen',
+          models: [
+            { id: 'Qwen-rated', modelType: 'Qwen', variantId: 'rated', name: 'Qwen Rated', capabilities: ['reasoning'], size: 5_000_000_000, speedRating: 7, accuracyRating: 8, recommendedRam: '16GB', statusKind: 'downloadable' },
+            { id: 'Qwen-partial', modelType: 'Qwen', variantId: 'partial', name: 'Qwen Partial', capabilities: ['reasoning'], size: 5_000_000_000, accuracyRating: 6, statusKind: 'downloadable' },
+            { id: 'Qwen-plain', modelType: 'Qwen', variantId: 'plain', name: 'Qwen Plain', capabilities: ['reasoning'], size: 5_000_000_000, statusKind: 'downloadable' },
+          ],
+        },
+      ],
+    })
+    const rows = Array.from(container.querySelectorAll('.models-settings-row'))
+    const factsOf = (row: Element) => Array.from(row.querySelectorAll('.models-settings-row-fact')).map((fact) => fact.textContent)
+    expect(factsOf(rows[0])).toEqual(['Speed7 out of 10', 'Quality8 out of 10', 'Memory16GB or more'])
+    expect(factsOf(rows[1])).toEqual(['Quality6 out of 10'])
+    expect(rows[2].querySelector('.models-settings-row-facts')).toBeNull()
+    expect(rows[0].querySelector('.models-settings-row-header .models-settings-row-facts')).not.toBeNull()
+    const barWidthsOf = (row: Element) => Array.from(row.querySelectorAll<HTMLElement>('.models-settings-fact-bar-fill')).map((fill) => fill.style.width)
+    expect(barWidthsOf(rows[0])).toEqual(['70%', '80%', '25%'])
+    const tooltipsOf = (row: Element) => Array.from(row.querySelectorAll('.models-settings-row-fact')).map((fact) => fact.getAttribute('data-tooltip'))
+    expect(tooltipsOf(rows[0])).toEqual(['Speed: 7 out of 10', 'Quality: 8 out of 10', 'Memory: 16GB or more'])
+    expect(rows[0].querySelector('.models-settings-row-fact dd')?.className).toBe('settings-visually-hidden')
+    expect(barWidthsOf(rows[1])).toEqual(['60%'])
+    expect(rows[0].querySelector('.models-settings-fact-bar')?.getAttribute('aria-hidden')).toBe('true')
+  })
+
+  it('shows whether each model fits this Mac as an icon beside Memory, with the words only in the hover text', () => {
+    const groups = [
+      {
+        provider: 'Qwen',
+        models: [
+          { id: 'Qwen-big', modelType: 'Qwen', variantId: 'big', name: 'Qwen Big', capabilities: ['reasoning'], size: 5_000_000_000, speedRating: 5, accuracyRating: 9, recommendedRam: '48GB', statusKind: 'downloadable' },
+          { id: 'Qwen-tight', modelType: 'Qwen', variantId: 'tight', name: 'Qwen Tight', capabilities: ['reasoning'], size: 5_000_000_000, recommendedRam: '16GB', statusKind: 'downloadable' },
+          { id: 'Qwen-small', modelType: 'Qwen', variantId: 'small', name: 'Qwen Small', capabilities: ['reasoning'], size: 5_000_000_000, recommendedRam: '8GB', statusKind: 'downloadable' },
+          { id: 'Qwen-plain', modelType: 'Qwen', variantId: 'plain', name: 'Qwen Plain', capabilities: ['reasoning'], size: 5_000_000_000, statusKind: 'downloadable' },
+        ],
+      },
+    ]
+    sendInit({ reasoningGroups: groups, deviceMemoryGb: 12 })
+    const rows = Array.from(container.querySelectorAll('.models-settings-row'))
+    const iconOf = (row: Element) => row.querySelector('.models-settings-row-fact dt .models-settings-fit-icon')
+    expect(iconOf(rows[0])?.className).toContain('models-settings-fit-icon-too-large')
+    expect(iconOf(rows[1])?.className).toContain('models-settings-fit-icon-tight')
+    expect(iconOf(rows[2])?.className).toContain('models-settings-fit-icon-comfortable')
+    expect(iconOf(rows[3])).toBeNull()
+    expect(rows[0].querySelectorAll('.models-settings-fit-icon').length).toBe(1)
+    expect(rows[0].querySelector('.models-settings-row-footer')?.textContent).not.toMatch(/Too large|Tight fit|Runs well/)
+    const memoryFact = rows[0].querySelector('.models-settings-row-fact:last-child')!
+    expect(memoryFact.getAttribute('data-tooltip')).toBe('Memory: 48GB or more (This Mac has 12GB). Likely too large for this Mac.')
+    expect(memoryFact.querySelector('dd')?.textContent).toBe('48GB or more. This Mac has 12GB. Likely too large for this Mac.')
+    expect(rows[1].querySelector('.models-settings-row-fact')?.getAttribute('data-tooltip')).toBe('Memory: 16GB or more (This Mac has 12GB). A tight fit: it may run slowly or fail to load.')
+    expect(rows[2].querySelector('.models-settings-row-fact')?.getAttribute('data-tooltip')).toBe('Memory: 8GB or more (This Mac has 12GB). Should run well on this Mac.')
+    expect((memoryFact.querySelector('.models-settings-fact-bar-marker') as HTMLElement).style.left).toBe('19%')
+
+    sendInit({ reasoningGroups: groups })
+    expect(container.querySelector('.models-settings-fit-icon')).toBeNull()
+    expect(container.querySelector('.models-settings-fact-bar-marker')).toBeNull()
+    expect(container.querySelector('.models-settings-row-fact:last-child')?.getAttribute('data-tooltip')).toBe('Memory: 48GB or more')
   })
 
   it('switches to transcription models via a pure client-side tab with no bridge message', () => {
@@ -184,11 +250,12 @@ describe('ModelsSettingsApp', () => {
 
   it('starts a download, disables that row only, and shows progress after snapshot', () => {
     sendInit()
-    const downloadButton = Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Download') as HTMLButtonElement
+    const downloadButton = Array.from(container.querySelectorAll('button')).find((button) => button.getAttribute('aria-label')?.startsWith('Download ')) as HTMLButtonElement
     act(() => { downloadButton.click() })
     const requestId = lastMessageOfType('requestDownloadModel')?.requestId
     expect(requestId).toBeTruthy()
-    expect(downloadButton.textContent).toBe('Starting...')
+    expect(downloadButton.getAttribute('aria-label')).toMatch(/^Starting download of /)
+    expect(downloadButton.getAttribute('data-tooltip')).toBe('Starting...')
     expect(downloadButton.disabled).toBe(true)
     sendInit({
       type: 'snapshot',
@@ -198,6 +265,20 @@ describe('ModelsSettingsApp', () => {
     expect(container.querySelector('.download-progress__percent')?.textContent).toBe('10%')
     expect(container.querySelector('.download-progress__amount')?.textContent).toBe('1.0 MB / 10.0 MB')
     expect(container.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('10')
+  })
+
+  it('explains a download that has not moved yet, and drops the note once bytes arrive', () => {
+    const waiting = 'Waiting for Hugging Face to start sending data (20s)...'
+    sendInit({
+      reasoningGroups: [{ provider: 'Qwen', models: [{ ...REASONING_GROUPS[0].models[0], statusKind: 'downloading', progress: 0, statusMessage: waiting }, REASONING_GROUPS[0].models[1]] }],
+    })
+    expect(container.querySelector('.download-progress__note')?.textContent).toBe(waiting)
+
+    sendInit({
+      type: 'snapshot',
+      reasoningGroups: [{ provider: 'Qwen', models: [{ ...REASONING_GROUPS[0].models[0], statusKind: 'downloading', progress: 0, statusMessage: 'Downloading model.gguf...', totalDownloaded: 2_000_000, totalSize: 10_000_000 }, REASONING_GROUPS[0].models[1]] }],
+    })
+    expect(container.querySelector('.download-progress__note')).toBeNull()
   })
 
   it('accumulates and displays the last three download log lines', () => {
@@ -226,10 +307,11 @@ describe('ModelsSettingsApp', () => {
 
   it('deletes an available model and surfaces a canceled result without an error message', () => {
     sendInit()
-    const deleteButton = Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Delete') as HTMLButtonElement
+    const deleteButton = Array.from(container.querySelectorAll('button')).find((button) => button.getAttribute('aria-label')?.startsWith('Delete ')) as HTMLButtonElement
     act(() => { deleteButton.click() })
     const requestId = lastMessageOfType('requestDeleteModel')?.requestId
-    expect(deleteButton.textContent).toBe('Deleting...')
+    expect(deleteButton.getAttribute('aria-label')).toMatch(/^Deleting /)
+    expect(deleteButton.getAttribute('data-tooltip')).toBe('Deleting...')
     expect(deleteButton.disabled).toBe(true)
     act(() => { window.basilModelsSettings!.onEvent({ type: 'intentResult', requestId, status: 'canceled' }) })
     expect(container.querySelector('.models-settings-status-error')).toBeNull()

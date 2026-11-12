@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import { ContinueCircleIcon } from '@shared/CircleControlIcons';
+import { DecisionButton } from './interaction/DecisionButton';
 
 interface Props {
   eyebrow: string;
@@ -35,9 +37,14 @@ export default function AgentTaskInputSurface({
               </div>
               {dockSummary && <div className="agent-task-input-dock-summary">{dockSummary}</div>}
             </div>
-            <button type="button" className="action-btn primary agent-task-input-dock-action" onClick={onResumeQuestion}>
-              Answer now
-            </button>
+            <DecisionButton
+              tone="primary"
+              icon={<ContinueCircleIcon />}
+              label="Answer now"
+              onClick={() => onResumeQuestion?.()}
+              className="agent-task-input-dock-action"
+              title="bring the question back so you can answer"
+            />
           </div>
         )}
         {/* The full question stays mounted while docked so entered text, selections and scroll position survive the round trip. */}

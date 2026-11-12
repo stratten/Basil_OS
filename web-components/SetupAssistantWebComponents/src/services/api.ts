@@ -383,6 +383,8 @@ export interface StarterDownloadProgressRecord {
   /** Bytes received so far and bytes in the whole download. Present only once a download has reported them. */
   total_downloaded?: number
   total_size?: number
+  /** What the backend is doing right now, such as "Waiting for Hugging Face to start sending data (20s)...". Present only for a queued or downloading model. */
+  message?: string
 }
 
 export interface StarterDownloadProgress {

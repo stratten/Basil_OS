@@ -5,6 +5,8 @@ from typing import List, Literal, Optional, Tuple
 
 from pydantic import BaseModel, Field, field_validator
 
+from .defaults import _get_default_transcription_model_name
+
 
 class ModelPersistenceDuration(Enum):
     """Duration to keep models loaded after last use."""
@@ -120,7 +122,7 @@ class TranscriptionSettings(BaseModel):
         description="Default language for transcription"
     )
     selected_model: str = Field(
-        default="base",
+        default_factory=_get_default_transcription_model_name,
         description="Selected transcription model"
     )
     widget_size: Tuple[int, int] = Field(
