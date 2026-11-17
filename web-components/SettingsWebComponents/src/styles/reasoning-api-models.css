@@ -4,6 +4,32 @@
   gap: 14px;
 }
 
+.reasoning-api-models-providers {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.reasoning-api-models-master-note {
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: calc(13px * var(--text-scale, 1));
+  margin: 0;
+}
+
+.reasoning-api-models-provider-off-note {
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: calc(12px * var(--text-scale, 1));
+  margin: 0 0 12px;
+}
+
+/* An off provider, or any provider while the master switch is off, keeps full-contrast text and controls and uses only a dashed border to read as inactive, with the note above saying why. No opacity and no gray text, so nothing becomes hard to read. */
+.reasoning-api-models-provider--off,
+.reasoning-api-models-providers--inactive .reasoning-api-models-provider {
+  border-style: dashed;
+}
+
 .reasoning-api-models-provider {
   background: color-mix(in srgb, var(--background-primary) 92%, var(--primary));
   border: 1px solid var(--field-border);

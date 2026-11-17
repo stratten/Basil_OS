@@ -11,6 +11,12 @@ from pydantic import BaseModel, Field
 from api.core.logging.api_logger import api_logger
 from api.routes.setup_assistant.models import SetupAgentModelAccess
 from api.services.memory.context_import import get_context_import_service
+from api.services.memory.context_import.image_reading import (
+    ImageInputError,
+    ImageRouteError,
+    read_images_as_text,
+    validate_images,
+)
 from api.services.memory.context_import.jobs import ImportBusyError, UnknownJobError
 from api.services.memory.context_import.model_access import load_settings_import_model, load_setup_import_model
 from api.services.memory.context_import.models import ImportEmptyError, ImportTooLargeError
@@ -25,6 +31,14 @@ class ContextImportJobRequest(BaseModel):
     text: str = Field(description="The pasted text, or the text of a chosen file.")
     filename: str = Field(default="", max_length=255, description="The file name, used only as the import's label.")
     label: str = Field(default="", max_length=120, description="A short name for this import, shown in the list of past imports.")
+
+
+class ImageReadRequest(BaseModel):
+    images: List[Dict[str, str]] = Field(description="Screenshots to read, each with mime_type and data_base64.")
+    model_access: Optional[SetupAgentModelAccess] = Field(
+        default=None,
+        description="The route confirmed on the setup model step. When absent, the Settings memory model reads the pictures.",
+    )
 
 
 class ProfileJobRequest(ContextImportJobRequest):
@@ -79,6 +93,26 @@ async def start_profile_import(request: ProfileJobRequest) -> Dict[str, Any]:
         return get_context_import_service().start_profile_job(request.text, request.filename, request.label, load_model)
     except Exception as exc:
         raise _start_error(exc) from exc
+
+
+@router.post("/images/read")
+async def read_import_images(request: ImageReadRequest) -> Dict[str, Any]:
+    """Read screenshots into text for the paste box. A route that cannot read pictures answers 400 with a plain explanation."""
+    access = request.model_access
+    if access is not None and not access.resolved:
+        raise HTTPException(status_code=400, detail="Choose how I should think first, then read the screenshot.")
+    try:
+        images = validate_images(request.images)
+        loaded = await (load_setup_import_model(access) if access is not None else load_settings_import_model())
+        text = await read_images_as_text(loaded.model, images)
+    except ImageRouteError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ImageInputError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        api_logger.error(f"Error reading import screenshots: {exc}", exc_info=True)
+        raise HTTPException(status_code=502, detail="I could not read those pictures just now. Try again, or paste the text instead.") from exc
+    return {"text": text}
 
 
 @router.get("/jobs/{job_id}")

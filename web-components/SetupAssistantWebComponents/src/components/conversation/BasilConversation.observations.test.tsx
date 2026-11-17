@@ -53,12 +53,12 @@ afterEach(() => {
   container.remove()
 })
 
-describe('BasilConversation setup notes', () => {
+describe('BasilConversation what I noticed', () => {
   it('places the notes toggle in the panel header and keeps the notes closed until clicked', () => {
     renderConversation()
 
     expect(toggle()).not.toBeNull()
-    expect(toggle().textContent).toBe('Setup notes (2)')
+    expect(toggle().textContent).toBe('What I noticed (2)')
     expect(toggle().getAttribute('aria-expanded')).toBe('false')
     expect(popover()).toBeNull()
   })
@@ -68,7 +68,7 @@ describe('BasilConversation setup notes', () => {
 
     act(() => { toggle().click() })
     expect(toggle().getAttribute('aria-expanded')).toBe('true')
-    expect(toggle().textContent).toBe('Hide setup notes')
+    expect(toggle().textContent).toBe('Hide what I noticed')
     expect(popover()?.querySelectorAll('.conversation-observation-card')).toHaveLength(2)
 
     act(() => { toggle().click() })

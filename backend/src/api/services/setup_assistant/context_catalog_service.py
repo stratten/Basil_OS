@@ -209,6 +209,24 @@ class SetupAssistantContextCatalogService:
                 privacy_impact=SetupPrivacyImpact.none,
             ),
             SetupToolDefinition(
+                name="register_local_mcp_server",
+                description="Register a local program that speaks MCP over standard input and output as a connection, after the setup steps for it are finished.",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "friendly_name": {"type": "string"},
+                        "command": {"type": "string"},
+                        "args": {"type": "array", "items": {"type": "string"}},
+                        "cwd": {"type": "string"},
+                        "env": {"type": "object", "additionalProperties": {"type": "string"}},
+                        "description": {"type": "string"},
+                        "source_url": {"type": "string"},
+                    },
+                    "required": ["friendly_name", "command"],
+                },
+                privacy_impact=SetupPrivacyImpact.controls_applications,
+            ),
+            SetupToolDefinition(
                 name="launch_assistant_session",
                 description="Launch the real Dill AssistantSession UI with approved shimmed context.",
                 input_schema={"type": "object", "properties": {"context": {"type": "object"}, "prompt": {"type": "string"}}},

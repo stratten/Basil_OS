@@ -78,7 +78,8 @@ def test_ordinary_reads_are_still_read_only(command: str) -> None:
         "sed -n -i '1p' in",
         "sed -n '1p' in -i",
         "sed -i 's/a/b/' in",
-        "sed 's/a/b/' in",
+        "sed 's/a/b/w out' in",
+        "sed 's/a/b/e' in",
         "git push",
         "git commit -m x",
         "git -c core.pager='rm x' log",
@@ -123,6 +124,7 @@ def test_newly_allowed_commands_are_not_read_only_in_their_writing_forms(command
         "sed -n '1,20p' notes.txt",
         "sed -n '$p' notes.txt",
         "sed -n '/needle/p' notes.txt",
+        "sed 's/a/b/' notes.txt",
         "git status",
         "git log --oneline -5",
         "git diff --stat",
@@ -298,13 +300,9 @@ def test_a_blocked_command_is_still_found_next_to_an_escaped_parenthesis(command
     assert blocked is True
 
 
-def test_an_escaped_parenthesis_comes_back_out_of_the_tokenizer_as_written() -> None:
-    tokens = RiskAssessor()._split_command("find . \\( -name a \\) -print")
-
-    assert tokens == ["find", ".", "\\(", "-name", "a", "\\)", "-print"]
+def test_an_escaped_parenthesis_is_an_ordinary_argument_to_find() -> None:
+    assert RiskAssessor().is_read_only_command("find . \\( -name a \\) -print") is True
 
 
 def test_an_escaped_parenthesis_inside_quotes_is_left_to_the_quoting_rules() -> None:
-    assessor = RiskAssessor()
-
-    assert assessor._split_command("echo '\\(' \"\\(\" x") == ["echo", "\\(", "\\(", "x"]
+    assert RiskAssessor().is_read_only_command("echo '\\(' \"\\(\" x") is True

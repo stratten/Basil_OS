@@ -1,3 +1,5 @@
+import { ignoreLabelClickWhileSelectingText } from '@shared/labelTextSelection';
+
 interface MeetingSwitchProps {
   label: string;
   checked: boolean;
@@ -10,7 +12,7 @@ interface MeetingSwitchProps {
 /** The Notetaker's single switch control (label, hidden checkbox, styled track) shared by the recording controls, the tools card and the Companion. */
 export default function MeetingSwitch({ label, checked, onChange, disabled, className }: MeetingSwitchProps) {
   return (
-    <label className={className ? `meeting-switch-control ${className}` : 'meeting-switch-control'}>
+    <label className={className ? `meeting-switch-control ${className}` : 'meeting-switch-control'} onClick={ignoreLabelClickWhileSelectingText}>
       <span>{label}</span>
       <input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} />
       <span className="meeting-switch-track" aria-hidden="true" />

@@ -153,6 +153,18 @@ class MCPCachedTool(BaseModel):
     )
 
 
+class MCPStdioSpec(BaseModel):
+    """How Basil launches a local MCP server that speaks over standard input and output.
+
+    The command runs without a shell: ``command`` is one executable and ``args`` are passed to it as given, so nothing in either is interpreted by a shell. ``env`` holds non-secret values only; a secret never belongs in this record.
+    """
+    command: str = Field(..., description="The executable to run, as a name on PATH or an absolute path")
+    args: List[str] = Field(default_factory=list, description="Arguments passed to the executable exactly as given")
+    cwd: Optional[str] = Field(default=None, description="Absolute working directory the server starts in")
+    env: Dict[str, str] = Field(default_factory=dict, description="Extra non-secret environment variables for the server process")
+    source_url: Optional[str] = Field(default=None, description="The repository address the person gave, kept exactly as given, so the connection can say where it came from")
+
+
 class MCPConnectionRecord(BaseModel):
     """Persisted record of one registered remote MCP server.
 
@@ -172,7 +184,11 @@ class MCPConnectionRecord(BaseModel):
             "surfaced to Settings and agent routing prompts."
         )
     )
-    server_url: str = Field(..., description="Streamable-HTTP MCP endpoint URL")
+    server_url: str = Field(..., description="Streamable-HTTP MCP endpoint URL, or basil-stdio://<id> for a local server Basil launches itself")
+    stdio: Optional[MCPStdioSpec] = Field(
+        default=None,
+        description="Set only for a local stdio server. Its server_url is then basil-stdio://<id> and no token is stored or requested."
+    )
     oauth_client_id: Optional[str] = Field(
         default=None,
         description="Client ID returned by RFC 7591 dynamic client registration"
@@ -237,6 +253,16 @@ class MCPConnectionRecord(BaseModel):
             "Optional server-provided usage guidance from the MCP initialize "
             "handshake (the `instructions` field). Secret-free; surfaced to the "
             "agent so it can identify when this connection is the right tool. "
+            "Populated on tool refresh."
+        )
+    )
+    server_icon_data_url: Optional[str] = Field(
+        default=None,
+        description=(
+            "The icon the MCP server advertises in serverInfo.icons, fetched once "
+            "and stored as a checked data: URL of an allowed image type no larger "
+            "than 48 KiB. Secret-free. Shown on the connection's chip; absent when "
+            "the server advertises none, in which case the UI uses a bundled icon. "
             "Populated on tool refresh."
         )
     )

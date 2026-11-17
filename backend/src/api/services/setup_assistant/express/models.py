@@ -43,6 +43,8 @@ class ExpressItem(BaseModel):
     already_done: bool = False
     unavailable_reason: Optional[str] = None
     selected: bool
+    # Whether the review screen starts this item ticked. An item with `selected` true and `default_ticked` false is offered unticked and runs only if the person ticks it.
+    default_ticked: bool = True
 
 
 class ExpressPlan(BaseModel):

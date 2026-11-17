@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  defaultUntickedIds,
   downloadSizeLabel,
   failedResults,
   groupItems,
@@ -23,6 +24,39 @@ describe('summaryForComfort', () => {
     expect(summaryForComfort('all_in')).not.toContain('macOS will ask')
     expect(summaryForComfort('all_in', true)).toContain('downloads the models this Mac can run')
     expect(summaryForComfort('all_in', true)).toContain('every time Basil launches')
+  })
+
+  it('tells the person the Voice Listener starts unticked in the everything setup, so the summary stays true', () => {
+    const text = summaryForComfort('all_in', true)
+    expect(text).toContain('except the Voice Listener')
+    expect(text).toContain('starts unticked')
+    expect(text).toContain('tick the Voice Listener if you want it')
+  })
+})
+
+describe('defaultUntickedIds', () => {
+  it('lists only the offered items the plan wants unticked', () => {
+    const plan = makePlan({
+      items: [
+        thinkingItem(),
+        makeItem({ id: 'voice_listener', group: 'background', title: 'Voice Listener', default_ticked: false }),
+        makeItem({ id: 'learn_skills', group: 'learning', title: 'Reusable workflows', already_done: true, selected: false, default_ticked: false }),
+      ],
+    })
+
+    expect(Array.from(defaultUntickedIds(plan))).toEqual(['voice_listener'])
+  })
+
+  it('is empty when every item starts ticked', () => {
+    expect(defaultUntickedIds(makePlan({ items: [thinkingItem()] })).size).toBe(0)
+  })
+
+  it('leaves the Voice Listener out of the ids that would be applied until it is ticked', () => {
+    const plan = makePlan()
+    const items = visibleItems(plan, new Set())
+
+    expect(selectedItemIds(items, defaultUntickedIds(plan))).not.toContain('voice_listener')
+    expect(selectedItemIds(items, new Set())).toContain('voice_listener')
   })
 })
 

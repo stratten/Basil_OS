@@ -1,7 +1,7 @@
 .basil-collapsible-region {
   min-width: 0;
   overflow: hidden;
-  transition: height 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: height var(--motion-move, 400ms) var(--motion-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
 }
 
 .basil-collapsible-region.is-collapsed {

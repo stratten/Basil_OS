@@ -1,4 +1,4 @@
-import { type CSSProperties, memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { type CSSProperties, memo, type MouseEvent, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { SmoothReveal } from '@/components/intro/SmoothReveal'
 import { prefersReducedMotion } from '@/components/motion/prefersReducedMotion'
@@ -6,6 +6,9 @@ import type {
   SetupSessionAgendaItem,
   SetupSessionAgendaItemStatus,
 } from '@/state/setupAssistantStore'
+
+import { SetupAgendaLegend } from './SetupAgendaLegend'
+import { agendaPillState, isAgendaItemSelectable, PILL_LABELS } from './agendaPillState'
 
 // Sticky left-rail sidebar that renders the session agenda. The agenda
 // is the visible spine of the setup session: the things Basil and the
@@ -17,9 +20,14 @@ import type {
 //     item with a status pill and kind-keyed left-edge accent.
 //   - Collapsed: a ~64px-wide rail with a circular progress ring
 //     (N / M) at the top, a vertical strip of status dots in the
-//     middle (one per agenda item, tooltipped with its title), and a
-//     chevron-right button at the bottom to re-expand. Pure visuals;
-//     no vertical-text labels.
+//     middle (one per agenda item, tooltipped with its title). Pure
+//     visuals; no vertical-text labels.
+//
+// The open and close button is in the same corner in both shapes, and
+// a click anywhere else on the sidebar (outside its own buttons, links
+// and legend, and not while text is being selected) does the same, as
+// the run rail in the task window does. The button stays as the
+// keyboard route.
 //
 // When the agenda hasn't been proposed yet (orientation phase or the
 // first conversation turn before propose_session_agenda fires), the
@@ -31,14 +39,12 @@ export interface SetupAgendaSidebarProps {
   isCollapsed: boolean
   onToggleCollapsed: (collapsed: boolean) => void
   onEntranceChange?: (isEntering: boolean) => void
-}
-
-const STATUS_LABELS: Record<SetupSessionAgendaItemStatus, string> = {
-  pending: 'To do',
-  in_progress: 'Working on',
-  completed: 'Done',
-  skipped: 'Skipped',
-  deferred: 'Later',
+  /** True while the agent is in the middle of a turn. It is what turns the in-progress item's label into "Working now". */
+  isAgentWorking?: boolean
+  /** Asks the agent to start this item next. When omitted, items are not clickable. */
+  onSelectItem?: (item: SetupSessionAgendaItem) => void
+  /** Plain titles of the changes that were actually applied during setup, shown so the person can see what has been saved. */
+  savedSoFar?: readonly string[]
 }
 
 const STATUS_ORDER: Record<SetupSessionAgendaItemStatus, number> = {
@@ -47,6 +53,16 @@ const STATUS_ORDER: Record<SetupSessionAgendaItemStatus, number> = {
   deferred: 2,
   completed: 3,
   skipped: 4,
+}
+
+// Anything inside the sidebar that does something of its own, so a click on it never also opens or closes the sidebar.
+const OWN_CONTROL_SELECTOR = 'button, a, summary, details, input, textarea, select, [role="button"]'
+
+function isBackgroundClick(event: MouseEvent<HTMLElement>): boolean {
+  if (!(event.target instanceof Element) || event.target.closest(OWN_CONTROL_SELECTOR)) return false
+  // Dragging across the agenda text to copy it must not close the sidebar.
+  const selection = typeof window.getSelection === 'function' ? window.getSelection() : null
+  return !selection || selection.isCollapsed
 }
 
 const ENTRANCE_ANIMATION = 'setupEnterRise'
@@ -58,6 +74,9 @@ function SetupAgendaSidebarComponent({
   isCollapsed,
   onToggleCollapsed,
   onEntranceChange,
+  isAgentWorking = false,
+  onSelectItem,
+  savedSoFar = [],
 }: SetupAgendaSidebarProps) {
   const hasItems = items.length > 0
   const summary = computeAgendaSummary(items)
@@ -155,22 +174,11 @@ function SetupAgendaSidebarComponent({
       <aside
         className="setup-agenda-sidebar is-collapsed"
         aria-label="Setup agenda (collapsed)"
+        onClick={event => { if (isBackgroundClick(event)) onToggleCollapsed(false) }}
       >
-        <CollapsedSummaryRing summary={summary} hasItems={hasItems} />
-        {hasItems && (
-          <ol className="setup-agenda-collapsed-dot-strip" aria-hidden="true">
-            {sortedItems.map(item => (
-              <li
-                key={item.id}
-                className={`setup-agenda-collapsed-dot state-${item.status}`}
-                title={`${item.title} (${STATUS_LABELS[item.status]})`}
-              />
-            ))}
-          </ol>
-        )}
         <button
           type="button"
-          className="setup-agenda-collapsed-expand"
+          className="setup-agenda-sidebar-toggle"
           aria-label="Expand agenda"
           aria-expanded={false}
           aria-controls="setup-agenda-sidebar-body"
@@ -178,12 +186,28 @@ function SetupAgendaSidebarComponent({
         >
           <ChevronRightIcon />
         </button>
+        <CollapsedSummaryRing summary={summary} hasItems={hasItems} />
+        {hasItems && (
+          <ol className="setup-agenda-collapsed-dot-strip" aria-hidden="true">
+            {sortedItems.map(item => (
+              <li
+                key={item.id}
+                className={`setup-agenda-collapsed-dot state-${item.status}`}
+                title={`${item.title} (${PILL_LABELS[agendaPillState(item, isAgentWorking)]})`}
+              />
+            ))}
+          </ol>
+        )}
       </aside>
     )
   }
 
   return (
-    <aside className="setup-agenda-sidebar" aria-label="Setup agenda">
+    <aside
+      className="setup-agenda-sidebar"
+      aria-label="Setup agenda"
+      onClick={event => { if (isBackgroundClick(event)) onToggleCollapsed(true) }}
+    >
       <header className="setup-agenda-sidebar-header">
         <div className="setup-agenda-sidebar-header-text">
           <h2 className="setup-agenda-sidebar-title">What we're covering</h2>
@@ -196,6 +220,18 @@ function SetupAgendaSidebarComponent({
                 </span>
               )}
             </p>
+          )}
+          {hasItems && summary.total > 0 && (
+            <div
+              className="setup-agenda-sidebar-progress"
+              role="progressbar"
+              aria-label="Setup progress"
+              aria-valuemin={0}
+              aria-valuemax={summary.total}
+              aria-valuenow={summary.completed}
+            >
+              <span style={{ width: `${Math.round((summary.completed / summary.total) * 100)}%` }} />
+            </div>
           )}
         </div>
         <button
@@ -216,35 +252,61 @@ function SetupAgendaSidebarComponent({
           </p>
         </SmoothReveal>
         <SmoothReveal open={hasItems}>
+          <SetupAgendaLegend />
           <ol ref={setListElement} className="setup-agenda-sidebar-list">
             {sortedItems.map(item => {
               const enteringIndex = enteringOrder.get(item.id)
-              return (
-                <li
-                  key={item.id}
-                  className={`setup-agenda-sidebar-item state-${item.status} kind-${item.kind}${enteringIndex !== undefined ? ' is-entering' : ''}`}
-                  data-kind={item.kind}
-                  data-agenda-item-id={item.id}
-                  style={enteringIndex !== undefined
-                    ? ({ '--agenda-enter-index': enteringIndex } as CSSProperties)
-                    : undefined}
-                >
+              const pillState = agendaPillState(item, isAgentWorking)
+              const canSelect = Boolean(onSelectItem) && isAgendaItemSelectable(item)
+              const content = (
+                <>
                   <div className="setup-agenda-sidebar-item-row">
                     <span
-                      className={`setup-agenda-sidebar-status-pill pill-${item.status}`}
-                      title={STATUS_LABELS[item.status]}
+                      className={`setup-agenda-sidebar-status-pill pill-${pillState}`}
+                      title={PILL_LABELS[pillState]}
                     >
-                      {STATUS_LABELS[item.status]}
+                      {PILL_LABELS[pillState]}
                     </span>
                     <span className="setup-agenda-sidebar-item-title">{item.title}</span>
                   </div>
                   {item.intent && (
                     <p className="setup-agenda-sidebar-item-intent">{item.intent}</p>
                   )}
+                </>
+              )
+              return (
+                <li
+                  key={item.id}
+                  className={`setup-agenda-sidebar-item state-${item.status} kind-${item.kind}${pillState === 'working' ? ' is-working' : ''}${canSelect ? ' is-selectable' : ''}${enteringIndex !== undefined ? ' is-entering' : ''}`}
+                  data-kind={item.kind}
+                  data-agenda-item-id={item.id}
+                  style={enteringIndex !== undefined
+                    ? ({ '--agenda-enter-index': enteringIndex } as CSSProperties)
+                    : undefined}
+                >
+                  {canSelect ? (
+                    <button
+                      type="button"
+                      className="setup-agenda-sidebar-item-button"
+                      disabled={isAgentWorking}
+                      title={isAgentWorking ? 'I am in the middle of something. You can pick this once I am done.' : 'Start this one next'}
+                      onClick={() => onSelectItem?.(item)}
+                    >
+                      {content}
+                    </button>
+                  ) : content}
                 </li>
               )
             })}
           </ol>
+          {savedSoFar.length > 0 && (
+            <section className="setup-agenda-saved" aria-label="Saved so far">
+              <h3 className="setup-agenda-saved-title">Saved so far</h3>
+              <ul className="setup-agenda-saved-list">
+                {savedSoFar.map((title, index) => <li key={`${index}-${title}`}>{title}</li>)}
+              </ul>
+            </section>
+          )}
         </SmoothReveal>
       </div>
     </aside>

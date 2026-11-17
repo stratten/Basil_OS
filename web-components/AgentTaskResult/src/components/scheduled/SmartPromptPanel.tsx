@@ -51,14 +51,6 @@ function InterpretingStatus() {
       role="status"
       aria-live="polite"
       className="smart-prompt-interpreting"
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 8,
-        fontFamily: 'var(--font-family-light)',
-        fontSize: 'var(--font-size-callout)',
-        color: 'var(--text-primary)',
-      }}
     >
       <AnimatedBubble
         size={INTERPRETING_BUBBLE_SIZE}
@@ -177,20 +169,17 @@ const SmartPromptPanel = forwardRef<SmartPromptPanelHandle, Props>(
     };
 
     return (
-      <>
+      <section className="scheduled-smart" aria-label="Describe a schedule">
         <textarea
-          className="sidebar-search-input"
+          className="scheduled-input scheduled-input--prompt"
           placeholder="Describe a schedule in plain language: e.g. check my inbox every weekday at 8am..."
+          aria-label="Describe a schedule in plain language"
           value={smartPrompt}
           onChange={e => setSmartPrompt(e.target.value)}
           disabled={!!smartClarification || interpreting}
           aria-busy={interpreting}
-          style={{ minHeight: 64, resize: 'vertical', fontFamily: 'var(--font-family-light)' }}
         />
-        <div
-          className="overlay-actions"
-          style={{ justifyContent: 'flex-start', alignItems: 'center', gap: 10 }}
-        >
+        <div className="scheduled-smart__actions">
           <button
             className="action-btn"
             onClick={() => generateFromPrompt()}
@@ -202,27 +191,14 @@ const SmartPromptPanel = forwardRef<SmartPromptPanelHandle, Props>(
           {interpreting && !smartClarification ? <InterpretingStatus /> : null}
         </div>
         {smartClarification && (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-              padding: 10,
-              border: '1px solid var(--warning-base)',
-              borderRadius: 6,
-              background: 'color-mix(in srgb, var(--warning-base) 6%, transparent)',
-              fontFamily: 'var(--font-family-light)',
-              fontSize: 'var(--font-size-callout)',
-              color: 'var(--text-primary)',
-            }}
-          >
-            <div style={{ color: 'var(--warning-text)' }}>
-              <strong style={{ fontFamily: 'var(--font-family-medium)' }}>Needs clarification:</strong>{' '}
+          <div className="scheduled-smart__clarify">
+            <div className="scheduled-smart__clarify-title">
+              <strong>Needs clarification:</strong>{' '}
               {smartClarification}
             </div>
             <textarea
               ref={clarificationInputRef}
-              className="sidebar-search-input"
+              className="scheduled-input scheduled-input--reply"
               placeholder="Type your response…"
               value={clarificationResponse}
               onChange={e => setClarificationResponse(e.target.value)}
@@ -234,11 +210,10 @@ const SmartPromptPanel = forwardRef<SmartPromptPanelHandle, Props>(
                 }
               }}
               disabled={busy}
-              style={{ minHeight: 56, resize: 'vertical', fontFamily: 'var(--font-family-light)' }}
             />
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <div className="scheduled-smart__clarify-actions">
               <button
-                className="action-btn"
+                className="action-btn action-btn--neutral"
                 onClick={() => {
                   setSmartClarification('');
                   setSmartContextId(null);
@@ -260,15 +235,8 @@ const SmartPromptPanel = forwardRef<SmartPromptPanelHandle, Props>(
             </div>
           </div>
         )}
-        {smartError && (
-          <div
-            className="error-section"
-            style={{ fontFamily: 'var(--font-family-light)' }}
-          >
-            {smartError}
-          </div>
-        )}
-      </>
+        {smartError && <div className="error-section">{smartError}</div>}
+      </section>
     );
   }
 );

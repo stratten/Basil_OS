@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { ChainExpansionMode } from '../../app/chainExpansionPreference';
+import type { ChainExpansionMode } from '../../app/display/chainExpansionPreference';
 import {
   pruneExpandedTurns,
   revealRunInExpandedTurns,

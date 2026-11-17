@@ -5,6 +5,12 @@ final class StatusBarMenuBuilder {
     static func buildMenu(hotkeyService: HotkeyService, target: AnyObject) -> NSMenu {
         let menu = NSMenu()
 
+        // Shown only while the backend is still starting, so hotkeys, voice and the other toggles that need it are not mistaken for broken. StatusBarMenuUpdater.setBackendStarting hides it once the backend answers.
+        let startingItem = NSMenuItem(title: "Basil is still starting up. Hotkeys and voice turn on when it is ready.", action: nil, keyEquivalent: "")
+        startingItem.tag = MenuItemTag.backendStarting.rawValue
+        startingItem.isEnabled = false
+        menu.addItem(startingItem)
+
         // Settings
         let newSettingsItem = NSMenuItem(
             title: "Settings",

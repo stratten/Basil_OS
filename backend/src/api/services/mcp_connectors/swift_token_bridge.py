@@ -281,7 +281,13 @@ async def _request_access_token_from_swift(
     caller (agent tools, Settings connection refresh, Slack refresh) is bounded;
     pass an explicit value to override. ``cancel_event`` lets an in-flight agent
     run abandon the wait promptly when the user cancels.
+
+    A local stdio server has no token, so it is answered with a placeholder here and Keychain is never asked. ``MCPClientService`` ignores the placeholder for stdio connections.
     """
+    from .stdio_transport import STDIO_PLACEHOLDER_TOKEN, is_stdio_connection
+
+    if is_stdio_connection(connection_id):
+        return MCPTokenRequestOutcome(kind="token_available", access_token=STDIO_PLACEHOLDER_TOKEN)
     response = await _ask_swift_for_credentials(
         connection_id=connection_id,
         timeout_s=timeout_s,

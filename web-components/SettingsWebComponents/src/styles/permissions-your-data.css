@@ -1,0 +1,88 @@
+.permissions-your-data-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.permissions-your-data-section {
+  background: var(--background-primary);
+  border: 1px solid var(--field-border);
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 6%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+}
+
+.permissions-your-data-section h3 {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: calc(18px * var(--text-scale, 1));
+  font-weight: 500;
+  line-height: 1.22;
+  margin: 0;
+}
+
+.permissions-your-data-section p {
+  color: var(--text-primary);
+  font-size: var(--font-size-body);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.permissions-your-data-section .secondary-button {
+  align-self: flex-start;
+}
+
+.permissions-your-data-section code {
+  background: color-mix(in srgb, var(--primary) 10%, var(--background-primary));
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: calc(12.5px * var(--text-scale, 1));
+  overflow-wrap: anywhere;
+  padding: 1px 6px;
+}
+
+.permissions-your-data-list,
+.permissions-your-data-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.permissions-your-data-list li,
+.permissions-your-data-choices li {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.permissions-your-data-list li > span,
+.permissions-your-data-choices li > span:last-child {
+  color: var(--text-secondary);
+  flex: 1 1 100%;
+  font-size: var(--font-size-body);
+  line-height: 1.4;
+}
+
+.permissions-your-data-choices strong {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-weight: 500;
+}
+
+.permissions-your-data-default {
+  color: var(--text-secondary);
+  font-size: calc(12.5px * var(--text-scale, 1));
+}
+
+.permissions-your-data-section .permissions-your-data-note {
+  color: var(--text-secondary);
+}

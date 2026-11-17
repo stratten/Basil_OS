@@ -336,6 +336,17 @@ export class AgentStoreCore {
     });
   }
 
+  /**
+   * Records when the turn on display began, taken from its durable record. A reopened task is built fresh, and a fresh entry is stamped with the moment it was created, so without this the turn label of a task opened days later would read "Today" with the current time. An empty or unparseable value is ignored so the existing stamp stays.
+   */
+  updateAgentTimestamp(agentTaskId: string, timestamp: string | undefined) {
+    if (!timestamp || Number.isNaN(Date.parse(timestamp))) return;
+    if (this.agents.get(agentTaskId)?.timestamp === timestamp) return;
+    this.updateAgent(agentTaskId, a => {
+      a.timestamp = timestamp;
+    });
+  }
+
   updateOriginalModelId(agentTaskId: string, originalModelId: string | undefined) {
     if (!originalModelId) return;
     this.updateAgent(agentTaskId, a => {

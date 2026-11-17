@@ -46,9 +46,8 @@ logger.info(f"🔍 [OPENWAKEWORD_DEBUG] Final result - OPENWAKEWORD_AVAILABLE: {
 
 # Using pre-trained OpenWakeWord models.
 # The actual .onnx file paths will be resolved by OpenWakeWord after models are downloaded.
-# We will primarily use "hey_jarvis". We can add "basil" if a separate model
-# exists or is trained later.
-PRE_TRAINED_MODELS_TO_USE = ["hey_jarvis", "hey_basil_proper", "hey_basil_american"]
+# "hey_jarvis" is the pre-trained model that ships with openWakeWord. "hey_basil" is the single bundled model trained on both pronunciations of the wake word (hey_basil_v1.onnx); each name must match exactly one file in the bundled models directory.
+PRE_TRAINED_MODELS_TO_USE = ["hey_jarvis", "hey_basil"]
 
 class WakeWordDetector:
     def __init__(self, 
@@ -547,6 +546,27 @@ class WakeWordDetector:
         else:
             logger.info(f"🔇 Wake word detection already {('paused' if paused else 'active')} - no change needed")
             logger.info(f"🔇 [PAUSE_DEBUG] No state change: _is_paused={self._is_paused} matches target={paused}")
+
+    def reset_detection_state(self):
+        """
+        Forget everything the model remembers from earlier audio, without changing whether detection is paused.
+
+        `set_paused` only resets the model when the paused state actually changes, and a normal stop and restart of the voice listener never pauses the detector. Without this reset the model's rolling features still hold the last audio from before the stop, and the first audio after a restart can match against them and trigger a phantom wake word. Call it while no audio is being fed to the model.
+        """
+        if not self.oww_model:
+            return
+        try:
+            if hasattr(self.oww_model, 'reset'):
+                self.oww_model.reset()
+            for model_key in self.active_models.keys():
+                self.active_models[model_key] = 0.0
+            # A few silent frames flush the temporal feature buffers that reset() leaves behind. The detection callback is not involved: predict() scores a frame and process_audio_frame() is what fires the callback.
+            silent_frame = np.zeros(1280, dtype=np.int16)
+            for _ in range(3):
+                self.oww_model.predict(silent_frame)
+            logger.info("🧹 Reset the wake word model's memory of earlier audio")
+        except Exception as e:
+            logger.warning(f"Could not fully reset the wake word model's state: {e}")
 
     def is_paused(self) -> bool:
         """

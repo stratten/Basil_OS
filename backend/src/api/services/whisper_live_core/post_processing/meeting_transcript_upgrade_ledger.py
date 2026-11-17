@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List
 
-from .atomic_json import atomic_write_json
+from .atomic_json import atomic_write_json, sanitize_transcript_segments
 from .windowed_retranscription import splice_segments
 
 LEDGER_FILENAME = "windowed_retranscription_upgrades.json"
@@ -79,6 +79,14 @@ def finalize_recorded_window_upgrades(meeting_id: str) -> Dict[str, Any]:
         raise ValueError(f"Transcript for meeting {meeting_id} must be a JSON object")
 
     upgraded = apply_recorded_window_upgrades(meeting_dir, transcript)
+    # The replayed windows come from re-transcription, which is where the hosted model's silence loops ("Yeah." repeated twenty times over a quiet stretch) appear. This is the last writer of transcript.json after a recording, so it sanitizes like every other writer instead of persisting those loops.
+    metadata = MeetingRecorder.load_metadata(meeting_id)
+    upgraded["segments"] = sanitize_transcript_segments(
+        upgraded.get("segments", []),
+        audio_path=meeting_dir / "audio.wav",
+        timeline_offset_seconds=metadata.timeline_offset_seconds if metadata else 0.0,
+        timeline_ranges=metadata.stream_timeline_ranges if metadata else None,
+    )
     atomic_write_json(transcript_path, upgraded)
     return upgraded
 

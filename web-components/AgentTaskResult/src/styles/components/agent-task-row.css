@@ -6,7 +6,7 @@
 
 .agent-task-row__slide {
   position: relative;
-  transition: transform 0.15s ease;
+  transition: transform var(--motion-quick) var(--motion-ease);
 }
 
 .agent-task-row__trash {

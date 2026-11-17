@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useCopiedFlag } from '@shared/useCopyFeedback'
 import { requestCancelGitHubDeviceFlow, requestCancelPendingOAuthFlow, requestOpenExternalUrl } from '../services/connectionsBridge'
 import type { ConnectionsSettingsFields } from '../types'
@@ -17,12 +18,29 @@ export function ConnectionSignInProgress({
 }: ConnectionSignInProgressProps) {
   const [codeCopied, flashCodeCopied] = useCopiedFlag()
   const deviceFlow = fields.githubDeviceFlow
+  const deviceUserCode = deviceFlow?.userCode ?? null
+  const [autoCopiedCode, setAutoCopiedCode] = useState<string | null>(null)
+
+  // Put the code on the clipboard the moment it is shown, so the person can paste it at GitHub. The hint below only says so once the write has actually succeeded.
+  useEffect(() => {
+    if (!deviceUserCode || !navigator.clipboard) return undefined
+    let canceled = false
+    navigator.clipboard.writeText(deviceUserCode).then(
+      () => { if (!canceled) setAutoCopiedCode(deviceUserCode) },
+      () => undefined,
+    )
+    return () => { canceled = true }
+  }, [deviceUserCode])
 
   if (deviceFlow) {
     return (
       <div className="connections-device-flow" role="status">
         <p className="connections-device-flow-title">Authorize GitHub</p>
-        <p className="connections-device-flow-hint">Enter this code at GitHub. Basil will continue automatically after approval.</p>
+        <p className="connections-device-flow-hint">
+          {autoCopiedCode === deviceFlow.userCode
+            ? 'This code is now on your clipboard, replacing what was there. Paste it at GitHub. Basil will continue automatically after approval.'
+            : 'Enter this code at GitHub. Basil will continue automatically after approval.'}
+        </p>
         <div className="connections-device-flow-code-row">
           <span className="connections-device-flow-code">{deviceFlow.userCode}</span>
           <button

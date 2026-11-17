@@ -1,5 +1,6 @@
 import type { AgentTaskHistoryItem, AgentState } from '../../types';
 import { discardComposerDraft } from '../composerDraftStore';
+import { upsertHistoryItem } from './historyIdentity';
 import { createAgentState } from './stateFactory';
 import { AgentStoreCore } from './storeCore';
 
@@ -52,7 +53,7 @@ export class FollowUpAgentStore extends AgentStoreCore {
         const item = snapshot || this.createHistoryItemFromCurrentTurn(a);
         if (item && (item.agentTaskText || item.result || item.errorMessage)) {
           // A new array, not a push: the turn list is a dependency of memoized views (the open/closed state of each earlier turn is pruned against it), and an in-place push leaves them holding the old list, so the turn just snapshotted could not be opened until the chain was reloaded.
-          a.agentTaskHistory = [...a.agentTaskHistory, item];
+          a.agentTaskHistory = upsertHistoryItem(a.agentTaskHistory, item);
         }
       }
       a.currentTurnTaskId = followUpId;

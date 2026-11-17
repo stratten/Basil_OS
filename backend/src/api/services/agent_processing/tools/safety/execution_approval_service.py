@@ -14,6 +14,7 @@ This service provides the main public API for command approval.
 import logging
 from typing import Dict, Any, Optional, Tuple
 
+from api.core.logging.api_logger import api_logger
 from api.core.models.preferences import ExecutionApprovalMode, CommandPattern
 from api.core.security.protected_runtime_paths import (
     PROTECTED_RUNTIME_REFUSAL,
@@ -37,6 +38,9 @@ from .explanation_gate import (
 )
 
 logger = logging.getLogger(__name__)
+# Module loggers are not wired to the desktop debug log, so each decision goes through a child of the main API logger. That is how a day's auto-approvals can be reviewed afterward.
+decision_logger = api_logger.getChild("command_approval")
+MAX_LOGGED_COMMAND_CHARS = 200
 
 
 class ExecutionApprovalService:
@@ -64,7 +68,24 @@ class ExecutionApprovalService:
         command: str,
         context: Optional[Dict[str, Any]] = None
     ) -> ExecutionApprovalDecision:
-        """Evaluate whether a command needs approval before execution."""
+        """Evaluate whether a command needs approval before execution, and record the verdict in the debug log."""
+        decision = await self._evaluate_command(command, context)
+        try:
+            outcome = "blocked" if decision.is_blocked else ("asks" if decision.needs_approval else "auto-approved")
+            # A connected tool's arguments can hold message text and addresses, so only its name is recorded.
+            shown = str(command).split("(", 1)[0] if is_connected_tool_command(command) else " ".join(str(command).split())
+            if len(shown) > MAX_LOGGED_COMMAND_CHARS:
+                shown = f"{shown[:MAX_LOGGED_COMMAND_CHARS]}…"
+            decision_logger.info("Command %s (risk=%s, reason=%s): %s", outcome, decision.risk_level, decision.reason, shown)
+        except Exception:  # a logging problem must never change the verdict
+            pass
+        return decision
+
+    async def _evaluate_command(
+        self,
+        command: str,
+        context: Optional[Dict[str, Any]] = None
+    ) -> ExecutionApprovalDecision:
         try:
             if references_protected_runtime_path(command):
                 log_protected_runtime_refusal("command evaluation")

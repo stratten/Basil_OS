@@ -7,7 +7,7 @@
   background: color-mix(in srgb, var(--text-tertiary) 10%, transparent);
   border-radius: var(--corner-radius-small);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--motion-quick) var(--motion-ease);
 }
 
 .execution-steps-header:hover {
@@ -75,7 +75,7 @@
   grid-template-rows: 0fr;
   opacity: 0;
   transform: translateY(-4px);
-  transition: grid-template-rows 240ms ease, opacity 180ms ease, transform 240ms ease;
+  transition: grid-template-rows var(--motion-move) var(--motion-ease), opacity var(--motion-quick) var(--motion-ease), transform var(--motion-move) var(--motion-ease);
 }
 
 .thinking-collapse.expanded {
@@ -411,9 +411,118 @@
   font-size: var(--font-size-status-small);
 }
 
-.run-status-footer .run-status-actions {
-  margin: 0;
-  padding: 0;
+/* A bar with nothing to open stays a plain row: no pointer, no hover tint. */
+.execution-activity-dock-header:disabled {
+  cursor: default;
+}
+
+.execution-activity-dock-header:disabled:hover {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+.execution-activity-dock-header-row {
+  position: relative;
+}
+
+/* With recovery actions the header row is the 28px bar. The tint moves from the header button to the row so it continues under the icons, and the header gives up its vertical padding. The chevron is an unclassed SVG that is the last child of the header button, and the row, being the nearest positioned ancestor, pins it to the right edge after the icons. */
+.execution-activity-dock-header-row--actions {
+  align-items: center;
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  display: flex;
+}
+
+.execution-activity-dock-header-row--actions:hover {
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+}
+
+.execution-activity-dock-header-row--actions > .execution-activity-dock-header,
+.execution-activity-dock-header-row--actions > .execution-activity-dock-header:hover {
+  background: transparent;
+}
+
+.execution-activity-dock-header-row--actions > .execution-activity-dock-header {
+  flex: 1 1 auto;
+  min-height: 26px;
+  min-width: 0;
+  padding-bottom: 0;
+  padding-top: 0;
+  width: auto;
+}
+
+.execution-activity-dock-header-row--actions > .execution-activity-dock-header > svg:last-child {
+  margin-top: -5px;
+  position: absolute;
+  right: 12px;
+  top: 50%;
+}
+
+/* The buttons are 24px at most, so their 1px outline has 2px of room above and below in the 26px row, and the icons inside are 16px. */
+.run-status-recovery {
+  align-items: center;
+  display: flex;
+  flex: 0 1 auto;
+  gap: var(--padding-xs);
+  margin-right: var(--padding-s);
+  min-width: 0;
+}
+
+/* The icon buttons never shrink; only the picker label gives way when the window is narrow. */
+.run-status-recovery > .decision-btn {
+  flex: 0 0 auto;
+}
+
+/* The summary keeps a floor of room, so a narrow window shortens the picker before it hides what the bar says. */
+.execution-activity-dock-header-row--actions > .execution-activity-dock-header {
+  flex-basis: 150px;
+}
+
+/* The chevron is pinned to the row's right edge, so the buttons step left to leave it room only when it is drawn. */
+.execution-activity-dock-header-row--chevron .run-status-recovery {
+  margin-right: 34px;
+}
+
+.run-status-recovery .decision-btn {
+  height: 24px;
+  min-height: 24px;
+  width: 24px;
+}
+
+.run-status-recovery .decision-btn .decision-btn__icon svg {
+  height: 16px;
+  width: 16px;
+}
+
+/* Retry carries a little more weight than its neighbors, with the tint of a pressed decision button. */
+.run-status-recovery .decision-btn.run-status-retry {
+  background: color-mix(in srgb, var(--secondary) 14%, var(--background-primary));
+}
+
+/* The shared picker is 130px wide at minimum and 22px tall. In the bar it shrinks to its label (truncated with an ellipsis) so the summary keeps room, and it is 24px tall to line up with the icon buttons. */
+.run-status-picker {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.run-status-picker .rich-text-model-picker {
+  max-width: 150px;
+  min-width: 0;
+}
+
+.run-status-picker .rich-text-model-picker-trigger {
+  height: 24px;
+  min-width: 0;
+  padding-bottom: 0;
+  padding-top: 0;
+}
+
+/* A thin rule between the status label and what follows it, drawn from the primary text color so it stays visible on the tinted bar. */
+.run-status-separator {
+  align-self: center;
+  background: color-mix(in srgb, var(--text-primary) 55%, transparent);
+  flex: 0 0 1px;
+  height: 12px;
+  margin: 0 2px;
+  width: 1px;
 }
 
 .execution-activity-dock-header:focus-visible,
@@ -456,7 +565,7 @@
   grid-template-rows: 0fr;
   opacity: 0;
   transform: translateY(4px);
-  transition: grid-template-rows 220ms ease, opacity 180ms ease, transform 220ms ease;
+  transition: grid-template-rows var(--motion-move) var(--motion-ease), opacity var(--motion-quick) var(--motion-ease), transform var(--motion-move) var(--motion-ease);
 }
 
 .execution-activity-dock-body.is-open {

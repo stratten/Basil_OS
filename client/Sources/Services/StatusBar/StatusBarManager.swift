@@ -22,6 +22,7 @@ internal enum MenuItemTag: Int {
     case ambientSuggestions = 114
     case meetingDetection = 115
     case reportProblem = 116
+    case backendStarting = 117
 }
 
 @MainActor
@@ -145,37 +146,33 @@ final class StatusBarManager: StatusBarServiceProtocol {
         }
     }
     
-    /// Waits for backend to become available, then loads voice listener and activity capture states
+    /// Waits for the backend to become available, however long that takes, then loads the voice listener, activity capture, ambient suggestion and meeting detection states.
+    /// A fixed time limit used to leave these menu states unloaded for the whole session when the backend was slow to start.
     @MainActor
     func loadStatesWhenBackendReady() async {
-        let maxWaitTime: TimeInterval = 30.0 // 30 second timeout
-        let checkInterval: TimeInterval = 0.5 // Check every 500ms
-        let startTime = Date()
-        
         #if DEBUG
-        DevLogger.shared.info("🔄 STARTUP: Waiting for backend availability to load StatusBar states (timeout: \(maxWaitTime)s)...", context: "StatusBarManager")
+        DevLogger.shared.info("🔄 STARTUP: Waiting for backend availability to load StatusBar states...", context: "StatusBarManager")
         #endif
         
-        while Date().timeIntervalSince(startTime) < maxWaitTime {
-            if APIClient.shared.isBackendAvailable {
-                #if DEBUG
-                DevLogger.shared.info("✅ STARTUP: Backend is now available. Loading StatusBar states...", context: "StatusBarManager")
-                #endif
-                
-            await loadInitialVoiceListenerState()
-            await loadInitialActivityCaptureState()
-            await refreshAmbientSuggestionState()
-            await refreshMeetingDetectionState()
-                return
-            }
-            
-            // Wait before next check
-            try? await Task.sleep(nanoseconds: UInt64(checkInterval * 1_000_000_000))
+        guard await APIClient.waitUntilBackendAvailable() else {
+            #if DEBUG
+            DevLogger.shared.info("STARTUP: Stopped waiting for the backend (canceled or quitting). StatusBar states not loaded.", context: "StatusBarManager")
+            #endif
+            return
         }
         
+        if let menu = statusBarItem.statusMenu {
+            StatusBarMenuUpdater.setBackendStarting(false, in: menu)
+        }
+
         #if DEBUG
-        DevLogger.shared.error("⏰ STARTUP: Timeout waiting for backend availability (\(maxWaitTime)s). StatusBar states not loaded.", context: "StatusBarManager")
+        DevLogger.shared.info("✅ STARTUP: Backend is now available. Loading StatusBar states...", context: "StatusBarManager")
         #endif
+        
+        await loadInitialVoiceListenerState()
+        await loadInitialActivityCaptureState()
+        await refreshAmbientSuggestionState()
+        await refreshMeetingDetectionState()
     }
     
     deinit {
@@ -191,6 +188,7 @@ final class StatusBarManager: StatusBarServiceProtocol {
         let menu = StatusBarMenuBuilder.buildMenu(hotkeyService: hotkeyService, target: self)
         statusBarItem.statusItem?.menu = menu
         statusBarItem.statusMenu = menu
+        StatusBarMenuUpdater.setBackendStarting(!APIClient.shared.isBackendAvailable, in: menu)
         if let item = menu.item(withTag: MenuItemTag.hotkeyToggle.rawValue) {
             item.state = hotkeyService.isEnabled ? .on : .off
             item.title = "Hotkeys"

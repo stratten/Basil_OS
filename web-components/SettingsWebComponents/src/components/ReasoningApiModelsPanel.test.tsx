@@ -56,9 +56,26 @@ describe('ReasoningApiModelsPanel', () => {
     expect(container.querySelector('.reasoning-api-models-status')?.textContent).toBe('Loading reasoning API models...')
   })
 
-  it('hides providers when the master toggle is off', () => {
+  it('keeps providers visible, marked inactive, with an explanation when the master toggle is off', () => {
     sendInit({ useApiModels: false })
-    expect(container.textContent).not.toContain('Anthropic')
+    expect(container.textContent).toContain('Anthropic')
+    expect(container.querySelector('.reasoning-api-models-providers--inactive')).not.toBeNull()
+    expect(container.querySelector('.reasoning-api-models-master-note')?.textContent).toContain('API models are off')
+  })
+
+  it('shows no master-off note and no inactive marking when the master toggle is on', () => {
+    sendInit()
+    expect(container.querySelector('.reasoning-api-models-master-note')).toBeNull()
+    expect(container.querySelector('.reasoning-api-models-providers--inactive')).toBeNull()
+  })
+
+  it('keeps the provider list after the last provider is turned off, so it can be turned back on', () => {
+    sendInit()
+    act(() => { window.basilReasoningApiModels!.onEvent({ type: 'snapshot', isLoading: false, useApiModels: false, providers: [{ ...PROVIDERS[0], enabled: false }] } as any) })
+    expect(container.textContent).toContain('Anthropic')
+    const providerSwitch = container.querySelector<HTMLInputElement>('#reasoning-api-models-provider-toggle-anthropic')!
+    expect(providerSwitch.checked).toBe(false)
+    expect(providerSwitch.disabled).toBe(false)
   })
 
   it('surfaces a load error with a retry action that re-sends reactReady', () => {
@@ -228,12 +245,42 @@ describe('ReasoningApiModelsPanel', () => {
     expect(disclosure.getAttribute('aria-expanded')).toBe('true')
   })
 
-  it('disables the disclosure and reflects the enabled count when a model is toggled on', () => {
+  it('lets a provider that is off be opened to see its models, starting folded', () => {
     sendInit({ providers: [{ ...PROVIDERS[0], enabled: false }] })
     const disclosure = container.querySelector<HTMLButtonElement>('.reasoning-api-models-provider-disclosure')!
-    expect(disclosure.disabled).toBe(true)
+    expect(disclosure.disabled).toBe(false)
     expect(disclosure.getAttribute('aria-expanded')).toBe('false')
-    expect(disclosure.hasAttribute('aria-controls')).toBe(false)
+    expect(disclosure.getAttribute('aria-controls')).toBe('reasoning-api-models-provider-body-anthropic')
+    expect(container.querySelector('.reasoning-api-models-provider--off')).not.toBeNull()
+
+    act(() => { disclosure.click() })
+    expect(disclosure.getAttribute('aria-expanded')).toBe('true')
+    expect(container.querySelector('#reasoning-api-models-provider-body-anthropic')?.className).toContain('reasoning-api-models-provider-collapse-expanded')
+    expect(container.querySelector('.reasoning-api-models-provider-off-note')?.textContent).toContain('Anthropic is off')
+    expect(container.textContent).toContain('Claude Sonnet')
+  })
+
+  it('shows no off note for a provider that is on, and opens it by default', () => {
+    sendInit()
+    expect(container.querySelector('.reasoning-api-models-provider-off-note')).toBeNull()
+    expect(container.querySelector('.reasoning-api-models-provider--off')).toBeNull()
+    expect(container.querySelector('.reasoning-api-models-provider-disclosure')!.getAttribute('aria-expanded')).toBe('true')
+  })
+
+  it('opens a provider that was folded because it was off once it is turned on', () => {
+    sendInit({ providers: [{ ...PROVIDERS[0], enabled: false }] })
+    const disclosure = container.querySelector<HTMLButtonElement>('.reasoning-api-models-provider-disclosure')!
+    expect(disclosure.getAttribute('aria-expanded')).toBe('false')
+    sendInit({ providers: [PROVIDERS[0]] })
+    expect(container.querySelector('.reasoning-api-models-provider-disclosure')!.getAttribute('aria-expanded')).toBe('true')
+  })
+
+  it('keeps model switches usable for a provider that is off and reflects the enabled count', () => {
+    sendInit({ providers: [{ ...PROVIDERS[0], enabled: false }] })
+    const rowSwitch = container.querySelector<HTMLInputElement>('#reasoning-api-models-toggle-anthropic-claude-sonnet')!
+    expect(rowSwitch.disabled).toBe(false)
+    act(() => { rowSwitch.click() })
+    expect(lastMessageOfType('requestToggleModel')).toEqual(expect.objectContaining({ providerId: 'anthropic', modelId: 'claude-sonnet', enabled: true }))
 
     sendInit({ providers: [{ ...PROVIDERS[0], models: [{ ...PROVIDERS[0].models[0], enabled: true }] }] })
     const header = container.querySelector('.reasoning-api-models-provider-header')!

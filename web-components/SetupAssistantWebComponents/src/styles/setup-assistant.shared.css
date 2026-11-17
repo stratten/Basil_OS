@@ -34,6 +34,8 @@ body {
   --accent-purple: rgb(129, 82, 190);
   --accent-green: rgb(49, 150, 112);
   --accent-orange: rgb(202, 127, 32);
+  /* The brand blue as TEXT. `--primary` is a fill color, and used as text on the navy surfaces it measured 3.3:1 to 3.9:1, below the 4.5:1 that small text needs. Mixing 30 percent of the page's own text color into it gives 5.4:1 or more on every surface here and stays clearly blue, and because it moves toward `--text-primary` it also darkens correctly on a light theme. Buttons, borders and fills keep `--primary`. */
+  --primary-text: color-mix(in srgb, var(--primary) 70%, var(--text-primary));
 }
 
 button,
@@ -49,12 +51,12 @@ button {
   font-family: var(--font-family-medium);
   font-size: var(--font-size-callout);
   transition:
-    background 120ms ease,
-    border-color 120ms ease,
-    box-shadow 120ms ease,
-    color 120ms ease,
-    opacity 120ms ease,
-    transform 120ms ease;
+    background var(--motion-quick) var(--motion-ease),
+    border-color var(--motion-quick) var(--motion-ease),
+    box-shadow var(--motion-quick) var(--motion-ease),
+    color var(--motion-quick) var(--motion-ease),
+    opacity var(--motion-quick) var(--motion-ease),
+    transform var(--motion-quick) var(--motion-ease);
 }
 
 button:disabled {
@@ -172,7 +174,7 @@ h3 {
 }
 
 .emphasis-you {
-  color: var(--primary);
+  color: var(--primary-text);
   font-family: var(--font-family-medium);
   font-style: normal;
 }
@@ -250,7 +252,7 @@ h3 {
 
 .phase-pill.active span {
   background: var(--background-primary);
-  color: var(--primary);
+  color: var(--primary-text);
 }
 
 .phase-pill.complete {
@@ -307,6 +309,11 @@ h3 {
   --setup-scroll-fade-bottom: 32px;
 }
 
+/* The scroll hook sets the bottom fade inline, and the mask would also dim a pinned footer. The footer draws its own fade, so the mask's bottom fade is switched off while one is present. */
+.setup-stage-frame:has(.setup-path-footer)[data-overflow-bottom] {
+  --setup-scroll-fade-bottom: 0px !important;
+}
+
 .setup-navigation,
 .button-row,
 .basil-input-row {
@@ -338,7 +345,7 @@ h3 {
 .setup-skip-button {
   background: transparent;
   border: 0.5px solid transparent;
-  color: var(--primary);
+  color: var(--primary-text);
   font-family: var(--font-family-medium);
   padding: 8px 10px;
   text-decoration: underline;
@@ -366,7 +373,7 @@ h3 {
 .setup-report-link {
   background: transparent;
   border: 0.5px solid transparent;
-  color: var(--primary);
+  color: var(--primary-text);
   font-family: var(--font-family-medium);
   font-size: var(--font-size-status-small);
   padding: 4px 8px;

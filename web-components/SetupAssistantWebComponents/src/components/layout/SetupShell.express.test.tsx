@@ -51,9 +51,11 @@ describe('SetupShell and the express stage', () => {
     expect(container.querySelector('.phase-progress')).not.toBeNull()
   })
 
-  it('still offers Skip for now during the express stage', () => {
+  it('still offers Skip setup for now during the express stage, and says it leaves the whole setup', () => {
     render('express')
 
-    expect(container.querySelector('.setup-skip-button')).not.toBeNull()
+    const skip = container.querySelector('.setup-skip-button')!
+    expect(skip.textContent).toBe('Skip setup for now')
+    expect(skip.getAttribute('title')).toContain('whole setup')
   })
 })

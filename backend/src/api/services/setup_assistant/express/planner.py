@@ -187,6 +187,7 @@ class ExpressPlanner:
                     already_done=already,
                     unavailable_reason=reason,
                     selected=reason is None and not already,
+                    default_ticked=entry.ticked_by_default,
                     **extra,
                 )
             )

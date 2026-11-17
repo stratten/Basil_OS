@@ -95,6 +95,15 @@ class MenuBarItem:
 # source reorders items, this list must be updated in lockstep.
 MENU_BAR_INVENTORY: List[MenuBarItem] = [
     MenuBarItem(
+        title="Basil is still starting up. Hotkeys and voice turn on when it is ready.",
+        description=(
+            "A status line, not a button. It shows only while Basil is still starting, so hotkeys and voice "
+            "are not mistaken for broken, and it disappears by itself once Basil is ready."
+        ),
+        visibility="conditional",
+        visibility_note="Only shown at the top of the menu while Basil is still starting up.",
+    ),
+    MenuBarItem(
         title="Settings",
         description=(
             "Opens the Basil Settings window where the user tunes profile, "

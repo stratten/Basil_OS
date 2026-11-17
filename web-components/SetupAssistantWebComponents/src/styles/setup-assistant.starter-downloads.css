@@ -45,9 +45,24 @@
   overflow-wrap: anywhere;
 }
 
+/* What the model is for sits first as a small badge, tinted like the preference cards: purple for the two voice models, orange for the thinking model. The tinted text measures 7:1 or more on its fill. */
 .model-downloads__role {
-  color: var(--text-primary);
-  font-size: var(--font-size-footnote);
+  --role-accent: var(--accent-purple);
+  background: color-mix(in srgb, var(--role-accent) 18%, var(--background-primary));
+  border: 1px solid color-mix(in srgb, var(--role-accent) 55%, var(--separator-color));
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--role-accent) 45%, var(--text-primary));
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  justify-self: start;
+  line-height: 1;
+  margin-bottom: 2px;
+  padding: 4px 9px;
+  white-space: nowrap;
+}
+
+.model-downloads__role--thinking {
+  --role-accent: var(--accent-orange);
 }
 
 .model-downloads__detail {
@@ -76,8 +91,9 @@
   color: var(--accent-green);
 }
 
+/* The failed word and message are text on the dark card, so they use the error color lifted toward the text color (6.9:1) instead of the fill color itself, which measured 2.1:1. The row's red border keeps the pure error color. */
 .model-downloads__row--failed .model-downloads__state {
-  color: var(--error-base);
+  color: color-mix(in srgb, var(--error-base) 45%, var(--text-primary));
 }
 
 /* Label-sized buttons: the shared button classes set the compact padding, so only wrapping and width are set here. */
@@ -85,6 +101,19 @@
   font-size: var(--font-size-callout);
   white-space: nowrap;
   width: auto;
+}
+
+/* "Download all" sits between the filled Continue and the quiet per-row buttons: a stronger tint, a solid primary border and primary text, but never a solid fill. */
+.model-downloads__button--all {
+  background: color-mix(in srgb, var(--primary) 20%, var(--background-primary));
+  border: 1px solid var(--primary);
+  color: var(--primary-text);
+  font-family: var(--font-family-medium);
+}
+
+.model-downloads__button--all:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--primary) 30%, var(--background-primary));
+  border-color: var(--primary);
 }
 
 .model-downloads__all {
@@ -99,7 +128,7 @@
 }
 
 .model-downloads__error {
-  color: var(--error-base);
+  color: color-mix(in srgb, var(--error-base) 45%, var(--text-primary));
   font-family: var(--font-family-medium);
   font-weight: normal;
   margin: 0;

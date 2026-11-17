@@ -9,7 +9,7 @@ import {
   type ArtifactSortKey,
   type ArtifactSortState,
 } from './artifactSort';
-import { formatTimestampForDisplay } from '../../app/dateDisplay';
+import { formatTimestampForDisplay } from '../../app/display/dateDisplay';
 import { FileTypeIcon } from './FileTypeIcon';
 
 /** Rows shown before the rest sit behind "Show all". Kept small so the preview below keeps most of the panel; the last row fades to show there is more. */

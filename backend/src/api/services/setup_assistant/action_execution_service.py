@@ -202,6 +202,8 @@ class SetupAssistantActionExecutionService:
             return [await self._execute_profile_update_action(action)]
         if action.kind == SetupActionKind.refresh_connection_tools:
             return [await self._execute_connection_refresh_action(action)]
+        if action.kind == SetupActionKind.register_local_mcp_server:
+            return [await self._execute_local_server_registration_action(action)]
         if action.kind in {SetupActionKind.launch_assistant_session, SetupActionKind.launch_agent_task}:
             return [
                 SetupActionExecutionItem(
@@ -527,6 +529,46 @@ class SetupAssistantActionExecutionService:
             },
         )
 
+    async def _execute_local_server_registration_action(self, action: SetupAction) -> SetupActionExecutionItem:
+        """Register a local stdio server, start it once to read its tools, and discard it if it does not start."""
+        from api.services.mcp_connectors.local_server_registration import (
+            discard_local_server_record,
+            register_local_server_record,
+        )
+
+        if self.connection_refresher is None:
+            raise ValueError("Connection tool refresh is unavailable.")
+        payload = action.payload
+        record = register_local_server_record(
+            friendly_name=str(payload.get("friendly_name") or ""),
+            command=str(payload.get("command") or ""),
+            args=list(payload.get("args") or []),
+            cwd=payload.get("cwd"),
+            env=dict(payload.get("env") or {}),
+            description=payload.get("description"),
+            source_url=payload.get("source_url"),
+        )
+        try:
+            refreshed = await self.connection_refresher(record.id)
+        except Exception as exc:
+            discard_local_server_record(record.id)
+            detail = getattr(exc, "detail", None) or str(exc)
+            raise ValueError(
+                f"The server was set up but would not start, so it was not kept: {detail}"
+            ) from exc
+        tools = refreshed.get("tools", [])
+        return SetupActionExecutionItem(
+            id=action.id,
+            kind=action.kind.value,
+            status=SetupExecutionStatus.applied,
+            message=f"Connected {record.friendly_name} with {len(tools)} tool{'s' if len(tools) != 1 else ''}.",
+            result_payload={
+                "connection_id": record.id,
+                "tool_count": len(tools),
+                "tool_names": [str(tool.get("name", "")) for tool in tools if isinstance(tool, dict)],
+            },
+        )
+
     def _extract_model_ids(self, payload: Dict[str, Any]) -> List[str]:
         raw_model_ids = payload.get("model_ids")
         if raw_model_ids is None and payload.get("model_id") is not None:
@@ -567,6 +609,7 @@ class SetupAssistantActionExecutionService:
             "update_basil_settings": SetupActionKind.update_settings,
             "save_profile_updates": SetupActionKind.save_profile,
             "refresh_connection_tools": SetupActionKind.refresh_connection_tools,
+            "register_local_mcp_server": SetupActionKind.register_local_mcp_server,
             "launch_assistant_session": SetupActionKind.launch_assistant_session,
             "launch_agent_task": SetupActionKind.launch_agent_task,
         }

@@ -74,7 +74,30 @@
 .connections-panel-header {
   align-items: center;
   display: flex;
+  gap: 12px;
   justify-content: space-between;
+}
+
+.connections-panel-header h3 {
+  min-width: 0;
+}
+
+/* Quiet one-paragraph status under the header: plain text on the card, with only the attention part in the error color. */
+.connections-summary {
+  color: var(--text-primary);
+  font-size: calc(12px * var(--text-scale, 1));
+  line-height: 1.4;
+  margin: 0 0 10px;
+  overflow-wrap: anywhere;
+}
+
+.connections-summary-headline {
+  font-family: var(--font-family-medium);
+}
+
+.connections-summary[data-needs-attention='true'] .connections-summary-status {
+  color: var(--error-text);
+  font-family: var(--font-family-medium);
 }
 
 .connections-panel-header-actions {
@@ -97,6 +120,12 @@
 
 .connections-add-toggle:hover:not(:disabled) {
   background: color-mix(in srgb, var(--background-primary) 78%, var(--secondary, var(--primary)));
+}
+
+/* However many controls sit beside it, the add button keeps its full label and size. */
+.connections-panel-header-actions .connections-add-toggle {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .connections-context-field {

@@ -4,7 +4,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ResultContent from './ResultContent';
-import { applyHostChainExpansion } from '../app/chainExpansionPreference';
+import { applyHostChainExpansion } from '../app/display/chainExpansionPreference';
 import { resetPendingFollowUpsForTests } from '../store/pendingFollowUps';
 import { AgentStore } from '../store/agentStore/websocketHandlers';
 

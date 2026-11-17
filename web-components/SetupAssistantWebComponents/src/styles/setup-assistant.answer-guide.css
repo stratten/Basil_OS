@@ -12,7 +12,7 @@
 }
 
 .answer-guide-lede {
-  font-size: var(--font-size-callout);
+  font-size: var(--font-size-body);
   line-height: 1.4;
   margin: 0;
 }
@@ -166,7 +166,7 @@
 }
 
 .intro-trust-note a {
-  color: var(--primary);
+  color: var(--primary-text);
   font-family: var(--font-family-medium);
   font-weight: normal;
 }

@@ -37,13 +37,13 @@
 }
 
 .status-chip.is-changing {
-  animation: setupTextSwap 360ms ease both;
+  animation: setupTextSwap var(--motion-move) var(--motion-ease) both;
 }
 
 .status-chip {
   background: color-mix(in srgb, var(--primary) 10%, transparent);
   border-radius: 999px;
-  color: var(--primary);
+  color: var(--primary-text);
   display: inline-flex;
   font-family: var(--font-family-medium);
   font-size: var(--font-size-status-small);
@@ -54,14 +54,14 @@
 .artifact-row-card {
   animation: setupSoftRise 480ms var(--setup-motion-ease-out) both;
   position: relative;
-  transition: border-color 320ms ease, box-shadow 320ms ease;
+  transition: border-color var(--motion-move) var(--motion-ease), box-shadow var(--motion-move) var(--motion-ease);
 }
 
 /* A consent receipt is revealed by its SetupCardReveal wrapper (fade plus smoothly opening height), so it carries no entrance animation of its own. */
 .consent-receipt {
   margin-top: 10px;
   position: relative;
-  transition: border-color 320ms ease, box-shadow 320ms ease;
+  transition: border-color var(--motion-move) var(--motion-ease), box-shadow var(--motion-move) var(--motion-ease);
 }
 
 /* "Approve all" bar above a group of receipts. Solid blue-tinted surface with dark text keeps it legible against the receipts below it. */

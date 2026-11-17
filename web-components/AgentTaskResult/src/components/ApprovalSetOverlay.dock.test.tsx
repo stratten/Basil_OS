@@ -86,6 +86,9 @@ function labels(): Array<string | null> {
 }
 
 function typeNote(text: string) {
+  if (!container.querySelector('textarea.approval-note-input')) {
+    act(() => container.querySelector<HTMLButtonElement>('.approval-note-toggle')?.click());
+  }
   const textarea = container.querySelector('textarea.approval-note-input') as HTMLTextAreaElement;
   const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
   act(() => {

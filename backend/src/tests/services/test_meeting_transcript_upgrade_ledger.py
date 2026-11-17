@@ -110,3 +110,45 @@ def test_finalize_writes_canonical_transcript_idempotently(tmp_path, monkeypatch
         "after",
     ]
     assert get_upgrade_ledger_path(tmp_path).exists()
+
+
+def _loop_window(text, count, start=10.0, seconds_each=1.0):
+    return [
+        {"start": start + index * seconds_each, "end": start + (index + 1) * seconds_each, "text": text, "speaker": None}
+        for index in range(count)
+    ]
+
+
+def test_finalize_collapses_a_silence_loop_from_a_retranscribed_window(tmp_path, monkeypatch):
+    (tmp_path / "transcript.json").write_text(json.dumps(_transcript()))
+    record_window_upgrade(tmp_path, 10, 20, _loop_window("Yeah.", 10))
+    monkeypatch.setattr(MeetingRecorder, "get_meeting_directory", staticmethod(lambda _meeting_id: tmp_path))
+
+    result = finalize_recorded_window_upgrades("meeting-1")
+
+    assert [segment["text"] for segment in result["segments"]] == ["before", "Yeah.", "after"]
+    on_disk = json.loads((tmp_path / "transcript.json").read_text())
+    assert [segment["text"] for segment in on_disk["segments"]] == ["before", "Yeah.", "after"]
+    assert on_disk["extra"] == "preserve-me"
+
+
+def test_finalize_keeps_a_short_genuine_repeat_and_distinct_text(tmp_path, monkeypatch):
+    (tmp_path / "transcript.json").write_text(json.dumps(_transcript()))
+    window = _loop_window("Yeah.", 2) + [{"start": 12.0, "end": 13.0, "text": "Right.", "speaker": None}] + _loop_window("Yeah.", 2, start=13.0)
+    record_window_upgrade(tmp_path, 10, 20, window)
+    monkeypatch.setattr(MeetingRecorder, "get_meeting_directory", staticmethod(lambda _meeting_id: tmp_path))
+
+    result = finalize_recorded_window_upgrades("meeting-1")
+
+    assert [segment["text"] for segment in result["segments"]] == ["before", "Yeah.", "Yeah.", "Right.", "Yeah.", "Yeah.", "after"]
+
+
+def test_finalize_does_not_collapse_a_loop_that_a_later_upgrade_replaced(tmp_path, monkeypatch):
+    (tmp_path / "transcript.json").write_text(json.dumps(_transcript()))
+    record_window_upgrade(tmp_path, 10, 20, _loop_window("Cool.", 10))
+    record_window_upgrade(tmp_path, 10, 20, [{"start": 10, "end": 20, "text": "Real speech here.", "speaker": None}])
+    monkeypatch.setattr(MeetingRecorder, "get_meeting_directory", staticmethod(lambda _meeting_id: tmp_path))
+
+    result = finalize_recorded_window_upgrades("meeting-1")
+
+    assert [segment["text"] for segment in result["segments"]] == ["before", "Real speech here.", "after"]

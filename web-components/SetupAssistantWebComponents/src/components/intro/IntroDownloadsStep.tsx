@@ -113,7 +113,7 @@ export function IntroDownloadsStep({ chosenLocalModelId, onChosenLocalModelIdCha
     <div className="intro-step-body">
       <h3>Model downloads</h3>
       <p className="intro-step-lede">
-        Basil uses models that run on this Mac: two to hear you and one to think. Download them now so they are ready, or skip this and download them later. The next step can also download the thinking model. You can download or change any of them later in Settings, Models.
+        Basil uses models that run on this Mac: two to hear you and one to think. Download them now, or skip this and download them later. The next step can also download the thinking model.
       </p>
 
       {loadState === 'loading' && <p role="status">Checking which models are on this Mac…</p>}

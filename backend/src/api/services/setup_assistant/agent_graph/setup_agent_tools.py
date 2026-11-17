@@ -234,6 +234,9 @@ class SetupAgentToolFactory:
     async def discover_setup_calendar_apps(self) -> Dict[str, Any]:
         return await discovery_tools.discover_setup_calendar_apps(self)
 
+    async def discover_setup_installed_apps(self) -> Dict[str, Any]:
+        return await discovery_tools.discover_setup_installed_apps(self)
+
     async def discover_setup_connections(self) -> Dict[str, Any]:
         return await discovery_tools.discover_setup_connections(self)
 

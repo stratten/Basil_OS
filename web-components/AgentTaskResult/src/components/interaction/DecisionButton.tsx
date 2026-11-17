@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-export type DecisionTone = 'approve' | 'deny' | 'primary' | 'neutral';
+export type DecisionTone = 'approve' | 'deny' | 'stop' | 'primary' | 'neutral';
 
 interface DecisionButtonProps {
   tone: DecisionTone;
@@ -22,7 +22,7 @@ interface DecisionButtonProps {
   className?: string;
 }
 
-/** The one button for every decision row on an approval or a question. It is a small icon-only button, the same size and shape as the Send button in the follow-up box and drawing the same 14px icon as the Stop and Pause controls. The word stays in the page for screen readers, and the tooltip names the action. */
+/** The one button for every decision row on an approval or a question. It is a small icon-only button, the same size and shape as the Send button in the follow-up box and drawing a 17px icon, three pixels larger than the Stop and Pause icons, so the circle and glyph are easy to make out. The word stays in the page for screen readers, and the tooltip names the action. */
 export function DecisionButton({ tone, icon, label, onClick, submit, disabled, title, pressed, lead, className }: DecisionButtonProps) {
   const classes = ['decision-btn', `decision-btn--${tone}`, lead ? 'decision-btn--lead' : '', className ?? '']
     .filter(Boolean)

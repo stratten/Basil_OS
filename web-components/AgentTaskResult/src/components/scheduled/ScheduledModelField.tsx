@@ -1,5 +1,6 @@
 import ReasoningModelPicker from '../../../../shared/ReasoningModelPicker';
 import type { ReasoningModel } from '../../services/api';
+import ScheduledField from './ScheduledField';
 
 export const DEFAULT_MODEL_LABEL = 'Default model';
 
@@ -40,19 +41,7 @@ export function describeScheduledModel(models: ReasoningModel[], modelId?: strin
 // follows whichever reasoning model the app is set to use at run time.
 export default function ScheduledModelField({ models, modelId, onChange, disabled }: Props) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        fontFamily: 'var(--font-family-light)',
-        fontSize: 'var(--font-size-callout)',
-        color: 'var(--text-secondary)',
-      }}
-    >
-      <span style={{ fontFamily: 'var(--font-family-medium)', color: 'var(--text-tertiary)', minWidth: 72 }}>
-        Model
-      </span>
+    <ScheduledField label="Model">
       <ReasoningModelPicker
         models={modelsWithPinned(models, modelId)}
         selectedModelId={modelId || undefined}
@@ -61,6 +50,6 @@ export default function ScheduledModelField({ models, modelId, onChange, disable
         ariaLabel="Scheduled task model"
         onModelChange={next => onChange(next ?? '')}
       />
-    </div>
+    </ScheduledField>
   );
 }

@@ -21,7 +21,7 @@ import {
   type FilePreviewPayload,
 } from '../services/bridge';
 import { getAgentTaskDetail, setBaseUrl } from '../services/api';
-import { applyHostFonts, applyHostTheme } from '../app/themeBootstrap';
+import { applyHostFonts, applyHostTheme } from '../app/host/themeBootstrap';
 import type { AgentTaskEventSubscriber } from '../services/websocket';
 import CrossfadeStack from '@shared/CrossfadeStack';
 import { useManagedVersionHistory } from './artifacts/managedHistory/useManagedVersionHistory';

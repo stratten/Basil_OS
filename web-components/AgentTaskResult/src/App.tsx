@@ -16,21 +16,21 @@ import {
 } from './services/bridge';
 import * as api from './services/api';
 import { agentStore, useSelectedAgent } from './store/agentStore';
-import { applyProcessingDefaults } from './app/themeBootstrap';
-import { hydrateActiveFollowUpChild, hydrateAgentFromBackend, isInFlightAgentStatus } from './app/agentHydration';
-import { useHostBridge } from './app/useHostBridge';
-import type { MissedRunToast } from './app/useHostBridge';
-import { useAgentSelection } from './app/useAgentSelection';
-import { useAgentStatusReporting } from './app/useAgentStatusReporting';
-import { useRunPauseControl } from './app/useRunPauseControl';
-import { useResultWidgetSizing } from './app/useResultWidgetSizing';
-import { useUnfocusedTaskAttention } from './app/useUnfocusedTaskAttention';
+import { applyProcessingDefaults } from './app/host/themeBootstrap';
+import { hydrateActiveFollowUpChild, hydrateAgentFromBackend, isInFlightAgentStatus } from './app/agents/agentHydration';
+import { useHostBridge } from './app/host/useHostBridge';
+import type { MissedRunToast } from './app/host/useHostBridge';
+import { useAgentSelection } from './app/agents/useAgentSelection';
+import { useAgentStatusReporting } from './app/agents/useAgentStatusReporting';
+import { useRunPauseControl } from './app/agents/useRunPauseControl';
+import { useResultWidgetSizing } from './app/sizing/useResultWidgetSizing';
+import { useUnfocusedTaskAttention } from './app/host/useUnfocusedTaskAttention';
 import { useCollapseShortcut } from '@shared/useCollapseShortcut';
 import { AgentTaskResultBody } from './app/AgentTaskResultBody';
 import { BackendLivenessBanner } from '@shared/BackendLivenessBanner';
 import { wsManager } from './services/websocket';
-import { effectiveRootId, isDisplaySourceDetached } from './app/detachedPresentation';
-import { beginRunningAgentCancellation } from './app/runningAgentCancellation';
+import { effectiveRootId, isDisplaySourceDetached } from './app/detached/detachedPresentation';
+import { beginRunningAgentCancellation } from './app/agents/runningAgentCancellation';
 import { deriveRunPhase } from './components/run/runPhase';
 
 // Initialize the processing-bubble CSS variables at module-load time, before

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { DownloadProgress } from '@shared/DownloadProgress'
+import { ignoreLabelClickWhileSelectingText } from '@shared/labelTextSelection'
 import TokenizedSelect from '@shared/TokenizedSelect'
 
 import { reportedBytes } from '@/components/layout/starterDownloads'
@@ -15,6 +16,7 @@ import { IntroContextImport } from './IntroContextImport'
 import { IntroHotkeysStep } from './IntroHotkeysStep'
 import { IntroTrustNote } from './IntroTrustNote'
 import { hasInteractionStyleSelection, IntroInteractionStyle } from './IntroInteractionStyle'
+import { providerModelLabel } from './providerModelLabel'
 
 import {
   copyLocalModelFromNormalBasil,
@@ -210,8 +212,10 @@ export function IntroAndPrivacy({
 
   return (
     <section className="phase-section intro-privacy">
-      <p className="eyebrow">Setup preferences · Step {stepIndex + 1} of {STEP_ORDER.length}</p>
-      <h2>Let's shape how I work around how <em className="emphasis-you">you</em> work.</h2>
+      <h2>Let's set me up to work <em className="emphasis-you">your</em> way.</h2>
+      {currentStep === initialStep && (
+        <p className="intro-step-later intro-settings-note">You can change any of this later in Settings.</p>
+      )}
 
       <div className={stepWrapperClass} key={currentStep} aria-live="polite">
         {currentStep === 'downloads' && (
@@ -278,7 +282,7 @@ export function IntroAndPrivacy({
           ← Back
         </button>
 
-        <div className="intro-step-dots" aria-hidden="true">
+        <div className="intro-step-dots" role="img" aria-label={`Step ${stepIndex + 1} of ${STEP_ORDER.length}`}>
           {STEP_ORDER.map((step, index) => (
             <span
               key={step}
@@ -655,7 +659,12 @@ function IntroModelStep({
 
   const selectRoute = async (option: SetupAgentModelAccessOption) => {
     if (option.mode === 'provider_key') {
-      if (isProviderKeySelected) return
+      // A saved key whose route is selected but not confirmed (the confirmation failed, or has not run) must stay retryable. Returning here would leave "Selected. Finish confirming below." with nothing to finish. An open new-key form is excluded, because that confirms through the key field instead.
+      const isAwaitingSavedKeyConfirmation = isProviderKeySelected
+        && !selectedModelAccess?.resolved
+        && Boolean(savedProvider)
+        && !isEnteringNewKey
+      if (isProviderKeySelected && !isAwaitingSavedKeyConfirmation) return
       setErrorMessage(null)
       if (savedProvider) {
         await confirmSavedProviderKey(modelFor(savedProvider, chosenModelId)?.model_id)
@@ -916,7 +925,7 @@ function IntroModelStep({
                           value={activeModel.model_id}
                           options={activeProviderModels.map(choice => ({
                             value: choice.model_id,
-                            label: choice.recommended ? `${choice.display_name} (Recommended)` : choice.display_name,
+                            label: providerModelLabel(choice),
                           }))}
                           onValueChange={handleModelChange}
                           disabled={pendingMode !== null}
@@ -926,7 +935,7 @@ function IntroModelStep({
                       </div>
                       <p className="choice-option-model-note">
                         Setup Assistant will use <strong>{activeModel.display_name}</strong>
-                        {activeModel.recommended ? ', a balanced choice for speed and quality' : ''}. This only applies to setup. Your default model in Settings → Models stays the same.
+                        {activeModel.recommended ? ', a balanced choice for speed and quality' : ''}. This is only the model for setup, not the only one Basil will ever use, and your default model in Settings → Models stays the same.
                       </p>
                     </div>
                   )}
@@ -942,8 +951,6 @@ function IntroModelStep({
           <p role="alert" style={{ color: 'var(--error-base)', margin: 0 }}>{errorMessage}</p>
         </div>
       </SmoothReveal>
-
-      <p className="intro-step-later">You can change my main models any time in Settings, Models.</p>
 
       <div className={`intro-help${isHelpOpen ? ' intro-help--open' : ''}`}>
         <button
@@ -1025,13 +1032,13 @@ function IntroLearningStep({
           ? 'Checking your saved learning preferences…'
           : settingsUnavailable
             ? 'I couldn’t read your saved learning preferences, so continuing will leave them unchanged.'
-            : 'Both are optional, and nothing is saved without your approval.'}
+            : 'Both are optional. I keep only what you approve, so I don’t have to relearn it.'}
       </p>
 
       <fieldset className="intro-capture-toggles" aria-label="Optional learning preferences">
         <div className="intro-capture-toggle intro-capture-toggle--memory">
           <span className="intro-capture-toggle-accent" aria-hidden="true" />
-          <label className="intro-capture-toggle-label">
+          <label className="intro-capture-toggle-label" onClick={ignoreLabelClickWhileSelectingText}>
             <input
               type="checkbox"
               checked={memoryAfterTaskEnabled}
@@ -1043,21 +1050,10 @@ function IntroLearningStep({
               <span>After work we do together, I'll suggest notes to add to your profile.</span>
             </span>
           </label>
-          <p className="intro-toggle-later">Change this later in <em>Personalization &gt; Personal Context</em>.</p>
-          <details className="intro-toggle-details">
-            <summary>What does this mean?</summary>
-            <p>
-              After I finish helping with a task, I'll review what happened and propose small
-              updates to a personal profile: facts like what you do, who you write to most, the
-              tone you prefer, and the kinds of questions you ask. You review every proposed
-              memory before anything is saved, and you can edit or remove items any time in
-              Settings.
-            </p>
-          </details>
         </div>
         <div className="intro-capture-toggle intro-capture-toggle--skill">
           <span className="intro-capture-toggle-accent" aria-hidden="true" />
-          <label className="intro-capture-toggle-label">
+          <label className="intro-capture-toggle-label" onClick={ignoreLabelClickWhileSelectingText}>
             <input
               type="checkbox"
               checked={skillAfterTaskEnabled}
@@ -1069,24 +1065,6 @@ function IntroLearningStep({
               <span>When a task goes well and could be repeated, I'll suggest saving it as a skill, a named set of steps I can run again.</span>
             </span>
           </label>
-          <p className="intro-toggle-later">Change this later in <em>Capabilities &gt; Automation &amp; Agents &gt; Skills</em>.</p>
-          <details className="intro-toggle-details">
-            <summary>What does this mean?</summary>
-            <p>
-              When a task succeeds, I can pull the moves that worked into a small, named skill:
-              something like "draft a weekly status email from my last three completed tasks" or
-              "pull a meeting agenda from a Slack channel." Next time something similar comes up,
-              I can run that skill instead of re-creating the steps from scratch — which gets you
-              a useful result faster and more consistently, and means I can take more off your
-              plate over time as the catalog grows. Think of them like recipes: once we've made
-              a dish successfully, we don't have to figure out the steps from scratch the next
-              time.
-            </p>
-            <p>
-              You approve or edit each skill before it joins your catalog, and skills are easy
-              to rewrite or delete later.
-            </p>
-          </details>
         </div>
       </fieldset>
       <IntroContextImport modelAccess={selectedModelAccess} onContextImported={onContextImported} onContextImportUndone={onContextImportUndone} />
@@ -1117,8 +1095,8 @@ function IntroNoteStep({
       <h3>{hasStyleGroups ? 'How should I work with you?' : 'Anything else I should know?'}</h3>
       <p className="intro-step-lede">
         {hasStyleGroups
-          ? 'Pick whatever is true of you. All optional, and you can change any of this later in Settings.'
-          : 'Optional. Tell me anything that helps me set things up your way. You can change your preferences later in Settings.'}
+          ? 'Pick whatever is true of you. All optional.'
+          : 'Optional. Tell me anything that helps me set things up your way.'}
       </p>
 
       <IntroInteractionStyle

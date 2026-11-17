@@ -330,6 +330,10 @@ final class ConnectionsSettingsViewModel: ObservableObject {
                 errorMessage = response.message ?? "GitHub authorization returned an unexpected status: \(response.status)"
                 return
             } catch {
+                // Cancel stops the request that was waiting. That is the person's choice, not a failure, and cancelGitHubDeviceFlow has already reset the state (a new sign-in may even have started since).
+                if Task.isCancelled || error is CancellationError || (error as? URLError)?.code == .cancelled {
+                    return
+                }
                 githubDeviceFlow = nil
                 errorMessage = "GitHub authorization failed: \(error.localizedDescription)"
                 return

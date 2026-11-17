@@ -135,21 +135,21 @@ describe('ConnectionsSettingsApp', () => {
     expect(container.querySelector('.connections-settings-banner-info')?.textContent).toBe('Connection added. Fetching tools...')
   })
 
-  it('defaults to the MCP sub-tab and switches to ACP on click', () => {
+  it('defaults to the MCP sub-tab and switches to Agent programs on click', () => {
     sendInit(EMPTY_FIELDS)
     expect(container.querySelector('.connections-panel')).not.toBeNull()
     expect(container.querySelector('.provider-profiles-panel')).toBeNull()
     const buttons = Array.from(container.querySelectorAll<HTMLButtonElement>('.settings-subtabs-tab'))
-    const providerProfilesTab = buttons.find((button) => button.textContent === 'ACP')!
+    const providerProfilesTab = buttons.find((button) => button.textContent === 'Agent programs')!
     act(() => { providerProfilesTab.click() })
     expect(container.querySelector('.provider-profiles-panel')).not.toBeNull()
     expect(container.querySelector('.connections-panel')).toBeNull()
   })
 
-  it('renders the seeded provider profile on the ACP sub-tab', () => {
+  it('renders the seeded provider profile on the Agent programs sub-tab', () => {
     sendInit(EMPTY_FIELDS)
     const buttons = Array.from(container.querySelectorAll<HTMLButtonElement>('.settings-subtabs-tab'))
-    act(() => { buttons.find((button) => button.textContent === 'ACP')!.click() })
+    act(() => { buttons.find((button) => button.textContent === 'Agent programs')!.click() })
     expect(container.querySelector('.provider-profile-row-name')?.textContent).toBe('Codex CLI')
   })
 

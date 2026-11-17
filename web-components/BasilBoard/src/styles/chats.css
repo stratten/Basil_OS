@@ -27,6 +27,12 @@
   align-items: center;
 }
 
+/* The shared collapsed rail paints its own secondary background, which showed as a darker block behind the expand icon. The sidebar already supplies the background and the divider, so the rail is transparent with no border of its own, as in the meeting and companion history sidebars. */
+.chats-sidebar .shared-history-rail {
+  background: transparent;
+  border-right: 0;
+}
+
 .chats-sidebar-header,
 .chats-main-header {
   flex: 0 0 auto;

@@ -151,7 +151,7 @@ export default function ApprovalSetOverlay({
             />
             {onStopTask && (
               <DecisionButton
-                tone="neutral"
+                tone="stop"
                 icon={<StopCircleIcon />}
                 label={isStopping ? 'Stopping' : 'Stop task'}
                 onClick={onStopTask}

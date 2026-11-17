@@ -27,8 +27,9 @@ describe('IntroTrustNote', () => {
   it('says risky actions need approval and that the card explains them first', () => {
     const text = container.textContent ?? ''
     expect(text).toContain('You approve risky actions first.')
-    expect(text).toContain('waits for your approval')
-    expect(text).toContain('explains what the action does before you decide')
+    expect(text).toContain('waits for your approval first')
+    expect(text).toContain('the approval card explains what it does')
+    expect(text).toContain('You can change that in Settings.')
   })
 
   it('links to the privacy and data flow guide in a new window without leaking the opener', () => {

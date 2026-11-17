@@ -365,50 +365,95 @@ describe('ApprovalOverlay agent explanation and remember eligibility', () => {
     expect(markup).toContain('This approval applies to this run only.');
   });
 
-  it('offers a connected tool as always allow for that one tool, with no command pattern', () => {
-    const markup = render({
-      ...shellApproval,
-      command: 'mcp:Gmail:label_message({"messageId":"AAA"})',
-      generalized_pattern: 'mcp:Gmail:label_message({messageId:AAA})',
-      purpose: 'Adds the Receipts label to one message.',
-      whitelist: {
-        eligible: true,
-        reason: '',
-        advice: null,
-        pattern: '',
-        broad: false,
-        tool_policy: { connection_id: 'conn-gmail', connection_name: 'Gmail', tool_name: 'label_message', destructive: false },
-      },
-    });
+  const connectedToolApproval = (toolName: string, destructive: boolean): ExecutionApprovalRequest => ({
+    ...shellApproval,
+    command: `mcp:Gmail:${toolName}({"messageId":"AAA"})`,
+    generalized_pattern: `mcp:Gmail:${toolName}({messageId:AAA})`,
+    reason: 'This tool is set to ask before it runs',
+    purpose: 'Does one thing to one message.',
+    whitelist: {
+      eligible: true,
+      reason: '',
+      advice: null,
+      pattern: '',
+      broad: false,
+      tool_policy: { connection_id: 'conn-gmail', connection_name: 'Gmail', tool_name: toolName, destructive },
+    },
+  });
+
+  it('offers a connected tool as always allow for that one tool, with no command pattern and no cautions until it is ticked', () => {
+    const markup = render(connectedToolApproval('label_message', false));
 
     expect(markup).toContain('Always allow label_message on Gmail');
-    expect(markup).toContain('This changes only this tool. You can undo it in Settings');
     expect(markup).not.toContain('Remember this choice');
     expect(markup).not.toContain('Pattern: ');
     expect(markup).not.toContain('If remembered');
     expect(markup).not.toContain('approval-tool-destructive');
+    expect(markup).not.toContain('This changes only this tool');
+    expect(markup).not.toContain('This tool deletes or sends things.');
   });
 
-  it('warns before always allowing a connected tool that deletes or sends', () => {
-    const markup = render({
-      ...shellApproval,
-      command: 'mcp:Gmail:trash_message({"messageId":"AAA"})',
-      generalized_pattern: 'mcp:Gmail:trash_message({messageId:AAA})',
-      purpose: 'Moves one message to Trash.',
-      whitelist: {
-        eligible: true,
-        reason: '',
-        advice: null,
-        pattern: '',
-        broad: false,
-        tool_policy: { connection_id: 'conn-gmail', connection_name: 'Gmail', tool_name: 'trash_message', destructive: true },
-      },
-    });
+  it('does not repeat that a connected tool is set to ask first, since that is why the card is showing', () => {
+    const markup = render(connectedToolApproval('label_message', false));
 
-    expect(markup).toContain('approval-tool-destructive');
-    expect(markup).toContain('This tool deletes or sends things.');
-    expect(markup).toContain('<code class="approval-pattern__words">trash_message</code>');
-    expect(markup).toContain('Always allow trash_message on Gmail');
+    expect(markup).not.toContain('set to ask before it runs');
+    expect(markup).not.toContain('approval-reason');
+  });
+
+  it('still shows the reason on a shell approval', () => {
+    const markup = render(shellApproval);
+
+    expect(markup).toContain('approval-reason');
+    expect(markup).toContain('Command not in whitelist');
+  });
+
+  async function mountApproval(approval: ExecutionApprovalRequest) {
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(<ApprovalOverlay agentTaskId="task-1" approval={approval} rememberChoice={false} />);
+    });
+    const checkbox = container.querySelector<HTMLInputElement>('.approval-remember input[type="checkbox"]');
+    const toggle = async () => {
+      await act(async () => {
+        checkbox?.click();
+      });
+    };
+    return { container, checkbox, toggle, unmount: () => act(() => root.unmount()) };
+  }
+
+  it('shows one caution under the checkbox only while Always allow is ticked, saying it covers only this tool and can be undone', async () => {
+    const view = await mountApproval(connectedToolApproval('label_message', false));
+    expect(view.checkbox).not.toBeNull();
+    expect(view.container.querySelector('.approval-remember ~ [role="note"]')).toBeNull();
+
+    await view.toggle();
+    const notes = view.container.querySelectorAll('.approval-remember ~ [role="note"]');
+    expect(notes).toHaveLength(1);
+    expect(notes[0].textContent).toContain('Basil will run label_message without asking again.');
+    expect(notes[0].textContent).toContain('This changes only this tool, and you can undo it in Settings → Connections.');
+    expect(notes[0].textContent).not.toContain('deletes or sends');
+    expect(notes[0].className).not.toContain('approval-tool-destructive');
+
+    await view.toggle();
+    expect(view.container.querySelector('.approval-remember ~ [role="note"]')).toBeNull();
+    view.unmount();
+  });
+
+  it('adds the deletes-or-sends warning to that same caution for a destructive connected tool, and only once ticked', async () => {
+    const view = await mountApproval(connectedToolApproval('send_draft', true));
+    expect(view.container.querySelector('.approval-tool-destructive')).toBeNull();
+    expect(view.container.textContent).not.toContain('This tool deletes or sends things.');
+
+    await view.toggle();
+    const notes = view.container.querySelectorAll('.approval-remember ~ [role="note"]');
+    expect(notes).toHaveLength(1);
+    expect(notes[0].className).toContain('approval-tool-destructive');
+    expect(notes[0].textContent).toContain('This tool deletes or sends things.');
+    expect(notes[0].textContent).toContain('Basil will run send_draft without asking again.');
+    expect(notes[0].textContent).toContain('This changes only this tool, and you can undo it in Settings → Connections.');
+    expect(notes[0].querySelector('code.approval-pattern__words')?.textContent).toBe('send_draft');
+    view.unmount();
   });
 
   it('names no connection when the backend sent none', () => {
@@ -489,13 +534,12 @@ describe('ApprovalOverlay compact command presentation', () => {
   const render = (approval: ExecutionApprovalRequest) =>
     renderToStaticMarkup(<ApprovalOverlay agentTaskId="task-1" approval={approval} rememberChoice={false} />);
 
-  it('leads with the explanation and shows only a short preview of a long command', () => {
+  it('leads with the explanation and clamps a long command to its first line behind an expander', () => {
     const markup = render(withPurpose);
 
     expect(markup.indexOf('Lists the subjects in your inbox.')).toBeLessThan(markup.indexOf('osascript get-inbox'));
     expect(markup).toContain('Show full command');
-    expect(markup).not.toContain(longCommand);
-    expect(markup).toContain(`${longCommand.slice(0, 80).trimEnd()}…`);
+    expect(markup).toContain('basil-expandable-clamp__content is-clamped');
   });
 
   it('shows a short command in full with no expander', () => {
@@ -506,7 +550,7 @@ describe('ApprovalOverlay compact command presentation', () => {
     expect(markup).not.toContain('…');
   });
 
-  it('previews only the first line of a multi-line command and reveals the rest on expand', async () => {
+  it('clamps a multi-line command to its first line and lifts the clamp on expand, without swapping the text', async () => {
     const container = document.createElement('div');
     const root = createRoot(container);
     const multiLine = 'echo one\necho two\necho three';
@@ -514,12 +558,17 @@ describe('ApprovalOverlay compact command presentation', () => {
       root.render(<ApprovalOverlay agentTaskId="task-1" approval={{ ...shellApproval, command: multiLine, purpose: 'Echoes.' }} rememberChoice={false} />);
     });
 
-    expect(container.querySelector('.command-display')?.textContent).toBe('echo one…');
+    const commandContent = () => container.querySelector('.command-display .basil-expandable-clamp__content');
+    // The whole command stays in the page so the height can animate; only the clamp hides the rest.
+    expect(commandContent()?.textContent).toBe(multiLine);
+    expect(commandContent()?.classList.contains('is-clamped')).toBe(true);
     const toggle = Array.from(container.querySelectorAll('button')).find(button => button.textContent === 'Show full command');
+    expect(toggle?.getAttribute('aria-expanded')).toBe('false');
     await act(async () => {
       toggle?.click();
     });
-    expect(container.querySelector('.command-display')?.textContent).toBe(multiLine);
+    expect(commandContent()?.textContent).toBe(multiLine);
+    expect(commandContent()?.classList.contains('is-clamped')).toBe(false);
     expect(Array.from(container.querySelectorAll('button')).some(button => button.textContent === 'Hide full command')).toBe(true);
     act(() => root.unmount());
   });
@@ -552,6 +601,12 @@ describe('ApprovalOverlay decision note', () => {
   }
 
   async function typeNote(container: HTMLElement, text: string): Promise<void> {
+    const toggle = container.querySelector<HTMLButtonElement>('.approval-note-toggle');
+    if (toggle?.getAttribute('aria-expanded') === 'false') {
+      await act(async () => {
+        toggle.click();
+      });
+    }
     const textarea = container.querySelector('textarea.approval-note-input') as HTMLTextAreaElement;
     const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
     await act(async () => {
@@ -595,8 +650,73 @@ describe('ApprovalOverlay decision note', () => {
   it('offers only Deny and Approve to decide with, and the note label names exactly those', async () => {
     const { container, unmount } = await renderShellApproval();
 
-    expect(Array.from(container.querySelectorAll('button')).map(button => button.textContent)).toEqual(['Deny', 'Approve']);
+    expect(Array.from(container.querySelectorAll('.decision-btn')).map(button => button.textContent)).toEqual(['Deny', 'Approve']);
+    expect(container.querySelector('.approval-note-region')?.getAttribute('aria-hidden')).toBe('true');
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('.approval-note-toggle')?.click();
+    });
+    expect(container.querySelector('.approval-note-region')?.hasAttribute('aria-hidden')).toBe(false);
     expect(container.textContent).toContain('Note to the agent (optional, sent with Approve or Deny)');
+    unmount();
+  });
+
+  it('starts the note as a single link, opens it into a focused field, and closes it again with the same link', async () => {
+    const { container, unmount } = await renderShellApproval();
+    document.body.appendChild(container);
+    const toggle = () => container.querySelector<HTMLButtonElement>('.approval-note-toggle');
+    const region = () => container.querySelector('.approval-note-region');
+    expect(toggle()?.textContent).toBe('Add a note for the agent');
+    expect(toggle()?.getAttribute('aria-expanded')).toBe('false');
+    expect(region()?.getAttribute('aria-hidden')).toBe('true');
+
+    await act(async () => {
+      toggle()?.click();
+    });
+    const textarea = container.querySelector<HTMLTextAreaElement>('textarea.approval-note-input');
+    expect(toggle()?.textContent).toBe('Hide note');
+    expect(toggle()?.getAttribute('aria-expanded')).toBe('true');
+    expect(region()?.hasAttribute('aria-hidden')).toBe(false);
+    // Focus waits one frame for the region to become visible, because a hidden field cannot take focus.
+    await act(async () => {
+      await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
+    });
+    expect(document.activeElement).toBe(textarea);
+
+    await act(async () => {
+      toggle()?.click();
+    });
+    expect(toggle()?.textContent).toBe('Add a note for the agent');
+    expect(toggle()?.getAttribute('aria-expanded')).toBe('false');
+    expect(region()?.getAttribute('aria-hidden')).toBe('true');
+    container.remove();
+    unmount();
+  });
+
+  it('keeps a typed note when it is hidden, says so on the link, and still sends it', async () => {
+    const { container, unmount } = await renderShellApproval();
+    const toggle = () => container.querySelector<HTMLButtonElement>('.approval-note-toggle');
+    await typeNote(container, 'Check the exit code.');
+    expect(container.querySelector<HTMLTextAreaElement>('textarea.approval-note-input')?.value).toBe('Check the exit code.');
+
+    await act(async () => {
+      toggle()?.click();
+    });
+    expect(container.querySelector('.approval-note-region')?.getAttribute('aria-hidden')).toBe('true');
+    expect(toggle()?.textContent).toBe('Show your note (it will be sent)');
+    expect(container.querySelector<HTMLTextAreaElement>('textarea.approval-note-input')?.value).toBe('Check the exit code.');
+
+    await press(container, 'Approve');
+    expect(submitApprovalDecision.mock.calls[0][0]).toMatchObject({ approved: true, user_note: 'Check the exit code.' });
+    unmount();
+  });
+
+  it('does not claim a hidden note when the field holds only whitespace', async () => {
+    const { container, unmount } = await renderShellApproval();
+    await typeNote(container, '   ');
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('.approval-note-toggle')?.click();
+    });
+    expect(container.querySelector('.approval-note-toggle')?.textContent).toBe('Add a note for the agent');
     unmount();
   });
 
@@ -620,8 +740,9 @@ describe('ApprovalOverlay decision note', () => {
       />,
     );
 
-    expect(shell).toContain('approval-note-input');
-    expect(shell).toContain('maxLength="2000"');
+    expect(shell).toContain('approval-note-toggle');
+    expect(provider).not.toContain('approval-note-toggle');
+    expect(browser).not.toContain('approval-note-toggle');
     expect(provider).not.toContain('approval-note-input');
     expect(browser).not.toContain('approval-note-input');
   });
@@ -655,6 +776,7 @@ describe('ApprovalOverlay settings change approval', () => {
     expect(markup).toContain('cannot be remembered');
     expect(markup).not.toContain('Remember this choice');
     expect(markup).not.toContain('approval-note-input');
+    expect(markup).not.toContain('approval-note-toggle');
     expect(markup).not.toContain('Pattern:');
     expect(markup).not.toContain('command-display');
   });

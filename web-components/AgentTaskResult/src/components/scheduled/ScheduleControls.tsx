@@ -1,5 +1,6 @@
 import Dropdown, { type DropdownOption } from '../Dropdown';
-import { WEEKDAY_LABELS } from './scheduledAgentTaskHelpers';
+import ScheduledField from './ScheduledField';
+import WeekdayChips from './WeekdayChips';
 
 export type ScheduleType = 'one_time' | 'recurring';
 export type RecurringMode = 'daily' | 'weekly' | 'interval';
@@ -49,8 +50,8 @@ const MODE_OPTIONS: DropdownOption<RecurringMode>[] = [
   { value: 'interval', label: 'Every N minutes' },
 ];
 
-// Single-row schedule type / mode / time-or-interval-or-runAt / timezone
-// row, plus an optional weekday-selector row underneath that appears only
+// The labeled Schedule row: schedule type / mode / time-or-interval-or-runAt / timezone
+// on one line, plus an optional weekday-selector line underneath that appears only
 // when the user has chosen a recurring weekly schedule. Used identically
 // inside both the create form and the inline-edit form in
 // ScheduledAgentTaskDetail; consolidating both call sites here means the
@@ -79,16 +80,9 @@ export default function ScheduleControls({
   onToggleWeekday,
 }: Props) {
   return (
-    <>
-      <div
-        style={{
-          display: 'flex',
-          gap: 8,
-          alignItems: 'stretch',
-          flexWrap: 'wrap',
-        }}
-      >
-        <div style={{ flex: '1 1 130px', minWidth: 130 }}>
+    <ScheduledField label="Schedule">
+      <div className="scheduled-field__line">
+        <div className="scheduled-field__grow">
           <Dropdown
             value={scheduleType}
             options={SCHEDULE_TYPE_OPTIONS}
@@ -97,7 +91,7 @@ export default function ScheduleControls({
           />
         </div>
         {scheduleType === 'recurring' && (
-          <div style={{ flex: '1 1 150px', minWidth: 150 }}>
+          <div className="scheduled-field__grow">
             <Dropdown
               value={mode}
               options={MODE_OPTIONS}
@@ -108,37 +102,34 @@ export default function ScheduleControls({
         )}
         {scheduleType === 'recurring' && mode !== 'interval' && (
           <input
-            className="sidebar-search-input schedule-time-input"
+            className="scheduled-input scheduled-input--time"
             type="time"
             value={time}
             onChange={e => onTimeChange(e.target.value)}
-            style={{ flex: '0 0 110px' }}
             aria-label="Time of day"
           />
         )}
         {scheduleType === 'recurring' && mode === 'interval' && (
           <input
-            className="sidebar-search-input"
+            className="scheduled-input scheduled-input--time"
             type="number"
             min={1}
             value={intervalMinutes}
             onChange={e => onIntervalMinutesChange(Number(e.target.value))}
             placeholder="Minutes"
-            style={{ flex: '0 0 110px' }}
             aria-label="Interval in minutes"
           />
         )}
         {scheduleType === 'one_time' && (
           <input
-            className="sidebar-search-input schedule-time-input"
+            className="scheduled-input scheduled-input--datetime"
             type="datetime-local"
             value={runAt}
             onChange={e => onRunAtChange(e.target.value)}
-            style={{ flex: '1 1 200px', minWidth: 200 }}
             aria-label="Run at date and time"
           />
         )}
-        <div style={{ flex: '1 1 200px', minWidth: 180 }}>
+        <div className="scheduled-field__grow scheduled-field__grow--wide">
           <Dropdown
             value={timezone}
             options={timezoneOptions}
@@ -150,40 +141,26 @@ export default function ScheduleControls({
       </div>
 
       {scheduleType === 'recurring' && mode === 'interval' && (
-        <div
-          role="group"
-          aria-label={`${startLabel} (optional)`}
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            gap: 8,
-            color: 'var(--text-primary)',
-            fontFamily: 'var(--font-family-medium)',
-            fontSize: 'var(--font-size-status-small)',
-          }}
-        >
-          <span style={{ whiteSpace: 'nowrap' }}>{startLabel} (optional)</span>
+        <div role="group" aria-label={`${startLabel} (optional)`} className="scheduled-field__line">
+          <span className="scheduled-field__sublabel">{startLabel} (optional)</span>
           <input
-            className="sidebar-search-input schedule-time-input"
+            className="scheduled-input scheduled-input--time"
             type="time"
             value={startTime}
             onChange={e => onStartTimeChange(e.target.value)}
-            style={{ flex: '0 0 120px' }}
             aria-label={`${startLabel} time of day`}
           />
           <input
-            className="sidebar-search-input schedule-time-input"
+            className="scheduled-input scheduled-input--date"
             type="date"
             value={startDate}
             onChange={e => onStartDateChange(e.target.value)}
-            style={{ flex: '0 0 150px' }}
             aria-label={`${startLabel} date (defaults to the next time that clock time comes around)`}
           />
           {(startTime || startDate) && (
             <button
               type="button"
-              className="action-btn"
+              className="action-btn action-btn--neutral"
               onClick={() => {
                 onStartTimeChange('');
                 onStartDateChange('');
@@ -193,7 +170,7 @@ export default function ScheduleControls({
             </button>
           )}
           {startDate && !startTime && (
-            <span role="alert" style={{ flex: '1 1 100%', color: 'var(--text-primary)' }}>
+            <span role="alert" className="scheduled-error scheduled-field__full">
               Add a time for the {startLabel.toLowerCase()}, or clear the date.
             </span>
           )}
@@ -201,34 +178,8 @@ export default function ScheduleControls({
       )}
 
       {scheduleType === 'recurring' && mode === 'weekly' && (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {WEEKDAY_LABELS.map((label, idx) => {
-            const selected = weeklyDays.includes(idx);
-            return (
-              <button
-                key={label}
-                type="button"
-                onClick={() => onToggleWeekday(idx)}
-                aria-pressed={selected}
-                style={{
-                  flex: '1 1 0',
-                  minWidth: 44,
-                  padding: '6px 8px',
-                  border: '1px solid var(--separator-color)',
-                  borderRadius: 'var(--corner-radius-small)',
-                  background: selected ? 'rgba(51, 85, 155, 0.85)' : 'var(--background-tertiary)',
-                  color: selected ? 'white' : 'var(--text-primary)',
-                  fontFamily: 'var(--font-family-medium)',
-                  fontSize: 'var(--font-size-status-small)',
-                  cursor: 'pointer',
-                }}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
+        <WeekdayChips selectedDays={weeklyDays} onToggle={onToggleWeekday} />
       )}
-    </>
+    </ScheduledField>
   );
 }

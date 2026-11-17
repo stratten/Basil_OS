@@ -12,7 +12,7 @@
   border-top: var(--border-thin) solid var(--separator-color);
   background: var(--background-primary);
   opacity: 1;
-  transition: flex-basis 400ms cubic-bezier(0.2, 0.8, 0.2, 1), width 400ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 200ms ease-out;
+  transition: flex-basis var(--motion-move) var(--motion-ease), width var(--motion-move) var(--motion-ease), opacity var(--motion-quick) var(--motion-ease);
 }
 
 .execution-detail-tray[data-presence-phase='entering'],
@@ -30,11 +30,11 @@
 }
 
 .execution-detail-tray > :not(.detail-tray-resize-handle) {
-  transition: opacity 200ms ease-out 100ms, transform 200ms ease-out 100ms;
+  transition: opacity var(--motion-quick) var(--motion-ease) 100ms, transform var(--motion-quick) var(--motion-ease) 100ms;
 }
 
 .execution-detail-tray--resizing {
-  transition: opacity 200ms ease-out;
+  transition: opacity var(--motion-quick) var(--motion-ease);
 }
 
 .execution-detail-tray--run-panel {

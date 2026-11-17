@@ -98,6 +98,7 @@ class SetupActionKind(str, Enum):
     start_model_downloads = "start_model_downloads"
     start_connection_auth = "start_connection_auth"
     refresh_connection_tools = "refresh_connection_tools"
+    register_local_mcp_server = "register_local_mcp_server"
     launch_agent_task = "launch_agent_task"
     launch_assistant_session = "launch_assistant_session"
     run_approved_action_sequence = "run_approved_action_sequence"
@@ -313,6 +314,8 @@ class SetupAgentProviderModelChoice(BaseModel):
     model_id: str
     display_name: str
     recommended: bool = False
+    # True when the person has this model switched on in Settings. The setup list still shows every visible model, and marks the ones that are on.
+    enabled: bool = False
 
 
 class SetupAgentLocalModelChoice(BaseModel):

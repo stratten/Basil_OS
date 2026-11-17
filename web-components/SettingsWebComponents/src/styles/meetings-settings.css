@@ -125,53 +125,10 @@
   background: color-mix(in srgb, var(--primary) 10%, transparent);
 }
 
-.app-exclusion-chips {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.app-exclusion-chip {
-  align-items: center;
-  background: color-mix(in srgb, var(--background-primary) 96%, var(--secondary, var(--primary)));
-  border: 1px solid var(--field-border);
-  border-radius: 999px;
-  color: var(--text-primary);
-  display: inline-flex;
-  font-family: var(--font-family-light);
-  font-size: calc(12px * var(--text-scale, 1));
-  gap: 8px;
-  max-width: 100%;
-  padding: 6px 10px;
-  width: fit-content;
-}
-
-.app-exclusion-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .app-exclusion-icon {
   border-radius: 3px;
   height: 16px;
   width: 16px;
-}
-
-.app-exclusion-required {
-  color: var(--text-secondary);
-  margin-left: auto;
-}
-
-.app-exclusion-remove {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-size: calc(12px * var(--text-scale, 1));
-  margin-left: auto;
-  padding: 0;
 }
 
 .meetings-automation-mode-grid {

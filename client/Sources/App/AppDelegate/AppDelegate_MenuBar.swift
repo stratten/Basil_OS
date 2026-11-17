@@ -49,8 +49,9 @@ extension AppDelegate {
         // Show All Menu
         appMenu.addItem(withTitle: "Show All", action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
         appMenu.addItem(NSMenuItem.separator())
-        let quitMenuItem = appMenu.addItem(withTitle: "Quit \(appName)", action: #selector(StatusBarManager.quitApp), keyEquivalent: "q")
-        quitMenuItem.target = self.statusBarManager // Assuming self (AppDelegate) has a statusBarManager instance
+        // The status bar manager does not exist yet when this menu is built, so a menu item targeting it would have a nil target and AppKit would disable it (and Command-Q with it). Target this delegate and resolve the manager when the item is used.
+        let quitMenuItem = appMenu.addItem(withTitle: "Quit \(appName)", action: #selector(AppDelegate.quitBasil), keyEquivalent: "q")
+        quitMenuItem.target = self
 
         // --- File Menu (to be fully populated in Phase 3) ---
         let fileMenuItem = NSMenuItem()
@@ -105,5 +106,14 @@ extension AppDelegate {
 
     @objc @MainActor func openSettings() {
         SettingsShellWindowController.shared.show()
+    }
+
+    /// Quits through the status bar manager so the backend gets its shutdown request, and falls back to a plain terminate when the manager has not been created yet.
+    @objc @MainActor func quitBasil() {
+        if let statusBarManager {
+            statusBarManager.quitApp()
+        } else {
+            NSApp.terminate(nil)
+        }
     }
 } 

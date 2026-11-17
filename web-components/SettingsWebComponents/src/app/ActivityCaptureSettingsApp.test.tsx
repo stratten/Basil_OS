@@ -140,7 +140,7 @@ describe('ActivityCaptureSettingsApp', () => {
       }))
     })
 
-    expect(container.querySelector('.activity-capture-exclusions-chip')?.textContent).toContain('Terminal')
+    expect(container.querySelector('.icon-chip')?.textContent).toContain('Terminal')
 
     const searchInput = container.querySelector<HTMLInputElement>('.activity-capture-exclusions-search-input')!
     postMessage.mockClear()
@@ -150,13 +150,13 @@ describe('ActivityCaptureSettingsApp', () => {
     const dropdownItem = Array.from(container.querySelectorAll('.activity-capture-exclusions-dropdown-item')).find((el) => el.textContent?.includes('Finder'))!
     act(() => { dropdownItem.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
     expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'requestAddExcludedBundleId', bundleId: 'com.apple.finder' }))
-    expect(Array.from(container.querySelectorAll('.activity-capture-exclusions-chip')).some((el) => el.textContent?.includes('Finder'))).toBe(true)
+    expect(Array.from(container.querySelectorAll('.icon-chip')).some((el) => el.textContent?.includes('Finder'))).toBe(true)
 
-    const removeButton = Array.from(container.querySelectorAll('.activity-capture-exclusions-chip-remove')).find((btn) => btn.closest('.activity-capture-exclusions-chip')?.textContent?.includes('Terminal'))!
+    const removeButton = Array.from(container.querySelectorAll('.icon-chip__remove')).find((btn) => btn.closest('.icon-chip')?.textContent?.includes('Terminal'))!
     postMessage.mockClear()
     act(() => { removeButton.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
     expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'requestRemoveExcludedBundleId', bundleId: 'com.apple.Terminal' }))
-    expect(Array.from(container.querySelectorAll('.activity-capture-exclusions-chip')).some((el) => el.textContent?.includes('Terminal'))).toBe(false)
+    expect(Array.from(container.querySelectorAll('.icon-chip')).some((el) => el.textContent?.includes('Terminal'))).toBe(false)
   })
 
   it('debounces exclusion search text into a requestSearchApps call and only accepts the matching response', () => {
@@ -216,11 +216,11 @@ describe('ActivityCaptureSettingsApp', () => {
     const dropdownItem = Array.from(container.querySelectorAll('.activity-capture-exclusions-dropdown-item')).find((el) => el.textContent?.includes('Parallels Desktop'))!
     act(() => { dropdownItem.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
 
-    const chip = Array.from(container.querySelectorAll('.activity-capture-exclusions-chip')).find((el) => el.textContent?.toLowerCase().includes('parallels'))!
+    const chip = Array.from(container.querySelectorAll('.icon-chip')).find((el) => el.textContent?.toLowerCase().includes('parallels'))!
     expect(chip.textContent).toContain('Parallels Desktop')
     expect(chip.textContent).not.toContain('com.parallels.desktop.console')
-    expect(chip.querySelector('img.activity-capture-exclusions-icon')).not.toBeNull()
-    expect(chip.querySelector('.activity-capture-exclusions-icon-placeholder')).toBeNull()
+    expect(chip.querySelector('img.icon-chip__image')).not.toBeNull()
+    expect(chip.querySelector('.icon-chip__icon--initial')).toBeNull()
   })
 
   it('resolves the name and icon of an already-excluded app straight from the init payload, even when that app is not currently running', () => {
@@ -231,10 +231,10 @@ describe('ActivityCaptureSettingsApp', () => {
       }))
     })
 
-    const chip = Array.from(container.querySelectorAll('.activity-capture-exclusions-chip')).find((el) => el.textContent?.includes('Terminal'))!
+    const chip = Array.from(container.querySelectorAll('.icon-chip')).find((el) => el.textContent?.includes('Terminal'))!
     expect(chip.textContent).toContain('Terminal')
     expect(chip.textContent).not.toContain('com.apple.Terminal')
-    expect(chip.querySelector('img.activity-capture-exclusions-icon')).not.toBeNull()
-    expect(chip.querySelector('.activity-capture-exclusions-icon-placeholder')).toBeNull()
+    expect(chip.querySelector('img.icon-chip__image')).not.toBeNull()
+    expect(chip.querySelector('.icon-chip__icon--initial')).toBeNull()
   })
 })

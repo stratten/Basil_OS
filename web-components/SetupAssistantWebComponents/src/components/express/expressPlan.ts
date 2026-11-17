@@ -25,7 +25,7 @@ export function summaryForComfort(level: ComfortLevel, isYolo = false): string {
     return 'This adds Activity Capture and Meeting and Call Detection to the Basil menu. They are switched on but do not start by themselves, and macOS asks for permission the first time you use them.'
   }
   if (isYolo) {
-    return 'This turns on everything useful and downloads the models this Mac can run. Untick anything below that you do not want. Anything under Listening and capture starts every time Basil launches.'
+    return 'This turns on everything useful and downloads the models this Mac can run, except the Voice Listener, which starts unticked because it can react to sounds that are not you. Untick anything below that you do not want, or tick the Voice Listener if you want it. Anything under Listening and capture that stays ticked starts every time Basil launches.'
   }
   return 'This turns on everything you leave ticked below. Anything under Listening and capture starts every time Basil launches.'
 }
@@ -39,6 +39,11 @@ export function comfortTitle(level: ComfortLevel): string {
 /** The items the person sees. A native item appears only when the app can act on it. */
 export function visibleItems(plan: ExpressPlan, nativeHandledIds: ReadonlySet<string>): ExpressItem[] {
   return plan.items.filter(item => !item.native || nativeHandledIds.has(item.id))
+}
+
+/** The ids the review starts unticked: items the plan offers that it does not want on unless the person ticks them. */
+export function defaultUntickedIds(plan: ExpressPlan): Set<string> {
+  return new Set(plan.items.filter(item => item.selected && !item.default_ticked).map(item => item.id))
 }
 
 /** The ids that will be applied: every item the plan selected that the person has not unticked. */

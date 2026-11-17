@@ -2,7 +2,7 @@
 .checkpoint-presence-region {
   opacity: 1;
   transform: translateY(0);
-  transition: opacity 200ms ease-out, transform 200ms ease-out;
+  transition: opacity var(--motion-quick) var(--motion-ease), transform var(--motion-quick) var(--motion-ease);
 }
 
 .checkpoint-presence-region--overlay {
@@ -134,9 +134,9 @@
   min-width: 0;
 }
 
-/* The question and its details give up space more slowly than the answer options (shrink 0.6 against 1), and keep a floor of their own, so a long option list cannot squeeze the exact text being approved down to a sliver. The options keep a floor too, enough for the hint, a couple of choices, and the buttons. */
+/* The question and its details keep a floor of their own, so a long option list cannot squeeze the exact text being approved down to a sliver, and the options keep a floor too, enough for the hint, a couple of choices, and the buttons. The shrink factor must stay at 1 or more: once the options reach their floor the details are the only item left to shrink, and a factor below 1 makes the browser shrink them by that fraction of the overflow only, which pushes the answer area and the buttons out of the card where they cannot be scrolled to. */
 .checkpoint-flow-content--overlay .checkpoint-prompt-details {
-  flex: 1 0.6 auto;
+  flex: 1 1 auto;
   min-height: min(160px, 20vh);
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -404,7 +404,7 @@
   border: var(--border-thin) solid var(--separator-color);
   border-radius: var(--corner-radius-medium);
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  transition: border-color var(--motion-quick) var(--motion-ease), background var(--motion-quick) var(--motion-ease), box-shadow var(--motion-quick) var(--motion-ease);
 }
 
 .checkpoint-choice-card:hover:not(:disabled):not(.selected) {
@@ -550,7 +550,7 @@
   -webkit-caret-color: var(--text-primary);
   resize: vertical;
   outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color var(--motion-quick) var(--motion-ease), box-shadow var(--motion-quick) var(--motion-ease);
   -webkit-user-select: text;
   user-select: text;
 }

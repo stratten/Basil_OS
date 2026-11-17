@@ -55,6 +55,18 @@ describe('PermissionsSettingsApp', () => {
     expect(document.activeElement).toBe(commandSecurityTab)
   })
 
+  it('offers a Your Data and Uninstall sub-tab, and its button returns to the Application list', () => {
+    const tab = (label: string) => Array.from(container.querySelectorAll<HTMLButtonElement>('[role="tab"]')).find((candidate) => candidate.textContent === label)!
+    act(() => { tab('Your Data and Uninstall').click() })
+    expect(tab('Your Data and Uninstall').getAttribute('aria-selected')).toBe('true')
+    expect(container.querySelector('#permissions-sub-panel-your-data')?.classList.contains('permissions-sub-tab-hidden')).toBe(false)
+    expect(container.textContent).toContain('Uninstall Basil.command')
+
+    const seePermissions = Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'See the permissions Basil has')!
+    act(() => { seePermissions.click() })
+    expect(tab('Application').getAttribute('aria-selected')).toBe('true')
+  })
+
   it('honors an externally requested sub-tab on mount', () => {
     act(() => { root.unmount() })
     container.remove()

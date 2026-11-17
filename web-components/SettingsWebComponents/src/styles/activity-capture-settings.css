@@ -91,42 +91,6 @@
   padding: 10px;
 }
 
-.activity-capture-exclusions-chips {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.activity-capture-exclusions-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border: 1px solid var(--field-border);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--background-primary) 96%, var(--secondary, var(--primary)));
-  font-size: calc(12px * var(--text-scale, 1));
-  width: fit-content;
-  max-width: 100%;
-}
-
-.activity-capture-exclusions-chip > span:nth-child(2) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.activity-capture-exclusions-chip-remove {
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: calc(13px * var(--text-scale, 1));
-  line-height: 1;
-  cursor: pointer;
-  padding: 2px;
-}
-
 .activity-capture-exclusions-icon {
   width: 16px;
   height: 16px;

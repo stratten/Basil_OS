@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ExecutionApprovalRequest } from '../types';
 import * as api from '../services/api';
 import { agentStore } from '../store/agentStore';
-import { hydrateActiveFollowUpChild, hydrateAgentFromBackend } from '../app/agentHydration';
+import { hydrateActiveFollowUpChild, hydrateAgentFromBackend } from '../app/agents/agentHydration';
 import BrowserSensitiveApprovalDetails from './approval/BrowserSensitiveApprovalDetails';
 import SettingsChangeApprovalDetails from './approval/SettingsChangeApprovalDetails';
 import ApprovalExplanationSection, { approvalCanBeRemembered } from './approval/ApprovalExplanationSection';
@@ -10,6 +10,8 @@ import ResponseCountdown from './interaction/ResponseCountdown';
 import { COMMAND_PREVIEW_CHARS, previewCommand } from './approval/commandPreview';
 import { ApproveCircleIcon, DenyCircleIcon, StopCircleIcon, WorkLogCircleIcon } from '@shared/CircleControlIcons';
 import { DecisionActions, DecisionButton } from './interaction/DecisionButton';
+import CollapsibleRegion from '@shared/CollapsibleRegion';
+import ExpandableClamp from '@shared/ExpandableClamp';
 
 export { COMMAND_PREVIEW_CHARS, previewCommand };
 
@@ -40,6 +42,15 @@ export default function ApprovalOverlay({
   const [scriptExpanded, setScriptExpanded] = useState(false);
   const [sensitiveValue, setSensitiveValue] = useState('');
   const [note, setNote] = useState('');
+  const [noteOpen, setNoteOpen] = useState(false);
+  const noteInputRef = useRef<HTMLTextAreaElement>(null);
+
+  // The field stays mounted while collapsed, and a collapsed region is still invisible when this effect first runs (a hidden field cannot take focus), so focus waits one frame for it to become visible.
+  useEffect(() => {
+    if (!noteOpen) return undefined;
+    const frame = requestAnimationFrame(() => noteInputRef.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [noteOpen]);
 
   const isAppleScript = approval.execution_type === 'applescript';
   const isBrowserSensitiveFill = approval.execution_type === 'browser_sensitive_fill';
@@ -51,7 +62,7 @@ export default function ApprovalOverlay({
     ? permissionSubject.command
     : undefined;
   const commandText = providerCommand || approval.command || '';
-  const { preview: commandPreview, previewable: isLong } = previewCommand(commandText);
+  const { previewable: isLong } = previewCommand(commandText);
   const needsUserEntry = approval.browser_metadata?.value_source === 'user_entry';
   const scriptContent = approval.script_content;
   const scriptLineCount = scriptContent ? scriptContent.split('\n').length : 0;
@@ -199,7 +210,10 @@ export default function ApprovalOverlay({
           {!showSettingsDiff && (
           <div className="approval-section">
             <div className="command-display">
-              {commandExpanded || !isLong ? commandText : commandPreview}
+              {/* The whole command is always present and only clamped to its first line, so opening it is a height animation rather than a swap of two texts. */}
+              <ExpandableClamp expanded={commandExpanded || !isLong} collapsedLines={1} className="approval-command-clamp">
+                {commandText}
+              </ExpandableClamp>
             </div>
             {isLong && (
               <button
@@ -238,13 +252,11 @@ export default function ApprovalOverlay({
                   <code>{approval.script_path}</code>
                 </div>
               )}
-              {scriptExpanded && (
-                <div
-                  className="command-display approval-script-preview"
-                >
+              <CollapsibleRegion expanded={scriptExpanded}>
+                <div className="command-display approval-script-preview">
                   {scriptContent}
                 </div>
-              )}
+              </CollapsibleRegion>
             </div>
           )}
 
@@ -263,10 +275,12 @@ export default function ApprovalOverlay({
             </div>
           )}
 
-          {/* Reason */}
-          <p className="approval-reason">
-            {approval.reason}
-          </p>
+          {/* Reason. A connected tool's reason is always that it is set to ask first, which is why the card is on screen at all, so it is left out. */}
+          {!toolPolicy && (
+            <p className="approval-reason">
+              {approval.reason}
+            </p>
+          )}
 
           {/* What ticking Remember would store. Newer backends send the pattern with the whitelist status; older ones only send the generalized pattern. */}
           {approval.generalized_pattern && !rememberedPattern && !isSettingsChange && !toolPolicy && (
@@ -293,21 +307,35 @@ export default function ApprovalOverlay({
             </div>
           )}
 
+          {/* The note is rarely wanted, so it starts as a link and opens into the field. The same link closes it again; text already typed is kept and still sent, and the link says so. */}
           {noteAllowed && (
             <div className="approval-section">
-              <label className="approval-field-label" htmlFor={`approval-note-${approval.approval_id}`}>
-                Note to the agent (optional, sent with Approve or Deny)
-              </label>
-              <textarea
-                id={`approval-note-${approval.approval_id}`}
-                className="approval-note-input"
-                rows={2}
-                maxLength={2000}
-                value={note}
+              <button
+                type="button"
+                className="approval-link-button approval-note-toggle"
+                aria-expanded={noteOpen}
+                aria-controls={`approval-note-region-${approval.approval_id}`}
                 disabled={submitting}
-                placeholder="For example: that file is in ~/Documents, not here. Or: approve, but also check the exit code."
-                onChange={e => setNote(e.target.value)}
-              />
+                onClick={() => setNoteOpen(!noteOpen)}
+              >
+                {noteOpen ? 'Hide note' : note.trim() ? 'Show your note (it will be sent)' : 'Add a note for the agent'}
+              </button>
+              <CollapsibleRegion expanded={noteOpen} id={`approval-note-region-${approval.approval_id}`} className="approval-note-region">
+                <label className="approval-field-label" htmlFor={`approval-note-${approval.approval_id}`}>
+                  Note to the agent (optional, sent with Approve or Deny)
+                </label>
+                <textarea
+                  ref={noteInputRef}
+                  id={`approval-note-${approval.approval_id}`}
+                  className="approval-note-input"
+                  rows={2}
+                  maxLength={2000}
+                  value={note}
+                  disabled={submitting}
+                  placeholder="For example: that file is in ~/Documents, not here. Or: approve, but also check the exit code."
+                  onChange={e => setNote(e.target.value)}
+                />
+              </CollapsibleRegion>
             </div>
           )}
 
@@ -315,11 +343,6 @@ export default function ApprovalOverlay({
           {!isProviderPermission && !rememberAllowed && (
             <p className="approval-remember-blocked" role="note">
               This approval applies to this run only. {approval.whitelist?.reason}
-            </p>
-          )}
-          {!isProviderPermission && rememberAllowed && toolPolicy?.destructive && (
-            <p className="approval-tool-destructive" role="note">
-              <strong>This tool deletes or sends things.</strong> If you tick Always allow, Basil will run <code className="approval-pattern__words">{toolPolicy.tool_name}</code> without asking again. Leave it unticked unless you want that.
             </p>
           )}
           {!isProviderPermission && rememberAllowed && (
@@ -337,9 +360,11 @@ export default function ApprovalOverlay({
                   : 'Remember this choice'}
             </label>
           )}
-          {!isProviderPermission && rememberAllowed && toolPolicy && (
-            <p className="approval-pattern approval-pattern--remembered">
-              This changes only this tool. You can undo it in Settings → Connections.
+          {/* Only once Always allow is ticked: what it will do, and that it is limited to this one tool and can be undone. */}
+          {!isProviderPermission && rememberAllowed && toolPolicy && remember && (
+            <p className={toolPolicy.destructive ? 'approval-tool-destructive' : 'approval-pattern approval-pattern--remembered'} role="note">
+              {toolPolicy.destructive && <><strong>This tool deletes or sends things.</strong>{' '}</>}
+              Basil will run <code className="approval-pattern__words">{toolPolicy.tool_name}</code> without asking again. This changes only this tool, and you can undo it in Settings → Connections.
             </p>
           )}
 
@@ -360,7 +385,7 @@ export default function ApprovalOverlay({
           )}
           {onStopTask && (
             <DecisionButton
-              tone="neutral"
+              tone="stop"
               icon={<StopCircleIcon />}
               label={isStopping ? 'Stopping' : 'Stop task'}
               onClick={onStopTask}

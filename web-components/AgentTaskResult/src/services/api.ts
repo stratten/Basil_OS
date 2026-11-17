@@ -473,6 +473,10 @@ export interface ScheduleConnection {
   description?: string | null;
   enabled: boolean;
   last_connection_status?: string | null;
+  /** What identifies the connection for its icon; the name cannot, because the person can rename it. */
+  server_url?: string | null;
+  /** The icon the connection's server advertised, already fetched and checked by the backend, as a data URL. */
+  server_icon_data_url?: string | null;
 }
 
 export async function listScheduleConnections(): Promise<{ connections: ScheduleConnection[] }> {

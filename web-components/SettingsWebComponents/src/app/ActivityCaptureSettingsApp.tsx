@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import IconChipList from '@shared/IconChipList'
 import { Switch } from '@shared/Switch'
 import TokenizedSelect from '@shared/TokenizedSelect'
 import {
@@ -431,32 +432,15 @@ export function ActivityCaptureSettingsApp() {
               )}
             </div>
           )}
-          <div className="activity-capture-exclusions-chips">
-            {current.excludedBundleIds.length === 0 ? (
-              <p className="activity-capture-hint">No excluded apps selected.</p>
-            ) : (
-              current.excludedBundleIds.map((bundleId) => {
-                const app = knownAppsByBundleId[bundleId]
-                const label = app?.name ?? bundleId
-                return (
-                  <span key={bundleId} className="activity-capture-exclusions-chip">
-                    {app?.iconDataUrl
-                      ? <img src={app.iconDataUrl} alt="" className="activity-capture-exclusions-icon" />
-                      : <span className="activity-capture-exclusions-icon activity-capture-exclusions-icon-placeholder" aria-hidden="true" />}
-                    <span>{label}</span>
-                    <button
-                      type="button"
-                      className="activity-capture-exclusions-chip-remove"
-                      onClick={() => removeExclusion(bundleId)}
-                      aria-label={`Remove ${label}`}
-                    >
-                      ×
-                    </button>
-                  </span>
-                )
-              })
-            )}
-          </div>
+          <IconChipList
+            groupLabel="Excluded apps"
+            emptyText="No excluded apps selected."
+            entries={current.excludedBundleIds.map((bundleId) => {
+              const app = knownAppsByBundleId[bundleId]
+              return { key: bundleId, name: app?.name ?? bundleId, iconSources: app?.iconDataUrl ? [app.iconDataUrl] : [], kind: 'app' }
+            })}
+            onRemove={(entry) => removeExclusion(entry.key)}
+          />
         </div>
       </section>
 

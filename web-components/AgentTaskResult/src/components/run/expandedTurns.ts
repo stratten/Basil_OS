@@ -1,4 +1,4 @@
-import type { ChainExpansionMode } from '../../app/chainExpansionPreference';
+import type { ChainExpansionMode } from '../../app/display/chainExpansionPreference';
 
 // Earlier turns of a chain are listed in the order they were opened, so "most recent" is the last entry.
 

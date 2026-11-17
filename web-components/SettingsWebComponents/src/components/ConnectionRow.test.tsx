@@ -204,6 +204,19 @@ describe('ConnectionRow', () => {
     expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'requestReconnectConnection', connectionId: 'conn-1' }))
   })
 
+  it('shows a local server as running on this Mac instead of its internal address', () => {
+    render({ ...CONNECTION, authKind: 'local', serverUrl: 'basil-stdio://conn-1' })
+    expect(container.querySelector('.connections-row-url')?.textContent).toBe('Runs on this Mac')
+    expect(container.textContent).not.toContain('basil-stdio://')
+  })
+
+  it('reconnects a local server by starting it again rather than asking for a sign-in', () => {
+    render({ ...CONNECTION, authKind: 'local', serverUrl: 'basil-stdio://conn-1', lastConnectionStatus: 'needs_reconnect' })
+    act(() => { buttonLabeled('Reconnect')!.click() })
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'requestRefreshTools', connectionId: 'conn-1' }))
+    expect(postMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'requestReconnectConnection' }))
+  })
+
   it('disables Reconnect while another request is pending', () => {
     render({ ...CONNECTION, lastConnectionStatus: 'needs_reconnect' }, 'other-request')
     expect(buttonLabeled('Reconnect')!.disabled).toBe(true)

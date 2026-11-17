@@ -4,7 +4,12 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import TextFollowUp from './TextFollowUp';
-import { resetFollowUpComposerViews, setFollowUpComposerCollapsed } from '../store/followUpComposerViewStore';
+import {
+  foldFollowUpComposerForRun,
+  isFollowUpComposerCollapsed,
+  resetFollowUpComposerViews,
+  setFollowUpComposerCollapsed,
+} from '../store/followUpComposerViewStore';
 import { requestFollowUpLineAdded, requestFollowUpPrefill, resetFollowUpPrefillRequests } from '../store/followUpPrefillStore';
 import { discardComposerDraft, loadComposerDraft, resetComposerDrafts } from '../store/composerDraftStore';
 
@@ -33,6 +38,7 @@ const mocks = vi.hoisted(() => ({
   filesPickedHandler: null as ((paths: string[]) => void) | null,
   registerFilesPickedHandler: vi.fn<(handler: (paths: string[]) => void) => () => void>(() => () => {}),
   pickFiles: vi.fn(),
+  requestResize: vi.fn(),
   openChecklistWindow: vi.fn(),
 }));
 
@@ -64,6 +70,7 @@ vi.mock('../store/agentStore', () => ({
 vi.mock('../services/bridge', () => ({
   registerFilesPickedHandler: mocks.registerFilesPickedHandler,
   pickFiles: mocks.pickFiles,
+  requestResize: mocks.requestResize,
 }));
 
 let container: HTMLDivElement;
@@ -426,6 +433,84 @@ describe('TextFollowUp collapsing', () => {
 
     await mount({ alwaysVisible: true });
     expect(bar()!.getAttribute('aria-expanded')).toBe('false');
+  });
+});
+
+describe('TextFollowUp at the end of a run', () => {
+  const mount = async (props: { alwaysVisible?: boolean } = {}) => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    await act(async () => {
+      root.render(<TextFollowUp agentTaskId="task-1" onCancel={vi.fn()} {...props} />);
+    });
+  };
+  const bar = () => container.querySelector('button.text-followup-bar') as HTMLButtonElement | null;
+  const editor = () => container.querySelector('[role="textbox"][aria-label="Message"]') as HTMLDivElement;
+
+  beforeEach(() => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 560 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 500 });
+  });
+
+  it('opens a box the run folded, grows the window by the room it takes, and does not take focus', async () => {
+    foldFollowUpComposerForRun('task-1', 'turn-1');
+    expect(isFollowUpComposerCollapsed('task-1')).toBe(true);
+
+    await mount({ alwaysVisible: true });
+
+    expect(bar()).toBeNull();
+    expect(isFollowUpComposerCollapsed('task-1')).toBe(false);
+    expect(document.activeElement).not.toBe(editor());
+    expect(mocks.requestResize).toHaveBeenCalledTimes(1);
+    expect(mocks.requestResize).toHaveBeenCalledWith(560, 620, 'content');
+  });
+
+  it('leaves a box the reader folded folded, and does not grow the window', async () => {
+    setFollowUpComposerCollapsed('task-1', true);
+    await mount({ alwaysVisible: true });
+
+    expect(bar()!.getAttribute('aria-expanded')).toBe('false');
+    expect(mocks.requestResize).not.toHaveBeenCalled();
+  });
+
+  it('leaves a box the reader reopened during the run as it was, and does not grow the window', async () => {
+    foldFollowUpComposerForRun('task-1', 'turn-1');
+    setFollowUpComposerCollapsed('task-1', false);
+    await mount({ alwaysVisible: true });
+
+    expect(bar()).toBeNull();
+    expect(mocks.requestResize).not.toHaveBeenCalled();
+  });
+
+  it('does not grow the window for a box that was never folded', async () => {
+    await mount({ alwaysVisible: true });
+    expect(mocks.requestResize).not.toHaveBeenCalled();
+  });
+
+  it('still takes focus for an explicit follow-up request after a run folded the box', async () => {
+    foldFollowUpComposerForRun('task-1', 'turn-1');
+    await mount({ alwaysVisible: false });
+
+    expect(bar()).toBeNull();
+    expect(document.activeElement).toBe(editor());
+  });
+
+  it('grows only as far as the window ceiling allows', async () => {
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 850 });
+    foldFollowUpComposerForRun('task-1', 'turn-1');
+    await mount({ alwaysVisible: true });
+
+    expect(mocks.requestResize).toHaveBeenCalledWith(560, 900, 'content');
+  });
+
+  it('asks for no growth when the window is already at the ceiling', async () => {
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 900 });
+    foldFollowUpComposerForRun('task-1', 'turn-1');
+    await mount({ alwaysVisible: true });
+
+    expect(bar()).toBeNull();
+    expect(mocks.requestResize).not.toHaveBeenCalled();
   });
 });
 

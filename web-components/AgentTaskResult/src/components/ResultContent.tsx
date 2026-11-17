@@ -35,11 +35,11 @@ import { useAgentWait } from '../store/agentWaits';
 import { SuggestedFollowUps } from './SuggestedFollowUps';
 import { hasContentBelowFold, isAtBottom, readingEarlierAfterScroll } from './liveScrollFollow';
 import { deriveRunPhase, isActivityInCard, showsRunStatusCard } from './run/runPhase';
-import { prefersReducedMotion, scrollOffsetForElement, type RunNavigationRequest } from './run/runNavigation';
+import { prefersReducedMotion, type RunNavigationRequest } from './run/runNavigation';
 import { useRunNavigationScroll } from './run/useRunNavigationScroll';
 import { useExpandedTurns } from './run/useExpandedTurns';
 import { TurnExpansionControls } from './run/TurnExpansionControls';
-import { useChainExpansionMode } from '../app/chainExpansionPreference';
+import { useChainExpansionMode } from '../app/display/chainExpansionPreference';
 import type { SearchFocus } from '@shared/search/searchFocusStore';
 import { useSearchHighlight } from '@shared/search/useSearchHighlight';
 
@@ -209,18 +209,16 @@ export default function ResultContent({
     onJumpToLatestContent,
   });
 
-  // A finished multi-turn task opens at its latest turn, like a conversation; a running one keeps following the live output.
+  // A finished task opens at the very end of its history, like a conversation, and not at the top of its latest request. A running one keeps following the live output instead.
   const openedAtLatestForRef = useRef<string>();
   const chainKey = agentTask.rootTaskId || agentTask.agentTaskId;
   useEffect(() => {
-    if (!hasTurnChain || openedAtLatestForRef.current === chainKey) return;
+    if (openedAtLatestForRef.current === chainKey) return;
     openedAtLatestForRef.current = chainKey;
     const container = scrollRef.current;
     if (isProcessing || suppressOpenAtLatest || !container) return;
-    const latestLabel = Array.from(container.querySelectorAll<HTMLElement>('[data-run-anchor]'))
-      .find(element => element.dataset.runAnchor === currentRunId);
-    if (latestLabel) container.scrollTop = scrollOffsetForElement(container, latestLabel);
-  }, [chainKey, currentRunId, hasTurnChain, isProcessing, suppressOpenAtLatest]);
+    container.scrollTop = container.scrollHeight;
+  }, [chainKey, isProcessing, suppressOpenAtLatest]);
 
   const handleMainContentScroll = useCallback(() => {
     const el = scrollRef.current;

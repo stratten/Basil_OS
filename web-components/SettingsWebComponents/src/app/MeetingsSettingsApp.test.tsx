@@ -65,10 +65,10 @@ describe('MeetingsSettingsApp', () => {
 
   it('renders the required Basil chip as non-removable', () => {
     sendInit()
-    const chips = Array.from(container.querySelectorAll('.app-exclusion-chip'))
+    const chips = Array.from(container.querySelectorAll('.icon-chip'))
     const basilChip = chips.find((chip) => chip.textContent?.includes('Basil'))
-    expect(basilChip?.querySelector('.app-exclusion-required')?.textContent).toBe('Required')
-    expect(basilChip?.querySelector('.app-exclusion-remove')).toBeNull()
+    expect(basilChip?.querySelector('.icon-chip__locked')?.textContent).toBe('Required')
+    expect(basilChip?.querySelector('.icon-chip__remove')).toBeNull()
   })
 
   it('disables the inactivity timeout field when auto-end is off', () => {

@@ -20,6 +20,8 @@ final class SettingsShellWindowController: NSWindowController, NSWindowDelegate,
     private var appearanceColorWell: NSColorWell?
     private var appearanceColorPickerField: ReactAppearanceColorPickerField?
     private var pendingSettingsShellNavigation: [String: String]?
+    /// True once the Settings page has reported ready for the current web view. Reset when the window is built and when it closes.
+    private var isSettingsPageReady = false
 
     private var hotkeyBindings: [String: HotkeyBinding] = [:]
     private var enableMonitoringAtStartup: Bool = false
@@ -125,13 +127,26 @@ final class SettingsShellWindowController: NSWindowController, NSWindowDelegate,
     }
 
     func show() {
-        if window == nil || appearanceWebView == nil {
+        let plan = SettingsShellShowPlan.resolve(
+            hasLiveWindow: window != nil && appearanceWebView != nil,
+            pageIsReady: isSettingsPageReady
+        )
+        switch plan {
+        case .buildAndLoad:
             let cached = APIClient.shared.getCachedAppearanceSettings()
             draftSettings = cached
             persistedSettings = cached
             buildWindow()
+            appearanceWebView?.loadContent()
+        case .reuseLoadedPage:
+            // The page is already showing the person's place. Reloading would reset the tab, sub-tab and scroll, so only a requested navigation is sent.
+            sendPendingSettingsShellNavigation()
+        case .reuseLoadingPage:
+            break
         }
-        appearanceWebView?.loadContent()
+        if window?.isMiniaturized == true {
+            window?.deminiaturize(nil)
+        }
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -159,6 +174,7 @@ final class SettingsShellWindowController: NSWindowController, NSWindowDelegate,
     }
 
     private func buildWindow() {
+        isSettingsPageReady = false
         let appearanceWebView = ReactAppearanceSettingsWebView()
         self.appearanceWebView = appearanceWebView
 
@@ -248,6 +264,7 @@ final class SettingsShellWindowController: NSWindowController, NSWindowDelegate,
 
         appearanceWebView.onReady = { [weak self] in
             guard let self else { return }
+            self.isSettingsPageReady = true
             appearanceWebView.sendInit(revision: self.revision, settings: self.draftSettings, availableFonts: AestheticSystem.availableFonts)
             self.sendPendingSettingsShellNavigation()
         }
@@ -520,6 +537,7 @@ final class SettingsShellWindowController: NSWindowController, NSWindowDelegate,
         homeWebView = nil
         shellBridge = nil
         pendingSettingsShellNavigation = nil
+        isSettingsPageReady = false
     }
 
     private func presentAppearanceColorPicker(_ request: ReactAppearanceColorPickerRequest) {

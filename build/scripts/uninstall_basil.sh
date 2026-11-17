@@ -2,7 +2,7 @@
 
 # Basil uninstaller.
 #
-# Removes Basil and everything Basil has put on this Mac: the app, its databases, recordings, downloaded models, preferences, caches, saved sign-in tokens, saved API keys, and the permissions macOS granted it.
+# Removes Basil and everything Basil has put on this Mac: the app, its databases, recordings, downloaded models, preferences, caches, saved sign-in tokens, saved API keys, and the permissions macOS granted it. With --app-only it removes just the app, and with --data-only just the data.
 #
 # Every location it can touch is listed in the two tables below, so you can read exactly what it will do before you run it. It only acts on those locations. It never searches your disk, and it never deletes files you made in other places (for example documents Basil saved to your Desktop or Documents folder).
 #
@@ -12,6 +12,8 @@
 #   ./uninstall_basil.sh --yes        Remove everything without asking.
 #   ./uninstall_basil.sh --keep-models  Keep the downloaded AI models in ~/.basil/models (they are large and can be downloaded again).
 #   ./uninstall_basil.sh --keep-app   Remove the data but leave the app installed.
+#   ./uninstall_basil.sh --data-only  The same as --keep-app: remove the data, saved keys and permissions, and leave the app installed.
+#   ./uninstall_basil.sh --app-only   Remove only the app. Your data, saved keys, settings and permissions stay, so installing Basil again picks up where you left off.
 #   ./uninstall_basil.sh --help       Show this help.
 
 set -u
@@ -25,6 +27,7 @@ DRY_RUN=0
 ASSUME_YES=0
 KEEP_MODELS=0
 KEEP_APP=0
+APP_ONLY=0
 
 # Each row is "path|what it holds". The app bundle rows are handled separately so --keep-app can skip them.
 APP_BUNDLE_TABLE=(
@@ -64,7 +67,7 @@ else
 fi
 
 print_usage() {
-    sed -n '3,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '3,17p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
 }
 
 fail() {
@@ -77,11 +80,19 @@ for argument in "$@"; do
         --dry-run) DRY_RUN=1 ;;
         --yes|-y) ASSUME_YES=1 ;;
         --keep-models) KEEP_MODELS=1 ;;
-        --keep-app) KEEP_APP=1 ;;
+        --keep-app|--data-only) KEEP_APP=1 ;;
+        --app-only) APP_ONLY=1 ;;
         --help|-h) print_usage; exit 0 ;;
         *) fail "Unknown option: $argument (use --help)" ;;
     esac
 done
+
+if [ "$APP_ONLY" -eq 1 ] && [ "$KEEP_APP" -eq 1 ]; then
+    fail "--app-only removes only the app and --keep-app or --data-only removes everything except the app, so they cannot be combined. Choose one."
+fi
+if [ "$APP_ONLY" -eq 1 ] && [ "$KEEP_MODELS" -eq 1 ]; then
+    fail "--keep-models has no effect with --app-only, because --app-only already leaves all of your data in place. Remove one of the two options."
+fi
 
 [ "$(uname -s)" = "Darwin" ] || fail "This uninstaller is for macOS only."
 [ "$(id -u)" -ne 0 ] || fail "Do not run this with sudo. It must run as the same user who uses Basil, because Basil's data lives in that user's home folder."
@@ -171,7 +182,13 @@ print_plan() {
 
     echo "${BOLD}Basil uninstaller${RESET}"
     echo
-    echo "This will remove the following from this Mac (user: $(id -un)):"
+    if [ "$APP_ONLY" -eq 1 ]; then
+        echo "This will remove only the Basil app from this Mac (user: $(id -un)). Your data, saved keys, settings and permissions stay where they are:"
+    elif [ "$KEEP_APP" -eq 1 ]; then
+        echo "This will remove Basil's data from this Mac (user: $(id -un)) and leave the app installed:"
+    else
+        echo "This will remove the following from this Mac (user: $(id -un)):"
+    fi
     echo
 
     if [ "$KEEP_APP" -eq 0 ]; then
@@ -186,31 +203,33 @@ print_plan() {
         done
     fi
 
-    for row in "${DATA_TABLE[@]}"; do
-        path="${row%%|*}"
-        description="${row#*|}"
-        if path_exists "$path"; then
-            if [ "$path" = "$HOME/.basil" ] && [ "$KEEP_MODELS" -eq 1 ]; then
-                echo "  $path  (everything except the models folder)"
-            else
-                echo "  $path  ($(human_size "$path"))"
+    if [ "$APP_ONLY" -eq 0 ]; then
+        for row in "${DATA_TABLE[@]}"; do
+            path="${row%%|*}"
+            description="${row#*|}"
+            if path_exists "$path"; then
+                if [ "$path" = "$HOME/.basil" ] && [ "$KEEP_MODELS" -eq 1 ]; then
+                    echo "  $path  (everything except the models folder)"
+                else
+                    echo "  $path  ($(human_size "$path"))"
+                fi
+                echo "      $description"
+                found=1
             fi
-            echo "      $description"
+        done
+
+        if [ "$PROVIDER_KEY_COUNT" -gt 0 ]; then
+            echo "  Keychain: $PROVIDER_KEY_COUNT saved API key(s) under the service \"$PROVIDER_KEYS_KEYCHAIN_SERVICE\""
             found=1
         fi
-    done
+        if [ "$SIGN_IN_ITEM_COUNT" -gt 0 ]; then
+            echo "  Keychain: $SIGN_IN_ITEM_COUNT saved sign-in, connection token, or API key item(s) whose account name starts with \"$KEYCHAIN_ACCOUNT_PREFIX\""
+            found=1
+        fi
 
-    if [ "$PROVIDER_KEY_COUNT" -gt 0 ]; then
-        echo "  Keychain: $PROVIDER_KEY_COUNT saved API key(s) under the service \"$PROVIDER_KEYS_KEYCHAIN_SERVICE\""
-        found=1
+        echo "  Permissions: Basil's macOS privacy grants (microphone, accessibility, screen recording, and so on) are reset for $BUNDLE_ID"
+        echo "  Preferences: the stored settings for $BUNDLE_ID are cleared"
     fi
-    if [ "$SIGN_IN_ITEM_COUNT" -gt 0 ]; then
-        echo "  Keychain: $SIGN_IN_ITEM_COUNT saved sign-in, connection token, or API key item(s) whose account name starts with \"$KEYCHAIN_ACCOUNT_PREFIX\""
-        found=1
-    fi
-
-    echo "  Permissions: Basil's macOS privacy grants (microphone, accessibility, screen recording, and so on) are reset for $BUNDLE_ID"
-    echo "  Preferences: the stored settings for $BUNDLE_ID are cleared"
 
     if basil_is_running; then
         echo "  Basil is running right now. It will be quit first."
@@ -218,6 +237,9 @@ print_plan() {
 
     echo
     echo "Not touched by this uninstaller:"
+    if [ "$APP_ONLY" -eq 1 ]; then
+        echo "  - Everything Basil keeps on this Mac: its data folder, saved keys and sign-ins, settings, and macOS permissions. Installing Basil again picks them up. Run this script without --app-only to remove them too."
+    fi
     echo "  - Files Basil created for you in other places, such as documents saved to your Desktop or Documents folder."
     echo "  - Shared model caches used by many tools (~/.cache/huggingface and ~/.cache/whisper). Basil may have downloaded models there; delete them yourself if you want that space back."
     echo "  - Anything that is not listed above."
@@ -283,25 +305,27 @@ run_removal() {
 
     quit_basil
 
-    echo "Removing data..."
-    for row in "${DATA_TABLE[@]}"; do
-        path="${row%%|*}"
-        path_exists "$path" || continue
-        if [ "$path" = "$HOME/.basil" ] && [ "$KEEP_MODELS" -eq 1 ]; then
-            remove_basil_data_folder_keeping_models || status=1
-        elif [ "$path" = "$HOME/Library/Preferences/$BUNDLE_ID.plist" ]; then
-            continue
-        else
+    if [ "$APP_ONLY" -eq 0 ]; then
+        echo "Removing data..."
+        for row in "${DATA_TABLE[@]}"; do
+            path="${row%%|*}"
+            path_exists "$path" || continue
+            if [ "$path" = "$HOME/.basil" ] && [ "$KEEP_MODELS" -eq 1 ]; then
+                remove_basil_data_folder_keeping_models || status=1
+            elif [ "$path" = "$HOME/Library/Preferences/$BUNDLE_ID.plist" ]; then
+                continue
+            else
+                remove_path "$path" || status=1
+            fi
+        done
+
+        echo "Removing saved credentials and settings..."
+        remove_keychain_items
+        clear_preferences_and_permissions
+        path="$HOME/Library/Preferences/$BUNDLE_ID.plist"
+        if path_exists "$path"; then
             remove_path "$path" || status=1
         fi
-    done
-
-    echo "Removing saved credentials and settings..."
-    remove_keychain_items
-    clear_preferences_and_permissions
-    path="$HOME/Library/Preferences/$BUNDLE_ID.plist"
-    if path_exists "$path"; then
-        remove_path "$path" || status=1
     fi
 
     if [ "$KEEP_APP" -eq 0 ]; then
@@ -315,7 +339,13 @@ run_removal() {
 
     echo
     if [ "$status" -eq 0 ]; then
-        echo "${GREEN}${BOLD}Done.${RESET} Basil has been removed from this Mac."
+        if [ "$APP_ONLY" -eq 1 ]; then
+            echo "${GREEN}${BOLD}Done.${RESET} The Basil app has been removed. Your data, saved keys, settings and permissions were left in place."
+        elif [ "$KEEP_APP" -eq 1 ]; then
+            echo "${GREEN}${BOLD}Done.${RESET} Basil's data has been removed. The app is still installed."
+        else
+            echo "${GREEN}${BOLD}Done.${RESET} Basil has been removed from this Mac."
+        fi
     else
         echo "${YELLOW}${BOLD}Finished with problems.${RESET} Items marked above could not be removed."
     fi
@@ -333,7 +363,7 @@ if [ "$ASSUME_YES" -eq 0 ]; then
     if [ ! -t 0 ]; then
         fail "No terminal is available to ask for confirmation. Re-run in Terminal, or pass --yes to proceed without asking."
     fi
-    printf 'Type "yes" and press Return to remove everything listed above, or anything else to cancel: '
+    printf 'Type "yes" and press Return to remove what is listed above, or anything else to cancel: '
     read -r answer
     if [ "$answer" != "yes" ]; then
         echo "Canceled. Nothing was removed."

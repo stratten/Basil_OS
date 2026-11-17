@@ -8,6 +8,7 @@ before proceeding with the next steps.
 import json
 import logging
 from typing import Any, Dict, Literal, Optional
+from uuid import uuid4
 from langchain_core.tools import tool
 
 from api.core.models.reasoning.model_runtime_profile import select_description_for_profile
@@ -120,8 +121,10 @@ def request_user_input(
         - request_user_input("Send this reply to Mariam now?", "yes_no", details_markdown="**To:** mariam@example.com\\n**Subject:** Re: Storage limits\\n\\nHi Mariam, ...")
     """
     _validate_checkpoint_extensions(checkpoint_id, metadata)
+    # An unnamed question gets its own id here, once, so the card, the timeline entry, and the saved task all agree on it. Left empty, the window invents one from the task id alone, which is the same for every question in a run, so the window mistakes a later question for one it already answered and never shows it.
+    resolved_checkpoint_id = checkpoint_id if checkpoint_id is not None else f"checkpoint_{uuid4().hex}"
     checkpoint_data = {
-        "checkpoint_id": checkpoint_id,
+        "checkpoint_id": resolved_checkpoint_id,
         "prompt": prompt,
         "input_type": input_type,
         "options": options or [],

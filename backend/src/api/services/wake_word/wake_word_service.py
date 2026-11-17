@@ -488,6 +488,8 @@ class WakeWordService:
 
         try:
             logger.info("VoiceListenerService: Starting audio capture for wake word detection...")
+            # Start from a clean slate so audio from before the last stop cannot trigger a phantom wake word.
+            self._discard_stale_listening_state()
             self.audio_capturer.start()
             self._is_actively_listening = True
             
@@ -521,6 +523,18 @@ class WakeWordService:
             logger.error(f"VoiceListenerService: Failed to start audio capture: {e}", exc_info=True)
             self._is_actively_listening = False
 
+    def _discard_stale_listening_state(self):
+        """Drops buffered audio and the wake word model's memory of earlier audio, so a listening session neither starts from nor leaks into the previous one. It does nothing while the capturer is running, because a capture in progress (for example a hotkey-started agent task) owns those buffers."""
+        try:
+            if getattr(self.audio_capturer, '_is_capturing', False):
+                return
+            if self.audio_capturer and hasattr(self.audio_capturer, 'clear_all_buffers'):
+                self.audio_capturer.clear_all_buffers()
+            if self.wake_word_detector and hasattr(self.wake_word_detector, 'reset_detection_state'):
+                self.wake_word_detector.reset_detection_state()
+        except Exception as e:
+            logger.warning(f"VoiceListenerService: Could not discard stale listening state: {e}")
+
     def stop_listening(self):
         """Stops the audio capturer."""
         if not self._is_actively_listening:
@@ -534,9 +548,7 @@ class WakeWordService:
         try:
             logger.info("VoiceListenerService: Stopping audio capture...")
             
-            # Clear all buffers before stopping to prevent phantom detections on restart
-            if hasattr(self.audio_capturer, 'clear_all_buffers'):
-                self.audio_capturer.clear_all_buffers()
+            # Buffers are cleared after the capturer has stopped, in the background cleanup below. Clearing them here would not help: the capture thread keeps reading audio into them until it exits.
             
             # Stop health monitor
             if self._health_monitor_task and not self._health_monitor_task.done():
@@ -556,6 +568,9 @@ class WakeWordService:
                 try:
                     self.audio_capturer.stop()
                     logger.info("VoiceListenerService: Audio capturer cleanup completed")
+                    # The capture thread has exited, so nothing is feeding the buffers or the model now. If the listener was turned back on while this cleanup ran, the new session already started clean and must not be reset underneath itself.
+                    if not self._is_actively_listening:
+                        self._discard_stale_listening_state()
                 except Exception as e:
                     logger.error(f"VoiceListenerService: Error during background cleanup: {e}")
             

@@ -29,7 +29,7 @@
   border-radius: var(--corner-radius-large);
   box-shadow: var(--shadow-dark);
   color: var(--text-primary);
-  animation: basil-modal-dialog-enter 0.16s ease-out;
+  animation: basil-modal-dialog-enter var(--motion-quick, 150ms) var(--motion-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
 }
 
 .basil-modal-dialog:focus {
@@ -105,7 +105,7 @@
   font-size: var(--font-size-callout);
   line-height: 1.3;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity var(--motion-quick, 150ms) var(--motion-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
 }
 
 .basil-modal-button:hover:not(:disabled) {

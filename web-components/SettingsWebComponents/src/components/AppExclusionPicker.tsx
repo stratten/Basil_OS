@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import IconChipList, { type IconChipEntry } from '@shared/IconChipList'
 import type { MeetingDetectionAppOption } from '../types'
 
 interface AppExclusionPickerProps {
@@ -42,6 +43,16 @@ export function AppExclusionPicker({
   const sourceApps = trimmedQuery.length === 0 ? availableApps : searchResults
   const filteredOptions = sourceApps.filter((app) => !selectedSet.has(app.bundleId))
   const showDropdown = isSearchFocused || trimmedQuery.length > 0
+  const chipEntries: IconChipEntry[] = selectedBundleIds.map((bundleId) => {
+    const app = resolve(bundleId)
+    return {
+      key: bundleId,
+      name: app.name,
+      iconSources: app.iconDataUrl ? [app.iconDataUrl] : [],
+      lockedLabel: requiredSet.has(bundleId) ? 'Required' : undefined,
+      kind: 'app',
+    }
+  })
 
   function resolve(bundleId: string): MeetingDetectionAppOption {
     return knownAppsByBundleId[bundleId] ?? { bundleId, name: bundleId, iconDataUrl: null }
@@ -81,35 +92,13 @@ export function AppExclusionPicker({
           )}
         </div>
       )}
-      <div className="app-exclusion-chips">
-        {selectedBundleIds.length === 0 ? (
-          <p className="app-exclusion-hint">No excluded apps selected.</p>
-        ) : (
-          selectedBundleIds.map((bundleId) => {
-            const app = resolve(bundleId)
-            const isRequired = requiredSet.has(bundleId)
-            return (
-              <div key={bundleId} className="app-exclusion-chip">
-                {app.iconDataUrl && <img src={app.iconDataUrl} alt="" className="app-exclusion-icon" />}
-                <span className="app-exclusion-name">{app.name}</span>
-                {isRequired ? (
-                  <span className="app-exclusion-required">Required</span>
-                ) : (
-                  <button
-                    type="button"
-                    className="app-exclusion-remove"
-                    disabled={disabled}
-                    aria-label={`Remove ${app.name}`}
-                    onClick={() => onRemove(bundleId)}
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-            )
-          })
-        )}
-      </div>
+      <IconChipList
+        groupLabel="Excluded apps"
+        entries={chipEntries}
+        removeDisabled={disabled}
+        emptyText="No excluded apps selected."
+        onRemove={(entry) => onRemove(entry.key)}
+      />
     </div>
   )
 }

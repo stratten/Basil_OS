@@ -123,7 +123,7 @@
 .permission-row p {
   color: var(--text-secondary);
   font-family: var(--font-family-light);
-  font-size: var(--font-size-callout);
+  font-size: var(--font-size-body);
   font-weight: 300;
   line-height: 1.35;
   margin: 6px 0 0;
@@ -218,7 +218,7 @@
 .permissions-restart-card p {
   color: var(--text-primary);
   font-family: var(--font-family-light);
-  font-size: var(--font-size-callout);
+  font-size: var(--font-size-body);
   font-weight: 300;
   line-height: 1.35;
   margin: 0;

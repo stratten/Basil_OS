@@ -665,27 +665,6 @@ export function AgentTaskDetailSurface({
           </div>
         )}
       </div>
-      {railPresence.shouldRender && (
-        <div
-          className="agent-run-rail-presence"
-          ref={railPresence.regionRef}
-          data-presence-phase={railPresence.phase}
-          aria-hidden={railPresence.phase !== 'present'}
-          onTransitionEnd={railPresence.completeTransition}
-        >
-          <AgentRunRail
-            overview={runOverview}
-            artifactCount={previewArtifactGroups.produced.length}
-            runId={focusedRun.id}
-            isProcessing={focusedRun.isProcessing}
-            onExpand={handleOpenRunOverview}
-            runs={runs}
-            locationRunId={mapLocationRunId}
-            onNavigateRun={runId => navigateToRun(runId, { kind: 'run' })}
-            checklistRootId={checklistRootId}
-          />
-        </div>
-      )}
       <ExecutionDetailTray
         isOpen={trayPresence.shouldRender}
         presencePhase={trayPresence.phase}
@@ -729,6 +708,28 @@ export function AgentTaskDetailSurface({
         }}
         onCloseRunPanel={handleCloseRunPanel}
       />
+      {/* The rail is always the rightmost element, including beside an open document while the run is still working, so the status strip stays on the window edge and the document sits between it and the main area. */}
+      {railPresence.shouldRender && (
+        <div
+          className="agent-run-rail-presence"
+          ref={railPresence.regionRef}
+          data-presence-phase={railPresence.phase}
+          aria-hidden={railPresence.phase !== 'present'}
+          onTransitionEnd={railPresence.completeTransition}
+        >
+          <AgentRunRail
+            overview={runOverview}
+            artifactCount={previewArtifactGroups.produced.length}
+            runId={focusedRun.id}
+            isProcessing={focusedRun.isProcessing}
+            onExpand={handleOpenRunOverview}
+            runs={runs}
+            locationRunId={mapLocationRunId}
+            onNavigateRun={runId => navigateToRun(runId, { kind: 'run' })}
+            checklistRootId={checklistRootId}
+          />
+        </div>
+      )}
     </div>
   );
 }

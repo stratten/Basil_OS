@@ -41,6 +41,8 @@ export default defineConfig({
       '../shared/teamIdentity.test.ts',
       '../shared/attachmentPaths.test.ts',
       '../shared/Attachment*.test.tsx',
+      '../shared/IconChipList.test.tsx',
+      '../shared/connectionIcons.test.ts',
       '../shared/search/*.test.{ts,tsx}',
       '../shared/historyFilters/*.test.{ts,tsx}',
     ],

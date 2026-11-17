@@ -39,7 +39,7 @@
 }
 
 .conversation-team-primer strong {
-  color: var(--primary);
+  color: var(--primary-text);
   font-family: var(--font-family-medium);
 }
 
@@ -199,7 +199,7 @@
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  transition: opacity 120ms ease;
+  transition: opacity var(--motion-quick) var(--motion-ease);
 }
 
 .chip-multi.chip-selected .chip-check {

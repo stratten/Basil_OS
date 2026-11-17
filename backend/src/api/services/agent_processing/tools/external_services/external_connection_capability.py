@@ -62,7 +62,7 @@ def apply_server_metadata_to_record(
     """Copy secret-free server self-description onto a connection record.
 
     ``server`` is the ``server`` block from an ``MCPClientService.list_tools``
-    envelope (``{"name", "version", "protocol", "instructions"}``). Returns
+    envelope (``{"name", "version", "protocol", "instructions", "icon_data_url", "icons_advertised"}``). Returns
     ``True`` when ``record`` was mutated so the caller can decide whether to
     persist. Defensive against ``None`` / missing keys / non-string values.
     """
@@ -83,6 +83,19 @@ def apply_server_metadata_to_record(
         and record.server_instructions != instructions.strip()
     ):
         record.server_instructions = instructions.strip()
+        changed = True
+
+    # The icon the server advertises, already fetched and checked into a data URL by
+    # ``mcp_connectors.server_icon``. A server that advertises none clears a stored one;
+    # a server that advertises icons we could not load (``icon_data_url`` empty) and a
+    # server block without the key at all (an in-process server) leave it untouched.
+    icon_data_url = server.get("icon_data_url")
+    if isinstance(icon_data_url, str) and icon_data_url.startswith("data:image/"):
+        if record.server_icon_data_url != icon_data_url:
+            record.server_icon_data_url = icon_data_url
+            changed = True
+    elif server.get("icons_advertised") is False and record.server_icon_data_url is not None:
+        record.server_icon_data_url = None
         changed = True
 
     return changed

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ExclusionWindow, ScheduledAgentTask, ScheduledAgentTaskRun } from '../types';
 import * as api from '../services/api';
 import { startScheduledRunNow } from '../services/scheduledRunNow';
@@ -6,17 +6,18 @@ import AttachedFilesDisplay from './scheduled/AttachedFilesDisplay';
 import AttachedFilesEditor from './scheduled/AttachedFilesEditor';
 import ScheduleControls from './scheduled/ScheduleControls';
 import ScheduledRunHistoryList from './scheduled/ScheduledRunHistoryList';
-import ScheduledConnectionsField, { CONNECTIONS_LABEL, ScheduledConnectionsDisplay, connectionsChanged } from './scheduled/ScheduledConnectionsField';
-import ScheduledModelField, { describeScheduledModel } from './scheduled/ScheduledModelField';
+import ScheduledConnectionsField, { connectionsChanged } from './scheduled/ScheduledConnectionsField';
+import ScheduledModelField from './scheduled/ScheduledModelField';
+import ScheduledMeta from './scheduled/ScheduledMeta';
+import ScheduledTextFields from './scheduled/ScheduledTextFields';
 import ScheduledChainField from './scheduled/ScheduledChainField';
 import ScheduledExclusionWindowsField from './scheduled/ScheduledExclusionWindowsField';
+import ScheduledFormSection from './scheduled/ScheduledFormSection';
 import {
   DEFAULT_CHAIN_FORM,
   chainConfigChanged,
   chainFormError,
   chainFormFromConfig,
-  describeChain,
-  describeExclusionWindows,
   effectiveChainConfig,
   exclusionWindowsError,
   exclusionWindowsFromConfig,
@@ -32,14 +33,13 @@ import SmartPromptPanel, {
 import {
   buildTimezoneOptions,
   deriveTitleFromAgentTask,
-  formatTimestamp12h,
   getCurrentTimeHHMM,
   composeFirstRun,
   firstRunFromNextRun,
   getDefaultRunAtLocal,
   getUserTimezone,
+  scheduleFormBlocker,
   splitFirstRun,
-  summarizeSchedule,
 } from './scheduled/scheduledAgentTaskHelpers';
 
 interface Props {
@@ -311,6 +311,8 @@ export default function ScheduledAgentTaskDetail({
 
   // Chain limits or quiet-hours windows the backend would reject. The reason is shown beside the field, and Create and Save stay disabled until it is fixed.
   const scheduleFormError = scheduleType === 'recurring' ? (chainFormError(chainForm) ?? exclusionWindowsError(exclusionWindows)) : null;
+  // Why Create and Save are unavailable, shown under them so a dimmed button is never a puzzle.
+  const formBlocker = scheduleFormBlocker({ taskText: agentTaskText, firstRunIncomplete, formError: scheduleFormError });
 
   const create = async (sourceType: 'manual' | 'smart') => {
     setBusy(true);
@@ -425,6 +427,55 @@ export default function ScheduledAgentTaskDetail({
     );
   };
 
+  // The form rows shared by the create form and the inline edit form, so the two can never drift apart.
+  const formFields = (startLabel: string) => (
+    <>
+      <ScheduledFormSection title="Task">
+        <ScheduledTextFields title={title} onTitleChange={setTitle} taskText={agentTaskText} onTaskTextChange={setAgentTaskText} />
+        <AttachedFilesEditor paths={referencePaths} onChange={setReferencePaths} />
+      </ScheduledFormSection>
+
+      <ScheduledFormSection title="Tools">
+        <ScheduledConnectionsField connections={connections} selectedIds={connectionIds} onChange={setConnectionIds} loaded={connectionsLoaded} disabled={busy} />
+        <ScheduledModelField models={models} modelId={modelId} onChange={setModelId} disabled={busy} />
+      </ScheduledFormSection>
+
+      <ScheduledFormSection title="Schedule">
+        <ScheduleControls
+          scheduleType={scheduleType}
+          onScheduleTypeChange={setScheduleType}
+          mode={mode}
+          onModeChange={setMode}
+          time={time}
+          onTimeChange={setTime}
+          intervalMinutes={intervalMinutes}
+          onIntervalMinutesChange={setIntervalMinutes}
+          startDate={startDate}
+          onStartDateChange={setStartDate}
+          startTime={startTime}
+          onStartTimeChange={setStartTime}
+          startLabel={startLabel}
+          runAt={runAt}
+          onRunAtChange={setRunAt}
+          timezone={timezone}
+          onTimezoneChange={setTimezone}
+          timezoneOptions={timezoneOptions}
+          weeklyDays={weeklyDays}
+          onToggleWeekday={toggleWeekday}
+        />
+        {scheduleType === 'recurring' && (
+          <ScheduledExclusionWindowsField windows={exclusionWindows} onChange={setExclusionWindows} disabled={busy} />
+        )}
+        {scheduleType === 'recurring' && (
+          <ScheduledChainField form={chainForm} onChange={setChainForm} disabled={busy} />
+        )}
+      </ScheduledFormSection>
+    </>
+  );
+
+  // The line under Create and Save that names what is missing. Absent when nothing blocks the button.
+  const blockerLine = formBlocker ? <p id="schedule-form-blocker" className="scheduled-form__blocker">{formBlocker}</p> : null;
+
   if (createMode) {
     return (
       <div className="main-content">
@@ -432,7 +483,7 @@ export default function ScheduledAgentTaskDetail({
           <div className="result-header">
             <span className="result-label">Create Scheduled Task</span>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="scheduled-form">
             <SmartPromptPanel
               ref={smartPanelRef}
               userTimezone={timezone}
@@ -441,69 +492,20 @@ export default function ScheduledAgentTaskDetail({
               onApply={applySmartFields}
             />
 
-            <input
-              className="sidebar-search-input"
-              placeholder="Title (optional — derived from the task if left blank)"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-            />
-            <textarea
-              className="sidebar-search-input"
-              placeholder="Task text"
-              value={agentTaskText}
-              onChange={e => setAgentTaskText(e.target.value)}
-              style={{ minHeight: 92, resize: 'vertical' }}
-            />
-
-            <AttachedFilesEditor
-              paths={referencePaths}
-              onChange={setReferencePaths}
-            />
-
-            <ScheduledConnectionsField connections={connections} selectedIds={connectionIds} onChange={setConnectionIds} loaded={connectionsLoaded} disabled={busy} />
-
-            <ScheduledModelField models={models} modelId={modelId} onChange={setModelId} disabled={busy} />
-
-            <ScheduleControls
-              scheduleType={scheduleType}
-              onScheduleTypeChange={setScheduleType}
-              mode={mode}
-              onModeChange={setMode}
-              time={time}
-              onTimeChange={setTime}
-              intervalMinutes={intervalMinutes}
-              onIntervalMinutesChange={setIntervalMinutes}
-              startDate={startDate}
-              onStartDateChange={setStartDate}
-              startTime={startTime}
-              onStartTimeChange={setStartTime}
-              startLabel="First run"
-              runAt={runAt}
-              onRunAtChange={setRunAt}
-              timezone={timezone}
-              onTimezoneChange={setTimezone}
-              timezoneOptions={timezoneOptions}
-              weeklyDays={weeklyDays}
-              onToggleWeekday={toggleWeekday}
-            />
-
-            {scheduleType === 'recurring' && (
-              <ScheduledExclusionWindowsField windows={exclusionWindows} onChange={setExclusionWindows} disabled={busy} />
-            )}
-            {scheduleType === 'recurring' && (
-              <ScheduledChainField form={chainForm} onChange={setChainForm} disabled={busy} />
-            )}
+            {formFields('First run')}
 
             <div className="overlay-actions">
-              <button className="action-btn" onClick={onExitCreateMode}>Cancel</button>
+              <button className="action-btn action-btn--neutral" onClick={onExitCreateMode}>Cancel</button>
               <button
                 className="action-btn primary"
                 onClick={() => create(smartPanelRef.current?.hasPromptText() ? 'smart' : 'manual')}
-                disabled={busy || !agentTaskText.trim() || firstRunIncomplete || Boolean(scheduleFormError)}
+                disabled={busy || Boolean(formBlocker)}
+                aria-describedby={formBlocker ? 'schedule-form-blocker' : undefined}
               >
                 Create Schedule
               </button>
             </div>
+            {blockerLine}
           </div>
         </div>
       </div>
@@ -512,7 +514,7 @@ export default function ScheduledAgentTaskDetail({
 
   if (!scheduledAgentTaskId) {
     return (
-      <div className="empty-state" style={{ flex: 1 }}>
+      <div className="empty-state scheduled-detail__fill">
         <span>Select a scheduled task from the sidebar</span>
       </div>
     );
@@ -520,46 +522,27 @@ export default function ScheduledAgentTaskDetail({
 
   if (loading || !item) {
     return (
-      <div className="empty-state" style={{ flex: 1 }}>
+      <div className="empty-state scheduled-detail__fill">
         <div className="loading-spinner" />
         <span>Loading scheduled task...</span>
       </div>
     );
   }
 
-  // Meta row cell styling is reused for each of schedule / status / next-run
-  // so the stacked block stays visually uniform.
-  const metaRowStyle: CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    fontFamily: 'var(--font-family-light)',
-    fontSize: 'var(--font-size-callout)',
-    color: 'var(--text-secondary)',
-    lineHeight: 1.4,
-  };
-  const metaLabelStyle: CSSProperties = {
-    fontFamily: 'var(--font-family-medium)',
-    color: 'var(--text-tertiary)',
-    minWidth: 72,
-  };
-
   return (
     <div className="main-content">
       <div className="result-container">
-        <div
-          className="result-header"
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}
-        >
+        <div className="result-header scheduled-detail__header">
           <span className="result-label">{plainMarkdownText(item.title)}</span>
-          {/* Active indicator pinned to the header's top-right: a solid green dot
-              (--success-base) when the schedule is active, and a hollow ring in
-              the text color when it is inactive, matching the sidebar row. */}
-          <span
-            className={`agent-task-row__schedule-dot scheduled-detail__active-dot ${item.is_active ? 'is-active' : 'is-inactive'}`}
-            aria-label={item.is_active ? 'Active' : 'Inactive'}
-            title={item.is_active ? 'Active' : 'Inactive'}
-          />
+          {/* The schedule's state, pinned to the header's top-right: a solid green dot (--success-base) when it is active and a hollow ring in the text color when it is inactive, matching the sidebar row, with the word beside it. */}
+          <span className="scheduled-detail__state">
+            <span
+              className={`agent-task-row__schedule-dot scheduled-detail__active-dot ${item.is_active ? 'is-active' : 'is-inactive'}`}
+              aria-label={item.is_active ? 'Active' : 'Inactive'}
+              title={item.is_active ? 'Active' : 'Inactive'}
+            />
+            <span aria-hidden="true">{item.is_active ? 'Active' : 'Inactive'}</span>
+          </span>
         </div>
         {editing ? (
           // ---------------------------------------------------------------
@@ -570,62 +553,12 @@ export default function ScheduledAgentTaskDetail({
           // updateScheduledAgentTask which both persists and re-enqueues the
           // Huey task in a single round trip.
           // ---------------------------------------------------------------
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
-            <input
-              className="sidebar-search-input"
-              placeholder="Title (optional — derived from the task if left blank)"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-            />
-            <textarea
-              className="sidebar-search-input"
-              placeholder="Task text"
-              value={agentTaskText}
-              onChange={e => setAgentTaskText(e.target.value)}
-              style={{ minHeight: 92, resize: 'vertical', fontFamily: 'var(--font-family-light)' }}
-            />
-            <AttachedFilesEditor
-              paths={referencePaths}
-              onChange={setReferencePaths}
-            />
-
-            <ScheduledConnectionsField connections={connections} selectedIds={connectionIds} onChange={setConnectionIds} loaded={connectionsLoaded} disabled={busy} />
-
-            <ScheduledModelField models={models} modelId={modelId} onChange={setModelId} disabled={busy} />
-
-            <ScheduleControls
-              scheduleType={scheduleType}
-              onScheduleTypeChange={setScheduleType}
-              mode={mode}
-              onModeChange={setMode}
-              time={time}
-              onTimeChange={setTime}
-              intervalMinutes={intervalMinutes}
-              onIntervalMinutesChange={setIntervalMinutes}
-              startDate={startDate}
-              onStartDateChange={setStartDate}
-              startTime={startTime}
-              onStartTimeChange={setStartTime}
-              startLabel="Next run"
-              runAt={runAt}
-              onRunAtChange={setRunAt}
-              timezone={timezone}
-              onTimezoneChange={setTimezone}
-              timezoneOptions={timezoneOptions}
-              weeklyDays={weeklyDays}
-              onToggleWeekday={toggleWeekday}
-            />
-
-            {scheduleType === 'recurring' && (
-              <ScheduledExclusionWindowsField windows={exclusionWindows} onChange={setExclusionWindows} disabled={busy} />
-            )}
-            {scheduleType === 'recurring' && (
-              <ScheduledChainField form={chainForm} onChange={setChainForm} disabled={busy} />
-            )}
+          <div className="scheduled-form">
+            {formFields('Next run')}
 
             <div className="overlay-actions">
               <button
-                className="action-btn"
+                className="action-btn action-btn--neutral"
                 onClick={() => setEditing(false)}
                 disabled={busy}
               >
@@ -634,94 +567,42 @@ export default function ScheduledAgentTaskDetail({
               <button
                 className="action-btn primary"
                 onClick={saveEdits}
-                disabled={busy || !agentTaskText.trim() || firstRunIncomplete || Boolean(scheduleFormError)}
+                disabled={busy || Boolean(formBlocker)}
+                aria-describedby={formBlocker ? 'schedule-form-blocker' : undefined}
               >
                 Save changes
               </button>
             </div>
+            {blockerLine}
           </div>
         ) : (
           <>
-            <div style={{ marginBottom: 10 }}>
+            <div className="scheduled-detail__task">
               <MarkdownRenderer content={item.agent_task_text} />
             </div>
-            {/* Stacked meta block — one row each for schedule / status / next run
-                so the values have room to breathe and "Status: active" isn't
-                buried next to the rest. */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
-              <div style={metaRowStyle}>
-                <span style={metaLabelStyle}>Schedule</span>
-                <span>{summarizeSchedule(item)}</span>
-              </div>
-              <div style={metaRowStyle}>
-                <span style={metaLabelStyle}>Status</span>
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '2px 8px',
-                    borderRadius: 999,
-                    fontFamily: 'var(--font-family-medium)',
-                    fontSize: 'var(--font-size-status-small)',
-                background: item.is_active
-                  ? 'rgba(52, 199, 89, 0.14)'
-                  : 'var(--background-tertiary)',
-                color: item.is_active ? 'var(--success-base)' : 'var(--text-secondary)',
-                border: `1px solid ${item.is_active ? 'var(--success-base)' : 'var(--separator-color)'}`,
-              }}
-            >
-              <span
-                aria-hidden="true"
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
-                  background: item.is_active ? 'var(--success-base)' : 'var(--text-tertiary)',
-                }}
-              />
-              {item.is_active ? 'Active' : 'Inactive'}
-            </span>
-          </div>
-          <div style={metaRowStyle}>
-            <span style={metaLabelStyle}>Model</span>
-            <span>{describeScheduledModel(models, item.model_id)}</span>
-          </div>
-          {exclusionWindowsFromConfig(item.schedule_config).length > 0 && (
-            <div style={metaRowStyle}>
-              <span style={metaLabelStyle}>Quiet hours</span>
-              <span>{describeExclusionWindows(exclusionWindowsFromConfig(item.schedule_config))}</span>
-            </div>
-          )}
-          {item.chain_config?.mode === 'chained' && (
-            <div style={metaRowStyle}>
-              <span style={metaLabelStyle}>Runs</span>
-              <span>{describeChain(item.chain_config)}</span>
-            </div>
-          )}
-          {item.next_run_at && (
-            <div style={metaRowStyle}>
-              <span style={metaLabelStyle}>Next run</span>
-              <span>{formatTimestamp12h(item.next_run_at)}</span>
-            </div>
-          )}
-          {(item.connection_ids ?? []).length > 0 && (
-            <div style={metaRowStyle}>
-              <span style={metaLabelStyle}>{CONNECTIONS_LABEL}</span>
-              <ScheduledConnectionsDisplay connections={connections} selectedIds={item.connection_ids ?? []} loaded={connectionsLoaded} />
-            </div>
-          )}
-          <AttachedFilesDisplay paths={item.reference_paths ?? []} />
-        </div>
-            <div className="overlay-actions" style={{ marginBottom: 10 }}>
+            <ScheduledMeta item={item} models={models} connections={connections} connectionsLoaded={connectionsLoaded} />
+            <AttachedFilesDisplay paths={item.reference_paths ?? []} />
+            <div className="scheduled-actions">
               <button
-                className="action-btn"
+                className="action-btn primary"
+                disabled={runNow.starting}
+                onClick={async () => {
+                  setRunNow({ starting: true, failure: null });
+                  const outcome = await startScheduledRunNow(item.id);
+                  setRunNow({ starting: false, failure: outcome.ok ? null : (outcome.message ?? null) });
+                  await refreshRuns();
+                }}
+              >
+                Run Now
+              </button>
+              <button
+                className="action-btn action-btn--neutral"
                 onClick={() => setEditing(true)}
               >
                 Edit
               </button>
               <button
-                className="action-btn"
+                className="action-btn action-btn--neutral"
                 onClick={async () => {
                   const updated = await api.updateScheduledAgentTask(item.id, { is_active: !item.is_active });
                   setItem(updated);
@@ -734,33 +615,9 @@ export default function ScheduledAgentTaskDetail({
               >
                 {item.is_active ? 'Deactivate' : 'Activate'}
               </button>
-              <button
-                className="action-btn"
-                disabled={runNow.starting}
-                onClick={async () => {
-                  setRunNow({ starting: true, failure: null });
-                  const outcome = await startScheduledRunNow(item.id);
-                  setRunNow({ starting: false, failure: outcome.ok ? null : (outcome.message ?? null) });
-                  await refreshRuns();
-                }}
-              >
-                Run Now
-              </button>
             </div>
             {runNow.failure && (
-              <p
-                role="alert"
-                style={{
-                  margin: '0 0 10px',
-                  padding: 'var(--padding-s)',
-                  border: '1px solid var(--warning-base)',
-                  borderRadius: 'var(--corner-radius-small)',
-                  background: 'color-mix(in srgb, var(--warning-base) 16%, var(--background-primary))',
-                  color: 'var(--text-primary)',
-                  fontSize: 'var(--font-size-callout)',
-                  overflowWrap: 'anywhere',
-                }}
-              >
+              <p role="alert" className="scheduled-notice">
                 {runNow.failure}
               </p>
             )}

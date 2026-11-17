@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 
+import { resetModelDownloadMemory } from './ModelDownloadRows'
 import { StarterDownloadsStatus } from './StarterDownloadsStatus'
 
 const fetchStarterDownloadProgress = vi.fn()
@@ -40,6 +41,7 @@ async function flush() {
 beforeEach(() => {
   ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
   vi.useFakeTimers()
+  resetModelDownloadMemory()
   fetchStarterDownloadProgress.mockReset()
   startLocalModelDownload.mockReset()
   copyLocalModelFromNormalBasil.mockReset()
@@ -76,7 +78,8 @@ describe('StarterDownloadsStatus', () => {
     const text = container.textContent ?? ''
     expect(text).toContain('Whisper Tiny (English)')
     expect(text).toContain('Fast voice model')
-    expect(text).toContain('Ready')
+    // The first read already had this model finished, so the session never watched it download.
+    expect(text).toContain('Already on this computer')
     expect(text).toContain('Parakeet TDT 0.6B v3')
     expect(text).toContain('Failed')
     expect(text).toContain('Qwen3.5-9B MLX 4-bit')

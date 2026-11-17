@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { SetupAgendaSidebar } from '@/components/agenda/SetupAgendaSidebar'
+import { agendaSelectionMessage } from '@/components/agenda/agendaPillState'
 import { BasilArtifactPanel } from '@/components/conversation/BasilArtifactPanel'
 import { BasilConversation } from '@/components/conversation/BasilConversation'
 import { OrientationInterstitial } from '@/components/discovery/OrientationInterstitial'
@@ -9,6 +10,7 @@ import { applyNativeExpressItems, nativeHandledItemIds } from '@/components/expr
 import type { ComfortLevel } from '@/components/express/expressTypes'
 import { IntroAndPrivacy } from '@/components/intro/IntroAndPrivacy'
 import { WelcomeIntro } from '@/components/intro/WelcomeIntro'
+import { ResumeChoice } from '@/components/resume/ResumeChoice'
 import { LocalModelFailureBanner } from '@/components/layout/LocalModelFailureBanner'
 import { SetupShell } from '@/components/layout/SetupShell'
 import { SetupStepActions } from '@/components/layout/SetupStepActions'
@@ -21,10 +23,13 @@ import {
   type SetupAgendaConfirmationResolution,
   useSetupAssistantStore,
 } from '@/state/setupAssistantStore'
+import type { SetupSessionAgendaItem } from '@/state/setupAssistantStore'
 import type { SetupToolApprovalState } from '@/types'
 
 import { useSetupAgentStream } from './hooks/useSetupAgentStream'
 import { useSetupCompletion } from './hooks/useSetupCompletion'
+import { useSavedSetupSession } from './hooks/useSavedSetupSession'
+import { useSetupProgressSaver } from './hooks/useSetupProgressSaver'
 import { useSetupDiscovery } from './hooks/useSetupDiscovery'
 import { useSetupObservations } from './hooks/useSetupObservations'
 import { useSetupProposalActions } from './hooks/useSetupProposalActions'
@@ -59,14 +64,20 @@ export function SetupAssistantApp() {
   } = useSetupDiscovery({ store })
   const { handleReceiptAction, handleApproveAll } = useSetupProposalActions({ store, startStream })
   const { handleFinish, handleSkip } = useSetupCompletion({ store, buildRequest, abort })
+  useSetupProgressSaver({ store })
+  // Set once the person leaves orientation, so a discovery sweep that finishes later does not start the orientation stream over their conversation.
+  const orientationLeftRef = useRef(false)
+  const { offeredSession, resume: resumeSavedSession, startOver: startOverFromTheTop } = useSavedSetupSession({
+    store,
+    startStream,
+    onResumed: () => { orientationLeftRef.current = true },
+  })
   // True while newly proposed agenda items are animating in; the first Basil message waits for it so the agenda lands before the reply types in.
   const [isAgendaEntering, setIsAgendaEntering] = useState(false)
   // Which of the manual flow's steps opens first. 'model' is where Express hands over when it cannot set up the thinking model itself.
   const [introStartStep, setIntroStartStep] = useState<'downloads' | 'model'>('downloads')
   // YOLO is the All-in plan with its own heading, so the comfort level alone cannot tell the two paths apart.
   const [isYoloPath, setIsYoloPath] = useState(false)
-  // Set once the person leaves orientation, so a discovery sweep that finishes later does not start the orientation stream over their conversation.
-  const orientationLeftRef = useRef(false)
   const receiptActionRef = useRef(handleReceiptAction)
   const approveAllRef = useRef(handleApproveAll)
   const agendaConfirmationResolutionRef = useRef(handleAgendaConfirmationResolved)
@@ -96,6 +107,18 @@ export function SetupAssistantApp() {
   const toggleAgendaSidebar = useCallback((collapsed: boolean) => {
     setAgendaSidebarCollapsedRef.current(collapsed)
   }, [])
+
+  // Kept stable so the memoized agenda does not redraw on every stream event. The ref always points at this render's handler.
+  const userMessageRef = useRef<(content: string) => void>(() => {})
+  const selectAgendaItem = useCallback((item: SetupSessionAgendaItem) => {
+    userMessageRef.current(agendaSelectionMessage(item))
+  }, [])
+  const savedSoFar = useMemo(
+    () => Object.values(store.state.pendingProposals)
+      .filter(proposal => proposal.approvalState === 'executed')
+      .map(proposal => proposal.receipt.title),
+    [store.state.pendingProposals],
+  )
 
   const closeArtifact = useCallback((artifactId: string) => {
     applyEventRef.current({
@@ -198,6 +221,8 @@ export function SetupAssistantApp() {
     })()
   }
 
+  userMessageRef.current = handleUserMessage
+
   const orientationReady = (
     store.state.setupStage === 'orientation'
     && isOrientationAgentSettled
@@ -207,6 +232,10 @@ export function SetupAssistantApp() {
   const hasActiveArtifact = Boolean(store.state.activeArtifact?.is_open)
 
   const renderCurrentSetupStage = () => {
+    if (store.state.setupStage === 'welcome' && offeredSession) {
+      return <ResumeChoice session={offeredSession} onResume={resumeSavedSession} onStartOver={startOverFromTheTop} />
+    }
+
     if (store.state.setupStage === 'welcome') {
       return (
         <WelcomeIntro
@@ -275,6 +304,9 @@ export function SetupAssistantApp() {
               isCollapsed={store.state.isAgendaSidebarCollapsed}
               onToggleCollapsed={toggleAgendaSidebar}
               onEntranceChange={setIsAgendaEntering}
+              isAgentWorking={store.state.isStreaming}
+              onSelectItem={selectAgendaItem}
+              savedSoFar={savedSoFar}
             />
             <BasilConversation
               messages={store.state.messages}
@@ -301,6 +333,9 @@ export function SetupAssistantApp() {
             />
           </div>
           <SetupStepActions>
+            <p className="setup-done-hint">
+              Done wraps up what we have covered so far. Skip setup for now, at the top, leaves without a wrap-up, and you can come back to it.
+            </p>
             <button type="button" className="secondary-button setup-done-button" onClick={handleFinish}>
               Done with setup
             </button>

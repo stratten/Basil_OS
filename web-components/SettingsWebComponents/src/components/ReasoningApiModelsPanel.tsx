@@ -236,8 +236,13 @@ export function ReasoningApiModelsPanel() {
     setPendingKeyRemovals(nextMap)
   }
 
-  function toggleProviderExpanded(providerId: string) {
-    setExpandedProviders((current) => ({ ...current, [providerId]: !(current[providerId] ?? true) }))
+  // A provider that is on opens by default. A provider that is off starts folded, so a list of unused providers does not push the rest of the page down. Either way it can be opened.
+  function isProviderExpanded(provider: ReasoningApiProviderSummary): boolean {
+    return expandedProviders[provider.id] ?? provider.enabled
+  }
+
+  function toggleProviderExpanded(provider: ReasoningApiProviderSummary) {
+    setExpandedProviders((current) => ({ ...current, [provider.id]: !(current[provider.id] ?? provider.enabled) }))
   }
 
   function handleToggleModel(providerId: string, modelId: string, next: boolean) {
@@ -277,15 +282,18 @@ export function ReasoningApiModelsPanel() {
         onChange={handleToggleMaster}
         label="Use API Models"
       />
-      {useApiModels && (
-        isLoading && providers.length === 0 ? (
-          <p className="reasoning-api-models-status" role="status">Loading reasoning API models...</p>
-        ) : (
-          providers.map((provider) => (
+      {!useApiModels && (
+        <p className="reasoning-api-models-master-note">API models are off. Turn on &ldquo;Use API Models&rdquo;, or turn on a provider below, to use them.</p>
+      )}
+      {isLoading && providers.length === 0 ? (
+        <p className="reasoning-api-models-status" role="status">Loading reasoning API models...</p>
+      ) : (
+        <div className={useApiModels ? 'reasoning-api-models-providers' : 'reasoning-api-models-providers reasoning-api-models-providers--inactive'}>
+          {providers.map((provider) => (
             <ProviderCard
               key={provider.id}
               provider={provider}
-              isExpanded={expandedProviders[provider.id] ?? true}
+              isExpanded={isProviderExpanded(provider)}
               apiKeyInput={apiKeyInputs[provider.id] ?? ''}
               keyMessage={keyMessages[provider.id] ?? null}
               providerPending={pendingProviders[provider.id] !== undefined}
@@ -295,7 +303,7 @@ export function ReasoningApiModelsPanel() {
               isConfirmingKeyRemoval={confirmingKeyRemovals[provider.id] ?? false}
               pendingModels={pendingModels}
               onToggleProvider={(next) => handleToggleProvider(provider.id, next)}
-              onToggleExpand={() => toggleProviderExpanded(provider.id)}
+              onToggleExpand={() => toggleProviderExpanded(provider)}
               onToggleKeySource={(next) => handleToggleKeySource(provider.id, next)}
               onApiKeyChange={(value) => setApiKeyInputs((current) => ({ ...current, [provider.id]: value }))}
               onSaveKey={() => handleSaveKey(provider.id)}
@@ -304,8 +312,8 @@ export function ReasoningApiModelsPanel() {
               onConfirmRemoveKey={() => handleRemoveKey(provider.id)}
               onToggleModel={(modelId, next) => handleToggleModel(provider.id, modelId, next)}
             />
-          ))
-        )
+          ))}
+        </div>
       )}
       {statusMessage && (
         <p className={statusMessage.isError ? 'reasoning-api-models-status-error' : 'reasoning-api-models-status-success'} role={statusMessage.isError ? 'alert' : 'status'}>
@@ -346,18 +354,17 @@ function ProviderCard({
   const enabledCount = provider.models.filter((model) => model.enabled).length
   const bodyId = `reasoning-api-models-provider-body-${provider.id}`
   return (
-    <div className="reasoning-api-models-provider">
+    <div className={provider.enabled ? 'reasoning-api-models-provider' : 'reasoning-api-models-provider reasoning-api-models-provider--off'}>
       <div className="reasoning-api-models-provider-header">
         <button
           type="button"
           className="reasoning-api-models-provider-disclosure"
-          aria-expanded={provider.enabled && isExpanded}
-          aria-controls={provider.enabled ? bodyId : undefined}
-          disabled={!provider.enabled}
+          aria-expanded={isExpanded}
+          aria-controls={bodyId}
           onClick={onToggleExpand}
         >
           <span className="reasoning-api-models-provider-chevron" aria-hidden="true">
-            <ExecutionDisclosureChevron expanded={provider.enabled && isExpanded} color="var(--text-secondary)" />
+            <ExecutionDisclosureChevron expanded={isExpanded} color="var(--text-secondary)" />
           </span>
           <span className="reasoning-api-models-provider-name">{provider.name}</span>
         </button>
@@ -367,10 +374,12 @@ function ProviderCard({
         </span>
         <Switch id={`reasoning-api-models-provider-toggle-${provider.id}`} checked={provider.enabled} disabled={providerPending} onChange={onToggleProvider} label="" ariaLabel={`Enable ${provider.name} provider`} />
       </div>
-      {provider.enabled && (
         <div id={bodyId} className={isExpanded ? 'reasoning-api-models-provider-collapse reasoning-api-models-provider-collapse-expanded' : 'reasoning-api-models-provider-collapse'}>
         <div className="reasoning-api-models-provider-collapse-inner">
         <>
+          {!provider.enabled && (
+            <p className="reasoning-api-models-provider-off-note">{provider.name} is off. Models you turn on here are used once you turn the provider on.</p>
+          )}
           <div className="reasoning-api-models-key-section">
             <Switch id={`reasoning-api-models-key-source-${provider.id}`} checked={provider.usingOwnApiKey} disabled={keySourcePending || keyRemovalPending} onChange={onToggleKeySource} label={`Use your ${provider.name} API key`} />
             <p className="reasoning-api-models-key-explainer">
@@ -448,7 +457,6 @@ function ProviderCard({
         </>
         </div>
         </div>
-      )}
     </div>
   )
 }

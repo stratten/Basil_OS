@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import type { DisplayableAgentTask, StepDetailEntry } from '../../types';
 import { plainMarkdownText } from '@shared/plainMarkdownText';
 import MarkdownRenderer from '../MarkdownRenderer';
-import NativeSymbolIcon from '../../../../shared/NativeSymbolIcon';
 import ReasoningModelPicker from '../../../../shared/ReasoningModelPicker';
+import { ContinueCircleIcon, ReportCircleIcon, RetryCircleIcon, WorkLogCircleIcon } from '../../../../shared/CircleControlIcons';
 import { getReasoningModels, type ReasoningModel } from '../../services/api';
 import { reportProblem, showDiagnosticLogs } from '../../services/bridge';
+import { DecisionButton } from '../interaction/DecisionButton';
 import { normalizeProgressStepText } from '../result/progressStepText';
 import { ProgressStepsSection, type ActivityStatusDisplay } from '../result/ExecutionTimeline';
 import { statusToneOfPhase, type RunPhase } from './runPhase';
@@ -106,30 +107,21 @@ export function statusFor(
         tone: statusToneOfPhase(phase),
         label: phase.label,
         summary: reasonRepeatsResult(agentTask.errorMessage, agentTask.result)
-          ? 'Details are in the result above'
+          ? 'Details above'
           : firstMeaningfulLine(agentTask.errorMessage) || 'No reason was reported',
       };
   }
 }
 
-function RecoveryActions({
-  agentTask,
-  isCanceled,
-  onRetry,
-  onContinue,
-}: {
-  agentTask: DisplayableAgentTask;
-  isCanceled: boolean;
-  onRetry: (modelId?: string) => void;
-  onContinue: () => void;
-}) {
-  const problemDetail = problemDetailFor(agentTask);
+/** The model a retry will use. It is held in the card so the Retry icon and the picker beside it in the header row share it. Models load only while recovery is on offer. */
+function useRetryModel(agentTask: DisplayableAgentTask, enabled: boolean) {
   const [models, setModels] = useState<ReasoningModel[]>([]);
   const [modelId, setModelId] = useState<string | undefined>(
     agentTask.selectedModelId ?? agentTask.originalModelId,
   );
 
   useEffect(() => {
+    if (!enabled) return undefined;
     let canceled = false;
     getReasoningModels()
       .then(data => {
@@ -141,38 +133,73 @@ function RecoveryActions({
     return () => {
       canceled = true;
     };
-  }, []);
+  }, [enabled]);
 
+  return { models, modelId, setModelId };
+}
+
+/** The retry model picker, compact enough to share the bar's single row. It sits just left of Retry, because it chooses the model that Retry will use. */
+function RetryModelPicker({
+  models,
+  modelId,
+  onModelChange,
+}: {
+  models: ReasoningModel[];
+  modelId: string | undefined;
+  onModelChange: (modelId: string | undefined) => void;
+}) {
   return (
-    <div className="result-actions run-status-actions">
-      {agentTask.checkpointAvailable && (
-        <button type="button" className="action-btn primary" onClick={onContinue}>
-          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-            <path d="M5.5 3.5v9l7-4.5z" />
-          </svg>
-          {' '}Continue
-        </button>
-      )}
+    <div className="run-status-picker">
       <ReasoningModelPicker
         models={models}
         selectedModelId={modelId}
         disabled={false}
-        onModelChange={setModelId}
+        onModelChange={onModelChange}
         ariaLabel="Retry model"
         placeholder="Model"
       />
-      <button type="button" className="action-btn primary" onClick={() => onRetry(modelId)}>
-        <NativeSymbolIcon name="retry" style={{ verticalAlign: '-2px' }} />
-        {' '}{isCanceled ? 'Run again' : 'Retry'}
-      </button>
+    </div>
+  );
+}
+
+/** The retry model picker, then Continue, Retry, Show logs and Report a problem as the bordered icon buttons that the approval and run-control rows use. They sit in the bar's header row so the bar stays one row tall, and the tooltip on each icon names the action. */
+function RecoveryActions({
+  agentTask,
+  isCanceled,
+  models,
+  modelId,
+  onModelChange,
+  onRetry,
+  onContinue,
+}: {
+  agentTask: DisplayableAgentTask;
+  isCanceled: boolean;
+  models: ReasoningModel[];
+  modelId: string | undefined;
+  onModelChange: (modelId: string | undefined) => void;
+  onRetry: (modelId?: string) => void;
+  onContinue: () => void;
+}) {
+  const problemDetail = problemDetailFor(agentTask);
+
+  return (
+    <div className="run-status-recovery" role="group" aria-label="Recovery actions">
+      {agentTask.checkpointAvailable && (
+        <DecisionButton tone="neutral" icon={<ContinueCircleIcon />} label="Continue" title="pick up from where it stopped" onClick={onContinue} />
+      )}
+      <RetryModelPicker models={models} modelId={modelId} onModelChange={onModelChange} />
+      <DecisionButton
+        tone="neutral"
+        className="run-status-retry"
+        icon={<RetryCircleIcon />}
+        label={isCanceled ? 'Run again' : 'Retry'}
+        title="run this turn again"
+        onClick={() => onRetry(modelId)}
+      />
       {isCanceled ? null : (
         <>
-          <button type="button" className="action-btn secondary" onClick={() => showDiagnosticLogs(problemDetail)}>
-            Show logs
-          </button>
-          <button type="button" className="action-btn secondary" onClick={() => reportProblem(problemDetail)}>
-            Report a problem
-          </button>
+          <DecisionButton tone="neutral" icon={<WorkLogCircleIcon />} label="Show logs" title="open the diagnostic logs for this run" onClick={() => showDiagnosticLogs(problemDetail)} />
+          <DecisionButton tone="neutral" icon={<ReportCircleIcon />} label="Report a problem" title="send details about this run" onClick={() => reportProblem(problemDetail)} />
         </>
       )}
     </div>
@@ -195,28 +222,18 @@ export function RunStatusCard({
   const status = statusFor(agentTask, phase, elapsedSeconds, quietSeconds);
   const reason = reasonFor(agentTask, phase);
   const showRecovery = phase.offersRecovery && !agentTask.isStreaming;
+  const retryModel = useRetryModel(agentTask, showRecovery);
   const showReasonAsMarkdown = phase.kind === 'settled';
 
-  const footer = reason || showRecovery ? (
-    <>
-      {reason ? (
-        showReasonAsMarkdown ? (
-          <div className="run-status-reason error-markdown">
-            <MarkdownRenderer content={reason} />
-          </div>
-        ) : (
-          <p className="run-status-note">{reason}</p>
-        )
-      ) : null}
-      {showRecovery ? (
-        <RecoveryActions
-          agentTask={agentTask}
-          isCanceled={phase.kind === 'canceled'}
-          onRetry={onRetry}
-          onContinue={onContinue}
-        />
-      ) : null}
-    </>
+  // The reason stays visible under the bar, so a stopped run never hides why it stopped. The recovery actions sit in the bar's own row.
+  const footer = reason ? (
+    showReasonAsMarkdown ? (
+      <div className="run-status-reason error-markdown">
+        <MarkdownRenderer content={reason} />
+      </div>
+    ) : (
+      <p className="run-status-note">{reason}</p>
+    )
   ) : undefined;
 
   return (
@@ -232,6 +249,17 @@ export function RunStatusCard({
       onJumpToLatestContent={onJumpToLatestContent}
       status={status}
       statusFooter={footer}
+      statusActions={showRecovery ? (
+        <RecoveryActions
+          agentTask={agentTask}
+          isCanceled={phase.kind === 'canceled'}
+          models={retryModel.models}
+          modelId={retryModel.modelId}
+          onModelChange={retryModel.setModelId}
+          onRetry={onRetry}
+          onContinue={onContinue}
+        />
+      ) : undefined}
       showTrail={showTrail}
     />
   );

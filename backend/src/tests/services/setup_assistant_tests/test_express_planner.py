@@ -114,6 +114,25 @@ async def test_all_in_adds_the_voice_listener_and_never_proactive_suggestions():
 
 
 @pytest.mark.asyncio
+async def test_the_voice_listener_is_offered_at_all_in_but_starts_unticked():
+    plan, _ = await _plan("all_in")
+
+    voice = _item(plan, VOICE_LISTENER)
+    assert voice.selected is True
+    assert voice.default_ticked is False
+    assert voice.caution is not None and "sounds that are not you" in voice.caution
+    assert [item.id for item in plan.items if not item.default_ticked] == [VOICE_LISTENER]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("level", ["cautious", "balanced"])
+async def test_every_item_starts_ticked_below_the_all_in_level(level):
+    plan, _ = await _plan(level)
+
+    assert all(item.default_ticked for item in plan.items)
+
+
+@pytest.mark.asyncio
 async def test_the_effect_text_for_capture_and_meetings_changes_with_the_level():
     balanced, _ = await _plan("balanced")
     all_in, _ = await _plan("all_in")

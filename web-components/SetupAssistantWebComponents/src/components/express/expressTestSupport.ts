@@ -16,6 +16,7 @@ export function makeItem(overrides: Partial<ExpressItem> & Pick<ExpressItem, 'id
     already_done: false,
     unavailable_reason: null,
     selected: true,
+    default_ticked: true,
     ...overrides,
   }
 }
@@ -51,7 +52,7 @@ export function makePlan(overrides: Partial<ExpressPlan> = {}): ExpressPlan {
       thinkingItem(),
       makeItem({ id: 'learn_memory', group: 'learning', title: 'Memory after tasks' }),
       makeItem({ id: 'capture_activity', group: 'background', title: 'Activity Capture', permissions: ['screen_recording'] }),
-      makeItem({ id: 'voice_listener', group: 'background', title: 'Voice Listener', comfort: 'all_in', permissions: ['microphone'], caution: 'In noisy places it can react to sounds that are not you.' }),
+      makeItem({ id: 'voice_listener', group: 'background', title: 'Voice Listener', comfort: 'all_in', permissions: ['microphone'], default_ticked: false, caution: 'In noisy places it can react to sounds that are not you.' }),
     ],
     notes: ['Everything here stays on this Mac while I think with the local model.'],
     thinking_model_available: true,

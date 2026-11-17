@@ -110,6 +110,33 @@ describe('agent task run focus', () => {
     expect(labels.join(' ')).not.toMatch(/revision 5/i);
   });
 
+  it('calls a check the agent scheduled for itself a scheduled check, never a revision, and counts it per turn', () => {
+    const labels = agentTaskRunLabels([
+      undefined, undefined, 'scheduled_follow_up', 'scheduled_follow_up', 'agent_follow_up', 'scheduled_follow_up', undefined, 'scheduled_follow_up',
+    ]);
+
+    expect(labels).toEqual([
+      'Initial request',
+      'Follow-up 1',
+      'Scheduled check 1 of Follow-up 1',
+      'Scheduled check 2 of Follow-up 1',
+      'Agent revision 1 of Follow-up 1',
+      'Scheduled check 3 of Follow-up 1',
+      'Follow-up 2',
+      'Scheduled check 1 of Follow-up 2',
+    ]);
+    expect(labels.filter(label => /^Scheduled check/.test(label)).join(' ')).not.toMatch(/revision/i);
+  });
+
+  it('gives scheduled checks no number and keeps them out of everyone else\'s count', () => {
+    expect(agentTaskRunNumbers([undefined, undefined, 'scheduled_follow_up', 'scheduled_follow_up', 'agent_follow_up', undefined, 'scheduled_follow_up'])).toEqual([
+      '1', '2', '', '', '2.1', '3', '',
+    ]);
+    expect(isRevisionNumber('')).toBe(false);
+    expect(agentTaskRunNumbers(['scheduled_follow_up'])).toEqual(['1']);
+    expect(agentTaskRunLabels(['scheduled_follow_up'])).toEqual(['Initial request']);
+  });
+
   it('numbers non-revision turns 1, 2, 3 and agent revisions parent.k', () => {
     expect(agentTaskRunNumbers([])).toEqual([]);
     expect(agentTaskRunNumbers([undefined])).toEqual(['1']);

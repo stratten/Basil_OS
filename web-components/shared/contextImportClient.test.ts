@@ -29,6 +29,23 @@ describe('createContextImportClient', () => {
     expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toEqual({ text: 'about me', filename: '', label: '' })
   })
 
+  it('sends screenshots to the image route with the confirmed model route, and surfaces the backend explanation on a 400', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(response(200, { text: 'Be brief.' }))
+      .mockResolvedValueOnce(response(400, { detail: 'The model you chose runs on this Mac and can only read text.' }))
+    vi.stubGlobal('fetch', fetchMock)
+    const client = createContextImportClient('http://127.0.0.1:8000')
+    const access = { mode: 'basil_cloud' as const, resolved: true }
+    const images = [{ mime_type: 'image/png', data_base64: 'AAAA' }]
+
+    expect(await client.readImages(images, access)).toEqual({ text: 'Be brief.' })
+    await expect(client.readImages(images)).rejects.toThrow('can only read text')
+
+    expect(fetchMock.mock.calls[0][0]).toBe('http://127.0.0.1:8000/memory/context-import/images/read')
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ images, model_access: access })
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ images })
+  })
+
   it('reads and cancels a job by its encoded id', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(response(200, { job_id: 'job/1', state: 'running' }))

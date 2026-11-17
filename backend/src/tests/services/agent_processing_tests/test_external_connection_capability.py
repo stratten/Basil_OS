@@ -10,7 +10,7 @@ from api.services.agent_processing.tools.external_services import (
 
 
 def _record(**overrides):
-    base = dict(server_name=None, server_instructions=None)
+    base = dict(server_name=None, server_instructions=None, server_icon_data_url=None)
     base.update(overrides)
     return SimpleNamespace(**base)
 
@@ -67,6 +67,42 @@ def test_apply_server_metadata_strips_whitespace():
     record = _record()
     assert cap.apply_server_metadata_to_record(record, {"name": "  sf  "}) is True
     assert record.server_name == "sf"
+
+
+ICON = "data:image/png;base64,iVBORw0KGgo="
+OTHER_ICON = "data:image/png;base64,iVBORw0KGgoAAAA="
+
+
+def test_apply_server_metadata_stores_the_advertised_icon():
+    record = _record()
+    assert cap.apply_server_metadata_to_record(record, {"icon_data_url": ICON, "icons_advertised": True}) is True
+    assert record.server_icon_data_url == ICON
+    assert cap.apply_server_metadata_to_record(record, {"icon_data_url": ICON, "icons_advertised": True}) is False
+    assert cap.apply_server_metadata_to_record(record, {"icon_data_url": OTHER_ICON, "icons_advertised": True}) is True
+    assert record.server_icon_data_url == OTHER_ICON
+
+
+def test_apply_server_metadata_clears_the_icon_only_when_the_server_advertises_none():
+    record = _record(server_icon_data_url=ICON)
+    assert cap.apply_server_metadata_to_record(record, {"icons_advertised": False, "icon_data_url": None}) is True
+    assert record.server_icon_data_url is None
+    assert cap.apply_server_metadata_to_record(record, {"icons_advertised": False, "icon_data_url": None}) is False
+
+
+def test_apply_server_metadata_keeps_a_good_icon_when_the_fetch_failed_or_the_key_is_absent():
+    record = _record(server_icon_data_url=ICON)
+    # The server advertises icons but none could be loaded this time: keep what we had.
+    assert cap.apply_server_metadata_to_record(record, {"icons_advertised": True, "icon_data_url": None}) is False
+    # An in-process server (Gmail, Slack) has no icon keys at all.
+    assert cap.apply_server_metadata_to_record(record, {"name": "gmail"}) is True
+    assert record.server_icon_data_url == ICON
+
+
+def test_apply_server_metadata_ignores_an_icon_that_is_not_a_data_image():
+    record = _record()
+    for bad in ("https://evil.example/x.png", "data:text/html;base64,PGI+", 42, ""):
+        assert cap.apply_server_metadata_to_record(record, {"icon_data_url": bad, "icons_advertised": True}) is False
+    assert record.server_icon_data_url is None
 
 
 # --- connection_routing_label --------------------------------------------------

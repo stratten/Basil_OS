@@ -1,6 +1,6 @@
 """Offline false-accept and false-reject evaluation of Basil's wake-word models (openWakeWord, the same ONNX files and threshold the app uses).
 
-Models: the two bundled Basil phrases (hey_basil_proper, hey_basil_american) from backend/src/api/vendor/models/wake_word and the pre-trained hey_jarvis from the openwakeword package. The detection threshold is 0.75, matching wake_word_service.py. Frames are 1280 samples (80 ms) of 16 kHz int16 audio, as the app feeds them.
+Models: the bundled Hey Basil model (hey_basil) from backend/src/api/vendor/models/wake_word and the pre-trained hey_jarvis from the openwakeword package. The detection threshold is 0.75, matching wake_word_service.py. Frames are 1280 samples (80 ms) of 16 kHz int16 audio, as the app feeds them.
 Positives: the phrase synthesized with macOS `say` in several voices, speaking rates, and with and without noise (these voices are not the ElevenLabs voices the Basil models were trained on, so true-accept results are not valid for those models; only the false-accept results count). Negatives: read speech from LibriSpeech test-clean (up to the requested minutes) plus a small set of confusable phrases. CPU cost is the process CPU time per second of audio fed.
 The WakeWordDetector class is not used because its constructor can download models; the model files and scoring path are the same.
 
@@ -38,8 +38,7 @@ def model_paths() -> Dict[str, str]:
 
     vendor = REPO_ROOT / "backend" / "src" / "api" / "vendor" / "models" / "wake_word"
     return {
-        "hey_basil_american": str(next(vendor.glob("hey_basil_american*.onnx"))),
-        "hey_basil_proper": str(next(vendor.glob("hey_basil_proper*.onnx"))),
+        "hey_basil": str(next(vendor.glob("hey_basil*.onnx"))),
         "hey_jarvis": str(next((Path(openwakeword.__file__).parent / "resources" / "models").glob("hey_jarvis*.onnx"))),
     }
 

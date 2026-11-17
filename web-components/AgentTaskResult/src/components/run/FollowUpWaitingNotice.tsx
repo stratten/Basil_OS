@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import NativeSymbolIcon from '@shared/NativeSymbolIcon';
-import { describeFollowUpDue } from '../../app/followUpTime';
-import { formatCountdown, useCountdown } from '../../app/useCountdown';
+import { describeFollowUpDue } from '../../app/display/followUpTime';
+import { formatCountdown, useCountdown } from '../../app/display/useCountdown';
 
 /** A scheduled follow-up shows a live countdown only when it is this close; farther out, the clock time reads better. */
 export const SCHEDULED_COUNTDOWN_WINDOW_SECONDS = 15 * 60;

@@ -59,6 +59,9 @@ final class HotkeyService: ObservableObject {
     var transcriptionHotkeyGestureState = TranscriptionHotkeyGestureState()
     var transcriptionControllerOverride: (any TranscriptionHotkeyControlling)?
     
+    /// Whether a `configureHotkeysWhenBackendReady()` call is already waiting for the backend
+    private var isAwaitingBackendToConfigureHotkeys = false
+    
     // MARK: - Suspension Support
     /// Whether hotkey listeners are currently suspended (for recording)
     private var isSuspended: Bool = false
@@ -116,34 +119,30 @@ final class HotkeyService: ObservableObject {
         #endif
     }
     
-    /// Waits for backend to become available, then configures hotkeys
+    /// Waits for the backend to become available, however long that takes, then configures hotkeys.
+    /// A fixed time limit used to leave hotkeys unconfigured for the whole session when the backend was slow to start. Startup calls this from two places, so a second call while one is already waiting returns at once and the first call does the configuring.
     @MainActor 
     func configureHotkeysWhenBackendReady() async {
-        let maxWaitTime: TimeInterval = 30.0 // 30 second timeout
-        let checkInterval: TimeInterval = 0.5 // Check every 500ms
-        let startTime = Date()
+        guard !isAwaitingBackendToConfigureHotkeys else { return }
+        isAwaitingBackendToConfigureHotkeys = true
+        defer { isAwaitingBackendToConfigureHotkeys = false }
         
         #if DEBUG
-        DevLogger.shared.info("🔄 STARTUP: Waiting for backend availability to configure hotkeys (timeout: \(maxWaitTime)s)...", context: "HotkeyService")
+        DevLogger.shared.info("🔄 STARTUP: Waiting for backend availability to configure hotkeys...", context: "HotkeyService")
         #endif
         
-        while Date().timeIntervalSince(startTime) < maxWaitTime {
-            if APIClient.shared.isBackendAvailable {
-                #if DEBUG
-                DevLogger.shared.info("✅ STARTUP: Backend is now available. Configuring hotkeys...", context: "HotkeyService")
-                #endif
-                
-                await configureInitialHotkeys()
-                return
-            }
-            
-            // Wait before next check
-            try? await Task.sleep(nanoseconds: UInt64(checkInterval * 1_000_000_000))
+        guard await APIClient.waitUntilBackendAvailable() else {
+            #if DEBUG
+            DevLogger.shared.info("STARTUP: Stopped waiting for the backend (canceled or quitting). Hotkeys not configured.", context: "HotkeyService")
+            #endif
+            return
         }
         
         #if DEBUG
-        DevLogger.shared.error("⏰ STARTUP: Timeout waiting for backend availability (\(maxWaitTime)s). Hotkeys not configured.", context: "HotkeyService")
+        DevLogger.shared.info("✅ STARTUP: Backend is now available. Configuring hotkeys...", context: "HotkeyService")
         #endif
+        
+        await configureInitialHotkeys()
     }
     
     // MARK: - Methods

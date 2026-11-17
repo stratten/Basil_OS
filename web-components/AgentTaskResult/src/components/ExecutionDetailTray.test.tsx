@@ -12,7 +12,7 @@ import type { AgentTaskRunFocusSummary } from './run/agentTaskRunFocus';
 import * as bridge from '../services/bridge';
 import {
   DETAIL_TRAY_MIN_WIDTH,
-} from '../app/detailTraySizing';
+} from '../app/sizing/detailTraySizing';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 

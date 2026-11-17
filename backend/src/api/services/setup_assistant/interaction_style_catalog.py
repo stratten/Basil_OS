@@ -71,23 +71,35 @@ INTERACTION_STYLE_GROUPS: Tuple[InteractionStyleGroup, ...] = (
     ),
     InteractionStyleGroup(
         id="checkins",
-        title="When should I check with you?",
+        title="Before you act for me",
         multiple=False,
         options=(
             InteractionStyleOption(
                 id="careful",
-                label="Ask before sending or changing anything",
+                label="Ask before sending, changing, or deleting anything",
                 instruction="Ask before sending, editing, or deleting anything.",
             ),
             InteractionStyleOption(
                 id="routine",
-                label="Skip routine confirmations, ask on anything risky",
+                label="Skip routine confirmations, ask before anything risky",
                 instruction="Do not ask for confirmation on routine steps; ask only before anything risky or hard to undo.",
             ),
+        ),
+    ),
+    InteractionStyleGroup(
+        id="clarify",
+        title="When something is unclear",
+        multiple=False,
+        options=(
             InteractionStyleOption(
-                id="minimal",
-                label="Only ask when something is unclear",
-                instruction="Only ask a question when something is genuinely unclear.",
+                id="ask",
+                label="Ask me a quick question",
+                instruction="When something is unclear, ask a short question before proceeding.",
+            ),
+            InteractionStyleOption(
+                id="assume",
+                label="Make a sensible assumption and tell me",
+                instruction="When something is unclear, make a sensible assumption, say what you assumed, and carry on.",
             ),
         ),
     ),

@@ -35,6 +35,8 @@ vi.mock('../services/bridge', () => ({
 let RunControlComposer: typeof import('./RunControlComposer').default;
 let resetFollowUpComposerViews: typeof import('../store/followUpComposerViewStore').resetFollowUpComposerViews;
 let isFollowUpComposerCollapsed: typeof import('../store/followUpComposerViewStore').isFollowUpComposerCollapsed;
+let foldFollowUpComposerForRun: typeof import('../store/followUpComposerViewStore').foldFollowUpComposerForRun;
+let unfoldFollowUpComposerAfterRun: typeof import('../store/followUpComposerViewStore').unfoldFollowUpComposerAfterRun;
 let container: HTMLDivElement;
 let root: Root;
 
@@ -42,7 +44,12 @@ Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
 beforeAll(async () => {
   RunControlComposer = (await import('./RunControlComposer')).default;
-  ({ resetFollowUpComposerViews, isFollowUpComposerCollapsed } = await import('../store/followUpComposerViewStore'));
+  ({
+    resetFollowUpComposerViews,
+    isFollowUpComposerCollapsed,
+    foldFollowUpComposerForRun,
+    unfoldFollowUpComposerAfterRun,
+  } = await import('../store/followUpComposerViewStore'));
 });
 
 beforeEach(() => {
@@ -50,6 +57,9 @@ beforeEach(() => {
   mocks.filesPicked = null;
   resetComposerDrafts();
   resetFollowUpComposerViews();
+  // A run folds its box when it starts. Most tests here are about the open box, so turn-1 starts as one the run has already folded and the reader has opened again. The tests that are about the fold at run start use their own turns.
+  foldFollowUpComposerForRun('root-1', 'turn-1');
+  setFollowUpComposerCollapsed('root-1', false);
   mocks.pauseSession.mockResolvedValue({ success: true, status: 'pause_requested' });
   mocks.resumeSession.mockResolvedValue({ success: true, status: 'resuming' });
   mocks.sendRunMessage.mockResolvedValue({ success: true, status: 'queued', message_id: 'note-1' });
@@ -496,6 +506,91 @@ describe('RunControlComposer fold', () => {
     act(() => foldButton().click());
 
     expect(isFollowUpComposerCollapsed('turn-9')).toBe(true);
+  });
+});
+
+describe('RunControlComposer folds when a run starts', () => {
+  const bar = () => container.querySelector<HTMLButtonElement>('button.text-followup-bar');
+  const region = () => container.querySelector<HTMLElement>('.basil-collapsible-region');
+
+  function renderTurn(turnTaskId: string, mode: 'running' | 'paused' | 'awaiting' = 'running', rootTaskId = 'root-run') {
+    act(() => {
+      root.render(<RunControlComposer turnTaskId={turnTaskId} rootTaskId={rootTaskId} mode={mode} deliveredNoteIds={NONE} />);
+    });
+  }
+
+  it('is folded to the bar as soon as a run starts, without taking focus', () => {
+    renderTurn('turn-start');
+
+    expect(bar()).not.toBeNull();
+    expect(region()?.hasAttribute('inert')).toBe(true);
+    expect(isFollowUpComposerCollapsed('root-run')).toBe(true);
+    expect(document.activeElement).not.toBe(bar());
+    expect(container.querySelector('.run-control-collapsed-actions button[aria-label="Pause"]')).not.toBeNull();
+  });
+
+  it('opens from the bar when the reader wants to steer, and does not fold again over that choice', () => {
+    renderTurn('turn-start');
+    act(() => bar()!.click());
+    expect(bar()).toBeNull();
+
+    renderTurn('turn-start', 'paused');
+    renderTurn('turn-start', 'running');
+    expect(bar()).toBeNull();
+  });
+
+  it('does not fold again when the same turn remounts, as it does after an approval prompt takes its place', () => {
+    renderTurn('turn-start');
+    act(() => bar()!.click());
+    act(() => root.render(null));
+
+    renderTurn('turn-start');
+    expect(bar()).toBeNull();
+    expect(isFollowUpComposerCollapsed('root-run')).toBe(false);
+  });
+
+  it('folds again when a follow-up starts a new turn in the same chain', () => {
+    renderTurn('turn-start');
+    act(() => bar()!.click());
+    expect(isFollowUpComposerCollapsed('root-run')).toBe(false);
+
+    renderTurn('turn-next');
+    expect(isFollowUpComposerCollapsed('root-run')).toBe(true);
+    expect(bar()).not.toBeNull();
+  });
+
+  it('leaves a box that is paused, or parked on a question, open', () => {
+    renderTurn('turn-paused', 'paused');
+    expect(isFollowUpComposerCollapsed('root-run')).toBe(false);
+    expect(bar()).toBeNull();
+
+    renderTurn('turn-asking', 'awaiting');
+    expect(isFollowUpComposerCollapsed('root-run')).toBe(false);
+  });
+
+  it('keeps a box the reader had already folded as theirs: the run does not claim it', () => {
+    setFollowUpComposerCollapsed('root-run', true);
+    renderTurn('turn-start');
+
+    expect(isFollowUpComposerCollapsed('root-run')).toBe(true);
+    expect(unfoldFollowUpComposerAfterRun('root-run')).toBe(false);
+    expect(isFollowUpComposerCollapsed('root-run')).toBe(true);
+  });
+
+  it('keeps the unsent draft visible on the bar while the run has the box folded', () => {
+    renderTurn('turn-start');
+    act(() => bar()!.click());
+    const element = editor();
+    // jsdom does not implement innerText, which the composer reads in browsers.
+    Object.defineProperty(element, 'innerText', { configurable: true, get: () => element.textContent ?? '' });
+    act(() => {
+      element.textContent = 'Use the Paris office';
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    act(() => root.render(null));
+
+    renderTurn('turn-next');
+    expect(bar()?.textContent).toContain('Use the Paris office');
   });
 });
 

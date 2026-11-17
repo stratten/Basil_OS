@@ -147,4 +147,30 @@ describe('useSetupCompletion', () => {
     expect(api.completeSetupAssistant).not.toHaveBeenCalled()
     expect(api.finalizeSetupAssistant).not.toHaveBeenCalled()
   })
+  it('keeps the stage, model, and a summary with a skip from the conversation so the session can be picked up', () => {
+    const access = { mode: 'cloud', provider: 'anthropic', model_id: 'claude', resolved: true }
+    const store = createStore({
+      setupStage: 'conversation',
+      setupAgentModelAccess: access,
+      interactionStyle: ['Lead with the answer'],
+      sessionAgenda: [completedAgendaItem],
+    })
+    mount(store).handleSkip()
+
+    const payload = (api.skipSetupAssistant.mock.calls[0] as unknown as [Record<string, unknown>])[0]
+    expect(payload.resume_stage).toBe('conversation')
+    expect(payload.resume_model_access).toEqual(access)
+    expect(payload.resume_interaction_style).toEqual(['Lead with the answer'])
+    expect(String(payload.resume_summary)).toContain('Try a voice command (done)')
+    expect((payload.session_goals as unknown[]).length).toBe(1)
+  })
+
+  it('saves nothing to resume from when the skip happens before the conversation', () => {
+    const store = createStore({ setupStage: 'welcome', setupAgentModelAccess: null, interactionStyle: [] })
+    mount(store).handleSkip()
+
+    const payload = (api.skipSetupAssistant.mock.calls[0] as unknown as [Record<string, unknown>])[0]
+    expect(payload.resume_stage).toBeNull()
+    expect(payload.resume_model_access).toBeNull()
+  })
 })

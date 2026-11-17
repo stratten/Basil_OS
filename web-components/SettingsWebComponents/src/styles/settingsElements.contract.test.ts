@@ -221,7 +221,7 @@ describe('Settings element primitives', () => {
   })
 
   it('finds every leaf stylesheet', () => {
-    expect(leafStylesheetNames).toHaveLength(25)
+    expect(leafStylesheetNames).toHaveLength(26)
   })
 
   it.each(leafStylesheetNames)('%s leaves element defaults to the shared stylesheet', (fileName) => {

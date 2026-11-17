@@ -54,10 +54,12 @@ extension AppDelegate {
                 self?.setupAssistantWindow?.miniaturize(nil)
             },
             onCollapseRequested: { [weak self] in
+                self?.setupTaskPaneController?.windowCollapseChanged(isCollapsed: true)
                 self?.setupAssistantCollapseController?.setCollapsed(true)
             },
             onExpandRequested: { [weak self] in
                 self?.setupAssistantCollapseController?.setCollapsed(false)
+                self?.setupTaskPaneController?.windowCollapseChanged(isCollapsed: false)
             },
             onGrowForConversationRequested: { [weak self] in
                 self?.growSetupAssistantWindowForConversation()
@@ -80,15 +82,23 @@ extension AppDelegate {
             defer: false
         )
         window.configureCustomChromeWindow(title: "Basil Setup Assistant", releasedWhenClosed: false)
-        window.contentView = NSHostingView(
+        let setupHostingView = NSHostingView(
             rootView: setupAssistantView
                 .preferredColorScheme(.light)
         )
-        WebKitWindowChromeAppearance.apply(to: window)
+        // The hosting view lives inside a container so a task launched from setup can open in a pane to its right.
         window.contentMinSize = NSSize(
             width: 980 + setupWindowHorizontalChrome,
             height: 620 + setupWindowVerticalChrome
         )
+        let taskPaneController = SetupTaskPaneController(
+            window: window,
+            setupContentView: setupHostingView,
+            minimumSetupWidth: 980 + setupWindowHorizontalChrome
+        )
+        window.contentView = taskPaneController.containerView
+        setupTaskPaneController = taskPaneController
+        WebKitWindowChromeAppearance.apply(to: window)
         window.contentMaxSize = NSSize(
             width: 3000 + setupWindowHorizontalChrome,
             height: 3000 + setupWindowVerticalChrome
@@ -120,6 +130,8 @@ extension AppDelegate {
                     AppearanceRefreshCoordinator.shared.unregister(coordinator)
                 }
                 appDelegate.setupAssistantThemeCoordinator = nil
+                appDelegate.setupTaskPaneController?.tearDown()
+                appDelegate.setupTaskPaneController = nil
                 appDelegate.setupAssistantKeyboardShortcuts = nil
                 appDelegate.setupAssistantCollapseController = nil
                 appDelegate.setupAssistantWindow = nil

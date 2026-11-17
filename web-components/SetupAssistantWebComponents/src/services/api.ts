@@ -4,6 +4,7 @@ import type {
   SetupActionExecutionResponse,
   SetupActionSequenceValidationResponse,
   SetupAgentContractResponse,
+  SetupAgentModelAccess,
   SetupAgentModelAccessOptionsResponse,
   SetupAgentModelAccessSelectRequest,
   SetupAgentModelAccessSelectResponse,
@@ -21,7 +22,13 @@ import type {
 } from '@/types'
 import type { ComfortLevel, ExpressApplyResult, ExpressPlan, SetupReceipt } from '@/components/express/expressTypes'
 
-export type SetupAssistantSkipRequest = SetupAssistantCompletionRequest
+export interface SetupAssistantSkipRequest extends SetupAssistantCompletionRequest {
+  // What the backend keeps so the session can be picked up again. All empty when the session had not reached the conversation.
+  resume_stage?: string | null
+  resume_summary?: string | null
+  resume_model_access?: SetupAgentModelAccess | null
+  resume_interaction_style?: string[]
+}
 
 const API_BASE = window.basilSetupAssistantConfig?.apiBaseUrl ?? ''
 
@@ -321,6 +328,27 @@ export async function skipSetupAssistant(
   payload: SetupAssistantSkipRequest,
 ): Promise<Record<string, unknown>> {
   return postJson<Record<string, unknown>>('/setup-assistant/state/skip', payload)
+}
+
+/** Keeps the session's place as it goes. `keepalive` lets the last save finish while the window is closing. */
+export async function saveSetupProgress(
+  payload: SetupAssistantSkipRequest,
+  options: { keepalive?: boolean } = {},
+): Promise<void> {
+  const response = await fetch(`${API_BASE}/setup-assistant/state/progress`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    keepalive: options.keepalive === true,
+  })
+  if (!response.ok) {
+    throw new Error(await extractErrorDetail(response))
+  }
+}
+
+/** Forgets the saved session when the person chooses to start from the top, so the next launch does not offer it again. */
+export async function discardSavedSetupSession(): Promise<Record<string, unknown>> {
+  return postJson<Record<string, unknown>>('/setup-assistant/state/discard-saved-session', {})
 }
 
 export async function dismissSetupReminder(): Promise<Record<string, unknown>> {

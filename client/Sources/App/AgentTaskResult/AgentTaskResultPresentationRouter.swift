@@ -37,6 +37,19 @@ enum AgentTaskResultPresentationRouter {
         return false
     }
 
+    /// A task launched from the setup flow opens in the pane to the right of the setup flow, inside the setup window, and ignores the usual "visible standalone window wins" rule: the user is mid-setup and should see the task next to it. When there is no usable setup pane (the window is collapsed, closed, or too narrow for one), it falls back to the normal routing. Returns true when the task landed in an embedded surface.
+    @discardableResult
+    static func installNewAgentFromSetup(
+        agentTaskId: String,
+        initialAgentTask: String?,
+        paneController: SetupTaskPaneController?
+    ) -> Bool {
+        if let paneController, paneController.show(agentTaskId: agentTaskId) {
+            return true
+        }
+        return installNewAgent(agentTaskId: agentTaskId, initialAgentTask: initialAgentTask)
+    }
+
     static func showExistingAgentTask(agentTaskId: String, anchorFrame: NSRect? = nil) {
         let coordinator = AgentTaskResultPresentationCoordinator.shared
         if coordinator.activePresenter == .board, let host = coordinator.activeEmbeddedHost {

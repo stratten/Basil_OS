@@ -114,6 +114,14 @@ describe('ConversationSidebar', () => {
     expect(chatsCss).toMatch(/\.chats-conversation-list > li:hover \.chats-conversation-row,[\s\S]*\.chats-conversation-list > li:focus-within \.chats-conversation-row\s*\{[\s\S]*padding-right: 32px;/);
   });
 
+  it('lets the collapsed rail share the sidebar background instead of painting its own darker block behind the expand icon', () => {
+    expect(chatsCss).toMatch(/\.chats-sidebar \.shared-history-rail\s*\{[^}]*background: transparent;[^}]*border-right: 0;/);
+    renderSidebar(true);
+    const rail = document.querySelector('.chats-sidebar-collapsed .shared-history-rail');
+    expect(rail).not.toBeNull();
+    expect(rail?.closest('.chats-sidebar')).not.toBeNull();
+  });
+
   it('uses hover-only delete and separate-window controls for every conversation row', async () => {
     const onSelect = vi.fn();
     const postMessage = vi.fn();

@@ -131,6 +131,18 @@ describe('IntroDownloadsStep', () => {
     expect(body).toEqual({ request: { model_type: 'NVIDIA', variant: 'parakeet-tdt-0.6b-v3-quantized' } })
   })
 
+  it('draws Download all as a secondary button with its own emphasis class, never as the filled primary that Continue owns', async () => {
+    installFetch()
+    renderStep()
+    await flush()
+
+    const all = buttonByText('Download all')!
+    expect(all.classList.contains('secondary-button')).toBe(true)
+    expect(all.classList.contains('model-downloads__button--all')).toBe(true)
+    expect(all.classList.contains('primary-button')).toBe(false)
+    expect(buttonByLabel('Download Qwen3.5-9B MLX 4-bit')!.classList.contains('model-downloads__button--all')).toBe(false)
+  })
+
   it('downloads all three models, thinking model included, from Download all', async () => {
     installFetch()
     renderStep()

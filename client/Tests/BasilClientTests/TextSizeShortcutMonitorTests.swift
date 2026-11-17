@@ -65,6 +65,8 @@ final class TextSizeShortcutMonitorTests: XCTestCase {
         var draftConsumes = false
         var draftShortcuts: [TextSizeShortcut] = []
         var failSaves = false
+        var loadResult: AppearanceSettings?
+        var loadCalls = 0
         var monitor: TextSizeShortcutMonitor!
 
         init(startingScale: Double = 1.0, loaded: Bool = true, saveDelayNanoseconds: UInt64 = 20_000_000) {
@@ -86,6 +88,10 @@ final class TextSizeShortcutMonitorTests: XCTestCase {
                 applyToUnsavedDraft: { [unowned self] shortcut in
                     self.draftShortcuts.append(shortcut)
                     return self.draftConsumes
+                },
+                loadSettings: { [unowned self] in
+                    self.loadCalls += 1
+                    return self.loadResult
                 },
                 saveDelayNanoseconds: saveDelayNanoseconds
             )
@@ -174,14 +180,74 @@ final class TextSizeShortcutMonitorTests: XCTestCase {
         XCTAssertEqual(harness.persisted, [1.1])
     }
 
-    func testPressesAreLeftAloneBeforeTheSettingsAreLoaded() async {
+    func testAPressBeforeTheSettingsAreLoadedIsKeptAndAppliedOnceTheyLoad() async {
         let harness = Harness(loaded: false)
+        var saved = AppearanceSettings()
+        saved.textScale = 1.1
+        saved.preferredFont = "Menlo"
+        harness.loadResult = saved
 
-        XCTAssertFalse(harness.monitor.handle(.larger))
+        XCTAssertTrue(harness.monitor.handle(.larger))
+        XCTAssertEqual(harness.applied, [])
+
+        await harness.monitor.waitForPendingLoad()
         await harness.monitor.waitForPendingSave()
 
+        XCTAssertEqual(harness.loadCalls, 1)
+        XCTAssertEqual(harness.applied, [1.1, 1.25], "The loaded settings are cached first, then the press moves one step from the saved size")
+        XCTAssertEqual(harness.settings?.preferredFont, "Menlo", "The person's saved settings are kept, not replaced by defaults")
+        XCTAssertEqual(harness.persisted, [1.25])
+    }
+
+    func testSeveralPressesBeforeTheSettingsLoadShareOneLoadAndApplyInOrder() async {
+        let harness = Harness(loaded: false)
+        harness.loadResult = AppearanceSettings()
+
+        XCTAssertTrue(harness.monitor.handle(.larger))
+        XCTAssertTrue(harness.monitor.handle(.larger))
+        XCTAssertTrue(harness.monitor.handle(.smaller))
+        await harness.monitor.waitForPendingLoad()
+        await harness.monitor.waitForPendingSave()
+
+        XCTAssertEqual(harness.loadCalls, 1)
+        XCTAssertEqual(harness.settings?.textScale, 1.1)
+        XCTAssertEqual(harness.persisted, [1.1])
+    }
+
+    func testAFailedLoadDropsTheQueuedPressAndNeverCachesOrSavesDefaults() async {
+        let harness = Harness(loaded: false)
+        harness.loadResult = nil
+
+        XCTAssertTrue(harness.monitor.handle(.larger))
+        await harness.monitor.waitForPendingLoad()
+        await harness.monitor.waitForPendingSave()
+
+        XCTAssertNil(harness.settings)
         XCTAssertEqual(harness.applied, [])
         XCTAssertEqual(harness.persisted, [])
+
+        harness.loadResult = AppearanceSettings()
+        XCTAssertTrue(harness.monitor.handle(.larger))
+        await harness.monitor.waitForPendingLoad()
+        await harness.monitor.waitForPendingSave()
+        XCTAssertEqual(harness.loadCalls, 2, "A later press tries the load again")
+        XCTAssertEqual(harness.persisted, [1.1])
+    }
+
+    func testSettingsCachedByStartupWhileTheLoadWaitsAreNotOverwritten() async {
+        let harness = Harness(loaded: false)
+        var fromDisk = AppearanceSettings()
+        fromDisk.textScale = 1.4
+        harness.loadResult = fromDisk
+
+        XCTAssertTrue(harness.monitor.handle(.smaller))
+        var cachedByStartup = AppearanceSettings()
+        cachedByStartup.textScale = 1.25
+        harness.settings = cachedByStartup
+        await harness.monitor.waitForPendingLoad()
+        await harness.monitor.waitForPendingSave()
+
+        XCTAssertEqual(harness.applied, [1.1], "The press steps from what startup cached, and the load result is not cached over it")
     }
 
     func testAFailedSaveKeepsTheAppliedSizeAndAllowsTheNextPress() async {

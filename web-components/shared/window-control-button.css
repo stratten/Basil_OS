@@ -6,7 +6,7 @@
 .basil-window-control-chevron {
   transform-box: fill-box;
   transform-origin: center;
-  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform var(--motion-quick, 150ms) var(--motion-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
 }
 
 .basil-window-control-chevron.is-collapsed {

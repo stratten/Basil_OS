@@ -6,6 +6,7 @@ import { JOB_POLL_INTERVAL_MS } from './useContextImportJob'
 
 export function makeClient(overrides: Partial<ContextImportClient> = {}): ContextImportClient {
   return {
+    readImages: vi.fn().mockResolvedValue({ text: 'Text from a screenshot.' }),
     startRecordsJob: vi.fn().mockResolvedValue({ job_id: 'job-1', chunks_total: 2 }),
     startProfileJob: vi.fn().mockResolvedValue({ job_id: 'job-1', chunks_total: 2 }),
     readJob: vi.fn(),

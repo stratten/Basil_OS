@@ -315,7 +315,8 @@ extension APIClient {
     
     /// POST request with raw Data as body and custom timeout
     /// Use longer timeouts for operations that may take a while (e.g., workflow resume)
-    func post(_ endpoint: String, body: Data, timeout: TimeInterval) async throws -> Data {
+    /// - Parameter surfaceServerDetail: When true, a failed response keeps the plain-text reason the backend sent (`{"detail": "..."}`) so the screen can say why, as in ``APIError/serverFailure(statusCode:body:)``. It is off by default because some callers match the bare ``APIError/serverError(statusCode:)`` for a specific status.
+    func post(_ endpoint: String, body: Data, timeout: TimeInterval, surfaceServerDetail: Bool = false) async throws -> Data {
         if !isBackendAvailable { await waitBrieflyForHealth() }
         guard isBackendAvailable else {
             throw APIError.backendNotAvailable
@@ -344,6 +345,9 @@ extension APIClient {
             #if DEBUG
             DevLogger.shared.error("❌ Server error (\(httpResponse.statusCode)): \(errorMessage)", context: "APIClient")
             #endif
+            if surfaceServerDetail {
+                throw APIError.serverFailure(statusCode: httpResponse.statusCode, body: data)
+            }
             throw APIError.serverError(statusCode: httpResponse.statusCode)
         }
         return data

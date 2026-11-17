@@ -209,14 +209,14 @@ export function BasilConversation({
               onClick={() => setShowObservations(value => !value)}
             >
               {showObservations
-                ? 'Hide setup notes'
-                : `Setup notes (${observations.length})`}
+                ? 'Hide what I noticed'
+                : `What I noticed (${observations.length})`}
             </button>
             {showObservations && (
               <section
                 id="conversation-observations-popover"
                 className="conversation-observations-popover"
-                aria-label="Setup notes"
+                aria-label="What I noticed about your setup"
               >
                 <div className="fact-list conversation-observation-list">
                   {observations.map(observation => (

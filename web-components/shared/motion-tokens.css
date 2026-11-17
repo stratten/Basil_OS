@@ -1,0 +1,6 @@
+/* Shared motion tokens. One curve and two durations cover almost every transition: --motion-quick for state flips such as hover, color, border, and opacity, and --motion-move for anything that changes size, position, or visibility. A package imports this file once next to its own tokens. It is kept apart from theme-layout-tokens.css because that file may only be imported by a package that declares every layout token, and motion needs no such condition. Looping indicators (spinners, pulses, beacons) keep their own timing on purpose, because a loop is not a transition. */
+:root {
+  --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-quick: 150ms;
+  --motion-move: 400ms;
+}

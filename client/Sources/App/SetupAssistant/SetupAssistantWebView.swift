@@ -434,9 +434,10 @@ struct SetupAssistantWebView: NSViewRepresentable {
             let resolvedModelId = (offerModelId?.isEmpty == false) ? offerModelId : nil
 
             let agentTaskId = UUID().uuidString
-            AgentTaskResultPresentationRouter.installNewAgent(
+            AgentTaskResultPresentationRouter.installNewAgentFromSetup(
                 agentTaskId: agentTaskId,
-                initialAgentTask: prompt
+                initialAgentTask: prompt,
+                paneController: (NSApp.delegate as? AppDelegate)?.setupTaskPaneController
             )
             dispatchActionResult(
                 requestId: requestId,

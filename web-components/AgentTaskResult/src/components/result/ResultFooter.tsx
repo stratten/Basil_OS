@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { formatTimestampForDisplay, useDateDisplayStyle } from '../../app/dateDisplay';
+import { formatTimestampForDisplay, useDateDisplayStyle } from '../../app/display/dateDisplay';
 import { ModelUsedLabel } from './ModelUsedLabel';
 
 interface ResultFooterProps {

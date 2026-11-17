@@ -337,7 +337,7 @@ describe('AgentTaskDetailSurface artifact route', () => {
     }
   });
 
-  it('keeps the collapsed run rail left of an open document while the run is still working', async () => {
+  it('keeps the collapsed run rail on the right edge, after an open document, while the run is still working', async () => {
     const container = document.createElement('div');
     document.body.appendChild(container);
     const root = createRoot(container);
@@ -354,7 +354,9 @@ describe('AgentTaskDetailSurface artifact route', () => {
       expect(rail).not.toBeNull();
       expect(rail?.querySelector('button.agent-run-rail-toggle')).not.toBeNull();
       expect(tray).not.toBeNull();
-      expect(rail!.compareDocumentPosition(tray!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      // The document sits between the main area and the rail, and the rail is the last element of the surface.
+      expect(tray!.compareDocumentPosition(rail!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(rail!.parentElement?.lastElementChild).toBe(rail);
       expect(container.querySelector('.run-overview-body')).toBeNull();
     } finally {
       act(() => {

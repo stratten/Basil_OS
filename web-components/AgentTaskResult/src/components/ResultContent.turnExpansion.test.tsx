@@ -5,7 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DisplayableAgentTask } from '../types';
 import ResultContent from './ResultContent';
-import { applyHostChainExpansion } from '../app/chainExpansionPreference';
+import { applyHostChainExpansion } from '../app/display/chainExpansionPreference';
 import { resetPendingFollowUpsForTests } from '../store/pendingFollowUps';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
@@ -198,33 +198,42 @@ describe('ResultContent earlier turn expansion', () => {
   });
 });
 
-describe('ResultContent opening a multi-turn task', () => {
-  const originalRect = HTMLElement.prototype.getBoundingClientRect;
+describe('ResultContent opening a finished task', () => {
+  const originalScrollHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollHeight');
 
   beforeEach(() => {
     resetPendingFollowUpsForTests();
     applyHostChainExpansion('single');
-    HTMLElement.prototype.getBoundingClientRect = function mockedRect(this: HTMLElement) {
-      const top = this.dataset.runAnchor === 'turn-3' ? 600 : 0;
-      return { top, bottom: top, left: 0, right: 0, width: 0, height: 0, x: 0, y: top, toJSON: () => ({}) } as DOMRect;
-    };
+    Object.defineProperty(HTMLElement.prototype, 'scrollHeight', { configurable: true, get: () => 1840 });
   });
 
   afterEach(() => {
-    HTMLElement.prototype.getBoundingClientRect = originalRect;
+    if (originalScrollHeight) Object.defineProperty(HTMLElement.prototype, 'scrollHeight', originalScrollHeight);
+    else delete (HTMLElement.prototype as unknown as Record<string, unknown>).scrollHeight;
     applyHostChainExpansion(undefined);
   });
 
-  it('scrolls a finished multi-turn task to its latest turn', () => {
+  it('opens a finished multi-turn task at the very bottom, not at the top of its latest request', () => {
     const view = mountResult();
     try {
-      expect(view.container.querySelector<HTMLElement>('.main-content')!.scrollTop).toBe(592);
+      expect(view.container.querySelector<HTMLElement>('.main-content')!.scrollTop).toBe(1840);
     } finally {
       view.cleanup();
     }
   });
 
-  it('does not scroll while the task is still running so live output keeps following the bottom', () => {
+  it('opens a finished single-turn task at the very bottom too', () => {
+    const view = mountResult({ agentTask: { ...chainTask, agentTaskHistory: [] } as DisplayableAgentTask });
+    try {
+      expect(view.container.querySelector<HTMLElement>('.main-content')!.scrollTop).toBe(1840);
+    } finally {
+      view.cleanup();
+    }
+  });
+
+  it('does not jump to the end on open while the task is still running, because live output follows the bottom itself', () => {
+    // The live-follow effect also scrolls a running task, so give it nothing to scroll to and check the open effect adds nothing.
+    Object.defineProperty(HTMLElement.prototype, 'scrollHeight', { configurable: true, get: () => 0 });
     const view = mountResult({ agentTask: { ...chainTask, status: 'processing' } as DisplayableAgentTask });
     try {
       expect(view.container.querySelector<HTMLElement>('.main-content')!.scrollTop).toBe(0);

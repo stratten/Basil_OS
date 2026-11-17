@@ -9,11 +9,13 @@ import { userInteractionsFromTimeline } from '../interaction/userInteractions';
 import { FilesDisplay, ReferencePathsList } from './ResultAttachments';
 import { formatBulletPoints, normalizeResultForPresentation, parseResult, resultDeliveredTimestamp, splitRunDetails } from './resultContentUtils';
 import { RunDetailsDisclosure } from './RunDetailsDisclosure';
-import { formatTimestampForDisplay, useDateDisplayStyle } from '../../app/dateDisplay';
+import { formatTimestampForDisplay, useDateDisplayStyle } from '../../app/display/dateDisplay';
 import AgentTaskOriginChip from '../request/AgentTaskOriginChip';
 import RequestDisplay from '../request/RequestDisplay';
 import { plainMarkdownText } from '../../../../shared/plainMarkdownText';
 import { ResultFooter } from './ResultFooter';
+
+const COLLAPSED_PREVIEW_MAX_CHARACTERS = 600;
 
 export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSelectDetail }: {
   item: AgentTaskHistoryItem;
@@ -39,8 +41,9 @@ export function HistoryCard({ item, isExpanded, onToggle, selectedDetailId, onSe
   );
   const histRunDetails = useMemo(() => splitRunDetails(histParsed.userSummary), [histParsed.userSummary]);
   const plainRequest = useMemo(() => plainMarkdownText(item.agentTaskText), [item.agentTaskText]);
+  // The cap only bounds the DOM. The two-line clamp on .history-card__preview does the visible shortening and adds the ellipsis, which a short hard cut would suppress by leaving the text exactly two lines long.
   const collapsedPreview = useMemo(
-    () => plainMarkdownText(histRunDetails.narrative).substring(0, 200),
+    () => plainMarkdownText(histRunDetails.narrative).substring(0, COLLAPSED_PREVIEW_MAX_CHARACTERS),
     [histRunDetails.narrative],
   );
   const alertSeverityClass = item.resultSeverity === 'warning'

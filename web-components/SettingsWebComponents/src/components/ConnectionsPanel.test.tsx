@@ -60,6 +60,30 @@ describe('ConnectionsPanel', () => {
     expect(container.querySelector('.connections-empty-state')).not.toBeNull()
   })
 
+  it('shows no connected-accounts summary when nothing is connected', () => {
+    render(BASE_FIELDS)
+    expect(container.querySelector('.connections-summary')).toBeNull()
+  })
+
+  it('keeps Add Connection in the header row with its usual look, and summarizes what is connected, once accounts exist', () => {
+    const slack: MCPConnection = {
+      id: 'slack-1', friendlyName: 'Slack', description: null, serverUrl: 'https://slack.com/mcp', enabled: true,
+      registeredAt: '2026-10-29T00:00:00Z', lastToolRefreshAt: null, lastConnectionCheckAt: null,
+      lastConnectionStatus: 'needs_reconnect', lastConnectionStatusMessage: null, serverName: null,
+      serverInstructions: null, authKind: 'oauth', tools: [],
+    }
+    render({ ...BASE_FIELDS, connections: [slack, { ...slack, id: 'gh', friendlyName: 'GitHub', serverUrl: 'https://api.githubcopilot.com/mcp', lastConnectionStatus: 'healthy' }] })
+
+    const buttons = Array.from(container.querySelectorAll<HTMLButtonElement>('.connections-panel-header-actions button'))
+    expect(buttons.map((button) => button.textContent)).toEqual(['Check Status for All', '+ Add Connection'])
+    expect(buttons[1].className).toBe('connections-add-toggle')
+
+    const summary = container.querySelector('.connections-summary')
+    expect(summary?.textContent).toContain('2 connections set up: GitHub, Slack')
+    expect(summary?.textContent).not.toContain('slack.com')
+    expect(summary?.textContent).toContain('1 healthy, 1 needs attention')
+  })
+
   it('does not render the Add Connection modal until the toggle is clicked', () => {
     render(BASE_FIELDS)
     expect(container.querySelector('.connections-add-modal')).toBeNull()

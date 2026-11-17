@@ -156,7 +156,7 @@ export default function Header({
           )}
           <img className="header-team-icon" src={paprikaIcon} alt="" aria-hidden="true" />
         </div>
-        <div className="header-identity" data-agent-task-header-identity>
+        <div className={`header-identity${isCollapsed ? '' : ' has-move-handle'}`} data-agent-task-header-identity>
           <span className="header-title">{BASIL_TEAM.agentTask.displayName}</span>
           {normalizedCollapsedTaskTitle && (
             <span className="header-collapsed-task-title">{normalizedCollapsedTaskTitle}</span>
@@ -168,6 +168,13 @@ export default function Header({
             <span className="header-collapsed-status">{normalizedCollapsedStatus}</span>
           )}
         </div>
+        {!isCollapsed && (
+          <span className="header-move-handle" data-agent-task-header-move-handle aria-hidden="true">
+            <span className="header-move-handle-dots">
+              <i /><i /><i /><i /><i /><i />
+            </span>
+          </span>
+        )}
       </div>
       <div
         className={`header-right${hasStopAction ? ' has-stop-action' : ''}${showPauseAction ? ' has-pause-action' : ''}${isCanceling ? ' is-stopping' : ''}`}

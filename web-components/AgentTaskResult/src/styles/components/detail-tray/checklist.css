@@ -676,14 +676,3 @@
     transition-duration: 0.01ms !important;
   }
 }
-
-/* The carry-over option on the schedule form */
-.checklist-schedule-option {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--padding-s);
-  color: var(--text-primary);
-  font-family: var(--font-family-light);
-  font-size: var(--font-size-callout);
-}

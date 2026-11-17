@@ -61,6 +61,7 @@ export default defineConfig({
       '../shared/ImportJobProgress.test.tsx',
       '../shared/useContextImportJob.test.tsx',
       '../shared/contextImportClient.test.ts',
+      '../shared/Switch.test.tsx',
     ],
   },
 })

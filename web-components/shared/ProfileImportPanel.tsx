@@ -141,6 +141,7 @@ export function ProfileImportPanel({ client, routeNotice, modelAccess = null, on
             filename={filename}
             onChange={(nextText, nextFilename) => { setText(nextText); setFilename(nextFilename) }}
             onStart={begin}
+            onReadImages={async images => (await client.readImages(images, modelAccess)).text}
           />
           {canceledNote && <p className="context-import-hint" role="status">{canceledNote}</p>}
         </>

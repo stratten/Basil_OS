@@ -1,11 +1,20 @@
+import { useState } from 'react';
+import ExpandableClamp from '@shared/ExpandableClamp';
 import type { ScheduledAgentTaskRun } from '../../types';
-import { formatTimestamp12h } from './scheduledAgentTaskHelpers';
+import MarkdownRenderer from '../MarkdownRenderer';
+import { formatRunDuration, formatTimestamp12h } from './scheduledAgentTaskHelpers';
 import { deriveRunPhase, statusToneOfPhase } from '../run/runPhase';
+
+// "missed" and "canceled" arrive as the backend's lowercase run status words; shown as a capitalized phrase, the way every other status label reads.
+export function humanizeRunStatus(status: string): string {
+  const words = status.replace(/[_-]+/g, ' ').trim();
+  return words ? `${words.charAt(0).toUpperCase()}${words.slice(1)}` : status;
+}
 
 // A run that reached an agent task is drawn exactly like that task anywhere else: the same phase reading, label and dot.
 // A run that never reached one (missed, skipped, failed to start) keeps its own run status word.
 export function RunStatusMark({ run }: { run: ScheduledAgentTaskRun }) {
-  if (!run.agent_task_status) return <>{run.status}</>;
+  if (!run.agent_task_status) return <>{humanizeRunStatus(run.status)}</>;
   const phase = deriveRunPhase({
     status: run.agent_task_status,
     outcome: run.outcome ?? undefined,
@@ -13,7 +22,7 @@ export function RunStatusMark({ run }: { run: ScheduledAgentTaskRun }) {
   });
   const tone = statusToneOfPhase(phase);
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+    <span className="scheduled-run__mark">
       {tone === 'live' ? (
         <span className="execution-live-beacon" aria-hidden="true" />
       ) : (
@@ -21,6 +30,31 @@ export function RunStatusMark({ run }: { run: ScheduledAgentTaskRun }) {
       )}
       {phase.label}
     </span>
+  );
+}
+
+const MESSAGE_CLAMP_LINES = 4;
+const MESSAGE_CLAMP_MIN_CHARS = 240;
+
+// A run's error or notice is the agent's own markdown text, drawn the way a history card draws the same text. A long one folds to a few lines with a Show more button, so one chatty run cannot take over the list. Clicks and keys inside the message stay inside it, so reading, selecting or following a link never opens the run.
+function RunMessage({ text, tone }: { text: string; tone: 'error' | 'notice' }) {
+  const [expanded, setExpanded] = useState(false);
+  const clampable = text.length > MESSAGE_CLAMP_MIN_CHARS || text.split('\n').length > MESSAGE_CLAMP_LINES;
+  return (
+    <div className={`scheduled-run__message scheduled-run__message--${tone}`} onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
+      {clampable ? (
+        <ExpandableClamp expanded={expanded} collapsedLines={MESSAGE_CLAMP_LINES}>
+          <MarkdownRenderer content={text} />
+        </ExpandableClamp>
+      ) : (
+        <MarkdownRenderer content={text} />
+      )}
+      {clampable && (
+        <button type="button" className="scheduled-run__toggle" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>
+          {expanded ? 'Show less' : 'Show more'}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -34,10 +68,7 @@ interface Props {
   onViewAgentTask?: (agentTaskId: string) => void;
 }
 
-// Scrollable list of recent run records for a scheduled agent task.
-// Displayed below the read-view detail panel; bounded height keeps a
-// long history from pushing the surrounding detail surface offscreen
-// while still allowing the user to scroll back through every run.
+// The recent run records of a scheduled agent task, below the detail panel. The list grows with the page rather than scrolling inside it, because the detail view already scrolls.
 //
 // Each row that has been linked to an executed agentTask (via the
 // scheduled-run executor) becomes navigable: clicking or hitting
@@ -48,31 +79,15 @@ interface Props {
 // see the partial output / error trace in the result widget.
 export default function ScheduledRunHistoryList({ runs, onViewAgentTask }: Props) {
   return (
-    <>
-      <div className="current-agent-task-label">Run History</div>
-      <div
-        style={{
-          maxHeight: 300,
-          overflow: 'auto',
-          border: '1px solid var(--separator-color)',
-          borderRadius: 6,
-          fontFamily: 'var(--font-family-light)',
-        }}
-      >
+    <section aria-label="Run History">
+      <h3 className="scheduled-runs__heading">Run History</h3>
+      <div className="scheduled-runs">
         {runs.length === 0 ? (
-          <div
-            style={{
-              padding: 10,
-              color: 'var(--text-secondary)',
-              fontFamily: 'var(--font-family-light)',
-              fontSize: 'var(--font-size-callout)',
-            }}
-          >
-            No runs yet.
-          </div>
+          <div className="scheduled-runs__empty">No runs yet.</div>
         ) : (
           runs.map(run => {
             const navigable = Boolean(run.agent_task_id) && Boolean(onViewAgentTask);
+            const duration = formatRunDuration(run.started_at, run.completed_at);
             const handleOpen = () => {
               if (navigable && run.agent_task_id) {
                 onViewAgentTask!(run.agent_task_id);
@@ -81,12 +96,15 @@ export default function ScheduledRunHistoryList({ runs, onViewAgentTask }: Props
             return (
               <div
                 key={run.id}
+                className={navigable ? 'scheduled-run is-navigable' : 'scheduled-run'}
                 role={navigable ? 'button' : undefined}
                 tabIndex={navigable ? 0 : undefined}
                 onClick={navigable ? handleOpen : undefined}
                 onKeyDown={
                   navigable
                     ? (e) => {
+                        // Only the row itself opens the run, not a control inside it.
+                        if (e.target !== e.currentTarget) return;
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
                           handleOpen();
@@ -95,32 +113,12 @@ export default function ScheduledRunHistoryList({ runs, onViewAgentTask }: Props
                     : undefined
                 }
                 title={navigable ? 'Open this run in the result view' : undefined}
-                style={{
-                  padding: '8px 10px',
-                  borderBottom: '1px solid var(--separator-color)',
-                  cursor: navigable ? 'pointer' : 'default',
-                  transition: 'background 100ms ease',
-                }}
-                onMouseEnter={navigable ? (e) => { e.currentTarget.style.background = 'var(--background-tertiary)'; } : undefined}
-                onMouseLeave={navigable ? (e) => { e.currentTarget.style.background = 'transparent'; } : undefined}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
-                  <strong
-                    style={{
-                      fontFamily: 'var(--font-family-medium)',
-                      fontSize: 'var(--font-size-status-small)',
-                      color: 'var(--text-primary)',
-                    }}
-                  >
+                <div className="scheduled-run__head">
+                  <span className="scheduled-run__status">
                     <RunStatusMark run={run} />
-                  </strong>
-                  <span
-                    style={{
-                      fontFamily: 'var(--font-family-light)',
-                      fontSize: 'var(--font-size-status-tiny)',
-                      color: 'var(--text-secondary)',
-                    }}
-                  >
+                  </span>
+                  <span className="scheduled-run__when">
                     {/*
                       Prefer the actual run start time (started_at) so the
                       row reflects when the work actually happened. Falls
@@ -134,49 +132,17 @@ export default function ScheduledRunHistoryList({ runs, onViewAgentTask }: Props
                     {run.started_at
                       ? formatTimestamp12h(run.started_at)
                       : `${formatTimestamp12h(run.scheduled_for)} (scheduled)`}
+                    {duration ? `, took ${duration}` : ''}
                   </span>
                 </div>
-                {run.error_message && (
-                  <div
-                    style={{
-                      color: 'var(--error-base)',
-                      fontFamily: 'var(--font-family-light)',
-                      fontSize: 'var(--font-size-status-small)',
-                      marginTop: 2,
-                    }}
-                  >
-                    {run.error_message}
-                  </div>
-                )}
-                {run.notice && (
-                  <div
-                    style={{
-                      color: 'var(--text-secondary)',
-                      fontFamily: 'var(--font-family-light)',
-                      fontSize: 'var(--font-size-status-small)',
-                      marginTop: 2,
-                    }}
-                  >
-                    {run.notice}
-                  </div>
-                )}
-                {navigable && (
-                  <div
-                    style={{
-                      fontFamily: 'var(--font-family-light)',
-                      fontSize: 'var(--font-size-status-tiny)',
-                      color: 'var(--accent-base, var(--text-tertiary))',
-                      marginTop: 2,
-                    }}
-                  >
-                    Open result →
-                  </div>
-                )}
+                {run.error_message && <RunMessage text={run.error_message} tone="error" />}
+                {run.notice && <RunMessage text={run.notice} tone="notice" />}
+                {navigable && <div className="scheduled-run__open">Open result →</div>}
               </div>
             );
           })
         )}
       </div>
-    </>
+    </section>
   );
 }

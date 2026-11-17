@@ -74,16 +74,15 @@ describe('IntroAndPrivacy', () => {
     const continueButton = () => container.querySelector<HTMLButtonElement>('.intro-step-primary')!
     // The flow opens on the model downloads step, which is skippable.
     expect(container.querySelector('h3')?.textContent).toBe('Model downloads')
+    // The dots are the one progress indicator: there is no text eyebrow, and the dots still say "Step n of 5" to a screen reader.
+    expect(container.querySelector('.intro-privacy > .eyebrow')).toBeNull()
+    expect(container.querySelector('.intro-step-dots')?.getAttribute('aria-label')).toBe('Step 1 of 5')
     act(() => { continueButton().click() })
     expect(container.querySelector('h3')?.textContent).toBe('How I think during setup')
+    expect(container.querySelector('.intro-step-dots')?.getAttribute('aria-label')).toBe('Step 2 of 5')
     act(() => { continueButton().click() })
 
-    expect(container.textContent).toContain('Personalization > Personal Context')
-    expect(container.textContent).toContain('Capabilities > Automation & Agents > Skills')
-    expect(Array.from(container.querySelectorAll('.intro-toggle-later')).map(line => line.textContent)).toEqual([
-      'Change this later in Personalization > Personal Context.',
-      'Change this later in Capabilities > Automation & Agents > Skills.',
-    ])
+    expect(container.querySelectorAll('.intro-toggle-later')).toHaveLength(0)
     expect(container.querySelector<HTMLInputElement>('.intro-capture-toggle--memory input')?.checked).toBe(true)
     expect(container.querySelector<HTMLInputElement>('.intro-capture-toggle--skill input')?.checked).toBe(true)
 

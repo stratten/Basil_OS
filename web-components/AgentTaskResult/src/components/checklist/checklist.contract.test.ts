@@ -93,12 +93,12 @@ describe('checklist styling contract', () => {
     expect(css).toMatch(/\.checklist-window__panel\s*\{[^}]*padding:\s*var\(--padding-xs\);/);
   });
 
-  it('styles the schedule carry-over option with a class, not an inline style', () => {
+  it('styles the schedule carry-over options with the shared switch and classes, not inline styles', () => {
     const field = read('../scheduled/ScheduledChainField.tsx');
-    const label = field.match(/<label[^>]*checklist-schedule-option[^>]*>/);
-    expect(label).not.toBeNull();
-    expect(label![0]).not.toMatch(/style=/);
-    expect(stripComments(CSS)).toMatch(/\.checklist-schedule-option\s*\{/);
+    expect(field).toMatch(/<Switch\b/);
+    expect(field).toContain('scheduled-switch-row');
+    expect(field).not.toMatch(/style=/);
+    expect(stripComments(CSS)).not.toMatch(/\.checklist-schedule-option\b/);
   });
 
   it('has a reduced-motion rule and no keyframe animation of its own', () => {

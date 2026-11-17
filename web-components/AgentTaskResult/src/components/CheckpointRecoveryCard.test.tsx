@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
   getAgent: vi.fn(),
 }));
 
-vi.mock('../app/agentHydration', () => ({
+vi.mock('../app/agents/agentHydration', () => ({
   hydrateAgentFromBackend: mocks.hydrateAgentFromBackend,
 }));
 

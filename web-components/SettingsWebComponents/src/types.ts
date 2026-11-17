@@ -1576,7 +1576,7 @@ export interface MCPConnectionTool {
   policy: string
 }
 
-export type MCPConnectionAuthKind = 'oauth' | 'slack' | 'github_device' | 'manual_token'
+export type MCPConnectionAuthKind = 'oauth' | 'slack' | 'github_device' | 'manual_token' | 'local'
 
 export interface MCPConnection {
   id: string

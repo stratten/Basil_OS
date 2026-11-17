@@ -52,6 +52,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // Parallel setup assistant preview state. This intentionally does not
     // participate in first-run launch routing yet.
     var setupAssistantWindow: NSWindow?
+    /// Hosts the setup window's content and the task pane that opens to the right of the setup flow.
+    var setupTaskPaneController: SetupTaskPaneController?
     var setupPermissionsWindow: NSWindow?
     var setupAssistantKeyboardShortcuts: WindowKeyboardShortcuts?
     var setupPermissionsKeyboardShortcuts: WindowKeyboardShortcuts?

@@ -121,9 +121,11 @@ export function SetupPathChooser({ onChooseManual, onChooseSelf, onChooseYolo }:
           )
         })}
       </div>
-      <button type="button" className="primary-button welcome-intro-primary" onClick={handleContinue}>
-        Continue
-      </button>
+      <div className="setup-path-footer">
+        <button type="button" className="primary-button welcome-intro-primary" onClick={handleContinue}>
+          Continue
+        </button>
+      </div>
     </div>
   )
 }

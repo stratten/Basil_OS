@@ -26,7 +26,7 @@ const copyButtonBaseStyle = {
   padding: 0,
   borderRadius: 'var(--corner-radius-small)',
   lineHeight: 1,
-  transition: 'opacity 0.15s, background 0.15s',
+  transition: 'opacity var(--motion-quick, 150ms) var(--motion-ease, cubic-bezier(0.2, 0.8, 0.2, 1)), background var(--motion-quick, 150ms) var(--motion-ease, cubic-bezier(0.2, 0.8, 0.2, 1))',
 } as const;
 
 export function CopyButtonGroup({ text }: { text: string }) {

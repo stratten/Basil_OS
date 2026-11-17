@@ -3,7 +3,9 @@
 This service owns three concerns and nothing else:
 
   1. Establish an MCP session against a remote streamable-HTTP server,
-     optionally with an OAuth bearer token.
+     optionally with an OAuth bearer token, or against a local stdio
+     server that Basil launches itself (``basil-stdio://<id>``; see
+     ``stdio_transport.py``).
   2. Expose ``list_tools`` and ``call_tool`` that always return the
      normalized envelope shape from ``error_normalizer`` so callers
      never have to reason about which exception class came out of the
@@ -49,6 +51,8 @@ from .error_normalizer import (
     normalize_call_tool_result,
     normalize_exception,
 )
+from .server_icon import attach_server_icon, serialize_icons
+from .stdio_transport import is_stdio_url, load_stdio_spec, run_stdio_session
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +105,9 @@ class MCPClientService:
         Success envelope payload shape::
 
             {
-              "server": {"name": str, "version": str, "protocol": str},
+              "server": {"name": str, "version": str, "protocol": str,
+                         "icons": [...as advertised...], "icons_advertised": bool,
+                         "icon_data_url": str|None},
               "tools": [
                 {"name": str, "description": str|None,
                  "input_schema": dict, "is_read_only_hint": bool,
@@ -138,17 +144,23 @@ class MCPClientService:
                     # serves. getattr keeps this safe across SDK versions and the
                     # local-sentinel path that may not set it.
                     "instructions": getattr(init, "instructions", None),
+                    # The icons the server advertises, as plain data. The icon
+                    # itself is fetched and checked after the session closes.
+                    "icons": serialize_icons(getattr(init.serverInfo, "icons", None)),
                 },
                 "tools": tools_payload,
             }
 
-        return await self._run_in_session(
+        envelope = await self._run_in_session(
             server_url=server_url,
             access_token=access_token,
             timeout_seconds=timeout_seconds,
             op=_op,
             envelope_success=True,
         )
+        # Outside the session deadline, so a slow icon host cannot fail a connection check. Never raises.
+        await attach_server_icon(envelope)
+        return envelope
 
     async def call_tool(
         self,
@@ -334,6 +346,18 @@ class MCPClientService:
         ``normalize_call_tool_result`` on the SDK's result object).
         """
         deadline = timeout_seconds if timeout_seconds is not None else self.default_timeout_seconds
+        if is_stdio_url(server_url):
+            # A local server Basil launches itself: no token, no HTTP preflight.
+            spec = load_stdio_spec(server_url)
+            if spec is None:
+                return make_envelope(
+                    kind=ERROR_KIND_SERVER_ERROR,
+                    message="This local server is no longer set up in Basil.",
+                    retryable=False,
+                    user_action_required="Remove it from Settings → Connections and add it again.",
+                    raw={"server_url": server_url},
+                )
+            return await run_stdio_session(spec, op, timeout_seconds=deadline, envelope_success=envelope_success)
         headers = self._build_auth_headers(access_token)
 
         try:
@@ -353,7 +377,7 @@ class MCPClientService:
 
             value = await asyncio.wait_for(_run(), timeout=deadline)
         except asyncio.TimeoutError as exc:
-            from .error_normalizer import ERROR_KIND_TIMEOUT, make_envelope
+            from .error_normalizer import ERROR_KIND_TIMEOUT
             return make_envelope(
                 kind=ERROR_KIND_TIMEOUT,
                 message=f"MCP operation timed out after {deadline:.1f}s",

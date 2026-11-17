@@ -69,6 +69,79 @@ describe('AgentRunRail', () => {
     expect(markup).toContain('--run-rail-connector-delay:180ms');
   });
 
+  it('caps the entrance stagger so the last chip of a long run arrives with the first few', () => {
+    const many: AgentRunOverviewPresentation = {
+      ...overview,
+      // Each step carries a document, which keeps it from folding into a count, so all 53 stay as chips.
+      stages: Array.from({ length: 53 }, (_, index) => ({
+        id: `overview:phase-${index}`,
+        kind: 'phase' as const,
+        label: `Step ${index + 1}`,
+        state: 'completed' as const,
+        startedAt: '2026-08-10T12:00:00Z',
+        artifactCount: 1,
+      })),
+    };
+    const markup = renderToStaticMarkup(<AgentRunRail overview={many} onExpand={() => {}} />);
+    const enterDelays = Array.from(markup.matchAll(/--run-rail-enter-delay:(\d+)ms/g), match => Number(match[1]));
+    const connectorDelays = Array.from(markup.matchAll(/--run-rail-connector-delay:(\d+)ms/g), match => Number(match[1]));
+
+    expect(enterDelays).toHaveLength(53);
+    expect(enterDelays[0]).toBe(0);
+    expect(enterDelays[11]).toBe(550);
+    expect(Math.max(...enterDelays)).toBe(600);
+    expect(Math.max(...connectorDelays)).toBe(730);
+  });
+
+  it('keeps the active chip in view when a long run grows, and leaves a reader who scrolled up alone', () => {
+    const makeOverview = (count: number): AgentRunOverviewPresentation => ({
+      ...overview,
+      terminalState: 'active',
+      stages: Array.from({ length: count }, (_, index) => ({
+        id: `overview:phase-${index}`,
+        kind: 'phase' as const,
+        label: `Step ${index + 1}`,
+        state: index === count - 1 ? 'active' as const : 'completed' as const,
+        startedAt: '2026-08-10T12:00:00Z',
+        artifactCount: 0,
+      })),
+    });
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    // Every chip is 28px tall in a 300px scroller, and its offset is set per step below.
+    const offsetTop = vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockReturnValue(600);
+    const offsetHeight = vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(28);
+
+    try {
+      act(() => { root.render(<AgentRunRail overview={makeOverview(5)} onExpand={() => {}} />); });
+      const flow = container.querySelector<HTMLElement>('.agent-run-rail-flow')!;
+      Object.defineProperty(flow, 'scrollHeight', { configurable: true, value: 1000 });
+      Object.defineProperty(flow, 'clientHeight', { configurable: true, value: 300 });
+      Object.defineProperty(flow, 'scrollTop', { configurable: true, writable: true, value: 700 });
+
+      // The reader is at the end (700 of 700), and the new active chip is above the window, so the rail scrolls up to its top edge minus the 6px padding.
+      act(() => { root.render(<AgentRunRail overview={makeOverview(6)} onExpand={() => {}} />); });
+      expect(flow.scrollTop).toBe(600 - 6);
+
+      // A chip below the window is revealed by its bottom edge plus the padding, minus the 300px window.
+      offsetTop.mockReturnValue(1200);
+      act(() => { root.render(<AgentRunRail overview={makeOverview(7)} onExpand={() => {}} />); });
+      expect(flow.scrollTop).toBe(1200 + 28 + 6 - 300);
+
+      // The reader scrolls to the top: the next new chip does not pull the rail back down.
+      (flow as unknown as { scrollTop: number }).scrollTop = 0;
+      act(() => { flow.dispatchEvent(new Event('scroll', { bubbles: true })); });
+      act(() => { root.render(<AgentRunRail overview={makeOverview(8)} onExpand={() => {}} />); });
+      expect(flow.scrollTop).toBe(0);
+    } finally {
+      offsetTop.mockRestore();
+      offsetHeight.mockRestore();
+      act(() => { root.unmount(); });
+      container.remove();
+    }
+  });
+
   it('shows an in-progress placeholder only while a run is processing without stages', () => {
     const empty: AgentRunOverviewPresentation = { terminalState: 'active', activityCount: 0, artifactCount: 0, stages: [] };
     const processing = renderToStaticMarkup(
@@ -327,6 +400,45 @@ describe('AgentRunRail', () => {
     }
   });
 
+  it('shows a clock instead of a number for a scheduled check, in its dot and when it is the expanded turn', () => {
+    const check: AgentTaskRunFocusSummary = {
+      ...railRuns[1],
+      id: 'check',
+      ordinal: 2,
+      displayNumber: '',
+      label: 'Scheduled check 1 of the initial request',
+      taskStatus: 'completed',
+    };
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    try {
+      act(() => {
+        root.render(
+          <AgentRunRail overview={overview} onExpand={() => {}} runId="root" runs={[railRuns[0], check]} locationRunId="root" onNavigateRun={() => {}} />,
+        );
+      });
+      const dot = container.querySelector<HTMLButtonElement>('nav.agent-run-rail-turns .agent-run-rail-turn');
+      expect(dot?.textContent).toBe('');
+      expect(dot?.querySelector('svg.scheduled-check-glyph')).not.toBeNull();
+      expect(dot?.classList.contains('is-revision')).toBe(false);
+      expect(dot?.getAttribute('aria-label')).toContain('Scheduled check 1 of the initial request');
+      expect(dot?.getAttribute('aria-label')).not.toMatch(/revision/i);
+
+      act(() => {
+        root.render(
+          <AgentRunRail overview={overview} onExpand={() => {}} runId="check" runs={[railRuns[0], check]} locationRunId="check" onNavigateRun={() => {}} />,
+        );
+      });
+      const expanded = container.querySelector('.agent-run-rail-turn-number');
+      expect(expanded?.querySelector('svg.scheduled-check-glyph')).not.toBeNull();
+      expect(expanded?.getAttribute('data-tooltip')).toContain('Scheduled check 1 of the initial request');
+    } finally {
+      act(() => {
+        root.unmount();
+      });
+    }
+  });
+
   it('keeps the location dot when the focused turn differs from the scroll location', () => {
     const markup = renderToStaticMarkup(
       <AgentRunRail overview={overview} onExpand={() => {}} runId="root" runs={railRuns} locationRunId="follow-up" onNavigateRun={() => {}} />,
@@ -406,5 +518,158 @@ describe('AgentRunRail checklist pill', () => {
     expect(none.container.querySelector('.agent-run-rail-checklist')).toBeNull();
     expect(getChecklist).not.toHaveBeenCalled();
     none.unmount();
+  });
+});
+
+describe('AgentRunRail fold', () => {
+  type Stage = AgentRunOverviewPresentation['stages'][number];
+  const phaseStage = (index: number, state: Stage['state'] = 'completed'): Stage => ({
+    id: `overview:phase-${index}`, kind: 'phase', label: `Step ${index + 1}`, state, startedAt: '2026-08-10T12:00:00Z', artifactCount: 0,
+  });
+  const overviewOf = (stages: Stage[]): AgentRunOverviewPresentation => ({ terminalState: 'active', activityCount: stages.length, artifactCount: 0, stages });
+  const chipTooltips = (container: Element) => Array.from(container.querySelectorAll('.agent-run-rail-flow-stage'), chip => chip.getAttribute('data-tooltip'));
+  const foldCount = (container: Element) => container.querySelector('.agent-run-rail-fold-count');
+
+  async function mountRail(initial: AgentRunOverviewPresentation, runId?: string) {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    act(() => { root.render(<AgentRunRail overview={initial} runId={runId} onExpand={() => {}} />); });
+    return {
+      container,
+      update: (next: AgentRunOverviewPresentation, nextRunId?: string) => act(() => { root.render(<AgentRunRail overview={next} runId={nextRunId ?? runId} onExpand={() => {}} />); }),
+      unmount: () => { act(() => { root.unmount(); }); container.remove(); },
+    };
+  }
+
+  it('folds a run that is already quiet into one chip with its step count and an explanatory tooltip', () => {
+    const markup = renderToStaticMarkup(<AgentRunRail overview={overviewOf(Array.from({ length: 12 }, (_, index) => phaseStage(index)))} onExpand={() => {}} />);
+
+    expect((markup.match(/class="agent-run-rail-flow-stage /g) || [])).toHaveLength(1);
+    expect(markup).toContain('agent-run-rail-flow-stage--fold');
+    expect(markup).toContain('>12</span>');
+    expect(markup).toContain('data-tooltip="12 steps, all completed: 12 processing steps and 0 exchanges with you. Select the rail to see every step."');
+    expect(markup).toContain('aria-label="Expand active run overview, 12 phases, 0 documents"');
+  });
+
+  it('shows a step that has just finished as its own chip, then folds it into the count and ticks the number', () => {
+    vi.useFakeTimers();
+    return (async () => {
+      const rail = await mountRail(overviewOf([...Array.from({ length: 4 }, (_, index) => phaseStage(index)), phaseStage(4, 'active')]));
+      try {
+        expect(foldCount(rail.container)?.textContent).toBe('4');
+        expect(foldCount(rail.container)?.classList.contains('is-ticking')).toBe(false);
+        expect(rail.container.querySelectorAll('.agent-run-rail-flow-stage')).toHaveLength(2);
+
+        // Step 5 finishes and step 6 starts. Step 5 gets its moment as a chip while the count stays at 4.
+        rail.update(overviewOf([...Array.from({ length: 5 }, (_, index) => phaseStage(index)), phaseStage(5, 'active')]));
+        expect(rail.container.querySelectorAll('.agent-run-rail-flow-stage')).toHaveLength(3);
+        expect(foldCount(rail.container)?.textContent).toBe('4');
+
+        act(() => { vi.advanceTimersByTime(1199); });
+        expect(rail.container.querySelectorAll('.agent-run-rail-flow-stage')).toHaveLength(3);
+
+        act(() => { vi.advanceTimersByTime(1); });
+        expect(rail.container.querySelectorAll('.agent-run-rail-flow-stage')).toHaveLength(2);
+        expect(foldCount(rail.container)?.textContent).toBe('5');
+        expect(foldCount(rail.container)?.classList.contains('is-ticking')).toBe(true);
+      } finally {
+        rail.unmount();
+        expect(vi.getTimerCount()).toBe(0);
+        vi.useRealTimers();
+      }
+    })();
+  });
+
+  it('keeps the same fold chip element as the count grows, so it does not replay its arrival', () => {
+    vi.useFakeTimers();
+    return (async () => {
+      const rail = await mountRail(overviewOf([...Array.from({ length: 3 }, (_, index) => phaseStage(index)), phaseStage(3, 'active')]));
+      try {
+        const fold = rail.container.querySelector('.agent-run-rail-flow-stage--fold');
+        rail.update(overviewOf([...Array.from({ length: 4 }, (_, index) => phaseStage(index)), phaseStage(4, 'active')]));
+        act(() => { vi.advanceTimersByTime(1200); });
+        expect(foldCount(rail.container)?.textContent).toBe('4');
+        expect(rail.container.querySelector('.agent-run-rail-flow-stage--fold')).toBe(fold);
+      } finally {
+        rail.unmount();
+        vi.useRealTimers();
+      }
+    })();
+  });
+
+  it('folds a whole run that is loaded at once without first showing each step', () => {
+    vi.useFakeTimers();
+    return (async () => {
+      const rail = await mountRail(overviewOf([phaseStage(0, 'active')]));
+      try {
+        rail.update(overviewOf([...Array.from({ length: 20 }, (_, index) => phaseStage(index)), phaseStage(20, 'active')]));
+        expect(rail.container.querySelectorAll('.agent-run-rail-flow-stage')).toHaveLength(2);
+        expect(foldCount(rail.container)?.textContent).toBe('20');
+        expect(vi.getTimerCount()).toBe(0);
+      } finally {
+        rail.unmount();
+        vi.useRealTimers();
+      }
+    })();
+  });
+
+  it('folds a run it is switched to at once, because that run is not new', () => {
+    vi.useFakeTimers();
+    return (async () => {
+      const rail = await mountRail(overviewOf([phaseStage(0, 'active')]), 'run-a');
+      try {
+        rail.update(overviewOf(Array.from({ length: 3 }, (_, index) => phaseStage(index))), 'run-b');
+        expect(rail.container.querySelectorAll('.agent-run-rail-flow-stage')).toHaveLength(1);
+        expect(foldCount(rail.container)?.textContent).toBe('3');
+      } finally {
+        rail.unmount();
+        vi.useRealTimers();
+      }
+    })();
+  });
+
+  it('shows a step again when it starts a second time, instead of leaving it folded', () => {
+    vi.useFakeTimers();
+    return (async () => {
+      const quiet = Array.from({ length: 4 }, (_, index) => phaseStage(index));
+      const rail = await mountRail(overviewOf(quiet));
+      try {
+        expect(foldCount(rail.container)?.textContent).toBe('4');
+        rail.update(overviewOf([...quiet.slice(0, 3), phaseStage(3, 'active')]));
+        expect(foldCount(rail.container)?.textContent).toBe('3');
+        expect(chipTooltips(rail.container)).toEqual([
+          '3 steps, all completed: 3 processing steps and 0 exchanges with you. Select the rail to see every step.',
+          'Step 4: in progress',
+        ]);
+        rail.update(overviewOf(quiet));
+        expect(chipTooltips(rail.container)).toHaveLength(2);
+        act(() => { vi.advanceTimersByTime(1200); });
+        expect(foldCount(rail.container)?.textContent).toBe('4');
+      } finally {
+        rail.unmount();
+        vi.useRealTimers();
+      }
+    })();
+  });
+
+  it('never folds a failed step, a denied exchange, or a step with a document', () => {
+    const exchange: Stage = {
+      id: 'overview:interaction:denied', kind: 'interaction', label: 'Basil asked', state: 'completed', startedAt: '2026-08-10T12:00:00Z', artifactCount: 0,
+      interaction: { id: 'denied', entryId: 'denied', kind: 'approval', status: 'denied', prompt: 'Run it', askedAt: '2026-08-10T12:00:00Z', responseHidden: false, options: [] },
+    };
+    const stages: Stage[] = [
+      ...Array.from({ length: 3 }, (_, index) => phaseStage(index)),
+      exchange,
+      ...Array.from({ length: 3 }, (_, index) => phaseStage(index + 3)),
+      { ...phaseStage(6), artifactCount: 1 },
+      phaseStage(7, 'failed'),
+    ];
+    const markup = renderToStaticMarkup(<AgentRunRail overview={overviewOf(stages)} onExpand={() => {}} />);
+
+    expect((markup.match(/agent-run-rail-flow-stage--fold/g) || [])).toHaveLength(2);
+    expect(markup).toContain('agent-run-rail-flow-stage--interaction');
+    expect(markup).toContain('data-tooltip="Step 7: completed, 1 document"');
+    expect(markup).toContain('data-tooltip="Step 8: needs attention"');
   });
 });

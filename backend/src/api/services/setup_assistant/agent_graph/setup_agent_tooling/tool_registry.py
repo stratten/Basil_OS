@@ -185,6 +185,15 @@ def create_setup_agent_tools_for_factory(factory) -> List[StructuredTool]:
             args_schema=SetupEmptyInput,
         ),
         StructuredTool.from_function(
+            coroutine=factory.discover_setup_installed_apps,
+            name="discover_installed_apps",
+            description=(
+                "Read-only list of the names of the apps installed on this Mac. "
+                "Use it to notice something the user already uses that you could genuinely help set up, and tell the user you looked at app names."
+            ),
+            args_schema=SetupEmptyInput,
+        ),
+        StructuredTool.from_function(
             coroutine=factory.discover_setup_connections,
             name="discover_connections",
             description="Read-only discovery of supported setup connections.",

@@ -82,7 +82,7 @@ class CachedToolDTO(BaseModel):
     policy: MCPToolPolicy = "always_ask"
 
 
-ConnectionAuthKind = Literal["oauth", "slack", "github_device", "manual_token"]
+ConnectionAuthKind = Literal["oauth", "slack", "github_device", "manual_token", "local"]
 
 
 class ConnectionDTO(BaseModel):
@@ -101,6 +101,7 @@ class ConnectionDTO(BaseModel):
     last_connection_status_message: Optional[str] = None
     server_name: Optional[str] = None
     server_instructions: Optional[str] = None
+    server_icon_data_url: Optional[str] = None
     auth_kind: ConnectionAuthKind = "manual_token"
     tools: List[CachedToolDTO] = Field(default_factory=list)
 
@@ -108,6 +109,18 @@ class ConnectionDTO(BaseModel):
     def _serialize_utc_instant(self, value: Optional[datetime]) -> Optional[str]:
         """These two are stored as naive UTC, so they are sent with an explicit UTC marker that clients convert to local time."""
         return utc_iso_timestamp(value)
+
+
+class RegisterLocalServerRequest(BaseModel):
+    """A local MCP server Basil launches itself over standard input and output."""
+
+    friendly_name: str
+    command: str
+    args: List[str] = Field(default_factory=list)
+    cwd: Optional[str] = None
+    env: Dict[str, str] = Field(default_factory=dict, description="Non-secret environment variables only.")
+    description: Optional[str] = None
+    source_url: Optional[str] = None
 
 
 class ConnectionsListResponse(BaseModel):

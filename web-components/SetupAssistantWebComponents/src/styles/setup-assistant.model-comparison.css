@@ -23,6 +23,6 @@
 
 .model-comparison-note {
   color: var(--text-primary);
-  font-size: var(--font-size-callout);
+  font-size: var(--font-size-body);
   margin: var(--padding-s) 0 0;
 }

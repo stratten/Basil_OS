@@ -236,4 +236,67 @@ describe('ProfileImportPanel', () => {
     expect(client.commitProfile).not.toHaveBeenCalled()
     expect(container.querySelector<HTMLTextAreaElement>('.context-import-textarea')!.value).toBe('')
   })
+
+  describe('reading a screenshot', () => {
+    const pickImages = async (files: File[]) => {
+      const input = container.querySelector<HTMLInputElement>('input[aria-label="Choose screenshots to read"]')!
+      Object.defineProperty(input, 'files', { value: files, configurable: true })
+      await act(async () => {
+        input.dispatchEvent(new Event('change', { bubbles: true }))
+      })
+      // jsdom's FileReader finishes on a timer, which the fake clock owns.
+      for (let step = 0; step < 5; step += 1) {
+        await act(async () => { await vi.advanceTimersByTimeAsync(20) })
+      }
+    }
+    const picture = (name = 'prompt.png', type = 'image/png', size = 8) => new File([new Uint8Array(size)], name, { type })
+
+    it('puts the text read from a screenshot into the box for review and says to check it', async () => {
+      const client = draftClient({ readImages: vi.fn().mockResolvedValue({ text: 'Always answer briefly.' }) })
+      await render(client, { modelAccess: { mode: 'basil_cloud', resolved: true } })
+
+      await pickImages([picture()])
+
+      expect(container.querySelector<HTMLTextAreaElement>('.context-import-textarea')!.value).toBe('Always answer briefly.')
+      expect(container.textContent).toContain('I read this from your screenshot. Check it')
+      const [images, access] = (client.readImages as ReturnType<typeof vi.fn>).mock.calls[0]
+      expect(images[0].mime_type).toBe('image/png')
+      expect(typeof images[0].data_base64).toBe('string')
+      expect(access).toEqual({ mode: 'basil_cloud', resolved: true })
+    })
+
+    it('adds to text that is already in the box instead of replacing it', async () => {
+      const client = draftClient({ readImages: vi.fn().mockResolvedValue({ text: 'From the picture.' }) })
+      await render(client)
+      typeInto(container, '.context-import-textarea', 'Already here.')
+
+      await pickImages([picture()])
+
+      expect(container.querySelector<HTMLTextAreaElement>('.context-import-textarea')!.value).toBe('Already here.\n\nFrom the picture.')
+    })
+
+    it('shows the backend explanation when the chosen route cannot read pictures, and leaves the box alone', async () => {
+      const explanation = 'The model you chose runs on this Mac and can only read text, so it cannot read a screenshot. Paste the text instead.'
+      const client = draftClient({ readImages: vi.fn().mockRejectedValue(new Error(explanation)) })
+      await render(client)
+      typeInto(container, '.context-import-textarea', 'Keep me.')
+
+      await pickImages([picture()])
+
+      expect(container.querySelector('[role="alert"]')!.textContent).toBe(explanation)
+      expect(container.querySelector<HTMLTextAreaElement>('.context-import-textarea')!.value).toBe('Keep me.')
+    })
+
+    it('refuses too many or too large pictures before sending anything', async () => {
+      const client = draftClient()
+      await render(client)
+
+      await pickImages(Array.from({ length: 7 }, (_, index) => picture(`p${index}.png`)))
+      expect(container.querySelector('[role="alert"]')!.textContent).toContain('at most 6')
+
+      await pickImages([picture('huge.png', 'image/png', 5_000_001)])
+      expect(container.querySelector('[role="alert"]')!.textContent).toContain('huge.png')
+      expect(client.readImages).not.toHaveBeenCalled()
+    })
+  })
 })

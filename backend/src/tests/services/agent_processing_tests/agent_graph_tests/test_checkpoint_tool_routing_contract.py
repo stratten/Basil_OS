@@ -60,6 +60,28 @@ def test_request_user_input_preserves_bounded_checkpoint_identity():
     assert exc_info.value.checkpoint_data["input_type"] == "choice"
 
 
+def test_unnamed_questions_in_one_run_get_distinct_checkpoint_ids():
+    from api.services.agent_processing.tools.internal_basil_tools.checkpoint_tool import CheckpointRequest
+
+    ids = []
+    for prompt in ("Apply these changes?", "Apply these changes?", "Anything to add?"):
+        with pytest.raises(CheckpointRequest) as exc_info:
+            request_user_input.invoke({"prompt": prompt, "input_type": "yes_no"})
+        ids.append(exc_info.value.checkpoint_data["checkpoint_id"])
+
+    assert all(isinstance(checkpoint_id, str) and checkpoint_id.startswith("checkpoint_") for checkpoint_id in ids)
+    assert len(set(ids)) == len(ids)
+
+
+def test_named_question_keeps_the_exact_checkpoint_id_it_was_given():
+    from api.services.agent_processing.tools.internal_basil_tools.checkpoint_tool import CheckpointRequest
+
+    with pytest.raises(CheckpointRequest) as exc_info:
+        request_user_input.invoke({"prompt": "Which period?", "input_type": "text", "checkpoint_id": "reporting-period"})
+
+    assert exc_info.value.checkpoint_data["checkpoint_id"] == "reporting-period"
+
+
 def test_checkpoint_tool_description_discourages_inspectable_state_questions():
     full_description = request_user_input.description or ""
 

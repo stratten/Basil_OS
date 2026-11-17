@@ -39,6 +39,7 @@ export type SetupActionKind =
   | 'start_model_downloads'
   | 'start_connection_auth'
   | 'refresh_connection_tools'
+  | 'register_local_mcp_server'
   | 'launch_agent_task'
   | 'launch_assistant_session'
   | 'run_approved_action_sequence'
@@ -158,6 +159,8 @@ export interface SetupAgentProviderModelChoice {
   model_id: string
   display_name: string
   recommended: boolean
+  /** True when the person has this model switched on in Settings. The list still shows every visible model. */
+  enabled?: boolean
 }
 
 export interface SetupAgentModelAccessOptionsResponse {

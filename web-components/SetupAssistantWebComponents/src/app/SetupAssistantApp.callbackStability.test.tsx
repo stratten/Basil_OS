@@ -181,4 +181,11 @@ describe('SetupAssistantApp callback stability', () => {
     const labels = Array.from(container.querySelectorAll('button')).map(button => button.textContent?.trim())
     expect(labels).toContain('Done with setup')
   })
+
+  it('explains next to Done what Done and Skip do', () => {
+    const hint = container.querySelector('.setup-done-hint')?.textContent ?? ''
+    expect(hint).toContain('Done wraps up what we have covered so far.')
+    expect(hint).toContain('Skip setup for now')
+    expect(hint).toContain('you can come back to it')
+  })
 })

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { ProgressStep, StepDetailEntry, TimelineEntry } from '../../types';
 import ExecutionDisclosureChevron from '@shared/ExecutionDisclosureChevron';
 import { plainMarkdownText } from '@shared/plainMarkdownText';
+import { usePresenceTransition } from '@shared/usePresenceTransition';
 import { normalizeProgressStepText } from './progressStepText';
 import { conciseExecutionStepText, selectActivityTrail } from './activityPresentation';
 import {
@@ -38,6 +39,7 @@ export function ProgressStepsSection({
   onJumpToLatestContent,
   status,
   statusFooter,
+  statusActions,
   showTrail = true,
 }: {
   steps: ProgressStep[];
@@ -51,11 +53,19 @@ export function ProgressStepsSection({
   onJumpToLatestContent?: () => void;
   status?: ActivityStatusDisplay;
   statusFooter?: ReactNode;
+  /** Controls drawn in the header row, left of the chevron. They sit beside the header button because a button cannot hold another button. */
+  statusActions?: ReactNode;
   showTrail?: boolean;
 }) {
   // The activity trail only opens when the reader opens it, whatever state the run is in.
   const [disclosure, setDisclosure] = useState<ActivityDisclosure>('collapsed');
   const fullDetailsExpanded = disclosure === 'full';
+  // The dock's rows have to stay on screen while its height folds away. Mounted only while the dock is open, they vanish the instant it closes, nothing is left to shrink, and the dock snaps shut instead of gliding the way it glides open.
+  const dockBodyPresence = usePresenceTransition<HTMLDivElement>(presentation === 'dock' && disclosure !== 'collapsed');
+  // The rows also keep the view they had when the reader closed the dock (the short trail or the full list), so closing from the full list does not swap to the short one halfway through the fold.
+  const retainedDisclosure = useRef<ActivityDisclosure>(disclosure);
+  if (disclosure !== 'collapsed') retainedDisclosure.current = disclosure;
+  const bodyDisclosure = disclosure === 'collapsed' ? retainedDisclosure.current : disclosure;
   const listRef = useRef<HTMLDivElement>(null);
   const userScrolledRef = useRef(false);
 
@@ -151,8 +161,12 @@ export function ProgressStepsSection({
     }
 
     const dockBodyOpen = disclosure !== 'collapsed';
-    const dockVisibleEntries = disclosure === 'full' ? timelineEntries : activityTrail;
+    const dockVisibleEntries = bodyDisclosure === 'full' ? timelineEntries : activityTrail;
     const dockTrailVisible = showTrail && dockHasActivity;
+    // A bar with nothing to open must not offer to open: the chevron would toggle an empty body.
+    const dockHasBody = dockTrailVisible;
+    // The count advertises the trail, so it is shown only where the bar can open it. A finished turn's Activity row owns the trail.
+    const showActivityCount = dockHasActivity && !(status && !showTrail);
     const headerSummary = status?.summary ?? (latestActivityLabel || status?.fallbackSummary || '');
     const beaconVisible = status ? status.tone === 'live' : isLive;
 
@@ -161,10 +175,12 @@ export function ProgressStepsSection({
         className={`execution-activity-dock${status ? ` run-status-card run-status-card--${status.tone}` : ''}`}
         aria-label={status ? `Run status: ${status.label}` : undefined}
       >
+        <div className={`execution-activity-dock-header-row${statusActions ? ' execution-activity-dock-header-row--actions' : ''}${dockHasBody ? ' execution-activity-dock-header-row--chevron' : ''}`}>
         <button
           type="button"
           className="execution-activity-dock-header"
-          aria-expanded={dockBodyOpen}
+          aria-expanded={dockHasBody ? dockBodyOpen : undefined}
+          disabled={!dockHasBody}
           onClick={() => setDisclosure(current => nextActivityDisclosure(current, 'toggleTrail'))}
         >
           <span className="execution-activity-dock-beacon-slot">
@@ -179,7 +195,8 @@ export function ProgressStepsSection({
               {status.detail ? <span className="run-status-detail">{` · ${status.detail}`}</span> : null}
             </span>
           ) : null}
-          {dockHasActivity ? (
+          {status && (showActivityCount || headerSummary) ? <span className="run-status-separator" aria-hidden="true" /> : null}
+          {showActivityCount ? (
             <span className="execution-activity-dock-count">
               <span className="execution-activity-dock-count-sizer" aria-hidden="true">Activity · 000 updates</span>
               <span className="execution-activity-dock-count-value">Activity · {readableCount} {readableCount === 1 ? 'update' : 'updates'}</span>
@@ -188,8 +205,10 @@ export function ProgressStepsSection({
           {headerSummary ? (
             <span className="execution-activity-dock-latest">{headerSummary}</span>
           ) : <span className="execution-activity-dock-latest" />}
-          <ExecutionDisclosureChevron expanded={dockBodyOpen} />
+          {dockHasBody ? <ExecutionDisclosureChevron expanded={dockBodyOpen} /> : null}
         </button>
+        {statusActions}
+        </div>
 
         {hasUnreadLiveContent && onJumpToLatestContent ? (
           <button
@@ -201,35 +220,44 @@ export function ProgressStepsSection({
           </button>
         ) : null}
 
-        <div className={`execution-activity-dock-body${dockBodyOpen ? ' is-open' : ''}`}>
+        <div
+          ref={dockBodyPresence.regionRef}
+          className={`execution-activity-dock-body${dockBodyOpen ? ' is-open' : ''}`}
+          aria-hidden={dockBodyOpen ? undefined : true}
+          {...(dockBodyOpen ? {} : { inert: '' })}
+          onTransitionEnd={event => {
+            // The height fold outlasts the fade, so the rows stay mounted until it ends and are released then.
+            if (event.target === event.currentTarget && event.propertyName === 'grid-template-rows') dockBodyPresence.settle();
+          }}
+        >
           <div className="execution-activity-dock-body-inner">
-            {dockBodyOpen && dockTrailVisible && hasTimeline && hasActivityTrail ? (
+            {dockBodyPresence.shouldRender && dockTrailVisible && hasTimeline && hasActivityTrail ? (
               <div
-                ref={disclosure === 'full' ? listRef : undefined}
-                onScroll={disclosure === 'full' ? handleScroll : undefined}
+                ref={bodyDisclosure === 'full' ? listRef : undefined}
+                onScroll={bodyDisclosure === 'full' ? handleScroll : undefined}
                 className="execution-activity-dock-list"
-                style={disclosure === 'full' ? { maxHeight: 250, overflow: 'auto' } : undefined}
+                style={bodyDisclosure === 'full' ? { maxHeight: 250, overflow: 'auto' } : undefined}
               >
                 {renderTimelineRows(dockVisibleEntries)}
               </div>
             ) : null}
 
-            {dockBodyOpen && dockTrailVisible && !hasActivityTrail && steps.length > 0 ? (
+            {dockBodyPresence.shouldRender && dockTrailVisible && !hasActivityTrail && steps.length > 0 ? (
               <div
-                ref={disclosure === 'full' ? listRef : undefined}
-                onScroll={disclosure === 'full' ? handleScroll : undefined}
+                ref={bodyDisclosure === 'full' ? listRef : undefined}
+                onScroll={bodyDisclosure === 'full' ? handleScroll : undefined}
                 className="execution-activity-dock-list"
-                style={disclosure === 'full' ? { maxHeight: 250, overflow: 'auto' } : undefined}
+                style={bodyDisclosure === 'full' ? { maxHeight: 250, overflow: 'auto' } : undefined}
               >
                 {renderStepRows(
-                  disclosure === 'full'
+                  bodyDisclosure === 'full'
                     ? steps
                     : selectFallbackActivityTrail(steps),
                 )}
               </div>
             ) : null}
 
-            {dockBodyOpen && dockTrailVisible && disclosure === 'trail' && hasFullDetails ? (
+            {dockBodyPresence.shouldRender && dockTrailVisible && bodyDisclosure === 'trail' && hasFullDetails ? (
               <button
                 type="button"
                 className="execution-step-row activity-fulldetails-toggle execution-activity-dock-control"
@@ -245,7 +273,7 @@ export function ProgressStepsSection({
               </button>
             ) : null}
 
-            {dockBodyOpen && dockTrailVisible && disclosure === 'full' ? (
+            {dockBodyPresence.shouldRender && dockTrailVisible && bodyDisclosure === 'full' ? (
               <div className="execution-activity-dock-controls">
                 <button
                   type="button"
@@ -414,7 +442,7 @@ function DetailDisclosureIcon({ visible }: { visible: boolean }) {
         marginTop: 1,
         opacity: visible ? 0.75 : 0,
         color: 'var(--text-secondary)',
-        transition: 'opacity 0.15s',
+        transition: 'opacity var(--motion-quick, 150ms) var(--motion-ease, cubic-bezier(0.2, 0.8, 0.2, 1))',
       }}
     >
       {visible && (

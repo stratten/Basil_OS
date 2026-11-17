@@ -2,13 +2,16 @@ import { useEffect, useState } from 'react'
 import { SettingsSubTabs, type SettingsSubTabDefinition } from '@shared/SettingsSubTabs'
 import { PermissionsApplicationPanel } from '../components/PermissionsApplicationPanel'
 import { PermissionsCommandSecurityPanel } from '../components/PermissionsCommandSecurityPanel'
+import { PermissionsYourDataPanel } from '../components/PermissionsYourDataPanel'
 import '../styles/permissions-settings.css'
+import '../styles/permissions-your-data.css'
 
-export type PermissionsSubTab = 'application' | 'command-security'
+export type PermissionsSubTab = 'application' | 'command-security' | 'your-data'
 
 export const PERMISSIONS_SUB_TABS: readonly SettingsSubTabDefinition<PermissionsSubTab>[] = [
   { id: 'application', label: 'Application' },
   { id: 'command-security', label: 'Command Security' },
+  { id: 'your-data', label: 'Your Data and Uninstall' },
 ]
 
 function tabId(id: PermissionsSubTab): string {
@@ -53,6 +56,9 @@ export function PermissionsSettingsApp({
       </div>
       <div id={panelId('command-security')} role="tabpanel" aria-labelledby={tabId('command-security')} className={subTab === 'command-security' ? '' : 'permissions-sub-tab-hidden'}>
         <PermissionsCommandSecurityPanel />
+      </div>
+      <div id={panelId('your-data')} role="tabpanel" aria-labelledby={tabId('your-data')} className={subTab === 'your-data' ? '' : 'permissions-sub-tab-hidden'}>
+        <PermissionsYourDataPanel onShowGrantedPermissions={() => selectSubTab('application')} />
       </div>
     </div>
   )

@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -80,5 +80,86 @@ describe('AgentTaskResult inline-style cleanup contract', () => {
     for (const file of Object.keys(STYLESHEETS)) {
       expect(entry).toContain(`@import './components/${file}';`);
     }
+  });
+});
+
+// The scheduled-task surface: the detail view, every component in scheduled/, and the shared icon chip it draws connections with.
+const SCHEDULED_COMPONENTS: Record<string, string> = Object.fromEntries([
+  ['ScheduledAgentTaskDetail.tsx', read('ScheduledAgentTaskDetail.tsx')],
+  ...readdirSync(resolve(here, 'scheduled'))
+    .filter((file) => file.endsWith('.tsx') && !file.endsWith('.test.tsx'))
+    .map((file) => [`scheduled/${file}`, read(`scheduled/${file}`)]),
+  ['../../../shared/IconChipList.tsx', read('../../../shared/IconChipList.tsx')],
+]);
+const SCHEDULED_CSS = read('../styles/components/scheduled.css');
+const ICON_CHIP_CSS = read('../../../shared/icon-chip.css');
+const SCHEDULED_CLASS_TOKEN = /\b(?:scheduled-[a-z_-]+|icon-chip[a-z_-]*|smart-prompt-interpreting)\b/g;
+
+describe('scheduled-task surface style contract', () => {
+  it('covers every scheduled component, not just a sample', () => {
+    const files = Object.keys(SCHEDULED_COMPONENTS);
+    expect(files.length).toBeGreaterThanOrEqual(12);
+    for (const expected of ['scheduled/ScheduleControls.tsx', 'scheduled/ScheduledRunHistoryList.tsx', 'scheduled/ScheduledConnectionsField.tsx', 'scheduled/WeekdayChips.tsx']) {
+      expect(files).toContain(expected);
+    }
+  });
+
+  it.each(Object.keys(SCHEDULED_COMPONENTS))('%s has no inline styles and no literal colors', (file) => {
+    const source = SCHEDULED_COMPONENTS[file];
+    expect(source).not.toMatch(/style=\{/);
+    expect(source).not.toMatch(/rgba?\(/);
+    expect(source).not.toMatch(/(?<!&)#[0-9a-fA-F]{3,8}\b/);
+  });
+
+  it('defines every scheduled and icon-chip class the components reference', () => {
+    // The header's state dot also carries the sidebar row's dot classes, which agent-task-row.css owns.
+    const css = `${SCHEDULED_CSS}\n${ICON_CHIP_CSS}\n${STYLESHEETS['agent-task-row.css']}`;
+    const withoutComments = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const missing: string[] = [];
+    for (const [file, source] of Object.entries(SCHEDULED_COMPONENTS)) {
+      for (const token of new Set(withoutComments(source).match(SCHEDULED_CLASS_TOKEN) ?? [])) {
+        if (token.endsWith('-')) continue;
+        if (!new RegExp(`\\.${token}(?![\\w-])`).test(css)) missing.push(`${file}: ${token}`);
+      }
+    }
+    expect(missing).toEqual([]);
+  });
+
+  it('uses theme tokens only: no hex or rgba colors, and the one named tile color in the chip sheet', () => {
+    expect(SCHEDULED_CSS).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+    expect(SCHEDULED_CSS).not.toMatch(/rgba?\(/);
+    expect(ICON_CHIP_CSS).not.toMatch(/rgba?\(/);
+    expect(ICON_CHIP_CSS.match(/#[0-9a-fA-F]{3,8}\b/g)).toEqual(['#FFFFFF']);
+  });
+
+  it('does not use undefined tokens, and sets no text in the low-contrast tertiary gray', () => {
+    for (const css of [SCHEDULED_CSS, ICON_CHIP_CSS]) {
+      expect(css).not.toMatch(/var\(--(?:border|surface|accent-base)[,)]/);
+      expect(css).not.toContain('var(--text-tertiary)');
+    }
+    for (const source of Object.values(SCHEDULED_COMPONENTS)) {
+      expect(source).not.toContain('--accent-base');
+      expect(source).not.toContain('current-agent-task-label');
+    }
+  });
+
+  it('gives every interactive control in the scheduled sheet a keyboard focus ring', () => {
+    for (const control of ['scheduled-input', 'scheduled-weekday', 'scheduled-icon-btn', 'scheduled-link-btn', 'scheduled-run.is-navigable', 'scheduled-run__toggle']) {
+      expect(SCHEDULED_CSS).toMatch(new RegExp(`\\.${control.replace('.', '\\.')}:focus-visible`));
+    }
+    expect(ICON_CHIP_CSS).toMatch(/\.icon-chip__remove:focus-visible/);
+  });
+
+  it('imports the scheduled sheet, the switch sheet and the chip sheet', () => {
+    const entry = read('../styles/components.css');
+    expect(entry).toContain("@import './components/scheduled.css';");
+    expect(entry).toContain("@import '../../../shared/switch.css';");
+    expect(ICON_CHIP_CSS.length).toBeGreaterThan(0);
+    expect(SCHEDULED_COMPONENTS['../../../shared/IconChipList.tsx']).toContain("import './icon-chip.css';");
+  });
+
+  it('does not let the run list scroll inside the page or cap the connection chips', () => {
+    expect(SCHEDULED_CSS).not.toMatch(/\.scheduled-runs[^{]*\{[^}]*(?:max-height|overflow-y)/);
+    expect(ICON_CHIP_CSS).not.toMatch(/max-height|overflow-y/);
   });
 });

@@ -19,7 +19,7 @@
 }
 
 .setup-complete-eyebrow {
-  color: var(--primary);
+  color: var(--primary-text);
   font-family: var(--font-family-medium);
   font-size: var(--font-size-status-small);
   letter-spacing: 0.08em;
@@ -61,7 +61,7 @@
 
 .setup-wrapup-next-steps h2,
 .setup-wrapup-breadth h2 {
-  color: var(--primary);
+  color: var(--primary-text);
   font-family: var(--font-family-medium);
   font-size: var(--font-size-callout);
   letter-spacing: 0.04em;
@@ -121,7 +121,7 @@
 }
 
 .setup-wrapup-save-copy > summary {
-  color: var(--primary);
+  color: var(--primary-text);
   cursor: pointer;
   font-family: var(--font-family-medium);
   font-size: var(--font-size-status-small);
@@ -167,7 +167,7 @@
 }
 
 .setup-wrapup-window-basics h2 {
-  color: var(--primary);
+  color: var(--primary-text);
   font-family: var(--font-family-medium);
   font-size: var(--font-size-callout);
   letter-spacing: 0.04em;
@@ -196,7 +196,7 @@
   background: var(--background-primary);
   border: 1px solid var(--primary);
   border-radius: var(--corner-radius-small, 6px);
-  color: var(--primary);
+  color: var(--primary-text);
   font-family: var(--font-family-medium);
   padding: 2px var(--padding-s);
 }
@@ -227,7 +227,7 @@
 }
 
 .setup-wrapup-saved-choices h2 {
-  color: var(--primary);
+  color: var(--primary-text);
   font-family: var(--font-family-medium);
   font-size: var(--font-size-callout);
   margin: 0 0 var(--padding-s);

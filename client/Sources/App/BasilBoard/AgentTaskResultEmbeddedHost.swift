@@ -45,14 +45,65 @@ final class AgentTaskResultEmbeddedHost: NSObject, AgentTaskResultDetachedRootsO
     var onStopNewAgentTaskCapture: (() -> Void)?
     var onCancelNewAgentTaskCapture: (() -> Void)?
 
-    init(embeddingInto hostView: NSView, topInset: CGFloat, leadingInset: CGFloat, originatingWindow: NSWindow?) {
+    /// Where the embedded web view sits inside its host view and how its corners are cut. The Board variant keeps the Board's layered outer frame; the setup-pane variant fills a pane the setup window owns.
+    struct Layout: Equatable {
+        var topInset: CGFloat
+        var leadingInset: CGFloat
+        var trailingInset: CGFloat
+        var bottomInset: CGFloat
+        var cornerRadius: CGFloat
+        var maskedCorners: CACornerMask
+        /// Whether the task list sidebar starts open. The setup pane is too narrow for it.
+        var sidebarInitiallyExpanded: Bool
+        /// Only the Board's host is the Board-wide presenter. A setup pane is a private surface and must not take over the coordinator's embedded-host handle or its Board focus state.
+        var isBoardPresenter: Bool
+
+        static func board(topInset: CGFloat, leadingInset: CGFloat) -> Layout {
+            Layout(
+                topInset: topInset,
+                leadingInset: leadingInset,
+                trailingInset: 8,
+                bottomInset: 8,
+                cornerRadius: 16,
+                maskedCorners: [.layerMaxXMaxYCorner],
+                sidebarInitiallyExpanded: true,
+                isBoardPresenter: true
+            )
+        }
+
+        static let setupPane = Layout(
+            topInset: 0,
+            leadingInset: 0,
+            trailingInset: 0,
+            bottomInset: 0,
+            cornerRadius: 0,
+            maskedCorners: [],
+            sidebarInitiallyExpanded: false,
+            isBoardPresenter: false
+        )
+    }
+
+    private let layout: Layout
+
+    convenience init(embeddingInto hostView: NSView, topInset: CGFloat, leadingInset: CGFloat, originatingWindow: NSWindow?) {
+        self.init(
+            embeddingInto: hostView,
+            layout: .board(topInset: topInset, leadingInset: leadingInset),
+            originatingWindow: originatingWindow
+        )
+    }
+
+    init(embeddingInto hostView: NSView, layout: Layout, originatingWindow: NSWindow?) {
         self.webView = AgentTaskResultWebView()
         self.hostView = hostView
+        self.layout = layout
         super.init()
 
         webView.prepareEmbeddedPresentation()
-        webView.initialSidebarExpanded = true
-        AgentTaskResultPresentationCoordinator.shared.activeEmbeddedHost = self
+        webView.initialSidebarExpanded = layout.sidebarInitiallyExpanded
+        if layout.isBoardPresenter {
+            AgentTaskResultPresentationCoordinator.shared.activeEmbeddedHost = self
+        }
         DetachedAgentTaskWindowManager.shared.addObserver(self)
         // The embedded page is its own web view inside the Board's, so the Board's theme push does not reach it; it listens for live appearance edits (colors, finish, font, text size) itself.
         AppearanceRefreshCoordinator.shared.register(self)
@@ -95,10 +146,12 @@ final class AgentTaskResultEmbeddedHost: NSObject, AgentTaskResultDetachedRootsO
                 agentTaskId: agentTaskId, isProcessing: isProcessing,
                 hasResult: hasResult, supportsFollowUp: supportsFollowUp
             )
-            AgentTaskResultPresentationCoordinator.shared.updateBoardFocusedRow(
-                agentTaskId: agentTaskId, isProcessing: isProcessing,
-                hasResult: hasResult, supportsFollowUp: supportsFollowUp
-            )
+            if self.layout.isBoardPresenter {
+                AgentTaskResultPresentationCoordinator.shared.updateBoardFocusedRow(
+                    agentTaskId: agentTaskId, isProcessing: isProcessing,
+                    hasResult: hasResult, supportsFollowUp: supportsFollowUp
+                )
+            }
             AgentTaskFollowUpFocusRegistry.shared.update(
                 ownerID: self.followUpCaptureOwnerID, agentTaskId: agentTaskId,
                 isProcessing: isProcessing, supportsFollowUp: supportsFollowUp
@@ -142,25 +195,25 @@ final class AgentTaskResultEmbeddedHost: NSObject, AgentTaskResultDetachedRootsO
 
         clippingContainer.translatesAutoresizingMaskIntoConstraints = false
         clippingContainer.wantsLayer = true
-        clippingContainer.layer?.cornerRadius = 16
-        clippingContainer.layer?.maskedCorners = [.layerMaxXMaxYCorner]
+        clippingContainer.layer?.cornerRadius = layout.cornerRadius
+        clippingContainer.layer?.maskedCorners = layout.maskedCorners
         clippingContainer.layer?.masksToBounds = true
         hostView.addSubview(clippingContainer)
 
         webView.webView.translatesAutoresizingMaskIntoConstraints = false
         webView.webView.wantsLayer = true
-        webView.webView.layer?.cornerRadius = 16
-        webView.webView.layer?.maskedCorners = [.layerMaxXMaxYCorner]
+        webView.webView.layer?.cornerRadius = layout.cornerRadius
+        webView.webView.layer?.maskedCorners = layout.maskedCorners
         webView.webView.layer?.masksToBounds = true
         clippingContainer.addSubview(webView.webView)
         // The Board owns the upper chrome and left tab rail. Preserve its
         // layered outer frame and bottom-right corner by clipping both
         // the containment view and the WebKit compositor's own backing layer.
         let c = [
-            clippingContainer.topAnchor.constraint(equalTo: hostView.topAnchor, constant: topInset),
-            clippingContainer.leadingAnchor.constraint(equalTo: hostView.leadingAnchor, constant: leadingInset),
-            clippingContainer.trailingAnchor.constraint(equalTo: hostView.trailingAnchor, constant: -8),
-            clippingContainer.bottomAnchor.constraint(equalTo: hostView.bottomAnchor, constant: -8),
+            clippingContainer.topAnchor.constraint(equalTo: hostView.topAnchor, constant: layout.topInset),
+            clippingContainer.leadingAnchor.constraint(equalTo: hostView.leadingAnchor, constant: layout.leadingInset),
+            clippingContainer.trailingAnchor.constraint(equalTo: hostView.trailingAnchor, constant: -layout.trailingInset),
+            clippingContainer.bottomAnchor.constraint(equalTo: hostView.bottomAnchor, constant: -layout.bottomInset),
             webView.webView.topAnchor.constraint(equalTo: clippingContainer.topAnchor),
             webView.webView.leadingAnchor.constraint(equalTo: clippingContainer.leadingAnchor),
             webView.webView.trailingAnchor.constraint(equalTo: clippingContainer.trailingAnchor),

@@ -3,7 +3,7 @@
   inset: 0;
   z-index: 20;
   opacity: 1;
-  transition: opacity 200ms ease-out;
+  transition: opacity var(--motion-quick) var(--motion-ease);
 }
 
 .approval-presence-region[data-presence-phase='entering'],
@@ -105,7 +105,7 @@
   grid-area: 1 / 1;
   opacity: 1;
   transform: translateY(0);
-  transition: opacity 160ms ease, transform 160ms ease;
+  transition: opacity var(--motion-quick) var(--motion-ease), transform var(--motion-quick) var(--motion-ease);
 }
 
 .progress-step-stack-layer[data-presence-phase='entering'],

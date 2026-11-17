@@ -322,6 +322,8 @@ export default function Sidebar({
       onCreateScheduledAgentTask();
       return;
     }
+    // A follow-up capture the reader abandoned never reaches registerNewAgent, so the parent it recorded is still waiting. The host sends no root id for a brand-new request, so that stale parent would claim this one and fold it into the abandoned chain.
+    agentStore.consumePendingFollowUpParent();
     const preId = crypto.randomUUID();
     startNewAgentTaskCapture(preId);
   };

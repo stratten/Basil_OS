@@ -434,6 +434,13 @@ class SetupAssistantDiscoveryService:
 
         return await collect_calendar_app_facts()
 
+    async def collect_installed_app_facts(self) -> SetupDiscoveryResponse:
+        """Read the names of the apps installed on this Mac."""
+
+        from api.services.setup_assistant.installed_apps_discovery import collect_installed_app_facts
+
+        return await collect_installed_app_facts()
+
     async def collect_connection_catalog_facts(self) -> SetupDiscoveryResponse:
         """Collect supported and registered connection state for onboarding."""
 

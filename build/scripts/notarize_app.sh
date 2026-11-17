@@ -4,6 +4,16 @@
 
 set -e
 
+# Load the owner's release settings, the same file release.sh loads, so running this script by hand finds the team ID and keychain profile without a separate export. The file is optional: with no file the values must already be in the environment.
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+RELEASE_ENV_FILE="$REPO_ROOT/local/release.env"
+if [[ -f "$RELEASE_ENV_FILE" ]]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "$RELEASE_ENV_FILE"
+    set +a
+fi
+
 # Configuration
 DEVELOPER_ID="${BASIL_APPLE_TEAM_ID:-}"
 NOTARY_KEYCHAIN_PROFILE="${BASIL_NOTARY_KEYCHAIN_PROFILE:-notarytool-profile}"

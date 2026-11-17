@@ -42,7 +42,7 @@
 .intro-hotkey-row .secondary-button {
   background: transparent;
   border-color: color-mix(in srgb, var(--primary) 85%, transparent);
-  color: var(--primary);
+  color: var(--primary-text);
 }
 
 .intro-hotkey-status {

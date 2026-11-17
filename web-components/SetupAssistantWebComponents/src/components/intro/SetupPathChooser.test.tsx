@@ -60,6 +60,15 @@ describe('SetupPathChooser', () => {
     expect(container.textContent).toContain('YOLO')
   })
 
+  it('keeps Continue in a footer that is a sibling after the list of paths, so it can stay pinned while the rows scroll', () => {
+    const footer = container.querySelector('.setup-path > .setup-path-footer')!
+    expect(footer).not.toBeNull()
+    expect(footer.previousElementSibling?.classList.contains('setup-path-list')).toBe(true)
+    expect(footer.querySelectorAll('button')).toHaveLength(1)
+    expect(footer.contains(continueButton())).toBe(true)
+    expect(container.querySelector('.setup-path-list')!.contains(continueButton())).toBe(false)
+  })
+
   it('continues with the manual flow by default', () => {
     click(continueButton())
 

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { formatTimestampForDisplay, useDateDisplayStyle } from '../../app/dateDisplay';
+import { formatTimestampForDisplay, useDateDisplayStyle } from '../../app/display/dateDisplay';
 import { TURN_STATUS_LABELS, type TurnStatus } from './turnPresentation';
 
 const GLYPH_PATHS: Record<TurnStatus, string> = {

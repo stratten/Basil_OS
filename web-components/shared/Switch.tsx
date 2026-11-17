@@ -1,3 +1,5 @@
+import { ignoreLabelClickWhileSelectingText } from './labelTextSelection'
+
 interface SwitchProps {
   checked: boolean
   onChange: (checked: boolean) => void
@@ -9,7 +11,11 @@ interface SwitchProps {
 
 export function Switch({ checked, onChange, label, ariaLabel, disabled, id }: SwitchProps) {
   return (
-    <label className="basil-switch" htmlFor={id}>
+    <label
+      className={disabled ? 'basil-switch basil-switch--disabled' : 'basil-switch'}
+      htmlFor={id}
+      onClick={ignoreLabelClickWhileSelectingText}
+    >
       <input
         id={id}
         type="checkbox"

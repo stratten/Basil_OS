@@ -28,6 +28,7 @@ def test_catalog_has_unique_ids_and_a_single_choice_group_for_exclusive_question
         "length": False,
         "format": True,
         "checkins": False,
+        "clarify": False,
         "tone": False,
     }
 
@@ -40,6 +41,24 @@ def test_resolve_returns_instructions_in_catalog_order():
         "Use bullet lists for anything with more than three items.",
         "Use a table when comparing options side by side.",
     ]
+
+
+def test_skipping_routine_confirmations_combines_with_asking_when_unclear():
+    instructions = resolve_interaction_style({"checkins": ["routine"], "clarify": ["ask"]})
+
+    assert instructions == [
+        "Do not ask for confirmation on routine steps; ask only before anything risky or hard to undo.",
+        "When something is unclear, ask a short question before proceeding.",
+    ]
+
+
+def test_each_check_in_question_still_takes_only_one_answer():
+    with pytest.raises(ValueError):
+        resolve_interaction_style({"checkins": ["careful", "routine"]})
+    with pytest.raises(ValueError):
+        resolve_interaction_style({"clarify": ["ask", "assume"]})
+    with pytest.raises(ValueError):
+        resolve_interaction_style({"checkins": ["minimal"]})
 
 
 def test_resolve_accepts_an_empty_selection():
@@ -66,7 +85,7 @@ def test_get_serves_the_catalog_without_the_saved_instructions():
 
     assert response.status_code == 200
     groups = response.json()["groups"]
-    assert [group["id"] for group in groups] == ["length", "format", "checkins", "tone"]
+    assert [group["id"] for group in groups] == ["length", "format", "checkins", "clarify", "tone"]
     assert groups[1]["multiple"] is True
     assert all(set(option) == {"id", "label"} for group in groups for option in group["options"])
 

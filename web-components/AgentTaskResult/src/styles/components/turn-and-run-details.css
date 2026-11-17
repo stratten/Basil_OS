@@ -180,7 +180,7 @@
   background: transparent;
   color: var(--secondary);
   cursor: pointer;
-  transition: color 120ms ease, background-color 120ms ease;
+  transition: color var(--motion-quick) var(--motion-ease), background-color var(--motion-quick) var(--motion-ease);
 }
 
 .turn-expansion-button:hover:not(:disabled),

@@ -28,7 +28,8 @@ export function formatCheckpointAnswer({ selectedValues, otherText, labeled }: C
 
 export function toggleCheckpointSelection(current: string[], value: string, allowMultiple: boolean): string[] {
   if (!allowMultiple) {
-    return [value];
+    // Choosing the selected option again clears it, so a reader who would rather answer in the free-text field is not stuck with a choice they can no longer take back.
+    return current.includes(value) ? [] : [value];
   }
   return current.includes(value)
     ? current.filter(selected => selected !== value)

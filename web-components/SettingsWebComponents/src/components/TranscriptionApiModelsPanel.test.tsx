@@ -61,9 +61,41 @@ describe('TranscriptionApiModelsPanel', () => {
     expect(container.querySelector('.transcription-api-models-status')?.textContent).toBe('Loading transcription API models...')
   })
 
-  it('hides the provider section when the master toggle is off', () => {
+  it('keeps the OpenAI card visible, marked inactive, with an explanation when the master toggle is off', () => {
     sendInit({ useApiTranscriptionModels: false })
-    expect(container.textContent).not.toContain('OpenAI')
+    expect(container.textContent).toContain('OpenAI')
+    expect(container.querySelector('.transcription-api-models-provider--inactive')).not.toBeNull()
+    expect(container.querySelector('.transcription-api-models-master-note')?.textContent).toContain('API transcription models are off')
+  })
+
+  it('shows no master-off note and no inactive marking when the master toggle is on', () => {
+    sendInit()
+    expect(container.querySelector('.transcription-api-models-master-note')).toBeNull()
+    expect(container.querySelector('.transcription-api-models-provider--inactive')).toBeNull()
+  })
+
+  it('does not list the models while either switch is off, because their saved state is not reported then', () => {
+    sendInit({ useApiTranscriptionModels: false })
+    expect(container.querySelector('.transcription-api-models-list')).toBeNull()
+    sendInit({ openaiEnabled: false })
+    expect(container.querySelector('.transcription-api-models-list')).toBeNull()
+    sendInit()
+    expect(container.querySelectorAll('.transcription-api-models-row')).toHaveLength(2)
+  })
+
+  it('keeps the provider switch reachable after OpenAI is turned off, with an off note, so it can be turned back on', () => {
+    sendInit({ useApiTranscriptionModels: false, openaiEnabled: false })
+    expect(container.querySelector('.transcription-api-models-provider-off-note')?.textContent).toContain('OpenAI is off')
+    const providerSwitch = container.querySelector<HTMLInputElement>('#transcription-api-models-provider-toggle')!
+    expect(providerSwitch.checked).toBe(false)
+    expect(providerSwitch.disabled).toBe(false)
+    act(() => { providerSwitch.click() })
+    expect(lastMessageOfType('requestToggleProvider')).toEqual(expect.objectContaining({ enabled: true }))
+  })
+
+  it('shows no off note while OpenAI is on', () => {
+    sendInit()
+    expect(container.querySelector('.transcription-api-models-provider-off-note')).toBeNull()
   })
 
   it('surfaces a load error with a retry action that re-sends reactReady', () => {

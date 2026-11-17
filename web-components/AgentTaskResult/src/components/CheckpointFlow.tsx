@@ -481,7 +481,7 @@ export default function CheckpointFlow({ agentTaskId, checkpoint, mode }: Props)
         )}
         {targetAuthorizationMetadata && (
           <DecisionButton
-            tone="neutral"
+            tone="stop"
             icon={<StopCircleIcon />}
             label="Cancel delegation"
             onClick={() => handleSubmit(targetAuthorizationMetadata.cancel_value)}

@@ -98,8 +98,9 @@ export function SetupShell({
                 className="setup-skip-button"
                 onClick={onSkip}
                 aria-label="Skip setup for now and come back later"
+                title="Leaves the whole setup without finishing it. You can come back to it later."
               >
-                Skip for now
+                Skip setup for now
               </button>
             )}
           </header>

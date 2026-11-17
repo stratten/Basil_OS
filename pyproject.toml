@@ -80,6 +80,9 @@ httpx = "^0.28.1"
 slack-sdk = "^3.42.0"
 pyobjc-framework-contacts = "^12.2"
 keyring = "^25.7.0"
+# Parses agent shell commands (read-only proof, blocked programs, dangerous patterns). Both are MIT licensed and ship macOS arm64 and x86_64 wheels for Python 3.11, so the bundle needs no compiler. Pinned exactly because the shape tests in the backend suite are written against this grammar version.
+tree-sitter = "0.26.1"
+tree-sitter-bash = "0.25.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.4"

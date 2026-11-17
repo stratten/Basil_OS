@@ -69,11 +69,22 @@ async function renderFlow(selectedModelAccess: SetupAgentModelAccess | null, opt
 const continueButton = () => container.querySelector<HTMLButtonElement>('.intro-step-primary')!
 
 describe('plain words in the setup preference steps', () => {
-  it('tells the person where the model downloads can be changed later', async () => {
+  it('says once, at the top of the first step, that everything can be changed in Settings, and not again in the step text', async () => {
     await renderFlow({ mode: 'local', local_model_id: 'phi2-2.7b', resolved: true }, { skipDownloads: false })
 
     expect(container.querySelector('h3')?.textContent).toBe('Model downloads')
-    expect(container.querySelector('.intro-step-lede')?.textContent).toContain('You can download or change any of them later in Settings, Models.')
+    expect(container.querySelector('h2')?.textContent).toBe("Let's set me up to work your way.")
+    expect(container.querySelector('.intro-settings-note')?.textContent).toBe('You can change any of this later in Settings.')
+    const lede = container.querySelector('.intro-step-lede')?.textContent ?? ''
+    expect(lede).not.toContain('Settings')
+    expect(lede).not.toContain('so they are ready')
+  })
+
+  it('does not repeat the Settings line on the later steps', async () => {
+    await renderFlow({ mode: 'local', local_model_id: 'phi2-2.7b', resolved: true }, { skipDownloads: true })
+
+    expect(container.querySelector('.intro-settings-note')).toBeNull()
+    expect(container.querySelector('.intro-step-later')).toBeNull()
   })
 
   it('names the model step for what it does and keeps the cards short and free of developer words', async () => {
@@ -85,7 +96,6 @@ describe('plain words in the setup preference steps', () => {
     expect(local).toContain('On this Mac')
     expect(local).toContain('Private. Nothing leaves this Mac.')
     expect(container.querySelector('.choice-option--provider_key')?.textContent).toContain('Use your own account with an AI company.')
-    expect(container.querySelector('.intro-step-later')?.textContent).toBe('You can change my main models any time in Settings, Models.')
     expect(container.textContent?.toLowerCase()).not.toContain('reasoning route')
   })
 
@@ -115,17 +125,15 @@ describe('plain words in the setup preference steps', () => {
     expect(help).toContain('The two options above still apply.')
   })
 
-  it('puts a visible change-later line under both learning choices and explains what a skill is', async () => {
+  it('keeps the learning choices to one short line each, with no repeated change-later lines or long explanations', async () => {
     await renderFlow({ mode: 'local', local_model_id: 'phi2-2.7b', resolved: true }, { skipDownloads: true })
     act(() => { continueButton().click() })
     await flush()
 
-    expect(container.querySelector('.intro-capture-toggle--memory .intro-toggle-later')?.textContent).toBe(
-      'Change this later in Personalization > Personal Context.',
-    )
-    expect(container.querySelector('.intro-capture-toggle--skill .intro-toggle-later')?.textContent).toBe(
-      'Change this later in Capabilities > Automation & Agents > Skills.',
-    )
+    expect(container.querySelector('.intro-step-lede')?.textContent).toBe('Both are optional. I keep only what you approve, so I don’t have to relearn it.')
+    expect(container.querySelector('.intro-toggle-later')).toBeNull()
+    expect(container.querySelector('.intro-toggle-details')).toBeNull()
+    expect(container.textContent).not.toContain('Change this later')
     expect(container.querySelector('.intro-capture-toggle--memory')?.textContent).toContain(
       "After work we do together, I'll suggest notes to add to your profile.",
     )

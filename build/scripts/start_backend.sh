@@ -124,6 +124,16 @@ for port_to_clean in $COMMON_PORTS; do
         kill -KILL "$PID_ON_PORT" 2>/dev/null || true
     fi
 done
+
+# Sweep a leftover backend from this app bundle that has no pid file and is not on a common port, such as one a force quit or a crash left behind. The pattern is this bundle's own Python and entry module, so it cannot match another app, a development backend, or an unrelated Python process.
+STALE_BACKEND_PIDS=$(pgrep -f -- "$PYTHON_EXECUTABLE -m $BACKEND_MAIN_MODULE" 2>/dev/null || echo "")
+for stale_pid in $STALE_BACKEND_PIDS; do
+    if [ "$stale_pid" != "$$" ] && kill -0 "$stale_pid" 2>/dev/null; then
+        log "Killing leftover backend process from this bundle (PID: $stale_pid)"
+        kill -TERM "$stale_pid" 2>/dev/null || true; sleep 1
+        kill -KILL "$stale_pid" 2>/dev/null || true
+    fi
+done
 rm -f "$SERVER_PORT_FILE"
 
 # Verify Python executable exists (from bundle resources)

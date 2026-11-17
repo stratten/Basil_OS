@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { hydrateAgentFromBackend } from '../app/agentHydration';
+import { hydrateAgentFromBackend } from '../app/agents/agentHydration';
 import { agentStore } from '../store/agentStore';
 import { checkpointPromptSummary } from './CheckpointFlow';
 import { ContinueCircleIcon } from '@shared/CircleControlIcons';

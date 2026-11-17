@@ -127,15 +127,35 @@ def _default_provider_model(provider: str) -> Optional[tuple[str, dict]]:
     )
 
 
+def _enabled_model_ids_in_settings(provider: str) -> set[str]:
+    """Return the model ids the person has switched on in Settings for this provider.
+
+    Setup names Google "google" while the stored preferences name it "gemini". A provider that is switched off as a whole contributes nothing, matching how the Settings model lists treat it.
+    """
+
+    models = Preferences.load().models
+    stored_by_provider = {
+        "anthropic": (models.anthropic_enabled, models.anthropic_models),
+        "openai": (models.openai_enabled, models.openai_models),
+        "google": (models.gemini_enabled, models.gemini_models),
+    }
+    provider_enabled, enabled_by_model = stored_by_provider.get(provider, (False, {}))
+    if not provider_enabled:
+        return set()
+    return {model_id for model_id, enabled in enabled_by_model.items() if enabled}
+
+
 def _provider_model_choices(provider: str) -> list[SetupAgentProviderModelChoice]:
     default = _default_provider_model(provider)
     default_model_id = default[0] if default else None
+    enabled_model_ids = _enabled_model_ids_in_settings(provider)
     return [
         SetupAgentProviderModelChoice(
             provider=provider,
             model_id=model_id,
             display_name=str(config.get("display_name", model_id)),
             recommended=model_id == default_model_id,
+            enabled=model_id in enabled_model_ids,
         )
         for model_id, config in _provider_model_candidates(provider)
     ]

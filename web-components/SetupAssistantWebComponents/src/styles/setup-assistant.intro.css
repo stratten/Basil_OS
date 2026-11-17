@@ -45,6 +45,7 @@
   margin: 0;
 }
 
+/* The privacy notice is folded into a disclosure so it no longer pushes the choice off the screen. The summary is always visible and the full note is one click away. */
 .welcome-intro-privacy {
   background: color-mix(in srgb, var(--primary) 8%, var(--background-primary));
   border: 0.5px solid color-mix(in srgb, var(--primary) 30%, var(--separator-color));
@@ -52,18 +53,54 @@
   color: var(--text-primary);
   font-size: var(--font-size-body);
   line-height: 1.55;
-  margin: 0 0 var(--padding-l, 28px);
-  padding: var(--padding-m) var(--padding-l);
+  margin: 0 0 var(--padding-m, 16px);
+  padding: 2px var(--padding-l);
   text-align: left;
+}
+
+.welcome-intro-privacy > summary {
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  padding: 8px 0;
+}
+
+.welcome-intro-privacy > p {
+  margin: 2px 0 12px;
 }
 
 .welcome-intro-privacy code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+.welcome-intro-lead {
+  color: var(--text-primary);
+  font-size: var(--font-size-headline);
+  margin: 0 0 var(--padding-m, 16px);
+}
+
+/* The resume screen: an advisory with a solid blue edge so it reads as a note, then the two choices side by side. */
+.resume-choice-advisory {
+  background: #ffffff;
+  border: 1px solid var(--accent-blue, #0a4fd6);
+  border-left-width: 4px;
+  border-radius: 8px;
+  color: var(--text-primary);
+  margin: 0 0 var(--padding-m, 16px);
+  max-width: 560px;
+  padding: 10px 14px;
+}
+
+.resume-choice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--padding-s, 10px);
+}
+
+/* Continue lives in a pinned footer, so it is compact. */
 .welcome-intro-primary {
-  min-width: 170px;
-  padding: 13px 28px;
+  min-width: 120px;
+  padding: 7px 22px;
 }
 
 .intro-capture-toggles {
@@ -236,7 +273,7 @@
 .choice-option-secondary-action {
   background: none;
   border: none;
-  color: var(--primary);
+  color: var(--primary-text);
   cursor: pointer;
   font: inherit;
   font-size: var(--font-size-footnote);
@@ -269,7 +306,7 @@
 }
 
 .choice-option-key-help a {
-  color: var(--primary);
+  color: var(--primary-text);
 }
 
 .choice-option-key-validate-row {
@@ -348,7 +385,7 @@
   border: 0.5px solid var(--separator-color);
   border-radius: var(--corner-radius-medium);
   overflow: hidden;
-  transition: background-color 400ms cubic-bezier(0.2, 0.8, 0.2, 1), border-color 400ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: background-color var(--motion-move) var(--motion-ease), border-color var(--motion-move) var(--motion-ease);
 }
 
 .intro-help--open {
@@ -391,7 +428,7 @@
   display: inline-block;
   font-size: calc(16px * var(--text-scale, 1));
   line-height: 1;
-  transition: transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform var(--motion-move) var(--motion-ease);
 }
 
 .intro-help--open .intro-help-chevron {
@@ -506,7 +543,7 @@
   border-radius: 999px;
   display: inline-block;
   height: 8px;
-  transition: background 200ms ease, transform 200ms ease, width 200ms ease;
+  transition: background var(--motion-quick) var(--motion-ease), transform var(--motion-quick) var(--motion-ease), width var(--motion-quick) var(--motion-ease);
   width: 8px;
 }
 
@@ -543,7 +580,7 @@
   grid-template-columns: 10px minmax(0, 1fr);
   padding: 12px 14px;
   position: relative;
-  transition: background 120ms ease, border-color 120ms ease;
+  transition: background var(--motion-quick) var(--motion-ease), border-color var(--motion-quick) var(--motion-ease);
 }
 
 .intro-capture-toggle-accent {
@@ -600,13 +637,13 @@
 
 .intro-toggle-details {
   color: var(--text-secondary);
-  font-size: var(--font-size-callout);
+  font-size: var(--font-size-body);
   grid-column: 2;
   margin-top: 4px;
 }
 
 .intro-toggle-details summary {
-  color: color-mix(in srgb, var(--capture-accent) 82%, var(--text-primary));
+  color: color-mix(in srgb, var(--capture-accent) 65%, var(--text-primary));
   cursor: pointer;
   font-family: var(--font-family-medium);
   list-style-position: outside;
@@ -618,14 +655,14 @@
 
 .intro-toggle-later {
   color: var(--text-primary);
-  font-size: var(--font-size-callout);
+  font-size: var(--font-size-body);
   grid-column: 2;
   margin: 0;
 }
 
 .intro-step-later {
   color: var(--text-primary);
-  font-size: var(--font-size-callout);
+  font-size: var(--font-size-body);
   margin: 0;
 }
 
@@ -677,7 +714,7 @@
 .basil-cloud-account-switch,
 .basil-cloud-account-note {
   color: var(--text-primary);
-  font-size: var(--font-size-callout);
+  font-size: var(--font-size-body);
   line-height: 1.4;
   margin: 0;
 }
@@ -718,7 +755,7 @@
 }
 
 .choice-option-model-name strong {
-  color: var(--primary);
+  color: var(--primary-text);
   display: inline;
 }
 
@@ -756,7 +793,7 @@
 .intro-style-title {
   color: color-mix(in srgb, var(--style-accent) 62%, var(--text-primary));
   font-family: var(--font-family-medium);
-  font-size: var(--font-size-callout);
+  font-size: var(--font-size-subheadline);
   margin: 0;
 }
 
@@ -782,7 +819,7 @@
   font-family: var(--font-family-medium);
   font-size: var(--font-size-callout);
   padding: 7px 14px;
-  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease;
+  transition: background-color var(--motion-quick) var(--motion-ease), border-color var(--motion-quick) var(--motion-ease), color var(--motion-quick) var(--motion-ease), transform var(--motion-quick) var(--motion-ease);
 }
 
 .intro-style-option:hover {
@@ -797,7 +834,7 @@
 
 .intro-style-footnote {
   color: var(--text-secondary);
-  font-size: var(--font-size-status-small);
+  font-size: var(--font-size-footnote);
   margin: 0;
 }
 

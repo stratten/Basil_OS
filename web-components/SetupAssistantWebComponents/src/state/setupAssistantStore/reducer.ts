@@ -76,6 +76,14 @@ export function reducer(
       return { ...state, setupStage: action.setupStage }
     case 'set_interaction_style':
       return { ...state, interactionStyle: action.interactionStyle }
+    case 'restore_saved_session':
+      return {
+        ...state,
+        setupAgentModelAccess: action.setupAgentModelAccess,
+        sessionAgenda: action.sessionAgenda,
+        interactionStyle: action.interactionStyle,
+        setupStage: 'conversation',
+      }
     case 'merge_imported_context': {
       const previous = state.importedContext
       const mergeTitles = (existing: string[] | undefined, incoming: string[]) => [...new Set([...(existing ?? []), ...incoming])].slice(0, 10)

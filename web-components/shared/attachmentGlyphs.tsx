@@ -32,9 +32,9 @@ export function DocGlyph() {
   );
 }
 
-export function ConnectionGlyph() {
+export function ConnectionGlyph({ size = 9 }: { size?: number } = {}) {
   return (
-    <svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M5.5 1.5v3M10.5 1.5v3" />
       <path d="M3.5 4.5h9v3a4.5 4.5 0 0 1-9 0v-3Z" />
       <path d="M8 12v2.5" />

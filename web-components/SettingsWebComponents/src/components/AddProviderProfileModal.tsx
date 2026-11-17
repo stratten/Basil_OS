@@ -43,7 +43,7 @@ export function AddProviderProfileModal({ configuration, disabled, onTrackReques
     <div className="connections-add-modal" role="dialog" aria-modal="true" aria-label="Provider Profile">
       <h3 className="connections-add-modal-title">{configuration ? 'Edit Provider Profile' : 'Add Provider Profile'}</h3>
       <p className="connections-add-modal-subtitle">
-        Use the absolute path to an installed ACP executable. Basil stores no provider credential and does not run the
+        Use the absolute path to an installed agent program (one that speaks the Agent Client Protocol, ACP). Basil stores no provider credential and does not run the
         executable while saving.
       </p>
 

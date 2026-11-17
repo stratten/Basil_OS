@@ -12,7 +12,7 @@ import AttachmentDropZone from '../../../shared/AttachmentDropZone';
 import CollapsibleRegion from '../../../shared/CollapsibleRegion';
 import { PauseCircleIcon, StopCircleIcon } from '../../../shared/CircleControlIcons';
 import ExecutionDisclosureChevron from '../../../shared/ExecutionDisclosureChevron';
-import { useFollowUpComposerCollapsed } from '../store/followUpComposerViewStore';
+import { foldFollowUpComposerForRun, useFollowUpComposerCollapsed } from '../store/followUpComposerViewStore';
 import {
   forgetComposerDraft,
   loadComposerDraft,
@@ -128,10 +128,20 @@ export default function RunControlComposer({ turnTaskId, rootTaskId, mode, await
     setReferencePaths(previous => [...new Set([...previous, ...paths])].slice(0, MAX_ATTACHMENTS));
   });
 
+  // A run that starts folds the box so the working surface gets the room. It happens once per turn, and the fold is the run's, not the reader's: it must not take focus, and the box opens again when the run finishes.
+  const foldedByRunRef = useRef(false);
+  useEffect(() => {
+    if (mode !== 'running') return;
+    if (foldFollowUpComposerForRun(draftKey, turnTaskId)) foldedByRunRef.current = true;
+  }, [mode, draftKey, turnTaskId]);
+
   // Follows the reader's own fold and unfold only. A run pausing unfolds the box by itself and must not pull focus into it. The fold control sits inside the region that just became inert, so focus moves to the bar that replaces it.
   useEffect(() => {
+    if (wasFoldedRef.current === folded) return;
+    const foldedByRun = foldedByRunRef.current;
+    foldedByRunRef.current = false;
     if (wasFoldedRef.current && !folded) editorRef.current?.focus();
-    if (!wasFoldedRef.current && folded && mode === 'running') barRef.current?.focus();
+    if (!wasFoldedRef.current && folded && mode === 'running' && !foldedByRun) barRef.current?.focus();
     wasFoldedRef.current = folded;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [folded]);

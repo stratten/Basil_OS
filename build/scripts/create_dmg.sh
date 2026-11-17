@@ -112,7 +112,7 @@ Installation:
 2. Launch Basil from Applications or Spotlight
 
 Uninstalling:
-Double-click "Uninstall Basil.command" (or run it in Terminal with --dry-run to preview). It lists everything it will remove, asks before removing anything, and then removes Basil, its databases, recordings, downloaded models, preferences, caches, saved sign-in tokens and API keys, and the permissions macOS granted it. It is a plain text script you can open and read first. It does not touch files you created elsewhere, or the shared model caches in ~/.cache.
+Double-click "Uninstall Basil.command" (or run it in Terminal with --dry-run to preview). It lists everything it will remove, asks before removing anything, and then removes Basil, its databases, recordings, downloaded models, preferences, caches, saved sign-in tokens and API keys, and the permissions macOS granted it. It is a plain text script you can open and read first. It does not touch files you created elsewhere, or the shared model caches in ~/.cache. To remove only the app and keep your data, run it in Terminal with --app-only. To remove only your data and keep the app, run it with --data-only.
 
 System Requirements:
 - A Mac with Apple Silicon

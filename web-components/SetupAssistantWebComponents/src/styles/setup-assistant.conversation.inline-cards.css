@@ -414,7 +414,7 @@
 
 .inline-setup-visual-caption {
   color: var(--text-secondary);
-  font-size: var(--font-size-callout);
+  font-size: var(--font-size-body);
   line-height: 1.45;
   margin: 0;
 }
@@ -471,7 +471,7 @@
   pointer-events: none;
   position: absolute;
   right: 8px;
-  transition: opacity 140ms ease;
+  transition: opacity var(--motion-quick) var(--motion-ease);
 }
 
 .inline-setup-visual-icon-pair .inline-setup-visual-zoom-hint {

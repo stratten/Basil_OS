@@ -5,6 +5,7 @@ import type { ConnectionsSettingsFields, MCPConnection, MCPStarterServer } from 
 import { AddConnectionModal } from './AddConnectionModal'
 import { ConnectionRow } from './ConnectionRow'
 import { ConnectionSignInProgress } from './ConnectionSignInProgress'
+import { ConnectionsSummary } from './ConnectionsSummary'
 import { useAfterRequest } from './useAfterRequest'
 
 interface ConnectionsPanelProps {
@@ -23,6 +24,8 @@ function hostnameOf(url: string): string {
 }
 
 export function connectionProviderLabel(connection: MCPConnection, starterServers: readonly MCPStarterServer[]): string {
+  // A local server's address is only an internal id, so it never names a provider.
+  if (connection.authKind === 'local') return connection.serverName?.trim() || connection.friendlyName
   const host = hostnameOf(connection.serverUrl)
   const starter = starterServers.find((candidate) => hostnameOf(candidate.serverUrl) === host)
   if (starter) return starter.friendlyName
@@ -108,6 +111,8 @@ export function ConnectionsPanel({ fields, pendingId, onTrackRequest, onTrackPol
           </button>
         </div>
       </div>
+
+      <ConnectionsSummary connections={sortedConnections} />
 
       {!showAddModal && (
         <ConnectionSignInProgress

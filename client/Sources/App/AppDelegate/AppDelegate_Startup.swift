@@ -186,53 +186,42 @@ extension AppDelegate {
 
             guard !BasilRuntimeProfile.suppressesAmbientBehavior else { return }
 
-            // Meeting Detection and Activity Capture autostart are one-shot checks
-            // with no other retry path in the app: if the backend isn't available
-            // right now, the user's "start at startup" preference is silently
-            // never acted on for this whole session. The ~10s wait above is tuned
-            // for the common case, but backend startup (e.g. loading local
-            // reasoning models) can occasionally take longer, which previously
-            // caused autostart to be skipped intermittently even though the
-            // preference itself never changed. Give backend readiness up to two
-            // more minutes here before giving up.
-            var extendedWaited = 0
-            while !api.isBackendAvailable && extendedWaited < 110 {
-                await api.updatePortAndCheckStatus()
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
-                extendedWaited += 1
+            // Meeting Detection and Activity Capture start at launch when the person turned that on. Each one waits for the backend however long it takes, then keeps checking until it is confirmed running (see StartupFeatureAutostart), instead of trying once and leaving the feature off for the whole session.
+            guard await APIClient.waitUntilBackendAvailable() else { return }
+
+            let logAutostart: (String) -> Void = { message in
+                DevLogger.shared.error(message, context: "AppDelegate")
             }
 
-            guard api.isBackendAvailable else {
-                DevLogger.shared.error(
-                    "Backend did not become available within the startup window; Meeting Detection and Activity Capture autostart were skipped for this session.",
-                    context: "AppDelegate"
+            // Each feature refreshes its own menu state as soon as it settles, so one that is slow to start never holds back the other.
+            async let meetingSettled: Void = {
+                _ = await StartupFeatureAutostart.ensureRunning(
+                    name: "Meeting Detection",
+                    // The backend runs the detection loop only while the feature is enabled, so both switches must be on.
+                    shouldRun: {
+                        let settings = try await api.getMeetingDetectionSettings()
+                        return settings.enabled && settings.startAtStartup
+                    },
+                    isRunning: { try await api.getMeetingDetectionStatus().isRunning ?? false },
+                    start: { _ = try await api.startMeetingDetection() },
+                    log: logAutostart
                 )
-                return
-            }
-
-            // Auto-start Meeting Detection if the user opted in. The backend
-            // runtime gates the loop on `enabled`, so this is a safe no-op when
-            // the feature itself is off; we then refresh the menu state to
-            // reflect the running monitor.
-            if let meetingDetection = try? await api.getMeetingDetectionSettings(),
-               meetingDetection.startAtStartup {
-                _ = try? await api.startMeetingDetection()
                 await self.statusBarManager?.refreshMeetingDetectionState()
-            }
-
-            if let activityCapture = try? await api.getActivityCaptureSettings(),
-               activityCapture.activityCaptureEnabled,
-               activityCapture.startAtStartup {
-                do {
-                    try await api.startActivityCapture()
-                    await self.statusBarManager?.refreshActivityCaptureState()
-                } catch {
-                    DevLogger.shared.error(
-                        "Failed to start Activity Capture at startup: \(error.localizedDescription)",
-                        context: "AppDelegate"
-                    )
-                }
-            }
+            }()
+            async let activitySettled: Void = {
+                _ = await StartupFeatureAutostart.ensureRunning(
+                    name: "Activity Capture",
+                    shouldRun: {
+                        let settings = try await api.getActivityCaptureSettings()
+                        return settings.activityCaptureEnabled && settings.startAtStartup
+                    },
+                    isRunning: { try await api.fetchActivityCaptureStatus().isRunning },
+                    start: { try await api.startActivityCapture() },
+                    log: logAutostart
+                )
+                await self.statusBarManager?.refreshActivityCaptureState()
+            }()
+            _ = await (meetingSettled, activitySettled)
         }
     }
 

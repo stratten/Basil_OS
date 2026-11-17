@@ -16,7 +16,7 @@ export default function ExecutionDisclosureChevron({
       strokeLinecap="round"
       strokeLinejoin="round"
       style={{
-        transition: 'transform 0.2s',
+        transition: 'transform var(--motion-quick, 150ms) var(--motion-ease, cubic-bezier(0.2, 0.8, 0.2, 1))',
         transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)',
       }}
     >

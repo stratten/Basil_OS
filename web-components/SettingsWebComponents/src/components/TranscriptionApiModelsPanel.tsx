@@ -158,11 +158,13 @@ export function TranscriptionApiModelsPanel() {
         label="Use API Transcription Models"
       />
 
-      {useApiTranscriptionModels && (
-        isLoading && models.length === 0 ? (
+      {!useApiTranscriptionModels && (
+        <p className="transcription-api-models-master-note">API transcription models are off. Turn on &ldquo;Use API Transcription Models&rdquo;, or turn on OpenAI below, to use them.</p>
+      )}
+      {isLoading && models.length === 0 ? (
           <p className="transcription-api-models-status" role="status">Loading transcription API models...</p>
         ) : (
-          <div className="transcription-api-models-provider">
+          <div className={useApiTranscriptionModels ? 'transcription-api-models-provider' : 'transcription-api-models-provider transcription-api-models-provider--inactive'}>
             <div className="transcription-api-models-provider-header">
               <span className="transcription-api-models-provider-name">OpenAI</span>
               <Switch
@@ -174,7 +176,12 @@ export function TranscriptionApiModelsPanel() {
               />
             </div>
 
-            {openaiEnabled && (
+            {!openaiEnabled && (
+              <p className="transcription-api-models-provider-off-note">OpenAI is off. Turn it on to choose transcription models.</p>
+            )}
+
+            {/* The backend lists a model's saved state only while both switches are on, so the models are shown only then. Showing them earlier would read every model as off. */}
+            {openaiEnabled && useApiTranscriptionModels && (
               <>
                 <div className="transcription-api-models-key-section">
                   {openaiHasKey && (
@@ -230,8 +237,7 @@ export function TranscriptionApiModelsPanel() {
               </>
             )}
           </div>
-        )
-      )}
+        )}
 
       {statusMessage && (
         <p

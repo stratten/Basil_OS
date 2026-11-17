@@ -1,4 +1,4 @@
-import type { ChainExpansionMode } from '../../app/chainExpansionPreference';
+import type { ChainExpansionMode } from '../../app/display/chainExpansionPreference';
 
 interface Props {
   mode: ChainExpansionMode;

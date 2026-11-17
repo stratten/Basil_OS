@@ -86,6 +86,7 @@ from .connection_route_helpers import (
     save_connection_preferences,
 )
 from .gmail_transport_routes import register_gmail_transport_routes
+from .local_server_routes import register_local_server_routes
 from .metadata_routes import register_metadata_routes
 from .reconnect_support import load_reconnect_target, reauthorize_connection
 from .slack_routes import register_slack_routes
@@ -132,6 +133,7 @@ router so they share the ``/settings/connections`` prefix."""
 register_metadata_routes(router)
 register_status_routes(router)
 register_gmail_transport_routes(router)
+register_local_server_routes(router)
 
 
 _OAUTH_CALLBACK_SUBPATH = "/oauth/callback/mcp"

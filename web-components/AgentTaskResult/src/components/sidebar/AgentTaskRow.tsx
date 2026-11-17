@@ -15,8 +15,8 @@ import {
   StatusIcon,
   TrashIcon,
 } from './SidebarIcons';
-import { formatTimestampForDisplay, useDateDisplayStyle } from '../../app/dateDisplay';
-import { describeFollowUpDue } from '../../app/followUpTime';
+import { formatTimestampForDisplay, useDateDisplayStyle } from '../../app/display/dateDisplay';
+import { describeFollowUpDue } from '../../app/display/followUpTime';
 import { useChecklistCounts } from '../../store/checklistStore';
 
 export interface AgentTaskRowProps {

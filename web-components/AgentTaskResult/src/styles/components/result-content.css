@@ -65,7 +65,7 @@
 .result-presence-region {
   opacity: 1;
   transform: translateY(0);
-  transition: opacity 200ms ease-out, transform 200ms ease-out;
+  transition: opacity var(--motion-quick) var(--motion-ease), transform var(--motion-quick) var(--motion-ease);
 }
 
 .result-presence-region[data-presence-phase='entering'] {
@@ -115,7 +115,7 @@
   border-style: solid;
   margin-bottom: var(--padding-m);
   cursor: pointer;
-  transition: background 0.3s ease-in-out;
+  transition: background var(--motion-quick) var(--motion-ease);
 }
 
 /* Current AgentTask header — matches Swift's CurrentAgentTaskHeader */
@@ -194,7 +194,7 @@
   display: flex;
   align-items: center;
   opacity: 0.8;
-  transition: opacity 0.15s;
+  transition: opacity var(--motion-quick) var(--motion-ease);
 }
 
 .copy-btn:hover {
@@ -212,7 +212,7 @@
   border-radius: var(--corner-radius-small);
   color: var(--text-tertiary);
   opacity: 0.4;
-  transition: opacity 0.2s, color 0.2s, background 0.2s;
+  transition: opacity var(--motion-quick) var(--motion-ease), color var(--motion-quick) var(--motion-ease), background var(--motion-quick) var(--motion-ease);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -350,7 +350,7 @@
   cursor: pointer;
   line-height: 1;
   opacity: 0.75;
-  transition: opacity 0.15s, background 0.15s;
+  transition: opacity var(--motion-quick) var(--motion-ease), background var(--motion-quick) var(--motion-ease);
 }
 
 .result-section .markdown-copy-button:hover,
@@ -476,7 +476,7 @@
   background: transparent;
   cursor: pointer;
   opacity: 0.35;
-  transition: opacity 120ms ease, transform 120ms ease;
+  transition: opacity var(--motion-quick) var(--motion-ease), transform var(--motion-quick) var(--motion-ease);
 }
 
 .action-icon-btn:hover,
@@ -538,7 +538,7 @@
   padding: var(--padding-xs) var(--padding-s);
   border-radius: var(--corner-radius-small);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--motion-quick) var(--motion-ease);
 }
 
 .file-item:hover {
@@ -615,7 +615,7 @@
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  transition: opacity 120ms ease;
+  transition: opacity var(--motion-quick) var(--motion-ease);
 }
 
 .suggested-follow-up-chip--picked .suggested-follow-up-check {

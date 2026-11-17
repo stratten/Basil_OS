@@ -346,6 +346,7 @@ class OpenAIModel(BaseReasoningModel):
         if (
             len(conversation_messages) == 1
             and conversation_messages[0].get("role") == "user"
+            and isinstance(conversation_messages[0]["content"], str)
         ):
             input_data = conversation_messages[0]["content"]
             chatter_logger.debug("📝 RESPONSES_API: Using simple string input format")

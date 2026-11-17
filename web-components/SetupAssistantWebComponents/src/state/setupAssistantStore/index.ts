@@ -16,6 +16,7 @@ import type {
   SetupAgendaConfirmationResolution,
   SetupImportedContextSummary,
   SetupInlineDillDraft,
+  SetupSessionAgendaItem,
   SetupStage,
   SetupUserAcknowledgment,
 } from './types'
@@ -43,6 +44,11 @@ export function useSetupAssistantStore() {
     setInteractionStyle: (interactionStyle: string[]) => (
       dispatch({ type: 'set_interaction_style', interactionStyle })
     ),
+    restoreSavedSession: (
+      setupAgentModelAccess: SetupAgentModelAccess,
+      sessionAgenda: SetupSessionAgendaItem[],
+      interactionStyle: string[],
+    ) => dispatch({ type: 'restore_saved_session', setupAgentModelAccess, sessionAgenda, interactionStyle }),
     mergeImportedContext: (summary: SetupImportedContextSummary) => dispatch({ type: 'merge_imported_context', summary }),
     clearImportedProfile: () => dispatch({ type: 'clear_imported_profile' }),
     appendUserMessage: (content: string) => dispatch({ type: 'append_user_message', content }),

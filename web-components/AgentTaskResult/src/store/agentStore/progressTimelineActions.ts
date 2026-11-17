@@ -22,6 +22,7 @@ import {
 } from './timelineDetails';
 import { reconcileDurableArtifactEntries } from './artifactTimelineReconciliation';
 import { backfillDurableTimelineEntries } from './timelineBackfill';
+import { uniqueHistory, upsertHistoryItem } from './historyIdentity';
 
 export class ProgressTimelineAgentStore extends FollowUpAgentStore {
   markCanceling(agentTaskId: string) {
@@ -614,13 +615,13 @@ export class ProgressTimelineAgentStore extends FollowUpAgentStore {
       if (!item.errorMessage && a.errorMessage) {
         item.errorMessage = a.errorMessage;
       }
-      a.agentTaskHistory = [...a.agentTaskHistory, item];
+      a.agentTaskHistory = upsertHistoryItem(a.agentTaskHistory, item);
     });
   }
 
   setAgentTaskHistory(agentTaskId: string, items: AgentTaskHistoryItem[]) {
     this.updateAgent(agentTaskId, a => {
-      a.agentTaskHistory = items;
+      a.agentTaskHistory = uniqueHistory(items);
     });
   }
 }

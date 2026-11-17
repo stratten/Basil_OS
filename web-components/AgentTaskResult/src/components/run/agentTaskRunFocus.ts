@@ -24,14 +24,18 @@ export interface AgentTaskRunFocusSummary {
   modelUsed?: string;
 }
 
-// The backend `origin_type` recorded when Basil continues a task on its own (an outcome-check gap or a scheduled check-in) rather than the user asking.
+// The backend `origin_type` recorded when Basil amends a run on its own because the outcome check found a gap. Only this kind of turn is a revision.
 export const AGENT_REVISION_ORIGIN_TYPE = 'agent_follow_up';
 
-// Numbers one turn per entry: non-revision turns count 1, 2, 3; an agent revision is `${parent}.${k}` for the nearest preceding non-revision turn.
+// The backend `origin_type` recorded when a check the agent scheduled for itself comes due. It is a new turn in the chain, not an amendment, so it is never called a revision and carries no number.
+export const SCHEDULED_CHECK_ORIGIN_TYPE = 'scheduled_follow_up';
+
+// Numbers one turn per entry: non-revision turns count 1, 2, 3; an agent revision is `${parent}.${k}` for the nearest preceding non-revision turn; a scheduled check has no number (an empty string) and does not count toward the others.
 export function agentTaskRunNumbers(originTypes: ReadonlyArray<string | undefined>): string[] {
   let primaryTurns = 0;
   let revisionsOfParent = 0;
   return originTypes.map((originType, index) => {
+    if (index > 0 && originType === SCHEDULED_CHECK_ORIGIN_TYPE) return '';
     if (index > 0 && originType === AGENT_REVISION_ORIGIN_TYPE) {
       revisionsOfParent += 1;
       return `${primaryTurns}.${revisionsOfParent}`;
@@ -47,13 +51,18 @@ export function isRevisionNumber(displayNumber: string): boolean {
   return displayNumber.includes('.');
 }
 
-// Labels one turn per entry. User follow-ups are counted on their own, and an agent revision is named for the turn it revises ("Agent revision 2 of Follow-up 4"), so an automatic turn is never mistaken for something the user asked and its label points at text that is visible in the same chain. Several revisions of one turn count up from 1.
+// Labels one turn per entry. User follow-ups are counted on their own. An agent revision is named for the turn it revises ("Agent revision 2 of Follow-up 4") and a scheduled check for the turn that asked for it ("Scheduled check 3 of Follow-up 4"), so an automatic turn is never mistaken for something the user asked and its label points at text that is visible in the same chain. Revisions and scheduled checks each count up from 1 within one turn.
 export function agentTaskRunLabels(originTypes: ReadonlyArray<string | undefined>): string[] {
   let userFollowUps = 0;
   let revisedTurnName = 'the initial request';
   let revisionsOfTurn = 0;
+  let scheduledChecksOfTurn = 0;
   return originTypes.map((originType, index) => {
     if (index === 0) return 'Initial request';
+    if (originType === SCHEDULED_CHECK_ORIGIN_TYPE) {
+      scheduledChecksOfTurn += 1;
+      return `Scheduled check ${scheduledChecksOfTurn} of ${revisedTurnName}`;
+    }
     if (originType === AGENT_REVISION_ORIGIN_TYPE) {
       revisionsOfTurn += 1;
       return `Agent revision ${revisionsOfTurn} of ${revisedTurnName}`;
@@ -61,6 +70,7 @@ export function agentTaskRunLabels(originTypes: ReadonlyArray<string | undefined
     userFollowUps += 1;
     revisedTurnName = `Follow-up ${userFollowUps}`;
     revisionsOfTurn = 0;
+    scheduledChecksOfTurn = 0;
     return revisedTurnName;
   });
 }

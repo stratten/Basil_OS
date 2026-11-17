@@ -41,13 +41,13 @@ const baseTask: DisplayableAgentTask = {
 let container: HTMLDivElement;
 let root: Root;
 
-function render(task: DisplayableAgentTask, handlers: { onRetry?: (modelId?: string) => void } = {}) {
+function render(task: DisplayableAgentTask, handlers: { onRetry?: (modelId?: string) => void; showTrail?: boolean } = {}) {
   act(() => {
     root.render(
       <RunStatusCard
         agentTask={task}
         phase={deriveRunPhase(task)}
-        showTrail={false}
+        showTrail={handlers.showTrail ?? false}
         hasUnreadLiveContent={false}
         onJumpToLatestContent={() => {}}
         onRetry={handlers.onRetry ?? (() => {})}
@@ -96,14 +96,84 @@ describe('RunStatusCard', () => {
     expect(onRetry).toHaveBeenCalledWith('gpt-5-mini');
   });
 
-  it('keeps the activity trail folded on failed and canceled runs while Retry and the reason stay visible', () => {
+  it('keeps the activity trail folded on failed and canceled runs while the recovery actions and the reason stay visible', () => {
     render({ ...baseTask, status: 'failed', errorMessage: 'Could not finish' });
     expect(container.querySelector('.execution-activity-dock-body.is-open')).toBeNull();
-    expect(container.querySelector('.run-status-footer')?.textContent).toContain('Retry');
+    expect(container.querySelector('.run-status-footer')?.textContent).toContain('Could not finish');
+    expect(container.querySelector('.execution-activity-dock-header-row .run-status-recovery')?.textContent).toContain('Retry');
 
     render({ ...baseTask, status: 'failed', isCanceled: true });
     expect(container.querySelector('.execution-activity-dock-body.is-open')).toBeNull();
-    expect(container.querySelector('.run-status-footer')?.textContent).toContain('Run again');
+    expect(container.querySelector('.execution-activity-dock-header-row .run-status-recovery')?.textContent).toContain('Run again');
+  });
+
+  it('draws the recovery actions as icon-only bordered buttons whose tooltips name and explain them', () => {
+    render({ ...baseTask, status: 'failed', errorMessage: 'Could not finish', checkpointAvailable: true });
+
+    const buttons = Array.from(container.querySelectorAll<HTMLButtonElement>('.run-status-recovery .decision-btn'));
+    expect(buttons.map(button => button.title)).toEqual([
+      'Continue: pick up from where it stopped',
+      'Retry: run this turn again',
+      'Show logs: open the diagnostic logs for this run',
+      'Report a problem: send details about this run',
+    ]);
+    expect(buttons.every(button => button.querySelector('.decision-btn__icon svg') !== null)).toBe(true);
+    expect(container.querySelector('.run-status-recovery')!.parentElement!.classList.contains('execution-activity-dock-header-row--actions')).toBe(true);
+    expect(container.querySelector('.execution-activity-dock-header button, button .decision-btn')).toBeNull();
+  });
+
+  it('puts the retry model picker in the bar row, just left of Retry and right of Continue', () => {
+    render({ ...baseTask, status: 'failed', errorMessage: 'Could not finish', checkpointAvailable: true });
+
+    const group = container.querySelector('.execution-activity-dock-header-row .run-status-recovery')!;
+    const order = Array.from(group.children).map(child => (
+      child.classList.contains('run-status-picker') ? 'picker' : (child as HTMLElement).title.split(':')[0]
+    ));
+    expect(order).toEqual(['Continue', 'picker', 'Retry', 'Show logs', 'Report a problem']);
+    expect(group.querySelector('.run-status-picker button')?.getAttribute('aria-label')).toBe('Retry model');
+    expect(container.querySelector('.execution-activity-dock-body.is-open')).toBeNull();
+  });
+
+  it('keeps the bar inert, with no chevron, when recovery is offered but there is no trail to open', () => {
+    render({ ...baseTask, status: 'failed', errorMessage: 'Could not finish' });
+    const header = container.querySelector<HTMLButtonElement>('.execution-activity-dock-header')!;
+
+    expect(header.disabled).toBe(true);
+    expect(header.hasAttribute('aria-expanded')).toBe(false);
+    expect(header.querySelector('svg')).toBeNull();
+    expect(container.querySelector('.execution-activity-dock-header-row--chevron')).toBeNull();
+  });
+
+  it('separates the status label from the summary with a small rule', () => {
+    render({ ...baseTask, status: 'failed', errorMessage: 'Could not finish' });
+
+    const label = container.querySelector('.run-status-label')!;
+    const separator = container.querySelector('.run-status-separator')!;
+    expect(separator.getAttribute('aria-hidden')).toBe('true');
+    expect(label.nextElementSibling).toBe(separator);
+    expect(separator.nextElementSibling?.classList.contains('execution-activity-dock-latest')).toBe(true);
+  });
+
+  it('shows the Activity count only where the bar can open the trail', () => {
+    const task = { ...baseTask, status: 'failed' as const, errorMessage: 'Could not finish', progressSteps: [{ step: 'Read the file', isActive: false, isComplete: true }] };
+
+    render(task, { showTrail: false });
+    expect(container.querySelector('.execution-activity-dock-count')).toBeNull();
+
+    render(task, { showTrail: true });
+    expect(container.querySelector('.execution-activity-dock-count')?.textContent).toContain('Activity · 1 update');
+    expect(container.querySelector<HTMLButtonElement>('.execution-activity-dock-header')!.disabled).toBe(false);
+    expect(container.querySelector('.execution-activity-dock-header-row--chevron')).not.toBeNull();
+  });
+
+  it('offers no chevron and an inert header when a bar has nothing to open', () => {
+    render({ ...baseTask, status: 'completed' });
+    const header = container.querySelector<HTMLButtonElement>('.execution-activity-dock-header')!;
+
+    expect(container.querySelector('.run-status-recovery')).toBeNull();
+    expect(header.disabled).toBe(true);
+    expect(header.hasAttribute('aria-expanded')).toBe(false);
+    expect(header.querySelector('svg')).toBeNull();
   });
 
   it('offers Show logs and Report a problem on a failed run and sends the failure text', () => {
@@ -163,7 +233,7 @@ describe('RunStatusCard', () => {
 
     expect(container.querySelector('.run-status-reason')).toBeNull();
     expect(container.textContent).not.toContain('The second report could not be opened.');
-    expect(container.textContent).toContain('Details are in the result above');
+    expect(container.textContent).toContain('Details above');
     expect(container.textContent).toContain('Retry');
   });
 

@@ -127,7 +127,7 @@ export function ProviderProfilesPanel({
         <div>
           <h3 id="provider-profiles-heading">Provider Profiles</h3>
           <p className="provider-profiles-subtitle">
-            Register an installed ACP runtime and authorize local workspace roots. Registration never starts a provider.
+            Register an installed agent program that speaks the Agent Client Protocol (ACP), and authorize local workspace roots. Registration never starts a provider.
           </p>
         </div>
         <button type="button" className="connections-add-toggle" disabled={disabled} onClick={() => setShowAddModal(true)}>
@@ -143,7 +143,7 @@ export function ProviderProfilesPanel({
       ) : providerProfiles.length === 0 ? (
         <div className="connections-empty-state">
           <p className="connections-empty-state-title">No provider profiles yet.</p>
-          <p className="connections-empty-state-body">Add an installed ACP runtime to begin configuring future provider catalog eligibility.</p>
+          <p className="connections-empty-state-body">Add an installed agent program to begin configuring future provider catalog eligibility.</p>
         </div>
       ) : (
         <div className="connections-list basil-refresh-region" aria-busy={isLoading ? true : undefined}>

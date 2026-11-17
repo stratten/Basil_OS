@@ -302,6 +302,12 @@ export type SetupAssistantAction =
   | { type: 'set_model_access'; setupAgentModelAccess: SetupAgentModelAccess | null }
   | { type: 'set_express_comfort'; expressComfort: ComfortLevel | null }
   | { type: 'set_interaction_style'; interactionStyle: string[] }
+  | {
+    type: 'restore_saved_session'
+    setupAgentModelAccess: SetupAgentModelAccess
+    sessionAgenda: SetupSessionAgendaItem[]
+    interactionStyle: string[]
+  }
   | { type: 'merge_imported_context'; summary: SetupImportedContextSummary }
   | { type: 'clear_imported_profile' }
   | { type: 'append_user_message'; content: string }

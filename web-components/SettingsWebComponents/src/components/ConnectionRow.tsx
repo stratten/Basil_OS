@@ -112,6 +112,11 @@ export function ConnectionRow({
       setIsReplacingToken(true)
       return
     }
+    if (connection.authKind === 'local') {
+      // A local server has nothing to sign in to; reconnecting means starting the program again.
+      onTrackRequest(requestRefreshTools(connection.id))
+      return
+    }
     onTrackRequest(requestReconnectConnection(connection.id))
   }
 
@@ -171,7 +176,7 @@ export function ConnectionRow({
             <>
               <p className="connections-row-name">{connection.friendlyName}</p>
               {connection.description && <p className="connections-row-description">{connection.description}</p>}
-              <p className="connections-row-url">{connection.serverUrl}</p>
+              <p className="connections-row-url">{connection.authKind === 'local' ? 'Runs on this Mac' : connection.serverUrl}</p>
               <p className={statusClassName(connection.lastConnectionStatus)}>
                 <span className="connections-row-status-dot" />
                 {statusLabel(connection.lastConnectionStatus)}

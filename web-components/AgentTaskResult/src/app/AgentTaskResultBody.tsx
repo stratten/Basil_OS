@@ -11,13 +11,13 @@ import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import ScheduledAgentTaskDetail from '../components/ScheduledAgentTaskDetail';
 import { activityStatusSnapshot } from '../components/result/activityPresentation';
-import type { MissedRunToast } from './useHostBridge';
+import type { MissedRunToast } from './host/useHostBridge';
 import { AgentTaskDetailSurface } from './AgentTaskDetailSurface';
 import DetachedTaskPlaceholder from '../components/DetachedTaskPlaceholder';
 import { SurfaceActivityContext } from '../services/useFilesPickedHandler';
 import { plainMarkdownText } from '../../../shared/plainMarkdownText';
 import { agentStore } from '../store/agentStore';
-import { taskNeedsCollapsedAttention } from './useUnfocusedTaskAttention';
+import { taskNeedsCollapsedAttention } from './host/useUnfocusedTaskAttention';
 
 export function SurfaceStack({ surfaceKey, children }: { surfaceKey: string; children: ReactNode }) {
   const previous = useRef({ key: surfaceKey, children });

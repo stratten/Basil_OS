@@ -8,7 +8,7 @@ import type { SetupAgentModelAccess } from '@/types'
 import { ExpressProgress } from './ExpressProgress'
 import { ExpressReview } from './ExpressReview'
 import { HOTKEYS_ITEM_ID, type NativeExpressContext } from './expressNativeHotkeys'
-import { selectedItemIds, visibleItems } from './expressPlan'
+import { defaultUntickedIds, selectedItemIds, visibleItems } from './expressPlan'
 import type { ComfortLevel, ExpressApplyResult, ExpressItemResult, ExpressPlan } from './expressTypes'
 
 const NO_NATIVE_ITEMS: ReadonlySet<string> = new Set()
@@ -64,7 +64,11 @@ export function ExpressSetup({
     else setLoad({ phase: 'loading' })
     try {
       const plan = await fetchExpressPlan(comfort)
-      if (isMountedRef.current) setLoad({ phase: 'ready', plan })
+      if (isMountedRef.current) {
+        // A fresh plan starts with the items it offers unticked already unticked. A re-check keeps whatever the person has ticked or unticked since.
+        if (!isRecheck) setDeselected(defaultUntickedIds(plan))
+        setLoad({ phase: 'ready', plan })
+      }
     } catch (error) {
       if (isMountedRef.current) {
         setLoad({ phase: 'error', message: error instanceof Error ? error.message : "I couldn't check this Mac." })

@@ -475,6 +475,7 @@ extension APIClient {
     /// body. Kept private to this file to avoid widening the public
     /// APIClient surface for a single use case.
     private func postJSON(_ endpoint: String, body: Data) async throws -> Data {
-        return try await post(endpoint, body: body)
+        // Connection sign-in failures carry a reason the person needs (for example that Gmail sign-in is not set up), so keep it.
+        return try await post(endpoint, body: body, timeout: 120, surfaceServerDetail: true)
     }
 }

@@ -3,7 +3,7 @@ import NativeSymbolIcon from '../../../../shared/NativeSymbolIcon';
 import { WindowControlButton } from '@shared/WindowControlButton';
 import { createLocalWebPreviewTransport, type LocalWebPreviewSessionDTO } from '../artifacts/transport/localWebPreviewTransport';
 import { processAgentTask, setBaseUrl } from '../../services/api';
-import { applyHostFonts, applyHostTheme } from '../../app/themeBootstrap';
+import { applyHostFonts, applyHostTheme } from '../../app/host/themeBootstrap';
 import { WebSocketManager } from '../../services/websocket';
 import type {
   LocalWebPreviewInitMessage,

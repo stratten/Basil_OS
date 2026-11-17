@@ -161,6 +161,10 @@ export function OrientationInterstitial({
         )}
       </div>
 
+      <p className="working-together-preview" data-testid="working-together-preview">
+        <strong>Next is Working Together.</strong> It takes as long or as little as you want. I will suggest a short list of to-dos that help me learn how you work. You choose which to do first, you can skip any of them, and you can stop whenever you like.
+      </p>
+
       <SetupStepActions>
         <button
           type="button"

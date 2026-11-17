@@ -1,15 +1,26 @@
 /* Express setup: the path chooser on the first screen, the confirm screen, the progress screen and the receipt. Every border is 1px with no accent bar down one side, as cardWeight.contract.test.ts enforces. */
+/* The wrapper has no box of its own. It stays in the DOM because every row rule (inset rows, the sunken selection well, the tinted selected row) is scoped to `.setup-path`, but the list and the footer become direct children of the welcome screen, so the footer can stick to the bottom of the whole scrolling card. */
 .setup-path {
-  display: grid;
-  gap: var(--padding-l);
-  justify-items: center;
-  width: 100%;
+  display: contents;
 }
 
 .setup-path-list {
+  margin-bottom: 0;
   margin-top: 0;
   text-align: left;
   width: 100%;
+}
+
+/* Continue stays reachable however tall the rows get. The gradient fades the rows out underneath it, and the -4px bottom offset fills the 4px padding of the scroll frame so no sliver of the next row shows below the bar. */
+.setup-path-footer {
+  align-self: stretch;
+  background: linear-gradient(to bottom, transparent 0, var(--background-primary) 55%);
+  bottom: -4px;
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 4px;
+  position: sticky;
+  z-index: 2;
 }
 
 .setup-path-option,
@@ -202,7 +213,7 @@
 
 .express-item-body > span {
   color: var(--text-primary);
-  font-size: var(--font-size-callout);
+  font-size: var(--font-size-body);
   line-height: 1.4;
 }
 
@@ -292,7 +303,7 @@
 }
 
 .express-receipt-row--partial .express-receipt-state {
-  color: var(--primary);
+  color: var(--primary-text);
 }
 
 .express-receipt-body {

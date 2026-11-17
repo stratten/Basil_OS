@@ -49,6 +49,8 @@ def default_policy_for_tool(tool: MCPCachedTool) -> MCPToolPolicy:
 
 def connection_auth_kind(record: MCPConnectionRecord) -> ConnectionAuthKind:
     """Identify which sign-in flow re-authorizes this connection."""
+    if record.stdio is not None:
+        return "local"
     if is_slack_connection(record):
         return "slack"
     if record.oauth_client_id == GITHUB_OAUTH_CLIENT_ID:
@@ -83,6 +85,7 @@ def connection_to_dto(record: MCPConnectionRecord) -> ConnectionDTO:
         last_connection_status_message=record.last_connection_status_message,
         server_name=record.server_name,
         server_instructions=record.server_instructions,
+        server_icon_data_url=record.server_icon_data_url,
         auth_kind=connection_auth_kind(record),
         tools=tools,
     )

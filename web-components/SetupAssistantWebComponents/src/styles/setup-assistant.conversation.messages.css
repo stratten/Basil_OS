@@ -124,7 +124,7 @@
 }
 
 .setup-reveal-word {
-  animation: setupWordFade 480ms ease-out both;
+  animation: setupWordFade var(--motion-move) var(--motion-ease) both;
 }
 
 .basil-message-content p,

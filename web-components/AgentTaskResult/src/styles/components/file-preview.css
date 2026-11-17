@@ -140,7 +140,7 @@
   overflow: auto;
   opacity: 1;
   transform: translateY(0);
-  transition: opacity 160ms ease, transform 160ms ease;
+  transition: opacity var(--motion-quick) var(--motion-ease), transform var(--motion-quick) var(--motion-ease);
 }
 
 .file-preview-window-body-layer[data-presence-phase='entering'],

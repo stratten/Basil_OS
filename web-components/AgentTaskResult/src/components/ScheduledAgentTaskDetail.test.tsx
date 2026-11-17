@@ -236,10 +236,16 @@ describe('ScheduledAgentTaskDetail connections', () => {
   const slack = { id: 'conn-slack', friendly_name: 'Slack', description: null, enabled: false, last_connection_status: 'healthy' };
   const linear = { id: 'conn-linear', friendly_name: 'Linear', description: null, enabled: true, last_connection_status: 'needs_reconnect' };
 
-  // The names of every row in the attachments list that is a connection (they share the list with the reference files).
+  // The names of every connection chip, apart from the warning note a chip may carry after its name.
   function connectionRowNames(): string[] {
-    return Array.from(document.body.querySelectorAll<HTMLElement>('.attachment-list__row[data-attachment-kind="connection"]'))
-      .map(row => row.querySelector('.attachment-list__row-name')?.textContent ?? '');
+    return Array.from(document.body.querySelectorAll<HTMLElement>('.icon-chip[data-chip-kind="connection"]'))
+      .map(chip => chip.querySelector('.icon-chip__name')?.textContent ?? '');
+  }
+
+  // The warning note on each connection chip, in order; an empty string for a chip that has none.
+  function connectionNotes(): string[] {
+    return Array.from(document.body.querySelectorAll<HTMLElement>('.icon-chip[data-chip-kind="connection"]'))
+      .map(chip => chip.querySelector('.icon-chip__note')?.textContent ?? '');
   }
 
   function stopUsingButton(name: string): HTMLButtonElement {
@@ -303,7 +309,8 @@ describe('ScheduledAgentTaskDetail connections', () => {
     mocks.getScheduledAgentTask.mockResolvedValue(scheduledTask({ connection_ids: ['conn-gmail', 'conn-slack', 'conn-linear', 'conn-gone'] }));
     await render({ createMode: false, id: 'sched-1' });
 
-    expect(connectionRowNames()).toEqual(['Gmail', 'Slack (switched off)', 'Linear (needs signing in again)', 'Removed connection (removed)']);
+    expect(connectionRowNames()).toEqual(['Gmail', 'Slack', 'Linear', 'Removed connection']);
+    expect(connectionNotes()).toEqual(['', 'switched off', 'needs signing in again', 'removed']);
   });
 
   it('shows connections as chips in their own Connections row, apart from the reference files', async () => {
@@ -311,10 +318,13 @@ describe('ScheduledAgentTaskDetail connections', () => {
     mocks.getScheduledAgentTask.mockResolvedValue(scheduledTask({ reference_paths: ['/Users/me/notes.md'], connection_ids: ['conn-gmail'] }));
     await render({ createMode: false, id: 'sched-1' });
 
-    const lists = Array.from(container.querySelectorAll('.attachment-list'));
-    expect(lists.map(list => list.getAttribute('aria-label'))).toEqual(['Connections', 'Attachments / References']);
-    expect(lists.map(list => Array.from(list.querySelectorAll('.attachment-list__row-name')).map(name => name.textContent))).toEqual([['Gmail'], ['notes.md']]);
-    // A connection is not a file: no Reveal in Finder, and its name is not an open link.
+    const chips = container.querySelector('.icon-chip-list')!;
+    expect(chips.getAttribute('aria-label')).toBe('Connections');
+    expect(Array.from(chips.querySelectorAll('.icon-chip__name')).map(name => name.textContent)).toEqual(['Gmail']);
+    const files = container.querySelector('.attachment-list')!;
+    expect(files.getAttribute('aria-label')).toBe('Attachments / References');
+    expect(Array.from(files.querySelectorAll('.attachment-list__row-name')).map(name => name.textContent)).toEqual(['notes.md']);
+    // A connection is not a file: it is not in the attachments list, so it has no Reveal in Finder and no open link.
     expect(container.querySelectorAll('.attachment-list__row-reveal')).toHaveLength(1);
     expect(container.querySelectorAll('.attachment-list__row-name.is-link')).toHaveLength(1);
   });
@@ -336,6 +346,43 @@ describe('ScheduledAgentTaskDetail connections', () => {
 
     expect(connectionRowNames()).toEqual(['Connection', 'Connection']);
     expect(container.textContent).not.toContain('Removed connection');
+  });
+
+  it('draws the bundled icon for a known connection by its server URL, even after it was renamed', async () => {
+    const renamed = { ...gmail, friendly_name: 'Gmail - Work', server_url: 'https://gmailmcp.googleapis.com/mcp/v1' };
+    const custom = { ...slack, id: 'conn-custom', friendly_name: 'Internal wiki', enabled: true, server_url: 'https://mcp.example.com/mcp' };
+    mocks.listScheduleConnections.mockResolvedValue({ connections: [renamed, custom] });
+    mocks.getScheduledAgentTask.mockResolvedValue(scheduledTask({ connection_ids: ['conn-gmail', 'conn-custom'] }));
+    await render({ createMode: false, id: 'sched-1' });
+
+    const chips = Array.from(container.querySelectorAll<HTMLElement>('.icon-chip[data-chip-kind="connection"]'));
+    expect(chips.map(chip => chip.querySelector('.icon-chip__name')?.textContent)).toEqual(['Gmail - Work', 'Internal wiki']);
+    expect(chips[0].querySelector('img.icon-chip__image')?.getAttribute('src')).toMatch(/^data:image\/svg\+xml/);
+    // A connection Basil does not know and whose server advertises nothing keeps the plug glyph.
+    expect(chips[1].querySelector('img.icon-chip__image')).toBeNull();
+    expect(chips[1].querySelector('.icon-chip__icon--glyph svg')).not.toBeNull();
+  });
+
+  it('prefers the icon the server advertises and falls back to the bundled one if it will not load', async () => {
+    const advertised = 'data:image/png;base64,iVBORw0KGgo=';
+    const linearWithIcon = { ...linear, last_connection_status: 'healthy', server_url: 'https://mcp.linear.app/mcp', server_icon_data_url: advertised };
+    mocks.listScheduleConnections.mockResolvedValue({ connections: [linearWithIcon] });
+    mocks.getScheduledAgentTask.mockResolvedValue(scheduledTask({ connection_ids: ['conn-linear'] }));
+    await render({ createMode: false, id: 'sched-1' });
+
+    const image = () => container.querySelector<HTMLImageElement>('.icon-chip img.icon-chip__image');
+    expect(image()!.getAttribute('src')).toBe(advertised);
+    await act(async () => { image()!.dispatchEvent(new Event('error')); });
+    expect(image()!.getAttribute('src')).toMatch(/^data:image\/svg\+xml/);
+  });
+
+  it('seats every connection icon on a light tile and keeps the warning note beside the name', async () => {
+    mocks.listScheduleConnections.mockResolvedValue({ connections: [{ ...linear, server_url: 'https://mcp.linear.app/mcp' }] });
+    mocks.getScheduledAgentTask.mockResolvedValue(scheduledTask({ connection_ids: ['conn-linear'] }));
+    await render({ createMode: false, id: 'sched-1' });
+
+    expect(container.querySelector('.icon-chip__icon--tile')).not.toBeNull();
+    expect(container.querySelector('.icon-chip__note')?.textContent).toBe('needs signing in again');
   });
 
   it('removes every tag on edit by sending an empty list', async () => {
@@ -360,7 +407,8 @@ describe('ScheduledAgentTaskDetail connections', () => {
     await render({ createMode: false, id: 'sched-1' });
     await click(buttonByText('Edit'));
     // A tag whose connection was removed stays visible so it can be untagged.
-    expect(connectionRowNames()).toEqual(['Gmail', 'Removed connection (removed)']);
+    expect(connectionRowNames()).toEqual(['Gmail', 'Removed connection']);
+    expect(connectionNotes()).toEqual(['', 'removed']);
 
     await click(buttonByText('Save changes'));
 
@@ -482,3 +530,58 @@ describe('ScheduledAgentTaskDetail when the schedule changes elsewhere', () => {
   });
 });
 
+describe('ScheduledAgentTaskDetail form layout', () => {
+  it('labels every row of the create form in one label column', async () => {
+    mocks.listScheduleConnections.mockResolvedValue({ connections: [{ id: 'c', friendly_name: 'Gmail', description: null, enabled: true, last_connection_status: 'healthy' }] });
+    await render({ createMode: true });
+
+    const labels = Array.from(container.querySelectorAll('.scheduled-field__label')).map(label => label.textContent);
+    expect(labels).toEqual(['Title', 'Task', 'Connections', 'Model', 'Schedule', 'Quiet hours', 'Runs']);
+    // The Task box and the Title box are the form's own field style, not the sidebar search box.
+    expect(container.querySelector('textarea[placeholder="Task text"]')!.className).toContain('scheduled-input');
+    expect(container.querySelector('.sidebar-search-input')).toBeNull();
+    // Labels name their controls.
+    const title = container.querySelector<HTMLInputElement>('input[placeholder^="Title"]')!;
+    expect(container.querySelector(`label[for="${title.id}"]`)?.textContent).toBe('Title');
+  });
+
+  it('keeps inline styles off everything the scheduled view draws itself', async () => {
+    // The shared Dropdown and model picker set their own inline sizes; the scheduled view's own markup sets none.
+    const ownStyled = () => container.querySelectorAll('[class*="scheduled-"][style], .icon-chip[style], .icon-chip-list[style], .attachment-area [style], .basil-switch[style]');
+    mocks.getScheduledAgentTask.mockResolvedValue(scheduledTask({ connection_ids: [], reference_paths: [] }));
+    await render({ createMode: false, id: 'sched-1' });
+    expect(container.querySelector('.scheduled-meta')).not.toBeNull();
+    expect(ownStyled()).toHaveLength(0);
+    await act(async () => {
+      Array.from(container.querySelectorAll('button')).find(button => button.textContent === 'Edit')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    expect(container.querySelector('.scheduled-form')).not.toBeNull();
+    expect(ownStyled()).toHaveLength(0);
+  });
+
+  it('gives the read view one primary action and quiet secondary buttons, and shows the state once', async () => {
+    mocks.getScheduledAgentTask.mockResolvedValue(scheduledTask());
+    await render({ createMode: false, id: 'sched-1' });
+
+    const classOf = (text: string) => Array.from(container.querySelectorAll('button')).find(button => button.textContent === text)!.className;
+    expect(classOf('Run Now')).toContain('primary');
+    expect(classOf('Edit')).toContain('action-btn--neutral');
+    expect(classOf('Deactivate')).toContain('action-btn--neutral');
+    expect(container.querySelectorAll('.scheduled-detail__state')).toHaveLength(1);
+    expect(container.querySelector('.scheduled-detail__state')!.textContent).toBe('Active');
+    expect(container.querySelector('.scheduled-meta__label')?.textContent).toBe('Schedule');
+    expect(Array.from(container.querySelectorAll('.scheduled-meta__label')).map(label => label.textContent)).not.toContain('Status');
+  });
+
+  it('shows the chain limits as switches, not native checkboxes', async () => {
+    mocks.getScheduledAgentTask.mockResolvedValue(scheduledTask({ chain_config: { mode: 'chained', max_runs: 5 } }));
+    await render({ createMode: false, id: 'sched-1' });
+    await act(async () => {
+      Array.from(container.querySelectorAll('button')).find(button => button.textContent === 'Edit')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    const switches = container.querySelectorAll('.basil-switch-input');
+    expect(switches.length).toBeGreaterThanOrEqual(4);
+    expect(container.querySelectorAll('input[type="checkbox"]:not(.basil-switch-input)')).toHaveLength(0);
+  });
+});

@@ -190,6 +190,10 @@ async def discover_setup_calendar_apps(factory) -> Dict[str, Any]:
     return (await factory.discovery_service.collect_calendar_app_facts()).model_dump(mode="json")
 
 
+async def discover_setup_installed_apps(factory) -> Dict[str, Any]:
+    return (await factory.discovery_service.collect_installed_app_facts()).model_dump(mode="json")
+
+
 @slow_setup_tool(
     opening="Looking through your sent mail for a representative writing sample.",
     failure="I couldn't read your sent mail just now — moving on without that signal.",

@@ -1,4 +1,5 @@
 @import '../../../shared/theme-layout-tokens.css';
+@import '../../../shared/motion-tokens.css';
 @import '../../../shared/semantic-state.css';
 
 :root {

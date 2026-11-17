@@ -12,8 +12,26 @@ final class StartupLoadingViewModel {
     private var hideWhenReady = false
     private var drawnInAt: Date?
 
-    init(minimumVisibleDuration: TimeInterval = 2) {
+    /// How long to wait before the failsafe looks at whether the backend has answered.
+    private let failsafeSeconds: TimeInterval
+    /// The longest the window stays up for a backend that has still not answered. After this it hides anyway, so a backend that failed to start cannot hold the window forever.
+    private let slowStartLimitSeconds: TimeInterval
+    private let slowStartRecheckSeconds: TimeInterval
+    private var startedAt: Date?
+    private(set) var backendReached = false
+
+    static let slowStartMessage = "Still starting. This can take a minute on a slower Mac."
+
+    init(
+        minimumVisibleDuration: TimeInterval = 2,
+        failsafeSeconds: TimeInterval = 15,
+        slowStartLimitSeconds: TimeInterval = 120,
+        slowStartRecheckSeconds: TimeInterval = 5
+    ) {
         self.minimumVisibleDuration = minimumVisibleDuration
+        self.failsafeSeconds = failsafeSeconds
+        self.slowStartLimitSeconds = slowStartLimitSeconds
+        self.slowStartRecheckSeconds = slowStartRecheckSeconds
     }
 
     func startMonitoring() {
@@ -29,13 +47,41 @@ final class StartupLoadingViewModel {
             }
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 15) { [weak self] in
+        markStarted()
+        DispatchQueue.main.asyncAfter(deadline: .now() + failsafeSeconds) { [weak self] in
             Task { @MainActor in
-                guard let self, self.monitoringTimer != nil else { return }
-                #if DEBUG
-                DevLogger.shared.warning("Failsafe: Hiding startup window after 15 seconds", context: "StartupLoadingWindow")
-                #endif
-                self.complete(immediately: true)
+                self?.evaluateFailsafe()
+            }
+        }
+    }
+
+    func markStarted(at date: Date = Date()) {
+        startedAt = date
+    }
+
+    /// Records that the backend answered a status request, which means the splash is waiting on startup steps and not on a backend that has not come up.
+    func noteBackendReached() {
+        backendReached = true
+    }
+
+    /// The failsafe that keeps the splash from outliving a startup that never finishes. A backend that has answered but never reports "Launching interface" is hidden at once, as before. A backend that has not answered at all is most likely just slow, on a Mac with less memory for instance, so the window stays up with a plain "Still starting" message and is rechecked, until the limit.
+    func evaluateFailsafe(now: Date = Date()) {
+        guard !didComplete, let startedAt else { return }
+        let elapsed = now.timeIntervalSince(startedAt)
+        if backendReached || elapsed >= slowStartLimitSeconds {
+            #if DEBUG
+            DevLogger.shared.warning("Failsafe: Hiding startup window after \(Int(elapsed)) seconds (backend reached: \(backendReached))", context: "StartupLoadingWindow")
+            #endif
+            complete(immediately: true)
+            return
+        }
+        if currentMessage != Self.slowStartMessage {
+            currentMessage = Self.slowStartMessage
+            onMessageChanged?(Self.slowStartMessage)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + slowStartRecheckSeconds) { [weak self] in
+            Task { @MainActor in
+                self?.evaluateFailsafe()
             }
         }
     }
@@ -43,6 +89,7 @@ final class StartupLoadingViewModel {
     func stopMonitoring() {
         monitoringTimer?.invalidate()
         monitoringTimer = nil
+        startedAt = nil
     }
 
     func onCompletion(_ callback: @escaping () -> Void) {
@@ -92,6 +139,7 @@ final class StartupLoadingViewModel {
         Task {
             do {
                 let statusResponse = try await APIClient.shared.fetchStartupStatus()
+                noteBackendReached()
                 let newMessage = statusResponse.message
 
                 if newMessage != currentMessage {

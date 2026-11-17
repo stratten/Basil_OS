@@ -1,6 +1,12 @@
 import AppKit
 
 final class StatusBarMenuUpdater {
+    /// Shows or hides the "still starting up" line at the top of the menu.
+    @MainActor
+    static func setBackendStarting(_ isStarting: Bool, in menu: NSMenu) {
+        menu.item(withTag: MenuItemTag.backendStarting.rawValue)?.isHidden = !isStarting
+    }
+
     @MainActor
     static func updateMenuItems(menu: NSMenu, hotkeyService: HotkeyService, statusBarManager: StatusBarManager? = nil) {
         // Update hotkeys toggle state

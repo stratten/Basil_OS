@@ -198,21 +198,48 @@ describe('ExpressSetup applying', () => {
     api.fetchStarterDownloadProgress.mockResolvedValue(THINKING_DOWNLOADING)
 
     await mount()
-    await click(checkbox('Voice Listener'))
+    await click(checkbox('Memory after tasks'))
     await click(button('Do it'))
 
-    expect(api.applyExpressPlan).toHaveBeenCalledWith('all_in', ['download_thinking_model', 'learn_memory', 'capture_activity'])
+    expect(api.applyExpressPlan).toHaveBeenCalledWith('all_in', ['download_thinking_model', 'capture_activity'])
   })
 
-  it('sends every selected item when nothing is unticked', async () => {
+  it('sends every item the plan starts ticked, and not the Voice Listener it starts unticked', async () => {
     api.fetchExpressPlan.mockResolvedValue(makePlan())
     api.applyExpressPlan.mockResolvedValue(APPLIED)
     api.fetchStarterDownloadProgress.mockResolvedValue(THINKING_DOWNLOADING)
 
     await mount()
+    expect(checkbox('Voice Listener').checked).toBe(false)
+    expect(checkbox('Activity Capture').checked).toBe(true)
+    await click(button('Do it'))
+
+    expect(api.applyExpressPlan).toHaveBeenCalledWith('all_in', ['download_thinking_model', 'learn_memory', 'capture_activity'])
+  })
+
+  it('sends the Voice Listener once the person ticks it', async () => {
+    api.fetchExpressPlan.mockResolvedValue(makePlan())
+    api.applyExpressPlan.mockResolvedValue(APPLIED)
+    api.fetchStarterDownloadProgress.mockResolvedValue(THINKING_DOWNLOADING)
+
+    await mount()
+    await click(checkbox('Voice Listener'))
+    expect(checkbox('Voice Listener').checked).toBe(true)
     await click(button('Do it'))
 
     expect(api.applyExpressPlan).toHaveBeenCalledWith('all_in', ['download_thinking_model', 'learn_memory', 'capture_activity', 'voice_listener'])
+  })
+
+  it('keeps a ticked Voice Listener when the plan is checked again', async () => {
+    const blocked = makePlan({ preflight: [{ id: 'network', ok: false, message: "I can't reach the download server." }] })
+    api.fetchExpressPlan.mockResolvedValueOnce(blocked).mockResolvedValueOnce(makePlan()).mockResolvedValue(makePlan())
+
+    await mount()
+    await click(checkbox('Voice Listener'))
+    expect(checkbox('Voice Listener').checked).toBe(true)
+
+    await click(button('Check again'))
+    expect(checkbox('Voice Listener').checked).toBe(true)
   })
 
   it('sends an empty list when everything is unticked, and still moves on', async () => {
@@ -220,7 +247,7 @@ describe('ExpressSetup applying', () => {
     api.applyExpressPlan.mockResolvedValue({ comfort: 'all_in', thinking_model_id: null, results: [] })
 
     await mount()
-    for (const title of ['Thinking model', 'Memory after tasks', 'Activity Capture', 'Voice Listener']) {
+    for (const title of ['Thinking model', 'Memory after tasks', 'Activity Capture']) {
       await click(checkbox(title))
     }
     await click(button('Do it'))

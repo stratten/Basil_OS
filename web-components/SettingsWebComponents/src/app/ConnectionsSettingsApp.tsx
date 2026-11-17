@@ -17,7 +17,7 @@ export type ConnectionsSubTab = 'servers' | 'providerProfiles'
 
 export const CONNECTIONS_SUB_TABS: readonly SettingsSubTabDefinition<ConnectionsSubTab>[] = [
   { id: 'servers', label: 'MCP' },
-  { id: 'providerProfiles', label: 'ACP' },
+  { id: 'providerProfiles', label: 'Agent programs' },
 ]
 
 function connectionsTabId(id: ConnectionsSubTab): string {

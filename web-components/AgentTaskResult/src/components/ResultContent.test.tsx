@@ -623,7 +623,8 @@ describe('ResultContent retry model selector', () => {
     });
     await act(async () => { await Promise.resolve(); });
 
-    expect(container.querySelector('.rich-text-model-picker-trigger')?.textContent).toContain('GPT-5 mini');
+    // The picker sits in the status bar's own row, so it is there without opening anything.
+    expect(container.querySelector('.execution-activity-dock-header-row .rich-text-model-picker-trigger')?.textContent).toContain('GPT-5 mini');
 
     act(() => { root.unmount(); });
     container.remove();

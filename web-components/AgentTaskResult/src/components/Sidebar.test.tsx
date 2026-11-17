@@ -25,7 +25,8 @@ const { listAgentTasks, getAgentTaskDetail, deleteAgentTask, archiveAgentTask, u
 
 // Mutable holder so individual tests can control the agent list returned by
 // useAllAgents() across re-renders without re-declaring the module mock.
-const { allAgentsRef, getAgentMock, stableSelectAgent } = vi.hoisted(() => ({
+const { allAgentsRef, getAgentMock, stableSelectAgent, callOrder } = vi.hoisted(() => ({
+  callOrder: [] as string[],
   allAgentsRef: { current: [] as AgentState[] },
   getAgentMock: vi.fn((_id: string) => undefined as AgentState | undefined),
   // Must be a single stable reference -- unlike the real useSelectAgent()
@@ -57,12 +58,18 @@ vi.mock('../store/agentStore', () => ({
     getSelectedAgentId: () => undefined,
     getAgent: (id: string) => getAgentMock(id),
     removeAgent: vi.fn(),
+    consumePendingFollowUpParent: () => {
+      callOrder.push('consumePendingFollowUpParent');
+      return null;
+    },
   },
 }));
 
 vi.mock('../services/bridge', () => ({
   openDetachedAgentTask: vi.fn(),
-  startNewAgentTaskCapture: vi.fn(),
+  startNewAgentTaskCapture: () => {
+    callOrder.push('startNewAgentTaskCapture');
+  },
 }));
 
 // Wraps the *real* AgentTaskRow (still rendering its actual markup, so the
@@ -174,6 +181,39 @@ describe('Sidebar', () => {
 
       expect(onViewAgentTask).toHaveBeenCalledWith('pending-provider-task');
       expect(getAgentTaskDetail).not.toHaveBeenCalled();
+    } finally {
+      await act(async () => {
+        root.unmount();
+      });
+      container.remove();
+    }
+  });
+
+  it('drops an abandoned follow-up parent before it starts a brand-new request', async () => {
+    callOrder.length = 0;
+    listAgentTasks.mockResolvedValue({ agentTasks: [], total_count: 0, has_more: false });
+    const container = document.createElement('div');
+    const root = createRoot(container);
+
+    try {
+      await act(async () => {
+        root.render(
+          <Sidebar
+            isExpanded
+            canLoadData
+            onToggle={() => {}}
+            onViewHistoricalAgentTask={() => {}}
+            onViewAgentTask={() => {}}
+            onViewScheduledAgentTask={() => {}}
+            onCreateScheduledAgentTask={() => {}}
+          />,
+        );
+      });
+      act(() => {
+        container.querySelector<HTMLButtonElement>('button[title="Start new agent"]')?.click();
+      });
+
+      expect(callOrder).toEqual(['consumePendingFollowUpParent', 'startNewAgentTaskCapture']);
     } finally {
       await act(async () => {
         root.unmount();

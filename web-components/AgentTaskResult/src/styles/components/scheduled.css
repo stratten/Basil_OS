@@ -1,0 +1,551 @@
+/* Scheduled tasks: the create and edit form, the detail view, and the run history. Tokens only. */
+
+/* Detail header: the title, with the schedule's state pinned to the right. */
+.scheduled-detail__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--padding-s);
+}
+
+.scheduled-detail__state {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-footnote);
+}
+
+.scheduled-detail__fill {
+  flex: 1;
+}
+
+.scheduled-detail__task {
+  margin-bottom: var(--padding-m);
+}
+
+/* Labeled facts under the task text: schedule, model, quiet hours, runs, next run, connections. */
+.scheduled-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-xs);
+  margin-bottom: var(--padding-m);
+}
+
+.scheduled-meta__row {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--padding-s);
+  min-height: 24px;
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-callout);
+  line-height: 1.4;
+}
+
+.scheduled-meta__label {
+  color: var(--text-secondary);
+  font-family: var(--font-family-medium);
+}
+
+.scheduled-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--padding-s);
+  margin-bottom: var(--padding-m);
+}
+
+.scheduled-notice {
+  margin: 0 0 var(--padding-m);
+  padding: var(--padding-s);
+  border: 1px solid var(--warning-base);
+  border-radius: var(--corner-radius-small);
+  background: color-mix(in srgb, var(--warning-base) 16%, var(--background-primary));
+  color: var(--text-primary);
+  font-size: var(--font-size-callout);
+  overflow-wrap: anywhere;
+}
+
+/* Edit and create form */
+.scheduled-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-m);
+  margin-bottom: var(--padding-m);
+}
+
+.scheduled-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-m);
+  padding-top: var(--padding-m);
+  border-top: 1px solid var(--separator-color);
+}
+
+.scheduled-section__heading {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+}
+
+.scheduled-form__blocker {
+  margin: calc(var(--padding-s) * -1) 0 0;
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+  text-align: right;
+}
+
+.scheduled-field {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--padding-s);
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-callout);
+}
+
+.scheduled-field__label {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+}
+
+.scheduled-field__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-s);
+  min-width: 0;
+}
+
+.scheduled-field__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--padding-s);
+}
+
+.scheduled-field__grow {
+  flex: 1 1 150px;
+  min-width: 130px;
+}
+
+.scheduled-field__grow--wide {
+  flex: 1 1 200px;
+  min-width: 180px;
+}
+
+.scheduled-field__sublabel {
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  white-space: nowrap;
+}
+
+.scheduled-field__full {
+  flex: 1 1 100%;
+}
+
+.scheduled-field__limit {
+  max-width: 280px;
+}
+
+.scheduled-field__unit {
+  flex: 0 0 130px;
+}
+
+.scheduled-hint {
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-small);
+}
+
+.scheduled-error {
+  color: var(--error-text);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+}
+
+.scheduled-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 28px;
+  padding: var(--padding-xs) var(--padding-s);
+  border: 1px solid color-mix(in srgb, var(--text-primary) 25%, transparent);
+  border-radius: var(--corner-radius-small);
+  background: var(--background-tertiary);
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-callout);
+  line-height: 1.3;
+}
+
+.scheduled-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.scheduled-input:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.scheduled-input:disabled {
+  opacity: 0.5;
+}
+
+/* Native time and date inputs carry their own line height; pinning them keeps a row of mixed inputs even. */
+.scheduled-input[type='time'],
+.scheduled-input[type='date'],
+.scheduled-input[type='datetime-local'],
+.scheduled-input[type='number'] {
+  height: 28px;
+  line-height: 1;
+}
+
+.scheduled-input--text {
+  min-height: 92px;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.scheduled-input--prompt {
+  min-height: 64px;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.scheduled-input--reply {
+  min-height: 56px;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.scheduled-input--time {
+  flex: 0 0 120px;
+  width: auto;
+}
+
+.scheduled-input--date {
+  flex: 0 0 150px;
+  width: auto;
+}
+
+.scheduled-input--datetime {
+  flex: 1 1 200px;
+  min-width: 200px;
+  width: auto;
+}
+
+.scheduled-input--count {
+  flex: 0 0 90px;
+  width: auto;
+}
+
+/* Weekday chips, shared by the weekly picker and each quiet-hours window. */
+.scheduled-weekdays {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--padding-xs);
+}
+
+.scheduled-weekday {
+  flex: 1 1 0;
+  min-width: 44px;
+  padding: 5px var(--padding-s);
+  border: 1px solid color-mix(in srgb, var(--text-primary) 25%, transparent);
+  border-radius: var(--corner-radius-small);
+  background: var(--background-tertiary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  transition: background var(--motion-quick, 150ms) var(--motion-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
+}
+
+.scheduled-weekday--compact {
+  flex: 0 0 auto;
+  min-width: 36px;
+  padding: 3px 6px;
+}
+
+.scheduled-weekday:hover:not(:disabled):not(.is-selected) {
+  background: color-mix(in srgb, var(--primary) 12%, var(--background-tertiary));
+}
+
+.scheduled-weekday.is-selected {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--secondary) 85%, transparent);
+  color: var(--text-on-secondary, var(--background-primary));
+}
+
+.scheduled-weekday:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.scheduled-weekday:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* Quiet hours: one compact row per window. */
+.scheduled-window {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-xs);
+}
+
+.scheduled-window + .scheduled-window {
+  padding-top: var(--padding-s);
+  border-top: 1px solid var(--separator-color);
+}
+
+.scheduled-window__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--padding-s);
+}
+
+.scheduled-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--font-size-headline);
+  line-height: 1;
+}
+
+.scheduled-icon-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text-primary) 14%, transparent);
+  color: var(--text-primary);
+}
+
+.scheduled-icon-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.scheduled-icon-btn:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.scheduled-link-btn {
+  align-self: flex-start;
+  padding: var(--padding-xs) 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+}
+
+.scheduled-link-btn:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.scheduled-link-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.scheduled-link-btn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* Switches inside the form read at the form's size. */
+.scheduled-form .basil-switch {
+  font-size: var(--font-size-callout);
+}
+
+.scheduled-switch-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--padding-s);
+}
+
+/* Secondary buttons: a visible edge so they read as buttons beside the filled primary. */
+.scheduled-form .action-btn.action-btn--neutral,
+.scheduled-actions .action-btn.action-btn--neutral {
+  border: 1px solid color-mix(in srgb, var(--text-primary) 22%, transparent);
+}
+
+/* Smart prompt: the plain-language box above the form. */
+.scheduled-smart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-s);
+}
+
+.scheduled-smart__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--padding-s);
+}
+
+.smart-prompt-interpreting {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--padding-s);
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-callout);
+}
+
+.scheduled-smart__clarify {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-s);
+  padding: var(--padding-s);
+  border: 1px solid var(--warning-base);
+  border-radius: var(--corner-radius-small);
+  background: color-mix(in srgb, var(--warning-base) 10%, var(--background-primary));
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-callout);
+}
+
+.scheduled-smart__clarify-title {
+  color: var(--warning-text);
+}
+
+.scheduled-smart__clarify-title strong {
+  font-family: var(--font-family-medium);
+}
+
+.scheduled-smart__clarify-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--padding-s);
+}
+
+/* Run history */
+.scheduled-runs__heading {
+  margin: 0 0 var(--padding-xs);
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+}
+
+.scheduled-runs {
+  border: 1px solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  overflow: hidden;
+}
+
+.scheduled-runs__empty {
+  padding: var(--padding-s) var(--padding-m);
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-callout);
+}
+
+.scheduled-run {
+  padding: var(--padding-s) var(--padding-m);
+  border-bottom: 1px solid var(--separator-color);
+  font-family: var(--font-family-light);
+  transition: background var(--motion-quick, 150ms) var(--motion-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
+}
+
+.scheduled-run:last-child {
+  border-bottom: 0;
+}
+
+.scheduled-run.is-navigable {
+  cursor: pointer;
+}
+
+.scheduled-run.is-navigable:hover {
+  background: var(--background-tertiary);
+}
+
+.scheduled-run.is-navigable:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.scheduled-run__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--padding-s);
+}
+
+.scheduled-run__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+}
+
+.scheduled-run__mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.scheduled-run__when {
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-small);
+  text-align: right;
+}
+
+.scheduled-run__message {
+  margin-top: var(--padding-xs);
+  font-size: var(--font-size-callout);
+  cursor: auto;
+  overflow-wrap: anywhere;
+}
+
+.scheduled-run__message--error {
+  color: var(--error-text);
+}
+
+.scheduled-run__message--notice {
+  color: var(--notice-text);
+}
+
+.scheduled-run__toggle {
+  margin-top: var(--padding-xs);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+}
+
+.scheduled-run__toggle:hover {
+  text-decoration: underline;
+}
+
+.scheduled-run__toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.scheduled-run__open {
+  margin-top: var(--padding-xs);
+  color: var(--primary);
+  font-size: var(--font-size-status-small);
+}

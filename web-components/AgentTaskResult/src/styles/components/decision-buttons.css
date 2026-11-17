@@ -1,4 +1,4 @@
-/* Decision buttons: Approve, Deny, Yes, No, Continue, Skip, Stop task and the work-review toggle. Each is a small icon-only button the size and shape of the Send button in the follow-up box (28px), drawing the same 14px icon as the Stop and Pause controls, with its name in a tooltip and, hidden from view, in the page for screen readers. Colors come from the theme tokens, and the solid tones carry a light shadow so they read as raised, never flat. */
+/* Decision buttons: Approve, Deny, Yes, No, Continue, Skip, Stop task and the work-review toggle. Each is a small icon-only button the size and shape of the Send button in the follow-up box (28px), drawing a 17px icon (three pixels larger than the 14px icon on the Stop and Pause controls, so the circle and glyph are easy to make out) inside the same 28px button, with its name in a tooltip and, hidden from view, in the page for screen readers. Colors come from the theme tokens, and the solid tones carry a light shadow so they read as raised, never flat. */
 .decision-actions {
   display: flex;
   flex-wrap: wrap;
@@ -21,7 +21,7 @@
   background: var(--background-primary);
   color: var(--secondary);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+  transition: background var(--motion-quick) var(--motion-ease), border-color var(--motion-quick) var(--motion-ease), opacity var(--motion-quick) var(--motion-ease);
 }
 
 /* A button marked lead pushes itself and the buttons before it to the left of the row. */
@@ -35,16 +35,15 @@
 }
 
 .decision-btn__icon svg {
-  width: 14px;
-  height: 14px;
+  width: 17px;
+  height: 17px;
   display: block;
 }
 
-/* A light ring on a solid button looks larger and heavier than a dark ring on white, even at the same size, so the solid tones draw their icon one pixel smaller (13px against 14px) to match the outlined buttons beside them. */
-.decision-btn--primary .decision-btn__icon svg,
-.decision-btn--approve .decision-btn__icon svg {
-  width: 13px;
-  height: 13px;
+/* A light ring on a solid button looks larger and heavier than a dark ring on white, even at the same size, so the solid Continue button draws its icon one pixel smaller (16px against 17px) to match the outlined and tinted buttons beside it. */
+.decision-btn--primary .decision-btn__icon svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* The word stays available to screen readers and to find-in-page, but is not drawn. */
@@ -88,15 +87,15 @@
   background: color-mix(in srgb, var(--secondary) 88%, var(--text-primary));
 }
 
+/* Approve and Deny are drawn like the Pause and Stop controls: a soft tint of the color with a matching border, and a glyph in that color, so green still means yes and red still means no. */
 .decision-btn--approve {
-  border-color: var(--success-base);
-  background: var(--success-base);
-  color: var(--background-primary);
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--text-primary) 35%, transparent);
+  border-color: color-mix(in srgb, var(--success-base) 60%, transparent);
+  background: color-mix(in srgb, var(--success-base) 12%, var(--background-primary));
+  color: color-mix(in srgb, var(--success-base) 75%, var(--text-primary));
 }
 
 .decision-btn--approve:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--success-base) 88%, var(--text-primary));
+  background: color-mix(in srgb, var(--success-base) 22%, var(--background-primary));
 }
 
 .decision-btn--approve:focus-visible {
@@ -106,7 +105,7 @@
 .decision-btn--deny {
   border-color: color-mix(in srgb, var(--error-base) 60%, transparent);
   background: color-mix(in srgb, var(--error-base) 12%, var(--background-primary));
-  color: var(--text-primary);
+  color: var(--error-base);
 }
 
 .decision-btn--deny:hover:not(:disabled) {
@@ -114,6 +113,21 @@
 }
 
 .decision-btn--deny:focus-visible {
+  outline-color: var(--error-base);
+}
+
+/* Stop task and Cancel delegation end the work, so they are drawn exactly like the Stop button in the follow-up box: the same red border and tint, with a dark glyph. Deny shares the red but keeps a red glyph, so the two stay apart when they sit side by side. */
+.decision-btn--stop {
+  border-color: color-mix(in srgb, var(--error-base) 60%, transparent);
+  background: color-mix(in srgb, var(--error-base) 12%, var(--background-primary));
+  color: var(--text-primary);
+}
+
+.decision-btn--stop:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--error-base) 22%, var(--background-primary));
+}
+
+.decision-btn--stop:focus-visible {
   outline-color: var(--error-base);
 }
 

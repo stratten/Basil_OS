@@ -49,19 +49,25 @@ final class TextSizeShortcutMonitor {
     private let applySettings: (AppearanceSettings) -> Void
     private let persistSettings: (AppearanceSettings) async throws -> Void
     private let applyToUnsavedDraft: @MainActor (TextSizeShortcut) -> Bool
+    private let loadSettings: () async -> AppearanceSettings?
     private let saveDelayNanoseconds: UInt64
+    /// Presses made before the saved settings were loaded, replayed in order once they are.
+    private var queuedShortcuts: [TextSizeShortcut] = []
+    private var pendingLoad: Task<Void, Never>?
 
     init(
         currentSettings: @escaping () -> AppearanceSettings? = { APIClient.shared.cachedAppearanceSettings },
         applySettings: @escaping (AppearanceSettings) -> Void = { APIClient.shared.cacheAppearanceSettings($0) },
         persistSettings: @escaping (AppearanceSettings) async throws -> Void = TextSizeShortcutMonitor.persistToBackend,
         applyToUnsavedDraft: @escaping @MainActor (TextSizeShortcut) -> Bool = TextSizeShortcutMonitor.applyToSettingsDraft,
+        loadSettings: @escaping () async -> AppearanceSettings? = TextSizeShortcutMonitor.loadFromBackend,
         saveDelayNanoseconds: UInt64 = TextSizeShortcutMonitor.defaultSaveDelayNanoseconds
     ) {
         self.currentSettings = currentSettings
         self.applySettings = applySettings
         self.persistSettings = persistSettings
         self.applyToUnsavedDraft = applyToUnsavedDraft
+        self.loadSettings = loadSettings
         self.saveDelayNanoseconds = saveDelayNanoseconds
     }
 
@@ -95,6 +101,12 @@ final class TextSizeShortcutMonitor {
         _ = try await APIClient.shared.put("/settings/appearance", data: data)
     }
 
+    /// Reads the saved appearance settings from the backend, which `get` waits for when it is still starting. Returns nil when they cannot be read, so a failure never replaces the person's saved settings with defaults.
+    static func loadFromBackend() async -> AppearanceSettings? {
+        guard let data = try? await APIClient.shared.get("/settings/appearance") else { return nil }
+        return try? JSONDecoder().decode(AppearanceSettingsResponse.self, from: data).settings
+    }
+
     private func handleKeyDown(_ event: NSEvent) -> NSEvent? {
         guard let shortcut = TextSizeShortcut.resolve(
             charactersIgnoringModifiers: event.charactersIgnoringModifiers,
@@ -104,10 +116,13 @@ final class TextSizeShortcutMonitor {
         return handle(shortcut) ? nil : event
     }
 
-    /// Applies `shortcut` and schedules the save. Returns whether the key press was consumed; it is left to the system only when the settings are not loaded yet.
+    /// Applies `shortcut` and schedules the save. Always consumes the key press. When the saved settings are not loaded yet, which is normal on a slow start while the setup window is already open, the press is queued and applied as soon as they load, so Command-plus is not silently lost.
     @discardableResult
     func handle(_ shortcut: TextSizeShortcut) -> Bool {
-        guard let settings = currentSettings() else { return false }
+        guard let settings = currentSettings() else {
+            queueUntilSettingsLoad(shortcut)
+            return true
+        }
         if applyToUnsavedDraft(shortcut) { return true }
         let target = shortcut.target(from: settings.textScale)
         guard target != TextScaleStep.snapped(settings.textScale) else { return true }
@@ -116,6 +131,30 @@ final class TextSizeShortcutMonitor {
         applySettings(updated)
         scheduleSave()
         return true
+    }
+
+    private func queueUntilSettingsLoad(_ shortcut: TextSizeShortcut) {
+        queuedShortcuts.append(shortcut)
+        guard pendingLoad == nil else { return }
+        pendingLoad = Task { @MainActor in
+            let loaded = await self.loadSettings()
+            let queued = self.queuedShortcuts
+            self.queuedShortcuts = []
+            self.pendingLoad = nil
+            // Startup may have cached the settings while this load was waiting. Whatever is cached then is the truth, and the load is only cached when nothing else got there first.
+            if self.currentSettings() == nil, let loaded {
+                self.applySettings(loaded)
+            }
+            guard self.currentSettings() != nil else { return }
+            for queuedShortcut in queued {
+                self.handle(queuedShortcut)
+            }
+        }
+    }
+
+    /// Resolves once the load started by a press made before the settings were available has finished and its queued presses were applied.
+    func waitForPendingLoad() async {
+        await pendingLoad?.value
     }
 
     /// Resolves once the save scheduled by the latest key press has finished, so tests can wait on the real completion instead of sleeping.

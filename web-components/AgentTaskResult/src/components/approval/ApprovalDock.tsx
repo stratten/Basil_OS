@@ -31,7 +31,7 @@ export default function ApprovalDock({ count, summary, onRestore, onStopTask, is
       <DecisionActions className="approval-dock__actions">
         {onStopTask && (
           <DecisionButton
-            tone="neutral"
+            tone="stop"
             icon={<StopCircleIcon />}
             label={isStopping ? 'Stopping' : 'Stop task'}
             onClick={onStopTask}

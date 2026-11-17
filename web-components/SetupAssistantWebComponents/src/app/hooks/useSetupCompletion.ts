@@ -6,6 +6,9 @@ import {
 import type { useSetupAssistantStore } from '@/state/setupAssistantStore'
 import type { SetupWrapUpProposal } from '@/types'
 
+import { buildCompletionPayload, executedReceiptTitles } from '../resume/progressPayload'
+import { afterProgressSave } from '../resume/progressSaveGate'
+import { buildSavedSessionFields } from '../resume/savedSession'
 import { SETUP_FINALIZE_PROMPT } from '../setupAssistantPrompts'
 import type { SetupAgentStreamApi } from './useSetupAgentStream'
 
@@ -27,32 +30,7 @@ export function useSetupCompletion({
   buildRequest: SetupAgentStreamApi['buildRequest']
   abort: SetupAgentStreamApi['abort']
 }): SetupCompletionApi {
-  const collectCompletionPayload = (): Parameters<typeof completeSetupAssistant>[0] => ({
-    configured: Object.values(store.state.pendingProposals)
-      .filter(proposal => proposal.approvalState === 'executed' || proposal.approvalState === 'approved')
-      .map(proposal => proposal.proposalId),
-    skipped: Object.values(store.state.pendingProposals)
-      .filter(proposal => proposal.approvalState === 'skipped')
-      .map(proposal => proposal.proposalId),
-    deferred: Object.values(store.state.pendingProposals)
-      .filter(proposal => proposal.approvalState === 'deferred')
-      .map(proposal => proposal.proposalId),
-    // Snapshot the agenda at completion time. The backend's
-    // completion_service stores this on the persisted setup state so
-    // later "resume" flows can pick up where the user left off and so
-    // analytics can see which catalog items actually landed for which
-    // users. Empty when the agent never reached `propose_session_agenda`
-    // (skip-out-of-orientation case), which the backend tolerates.
-    session_goals: store.state.sessionAgenda.map(item => ({
-      id: item.id,
-      title: item.title,
-      intent: item.intent,
-      kind: item.kind,
-      source: item.source,
-      status: item.status,
-      completion_basis: item.completionBasis ?? null,
-    })),
-  })
+  const collectCompletionPayload = (): Parameters<typeof completeSetupAssistant>[0] => buildCompletionPayload(store.state)
 
   const runFinalizeWrapUpInBackground = () => {
     store.setIsFinalizingWrapUp(true)
@@ -86,8 +64,10 @@ export function useSetupCompletion({
     const shouldFinalizeRecap = !store.state.wrapUpProposal && hasConcreteSetupProgress()
     const payload = collectCompletionPayload()
     store.setStage('wrap_up')
-    completeSetupAssistant(payload)
-      .catch(error => store.setError(error instanceof Error ? error.message : String(error)))
+    afterProgressSave(() => {
+      completeSetupAssistant(payload)
+        .catch(error => store.setError(error instanceof Error ? error.message : String(error)))
+    })
     if (shouldFinalizeRecap) {
       runFinalizeWrapUpInBackground()
     }
@@ -96,8 +76,13 @@ export function useSetupCompletion({
   const handleSkip = () => {
     abort()
     store.markSetupSkipped()
-    skipSetupAssistant(collectCompletionPayload())
-      .catch(error => store.setError(error instanceof Error ? error.message : String(error)))
+    // Read before the skip flips the stage to wrap-up, so the saved session records where the person actually was.
+    const savedSession = buildSavedSessionFields(store.state, executedReceiptTitles(store.state))
+    const skipPayload = { ...collectCompletionPayload(), ...savedSession }
+    afterProgressSave(() => {
+      skipSetupAssistant(skipPayload)
+        .catch(error => store.setError(error instanceof Error ? error.message : String(error)))
+    })
   }
 
   return { handleFinish, handleSkip }

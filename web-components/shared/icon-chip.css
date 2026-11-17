@@ -1,0 +1,134 @@
+/* Shared icon chips: Settings app exclusions and the connections of a scheduled task. Tokens only, apart from the one fixed tile color below. */
+
+:root {
+  /* A light seat for icons whose marks are dark, kept the same on light and dark appearances because the marks are not themed. */
+  --icon-tile-background: #FFFFFF;
+}
+
+.icon-chip-list {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--padding-xs) var(--padding-s);
+  min-width: 0;
+}
+
+.icon-chip-list__empty {
+  margin: 0;
+  color: var(--text-secondary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-footnote);
+}
+
+.icon-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  max-width: 100%;
+  min-height: 26px;
+  padding: 2px var(--padding-xs) 2px 5px;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 28%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--background-secondary) 75%, var(--background-primary));
+  color: var(--text-primary);
+  font-family: var(--font-family-light);
+  font-size: var(--font-size-footnote);
+  line-height: 1.2;
+}
+
+.icon-chip.has-note {
+  border-color: color-mix(in srgb, var(--warning-base, var(--warning-text, var(--text-primary))) 70%, transparent);
+}
+
+.icon-chip__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--corner-radius-small);
+  overflow: hidden;
+}
+
+.icon-chip__icon--tile {
+  padding: 2px;
+  background: var(--icon-tile-background);
+}
+
+.icon-chip__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.icon-chip__icon--glyph {
+  color: var(--secondary);
+}
+
+.icon-chip__icon--initial {
+  background: color-mix(in srgb, var(--secondary) 18%, var(--background-primary));
+  color: var(--text-primary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-tiny);
+}
+
+.icon-chip__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon-chip__note {
+  flex: 0 0 auto;
+  color: var(--warning-text, var(--text-primary));
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-small);
+  white-space: nowrap;
+}
+
+.icon-chip__locked {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding-right: var(--padding-xs);
+  color: var(--text-secondary);
+  font-size: var(--font-size-status-small);
+}
+
+.icon-chip__remove {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--font-size-subheadline);
+  line-height: 1;
+  transition: background var(--motion-quick, 150ms) var(--motion-ease, cubic-bezier(0.2, 0.8, 0.2, 1)), color var(--motion-quick, 150ms) var(--motion-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
+}
+
+.icon-chip__remove:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text-primary) 14%, transparent);
+  color: var(--text-primary);
+}
+
+.icon-chip__remove:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.icon-chip__remove:disabled {
+  cursor: default;
+  opacity: 0.4;
+}

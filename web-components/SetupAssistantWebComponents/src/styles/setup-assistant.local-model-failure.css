@@ -22,7 +22,7 @@
 }
 
 .local-model-failure-banner__status {
-  color: var(--primary);
+  color: var(--primary-text);
   font-family: var(--font-family-medium);
   font-weight: normal;
   margin: 0;

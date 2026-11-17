@@ -6,8 +6,8 @@ import { agentStore } from '../store/agentStore';
 import { pickFiles } from '../services/bridge';
 import { useFilesPickedHandler } from '../services/useFilesPickedHandler';
 import { editorHtmlToDisplayMarkdown } from './request/requestMarkdown';
-import { buildFollowUpHistoryFromViewedDetail } from '../app/followUpHistory';
-import { seedDurableFollowUpHistory } from '../app/agentHydration';
+import { buildFollowUpHistoryFromViewedDetail } from '../app/agents/followUpHistory';
+import { seedDurableFollowUpHistory } from '../app/agents/agentHydration';
 import FollowUpReferences from './FollowUpReferences';
 import { scrollVerticallyIntoView } from './scrollVerticallyIntoView';
 import RichTextComposer from '../../../shared/RichTextComposer';
@@ -15,7 +15,8 @@ import ReasoningModelPicker from '../../../shared/ReasoningModelPicker';
 import AttachmentDropZone from '../../../shared/AttachmentDropZone';
 import CollapsibleRegion from '../../../shared/CollapsibleRegion';
 import ExecutionDisclosureChevron from '../../../shared/ExecutionDisclosureChevron';
-import { useFollowUpComposerCollapsed } from '../store/followUpComposerViewStore';
+import { unfoldFollowUpComposerAfterRun, useFollowUpComposerCollapsed } from '../store/followUpComposerViewStore';
+import { growWindowForUnfoldedFollowUp } from './followUpUnfoldGrowth';
 import { openChecklistWindow } from '../store/checklistViewStore';
 import { consumeFollowUpPrefill, reportFollowUpDraft, useFollowUpPrefillRequest } from '../store/followUpPrefillStore';
 import { addDraftLine, removeDraftLine } from './followUpDraftLines';
@@ -70,8 +71,20 @@ export default function TextFollowUp({
   const wasCollapsedRef = useRef(collapsed);
   const barRef = useRef<HTMLButtonElement>(null);
 
+  // A run folds the box when it starts, and the box coming back is how the reader sees the run has finished. It opens again here, only if the run folded it, and the window grows by the room it takes. Opening it this way must not pull focus: the reader did not ask to type.
+  const unfoldedByRunEndRef = useRef(false);
+  useLayoutEffect(() => {
+    if (!unfoldFollowUpComposerAfterRun(rootIdForModelPreference)) return;
+    // An explicit follow-up request (not alwaysVisible) still takes focus below, as it always did.
+    unfoldedByRunEndRef.current = alwaysVisible;
+    growWindowForUnfoldedFollowUp();
+    // Mount only: a box that stays mounted never sees a run end.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // The box is always offered once a task finishes, so mounting is not a request to type. Only an explicit follow-up (hotkey or the follow-up action) opens a folded box and takes focus; a folded box that merely reappears stays folded.
   useEffect(() => {
+    if (unfoldedByRunEndRef.current) return;
     if (alwaysVisible && collapsed) return;
     if (collapsed) setCollapsed(false);
     if (containerRef.current) scrollVerticallyIntoView(containerRef.current, { block: 'end', behavior: 'smooth' });
@@ -81,7 +94,10 @@ export default function TextFollowUp({
   }, []);
 
   useEffect(() => {
-    if (wasCollapsedRef.current && !collapsed) editorRef.current?.focus();
+    if (wasCollapsedRef.current === collapsed) return;
+    const openedByRunEnd = unfoldedByRunEndRef.current;
+    unfoldedByRunEndRef.current = false;
+    if (wasCollapsedRef.current && !collapsed && !openedByRunEnd) editorRef.current?.focus();
     // The collapse control lives inside the region that just became inert, so focus moves to the bar that replaces it rather than falling back to the page.
     if (!wasCollapsedRef.current && collapsed) barRef.current?.focus();
     wasCollapsedRef.current = collapsed;

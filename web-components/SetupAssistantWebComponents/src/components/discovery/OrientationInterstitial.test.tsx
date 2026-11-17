@@ -72,6 +72,17 @@ afterEach(() => {
 })
 
 describe('OrientationInterstitial progress steps', () => {
+  it('says what Working Together is, how long it takes, and that the person is in control, before it starts', () => {
+    render({ isDiscoveryFetching: true })
+
+    const preview = container.querySelector('[data-testid="working-together-preview"]')!.textContent ?? ''
+    expect(preview).toContain('Next is Working Together.')
+    expect(preview).toContain('as long or as little as you want')
+    expect(preview).toContain('help me learn how you work')
+    expect(preview).toContain('skip any of them')
+    expect(preview).toContain('stop whenever you like')
+  })
+
   it('renders the four steps with the discovery sweep active', () => {
     render({ isDiscoveryFetching: true })
 

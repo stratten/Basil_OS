@@ -9,6 +9,10 @@ from api.services.setup_assistant.agent_graph.setup_agent_tooling.connection_aut
     START_CONNECTION_AUTH_TOOL_NAME,
     normalize_start_connection_auth_payload,
 )
+from api.services.setup_assistant.agent_graph.setup_agent_tooling.local_server_payload import (
+    REGISTER_LOCAL_MCP_SERVER_TOOL_NAME,
+    normalize_register_local_server_payload,
+)
 from api.routes.setup_assistant.models import (
     SetupAgentEvent,
     SetupAgentEventKind,
@@ -37,6 +41,8 @@ async def propose_setup_mutation(
     if tool_name == START_CONNECTION_AUTH_TOOL_NAME:
         privacy_impact = SetupPrivacyImpact.authenticates_service
         mutates_external_state = True
+    if tool_name == REGISTER_LOCAL_MCP_SERVER_TOOL_NAME:
+        privacy_impact = SetupPrivacyImpact.controls_applications
     resolved_proposal_id = proposal_id or f"proposal-{uuid.uuid4().hex[:12]}"
     tool_call = factory.proposal_store.record_pending_setup_proposal(
         SetupToolCall(
@@ -114,6 +120,8 @@ def build_setup_consent_receipt_payload(
     if mutation_tool_name == START_CONNECTION_AUTH_TOOL_NAME:
         privacy_impact = SetupPrivacyImpact.authenticates_service
         mutates_external_state = True
+    if mutation_tool_name == REGISTER_LOCAL_MCP_SERVER_TOOL_NAME:
+        privacy_impact = SetupPrivacyImpact.controls_applications
     resolved_proposal_id = proposal_id or f"proposal-{uuid.uuid4().hex[:12]}"
     tool_call = factory.proposal_store.record_pending_setup_proposal(
         SetupToolCall(
@@ -163,6 +171,8 @@ _SETUP_LAUNCH_TOOL_NAMES = frozenset({"launch_agent_task", "launch_assistant_ses
 
 def _stamp_setup_connection_auth(tool_name: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     """Derive the connector, canonical address, and name for a connection sign-in from the address the user pasted."""
+    if tool_name == REGISTER_LOCAL_MCP_SERVER_TOOL_NAME:
+        return normalize_register_local_server_payload(payload)
     if tool_name != START_CONNECTION_AUTH_TOOL_NAME:
         return payload
     return normalize_start_connection_auth_payload(payload)

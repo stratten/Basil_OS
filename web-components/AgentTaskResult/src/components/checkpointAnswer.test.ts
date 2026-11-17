@@ -40,7 +40,11 @@ describe('formatCheckpointAnswer', () => {
 describe('toggleCheckpointSelection', () => {
   it('replaces the selection for single-select prompts', () => {
     expect(toggleCheckpointSelection(['a'], 'b', false)).toEqual(['b']);
-    expect(toggleCheckpointSelection(['a'], 'a', false)).toEqual(['a']);
+  });
+
+  it('clears the selection when a single-select prompt option is chosen again', () => {
+    expect(toggleCheckpointSelection(['a'], 'a', false)).toEqual([]);
+    expect(toggleCheckpointSelection([], 'a', false)).toEqual(['a']);
   });
 
   it('adds and removes values for multi-select prompts', () => {

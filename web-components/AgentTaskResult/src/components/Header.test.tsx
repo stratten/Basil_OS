@@ -248,3 +248,20 @@ describe('Header collapsed status', () => {
     expect(markup).not.toContain('basil-pause-action');
   });
 });
+
+describe('Header move handle', () => {
+  it('shows a visible grip on the floating window header', () => {
+    const markup = renderHeader();
+
+    expect(markup).toContain('data-agent-task-header-move-handle="true"');
+    expect(markup).toContain('header-move-handle-dots');
+  });
+
+  it('omits the grip while the window is collapsed', () => {
+    expect(renderHeader({ isCollapsed: true })).not.toContain('header-move-handle');
+  });
+
+  it('omits the grip from the embedded toolbar, which is not a movable window', () => {
+    expect(renderHeader({ embedded: true })).not.toContain('header-move-handle');
+  });
+});

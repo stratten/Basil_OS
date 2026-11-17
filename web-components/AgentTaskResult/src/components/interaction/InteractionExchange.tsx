@@ -2,7 +2,7 @@ import { useEffect, useMemo, type ReactNode } from 'react';
 import type { ThinkingSegment } from '../../types';
 import MarkdownRenderer from '../MarkdownRenderer';
 import { ThinkingSegments, useReasoningFollowState } from '../result/ThinkingSections';
-import { formatTimestampForDisplay, useDateDisplayStyle } from '../../app/dateDisplay';
+import { formatTimestampForDisplay, useDateDisplayStyle } from '../../app/display/dateDisplay';
 import AttachedFilesDisplay from '../scheduled/AttachedFilesDisplay';
 import ApprovalRequestDetails from './ApprovalRequestDetails';
 import ResponseCountdown from './ResponseCountdown';

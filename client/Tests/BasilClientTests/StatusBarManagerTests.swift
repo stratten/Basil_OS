@@ -249,4 +249,20 @@ final class StatusBarManagerTests: XCTestCase {
             menu.items.first { $0.title == "Notetaker (Meeting / Call Assistant)" }
         )
     }
-} 
+
+    func testStatusMenuHasADisabledStartingLineThatCanBeHiddenOnceTheBackendIsReady() throws {
+        let menu = StatusBarMenuBuilder.buildMenu(hotkeyService: sut.hotkeyService, target: sut)
+        let line = try XCTUnwrap(menu.item(withTag: MenuItemTag.backendStarting.rawValue))
+
+        XCTAssertFalse(line.isEnabled, "The line is information, not an action")
+        XCTAssertTrue(line.title.contains("starting up"))
+        XCTAssertEqual(menu.items.first, line, "It sits at the top so it is seen first")
+
+        StatusBarMenuUpdater.setBackendStarting(true, in: menu)
+        XCTAssertFalse(line.isHidden)
+
+        StatusBarMenuUpdater.setBackendStarting(false, in: menu)
+        XCTAssertTrue(line.isHidden)
+        XCTAssertNotNil(menu.item(withTag: MenuItemTag.settings.rawValue), "The other items are untouched")
+    }
+}

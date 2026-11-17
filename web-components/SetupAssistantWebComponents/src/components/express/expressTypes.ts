@@ -36,6 +36,8 @@ export interface ExpressItem {
   already_done: boolean
   unavailable_reason: string | null
   selected: boolean
+  /** False means the plan offers this item but the review starts it unticked, so it runs only if the person ticks it. */
+  default_ticked: boolean
 }
 
 export interface ExpressPlan {

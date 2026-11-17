@@ -231,3 +231,24 @@ export function firstRunFromNextRun(nextRunAt: string | null | undefined, timeZo
   if (Number.isNaN(when.getTime()) || when.getTime() <= now.getTime()) return { date: '', time: '' };
   return wallClockIn(when, timeZone);
 }
+
+/** How long a run took, such as "45s", "3m 12s" or "1h 5m", or null when it has not both started and finished or the times cannot be read. */
+export function formatRunDuration(startedAt?: string | null, completedAt?: string | null): string | null {
+  if (!startedAt || !completedAt) return null;
+  const elapsed = Date.parse(completedAt) - Date.parse(startedAt);
+  if (!Number.isFinite(elapsed) || elapsed < 0) return null;
+  const totalSeconds = Math.round(elapsed / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+  if (minutes > 0) return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
+  return `${seconds}s`;
+}
+
+/** The reason Create or Save is unavailable, in the order the reader would fix it, or null when nothing blocks it. */
+export function scheduleFormBlocker(input: { taskText: string; firstRunIncomplete: boolean; formError: string | null }): string | null {
+  if (!input.taskText.trim()) return 'Describe what the task should do to continue.';
+  if (input.firstRunIncomplete) return 'Add a time for the first run, or clear its date.';
+  return input.formError;
+}

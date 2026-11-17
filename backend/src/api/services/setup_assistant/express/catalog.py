@@ -28,6 +28,8 @@ class CatalogEntry:
     comfort: ComfortLevel
     permissions: Tuple[str, ...] = ()
     native: bool = False
+    # False means the level offers this item but the review screen shows it unticked, so it only turns on if the person ticks it.
+    ticked_by_default: bool = True
 
 
 CATALOG: Tuple[CatalogEntry, ...] = (
@@ -38,7 +40,8 @@ CATALOG: Tuple[CatalogEntry, ...] = (
     CatalogEntry(LEARN_SKILLS, "learning", "Reusable workflows", "cautious"),
     CatalogEntry(CAPTURE_ACTIVITY, "background", "Activity Capture", "balanced", permissions=("screen_recording",)),
     CatalogEntry(DETECT_MEETINGS, "background", "Meeting and Call Detection", "balanced", permissions=("microphone",)),
-    CatalogEntry(VOICE_LISTENER, "background", "Voice Listener", "all_in", permissions=("microphone",)),
+    # Offered at the all-in level but unticked, because the listener can react to sounds that are not the person. Revisit once wake-word false positives are fixed.
+    CatalogEntry(VOICE_LISTENER, "background", "Voice Listener", "all_in", permissions=("microphone",), ticked_by_default=False),
     CatalogEntry(HOTKEYS, "hotkeys", "Hotkeys", "cautious", native=True),
 )
 

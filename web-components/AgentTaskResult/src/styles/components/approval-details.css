@@ -37,7 +37,7 @@
 .approval-link-button__arrow {
   display: inline-block;
   transform: rotate(0deg);
-  transition: transform 0.15s ease;
+  transition: transform var(--motion-quick) var(--motion-ease);
 }
 
 .approval-link-button__arrow--open {
@@ -50,6 +50,20 @@
   white-space: pre-wrap;
   font-size: var(--font-size-status-small);
   margin-top: var(--padding-xs);
+}
+
+/* Needs a numeric line height: the clamp measures one line of it, and "normal" cannot be measured. */
+.approval-command-clamp {
+  line-height: 1.4;
+}
+
+/* The region clips its content while it animates, so the field's focus ring gets room inside it and the region reaches out by the same amount to keep the field aligned with its label. */
+.approval-note-region {
+  margin: 0 -3px;
+}
+
+.approval-note-region > .basil-collapsible-region__content {
+  padding: 3px;
 }
 
 .approval-field-label {

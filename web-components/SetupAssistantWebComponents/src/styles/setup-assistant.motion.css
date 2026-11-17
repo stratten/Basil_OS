@@ -3,9 +3,9 @@
  */
 
 :root {
-  --setup-motion-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --setup-motion-ease-out: var(--motion-ease);
   --setup-motion-ease-in: cubic-bezier(0.4, 0, 1, 1);
-  --setup-motion-reveal-ms: 400ms;
+  --setup-motion-reveal-ms: var(--motion-move);
 }
 
 @keyframes setupEnterRise {
@@ -82,10 +82,10 @@
 }
 
 .setup-card-reveal {
-  animation: setupCardReveal 650ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation: setupCardReveal var(--motion-move) var(--motion-ease) both;
   display: grid;
   grid-template-rows: 1fr;
-  transition: grid-template-rows 420ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms ease;
+  transition: grid-template-rows var(--motion-move) var(--motion-ease), opacity var(--motion-move) var(--motion-ease);
 }
 
 .setup-card-reveal-inner {
@@ -140,7 +140,7 @@
 }
 
 .setup-working-text {
-  animation: setupTextSwap 360ms ease both;
+  animation: setupTextSwap var(--motion-move) var(--motion-ease) both;
 }
 
 .setup-working-dot {

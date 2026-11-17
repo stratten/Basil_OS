@@ -94,7 +94,18 @@ export interface ProfileCommitResult {
   label: string
 }
 
+/** One screenshot sent to be read into text. */
+export interface ImportImagePayload {
+  mime_type: string
+  data_base64: string
+}
+
+export const MAX_IMPORT_IMAGES = 6
+export const MAX_IMPORT_IMAGE_BYTES = 5_000_000
+
 export interface ContextImportClient {
+  /** Reads screenshots into text for the paste box. The route that reads them is the setup model route, or the Settings memory model when none is given. */
+  readImages(images: ImportImagePayload[], modelAccess?: ImportModelAccess | null): Promise<{ text: string }>
   startRecordsJob(text: string, filename: string, label: string): Promise<ImportJobStart>
   startProfileJob(text: string, filename: string, label: string, modelAccess?: ImportModelAccess | null): Promise<ImportJobStart>
   readJob<Result>(jobId: string): Promise<ImportJobStatus<Result>>
@@ -139,6 +150,8 @@ function jsonInit(method: string, body: unknown): RequestInit {
 /** The one HTTP client for the personal context import, shared by Settings and the setup assistant. */
 export function createContextImportClient(apiBase: string): ContextImportClient {
   return {
+    readImages: (images, modelAccess) =>
+      request<{ text: string }>(apiBase, '/images/read', jsonInit('POST', { images, ...(modelAccess ? { model_access: modelAccess } : {}) })),
     startRecordsJob: (text, filename, label) => request<ImportJobStart>(apiBase, '/jobs/records', jsonInit('POST', { text, filename, label })),
     startProfileJob: (text, filename, label, modelAccess) =>
       request<ImportJobStart>(apiBase, '/jobs/profile', jsonInit('POST', { text, filename, label, ...(modelAccess ? { model_access: modelAccess } : {}) })),

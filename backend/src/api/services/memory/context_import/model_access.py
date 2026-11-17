@@ -23,6 +23,11 @@ class ImportModel:
         # Also set by the job. Called with the tail of what a local model has streamed so far, so the person can read its thinking.
         self.on_thinking: Optional[Callable[[str], None]] = None
 
+    @property
+    def model(self) -> Any:
+        """The loaded model itself, for the one caller that sends pictures instead of text."""
+        return self._model
+
     def _report_activity(self, tokens_written: int, _thinking_text: Optional[str] = None, _thinking_complete: bool = False) -> None:
         listener = self.on_activity
         if listener is not None:

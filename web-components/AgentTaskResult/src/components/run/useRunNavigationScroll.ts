@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { MutableRefObject, RefObject } from 'react';
-import type { ChainExpansionMode } from '../../app/chainExpansionPreference';
+import type { ChainExpansionMode } from '../../app/display/chainExpansionPreference';
 import { isRunRevealed } from './expandedTurns';
 import {
   findRunNavigationElement,
