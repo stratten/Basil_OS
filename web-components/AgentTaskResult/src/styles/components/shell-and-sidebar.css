@@ -252,7 +252,7 @@
   padding: 6px 8px;
   border: 1px solid var(--field-border, var(--text-secondary));
   border-radius: 8px;
-  background: var(--background-primary, #ffffff);
+  background: var(--background-primary);
   pointer-events: none;
 }
 
@@ -268,7 +268,7 @@
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: var(--text-primary, #000000);
+  background: var(--text-primary);
 }
 
 .header-right {

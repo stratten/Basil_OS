@@ -623,12 +623,6 @@ details[open] > .meeting-proposal-group-summary .meeting-proposal-group-chevron 
   justify-content: space-between;
   gap: var(--padding-m);
   margin: var(--padding-xs) 0;
-  padding-left: var(--padding-s);
-  border-left: 3px solid var(--success-base);
-}
-
-.meeting-sentiment-moments--negative p {
-  border-left-color: var(--error-base);
 }
 
 .meeting-markdown {

@@ -79,7 +79,6 @@
   gap: var(--padding-xs);
   padding: var(--padding-s) var(--padding-m);
   border: 1px solid var(--primary);
-  border-left-width: 4px;
   border-radius: var(--corner-radius-medium);
   background: var(--background-primary);
   color: var(--text-primary);

@@ -29,7 +29,6 @@
     linear-gradient(180deg, color-mix(in srgb, var(--primary) 5%, var(--background-primary)), var(--background-primary) 70%),
     var(--background-primary);
   border: 0.5px solid color-mix(in srgb, var(--primary) 22%, var(--separator-color));
-  border-left: 3px solid color-mix(in srgb, var(--primary) 60%, var(--separator-color));
   border-radius: var(--corner-radius-medium);
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
   display: flex;
@@ -139,7 +138,6 @@
     linear-gradient(180deg, color-mix(in srgb, var(--primary) 5%, var(--background-primary)), var(--background-primary) 70%),
     var(--background-primary);
   border: 0.5px solid color-mix(in srgb, var(--primary) 22%, var(--separator-color));
-  border-left: 3px solid color-mix(in srgb, var(--primary) 60%, var(--separator-color));
   border-radius: var(--corner-radius-medium);
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
   display: flex;
@@ -288,7 +286,6 @@
     linear-gradient(180deg, color-mix(in srgb, var(--primary) 5%, var(--background-primary)), var(--background-primary) 70%),
     var(--background-primary);
   border: 0.5px solid color-mix(in srgb, var(--primary) 22%, var(--separator-color));
-  border-left: 3px solid color-mix(in srgb, var(--primary) 60%, var(--separator-color));
   border-radius: var(--corner-radius-medium);
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
   display: flex;
