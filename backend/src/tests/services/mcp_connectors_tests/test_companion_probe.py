@@ -34,8 +34,12 @@ from api.services.mcp_connectors.local_server_registration import register_local
 FIXTURE = str(Path(__file__).with_name("stdio_fixture_server.py"))
 
 FAKE_BRIDGE = """
-import http.server, json, os, sys
+import http.server, json, os, socketserver, sys
 port, state_file, token = int(sys.argv[1]), sys.argv[2], os.environ["BRIDGE_TOKEN"]
+class Server(http.server.ThreadingHTTPServer):
+    def server_bind(self):
+        socketserver.TCPServer.server_bind(self)
+        self.server_port = self.server_address[1]
 class Handler(http.server.BaseHTTPRequestHandler):
     def log_message(self, *args): pass
     def do_GET(self):
@@ -44,7 +48,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         body = open(state_file, "rb").read()
         self.send_response(200); self.send_header("Content-Type", "application/json"); self.end_headers(); self.wfile.write(body)
 print("the token is " + token, flush=True)
-http.server.ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()
+Server(("127.0.0.1", port), Handler).serve_forever()
 """
 
 PROBE: Dict[str, Any] = {

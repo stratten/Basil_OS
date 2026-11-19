@@ -293,13 +293,15 @@ async def test_stopping_ends_the_whole_process_group_including_grandchildren(tmp
 async def test_leftovers_from_a_crashed_run_are_stopped_but_a_reused_pid_is_left_alone(tmp_path):
     state_dir = tmp_path / "local_servers"
     state_dir.mkdir()
-    leftover = subprocess.Popen([sys.executable, "-c", SLEEP_FOREVER], start_new_session=True)
+    # The recorded program is a marker in the command line, not sys.executable: a macOS framework Python re-launches itself, so `ps` shows Python.app instead of the path it was started with.
+    marker = "basil-leftover-test-marker"
+    leftover = subprocess.Popen([sys.executable, "-c", f"{SLEEP_FOREVER}# {marker}\n"], start_new_session=True)
     bystander = subprocess.Popen([sys.executable, "-c", SLEEP_FOREVER], start_new_session=True)
     try:
         (state_dir / "pids.json").write_text(
             json.dumps(
                 {
-                    "leftover": {"pid": leftover.pid, "executable": sys.executable},
+                    "leftover": {"pid": leftover.pid, "executable": marker},
                     "reused": {"pid": bystander.pid, "executable": "/not/the/recorded/program"},
                 }
             )

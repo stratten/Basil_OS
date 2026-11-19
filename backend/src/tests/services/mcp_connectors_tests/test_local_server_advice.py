@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import stat
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -17,7 +18,7 @@ SERVER_ARGS = ["--directory", "/Users/someone/mcp/example-server", "run", "main.
 
 
 def _spec(env=None, args=None, companion=None):
-    return build_local_server_spec(command="uv", args=args if args is not None else SERVER_ARGS, cwd=None, env=env or {}, secret_env=None, companion=companion)
+    return build_local_server_spec(command=sys.executable, args=args if args is not None else SERVER_ARGS, cwd=None, env=env or {}, secret_env=None, companion=companion)
 
 
 def test_advice_names_the_address_and_the_replacement_steps():
