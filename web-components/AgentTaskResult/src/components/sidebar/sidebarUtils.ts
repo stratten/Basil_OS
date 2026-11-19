@@ -7,7 +7,7 @@ import type {
 import { normalizePersistedThinkingSegments } from '../../types';
 import { parseAgentTaskPresentationSummaryForTask } from '../../artifacts/artifactContract';
 import { detailsFromTimeline } from '../../store/agentStore';
-import { plainMarkdownText } from '../../../../shared/plainMarkdownText';
+import { plainMarkdownText } from '../../../../shared/text/plainMarkdownText';
 
 export function mapBackendStatus(status: string): AgentStatus {
   switch (status) {

@@ -41,6 +41,7 @@ extension SettingsShellWindowController {
             self?.performConnectionsCheckConnectionStatus(requestId: requestId, connectionId: connectionId)
         }
         wireConnectionReconnectCallbacks(webView)
+        wireLocalServerCallbacks(webView)
         webView.onRequestUpdatePolicy = { [weak self] requestId, connectionId, toolName, policy in
             self?.performConnectionsUpdatePolicy(requestId: requestId, connectionId: connectionId, toolName: toolName, policy: policy)
         }

@@ -2,15 +2,15 @@ import { useState } from 'react';
 import { toggleWindowCollapse } from './bridge/meetingBridge';
 import { useMeetingBridgeState } from './state/useMeetingBridgeState';
 import WindowChrome from './components/WindowChrome';
-import CompanionPane from './companion/CompanionPane';
+import CompanionPane from './companion/components/CompanionPane';
 import { CompanionLinksProvider, useCompanionLinksValue } from './companion/companionLinks';
 import { companionPort } from './companion/companionTarget';
-import { useCompanionGlobalSettings } from './companion/useCompanionGlobalSettings';
-import { useCompanionSwitch } from './companion/useCompanionSwitch';
-import { awarenessBadgeText, useCompanionAwareness } from './companion/useCompanionUnseen';
-import { useMeetingCompanion } from './companion/useMeetingCompanion';
-import { useCollapseShortcut } from '@shared/useCollapseShortcut';
-import { useSettledExpand } from '@shared/useSettledExpand';
+import { useCompanionGlobalSettings } from './companion/hooks/useCompanionGlobalSettings';
+import { useCompanionSwitch } from './companion/hooks/useCompanionSwitch';
+import { awarenessBadgeText, useCompanionAwareness } from './companion/hooks/useCompanionUnseen';
+import { useMeetingCompanion } from './companion/hooks/useMeetingCompanion';
+import { useCollapseShortcut } from '@shared/disclosure/useCollapseShortcut';
+import { useSettledExpand } from '@shared/disclosure/useSettledExpand';
 
 /** The detached Companion window: the same pane as the embedded one, bound to the live meeting through the shared bridge snapshots. */
 export default function MeetingCompanionApp() {

@@ -337,3 +337,42 @@ def test_record_connection_auth_rejection_marks_only_rejected_credentials(monkey
     catalog_auth.record_connection_auth_rejection("conn-1", envelope)
 
     assert calls == expected_calls
+
+
+def test_record_connection_auth_rejection_ignores_a_kind_guessed_from_message_text(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        status_service,
+        "mark_connection_needs_reconnect",
+        lambda connection_id, message: calls.append((connection_id, message)) or True,
+    )
+    guessed = {"ok": False, "error": {"kind": "auth_expired", "message": "Unauthorized", "raw": {"source": "tool_text"}}}
+    transport = {"ok": False, "error": {"kind": "auth_expired", "message": "MCP server returned 401: token rejected", "raw": {"status": 401}}}
+
+    catalog_auth.record_connection_auth_rejection("conn-1", guessed)
+    assert calls == []
+
+    catalog_auth.record_connection_auth_rejection("conn-1", transport)
+    assert calls == [("conn-1", "MCP server returned 401: token rejected")]
+
+
+def test_the_validation_window_message_from_speakeasy_never_marks_the_connection(monkeypatch):
+    from api.services.mcp_connectors import error_normalizer as normalizer
+    from types import SimpleNamespace
+
+    calls = []
+    monkeypatch.setattr(
+        status_service,
+        "mark_connection_needs_reconnect",
+        lambda connection_id, message: calls.append((connection_id, message)) or True,
+    )
+    result = SimpleNamespace(
+        isError=True,
+        content=[SimpleNamespace(text="Validation window is not open or has expired. The window only lasts a couple of minutes and is not kept across restarts.")],
+        structuredContent=None,
+    )
+
+    catalog_auth.record_connection_auth_rejection("conn-1", normalizer.normalize_call_tool_result(result))
+
+    assert calls == []
+

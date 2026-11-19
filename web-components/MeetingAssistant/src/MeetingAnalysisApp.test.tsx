@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MeetingActionProposalDTO, MeetingAnalysisResultDTO, MeetingBridgeEvent } from './bridge/types';
-import { settleHostWindowResize } from '@shared/settleHostWindowResize';
+import { settleHostWindowResize } from '@shared/motion/settleHostWindowResize';
 import MeetingAnalysisApp from './MeetingAnalysisApp';
 
 const mocks = vi.hoisted(() => ({

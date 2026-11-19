@@ -1,7 +1,7 @@
 import { useMemo, useRef, useEffect, useCallback } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import { ARTIFACT_MARKDOWN_PURIFY_OPTIONS, escapeHtmlText, normalizeMarkdownBullets } from '@shared/markdownSafety';
+import { ARTIFACT_MARKDOWN_PURIFY_OPTIONS, escapeHtmlText, normalizeMarkdownBullets } from '@shared/text/markdownSafety';
 import { COPY_FEEDBACK_MS } from '@shared/useCopyFeedback';
 import { copyToClipboard, openFile, openExternalUrl } from '../services/bridge';
 import { CHECK_ICON_MARKUP, COPY_ICON_MARKUP } from './result/copyIconMarkup';

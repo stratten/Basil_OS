@@ -9,13 +9,13 @@ import { AgentTaskResultBody } from './AgentTaskResultBody';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
-vi.mock('../components/Header', () => ({
+vi.mock('../components/header/Header', () => ({
   default: ({ isProcessing }: { isProcessing: boolean }) => (
     <header data-testid="header" data-processing={String(isProcessing)}>Header</header>
   ),
 }));
-vi.mock('../components/Sidebar', () => ({ default: () => <aside>Sidebar</aside> }));
-vi.mock('../components/ScheduledAgentTaskDetail', () => ({ default: () => <section>Scheduled task</section> }));
+vi.mock('../components/sidebar/Sidebar', () => ({ default: () => <aside>Sidebar</aside> }));
+vi.mock('../components/scheduled/ScheduledAgentTaskDetail', () => ({ default: () => <section>Scheduled task</section> }));
 vi.mock('../components/DetachedTaskPlaceholder', () => ({ default: () => <section>Detached task</section> }));
 vi.mock('./AgentTaskDetailSurface', () => ({ AgentTaskDetailSurface: () => <main>Result</main> }));
 

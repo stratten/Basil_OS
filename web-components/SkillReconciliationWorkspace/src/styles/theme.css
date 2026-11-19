@@ -1,5 +1,5 @@
-@import '../../../shared/theme-layout-tokens.css';
-@import '../../../shared/semantic-state.css';
+@import '../../../shared/theme/theme-layout-tokens.css';
+@import '../../../shared/theme/semantic-state.css';
 
 :root {
   /* User-configurable colors (defaults from AestheticSystem) */

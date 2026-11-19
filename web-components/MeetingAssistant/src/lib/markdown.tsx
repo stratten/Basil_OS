@@ -1,6 +1,6 @@
 import { useMemo, type MouseEvent } from 'react';
 import { marked } from 'marked';
-import { BASIC_MARKDOWN_TAGS, escapeHtmlText, externalLinkTarget, sanitizeMarkdownHtml } from '@shared/markdownSafety';
+import { BASIC_MARKDOWN_TAGS, escapeHtmlText, externalLinkTarget, sanitizeMarkdownHtml } from '@shared/text/markdownSafety';
 import { openExternalUrl } from '../bridge/meetingBridge';
 
 marked.setOptions({ gfm: true, breaks: true });

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import ExecutionDisclosureChevron from '@shared/ExecutionDisclosureChevron';
+import ExecutionDisclosureChevron from '@shared/disclosure/ExecutionDisclosureChevron';
 import { runDetailsHint, type RunDetailItem } from './resultContentUtils';
 
 export function RunDetailsDisclosure({ details }: { details: RunDetailItem[] }) {

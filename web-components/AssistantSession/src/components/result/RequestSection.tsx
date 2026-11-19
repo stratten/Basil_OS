@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import ExecutionDisclosureChevron from '@shared/ExecutionDisclosureChevron';
+import ExecutionDisclosureChevron from '@shared/disclosure/ExecutionDisclosureChevron';
 
 export function RequestSection({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false);

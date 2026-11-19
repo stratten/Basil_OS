@@ -1,9 +1,9 @@
 """Agent task root summary and search-document helpers."""
 
-import json
 import sqlite3
 from typing import Any, Dict, List, Optional, Tuple
 
+from api.core.agent_task_search_text import append_search_value, build_search_document  # noqa: F401
 from api.core.json_helpers import json_loads_or_empty as safe_json_loads  # noqa: F401
 
 
@@ -96,34 +96,8 @@ def extract_result_preview(result_data: Any) -> Tuple[Optional[str], int]:
     return preview, file_count
 
 
-def append_search_value(parts: List[str], value: Any) -> None:
-    if value is None:
-        return
-    if isinstance(value, str):
-        if value.strip():
-            parts.append(value)
-        return
-    if isinstance(value, (dict, list)):
-        parts.append(json.dumps(value, ensure_ascii=False))
-        return
-    parts.append(str(value))
-
-
-def build_search_document(rows: List[sqlite3.Row]) -> str:
-    parts: List[str] = []
-    for row in rows:
-        for key in (
-            "title", "original_prompt", "transcribed_prompt",
-            "app_name", "window_title", "screen_text",
-            "result_preview", "result_data", "accumulated_artifacts",
-            "execution_timeline",
-        ):
-            if key in row.keys():
-                value = row[key]
-                if key in {"result_data", "accumulated_artifacts", "execution_timeline"}:
-                    value = safe_json_loads(value)
-                append_search_value(parts, value)
-    return "\n".join(parts)
+# Bump this whenever build_search_document changes what it indexes. Startup housekeeping rebuilds every chain whose recorded version is lower, a few per launch.
+SEARCH_BUILDER_VERSION = 2
 
 
 def root_task_id_for_agent_task(conn: sqlite3.Connection, agent_task_id: str) -> Optional[str]:
@@ -134,10 +108,18 @@ def root_task_id_for_agent_task(conn: sqlite3.Connection, agent_task_id: str) ->
     return row["root_id"] if row else None
 
 
+# While the newest turn of a chain is in one of these states, work is actively happening and the chain is rewritten many times a minute, so the search entry is left as it was and rebuilt when the turn reaches any other status. A turn that is waiting on the user (awaiting_user_input, needs_clarification, paused) is a resting point and is indexed, and so is any status not listed here, so nothing can silently stay unsearchable.
+IN_FLIGHT_TURN_STATUSES = frozenset({
+    "capturing", "routing", "processing",
+    "awaiting_provider_delegation", "awaiting_delegated_agents",
+})
+
+
 def recompute_root_summary(conn: sqlite3.Connection, root_task_id: str) -> None:
+    # Only the small columns are read here. The full rows hold every timeline and artifact in the chain, which can total hundreds of megabytes, and loading them on every write was what held the database write slot for seconds.
     rows = conn.execute(
         """
-        SELECT *
+        SELECT id, timestamp, status
         FROM agent_tasks
         WHERE root_task_id = ? OR (root_task_id IS NULL AND id = ?)
         ORDER BY chain_sequence_number ASC, timestamp ASC, id ASC
@@ -145,26 +127,23 @@ def recompute_root_summary(conn: sqlite3.Connection, root_task_id: str) -> None:
         (root_task_id, root_task_id)
     ).fetchall()
     if not rows:
-        conn.execute(
-            "DELETE FROM agent_task_search_fts WHERE root_task_id = ?",
-            (root_task_id,)
-        )
+        clear_search_entry(conn, root_task_id)
         return
 
     root_exists = any(row["id"] == root_task_id for row in rows)
     if not root_exists:
-        conn.execute(
-            "DELETE FROM agent_task_search_fts WHERE root_task_id = ?",
-            (root_task_id,)
-        )
+        clear_search_entry(conn, root_task_id)
         return
 
     latest = rows[-1]
     preview: Optional[str] = None
     file_count = 0
     for row in reversed(rows):
+        result_row = conn.execute(
+            "SELECT result_data FROM agent_tasks WHERE id = ?", (row["id"],)
+        ).fetchone()
         candidate_preview, candidate_file_count = extract_result_preview(
-            safe_json_loads(row["result_data"])
+            safe_json_loads(result_row["result_data"] if result_row else None)
         )
         if preview is None and candidate_preview:
             preview = candidate_preview
@@ -198,11 +177,52 @@ def recompute_root_summary(conn: sqlite3.Connection, root_task_id: str) -> None:
         )
     )
 
+    if latest["status"] in IN_FLIGHT_TURN_STATUSES and has_search_entry(conn, root_task_id):
+        return
+
+    rebuild_search_entry(conn, root_task_id)
+
+
+def has_search_entry(conn: sqlite3.Connection, root_task_id: str) -> bool:
+    """Whether the chain already has a search entry. A chain that has none is indexed even while its newest turn runs, so a running task can be found by its request; once it has one, further updates wait until the turn stops."""
+    row = conn.execute(
+        "SELECT 1 FROM agent_task_search_index_state WHERE root_task_id = ?",
+        (root_task_id,)
+    ).fetchone()
+    return row is not None
+
+
+def clear_search_entry(conn: sqlite3.Connection, root_task_id: str) -> None:
+    conn.execute(
+        "DELETE FROM agent_task_search_fts WHERE root_task_id = ?",
+        (root_task_id,)
+    )
+    conn.execute(
+        "DELETE FROM agent_task_search_index_state WHERE root_task_id = ?",
+        (root_task_id,)
+    )
+
+
+def rebuild_search_entry(conn: sqlite3.Connection, root_task_id: str) -> None:
+    """Replace one chain's search entry from its current rows and record the builder version that wrote it."""
+    full_rows = conn.execute(
+        """
+        SELECT *
+        FROM agent_tasks
+        WHERE root_task_id = ? OR (root_task_id IS NULL AND id = ?)
+        ORDER BY chain_sequence_number ASC, timestamp ASC, id ASC
+        """,
+        (root_task_id, root_task_id)
+    ).fetchall()
     conn.execute(
         "DELETE FROM agent_task_search_fts WHERE root_task_id = ?",
         (root_task_id,)
     )
     conn.execute(
         "INSERT INTO agent_task_search_fts(root_task_id, content) VALUES (?, ?)",
-        (root_task_id, build_search_document(rows))
+        (root_task_id, build_search_document(full_rows))
+    )
+    conn.execute(
+        "INSERT OR REPLACE INTO agent_task_search_index_state(root_task_id, builder_version) VALUES (?, ?)",
+        (root_task_id, SEARCH_BUILDER_VERSION)
     )

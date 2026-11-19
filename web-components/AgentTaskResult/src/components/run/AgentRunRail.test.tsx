@@ -371,6 +371,36 @@ describe('AgentRunRail', () => {
     }
   });
 
+  it('draws the expanded turn once and logs no key warning when two entries share a run id', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const container = document.createElement('div');
+    const root = createRoot(container);
+
+    try {
+      act(() => {
+        root.render(
+          <AgentRunRail
+            overview={overview}
+            onExpand={vi.fn()}
+            runId="follow-up"
+            runs={[...railRuns, { ...thirdRun, id: 'follow-up' }]}
+            locationRunId="follow-up"
+            onNavigateRun={vi.fn()}
+          />,
+        );
+      });
+
+      expect(container.querySelectorAll('.agent-run-rail-turn-expanded')).toHaveLength(1);
+      expect(container.querySelectorAll('.agent-run-rail-flow-stage')).toHaveLength(3);
+      expect(error.mock.calls.filter(call => String(call[0]).includes('same key'))).toEqual([]);
+    } finally {
+      act(() => {
+        root.unmount();
+      });
+      error.mockRestore();
+    }
+  });
+
   it('prints an agent revision as parent.k in a wider badge', () => {
     const revision: AgentTaskRunFocusSummary = {
       ...railRuns[1],

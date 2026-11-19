@@ -5,11 +5,13 @@ Registration does not launch anything. The caller launches the server through th
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+import uuid
+from typing import Any, Dict, Iterable, List, Optional
 
-from api.core.models.preferences import MCPConnectionRecord
+from api.core.models.preferences import MCPConnectionRecord, MCPStdioSpec
 
-from .stdio_transport import StdioSpecError, stdio_server_url, validate_spec_fields
+from .local_server_spec import build_local_server_spec
+from .stdio_transport import StdioSpecError, stdio_server_url
 
 MAX_FRIENDLY_NAME_LENGTH = 80
 MAX_DESCRIPTION_LENGTH = 500
@@ -29,6 +31,21 @@ def _clean_optional(value: Optional[str], limit: int, label: str) -> Optional[st
     return cleaned
 
 
+def _find_duplicate(records: Iterable[MCPConnectionRecord], spec: MCPStdioSpec) -> Optional[MCPConnectionRecord]:
+    for existing in records:
+        stored = existing.stdio
+        if stored and (stored.command, stored.args, stored.cwd) == (spec.command, spec.args, spec.cwd):
+            return existing
+    return None
+
+
+def find_existing_local_server(spec: MCPStdioSpec) -> Optional[MCPConnectionRecord]:
+    """The stored local server that already runs this command, arguments and folder, or None."""
+    from api.core.preferences.preferences_io import load_preferences
+
+    return _find_duplicate(load_preferences().connections.mcp_connections, spec)
+
+
 def register_local_server_record(
     *,
     friendly_name: str,
@@ -38,8 +55,16 @@ def register_local_server_record(
     env: Optional[Dict[str, str]] = None,
     description: Optional[str] = None,
     source_url: Optional[str] = None,
+    secret_env: Optional[List[str]] = None,
+    companion: Optional[Dict[str, Any]] = None,
+    install: Optional[Dict[str, Any]] = None,
+    connection_id: Optional[str] = None,
+    replace_id: Optional[str] = None,
 ) -> MCPConnectionRecord:
-    """Validate and store one local server. Raises StdioSpecError for a command that cannot run and DuplicateLocalServerError for one already set up."""
+    """Validate and store one local server. Raises StdioSpecError for a command that cannot run and DuplicateLocalServerError for one already set up.
+
+    ``secret_env``, ``companion`` and ``install`` are described in ``local_server_spec`` and ``local_server_recipe``. ``connection_id`` lets the caller choose the id (a UUID), so secret values can be saved under it before the first launch. ``replace_id`` names an existing local server whose definition is rewritten in place: it keeps its id, its saved secrets and its place in Settings, and loses its cached tool list.
+    """
     from api.core.preferences.preferences_io import load_preferences, save_preferences
 
     name = (friendly_name or "").strip()
@@ -47,17 +72,48 @@ def register_local_server_record(
         raise StdioSpecError("A local server needs a name.")
     if len(name) > MAX_FRIENDLY_NAME_LENGTH:
         raise StdioSpecError(f"The name is longer than {MAX_FRIENDLY_NAME_LENGTH} characters.")
-    spec = validate_spec_fields(command, list(args or []), cwd, dict(env or {}))
+    spec = build_local_server_spec(
+        command=command,
+        args=list(args or []),
+        cwd=cwd,
+        env=dict(env or {}),
+        secret_env=secret_env,
+        companion=companion,
+        install=install,
+    )
     # The address is kept exactly as the person gave it, so the connection can say where it came from.
     spec.source_url = _clean_optional(source_url, MAX_SOURCE_URL_LENGTH, "source address")
 
     preferences = load_preferences()
-    for existing in preferences.connections.mcp_connections:
-        stored = existing.stdio
-        if stored and (stored.command, stored.args, stored.cwd) == (spec.command, spec.args, spec.cwd):
-            raise DuplicateLocalServerError(f"That server is already set up as '{existing.friendly_name}'.")
+    replaced = None
+    if replace_id is not None:
+        replaced = next((record for record in preferences.connections.mcp_connections if record.id == replace_id and record.stdio is not None), None)
+        if replaced is None:
+            raise StdioSpecError("There is no local server with that connection id to replace.")
+    duplicate = _find_duplicate([record for record in preferences.connections.mcp_connections if record is not replaced], spec)
+    if duplicate is not None:
+        raise DuplicateLocalServerError(f"That server is already set up as '{duplicate.friendly_name}'.")
+    if replaced is not None:
+        replaced.friendly_name = name
+        replaced.description = _clean_optional(description, MAX_DESCRIPTION_LENGTH, "description") or replaced.description
+        replaced.stdio = spec
+        replaced.cached_tools = []
+        replaced.last_connection_status = None
+        replaced.last_connection_status_message = None
+        save_preferences(preferences)
+        return replaced
+
+    identity: Dict[str, Any] = {}
+    if connection_id is not None:
+        try:
+            identity["id"] = str(uuid.UUID(connection_id))
+        except (ValueError, AttributeError, TypeError) as exc:
+            raise StdioSpecError("The connection id is not valid.") from exc
+        if any(existing.id == identity["id"] for existing in preferences.connections.mcp_connections):
+            raise StdioSpecError("That connection id is already in use.")
 
     record = MCPConnectionRecord(
+        **identity,
         friendly_name=name,
         description=_clean_optional(description, MAX_DESCRIPTION_LENGTH, "description"),
         server_url="basil-stdio://pending",

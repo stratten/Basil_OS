@@ -1,10 +1,10 @@
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { AudioSourceKindDTO, TranscriptLineDTO } from '../bridge/types';
 import { useCopiedFlag } from '@shared/useCopyFeedback';
-import { plainMarkdownText } from '@shared/plainMarkdownText';
+import { plainMarkdownText } from '@shared/text/plainMarkdownText';
 import { copyText } from '../bridge/meetingBridge';
 import { LINK_FLASH_MS, useCompanionLinks } from '../companion/companionLinks';
-import { KIND_LABELS } from '../companion/CompanionItemCard';
+import { KIND_LABELS } from '../companion/components/CompanionItemCard';
 import { chipsByRow, spanRowIds, timedRowFromLine } from '../companion/companionTranscriptLinks';
 import { buildTranscriptRows, formatTranscriptForCopy, formatTranscriptTimestamp, transcriptTextOnColor } from '../lib/transcriptFormatting';
 import { CheckIcon, CloseIcon, CopyIcon } from './MeetingIcons';

@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { WindowControlButton } from '@shared/WindowControlButton';
-import { useCollapseShortcut } from '@shared/useCollapseShortcut';
-import { useSettledExpand } from '@shared/useSettledExpand';
+import { WindowControlButton } from '@shared/windowChrome/WindowControlButton';
+import { WindowMoveHandle } from '@shared/windowChrome/WindowMoveHandle';
+import { useCollapseShortcut } from '@shared/disclosure/useCollapseShortcut';
+import { useSettledExpand } from '@shared/disclosure/useSettledExpand';
 import type { AgentTaskOriginNavigationPayload, BasilBoardTab } from '../contracts';
 import { requestWindowClose, requestWindowCollapse, requestWindowExpand, requestWindowMinimize } from '../services/bridge';
 import { resolveTabRenderer } from './TabRegistry';
@@ -37,7 +38,8 @@ export default function DetachedCapabilityShell({
   return (
     <div className="basil-webkit-window-frame">
       <div className={`basil-board-root basil-board-detached-shell basil-webkit-window-surface${isContentCollapsed ? ' is-collapsed' : ''}`}>
-      <header className="basil-board-detached-header">
+      <header className="basil-board-detached-header window-move-host">
+        <WindowMoveHandle />
         <div className="basil-board-window-controls">
           <WindowControlButton kind="close" label="Close" className="basil-board-window-control" onClick={requestWindowClose} />
           <WindowControlButton kind="minimize" label="Minimize" className="basil-board-window-control" onClick={requestWindowMinimize} />

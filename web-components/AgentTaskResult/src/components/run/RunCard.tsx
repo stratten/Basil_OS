@@ -1,4 +1,4 @@
-import ExpandableList from '@shared/ExpandableList';
+import ExpandableList from '@shared/disclosure/ExpandableList';
 import type { DerivedAgentTaskArtifacts } from '../artifacts/artifactDerivation';
 import { PausedGlyph, SpeechBubbleGlyph, YourTurnGlyph } from '../interaction/InteractionExchange';
 import { interactionResponseLabel, interactionSummary, runControlStageClass, runControlTone } from '../interaction/userInteractions';

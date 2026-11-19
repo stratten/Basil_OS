@@ -6,7 +6,7 @@
 // TranscriptionWidgetViewModel actually publishes.
 
 export const PROTOCOL_VERSION = 1;
-import type { ThemeConfig } from '@shared/webTheme';
+import type { ThemeConfig } from '@shared/theme/webTheme';
 
 export interface TranscriptionModelInfo {
   id: string;

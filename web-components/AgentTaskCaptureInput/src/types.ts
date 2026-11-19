@@ -37,7 +37,7 @@ export interface CaptureSnapshot {
 // deliberately NOT included here (same reasoning as `AgentTaskResult`): they
 // are fixed, non-user-configurable defaults declared directly in
 // `styles/theme.css`, never bridged from Swift.
-import type { FontConfig as SharedFontConfig, ThemeConfig as SharedThemeConfig } from '@shared/webTheme';
+import type { FontConfig as SharedFontConfig, ThemeConfig as SharedThemeConfig } from '@shared/theme/webTheme';
 export type ThemeConfig = SharedThemeConfig & {
   backgroundPrimary: string;
   primary: string;

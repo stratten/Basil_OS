@@ -29,6 +29,7 @@ from .preference_models.execution_and_connections import (
     ConnectionsSettings,
     ExecutionApprovalMode,
     MCPCachedTool,
+    MCPCompanionSpec,
     MCPConnectionRecord,
     MCPStdioSpec,
     MCPToolPolicy,
@@ -37,6 +38,15 @@ from .preference_models.execution_and_connections import (
     ZettelSettings,
 )
 from .preference_models.hotkeys import HotkeyBinding, HotkeySettings
+from .preference_models.local_server_recipe_models import (
+    MCPArtifact,
+    MCPBuildMethod,
+    MCPBuildStep,
+    MCPDownloadMethod,
+    MCPInstallRecipe,
+    MCPProbeSpec,
+    MCPRequirement,
+)
 from .preference_models.migrations import (
     _TEAM_IDENTITY_RENAME_KEY_MIGRATIONS,
     _migrate_legacy_keys_for_team_identity_rename,
@@ -135,6 +145,14 @@ __all__ = [
     "HotkeyBinding",
     "HotkeySettings",
     "MCPCachedTool",
+    "MCPArtifact",
+    "MCPBuildMethod",
+    "MCPBuildStep",
+    "MCPCompanionSpec",
+    "MCPDownloadMethod",
+    "MCPInstallRecipe",
+    "MCPProbeSpec",
+    "MCPRequirement",
     "MCPConnectionRecord",
     "MCPStdioSpec",
     "MCPToolPolicy",

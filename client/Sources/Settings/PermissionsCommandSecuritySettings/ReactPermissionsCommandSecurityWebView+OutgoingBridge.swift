@@ -49,6 +49,7 @@ extension ReactPermissionsCommandSecurityWebView: ReactPermissionsCommandSecurit
             "showFullCommandInPrompt": settings.showFullCommandInPrompt,
             "rememberChoiceOption": settings.rememberChoiceOption,
             "autoApproveReadOnly": settings.autoApproveReadOnly,
+            "modelJudgesCommandSafety": settings.modelJudgesCommandSafety,
             "blockDangerousPatterns": settings.blockDangerousPatterns,
             "whitelistedCount": settings.whitelistedCount,
             "safeExecutionMode": settings.safeExecutionMode,

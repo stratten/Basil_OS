@@ -32,6 +32,8 @@ def describe_external_catalog_step(tool_inputs: Dict[str, Any]) -> Optional[str]
     action = tool_inputs.get("action") if isinstance(tool_inputs, dict) else None
     if action == "list_servers":
         return "Listing your connections"
+    if action == "local_server_status":
+        return sanitize_timeline_title(f"Checking setup of {_connection_name(tool_inputs.get('connection_id')) or 'a local server'}", fallback="Checking a local server")[:120]
     if action not in ("describe_server", "call_tool"):
         return None
     name = _connection_name(tool_inputs.get("connection_id")) or "a connection"

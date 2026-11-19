@@ -7,6 +7,7 @@ import { EMPTY_RUN_ARTIFACTS, RunCard } from './RunCard';
 import { ModelUsedLabel } from '../result/ModelUsedLabel';
 import { navigationTargetForStage, type RunNavigationTarget } from './runNavigation';
 import { scrollVerticallyIntoView } from '../scrollVerticallyIntoView';
+import ScheduledCheckGlyph from './ScheduledCheckGlyph';
 
 interface AgentRunMapProps {
   runs: AgentTaskRunFocusSummary[];
@@ -99,7 +100,7 @@ export function AgentRunMap({
                   aria-label={`${turn.run.label}: ${turn.requestText}. ${turn.status.label}.${isLocation ? ' You are here.' : ''}`}
                   onClick={() => onNavigateRun(runId, { kind: 'run' })}
                 >
-                  <span className={`agent-run-map-ordinal${isRevisionNumber(turn.run.displayNumber) ? ' is-revision' : ''}`} aria-hidden="true">{turn.run.displayNumber}</span>
+                  <span className={`agent-run-map-ordinal${isRevisionNumber(turn.run.displayNumber) ? ' is-revision' : ''}`} aria-hidden="true">{turn.run.displayNumber || <ScheduledCheckGlyph />}</span>
                   <span className="agent-run-map-summary">
                     <span className="agent-run-map-label">{turn.run.label}</span>
                     <span className="agent-run-map-request">{turn.requestText}</span>

@@ -65,7 +65,7 @@
   max-height: none;
 }
 
-/* Fades the last stretch of the clipped request into the page, the same technique as the collapsed lists in shared/expandable-list.css. A mask rather than an overlay, so it works on any background. About a row and a half of the 60px window, so the last visible line is clearly fading. */
+/* Fades the last stretch of the clipped request into the page, the same technique as the collapsed lists in shared/disclosure/expandable-list.css. A mask rather than an overlay, so it works on any background. About a row and a half of the 60px window, so the last visible line is clearly fading. */
 .request-display-content.has-overflow:not(.is-expanded) {
   --request-display-fade: 28px;
   -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--request-display-fade)), transparent);

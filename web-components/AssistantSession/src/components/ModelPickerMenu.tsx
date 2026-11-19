@@ -1,7 +1,7 @@
 import { selectModel, showNativeModelPicker } from '../bridge/assistantSessionBridge';
 import type { AssistantSessionState } from '../state/assistantSessionReducer';
-import ReasoningModelPicker from '../../../shared/ReasoningModelPicker';
-import type { SharedReasoningModel } from '../../../shared/ReasoningModelPicker';
+import ReasoningModelPicker from '../../../shared/inputs/ReasoningModelPicker';
+import type { SharedReasoningModel } from '../../../shared/inputs/ReasoningModelPicker';
 
 export function ModelPickerMenu({
   state,

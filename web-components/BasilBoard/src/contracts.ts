@@ -220,7 +220,7 @@ export interface TodoWorkspaceErrorEvent {
 }
 
 export type ConversationConnectionState = 'connecting' | 'open' | 'closed';
-import type { FontConfig as SharedFontConfig, ThemeConfig as SharedThemeConfig } from '@shared/webTheme';
+import type { FontConfig as SharedFontConfig, ThemeConfig as SharedThemeConfig } from '@shared/theme/webTheme';
 export type ThemeConfig = SharedThemeConfig & {
   backgroundPrimary: string;
   primary: string;

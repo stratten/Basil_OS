@@ -6,15 +6,15 @@ import { describe, expect, it, vi } from 'vitest';
 import type { DisplayableAgentTask } from '../types';
 import { AgentTaskResultBody } from './AgentTaskResultBody';
 
-vi.mock('../components/Header', () => ({
+vi.mock('../components/header/Header', () => ({
   default: ({ expandedTaskTitle }: { expandedTaskTitle?: string }) => (
     <header className="widget-header" data-expanded-task-title={expandedTaskTitle ?? ''}>Header</header>
   ),
 }));
-vi.mock('../components/Sidebar', () => ({
+vi.mock('../components/sidebar/Sidebar', () => ({
   default: () => <aside className="sidebar">Sidebar</aside>,
 }));
-vi.mock('../components/ScheduledAgentTaskDetail', () => ({
+vi.mock('../components/scheduled/ScheduledAgentTaskDetail', () => ({
   default: () => <section>Scheduled task</section>,
 }));
 vi.mock('../components/DetachedTaskPlaceholder', () => ({

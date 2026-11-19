@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import NativeSymbolIcon from '@shared/NativeSymbolIcon';
+import NativeSymbolIcon from '@shared/icons/NativeSymbolIcon';
 import { describeFollowUpDue } from '../../app/display/followUpTime';
 import { formatCountdown, useCountdown } from '../../app/display/useCountdown';
 

@@ -1,4 +1,4 @@
 export {
   applyProcessingDefaults,
 } from '@agent-task/app/host/themeBootstrap';
-export { applyHostFonts, applyHostTheme } from '@shared/webTheme';
+export { applyHostFonts, applyHostTheme } from '@shared/theme/webTheme';

@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import ExecutionDisclosureChevron from '@shared/ExecutionDisclosureChevron';
+import ExecutionDisclosureChevron from '@shared/disclosure/ExecutionDisclosureChevron';
 
 export function CollapsibleSection({
   title,

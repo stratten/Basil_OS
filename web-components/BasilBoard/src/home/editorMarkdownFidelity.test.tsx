@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { editorHtmlToDisplayMarkdown, plainTextToDisplayMarkdown } from '../../../shared/editorMarkdown';
+import { editorHtmlToDisplayMarkdown, plainTextToDisplayMarkdown } from '../../../shared/text/editorMarkdown';
 import HomeMarkdown from './HomeMarkdown';
 
 vi.mock('../services/bridge', () => ({ openExternalUrl: vi.fn() }));

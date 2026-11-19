@@ -25,6 +25,7 @@ describe('runs Basil starts on its own', () => {
   it('names scheduled runs and Basil continuing its own task, and nothing else, as background origins', () => {
     expect(isBackgroundOriginType('scheduled_task')).toBe(true);
     expect(isBackgroundOriginType('agent_follow_up')).toBe(true);
+    expect(isBackgroundOriginType('scheduled_follow_up')).toBe(true);
     expect(isBackgroundOriginType('conversation')).toBe(false);
     expect(isBackgroundOriginType(undefined)).toBe(false);
   });

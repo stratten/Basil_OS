@@ -106,7 +106,7 @@ describe('AgentStore outcome verification updates', () => {
     expect(agent?.structuredFiles[0].path).toBe('/tmp/doc.txt');
   });
 
-  it('restores completed status when verification upgrades a provisional failure', () => {
+  it('never shows a provisional failure as failed, and keeps completed when verification upgrades it', () => {
     const store = makeStoreWithAgent();
 
     dispatch(store, {
@@ -119,7 +119,10 @@ describe('AgentStore outcome verification updates', () => {
     });
 
     let agent = store.getAgent('task-1');
-    expect(agent?.status).toBe('failed');
+    expect(agent?.status).toBe('completed');
+    expect(agent?.errorMessage).toBeUndefined();
+    expect(agent?.resultSeverity).toBe('neutral');
+    expect(agent?.result).toBe('Partial answer text');
     expect(agent?.verificationStatus).toBe('pending');
 
     dispatch(store, {
@@ -174,6 +177,64 @@ describe('AgentStore outcome verification updates', () => {
     expect(agent?.result).not.toBe('Stale first-turn revision');
     expect(agent?.outcome).not.toBe('failure');
     expect(agent?.verificationStatus).not.toBe('resolved');
+  });
+
+  it('turns a provisional failure red only when verification confirms the failure', () => {
+    const store = makeStoreWithAgent();
+
+    dispatch(store, {
+      event_type: 'agent_task_result',
+      agent_task_id: 'task-1',
+      success: false,
+      error: 'A requested write did not apply',
+      result: 'Partial answer text',
+      result_payload: { outcome: 'failure', verification_status: 'pending', files: [] },
+    });
+
+    let agent = store.getAgent('task-1');
+    expect(agent?.status).toBe('completed');
+    expect(agent?.resultSeverity).toBe('neutral');
+    expect(agent?.outcome).toBeUndefined();
+
+    dispatch(store, {
+      event_type: 'agent_task_outcome_update',
+      agent_task_id: 'task-1',
+      success: false,
+      outcome: 'failure',
+      outcome_reason: 'The write was never applied.',
+      result_payload: { outcome: 'failure', verification_status: 'resolved', files: [] },
+    });
+
+    agent = store.getAgent('task-1');
+    expect(agent?.status).toBe('failed');
+    expect(agent?.errorMessage).toBe('The write was never applied.');
+    expect(agent?.resultSeverity).toBe('error');
+    expect(agent?.verificationStatus).toBe('resolved');
+  });
+
+  it('still shows a resolved failure as failed at once, and a pending failure with no answer text as an error', () => {
+    const resolved = makeStoreWithAgent();
+    dispatch(resolved, {
+      event_type: 'agent_task_result',
+      agent_task_id: 'task-1',
+      success: false,
+      error: 'The verifier timed out and the mechanical verdict stands',
+      result: 'Partial answer text',
+      result_payload: { outcome: 'partial', verification_status: 'resolved', files: [] },
+    });
+    expect(resolved.getAgent('task-1')?.status).toBe('failed');
+    expect(resolved.getAgent('task-1')?.errorMessage).toBe('The verifier timed out and the mechanical verdict stands');
+
+    const noAnswer = makeStoreWithAgent();
+    dispatch(noAnswer, {
+      event_type: 'agent_task_result',
+      agent_task_id: 'task-1',
+      success: false,
+      error: 'The run produced nothing',
+      result: '',
+      result_payload: { outcome: 'failure', verification_status: 'pending', files: [] },
+    });
+    expect(noAnswer.getAgent('task-1')?.status).toBe('failed');
   });
 
   it('applies agent_task_outcome_update after terminal agent_task_result', () => {
@@ -356,7 +417,7 @@ describe('AgentStore model used from the live result event', () => {
 
       dispatch(store, provisional);
 
-      expect(store.getAgent('task-1')).toMatchObject({ status: 'failed', verificationStatus: 'pending', outcome: 'partial' });
+      expect(store.getAgent('task-1')).toMatchObject({ status: 'completed', verificationStatus: 'pending', resultSeverity: 'neutral', errorMessage: undefined });
     });
 
     it('is still applied when a retry has moved the run back to processing', () => {
@@ -365,7 +426,7 @@ describe('AgentStore model used from the live result event', () => {
 
       dispatch(store, provisional);
 
-      expect(store.getAgent('task-1')).toMatchObject({ status: 'failed', verificationStatus: 'pending', outcome: 'partial' });
+      expect(store.getAgent('task-1')).toMatchObject({ status: 'completed', verificationStatus: 'pending', resultSeverity: 'neutral', errorMessage: undefined });
     });
 
     it('does not block a resolved result from arriving after the run was resolved', () => {

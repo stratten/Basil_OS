@@ -1,5 +1,5 @@
 import { openDetachedAgentTask } from '../services/bridge';
-import { plainMarkdownText } from '../../../shared/plainMarkdownText';
+import { plainMarkdownText } from '../../../shared/text/plainMarkdownText';
 
 interface DetachedTaskPlaceholderProps {
   rootTaskId: string;

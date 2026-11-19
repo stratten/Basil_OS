@@ -34,6 +34,11 @@ export function isOpenStatus(status: ChecklistStatus): boolean {
   return status !== 'done' && status !== 'dropped';
 }
 
+/** True for an item Basil closed on judgment, which the reader can confirm or reopen. */
+export function isInferredDone(item: Pick<ChecklistItem, 'status' | 'done_basis'>): boolean {
+  return item.status === 'done' && item.done_basis === 'inferred';
+}
+
 /** Items in reading order: open ones by priority, then done, then dropped; the list's own order breaks ties. Archived items are left out. */
 export function prioritizeChecklistItems(items: readonly ChecklistItem[]): ChecklistItem[] {
   return items
@@ -61,7 +66,8 @@ export function checklistItemAriaLabel(item: ChecklistItem): string {
   const waiting = item.status === 'waiting_user' || item.status === 'waiting_external';
   const waitingOn = waiting && item.waiting_on ? `: ${item.waiting_on}` : '';
   const required = item.required ? ', required' : '';
-  return `${item.title}, ${CHECKLIST_STATUS_LABEL[item.status].toLowerCase()}${waitingOn}${required}`;
+  const inferred = isInferredDone(item) ? ', marked done by Basil from what it could see' : '';
+  return `${item.title}, ${CHECKLIST_STATUS_LABEL[item.status].toLowerCase()}${waitingOn}${required}${inferred}`;
 }
 
 export function checklistRefLabel(ref: ChecklistRef): string {

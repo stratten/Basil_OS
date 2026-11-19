@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { SettingsSubTabs, type SettingsSubTabDefinition } from '@shared/SettingsSubTabs'
+import { SettingsSubTabs, type SettingsSubTabDefinition } from '@shared/inputs/SettingsSubTabs'
 import { BrowserAutomationSettingsApp } from './BrowserAutomationSettingsApp'
 import { ProactiveSuggestionsSettingsApp } from './ProactiveSuggestionsSettingsApp'
 import { ReasoningDefaultsSettingsApp } from './ReasoningDefaultsSettingsApp'
-import { SkillsSettingsApp } from './SkillsSettingsApp'
+import { SkillsSettingsApp } from './context/SkillsSettingsApp'
 
 export type ReasoningAutomationSubTab = 'settings' | 'browser' | 'skills' | 'proactive'
 

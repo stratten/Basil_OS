@@ -176,6 +176,14 @@ final class AgentTaskResultWebView: NSObject, WKScriptMessageHandler, WKNavigati
         guard height > 0, dragAreaHeightConstraint?.constant != height else { return }
         dragAreaHeightConstraint?.constant = height
     }
+
+    /// Invoked when React reports, via the `widgetHeaderDragGeometry` bridge message, how far down the window a mouse-down drags it and which horizontal spans must stay clickable. Ranges that are empty or reversed are dropped, so a bad report can never make the whole header inert or crash the overlay.
+    func updateDragAreaGeometry(height: CGFloat, interactiveRanges: [(start: CGFloat, end: CGFloat)]) {
+        updateDragAreaHeight(height)
+        dragAreaView?.interactiveRanges = interactiveRanges
+            .filter { $0.start >= 0 && $0.end > $0.start }
+            .map { $0.start..<$0.end }
+    }
     
     func prepareEmbeddedPresentation() {
         isEmbedded = true

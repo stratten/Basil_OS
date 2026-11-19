@@ -1,4 +1,4 @@
-import { Switch } from '@shared/Switch';
+import { Switch } from '@shared/inputs/Switch';
 import Dropdown, { type DropdownOption } from '../Dropdown';
 import ScheduledField from './ScheduledField';
 import { chainFormError, type ChainAgeUnit, type ChainFormState } from './scheduledChainHelpers';

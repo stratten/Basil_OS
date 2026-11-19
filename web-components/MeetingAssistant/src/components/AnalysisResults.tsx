@@ -1,6 +1,6 @@
 import type { MeetingActionProposalDTO, MeetingAnalysisResultDTO } from '../bridge/types';
 import { useCopiedFlag } from '@shared/useCopyFeedback';
-import { formatClockSeconds } from '@shared/formatClockSeconds';
+import { formatClockSeconds } from '@shared/format/formatClockSeconds';
 import { copyText, retryAnalysisModes } from '../bridge/meetingBridge';
 import { MeetingMarkdown } from '../lib/markdown';
 import { ANALYSIS_MODE_ORDER, formatModeResult, type AnalysisModeId } from '../lib/analysisModes';

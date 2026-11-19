@@ -1,4 +1,4 @@
-import type { FontConfig as SharedFontConfig, ThemeConfig as SharedThemeConfig } from '@shared/webTheme'
+import type { FontConfig as SharedFontConfig, ThemeConfig as SharedThemeConfig } from '@shared/theme/webTheme'
 
 export type ThemeConfig = SharedThemeConfig
 export type FontConfig = SharedFontConfig

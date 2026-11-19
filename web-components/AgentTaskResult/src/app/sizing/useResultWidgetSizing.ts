@@ -6,7 +6,7 @@ import { agentStore } from '../../store/agentStore';
 import { isInFlightAgentStatus } from '../agents/agentHydration';
 import { measureCollapsedHeaderSize } from './collapsedHeaderSizing';
 import { measureExpandedWidgetContentHeight, measureOverlayDialogIntrinsicHeight } from './resultWidgetSizing';
-import { WEBKIT_WINDOW_CHROME_FRAME_INSET_PX } from '../../../../shared/webkitWindowChrome';
+import { WEBKIT_WINDOW_CHROME_FRAME_INSET_PX } from '../../../../shared/windowChrome/webkitWindowChrome';
 import {
   clampDetailTrayWidth,
   detailTrayPreferredWidth,

@@ -2,7 +2,7 @@ import { stopRecording } from '../bridge/assistantSessionBridge';
 import type { AssistantSessionState } from '../state/assistantSessionReducer';
 import { ProgressMessage } from './ProgressMessage';
 import { NativeSymbol } from './NativeSymbol';
-import { formatClockSeconds } from '@shared/formatClockSeconds';
+import { formatClockSeconds } from '@shared/format/formatClockSeconds';
 
 export function RecordingState({
   state,

@@ -70,7 +70,7 @@ ROUTE_RULES: Tuple[RouteRule, ...] = (
     _rule(r"/settings/auth(/token)?", HUMAN_ONLY, "Basil's own authentication."),
     _rule(r"/settings/api_models/api_keys(/test|/\{provider\})?", HUMAN_ONLY, "API keys."),
     _rule(r"/settings/connections/(github/.*|slack/.*|start_oauth|manual_token|gmail_transport)", HUMAN_ONLY, "Sign-ins and tokens for connections."),
-    _rule(r"/settings/connections/local_server", HUMAN_ONLY, "Adding a local server stores a command that Basil then runs on this Mac, so only a person can approve it."),
+    _rule(r"/settings/connections/local_server(/.*)?", HUMAN_ONLY, "Adding a local server stores a command that Basil then runs on this Mac, and starting or reconfiguring its background program runs it, so only a person can approve it."),
     _rule(r"/settings/provider-profiles(/\{provider_profile_id\})?", HUMAN_ONLY, "Creating or rewriting a provider profile sets its command and credentials.", domain="connections_and_profiles"),
     _rule(r"/settings/provider-profiles/\{provider_profile_id\}/workspace-grants(/.*)?", HUMAN_ONLY, "Grants a provider access to a workspace folder."),
     _rule(r"/settings/reset", HUMAN_ONLY, "Resets every setting."),

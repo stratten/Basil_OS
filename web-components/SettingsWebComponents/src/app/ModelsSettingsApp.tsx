@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { DownloadProgress } from '@shared/DownloadProgress'
-import { Switch } from '@shared/Switch'
-import ExecutionDisclosureChevron from '@shared/ExecutionDisclosureChevron'
-import TokenizedSelect from '@shared/TokenizedSelect'
-import { CustomModelsPanel } from '../components/CustomModelsPanel'
-import { ReasoningApiModelsPanel } from '../components/ReasoningApiModelsPanel'
-import { TranscriptionApiModelsPanel } from '../components/TranscriptionApiModelsPanel'
-import { CloudMeetingTranscriptionPanel } from '../components/CloudMeetingTranscriptionPanel'
-import { DeleteIcon, DownloadIcon, ModelFitIcon } from '../components/ModelActionIcons'
+import { DownloadProgress } from '@shared/status/DownloadProgress'
+import { Switch } from '@shared/inputs/Switch'
+import ExecutionDisclosureChevron from '@shared/disclosure/ExecutionDisclosureChevron'
+import TokenizedSelect from '@shared/inputs/TokenizedSelect'
+import { CustomModelsPanel } from '../components/models/CustomModelsPanel'
+import { ReasoningApiModelsPanel } from '../components/models/ReasoningApiModelsPanel'
+import { TranscriptionApiModelsPanel } from '../components/transcription/TranscriptionApiModelsPanel'
+import { CloudMeetingTranscriptionPanel } from '../components/transcription/CloudMeetingTranscriptionPanel'
+import { DeleteIcon, DownloadIcon, ModelFitIcon } from '../components/models/ModelActionIcons'
 import {
   notifyModelsSettingsReady,
   onModelsEvent,
@@ -16,7 +16,7 @@ import {
   requestDownloadModel,
   requestUpdateVisionFallback,
   requestUpdateReasoningFallback,
-} from '../services/modelsBridge'
+} from '../services/models/modelsBridge'
 import type { ModelProviderGroup, ModelSummary } from '../types'
 import { modelFacts, type ModelFact } from './modelFacts'
 

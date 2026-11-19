@@ -7,6 +7,8 @@ import uuid
 
 from pydantic import BaseModel, Field
 
+from .local_server_recipe_models import MCPInstallRecipe, MCPProbeSpec
+
 
 class ExecutionApprovalMode(str, Enum):
     """How to handle command execution approval."""
@@ -55,6 +57,10 @@ class ToolExecutionSettings(BaseModel):
     auto_approve_read_only: bool = Field(
         default=True,
         description="Automatically approve read-only commands and scripts (grep, cat, ls, read-only AppleScript, etc.)"
+    )
+    model_judges_command_safety: bool = Field(
+        default=False,
+        description="Opt-in: before asking for approval, have a separate model review the command and run it without asking when the model is confident that it only reads and changes nothing. Blocked and high-risk commands, and any command the model is unsure about, still ask."
     )
     block_dangerous_patterns: bool = Field(
         default=True,
@@ -153,6 +159,21 @@ class MCPCachedTool(BaseModel):
     )
 
 
+class MCPCompanionSpec(BaseModel):
+    """A background program Basil runs beside a local MCP server, for servers that cannot work without one (for example a bridge that holds a paired session).
+
+    It runs without a shell, like the server itself. ``env`` holds non-secret values only; ``secret_env`` lists the names of variables whose values the person typed into Settings and that Basil keeps in the macOS Keychain, so no value is ever stored here. ``{port}`` in ``args`` or ``env`` is replaced with a free port allocated each time it starts; ``fixed_port`` is for a program that insists on one port and is mutually exclusive with ``{port}``.
+    """
+    command: str = Field(..., description="The executable to run, as a name on PATH or an absolute path")
+    args: List[str] = Field(default_factory=list, description="Arguments passed to the executable; {port} is replaced with the allocated port")
+    cwd: Optional[str] = Field(default=None, description="Absolute working directory the program starts in")
+    env: Dict[str, str] = Field(default_factory=dict, description="Extra non-secret environment variables for the program")
+    secret_env: List[str] = Field(default_factory=list, description="Names of environment variables whose values are kept in the Keychain and injected when the program starts")
+    start_with_basil: bool = Field(default=True, description="True starts the program whenever Basil starts; False starts it the first time the server is used. Either way it stops when Basil quits")
+    fixed_port: Optional[int] = Field(default=None, ge=1, le=65535, description="A port the program always listens on, used only to tell when it is ready")
+    probe: Optional[MCPProbeSpec] = Field(default=None, description="How Basil asks the running program whether it is healthy or waiting on the person, such as a code to scan")
+
+
 class MCPStdioSpec(BaseModel):
     """How Basil launches a local MCP server that speaks over standard input and output.
 
@@ -163,6 +184,9 @@ class MCPStdioSpec(BaseModel):
     cwd: Optional[str] = Field(default=None, description="Absolute working directory the server starts in")
     env: Dict[str, str] = Field(default_factory=dict, description="Extra non-secret environment variables for the server process")
     source_url: Optional[str] = Field(default=None, description="The repository address the person gave, kept exactly as given, so the connection can say where it came from")
+    secret_env: List[str] = Field(default_factory=list, description="Names of environment variables whose values are kept in the Keychain and injected when the server starts. Names only; a value never belongs in this record")
+    companion: Optional[MCPCompanionSpec] = Field(default=None, description="A background program Basil keeps running beside the server, when the server cannot work without one")
+    install: Optional[MCPInstallRecipe] = Field(default=None, description="What Basil prepares before the server first runs: programs it needs and the files it downloads or builds")
 
 
 class MCPConnectionRecord(BaseModel):

@@ -116,8 +116,10 @@ def runner_seams(monkeypatch):
 @pytest.fixture(autouse=True)
 def clean_controls():
     agent_run_control._controls.clear()
+    agent_run_control._ended_runs.clear()
     yield
     agent_run_control._controls.clear()
+    agent_run_control._ended_runs.clear()
 
 
 @pytest.fixture
@@ -153,6 +155,64 @@ async def test_note_sent_during_a_tool_reaches_the_next_model_call(recorded):
     ]
     assert recorded[0]["interaction_id"].startswith("note_")
     assert existing_run_control("task-1") is None
+
+
+@pytest.mark.asyncio
+async def test_note_held_before_the_loop_attaches_reaches_the_first_model_call(recorded):
+    held = run_control_for("task-1").enqueue("Use blue paint", hold_until_attached=True)
+    assert held is not None
+
+    model = ScriptedChatModel(responses=[AIMessage(content="Painted it blue.")])
+
+    run = await runner.run_agent_loop(_request(model, _state([])))
+
+    assert run.agent_output == "Painted it blue."
+    assert _has_note(model.calls[0], "Use blue paint")
+    assert [(entry["kind"], entry["status"], entry["prompt"], entry["interaction_id"]) for entry in recorded] == [
+        ("guidance", "resolved", "Use blue paint", held.message_id)
+    ]
+    assert existing_run_control("task-1") is None
+
+
+@pytest.mark.asyncio
+async def test_a_finished_loop_is_remembered_as_ended_until_the_task_runs_a_loop_again(recorded):
+    first = ScriptedChatModel(responses=[AIMessage(content="Done.")])
+    await runner.run_agent_loop(_request(first, _state([])))
+    assert agent_run_control.run_has_ended("task-1") is True
+
+    class CheckEndedMarkIsClearOnceTheLoopStarts(ScriptedChatModel):
+        def _generate(self, messages: Any, stop: Any = None, run_manager: Any = None, **kwargs: Any) -> ChatResult:
+            assert agent_run_control.run_has_ended("task-1") is False
+            return super()._generate(messages, stop, run_manager, **kwargs)
+
+    second = CheckEndedMarkIsClearOnceTheLoopStarts(responses=[AIMessage(content="Done again.")])
+    await runner.run_agent_loop(_request(second, _state([])))
+    assert agent_run_control.run_has_ended("task-1") is True
+
+
+def test_only_the_most_recent_ended_runs_are_remembered():
+    for index in range(agent_run_control.MAX_ENDED_RUNS_REMEMBERED + 5):
+        agent_run_control.mark_run_ended(f"task-{index}")
+
+    assert len(agent_run_control._ended_runs) == agent_run_control.MAX_ENDED_RUNS_REMEMBERED
+    assert agent_run_control.run_has_ended("task-0") is False
+    assert agent_run_control.run_has_ended(f"task-{agent_run_control.MAX_ENDED_RUNS_REMEMBERED + 4}") is True
+
+    agent_run_control.clear_run_ended(f"task-{agent_run_control.MAX_ENDED_RUNS_REMEMBERED + 4}")
+    assert agent_run_control.run_has_ended(f"task-{agent_run_control.MAX_ENDED_RUNS_REMEMBERED + 4}") is False
+
+
+def test_holding_a_note_is_opt_in_and_keeps_the_order_notes_were_sent():
+    control = AgentRunControl()
+
+    assert control.enqueue("Too early") is None
+    first = control.enqueue("First", hold_until_attached=True)
+    second = control.enqueue("Second", hold_until_attached=True)
+    assert first is not None and second is not None
+
+    control.attach()
+    assert control.enqueue("Third") is not None
+    assert [note.text for note in control.drain()] == ["First", "Second", "Third"]
 
 
 @pytest.mark.asyncio

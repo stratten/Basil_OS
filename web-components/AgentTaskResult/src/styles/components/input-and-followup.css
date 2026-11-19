@@ -1,5 +1,5 @@
-@import '../../../../shared/rich-text-followup.css';
-@import '../../../../shared/collapsible-region.css';
+@import '../../../../shared/text/rich-text-followup.css';
+@import '../../../../shared/disclosure/collapsible-region.css';
 
 .text-followup-presence-region {
   opacity: 1;

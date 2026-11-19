@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { AgentTokenConnectModal } from '../components/AgentTokenConnectModal'
+import { AgentTokenConnectModal } from '../components/connections/AgentTokenConnectModal'
 import {
   notifyTokenConnectReady,
   onTokenConnectEvent,
   requestTokenConnect,
   requestTokenConnectCancel,
   type TokenConnectRequest,
-} from '../services/tokenConnectBridge'
+} from '../services/connections/tokenConnectBridge'
 import '../styles/settings-elements.css'
 import '../styles/connections-settings.css'
 

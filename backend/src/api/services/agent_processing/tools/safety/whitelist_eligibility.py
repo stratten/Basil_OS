@@ -26,6 +26,8 @@ REMEMBERABLE_EXECUTION_TYPE = "shell"
 
 MAX_ADVICE_REASON_CHARS = 500
 MAX_PURPOSE_CHARS = 1000
+# Text Basil composes itself from facts it holds (a setup recipe lists every address, hash and command) must reach the card whole, because the card is what the person approves.
+MAX_BASIL_PURPOSE_CHARS = 12000
 
 # A connected-tool call is described to the approval service as `mcp:<connection name>:<tool>(<arguments>)`. As a command pattern that text either carries one call's arguments (and never matches again) or shrinks to the first word of the connection's name (and covers every tool on it), so connected tools are remembered per tool through the connection's tool policy instead.
 CONNECTED_TOOL_COMMAND_PREFIX = "mcp:"
@@ -132,14 +134,14 @@ def _assess_pattern(pattern: str) -> WhitelistEligibility:
     return WhitelistEligibility(True)
 
 
-def normalize_purpose(value: Any) -> Optional[str]:
+def normalize_purpose(value: Any, max_chars: int = MAX_PURPOSE_CHARS) -> Optional[str]:
     """Return the agent's explanation as trimmed text, or None when it is missing or blank."""
     if not isinstance(value, str):
         return None
     text = value.strip()
     if not text:
         return None
-    return text[:MAX_PURPOSE_CHARS]
+    return text[:max_chars]
 
 
 def normalize_whitelist_advice(

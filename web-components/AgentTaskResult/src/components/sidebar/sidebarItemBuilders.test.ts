@@ -197,7 +197,7 @@ describe('buildHistoryItems live chain rows', () => {
     expect(row.followUpCount).toBe(3);
   });
 
-  it('still names a chain after its first prompt when that turn is in memory', () => {
+  it('names a chain after its generated title even when its first prompt is in memory', () => {
     const agent = createAgentState('root-1', 'Latest prompt');
     agent.taskTitle = 'Gmail MCP Setup';
     agent.agentTaskHistory = [{
@@ -209,8 +209,31 @@ describe('buildHistoryItems live chain rows', () => {
 
     const [row] = buildHistoryItems(buildArgs([agent]));
 
-    expect(row.title).toBe('Set up the Gmail MCP');
+    expect(row.title).toBe('Gmail MCP Setup');
     expect(row.followUpCount).toBe(1);
+  });
+
+  it('names a chain after its first prompt while it has no generated title yet', () => {
+    const agent = createAgentState('root-1', 'Latest prompt');
+    agent.agentTaskHistory = [{
+      id: 'root-1',
+      agentTaskText: 'Set up the Gmail MCP',
+      result: 'done',
+      timestamp: '2026-10-28T14:00:00.000Z',
+    }] as AgentState['agentTaskHistory'];
+
+    const [row] = buildHistoryItems(buildArgs([agent]));
+
+    expect(row.title).toBe('Set up the Gmail MCP');
+  });
+
+  it('names a single-turn live task after its stored title instead of its prompt text', () => {
+    const agent = createAgentState('task-1', "Complete this to-do on the user's behalf: triage the inbox");
+    agent.taskTitle = 'Weekly Inbox Triage';
+
+    const [row] = buildHistoryItems(buildArgs([agent]));
+
+    expect(row.title).toBe('Weekly Inbox Triage');
   });
 
   it('falls back to the newest prompt for a single-turn live task with no stored title', () => {

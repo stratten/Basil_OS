@@ -62,8 +62,8 @@ vi.mock('../home/HomeView', () => ({
   },
 }));
 vi.mock('../todos/TodoView', () => ({ default: () => <div>To-Do content</div> }));
-vi.mock('../capabilities/AgentTasksHostPlaceholder', () => ({ default: () => <div>Agents content</div> }));
-vi.mock('../capabilities/ChatsTab', () => ({
+vi.mock('../capabilities/agentTasks/AgentTasksHostPlaceholder', () => ({ default: () => <div>Agents content</div> }));
+vi.mock('../capabilities/chats/ChatsTab', () => ({
   default: function MockChats({ originNavigation }: { originNavigation?: { originType: string; originId: string } }) {
     const forward = useHomeForward();
     return (

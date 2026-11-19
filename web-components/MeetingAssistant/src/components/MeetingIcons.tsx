@@ -1,7 +1,7 @@
 /** The outline icon set shared by every Notetaker surface: 16px viewBox, `currentColor`, thin strokes. Sizing comes from the button class that hosts the icon. */
 
-/** Stop, pause, and play are shared with the Agent Task windows, so they live in `shared/CircleControlIcons.tsx` and are re-exported here for the Notetaker. */
-export { StopCircleIcon, PlayCircleIcon, PauseCircleIcon } from '../../../shared/CircleControlIcons';
+/** Stop, pause, and play are shared with the Agent Task windows, so they live in `shared/windowChrome/CircleControlIcons.tsx` and are re-exported here for the Notetaker. */
+export { StopCircleIcon, PlayCircleIcon, PauseCircleIcon } from '../../../shared/windowChrome/CircleControlIcons';
 
 export function RecordCircleIcon() {
   return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true"><circle cx="8" cy="8" r="5.7" /><circle cx="8" cy="8" r="2.4" fill="currentColor" stroke="none" /></svg>;

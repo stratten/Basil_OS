@@ -1,6 +1,6 @@
 import { memo } from 'react'
 
-import { plainMarkdownText } from '@shared/plainMarkdownText'
+import { plainMarkdownText } from '@shared/text/plainMarkdownText'
 
 import type { SetupPendingProposal } from '@/state/setupAssistantStore'
 import type { SetupArtifact, SetupArtifactRow, SetupToolApprovalState } from '@/types'

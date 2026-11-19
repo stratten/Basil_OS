@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import MarkdownRenderer from '../MarkdownRenderer';
-import ExecutionDisclosureChevron from '@shared/ExecutionDisclosureChevron';
+import ExecutionDisclosureChevron from '@shared/disclosure/ExecutionDisclosureChevron';
 import AgentTaskOriginChip from './AgentTaskOriginChip';
 
 interface Props {

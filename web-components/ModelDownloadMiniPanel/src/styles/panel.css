@@ -1,7 +1,7 @@
-@import '../../../shared/webkit-window-chrome.css';
-@import '../../../shared/presence-motion.css';
-@import '../../../shared/reduced-motion.css';
-@import '../../../shared/semantic-state.css';
+@import '../../../shared/windowChrome/webkit-window-chrome.css';
+@import '../../../shared/motion/presence-motion.css';
+@import '../../../shared/motion/reduced-motion.css';
+@import '../../../shared/theme/semantic-state.css';
 
 :root {
   --background-primary: #ffffff;
@@ -60,13 +60,13 @@ body { color: var(--text-primary); font-family: var(--font-family-light); }
 .model-download-summary:active { cursor: grabbing; }
 .model-download-dismiss {
   position: absolute;
-  top: -2px;
+  top: -3px;
   left: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   padding: 0;
   border: 0;
   background: transparent;

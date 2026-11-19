@@ -22,9 +22,11 @@ from api.core.security.protected_runtime_paths import (
     references_protected_runtime_path,
 )
 
+from .command_safety_judge import UNSURE, judge_command_safety
 from .models import ExecutionApprovalDecision, ExecutionApprovalOutcome
 from .risk_assessment import RiskAssessor
 from .python_read_only_command import classify_python_command_read_only
+from .shell_syntax import classify_read_only
 from .workspace_scope import judge_workspace_command
 from .command_generalization import CommandGeneralizer
 from .pattern_matcher import PatternMatcher
@@ -200,7 +202,9 @@ class ExecutionApprovalService:
             logger.info(f"🔍 Checking whitelist for command: '{command}' (whitelist has {len(settings.whitelisted_commands)} patterns)")
 
             # The raw command is matched, word by word: a shortened copy would make every `gh ...` command look like `gh`.
-            matched_pattern = self.pattern_matcher.check_whitelist(command, settings.whitelisted_commands)
+            # An AppleScript is reviewed every time (see assess_whitelist_eligibility), and its remembered text is only the agent's description of it. An entry saved before that rule, such as the prefix "AppleScript:", must not approve a different script.
+            scripts_are_reviewed = (context or {}).get("execution_type") == "applescript"
+            matched_pattern = None if scripts_are_reviewed else self.pattern_matcher.check_whitelist(command, settings.whitelisted_commands)
             if matched_pattern:
                 if self.risk_assessor.is_high_risk(command):
                     logger.info(f"⚠️ High-risk command matched '{matched_pattern.pattern}'; asking again")
@@ -217,10 +221,54 @@ class ExecutionApprovalService:
                     matched_pattern=matched_pattern
                 )
 
+            if settings.auto_approve_read_only and not scripts_are_reviewed and not is_connected_tool_command(command):
+                # A script is judged one command at a time: it runs unasked when every command in it is read-only or one the user has already remembered, because then nothing in it is new to the user. The remembered patterns are only ever for plain commands, so a script of several commands could never match one as a whole.
+                remembered_verdict = classify_read_only(
+                    command,
+                    remembered=lambda words: self.pattern_matcher.covers_words(words, settings.whitelisted_commands),
+                )
+                if remembered_verdict.is_read_only and not self.risk_assessor.is_high_risk(command):
+                    logger.info(f"✅ Every command in the script is read-only or remembered: '{command[:120]}'")
+                    return ExecutionApprovalDecision(
+                        needs_approval=False,
+                        reason="Every command in it is read-only or one you already approved and remembered",
+                        risk_level=risk_level
+                    )
+
+            judge_note = ""
+            if settings.model_judges_command_safety and not scripts_are_reviewed and not is_connected_tool_command(command):
+                # Opt-in. A separate model reviews the command alone (no conversation, no explanation from the agent). Only a confident "reads only" skips the prompt; a high-risk command is never decided by the model, and anything else, including a failure of the model itself, asks as it always did.
+                if not self.risk_assessor.is_high_risk(command):
+                    judgment = await judge_command_safety(command, cwd=(context or {}).get("cwd"))
+                    logger.info(
+                        f"[AgentTelemetry] command-judge verdict={judgment.verdict} confidence={judgment.confidence:.2f} "
+                        f"seconds={judgment.seconds:.2f} model={judgment.model_name or 'none'} reason={judgment.reason!r} command={command[:160]!r}"
+                    )
+                    if judgment.approves:
+                        return ExecutionApprovalDecision(
+                            needs_approval=False,
+                            reason=f"A separate model check found that this only reads: {judgment.reason}",
+                            risk_level=risk_level
+                        )
+                    if judgment.verdict != UNSURE:
+                        judge_note = f"A separate model check says it may change something: {judgment.reason}"
+                    else:
+                        judge_note = f"A separate model check was not sure: {judgment.reason}"
+
             logger.info("❌ Command did not match any whitelist pattern")
             logger.debug(f"Command requires approval (not whitelisted): {command}")
             # A connected tool is never matched against the whitelist; it reaches here because its policy is Always ask.
-            reason = CONNECTED_TOOL_ASK_REASON if is_connected_tool_command(command) else "Command not in whitelist"
+            if is_connected_tool_command(command):
+                reason = CONNECTED_TOOL_ASK_REASON
+            else:
+                reason = "Command not in whitelist"
+                if settings.auto_approve_read_only:
+                    # The read-only check already ran and said why it refused, so the card says that instead of leaving the reader to guess which part of the command asked.
+                    refusal = classify_read_only(command)
+                    if not refusal.is_read_only:
+                        reason = f"Needs your approval because {refusal.reason}, and no remembered approval covers it"
+            if judge_note:
+                reason = f"{reason}. {judge_note}"
             return ExecutionApprovalDecision(
                 needs_approval=True,
                 reason=reason,

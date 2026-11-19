@@ -1,4 +1,4 @@
-@import '../../../shared/motion-tokens.css';
+@import '../../../shared/motion/motion-tokens.css';
 @import './setup-assistant.shared.css';
 @import './setup-assistant.intro.css';
 @import './setup-assistant.completion.css';

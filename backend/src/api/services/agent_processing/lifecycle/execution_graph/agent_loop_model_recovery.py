@@ -7,6 +7,7 @@ import hashlib
 import json
 import random
 import re
+import time
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Optional
 
@@ -568,13 +569,21 @@ class ModelRecoveryMiddleware(AgentMiddleware):
     ) -> Any:
         transient_attempts = 0
         empty_retried = False
+        prep_started = time.monotonic()
         await self._summarize_if_needed(request)
         self._elide_routinely(request)
         self._compact_proactively(request)
+        prep_seconds = time.monotonic() - prep_started
+        failed_attempt_seconds = 0.0
+        retry_wait_seconds = 0.0
+        attempts = 0
         while True:
+            attempts += 1
+            attempt_started = time.monotonic()
             try:
                 response = await handler(self._compacted(request))
             except Exception as error:
+                failed_attempt_seconds += time.monotonic() - attempt_started
                 classification = classify_model_error(error)
                 if classification.kind == EMPTY_GENERATION:
                     if not empty_retried:
@@ -621,13 +630,16 @@ class ModelRecoveryMiddleware(AgentMiddleware):
                         str(error)[:200],
                         backoff_seconds,
                     )
+                    retry_wait_started = time.monotonic()
                     await asyncio.sleep(backoff_seconds)
+                    retry_wait_seconds += time.monotonic() - retry_wait_started
                     continue
                 if self.completed_model_calls == 0 and _is_model_unreachable(error):
                     raise ModelUnavailableBeforeFirstResponse(error) from error
                 if is_transient and self.pause_when_connection_lost and self.completed_model_calls > 0:
                     raise ConnectionLostPause(error, model_label=self.model_label) from error
                 raise
+            successful_attempt_seconds = time.monotonic() - attempt_started
             if self.connection is not None:
                 await self.connection.restored()
             self.completed_model_calls += 1
@@ -638,6 +650,16 @@ class ModelRecoveryMiddleware(AgentMiddleware):
                     f"🔬 PIPELINE: model returned — {_llm_output_log_fields(last_ai)}, prefix={prefix}"
                 )
                 logger.info(f"[AgentTelemetry] call-context {tool_result_log_fields(request)}")
+                logger.info(
+                    "[AgentTelemetry] model-call-timing model_seconds=%.2f prep_seconds=%.2f "
+                    "failed_attempt_seconds=%.2f retry_wait_seconds=%.2f attempts=%d prefix=%s",
+                    successful_attempt_seconds,
+                    prep_seconds,
+                    failed_attempt_seconds,
+                    retry_wait_seconds,
+                    attempts,
+                    prefix,
+                )
                 if self._previous_prefix is not None and _cache_read_tokens(last_ai) == 0:
                     if prefix == self._previous_prefix:
                         logger.warning("Prompt cache miss with an unchanged prefix (likely cache TTL expiry)")

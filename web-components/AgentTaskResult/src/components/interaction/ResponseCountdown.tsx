@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { formatClockSeconds } from '@shared/formatClockSeconds';
+import { formatClockSeconds } from '@shared/format/formatClockSeconds';
 import type { ResponseTimeLimit } from '../../types';
 import {
   responseCountdownState,

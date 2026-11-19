@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { AppearanceColorField } from '../components/AppearanceColorField'
-import { AppearancePresetSwatches } from '../components/AppearancePresetSwatches'
-import { AppearanceDeleteThemeConfirm } from '../components/AppearanceDeleteThemeConfirm'
-import { AppearanceSaveThemeControl } from '../components/AppearanceSaveThemeControl'
-import { AppearancePreviewCard } from '../components/AppearancePreviewCard'
-import { AppearanceTextSizeControl, nearestTextScaleStep } from '../components/AppearanceTextSizeControl'
+import { AppearanceColorField } from '../components/appearance/AppearanceColorField'
+import { AppearancePresetSwatches } from '../components/appearance/AppearancePresetSwatches'
+import { AppearanceDeleteThemeConfirm } from '../components/appearance/AppearanceDeleteThemeConfirm'
+import { AppearanceSaveThemeControl } from '../components/appearance/AppearanceSaveThemeControl'
+import { AppearancePreviewCard } from '../components/appearance/AppearancePreviewCard'
+import { AppearanceTextSizeControl, nearestTextScaleStep } from '../components/appearance/AppearanceTextSizeControl'
 import type { AppearancePreset } from '../data/appearancePresets'
-import { AppearanceSaveBar } from '../components/AppearanceSaveBar'
-import TokenizedSelect from '@shared/TokenizedSelect'
-import { Switch } from '@shared/Switch'
+import { AppearanceSaveBar } from '../components/appearance/AppearanceSaveBar'
+import TokenizedSelect from '@shared/inputs/TokenizedSelect'
+import { Switch } from '@shared/inputs/Switch'
 import {
   cancelDraft,
   notifyAppearanceSettingsReady,

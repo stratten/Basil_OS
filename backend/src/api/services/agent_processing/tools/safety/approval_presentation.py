@@ -10,6 +10,8 @@ from .whitelist_eligibility import (
     REMEMBERABLE_EXECUTION_TYPE,
     WhitelistEligibility,
     assess_whitelist_eligibility,
+    MAX_BASIL_PURPOSE_CHARS,
+    MAX_PURPOSE_CHARS,
     normalize_purpose,
     normalize_whitelist_advice,
 )
@@ -47,7 +49,7 @@ def approval_presentation_fields(
 ) -> Dict[str, Any]:
     """Build the explanation, remember eligibility, and script metadata for one approval card."""
     eligibility = context_whitelist_eligibility(command, generalized_pattern, context)
-    purpose = normalize_purpose(context.get("purpose"))
+    purpose = normalize_purpose(context.get("purpose"), MAX_BASIL_PURPOSE_CHARS if context.get("purpose_source") == PURPOSE_SOURCE_BASIL else MAX_PURPOSE_CHARS)
     tool_policy = normalize_tool_policy_scope(context.get("remember_tool_policy"))
     fields: Dict[str, Any] = {
         "whitelist": {

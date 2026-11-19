@@ -11,7 +11,7 @@ vi.mock('../services/api', () => ({
   isApiReady: () => true,
 }));
 
-vi.mock('../../../shared/ReasoningModelPicker', () => ({
+vi.mock('../../../shared/inputs/ReasoningModelPicker', () => ({
   default: ({
     ariaLabel,
     onRequestNativeMenu,

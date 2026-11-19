@@ -5,9 +5,10 @@ The websocket registry holds every connection, including connections authenticat
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from fastapi import WebSocket
 
@@ -28,6 +29,34 @@ def is_host_connection(websocket: Any) -> bool:
 
 def host_connections() -> List[WebSocket]:
     return [websocket for websocket in list(active_connections) if is_host_connection(websocket)]
+
+
+_host_waiters: List["asyncio.Future[None]"] = []
+
+
+def note_host_connected() -> None:
+    """Wake everything waiting in ``wait_for_host_connection``. Called when a host connection has been registered."""
+    waiters = list(_host_waiters)
+    _host_waiters.clear()
+    for waiter in waiters:
+        if not waiter.done():
+            waiter.set_result(None)
+
+
+async def wait_for_host_connection(timeout_seconds: Optional[float] = None) -> bool:
+    """Wait until the native app is connected. True once it is; False if ``timeout_seconds`` runs out first."""
+    if host_connections():
+        return True
+    waiter: "asyncio.Future[None]" = asyncio.get_running_loop().create_future()
+    _host_waiters.append(waiter)
+    try:
+        await asyncio.wait_for(waiter, timeout=timeout_seconds)
+        return True
+    except asyncio.TimeoutError:
+        return False
+    finally:
+        if waiter in _host_waiters:
+            _host_waiters.remove(waiter)
 
 
 async def send_json_to_host_connections(payload: Dict[str, Any], *, log: logging.Logger | None = None) -> int:

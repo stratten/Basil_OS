@@ -1,5 +1,5 @@
 import type { BoardInquirySummary } from '../contracts';
-import { plainMarkdownText } from '@shared/plainMarkdownText';
+import { plainMarkdownText } from '@shared/text/plainMarkdownText';
 
 export const RECENT_REQUEST_LIMIT = 5;
 

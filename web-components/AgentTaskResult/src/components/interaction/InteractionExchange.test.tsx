@@ -111,7 +111,8 @@ describe('InteractionExchange', () => {
       <InteractionExchange interaction={{ ...answered, kind: 'approval', status: 'denied', prompt: 'rm -rf **build**', response: undefined }} />,
     );
 
-    expect(markup).toContain('<pre class="interaction-exchange-command">rm -rf **build**</pre>');
+    expect(markup).toContain('<div class="interaction-exchange-command">rm -rf **build**</div>');
+    expect(markup).not.toContain('basil-expandable-clamp');
     expect(markup).toContain('Basil asked to run');
     expect(markup).toContain('interaction-turn is-user is-negative');
     expect(markup).toContain('You declined');
@@ -271,18 +272,18 @@ describe('InteractionExchange approval card', () => {
     purpose: 'Creates a draft email in Mail so you can review it.',
   };
 
-  it('leads with the agent explanation and shows only a short command preview', () => {
+  it('leads with the agent explanation and keeps the command behind a Show command button', () => {
     const markup = renderToStaticMarkup(<InteractionExchange interaction={approval} />);
 
     expect(markup).toContain('What this does');
     expect(markup).toContain('Creates a draft email in Mail so you can review it.');
     expect(markup.indexOf('What this does')).toBeLessThan(markup.indexOf('interaction-exchange-command'));
-    expect(markup).toContain('Show full command');
-    expect(markup).toContain('…</pre>');
-    expect(markup).not.toContain('second line');
+    expect(markup).toContain('Show command');
+    expect(markup).not.toContain('Show full command');
+    expect(markup).not.toContain('basil-expandable-clamp');
   });
 
-  it('offers the full script behind an expander and keeps its text hidden until opened', () => {
+  it('offers the full script behind an expander and keeps its region closed until opened', () => {
     const markup = renderToStaticMarkup(
       <InteractionExchange
         interaction={{
@@ -295,7 +296,8 @@ describe('InteractionExchange approval card', () => {
 
     expect(markup).toContain('View full script (3 lines)');
     expect(markup).toContain('/tmp/run.scpt');
-    expect(markup).not.toContain('activate');
+    expect(markup).toMatch(/<div[^>]*basil-collapsible-region is-collapsed[^>]*aria-hidden="true"/);
+    expect(markup).toContain('aria-expanded="false"');
   });
 
   it('credits the explanation to the agent, or to Basil when Basil wrote it', () => {
@@ -314,14 +316,16 @@ describe('InteractionExchange approval card', () => {
     expect(missing).toContain('The agent did not explain this command.');
     expect(older).not.toContain('did not explain');
     expect(older).not.toContain('What this does');
-    expect(older).toContain('Show full command');
+    expect(older).toContain('Show command');
   });
 
-  it('shows a short command in full with no expander', () => {
+  it('keeps even a short command behind the Show command button, collapsed, with no preview', () => {
     const markup = renderToStaticMarkup(<InteractionExchange interaction={{ ...approval, prompt: 'git status' }} />);
 
-    expect(markup).toContain('<pre class="interaction-exchange-command">git status</pre>');
-    expect(markup).not.toContain('Show full command');
+    expect(markup).toContain('Show command');
+    expect(markup).toContain('basil-collapsible-region is-collapsed');
+    expect(markup).toContain('<div class="interaction-exchange-command">git status</div>');
+    expect(markup).not.toContain('basil-expandable-clamp');
   });
 });
 

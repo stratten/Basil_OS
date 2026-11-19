@@ -93,6 +93,7 @@ struct ExecutionApprovalSettings: Codable {
     let showFullCommandInPrompt: Bool
     let rememberChoiceOption: Bool
     let autoApproveReadOnly: Bool
+    let modelJudgesCommandSafety: Bool
     let blockDangerousPatterns: Bool
     let whitelistedCount: Int
     let safeExecutionMode: Bool
@@ -104,6 +105,7 @@ struct ExecutionApprovalSettings: Codable {
         case showFullCommandInPrompt = "show_full_command_in_prompt"
         case rememberChoiceOption = "remember_choice_option"
         case autoApproveReadOnly = "auto_approve_read_only"
+        case modelJudgesCommandSafety = "model_judges_command_safety"
         case blockDangerousPatterns = "block_dangerous_patterns"
         case whitelistedCount = "whitelisted_count"
         case safeExecutionMode = "safe_execution_mode"
@@ -145,6 +147,7 @@ struct ExecutionApprovalSettings: Codable {
         showFullCommandInPrompt = try container.decode(Bool.self, forKey: .showFullCommandInPrompt)
         rememberChoiceOption = try container.decode(Bool.self, forKey: .rememberChoiceOption)
         autoApproveReadOnly = try container.decode(Bool.self, forKey: .autoApproveReadOnly)
+        modelJudgesCommandSafety = try container.decodeIfPresent(Bool.self, forKey: .modelJudgesCommandSafety) ?? false
         blockDangerousPatterns = try container.decode(Bool.self, forKey: .blockDangerousPatterns)
         whitelistedCount = try container.decode(Int.self, forKey: .whitelistedCount)
         safeExecutionMode = try container.decodeIfPresent(Bool.self, forKey: .safeExecutionMode) ?? false
@@ -152,11 +155,12 @@ struct ExecutionApprovalSettings: Codable {
         timeoutBehavior = try container.decodeIfPresent(TimeoutBehavior.self, forKey: .timeoutBehavior) ?? .waitForever
     }
     
-    init(approvalMode: ApprovalMode, showFullCommandInPrompt: Bool, rememberChoiceOption: Bool, autoApproveReadOnly: Bool, blockDangerousPatterns: Bool, whitelistedCount: Int, safeExecutionMode: Bool = false, approvalTimeoutSeconds: Int = 120, timeoutBehavior: TimeoutBehavior = .waitForever) {
+    init(approvalMode: ApprovalMode, showFullCommandInPrompt: Bool, rememberChoiceOption: Bool, autoApproveReadOnly: Bool, blockDangerousPatterns: Bool, whitelistedCount: Int, safeExecutionMode: Bool = false, approvalTimeoutSeconds: Int = 120, timeoutBehavior: TimeoutBehavior = .waitForever, modelJudgesCommandSafety: Bool = false) {
         self.approvalMode = approvalMode
         self.showFullCommandInPrompt = showFullCommandInPrompt
         self.rememberChoiceOption = rememberChoiceOption
         self.autoApproveReadOnly = autoApproveReadOnly
+        self.modelJudgesCommandSafety = modelJudgesCommandSafety
         self.blockDangerousPatterns = blockDangerousPatterns
         self.whitelistedCount = whitelistedCount
         self.safeExecutionMode = safeExecutionMode
@@ -246,6 +250,7 @@ struct UpdateApprovalSettingsRequest: Codable {
     let showFullCommandInPrompt: Bool?
     let rememberChoiceOption: Bool?
     let autoApproveReadOnly: Bool?
+    let modelJudgesCommandSafety: Bool?
     let blockDangerousPatterns: Bool?
     let safeExecutionMode: Bool?
     let approvalTimeoutSeconds: Int?
@@ -256,6 +261,7 @@ struct UpdateApprovalSettingsRequest: Codable {
         case showFullCommandInPrompt = "show_full_command_in_prompt"
         case rememberChoiceOption = "remember_choice_option"
         case autoApproveReadOnly = "auto_approve_read_only"
+        case modelJudgesCommandSafety = "model_judges_command_safety"
         case blockDangerousPatterns = "block_dangerous_patterns"
         case safeExecutionMode = "safe_execution_mode"
         case approvalTimeoutSeconds = "approval_timeout_seconds"
@@ -267,6 +273,7 @@ struct UpdateApprovalSettingsRequest: Codable {
         showFullCommandInPrompt: Bool? = nil,
         rememberChoiceOption: Bool? = nil,
         autoApproveReadOnly: Bool? = nil,
+        modelJudgesCommandSafety: Bool? = nil,
         blockDangerousPatterns: Bool? = nil,
         safeExecutionMode: Bool? = nil,
         approvalTimeoutSeconds: Int? = nil,
@@ -276,6 +283,7 @@ struct UpdateApprovalSettingsRequest: Codable {
         self.showFullCommandInPrompt = showFullCommandInPrompt
         self.rememberChoiceOption = rememberChoiceOption
         self.autoApproveReadOnly = autoApproveReadOnly
+        self.modelJudgesCommandSafety = modelJudgesCommandSafety
         self.blockDangerousPatterns = blockDangerousPatterns
         self.safeExecutionMode = safeExecutionMode
         self.approvalTimeoutSeconds = approvalTimeoutSeconds

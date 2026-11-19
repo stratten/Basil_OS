@@ -4,8 +4,8 @@ import MeetingAnalysisApp from '../MeetingAnalysisApp';
 import '../styles/meeting-analysis.css';
 import '../styles/meeting-proposal-motion.css';
 import '../styles/meeting-analysis-surface-finish.css';
-import { installBlueprintReveal } from '@shared/blueprintController';
-import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish';
+import { installBlueprintReveal } from '@shared/blueprint/blueprintController';
+import { enableBackdropSurfaceFinish } from '@shared/theme/surfaceFinish';
 import { installBasilTooltips } from '@shared/tooltip/basilTooltip';
 
 enableBackdropSurfaceFinish();

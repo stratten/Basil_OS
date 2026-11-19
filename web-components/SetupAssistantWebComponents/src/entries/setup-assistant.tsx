@@ -4,8 +4,8 @@ import { createRoot } from 'react-dom/client'
 import { SetupAssistantApp } from '@/app/SetupAssistantApp'
 import '@/styles/setup-assistant.css'
 import '@/styles/setup-assistant-surface-finish.css'
-import { installBlueprintReveal } from '@shared/blueprintController'
-import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish'
+import { installBlueprintReveal } from '@shared/blueprint/blueprintController'
+import { enableBackdropSurfaceFinish } from '@shared/theme/surfaceFinish'
 import { installBasilTooltips } from '@shared/tooltip/basilTooltip'
 
 enableBackdropSurfaceFinish()

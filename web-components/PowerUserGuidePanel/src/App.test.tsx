@@ -183,4 +183,18 @@ describe('PowerUserGuidePanel App', () => {
 
     expect(state.dismissPanel).toHaveBeenCalledOnce()
   })
+
+  it('dismisses via the shared close glyph, first in the header at the top left, ahead of the title', () => {
+    act(() => state.initHandler!(config))
+    const header = container.querySelector('.pug-header')!
+    const close = header.querySelector<HTMLButtonElement>('button[aria-label="Close"]')!
+
+    expect(Array.from(header.children).find(child => !child.hasAttribute('data-window-move-handle'))).toBe(close)
+    expect(close.querySelector('.basil-window-control-circle')).not.toBeNull()
+    expect(header.lastElementChild?.textContent).toBe("Basil's Capabilities")
+
+    act(() => close.click())
+
+    expect(state.dismissPanel).toHaveBeenCalledOnce()
+  })
 })

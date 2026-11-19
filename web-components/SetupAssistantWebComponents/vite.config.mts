@@ -22,7 +22,7 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['src/**/*.{test,spec}.{ts,tsx}', '../shared/useStickToBottom.test.tsx', '../shared/ContextImportPanel.test.tsx', '../shared/ProfileImportPanel.test.tsx', '../shared/ImportDialogs.test.tsx', '../shared/ImportJobProgress.test.tsx', '../shared/useContextImportJob.test.tsx', '../shared/contextImportClient.test.ts', '../shared/BasilModalDialog.test.tsx', '../shared/basilModalDialog.contract.test.ts', '../shared/DownloadProgress.test.tsx'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}', '../shared/motion/useStickToBottom.test.tsx', '../shared/contextImport/ContextImportPanel.test.tsx', '../shared/contextImport/ProfileImportPanel.test.tsx', '../shared/contextImport/ImportDialogs.test.tsx', '../shared/contextImport/ImportJobProgress.test.tsx', '../shared/contextImport/useContextImportJob.test.tsx', '../shared/contextImport/contextImportClient.test.ts', '../shared/dialogs/BasilModalDialog.test.tsx', '../shared/dialogs/basilModalDialog.contract.test.ts', '../shared/status/DownloadProgress.test.tsx'],
   },
   build: {
     outDir: 'dist',

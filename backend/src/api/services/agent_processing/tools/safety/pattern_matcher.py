@@ -49,6 +49,21 @@ class PatternMatcher:
 
         return None
 
+    def covers_words(self, words: List[Optional[str]], whitelist: List[CommandPattern]) -> bool:
+        """Whether a remembered prefix pattern covers one simple command, given as its name and arguments with None for any word the shell computes.
+
+        This is how a command inside a script is judged on its own. Only prefix patterns count, because an exact or regex pattern describes a whole command string. Patterns the eligibility rule forbids are skipped quietly here, since ``check_whitelist`` already reports them. A computed word never equals a pattern word, so a pattern cannot match through one.
+        """
+        for pattern in whitelist:
+            if pattern.pattern_type != 'prefix':
+                continue
+            if self.is_naked_wrapper(pattern.pattern) or self.is_never_rememberable(pattern.pattern):
+                continue
+            required = pattern_words(pattern.pattern)
+            if required and words[:len(required)] == required:
+                return True
+        return False
+
     def matches_pattern(self, command: str, pattern: CommandPattern) -> bool:
         """Check if a command matches a specific pattern.
 

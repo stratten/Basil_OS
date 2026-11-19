@@ -5,8 +5,8 @@ import '../styles/theme.css';
 import '../styles/components.css';
 import '../styles/components/local-web-preview.css';
 import '../styles/preview-surface-finish.css';
-import { installBlueprintReveal } from '@shared/blueprintController';
-import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish';
+import { installBlueprintReveal } from '@shared/blueprint/blueprintController';
+import { enableBackdropSurfaceFinish } from '@shared/theme/surfaceFinish';
 import { installBasilTooltips } from '@shared/tooltip/basilTooltip';
 
 enableBackdropSurfaceFinish();

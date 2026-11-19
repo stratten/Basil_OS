@@ -21,6 +21,12 @@ describe('managedVersionLabel', () => {
     expect(label.startsWith('Run 1.1 · edit · ')).toBe(true);
   });
 
+  it('uses the run label when the run has no number, as a scheduled check does', () => {
+    const scheduled = { id: 'b', displayNumber: '', label: 'Scheduled check 2 of Follow-up 4' } as unknown as AgentTaskRunFocusSummary;
+    const label = managedVersionLabel([version('c'), version('b')], 1, [scheduled]);
+    expect(label.startsWith('Scheduled check 2 of Follow-up 4 · edit · ')).toBe(true);
+  });
+
   it('falls back to a position-based number when the run is unknown', () => {
     const label = managedVersionLabel([version('c'), version('b'), version('a')], 1, [run('zzz', '9')]);
     expect(label.startsWith('Run 2 · edit · ')).toBe(true);

@@ -44,7 +44,7 @@ def item_for_model(item: Dict[str, Any]) -> Dict[str, Any]:
         "status": item["status"],
         "required": item["required"],
     }
-    for key in ("detail", "note", "waiting_on", "recheck_at"):
+    for key in ("detail", "note", "waiting_on", "recheck_at", "done_basis"):
         if item.get(key):
             view[key] = item[key]
     if item.get("refs"):

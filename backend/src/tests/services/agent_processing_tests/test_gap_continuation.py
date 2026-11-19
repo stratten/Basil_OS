@@ -189,6 +189,7 @@ async def test_scheduler_runs_the_continuation_on_the_chains_model(repository):
     assert counts["submitted"] == 1
     call = submission.calls[0]
     assert call["model_id"] == "local-qwen"
+    assert call["origin_type"] == "agent_follow_up"
     assert GAP in call["agent_task"]
     assert call["display_prompt_markdown"] == f"**Continuing task:** {GAP}"
     assert (await repository.get_follow_up(row["id"]))["status"] == "submitted"

@@ -12,6 +12,8 @@ import { dismissPanel, notifyRendererReady, registerHotkeysHandler, registerInit
 import { HotkeysContext } from './hotkeys'
 import type { FontConfig, HotkeyMap, SectionId, ThemeConfig } from './types'
 import { applyHostTheme } from './app/themeBootstrap'
+import { WindowControlButton } from '@shared/windowChrome/WindowControlButton'
+import { WindowMoveHandle } from '@shared/windowChrome/WindowMoveHandle'
 
 function toCssFontFamily(fontName: string) {
   const trimmed = fontName.trim()
@@ -66,11 +68,10 @@ export default function App() {
   return (
     <div className="basil-webkit-window-frame pug-frame">
       <div className="pug-shell basil-webkit-window-surface">
-        <header className="pug-header">
+        <header className="pug-header window-move-host">
+          <WindowMoveHandle />
+          <WindowControlButton kind="close" label="Close" className="pug-header-close" onClick={dismissPanel} />
           <span className="pug-header-title">Basil's Capabilities</span>
-          <button type="button" className="pug-header-close" onClick={dismissPanel} aria-label="Close">
-            ✕
-          </button>
         </header>
         <div className="pug-body">
           <Sidebar selected={selectedSection} onSelect={setSelectedSection} />

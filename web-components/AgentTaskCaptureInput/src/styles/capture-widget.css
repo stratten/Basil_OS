@@ -1,5 +1,5 @@
-@import '../../../shared/webkit-window-chrome.css';
-@import '../../../shared/semantic-state.css';
+@import '../../../shared/windowChrome/webkit-window-chrome.css';
+@import '../../../shared/theme/semantic-state.css';
 
 .capture-widget {
   display: flex;
@@ -388,7 +388,7 @@
   white-space: nowrap;
 }
 
-/* The reference materials list is the shared AttachmentList (class attachment-list--flush); its metrics live in shared/attachment-area.css and mirror AgentTaskCaptureWidget.swift: 12px header, 18px rows, 2px spacing, three visible rows. */
+/* The reference materials list is the shared AttachmentList (class attachment-list--flush); its metrics live in shared/attachments/attachment-area.css and mirror AgentTaskCaptureWidget.swift: 12px header, 18px rows, 2px spacing, three visible rows. */
 
 /* Drop zone overlay — faithful port of DropZoneOverlay (AgentTaskCaptureWidget.swift lines 559-583). */
 .capture-drop-overlay {

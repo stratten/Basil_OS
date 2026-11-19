@@ -12,7 +12,9 @@ import {
   requestResize,
 } from './services/bridge';
 import { wsManager } from './services/websocket';
-import { BackendLivenessBanner } from '@shared/BackendLivenessBanner';
+import { BackendLivenessBanner } from '@shared/status/BackendLivenessBanner';
+import { WindowControlButton } from '@shared/windowChrome/WindowControlButton';
+import { WindowMoveHandle } from '@shared/windowChrome/WindowMoveHandle';
 import * as api from './services/api';
 import ScheduledRunRow from './components/ScheduledRunRow';
 import { applyHostTheme } from './app/themeBootstrap';
@@ -522,38 +524,21 @@ export default function App() {
   return (
     <div className="basil-webkit-window-frame">
       <div className="mini-panel basil-webkit-window-surface" role="region" aria-label="Scheduled Paprika task runs">
-      <div className="mini-panel-header">
-        <div className="mini-panel-header-title">
-          <span>Scheduled runs</span>
-          {rows.length > 0 && <span className="mini-panel-header-count">{rows.length}</span>}
-        </div>
+      <div className="mini-panel-header window-move-host">
+        <WindowMoveHandle />
         <div className="mini-panel-header-actions">
           {/*
-            Minimize button mirrors the standard window-control vocabulary:
-            ``−`` (U+2212 MINUS SIGN) glyph for "minimize to Dock",
-            ``×`` for "dismiss". Both buttons share the same hover /
-            focus chrome via .mini-panel-dismiss so they read as a
-            single control group. The minimize action goes through the
-            bridge -> Swift -> NSPanel.miniaturize(nil) rather than any
+            The window controls sit first in the header at the top left, in the same order and with the same shared glyphs as every other Basil window: close, then minimize.
+            The minimize action goes through the bridge -> Swift -> NSPanel.miniaturize(nil) rather than any
             CSS / web minimization because the panel itself lives in a
             non-activating NSPanel; only AppKit can park it in the Dock.
           */}
-          <button
-            type="button"
-            className="mini-panel-dismiss"
-            onClick={() => bridgeMinimizePanel()}
-            aria-label="Minimize panel"
-          >
-            −
-          </button>
-          <button
-            type="button"
-            className="mini-panel-dismiss"
-            onClick={() => bridgeDismissPanel()}
-            aria-label="Dismiss panel"
-          >
-            ×
-          </button>
+          <WindowControlButton kind="close" label="Dismiss panel" className="mini-panel-dismiss" onClick={() => bridgeDismissPanel()} />
+          <WindowControlButton kind="minimize" label="Minimize panel" className="mini-panel-dismiss" onClick={() => bridgeMinimizePanel()} />
+        </div>
+        <div className="mini-panel-header-title">
+          <span>Scheduled runs</span>
+          {rows.length > 0 && <span className="mini-panel-header-count">{rows.length}</span>}
         </div>
       </div>
       <div className="mini-panel-rows">

@@ -1,5 +1,5 @@
-@import '../../../shared/webkit-window-chrome.css';
-@import '../../../shared/basil-window-chrome.css';
+@import '../../../shared/windowChrome/webkit-window-chrome.css';
+@import '../../../shared/windowChrome/basil-window-chrome.css';
 
 :root {
   --background-primary: #ffffff;

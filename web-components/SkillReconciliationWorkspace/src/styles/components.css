@@ -1,4 +1,4 @@
-@import '../../../shared/webkit-window-chrome.css';
+@import '../../../shared/windowChrome/webkit-window-chrome.css';
 
 /* Skill Reconciliation Workspace styles.
    Reuses AgentTaskResult's token vocabulary and shared window chrome contract. */

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react';
-import { useCollapseShortcut } from '@shared/useCollapseShortcut';
-import { setBlueprintExpectedSize } from '@shared/blueprintController';
+import { useCollapseShortcut } from '@shared/disclosure/useCollapseShortcut';
+import { setBlueprintExpectedSize } from '@shared/blueprint/blueprintController';
 import { onAssistantSessionEvent, reportReady, requestResize, toggleResultCollapse } from '../bridge/assistantSessionBridge';
 import { applyAssistantSessionEvent, initialAssistantSessionState, resolveTheme } from '../state/assistantSessionReducer';
 import type { AssistantSessionState } from '../state/assistantSessionReducer';

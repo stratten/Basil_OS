@@ -332,7 +332,7 @@ final class WebSocketService: NSObject, URLSessionWebSocketDelegate {
                                     #endif
                                     self.handleMeetingCalendarProbe(json)
 
-                                case "meeting_detected", "meeting_ended", "meeting_prompt_expired":
+                                case "meeting_detected", "meeting_ended", "meeting_ending", "meeting_end_canceled", "meeting_prompt_expired":
                                     // The mechanical meeting-detection loop surfaces its
                                     // own minimal panel. Like the scheduled-agent-task
                                     // events, fan this out via NotificationCenter so the

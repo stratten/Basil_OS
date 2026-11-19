@@ -685,7 +685,7 @@
   padding: 4px 6px;
 }
 
-/* The Basil Cloud account form inside the shared Basil modal (shared/basil-modal-dialog.css supplies the card, buttons, input, and link). */
+/* The Basil Cloud account form inside the shared Basil modal (shared/dialogs/basil-modal-dialog.css supplies the card, buttons, input, and link). */
 .basil-cloud-account {
   display: flex;
   flex-direction: column;

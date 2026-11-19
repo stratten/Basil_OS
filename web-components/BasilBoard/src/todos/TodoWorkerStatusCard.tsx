@@ -3,8 +3,8 @@ import { openExistingAgentTaskWidget } from '../services/bridge';
 import HomeMarkdown from '../home/HomeMarkdown';
 import type { TodoWorkAttempt } from '../contracts';
 import type { TodoWorkerLiveState } from './useTodoWorkerProgress';
-import { plainMarkdownText } from '@shared/plainMarkdownText';
-import AgentTaskActiveIndicator from '@shared/AgentTaskActiveIndicator';
+import { plainMarkdownText } from '@shared/text/plainMarkdownText';
+import AgentTaskActiveIndicator from '@shared/status/AgentTaskActiveIndicator';
 import NativeSymbolIcon from '../components/NativeSymbolIcon';
 import { agentTaskIndicatorStatus } from './agentTaskIndicatorStatus';
 

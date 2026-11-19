@@ -1,17 +1,17 @@
 import { readFileSync } from 'node:fs';
 import { act, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { installBlueprintReveal, WINDOW_VISIBILITY_EVENT } from '@shared/blueprintController';
-import { BLUEPRINT_DRAW_MS } from '@shared/blueprintOverlay';
-import { HOST_THEME_APPLIED_ATTRIBUTE } from '@shared/hostThemeSignal';
-import type { Blueprint } from '@shared/blueprintMeasure';
+import { installBlueprintReveal, WINDOW_VISIBILITY_EVENT } from '@shared/blueprint/blueprintController';
+import { BLUEPRINT_DRAW_MS } from '@shared/blueprint/blueprintOverlay';
+import { HOST_THEME_APPLIED_ATTRIBUTE } from '@shared/theme/hostThemeSignal';
+import type { Blueprint } from '@shared/blueprint/blueprintMeasure';
 import { initialAssistantSessionState } from '../state/assistantSessionReducer';
 import { AssistantSessionApp } from './AssistantSessionApp';
 
 const measure = vi.hoisted(() => vi.fn());
 
-vi.mock('@shared/blueprintMeasure', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@shared/blueprintMeasure')>()),
+vi.mock('@shared/blueprint/blueprintMeasure', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@shared/blueprint/blueprintMeasure')>()),
   measureBlueprint: measure,
 }));
 
@@ -182,7 +182,7 @@ describe('AssistantSessionApp blueprint reveal', () => {
 });
 
 describe('blueprint reveal stylesheet', () => {
-  const css = readFileSync('../shared/blueprint-reveal.css', 'utf8');
+  const css = readFileSync('../shared/blueprint/blueprint-reveal.css', 'utf8');
 
   it('holds back and fades in the metallic sheen layer, which the surface finish adds inside the frame, together with the rest of the window chrome', () => {
     expect(css).toContain('html[data-surface-finish] .basil-webkit-window-frame[data-basil-blueprint="hidden"] > .basil-surface-finish-overlay {\n  opacity: 0;');
@@ -191,6 +191,6 @@ describe('blueprint reveal stylesheet', () => {
   });
 
   it('names the same overlay class the surface finish creates', () => {
-    expect(readFileSync('../shared/surfaceFinish.ts', 'utf8')).toContain("const SURFACE_OVERLAY_CLASS = 'basil-surface-finish-overlay';");
+    expect(readFileSync('../shared/theme/surfaceFinish.ts', 'utf8')).toContain("const SURFACE_OVERLAY_CLASS = 'basil-surface-finish-overlay';");
   });
 });

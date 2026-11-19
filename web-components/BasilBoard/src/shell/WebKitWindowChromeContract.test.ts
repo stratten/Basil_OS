@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 describe('WebKit window chrome contract', () => {
-  const sharedCss = readFileSync('../shared/webkit-window-chrome.css', 'utf8');
+  const sharedCss = readFileSync('../shared/windowChrome/webkit-window-chrome.css', 'utf8');
   const shellCss = readFileSync('src/styles/shell.css', 'utf8');
   const meetingPanelApp = readFileSync('../MeetingDetectedMiniPanel/src/App.tsx', 'utf8');
   const meetingPanelCss = readFileSync('../MeetingDetectedMiniPanel/src/styles/panel.css', 'utf8');
@@ -64,7 +64,7 @@ describe('WebKit window chrome contract', () => {
       }
     }
     for (const cssSource of [meetingPanelCss, scheduledPanelCss, setupCss]) {
-      expect(cssSource).toContain("@import '../../../shared/webkit-window-chrome.css';");
+      expect(cssSource).toContain("@import '../../../shared/windowChrome/webkit-window-chrome.css';");
     }
     expect(setupShell).toContain('<SetupWindowChrome title="Basil Setup Assistant">');
     expect(setupPermissionsEntry).toContain('<SetupWindowChrome title="Basil Permissions">');

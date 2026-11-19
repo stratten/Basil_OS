@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import NativeSymbolIcon from '../../../../shared/NativeSymbolIcon';
-import { WindowControlButton } from '@shared/WindowControlButton';
+import NativeSymbolIcon from '../../../../shared/icons/NativeSymbolIcon';
+import { WindowControlButton } from '@shared/windowChrome/WindowControlButton';
+import { WindowMoveHandle } from '@shared/windowChrome/WindowMoveHandle';
 import { createLocalWebPreviewTransport, type LocalWebPreviewSessionDTO } from '../artifacts/transport/localWebPreviewTransport';
 import { processAgentTask, setBaseUrl } from '../../services/api';
 import { applyHostFonts, applyHostTheme } from '../../app/host/themeBootstrap';
@@ -506,7 +507,8 @@ export default function LocalWebPreviewApp() {
   return (
     <div className="basil-webkit-window-frame">
       <div className="file-preview-window basil-webkit-window-surface">
-        <header className="file-preview-window-header" ref={headerRef}>
+        <header className="file-preview-window-header window-move-host" ref={headerRef}>
+          <WindowMoveHandle />
           <div className="file-preview-window-controls" aria-label="Window controls">
             <WindowControlButton kind="close" label="Close preview window" className="file-preview-window-control header-btn" onClick={closeLocalWebPreviewWindow} />
             <WindowControlButton kind="minimize" label="Minimize preview window" className="file-preview-window-control header-btn" onClick={minimizeLocalWebPreviewWindow} />

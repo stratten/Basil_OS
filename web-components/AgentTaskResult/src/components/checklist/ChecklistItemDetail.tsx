@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import TokenizedSelect from '../../../../shared/TokenizedSelect';
+import TokenizedSelect from '../../../../shared/inputs/TokenizedSelect';
 import * as checklistApi from '../../services/checklistApi';
 import type { ChecklistItem, ChecklistItemLog, ChecklistStatus } from '../../services/checklistApi';
 import type { ChecklistActions } from '../../store/checklistStore';
@@ -11,6 +11,7 @@ import {
   checklistEventSummary,
   checklistRefLabel,
   checklistRefSystem,
+  isInferredDone,
   safeChecklistRefUrl,
 } from './checklistPresentation';
 import { useChecklistItemDraft, type ChecklistDraftField } from './useChecklistItemDraft';
@@ -154,6 +155,26 @@ export default function ChecklistItemDetail({ rootTaskId, item, actions, onNavig
             Go to the run that last changed this
           </button>
         )}
+        {isInferredDone(item) && (
+          <>
+            <button
+              type="button"
+              className="checklist-button"
+              disabled={busy}
+              onClick={() => void run(() => actions.updateItem(item.id, { status: 'done', expected_revision: item.revision }))}
+            >
+              Confirm done
+            </button>
+            <button
+              type="button"
+              className="checklist-button"
+              disabled={busy}
+              onClick={() => void run(() => actions.updateItem(item.id, { status: 'pending', expected_revision: item.revision }))}
+            >
+              Reopen
+            </button>
+          </>
+        )}
         {item.status === 'waiting_user' && (
           <button
             type="button"
@@ -176,6 +197,7 @@ export default function ChecklistItemDetail({ rootTaskId, item, actions, onNavig
           {item.archived_at ? 'Restore' : 'Archive'}
         </button>
       </div>
+      {isInferredDone(item) && <p className="checklist-detail__quiet">Basil marked this done from what it could see, not from a confirmed result. The step log says what it relied on.</p>}
       {todoNotice && <p className="checklist-detail__quiet" role="status">{todoNotice}</p>}
       {showMore && (
         <div className="checklist-detail__more">

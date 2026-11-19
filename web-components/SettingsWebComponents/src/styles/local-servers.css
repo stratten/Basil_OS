@@ -1,0 +1,216 @@
+/* Local servers: the Add Local Server form and the panel inside a local server's connection row. Colors come only from theme tokens. */
+
+.connections-local-modal {
+  width: min(520px, calc(100vw - 32px));
+}
+
+.connections-local-warning {
+  background: color-mix(in srgb, var(--warning-base, #b26a00) 14%, var(--background-primary));
+  border: 1px solid color-mix(in srgb, var(--warning-base, #b26a00) 55%, var(--field-border));
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: calc(12px * var(--text-scale, 1));
+  margin: 0;
+  padding: 8px 10px;
+}
+
+.connections-local-hint {
+  color: var(--text-secondary);
+  font-size: calc(11px * var(--text-scale, 1));
+  margin: 0;
+}
+
+.connections-local-error {
+  color: var(--error-text);
+  font-size: calc(12px * var(--text-scale, 1));
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.connections-local-progress {
+  color: var(--text-primary);
+  font-size: calc(12px * var(--text-scale, 1));
+  margin: 0;
+}
+
+.connections-local-section {
+  border-top: 1px solid color-mix(in srgb, var(--field-border) 75%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 12px;
+}
+
+.connections-local-check {
+  align-items: center;
+  color: var(--text-primary);
+  display: flex;
+  font-size: calc(12px * var(--text-scale, 1));
+  gap: 8px;
+}
+
+.connections-local-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.connections-local-line {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: calc(12px * var(--text-scale, 1));
+  gap: 2px 8px;
+  margin: 0;
+}
+
+.connections-local-label {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  font-family: var(--font-family-medium);
+}
+
+.connections-local-code {
+  color: var(--text-primary);
+  font-family: monospace;
+  font-size: calc(11px * var(--text-scale, 1));
+  overflow-wrap: anywhere;
+}
+
+.connections-local-text {
+  color: var(--text-primary);
+  font-size: calc(12px * var(--text-scale, 1));
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.connections-local-secrets {
+  background: color-mix(in srgb, var(--background-primary) 94%, var(--secondary, var(--primary)));
+  border: 1px solid color-mix(in srgb, var(--field-border) 84%, var(--secondary, var(--primary)));
+  border-radius: 9px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 6%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.connections-local-secret-field {
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  font-size: calc(12px * var(--text-scale, 1));
+  gap: 4px;
+}
+
+.connections-local-companion {
+  border-top: 1px dashed color-mix(in srgb, var(--field-border) 80%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+}
+
+.connections-local-status {
+  font-family: var(--font-family-medium);
+}
+
+.connections-local-status-ok {
+  color: var(--success-base);
+}
+
+.connections-local-status-error {
+  color: var(--error-text);
+}
+
+.connections-local-status-neutral {
+  color: var(--text-primary);
+}
+
+.connections-local-log {
+  background: color-mix(in srgb, var(--background-primary) 92%, var(--secondary, var(--primary)));
+  border: 1px solid color-mix(in srgb, var(--field-border) 84%, var(--secondary, var(--primary)));
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 6%);
+  color: var(--text-primary);
+  font-family: monospace;
+  font-size: calc(11px * var(--text-scale, 1));
+  margin: 0;
+  max-height: 160px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  padding: 8px 10px;
+  white-space: pre-wrap;
+}
+
+.connections-local-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.connections-local-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.connections-local-list-item {
+  background: color-mix(in srgb, var(--background-primary) 94%, var(--secondary, var(--primary)));
+  border: 1px solid color-mix(in srgb, var(--field-border) 84%, var(--secondary, var(--primary)));
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+}
+
+.connections-local-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.connections-local-link {
+  border-top: 1px dashed color-mix(in srgb, var(--field-border) 80%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+}
+
+.connections-local-qr-frame {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* A scannable code is black on white in every theme, so it keeps a visible border rather than relying on the page background. */
+.connections-local-qr {
+  border: 2px solid var(--text-primary);
+  border-radius: 6px;
+  height: auto;
+  max-width: 100%;
+  width: 224px;
+}
+
+.connections-local-recipe {
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  font-size: calc(12px * var(--text-scale, 1));
+  gap: 8px;
+}
+
+.connections-local-recipe summary {
+  cursor: pointer;
+  font-family: var(--font-family-medium);
+}

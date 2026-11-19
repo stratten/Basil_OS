@@ -2,6 +2,7 @@ import type { AgentTaskArtifactPresentation } from '../artifacts/artifactContrac
 import type { StepDetailEntry, TimelineEntry } from '../types';
 import type { TransitionEvent } from 'react';
 import MarkdownRenderer from './MarkdownRenderer';
+import { WindowControlButton } from '@shared/windowChrome/WindowControlButton';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { canRequestInlinePreview, InlineArtifactPreview } from './artifacts/InlineArtifactPreview';
@@ -16,7 +17,7 @@ import { RunCard, RunStageGlyph } from './run/RunCard';
 import ChecklistOverviewSection from './checklist/ChecklistOverviewSection';
 import { navigationTargetForStage, type RunNavigationTarget } from './run/runNavigation';
 import type { AgentTaskRunFocusSummary } from './run/agentTaskRunFocus';
-import NativeSymbolIcon, { type NativeSymbolName } from '../../../shared/NativeSymbolIcon';
+import NativeSymbolIcon, { type NativeSymbolName } from '../../../shared/icons/NativeSymbolIcon';
 import { agentTaskArtifactPreviewTransport } from '../services/bridge';
 import { wsManager, type AgentTaskEventSubscriber } from '../services/websocket';
 import {
@@ -24,7 +25,7 @@ import {
   DETAIL_TRAY_KEYBOARD_STEP,
   DETAIL_TRAY_MIN_WIDTH,
 } from '../app/sizing/detailTraySizing';
-import type { PresencePhase } from '@shared/usePresenceTransition';
+import type { PresencePhase } from '@shared/motion/usePresenceTransition';
 
 const RESIZE_ACTIVATION_DISTANCE_PX = 4;
 
@@ -598,6 +599,7 @@ export default function ExecutionDetailTray({
         </div>
       ) : detail ? (
         <div className="detail-tray-header">
+          <WindowControlButton kind="close" label="Close detail tray" className="detail-tray-close" onClick={close} />
           <div>
             <div className="detail-tray-eyebrow">
               {formatDetailKind(detail.detail_kind)}
@@ -606,16 +608,6 @@ export default function ExecutionDetailTray({
             <div className="detail-tray-title">
               {detail.summary || 'Execution detail'}
             </div>
-          </div>
-          <div className="detail-tray-header-actions">
-            <button
-              type="button"
-              className="detail-tray-close"
-              onClick={close}
-              aria-label="Close detail tray"
-            >
-              ×
-            </button>
           </div>
         </div>
       ) : (

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { SettingsSubTabs, type SettingsSubTabDefinition } from '@shared/SettingsSubTabs'
+import { SettingsSubTabs, type SettingsSubTabDefinition } from '@shared/inputs/SettingsSubTabs'
 import { ActivityCaptureSettingsApp } from './ActivityCaptureSettingsApp'
-import { MemoriesSettingsApp } from './MemoriesSettingsApp'
+import { MemoriesSettingsApp } from './context/MemoriesSettingsApp'
 import '../styles/capture-settings.css'
 
 export type CaptureSubTab = 'activity-capture' | 'memories'

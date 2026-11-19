@@ -1,5 +1,5 @@
 import type { AssistantSessionThemePayload } from '../bridge/types';
-import { applyHostFonts, applyHostTheme } from '@shared/webTheme';
+import { applyHostFonts, applyHostTheme } from '@shared/theme/webTheme';
 
 export function applyAssistantSessionTheme(theme: AssistantSessionThemePayload): void {
   applyHostTheme(theme);

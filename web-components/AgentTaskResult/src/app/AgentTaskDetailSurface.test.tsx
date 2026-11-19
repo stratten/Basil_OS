@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import type { CaptureStateMessage, DisplayableAgentTask, StepDetailEntry, ValidationRunFocusRequest } from '../types';
 import { AgentTaskDetailSurface } from './AgentTaskDetailSurface';
 import { checkFilePreviewAvailability, reportValidationRunFocused } from '../services/bridge';
+import { isFollowUpComposerCollapsed, resetFollowUpComposerViews } from '../store/followUpComposerViewStore';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -49,8 +50,12 @@ vi.mock('../services/bridge', () => ({
   registerFilePreviewUpdateHandler: vi.fn(() => () => {}),
   pickFiles: vi.fn(),
 }));
-vi.mock('../components/TextFollowUp', () => ({
-  default: () => null,
+const followUpProps = vi.hoisted(() => ({ last: null as { rootTaskId?: string; agentTaskId: string } | null }));
+vi.mock('../components/followUp/TextFollowUp', () => ({
+  default: (props: { rootTaskId?: string; agentTaskId: string }) => {
+    followUpProps.last = props;
+    return null;
+  },
 }));
 
 const artifact = {
@@ -924,6 +929,34 @@ describe('AgentTaskDetailSurface run controls', () => {
       expect(composer?.querySelector('button[aria-label="Send"]')).toBeNull();
     } finally {
       unmount();
+    }
+  });
+
+  it('folds the note box and hands the finished box the same chain key even when a follow-up turn started before the root was recorded', async () => {
+    // No rootTaskId yet, but the current turn is already the follow-up: the note box used to fold under the follow-up's id while the finished box looked under the first task's id.
+    const beforeRoot: DisplayableAgentTask = { ...displaySource, rootTaskId: undefined, currentTurnTaskId: 'follow-up-task' };
+    // Earlier tests in this file leave their folds behind in the page-level store.
+    resetFollowUpComposerViews();
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    try {
+      act(() => {
+        root.render(surface(null, undefined, false, () => {}, () => {}, { ...beforeRoot, status: 'processing', result: '' }));
+      });
+      expect(isFollowUpComposerCollapsed('task-report')).toBe(true);
+      expect(isFollowUpComposerCollapsed('follow-up-task')).toBe(false);
+
+      await act(async () => {
+        root.render(surface(null, undefined, false, () => {}, () => {}, { ...beforeRoot, status: 'completed' }));
+      });
+      await vi.waitFor(() => expect(followUpProps.last).not.toBeNull());
+      // The finished box is handed the same chain key the note box folded under, so it finds that fold.
+      expect(followUpProps.last?.rootTaskId).toBe('task-report');
+    } finally {
+      act(() => root.unmount());
+      container.remove();
+      resetFollowUpComposerViews();
+      followUpProps.last = null;
     }
   });
 

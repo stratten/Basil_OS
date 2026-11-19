@@ -10,6 +10,8 @@ Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 const mocks = vi.hoisted(() => ({
   initHandler: null as ((config: unknown) => void) | null,
   notifyPanelEmpty: vi.fn(),
+  dismissPanel: vi.fn(),
+  minimizePanel: vi.fn(),
   fetchActiveScheduledRuns: vi.fn(),
   fetchScheduledRun: vi.fn(),
 }));
@@ -19,8 +21,8 @@ vi.mock('./services/bridge', () => ({
   registerThemeHandler: vi.fn(),
   openAgentTaskInResultWidget: vi.fn(),
   dismissRow: vi.fn(),
-  dismissPanel: vi.fn(),
-  minimizePanel: vi.fn(),
+  dismissPanel: mocks.dismissPanel,
+  minimizePanel: mocks.minimizePanel,
   notifyPanelEmpty: mocks.notifyPanelEmpty,
   notifyReady: vi.fn(),
   requestResize: vi.fn(),
@@ -41,7 +43,7 @@ vi.mock('./services/api', () => ({
   fetchScheduledRun: mocks.fetchScheduledRun,
 }));
 
-vi.mock('@shared/BackendLivenessBanner', () => ({ BackendLivenessBanner: () => null }));
+vi.mock('@shared/status/BackendLivenessBanner', () => ({ BackendLivenessBanner: () => null }));
 
 import App from './App';
 
@@ -190,5 +192,24 @@ describe('a run that ends without the panel hearing about it', () => {
 
     expect(mocks.fetchScheduledRun).not.toHaveBeenCalled();
     expect(rowText()).toContain('Running…');
+  });
+});
+
+describe('the panel window controls', () => {
+  it('puts the shared close and minimize glyphs first in the header at the top left, ahead of the title, and wires them to the bridge', async () => {
+    await openPanelWithOneRunningRun();
+
+    const header = container.querySelector('.mini-panel-header')!;
+    const controls = header.querySelector('.mini-panel-header-actions')!;
+    expect(Array.from(header.children).find(child => !child.hasAttribute('data-window-move-handle'))).toBe(controls);
+    expect(Array.from(controls.querySelectorAll('button')).map(button => button.getAttribute('aria-label'))).toEqual(['Dismiss panel', 'Minimize panel']);
+    expect(controls.querySelectorAll('.basil-window-control-circle')).toHaveLength(2);
+    expect(header.querySelector('.mini-panel-header-title')?.textContent).toContain('Scheduled runs');
+
+    await act(async () => { controls.querySelector<HTMLButtonElement>('button[aria-label="Dismiss panel"]')!.click(); });
+    await act(async () => { controls.querySelector<HTMLButtonElement>('button[aria-label="Minimize panel"]')!.click(); });
+
+    expect(mocks.dismissPanel).toHaveBeenCalledTimes(1);
+    expect(mocks.minimizePanel).toHaveBeenCalledTimes(1);
   });
 });

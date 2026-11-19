@@ -120,6 +120,11 @@ export function cancelRecording() {
   postToSwift({ type: 'cancelRecording' });
 }
 
+/** Keeps recording through the rest of this meeting instead of letting the automatic end stop it. */
+export function dismissAutoEnd() {
+  postToSwift({ type: 'dismissAutoEnd' });
+}
+
 export function setLiveTranscription(enabled: boolean) {
   postToSwift({ type: 'setLiveTranscription', enabled });
 }

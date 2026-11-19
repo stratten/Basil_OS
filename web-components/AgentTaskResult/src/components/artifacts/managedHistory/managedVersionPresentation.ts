@@ -5,7 +5,8 @@ import type { AgentTaskRunFocusSummary } from '../../run/agentTaskRunFocus';
  * Human-readable label for one entry in the managed-version dropdown.
  * Index 0 is always the most recent recorded version ("Current"). Older
  * entries are labeled with the display number of the run that produced them when
- * that run is present in `runs` (matched by `agentTaskId`); otherwise they
+ * that run is present in `runs` (matched by `agentTaskId`), or with the run's own
+ * label when it has no number, as a scheduled check does; otherwise they
  * fall back to a position-based ordinal counted from the oldest version.
  */
 export function managedVersionLabel(
@@ -15,8 +16,11 @@ export function managedVersionLabel(
 ): string {
   if (index === 0) return 'Current';
   const version = versions[index];
-  const displayNumber = runs?.find(run => run.id === version.agentTaskId)?.displayNumber ?? String(versions.length - index);
-  return `Run ${displayNumber} · ${version.operation} · ${new Date(version.createdAt).toLocaleString()}`;
+  const producingRun = runs?.find(run => run.id === version.agentTaskId);
+  const name = producingRun
+    ? (producingRun.displayNumber ? `Run ${producingRun.displayNumber}` : producingRun.label)
+    : `Run ${versions.length - index}`;
+  return `${name} · ${version.operation} · ${new Date(version.createdAt).toLocaleString()}`;
 }
 
 /**

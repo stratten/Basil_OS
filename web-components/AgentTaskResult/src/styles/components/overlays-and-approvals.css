@@ -74,11 +74,31 @@
   flex-wrap: nowrap;
 }
 
-/* The shared row under a stack of several approvals, with the controls that belong to the whole stack rather than to one item. */
+/* The card for a stack of several approvals is a frame that never scrolls: the title and the shared button row stay put, and only the list of approvals between them scrolls. The row used to be sticky inside a scrolling card, which stopped it at the card's content edge and left the card's padding below it showing the list scrolling past. */
+.overlay-card.approval-set-frame {
+  display: flex;
+  flex-direction: column;
+  max-width: clamp(360px, 60vw, 640px);
+  max-height: 82vh;
+  overflow: hidden;
+}
+
+.approval-set-frame > .overlay-title {
+  flex: 0 0 auto;
+}
+
+.approval-set-scroller {
+  display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: var(--padding-m);
+  align-content: start;
+  overflow-y: auto;
+}
+
+/* The shared row under a stack of several approvals, with the controls that belong to the whole stack rather than to one item. It sits outside the scroller, so nothing can show below it. */
 .approval-set-footer {
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
+  flex: 0 0 auto;
   margin-top: var(--padding-m);
   padding-top: var(--padding-m);
   border-top: var(--border-thin) solid var(--separator-color);
@@ -162,6 +182,22 @@
   font-size: var(--font-size-headline);
   color: var(--text-primary);
   margin-bottom: var(--padding-m);
+}
+
+/* Title on the left and the risk badge on the right, so the badge does not take a row of its own under the title. */
+.overlay-title.overlay-title--with-badge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--padding-m);
+}
+
+.overlay-title__text {
+  min-width: 0;
+}
+
+.overlay-title--with-badge > .risk-badge {
+  flex: 0 0 auto;
 }
 
 .overlay-body {

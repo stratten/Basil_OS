@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 EVIDENCE_MAX_ITEMS = 30
 EVIDENCE_TITLE_CHARS = 100
-EVIDENCE_MAX_CHARS = 4500
+EVIDENCE_MAX_CHARS = 7000
 
 _EVIDENCE_NOTE = "what Basil tracks for the user and you sign off on. Do not change the outcome, request a retry, or write continuation_instructions because of it."
 
@@ -31,6 +31,8 @@ def _item_line(item: Dict[str, Any]) -> str:
         line += " (required)"
     if item.get("waiting_on") and item["status"] in ("waiting_user", "waiting_external"):
         line += f", waiting on: {_title(item['waiting_on'])}"
+    if item["status"] == "done" and item.get("done_basis") == "inferred":
+        line += " (inferred done)"
     if item.get("last_actor") == "user":
         line += " (edited by the user)"
     return line
@@ -58,7 +60,8 @@ def build_checklist_evidence(items: List[Dict[str, Any]], counts: Dict[str, int]
     lines = [header, SIGNOFF_RULES]
     used = reserved
     shown = 0
-    for item in items[:EVIDENCE_MAX_ITEMS]:
+    ordered = [item for item in items if item["status"] not in ("done", "dropped")] + [item for item in items if item["status"] in ("done", "dropped")]
+    for item in ordered[:EVIDENCE_MAX_ITEMS]:
         line = _item_line(item)
         if used + len(line) + 1 > EVIDENCE_MAX_CHARS:
             break

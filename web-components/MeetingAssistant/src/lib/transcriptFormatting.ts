@@ -1,5 +1,5 @@
 import type { TranscriptLineDTO } from '../bridge/types';
-import { deriveTextOnColor } from '@shared/webTheme';
+import { deriveTextOnColor } from '@shared/theme/webTheme';
 
 export interface TranscriptDisplayRow {
   line: TranscriptLineDTO;

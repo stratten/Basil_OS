@@ -1,6 +1,6 @@
-@import '../../../shared/webkit-window-chrome.css';
-@import '../../../shared/rich-text-followup.css';
-@import '../../../shared/semantic-state.css';
+@import '../../../shared/windowChrome/webkit-window-chrome.css';
+@import '../../../shared/text/rich-text-followup.css';
+@import '../../../shared/theme/semantic-state.css';
 
 :root {
   --corner-radius-small: 6px;

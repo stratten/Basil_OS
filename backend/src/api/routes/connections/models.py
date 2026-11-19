@@ -82,6 +82,69 @@ class CachedToolDTO(BaseModel):
     policy: MCPToolPolicy = "always_ask"
 
 
+class CompanionStatusDTO(BaseModel):
+    """A local server's background program, as the Connections tab shows it."""
+
+    command_summary: str
+    start_with_basil: bool
+    fixed_port: Optional[int] = None
+    secret_env: List[str] = Field(default_factory=list)
+    status: str = "stopped"
+    port: Optional[int] = None
+    last_error: Optional[str] = None
+    log_tail: str = ""
+    restart_count: int = 0
+    has_probe: bool = False
+    health_phase: Optional[str] = Field(default=None, description="starting, ready, needs_action or failed, from the program's own status page; absent when it has no probe or is not running")
+    health_message: Optional[str] = None
+    action_kind: Optional[str] = Field(default=None, description="qr when the person must scan a code")
+    action_value: Optional[str] = Field(default=None, description="The code to scan. Held in memory only and never stored.")
+    action_expires_at: Optional[str] = None
+
+
+class RequirementStatusDTO(BaseModel):
+    """A program a local server's recipe needs installed."""
+
+    name: str
+    reason: str
+    for_method: str
+    install_command: Optional[str] = Field(default=None, description="The exact command Basil runs when the person chooses Install; absent when they must install it themselves")
+
+
+class ArtifactStatusDTO(BaseModel):
+    """One file a local server's recipe puts in place, with every address and command that may produce it."""
+
+    name: str
+    expects: str
+    ready: bool
+    sources: List[str] = Field(default_factory=list, description="One plain-language line per way of obtaining it, including every address, hash, commit and build command")
+
+
+class InstallStatusDTO(BaseModel):
+    """A local server's recipe and how far its preparation has got."""
+
+    phase: str
+    message: str = ""
+    ready: bool
+    active: bool
+    artifact: Optional[str] = None
+    requirement: Optional[str] = None
+    can_install: bool = False
+    detail: Optional[str] = None
+    requirements: List[RequirementStatusDTO] = Field(default_factory=list)
+    artifacts: List[ArtifactStatusDTO] = Field(default_factory=list)
+
+
+class LocalServerDTO(BaseModel):
+    """What the Connections tab needs about a local server beyond the shared connection fields. Secret names only; a value never leaves the Keychain."""
+
+    command_summary: str
+    source_url: Optional[str] = None
+    secret_env: List[str] = Field(default_factory=list)
+    companion: Optional[CompanionStatusDTO] = None
+    install: Optional[InstallStatusDTO] = None
+
+
 ConnectionAuthKind = Literal["oauth", "slack", "github_device", "manual_token", "local"]
 
 
@@ -104,11 +167,25 @@ class ConnectionDTO(BaseModel):
     server_icon_data_url: Optional[str] = None
     auth_kind: ConnectionAuthKind = "manual_token"
     tools: List[CachedToolDTO] = Field(default_factory=list)
+    local_server: Optional[LocalServerDTO] = None
 
     @field_serializer("last_connection_check_at", "last_successful_use_at")
     def _serialize_utc_instant(self, value: Optional[datetime]) -> Optional[str]:
         """These two are stored as naive UTC, so they are sent with an explicit UTC marker that clients convert to local time."""
         return utc_iso_timestamp(value)
+
+
+class CompanionSpecRequest(BaseModel):
+    """A background program that must run beside a local server."""
+
+    command: str
+    args: List[str] = Field(default_factory=list)
+    cwd: Optional[str] = None
+    env: Dict[str, str] = Field(default_factory=dict, description="Non-secret environment variables only.")
+    secret_env: List[str] = Field(default_factory=list, description="Names only. The person types each value into Settings and it is kept in the Keychain.")
+    start_with_basil: bool = True
+    fixed_port: Optional[int] = None
+    probe: Optional[Dict[str, Any]] = Field(default=None, description="How Basil reads the program's own status page. Checked by the backend; see the local server recipe reference.")
 
 
 class RegisterLocalServerRequest(BaseModel):
@@ -121,6 +198,17 @@ class RegisterLocalServerRequest(BaseModel):
     env: Dict[str, str] = Field(default_factory=dict, description="Non-secret environment variables only.")
     description: Optional[str] = None
     source_url: Optional[str] = None
+    secret_env: List[str] = Field(default_factory=list, description="Names only. Values are saved in the Keychain by the Settings app before this call.")
+    companion: Optional[CompanionSpecRequest] = None
+    install: Optional[Dict[str, Any]] = Field(default=None, description="A recipe of programs the server needs and files Basil downloads or builds for it. Checked by the backend; see the local server recipe reference.")
+    connection_id: Optional[str] = Field(default=None, description="A UUID chosen by the caller so secret values can be saved under it first.")
+
+
+class InstallRequirementRequest(BaseModel):
+    """The person's choice to run one requirement's install command."""
+
+    name: str
+    command: str = Field(..., description="The exact install command the person was shown. The request is refused if it no longer matches the recipe.")
 
 
 class ConnectionsListResponse(BaseModel):

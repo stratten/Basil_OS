@@ -1,7 +1,7 @@
 import type { CheckpointData } from '../../types';
 import * as api from '../../services/api';
 import { agentStore } from '../../store/agentStore';
-import { formatCheckpointAnswer, isValidNumericAnswer } from '../checkpointAnswer';
+import { formatCheckpointAnswer, isValidNumericAnswer } from '../checkpoint/checkpointAnswer';
 
 /** Question sources whose answer is not free text: a provider form has named fields, a target authorization resolves the reply as a fixed token, and a browser permission repair is fixed by the user outside Basil. */
 const NON_TEXT_SOURCES: ReadonlySet<string> = new Set(['provider_user_input', 'provider_target_authorization', 'browser_permission_repair']);

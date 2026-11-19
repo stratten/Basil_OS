@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import TokenizedSelect from '@shared/TokenizedSelect'
+import TokenizedSelect from '@shared/inputs/TokenizedSelect'
 
 let container: HTMLElement
 let root: Root

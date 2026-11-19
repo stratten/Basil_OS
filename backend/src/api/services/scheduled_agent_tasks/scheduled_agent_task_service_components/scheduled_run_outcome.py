@@ -1,6 +1,6 @@
 """How a scheduled run reads the result of the agent task it started.
 
-A scheduled run is an ordinary agent task started by a different mechanism, so it has no statuses or outcomes of its own: the agent task's status and its finalizer outcome are the single source of truth. This module reads them the same way the web UI does (``deriveRunPhase`` in ``web-components/shared/runPhase.ts``): a task persisted as ``failed`` whose finalizer outcome is ``partial`` is a partial result, not a failure, and a result whose outcome verification is still ``pending`` is not final yet.
+A scheduled run is an ordinary agent task started by a different mechanism, so it has no statuses or outcomes of its own: the agent task's status and its finalizer outcome are the single source of truth. This module reads them the same way the web UI does (``deriveRunPhase`` in ``web-components/shared/status/runPhase.ts``): a task persisted as ``failed`` whose finalizer outcome is ``partial`` is a partial result, not a failure, and a result whose outcome verification is still ``pending`` is not final yet.
 
 Pure functions only; no database or event access, so callers in the run executor, the run-history route, and the active-runs route share one reading.
 """

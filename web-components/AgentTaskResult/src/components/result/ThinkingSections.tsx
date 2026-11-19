@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ThinkingSegment } from '../../types';
-import ExecutionDisclosureChevron from '@shared/ExecutionDisclosureChevron';
+import ExecutionDisclosureChevron from '@shared/disclosure/ExecutionDisclosureChevron';
 import MarkdownRenderer from '../MarkdownRenderer';
 import { shouldAutoCollapseThinking } from './thinkingPresentation';
 

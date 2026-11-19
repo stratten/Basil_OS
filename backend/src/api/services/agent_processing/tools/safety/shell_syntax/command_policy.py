@@ -42,7 +42,9 @@ READ_ONLY_COMMANDS: FrozenSet[str] = frozenset({
     'pwd', 'echo', 'date', 'whoami', 'which', 'file', 'stat',
     'df', 'du', 'ps', 'top', 'env', 'printenv', 'history',
     # Text and path helpers. `sort -o` and `uniq <in> <out>` write a file, and violates_argument_policy refuses those forms.
-    'sort', 'uniq', 'cut', 'tr', 'diff', 'jq', 'shasum', 'basename', 'dirname', 'realpath', 'readlink',
+    'sort', 'uniq', 'cut', 'tr', 'diff', 'jq', 'basename', 'dirname', 'realpath', 'readlink',
+    # Checksum tools. They read the files or text they are given and print a digest; none of them has an option that writes.
+    'shasum', 'md5', 'md5sum', 'sha1sum', 'sha256sum', 'sha512sum', 'cksum',
     # Facts about the machine and its processes.
     'uname', 'sw_vers', 'hostname', 'id', 'uptime', 'lsof', 'pgrep',
     # Spotlight lookups: `mdfind` searches the index and `mdls` prints a file's metadata. Neither has an option that writes; changing the index belongs to `mdutil`, which stays off this list.
@@ -62,8 +64,10 @@ READ_ONLY_SUBCOMMANDS: Dict[str, FrozenSet[str]] = {
     'defaults': frozenset({'read', 'read-type', 'domains', 'find'}),
 }
 
-# `sed -n` with one literal print script (`5p`, `1,20p`, `$p`, `/text/p`). Any other script can write a file (`w`) or run a command (`e`).
-SED_PRINT_SCRIPT = re.compile(r'^((\d+|\$)(,(\d+|\$))?|/[A-Za-z0-9 _.:-]*/)p$')
+# One literal print statement (`5p`, `1,20p`, `$p`, `/text/p`). Any other statement can write a file (`w`) or run a command (`e`).
+_SED_PRINT_STATEMENT = r'(?:(?:\d+|\$)(?:,(?:\d+|\$))?|/[A-Za-z0-9 _.:-]*/)p'
+# `sed -n` with one print statement, or several joined by `;` (`40,78p;96,112p`).
+SED_PRINT_SCRIPT = re.compile(rf'^{_SED_PRINT_STATEMENT}(?:;{_SED_PRINT_STATEMENT})*$')
 # `sed 's/old/new/g'` with the `/` delimiter and only the flags `g`, `I`, `p`, and a number. The `w` flag writes a file and `e` runs a command, so neither is allowed. The pattern and the replacement hold no `$` (except the end-of-line `$` right before the closing `/`) and no backtick, which keeps the rule stricter than the shell needs and identical to the rule the old tokenizer enforced.
 SED_SUBSTITUTE_SCRIPT = re.compile(r'^s/(?:[^/\\\n$`]|\\[^$`\n]|\$(?=/))*/(?:[^/\\\n$`]|\\[^$`\n])*/[gIp0-9]*$')
 # Options that change how `sed` reads its script and prints, and nothing else. `-i` edits the file and `-f` reads a script file that may hold `w`, so both stay out.
@@ -117,7 +121,7 @@ HIGH_RISK_COMMANDS: FrozenSet[str] = frozenset({
 
 
 def is_print_only_sed(arguments: List[str]) -> bool:
-    """Whether the arguments are `-n`, one literal print script, and then only file names."""
+    """Whether the arguments are `-n`, a script made only of literal print statements, and then only file names."""
     if len(arguments) < 2 or arguments[0] != '-n' or not SED_PRINT_SCRIPT.match(arguments[1]):
         return False
     return not any(argument.startswith('-') and argument != '-' for argument in arguments[2:])

@@ -1,6 +1,6 @@
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
-import { CHAT_MARKDOWN_PURIFY_OPTIONS, normalizeMarkdownBullets } from '@shared/markdownSafety';
+import { CHAT_MARKDOWN_PURIFY_OPTIONS, normalizeMarkdownBullets } from '@shared/text/markdownSafety';
 
 marked.setOptions({ gfm: true, breaks: true });
 

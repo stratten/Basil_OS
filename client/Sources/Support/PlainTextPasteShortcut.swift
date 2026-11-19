@@ -109,7 +109,7 @@ final class PlainTextPasteShortcutMonitor {
 /// The insertion primitive only acts on elements matching
 /// `.rich-text-composer-editor`, the class every editor rendered by the
 /// shared `RichTextComposer` React component carries
-/// (`web-components/shared/RichTextComposer.tsx`). Plain
+/// (`web-components/shared/text/RichTextComposer.tsx`). Plain
 /// `<input>`/`<textarea>` fields, and any contenteditable surface that does
 /// not use `RichTextComposer`, are left to WebKit's normal paste behavior --
 /// those legacy contenteditable surfaces are being migrated onto

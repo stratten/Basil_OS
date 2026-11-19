@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { BasilBoardTab } from '../contracts';
-import { settleHostWindowResize } from '@shared/settleHostWindowResize';
+import { settleHostWindowResize } from '@shared/motion/settleHostWindowResize';
 import DetachedCapabilityShell from './DetachedCapabilityShell';
 
 const bridgeMocks = vi.hoisted(() => ({

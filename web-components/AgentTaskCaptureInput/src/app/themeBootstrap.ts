@@ -1,4 +1,4 @@
-export { applyHostFonts, applyHostTheme } from '@shared/webTheme';
+export { applyHostFonts, applyHostTheme } from '@shared/theme/webTheme';
 import {
   DEFAULT_PROCESSING_ACCENT_HEX,
   DEFAULT_PROCESSING_BASE_HEX,

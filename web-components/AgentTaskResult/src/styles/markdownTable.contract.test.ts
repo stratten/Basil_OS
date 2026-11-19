@@ -1,21 +1,21 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-/** Every web view that renders Markdown, plus the setup assistant's hand-built model comparison table that must look the same: the component that emits the container class, the container class, and the stylesheet or entry file that must import shared/markdown-table.css. Adding a Markdown surface is one line here and one class in shared/markdown-table.css. */
+/** Every web view that renders Markdown, plus the setup assistant's hand-built model comparison table that must look the same: the component that emits the container class, the container class, and the stylesheet or entry file that must import shared/text/markdown-table.css. Adding a Markdown surface is one line here and one class in shared/text/markdown-table.css. */
 const MARKDOWN_SURFACES = [
-  { renderer: 'AgentTaskResult/src/components/MarkdownRenderer.tsx', container: 'result-section', importer: 'AgentTaskResult/src/styles/components/result-content.css', importLine: "@import '../../../../shared/markdown-table.css';" },
-  { renderer: 'BasilBoard/src/home/HomeMarkdown.tsx', container: 'home-markdown', importer: 'BasilBoard/src/styles/home-markdown-blocks.css', importLine: "@import '../../../shared/markdown-table.css';" },
-  { renderer: 'MeetingAssistant/src/lib/markdown.tsx', container: 'meeting-markdown', importer: 'MeetingAssistant/src/styles/meeting-assistant.css', importLine: "@import '../../../shared/markdown-table.css';" },
-  { renderer: 'SettingsWebComponents/src/components/WritingSampleMarkdown.tsx', container: 'writing-examples-markdown', importer: 'SettingsWebComponents/src/main.tsx', importLine: "import '@shared/markdown-table.css'" },
-  { renderer: 'AssistantSession/src/components/history/HistoryDetail.tsx', container: 'assistant-output-history-detail__output', importer: 'AssistantSession/src/styles/assistant-session.css', importLine: "@import '../../../shared/markdown-table.css';" },
-  { renderer: 'SetupAssistantWebComponents/src/components/intro/ModelComparison.tsx', container: 'model-comparison', importer: 'SetupAssistantWebComponents/src/styles/setup-assistant.model-comparison.css', importLine: "@import '../../../shared/markdown-table.css';" },
+  { renderer: 'AgentTaskResult/src/components/MarkdownRenderer.tsx', container: 'result-section', importer: 'AgentTaskResult/src/styles/components/result-content.css', importLine: "@import '../../../../shared/text/markdown-table.css';" },
+  { renderer: 'BasilBoard/src/home/HomeMarkdown.tsx', container: 'home-markdown', importer: 'BasilBoard/src/styles/home-markdown-blocks.css', importLine: "@import '../../../shared/text/markdown-table.css';" },
+  { renderer: 'MeetingAssistant/src/lib/markdown.tsx', container: 'meeting-markdown', importer: 'MeetingAssistant/src/styles/meeting-assistant.css', importLine: "@import '../../../shared/text/markdown-table.css';" },
+  { renderer: 'SettingsWebComponents/src/components/context/WritingSampleMarkdown.tsx', container: 'writing-examples-markdown', importer: 'SettingsWebComponents/src/main.tsx', importLine: "import '@shared/text/markdown-table.css'" },
+  { renderer: 'AssistantSession/src/components/history/HistoryDetail.tsx', container: 'assistant-output-history-detail__output', importer: 'AssistantSession/src/styles/assistant-session.css', importLine: "@import '../../../shared/text/markdown-table.css';" },
+  { renderer: 'SetupAssistantWebComponents/src/components/intro/ModelComparison.tsx', container: 'model-comparison', importer: 'SetupAssistantWebComponents/src/styles/setup-assistant.model-comparison.css', importLine: "@import '../../../shared/text/markdown-table.css';" },
 ] as const;
 
 function read(path: string): string {
   return readFileSync(`../${path}`, 'utf8');
 }
 
-const sharedCss = read('shared/markdown-table.css');
+const sharedCss = read('shared/text/markdown-table.css');
 const containerLists = [...sharedCss.matchAll(/^:where\(([^)]+)\)/gm)].map(match => match[1].split(',').map(name => name.trim()));
 
 describe('shared Markdown table style', () => {

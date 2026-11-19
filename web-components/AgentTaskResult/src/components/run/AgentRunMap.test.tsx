@@ -139,6 +139,21 @@ describe('AgentRunMap', () => {
     expect(badges.map(badge => badge.classList.contains('is-revision'))).toEqual([false, true]);
   });
 
+  it('shows a clock in the badge of a scheduled check, which has no number', () => {
+    const scheduledRun: AgentTaskRunFocusSummary = {
+      ...followUpRun,
+      id: 'scheduled-check',
+      displayNumber: '',
+      label: 'Scheduled check 1 of Follow-up 1',
+    };
+    const view = renderMap({ runs: [rootRun, scheduledRun], focusedRunId: 'scheduled-check', locationRunId: 'scheduled-check' });
+    const badges = Array.from(view.querySelectorAll<HTMLElement>('.agent-run-map-ordinal'));
+    expect(badges.map(badge => badge.textContent)).toEqual(['1', '']);
+    expect(badges[1].querySelector('svg.scheduled-check-glyph')).not.toBeNull();
+    expect(badges[0].querySelector('svg')).toBeNull();
+    expect(view.querySelector('.agent-run-map-turn-link[aria-label^="Scheduled check 1 of Follow-up 1"]')).not.toBeNull();
+  });
+
   it('lists every turn and expands only the location turn', () => {
     const view = renderMap();
     expect(view.querySelector('.agent-run-map-title')?.textContent).toBe('Task map · 2 turns');

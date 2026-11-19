@@ -27,9 +27,11 @@ import {
 } from './services/bridge';
 import { measureCollapsedPanelSize } from './collapsedPanelSizing';
 import { applyHostTheme } from './app/themeBootstrap';
-import { plainMarkdownText } from '@shared/plainMarkdownText';
-import { useCollapseShortcut } from '@shared/useCollapseShortcut';
-import { useSettledExpand } from '@shared/useSettledExpand';
+import { plainMarkdownText } from '@shared/text/plainMarkdownText';
+import { useCollapseShortcut } from '@shared/disclosure/useCollapseShortcut';
+import { WindowControlButton } from '@shared/windowChrome/WindowControlButton';
+import { WindowMoveHandle } from '@shared/windowChrome/WindowMoveHandle';
+import { useSettledExpand } from '@shared/disclosure/useSettledExpand';
 
 const PANEL_WIDTH = 360;
 const HEADER_HEIGHT = 116;
@@ -436,38 +438,18 @@ export default function App() {
   return (
     <div className="basil-webkit-window-frame">
       <section className={`${isContentCollapsed ? 'ambient-panel collapsed' : 'ambient-panel'} basil-webkit-window-surface`}>
-      <header className="ambient-header" ref={headerRef}>
+      <header className="ambient-header window-move-host" ref={headerRef}>
+        <WindowMoveHandle />
         <div className="ambient-header-left" data-ambient-header-left>
-          <button className="ambient-header-btn" onClick={dismissPanel} aria-label="Close Proactive Suggestions">
-            <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
-              <circle cx="11" cy="11" r="10" fill="var(--secondary)" fillOpacity="0.15" />
-              <line x1="7.5" y1="7.5" x2="14.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
-              <line x1="14.5" y1="7.5" x2="7.5" y2="14.5" stroke="var(--secondary)" strokeWidth="1.6" strokeLinecap="round" />
-            </svg>
-          </button>
-          <button className="ambient-header-btn" onClick={minimizePanel} aria-label="Minimize Proactive Suggestions">
-            <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
-              <circle cx="11" cy="11" r="10" fill="var(--secondary)" fillOpacity="0.15" />
-              <line x1="7" y1="12.5" x2="15" y2="12.5" stroke="var(--secondary)" strokeWidth="1.8" strokeLinecap="round" />
-            </svg>
-          </button>
-          <button
+          <WindowControlButton kind="close" label="Close Proactive Suggestions" className="ambient-header-btn" onClick={dismissPanel} />
+          <WindowControlButton kind="minimize" label="Minimize Proactive Suggestions" className="ambient-header-btn" onClick={minimizePanel} />
+          <WindowControlButton
+            kind="collapse"
+            label={isCollapsed ? 'Expand Proactive Suggestions' : 'Collapse Proactive Suggestions'}
             className="ambient-header-btn"
+            collapsed={isCollapsed}
             onClick={toggleCollapsed}
-            aria-label={isCollapsed ? 'Expand Proactive Suggestions' : 'Collapse Proactive Suggestions'}
-          >
-            <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">
-              <circle cx="11" cy="11" r="10" fill="var(--secondary)" fillOpacity="0.15" />
-              <polyline
-                points={isCollapsed ? '7.5,12.5 11,9 14.5,12.5' : '7.5,9.5 11,13 14.5,9.5'}
-                fill="none"
-                stroke="var(--secondary)"
-                strokeWidth="1.7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
+          />
           <div className="ambient-header-title">
             <span>Proactive Suggestions</span>
             {!isEmpty ? <span className="ambient-header-count">{suggestions.length}</span> : null}

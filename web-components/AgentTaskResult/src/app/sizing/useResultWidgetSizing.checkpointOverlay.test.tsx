@@ -4,7 +4,7 @@ import { act, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AgentState, DisplayableAgentTask } from '../../types';
-import { WEBKIT_WINDOW_CHROME_FRAME_INSET_PX } from '../../../../shared/webkitWindowChrome';
+import { WEBKIT_WINDOW_CHROME_FRAME_INSET_PX } from '../../../../shared/windowChrome/webkitWindowChrome';
 import * as bridge from '../../services/bridge';
 import { useResultWidgetSizing } from './useResultWidgetSizing';
 

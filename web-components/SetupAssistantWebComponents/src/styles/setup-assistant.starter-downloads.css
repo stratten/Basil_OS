@@ -122,7 +122,7 @@
   gap: var(--padding-s);
 }
 
-/* The shared download progress (shared/DownloadProgress.tsx) sits under the row's name, across the whole row. */
+/* The shared download progress (shared/status/DownloadProgress.tsx) sits under the row's name, across the whole row. */
 .model-downloads__progress {
   grid-column: 1 / -1;
 }

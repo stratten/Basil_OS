@@ -1,9 +1,9 @@
 import type { AgentTaskOriginNavigationPayload, BasilBoardTab, BasilBoardTabDetachBehavior } from '../contracts';
 import { rejectUnknownTabKind } from '../home/homeReducer';
-import AgentTasksHostPlaceholder from '../capabilities/AgentTasksHostPlaceholder';
-import ChatsTab from '../capabilities/ChatsTab';
+import AgentTasksHostPlaceholder from '../capabilities/agentTasks/AgentTasksHostPlaceholder';
+import ChatsTab from '../capabilities/chats/ChatsTab';
 import HomeView from '../home/HomeView';
-import MeetingsTab from '../capabilities/MeetingsTab';
+import MeetingsTab from '../capabilities/meetings/MeetingsTab';
 import TodoView from '../todos/TodoView';
 
 export type TabRenderer = (props: {

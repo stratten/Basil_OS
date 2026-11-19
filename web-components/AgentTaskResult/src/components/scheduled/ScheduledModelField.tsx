@@ -1,4 +1,4 @@
-import ReasoningModelPicker from '../../../../shared/ReasoningModelPicker';
+import ReasoningModelPicker from '../../../../shared/inputs/ReasoningModelPicker';
 import type { ReasoningModel } from '../../services/api';
 import ScheduledField from './ScheduledField';
 

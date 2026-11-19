@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
 import type { DelegatedProviderReportCard } from '../../artifacts/artifactContract';
-import { plainMarkdownText } from '../../../../shared/plainMarkdownText';
+import { plainMarkdownText } from '../../../../shared/text/plainMarkdownText';
 
 export interface DelegatedProviderReportCardsProps {
   cards: DelegatedProviderReportCard[];

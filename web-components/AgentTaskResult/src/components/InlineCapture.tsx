@@ -1,10 +1,10 @@
 import type { CaptureStateMessage } from '../types';
 import { stopFollowUpCapture, cancelFollowUpCapture, removeFollowUpCaptureReference, stopNewAgentTaskCapture, cancelNewAgentTaskCapture, stopRefinementRecording } from '../services/bridge';
 import AnimatedBubble from '../../../shared/bubble/AnimatedBubble';
-import AttachmentDropZone from '../../../shared/AttachmentDropZone';
+import AttachmentDropZone from '../../../shared/attachments/AttachmentDropZone';
 import { useCaptureMeter } from '../store/captureMeterStore';
 import { useFollowUpCaptureReferences } from '../store/followUpCaptureReferencesStore';
-import FollowUpReferences from './FollowUpReferences';
+import FollowUpReferences from './followUp/FollowUpReferences';
 
 interface Props {
   captureState: CaptureStateMessage;

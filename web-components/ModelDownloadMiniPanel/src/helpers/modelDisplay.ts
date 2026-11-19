@@ -28,4 +28,4 @@ export function displayInfoForModel(modelId: string): ModelDisplayInfo {
   return { title: modelId, technicalName: modelId }
 }
 
-export { formatBytes } from '@shared/formatBytes'
+export { formatBytes } from '@shared/format/formatBytes'

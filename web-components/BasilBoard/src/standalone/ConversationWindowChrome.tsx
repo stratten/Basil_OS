@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react';
-import { WindowControlButton } from '@shared/WindowControlButton';
-import { useCollapseShortcut } from '@shared/useCollapseShortcut';
-import { useSettledExpand } from '@shared/useSettledExpand';
+import { WindowControlButton } from '@shared/windowChrome/WindowControlButton';
+import { WindowMoveHandle } from '@shared/windowChrome/WindowMoveHandle';
+import { useCollapseShortcut } from '@shared/disclosure/useCollapseShortcut';
+import { useSettledExpand } from '@shared/disclosure/useSettledExpand';
 import { requestWindowClose, requestWindowCollapse, requestWindowExpand, requestWindowMinimize } from '../services/bridge';
 
 interface ConversationWindowChromeProps {
@@ -31,7 +32,8 @@ export default function ConversationWindowChrome({
   return (
     <div className="basil-webkit-window-frame conversation-standalone-frame">
       <div className={`basil-board-root basil-board-detached-shell basil-webkit-window-surface${isContentCollapsed ? ' is-collapsed' : ''}`}>
-        <header className="basil-board-detached-header">
+        <header className="basil-board-detached-header window-move-host">
+          <WindowMoveHandle />
           <div className="conversation-window-header-left">
             <div className="basil-board-window-controls">
               <WindowControlButton kind="close" label="Close" className="basil-board-window-control" onClick={requestWindowClose} />

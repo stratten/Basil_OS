@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import ReasoningModelPicker from '../../../shared/ReasoningModelPicker';
-import type { SharedReasoningModel } from '../../../shared/ReasoningModelPicker';
+import ReasoningModelPicker from '../../../shared/inputs/ReasoningModelPicker';
+import type { SharedReasoningModel } from '../../../shared/inputs/ReasoningModelPicker';
 import { getReasoningModels, isApiReady, type ReasoningModel } from '../services/api';
 
 interface Props {

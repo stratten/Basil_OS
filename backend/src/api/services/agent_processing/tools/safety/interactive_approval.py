@@ -5,7 +5,6 @@ Manages user approval prompts and responses for command execution.
 """
 
 import asyncio
-import logging
 import time
 from typing import Dict, Any, Optional, Tuple
 
@@ -13,6 +12,7 @@ from api.core.knowledge.sqlite.sqlite_knowledge_service_component_services.execu
     ExecutionApprovalConflictError,
     ExecutionApprovalPersistenceError,
 )
+from api.core.logging.api_logger import api_logger
 from api.core.models.preferences import ApprovalTimeoutBehavior
 from api.services.agent_processing.lifecycle.runtime.agent_timeline_contract import timeline_timestamp
 from api.services.agent_processing.lifecycle.runtime.timeline_persistence import persist_timeline_entry
@@ -33,7 +33,8 @@ from .approval_presentation import approval_presentation_fields, record_whitelis
 from .models import ExecutionApprovalDecision
 from .whitelist_pattern_selection import advice_pattern, select_remember_pattern
 
-logger = logging.getLogger(__name__)
+# The backend's log handlers sit on the "api.main" logger and it does not propagate, so only its children reach the log file. Approval waits and approval failures were previously dropped from it.
+logger = api_logger.getChild("interactive_approval")
 
 
 def _approval_time_limit(timeout_seconds: float, timeout_behavior: ApprovalTimeoutBehavior) -> Dict[str, Any] | None:

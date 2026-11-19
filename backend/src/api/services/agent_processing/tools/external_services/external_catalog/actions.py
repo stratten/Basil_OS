@@ -130,6 +130,12 @@ async def describe_external_catalog_server(connection_id: str) -> Dict[str, Any]
         result["connection_id"] = connection_id
         result["friendly_name"] = record.friendly_name
         result["description"] = record.description
+        # A local server that talks to a localhost address without a companion depends on a program Basil does not run; tell the agent how to fix that.
+        from .local_server_register import unmanaged_background_program_advice
+
+        advice = unmanaged_background_program_advice(getattr(record, "stdio", None))
+        if advice is not None:
+            result["advice"] = advice
         # The model has now been shown this connection's full tool surface
         # (names + input schemas). Record that for the run so the call_tool
         # schema guard treats these tools as surfaced and never re-fetches.

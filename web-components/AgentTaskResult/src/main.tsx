@@ -4,8 +4,8 @@ import App from './App';
 import './styles/theme.css';
 import './styles/components.css';
 import './styles/agent-task-result-surface-finish.css';
-import { installBlueprintReveal } from '@shared/blueprintController';
-import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish';
+import { installBlueprintReveal } from '@shared/blueprint/blueprintController';
+import { enableBackdropSurfaceFinish } from '@shared/theme/surfaceFinish';
 import { installBasilTooltips } from '@shared/tooltip/basilTooltip';
 
 enableBackdropSurfaceFinish();

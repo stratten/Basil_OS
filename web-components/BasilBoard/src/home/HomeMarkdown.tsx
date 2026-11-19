@@ -7,7 +7,7 @@ import {
   externalLinkTarget,
   normalizeMarkdownBullets,
   sanitizeMarkdownHtml,
-} from '@shared/markdownSafety';
+} from '@shared/text/markdownSafety';
 
 marked.setOptions({
   gfm: true,

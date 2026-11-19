@@ -349,6 +349,28 @@ async def startup_event():
                 )
 
             try:
+                from .core.knowledge.sqlite.sqlite_knowledge_service_component_services.infrastructure.startup_housekeeping import (
+                    run_startup_housekeeping,
+                )
+
+                startup_loop = asyncio.get_running_loop()
+
+                def _report_housekeeping_status(message: str) -> None:
+                    asyncio.run_coroutine_threadsafe(_update_startup_status_file(message), startup_loop)
+
+                await asyncio.to_thread(
+                    run_startup_housekeeping,
+                    sqlite_service.db_path,
+                    status=_report_housekeeping_status,
+                )
+            except Exception as error:
+                logger.error(
+                    "Startup: Database housekeeping failed: %s",
+                    error,
+                    exc_info=True,
+                )
+
+            try:
                 from .services.agent_processing.tools.internal_basil_tools.stored_result.store import (
                     sweep_expired as sweep_expired_tool_results,
                 )
@@ -807,6 +829,14 @@ async def startup_event():
                 exc_info=True,
             )
 
+        try:
+            from .services.mcp_connectors.companion_supervisor import get_companion_supervisor
+
+            # Starts each local server's background program that is set to run with Basil. A background task, because a program that needs Keychain secrets waits for the app to connect.
+            app.state.local_server_startup_task = asyncio.create_task(get_companion_supervisor().start_enabled_at_launch())
+        except Exception as companion_exc:
+            logger.error("Startup: failed to start local server background programs: %s", companion_exc, exc_info=True)
+
         await _update_startup_status_file("Launching interface...")
     except Exception as e:
         logger.error(f"🚨 Startup event error: {e}", exc_info=True)
@@ -822,6 +852,16 @@ async def shutdown_event():
         await stop_event_loop_watchdog()
     except Exception as exc:
         logger.warning("Shutdown: Error stopping the event-loop watchdog: %s", exc)
+    try:
+        from .services.mcp_connectors.companion_supervisor import get_companion_supervisor
+
+        startup_task = getattr(app.state, "local_server_startup_task", None)
+        if startup_task is not None and not startup_task.done():
+            startup_task.cancel()
+        await get_companion_supervisor().stop_all()
+        logger.info("Shutdown: Local server background programs stopped")
+    except Exception as exc:
+        logger.error("Shutdown: Error stopping local server background programs: %s", exc, exc_info=True)
     try:
         from .dependencies import _local_preview_registry as _preview_registry_snapshot
         from .services.agent_processing.tools.direct_application_interactions.local_web_preview.local_preview_server_launcher import (

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { AgentTaskHistoryItem, StepDetailEntry } from '../../types';
 import MarkdownRenderer from '../MarkdownRenderer';
 import { CopyButtonGroup } from './CopyButtons';
-import ExecutionDisclosureChevron from '@shared/ExecutionDisclosureChevron';
+import ExecutionDisclosureChevron from '@shared/disclosure/ExecutionDisclosureChevron';
 import { ProgressStepsSection } from './ExecutionTimeline';
 import { ReasoningWithInteractions } from '../interaction/InteractionExchange';
 import { userInteractionsFromTimeline } from '../interaction/userInteractions';
@@ -12,7 +12,7 @@ import { RunDetailsDisclosure } from './RunDetailsDisclosure';
 import { formatTimestampForDisplay, useDateDisplayStyle } from '../../app/display/dateDisplay';
 import AgentTaskOriginChip from '../request/AgentTaskOriginChip';
 import RequestDisplay from '../request/RequestDisplay';
-import { plainMarkdownText } from '../../../../shared/plainMarkdownText';
+import { plainMarkdownText } from '../../../../shared/text/plainMarkdownText';
 import { ResultFooter } from './ResultFooter';
 
 const COLLAPSED_PREVIEW_MAX_CHARACTERS = 600;

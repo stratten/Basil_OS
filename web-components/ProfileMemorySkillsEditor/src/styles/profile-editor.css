@@ -1,5 +1,5 @@
-@import '../../../shared/webkit-window-chrome.css';
-@import '../../../shared/semantic-state.css';
+@import '../../../shared/windowChrome/webkit-window-chrome.css';
+@import '../../../shared/theme/semantic-state.css';
 
 :root {
   --background-primary: #ffffff;

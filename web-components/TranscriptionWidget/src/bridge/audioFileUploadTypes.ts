@@ -6,7 +6,7 @@
 // assistantOutputHistoryBridge alongside assistantSessionBridge.
 
 export const AUDIO_UPLOAD_PROTOCOL_VERSION = 1;
-import type { FontConfig, ThemeConfig } from '@shared/webTheme';
+import type { FontConfig, ThemeConfig } from '@shared/theme/webTheme';
 
 export interface AudioUploadLanguageOption {
   label: string;

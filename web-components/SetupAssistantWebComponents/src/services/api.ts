@@ -1,4 +1,4 @@
-import { createContextImportClient } from '@shared/contextImportClient'
+import { createContextImportClient } from '@shared/contextImport/contextImportClient'
 import type {
   SetupAction,
   SetupActionExecutionResponse,

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import ReasoningModelPicker from '../../../shared/ReasoningModelPicker';
+import ReasoningModelPicker from '../../../shared/inputs/ReasoningModelPicker';
 
 const models = [
   { id: 'local-1', name: 'Local Model', category: 'local' as const },

@@ -1,4 +1,4 @@
-import ReasoningModelPicker from '../../../shared/ReasoningModelPicker';
+import ReasoningModelPicker from '../../../shared/inputs/ReasoningModelPicker';
 import type { MeetingUIStateDTO } from '../bridge/types';
 import { LOCAL_LIVE_MODEL_LABEL, liveEngineChoice, liveModelOptions, liveModelValue } from '../cloud/cloudTranscriptionPresentation';
 import type { CloudTranscriptionState } from '../cloud/cloudTranscriptionTypes';

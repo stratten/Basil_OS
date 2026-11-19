@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { closeWindow, minimizeWindow, reportChromeHeight } from '../bridge/meetingBridge';
-import { WindowControlButton } from '@shared/WindowControlButton';
+import { WindowControlButton } from '@shared/windowChrome/WindowControlButton';
+import { WindowMoveHandle } from '@shared/windowChrome/WindowMoveHandle';
 
 interface WindowChromeProps {
   title: string;
@@ -51,7 +52,8 @@ export default function WindowChrome({
   });
 
   return (
-    <div ref={headerRef} className={`meeting-window-chrome${bubble ? ' meeting-window-chrome--with-bubble' : ''}${isCollapsed ? ' meeting-window-chrome--collapsed' : ''}`} data-drag-handle="true">
+    <div ref={headerRef} className={`meeting-window-chrome window-move-host${bubble ? ' meeting-window-chrome--with-bubble' : ''}${isCollapsed ? ' meeting-window-chrome--collapsed' : ''}`} data-drag-handle="true">
+      <WindowMoveHandle />
       {(!hideWindowControls || canCollapse) && (
         <div className="meeting-window-chrome-actions">
           {!hideWindowControls && (

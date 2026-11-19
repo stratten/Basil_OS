@@ -13,7 +13,7 @@ import MarkdownRenderer from '../MarkdownRenderer';
 import { diffLines, type DiffLine } from './diffLines';
 import { DiffView } from './DiffView';
 import type { ArtifactPreviewTransport } from './transport/artifactPreviewTransport';
-import CrossfadeStack from '@shared/CrossfadeStack';
+import CrossfadeStack from '@shared/motion/CrossfadeStack';
 import { ArtifactFileList } from './ArtifactFileList';
 import type { AgentTaskRunFocusSummary } from '../run/agentTaskRunFocus';
 import { useLiveHtmlPreview } from './livePreview/useLiveHtmlPreview';

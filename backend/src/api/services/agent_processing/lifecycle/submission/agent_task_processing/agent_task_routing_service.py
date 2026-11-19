@@ -672,6 +672,11 @@ class AgentTaskRoutingService:
                 if title and 2 < len(title) < 80:
                     await self.db_service.agent_task_service._mutations.update_agent_task_title(agent_task_id, title)
                     self.logger.info("📝 Generated title for %s: %r", agent_task_id, title)
+                    # Windows that already show this task would otherwise keep the prompt text in their sidebar until the task is reopened from history.
+                    await self.broadcast_agent_task_message(
+                        agent_task_id,
+                        {"event_type": "agent_task_title", "agent_task_id": agent_task_id, "title": title},
+                    )
         except Exception as exc:
             self.logger.debug("Title generation skipped: %s", exc)
 

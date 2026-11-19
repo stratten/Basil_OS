@@ -644,16 +644,9 @@
   border-bottom: var(--border-thin) solid var(--separator-color);
 }
 
-.detail-tray-header > div:first-child {
+.detail-tray-header:not(.detail-tray-header--overview) > div {
   min-width: 0;
   flex: 1 1 auto;
-}
-
-.detail-tray-header-actions {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: flex-start;
-  gap: var(--padding-s);
 }
 
 .detail-tray-eyebrow,
@@ -690,11 +683,25 @@
   font-family: var(--font-family-medium);
 }
 
+/* The shared window-control close glyph, at the top left of the header like a Basil window's close button. */
 .detail-tray-close {
-  font-size: calc(18px * var(--text-scale, 1));
-  line-height: 1;
-  color: var(--text-secondary);
-  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.detail-tray-close:hover {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+.detail-tray-close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 24%, transparent);
 }
 
 .detail-tray-follow-row {

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from typing import Any, Awaitable, Callable, Iterable, Optional, Sequence
 
 from langchain.agents.middleware import AgentMiddleware, ModelRequest, ModelResponse, ToolCallRequest
@@ -172,9 +173,23 @@ class ToolSurfaceMiddleware(AgentMiddleware):
                     status="error",
                 )
             logger.info(f"[AgentTelemetry] tool-call-through tool={call_name} loaded_families={added}")
+        started = time.monotonic()
+        outcome = "interrupted"
         try:
-            return await handler(request)
+            result = await handler(request)
+            outcome = "ok"
+            return result
         except Exception as error:
+            outcome = "pause" if is_pause_request(error) else "error"
             if is_pause_request(error) and getattr(error, "basil_tool_call_id", None) is None:
                 error.basil_tool_call_id = call_id
             raise
+        finally:
+            # Includes any approval wait inside the tool, so a long duration here with a quiet database points at a human or network wait rather than the write path.
+            logger.info(
+                "[AgentTelemetry] tool-call-timing tool=%s seconds=%.2f outcome=%s call_id=%s",
+                call_name,
+                time.monotonic() - started,
+                outcome,
+                call_id,
+            )

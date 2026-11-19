@@ -45,7 +45,7 @@ def build_mid_run_cue() -> str:
         "CHECKLIST CHECK: your tools have returned a set of records, and this task's checklist is still empty. "
         "The user follows what still needs to happen only through the checklist. If these records each need an outcome (handled, decided, or followed up), "
         "call checklist add now with one item per record for that outcome, naming its thread or record, all in one call with items. Use a single batch item only if the set is larger than about 10. "
-        "An item is an outcome, never your own action, and stays open until the outcome has really happened; a proposal or draft leaves it waiting_user. If this request needs no such tracking, carry on and do not mention this message."
+        "An item is an outcome, never your own action, and stays open until the outcome has really happened; a proposal or draft leaves it open, and waiting_user is only for an item where you have asked the user for a decision or information. If this request needs no such tracking, carry on and do not mention this message."
     )
 
 
@@ -54,7 +54,7 @@ def build_empty_checklist_review() -> str:
     return (
         "CHECKLIST CHECK (asked once, before your final answer): this run found a set of records but the checklist has no items, "
         "and the user sees only the checklist. If your answer covers several records, call checklist add now with one item per record for the outcome it needs "
-        "(one batch item only if the set is larger than about 10, all in one call with items), set each to its true status (done only if the outcome already happened, waiting_user with waiting_on for a proposal or decision that needs the user, pending or in_progress if the next step is yours, or dropped), "
+        "(one batch item only if the set is larger than about 10, all in one call with items), set each to its true status (done only if the outcome already happened, waiting_user with waiting_on only for a decision or information you are asking the user for, pending or in_progress if the next step is yours, or dropped), "
         "and then give your final answer again. If no tracking applies to this request, give the same final answer again. Do not mention this check in your answer."
     )
 

@@ -7,7 +7,8 @@ import {
   reportCaptureHeaderExtent,
   showHistory,
 } from '../services/bridge';
-import { WindowControlButton } from '@shared/WindowControlButton';
+import { WindowControlButton } from '@shared/windowChrome/WindowControlButton';
+import { WindowMoveHandle } from '@shared/windowChrome/WindowMoveHandle';
 import paprikaIcon from '../assets/paprika-icon.png';
 
 interface Props {
@@ -90,7 +91,8 @@ export default function CaptureHeader({ snapshot, displayName, isCollapsed, onTo
   }, []);
 
   return (
-    <div ref={headerRef} className="capture-header">
+    <div ref={headerRef} className="capture-header window-move-host">
+      <WindowMoveHandle />
       <div className={`capture-header__leading${canCollapse ? ' capture-header__leading--row' : ''}`}>
         <button
           type="button"

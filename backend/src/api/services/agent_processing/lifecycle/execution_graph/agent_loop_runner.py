@@ -17,7 +17,7 @@ from ...shared.agent_runtime_context import (
     reset_current_agent_context,
     set_current_agent_context,
 )
-from ...shared.agent_run_control import discard_run_control, run_control_for
+from ...shared.agent_run_control import clear_run_ended, discard_run_control, mark_run_ended, run_control_for
 from ...shared.workflow_budget_pause import current_pausable_deadline
 from ..runtime.activity_phase_notifier import emit_activity_phase
 from ..planning.agent_context_assembler import CONVERSATION_THREAD_SEEDED_KEY
@@ -408,6 +408,8 @@ async def run_agent_loop(request: AgentRunRequest) -> AgentRunResult:
             logger.info("📏 Prompt budget %s tokens for a %s-token context window", budget_tokens, window_tokens)
         agent_task_id = str((context or {}).get("agent_task_id") or "").strip()
         run_control = run_control_for(agent_task_id) if agent_task_id else None
+        if agent_task_id:
+            clear_run_ended(agent_task_id)
         broadcast = getattr((context or {}).get("websocket_manager"), "broadcast", None)
         graph = build_agent_loop_graph(
             langchain_llm=request.langchain_llm,
@@ -455,6 +457,7 @@ async def run_agent_loop(request: AgentRunRequest) -> AgentRunResult:
             if run_control is not None:
                 undelivered_notes = run_control.detach()
                 discard_run_control(agent_task_id, run_control)
+                mark_run_ended(agent_task_id)
         if undelivered_notes:
             await record_undelivered_notes(agent_task_id, undelivered_notes, broadcast)
     else:

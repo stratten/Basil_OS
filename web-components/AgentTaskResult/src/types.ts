@@ -5,7 +5,7 @@ import type {
   AgentTaskPresentationSummaryHttpResponse,
   DelegatedProviderReportCard,
 } from './artifacts/artifactContract';
-import type { FontConfig as SharedFontConfig, ThemeConfig as SharedThemeConfig } from '@shared/webTheme';
+import type { FontConfig as SharedFontConfig, ThemeConfig as SharedThemeConfig } from '@shared/theme/webTheme';
 export type ThemeConfig = SharedThemeConfig & {
   backgroundPrimary: string;
   primary: string;
@@ -715,6 +715,7 @@ export type SwiftMessage =
   | { type: 'closeWidget' }
   | { type: 'minimizeWidget' }
   | { type: 'widgetHeaderHeight'; height: number }
+  | { type: 'widgetHeaderDragGeometry'; height: number; interactiveRanges: Array<{ start: number; end: number }> }
   | { type: 'cancelRunningAgentTask'; agentTaskId: string }
   | { type: 'reportAgentTaskCancellationStage'; agentTaskId: string; stage: string }
   | {
@@ -855,6 +856,7 @@ export type WSEventType =
   | 'agent_task_blocker_resolved'
   | 'agent_task_provisional_failed'
   | 'agent_task_origin'
+  | 'agent_task_title'
   | 'delegated_provider_report_cards'
   | 'agent_task_artifact'
   | 'scheduled_agent_task_run_started'

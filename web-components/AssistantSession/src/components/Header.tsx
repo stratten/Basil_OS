@@ -1,5 +1,6 @@
 import AnimatedBubble from '../../../shared/bubble/AnimatedBubble';
-import { WindowControlButton } from '@shared/WindowControlButton';
+import { WindowControlButton } from '@shared/windowChrome/WindowControlButton';
+import { WindowMoveHandle } from '@shared/windowChrome/WindowMoveHandle';
 import { cancelOperation, enterTypedRefinement, minimizeWidget, openHistory, switchInputMode, toggleResultCollapse } from '../bridge/assistantSessionBridge';
 import type { AssistantSessionState } from '../state/assistantSessionReducer';
 import type { AssistantSessionThemePayload } from '../bridge/types';
@@ -29,7 +30,8 @@ export function Header({
   const showResultCollapse = phase === 'result';
 
   return (
-    <div className="assistant-session-header">
+    <div className="assistant-session-header window-move-host">
+      <WindowMoveHandle />
       <div className="assistant-session-header__left">
         <button type="button" className="assistant-session-header__traffic" title="Cancel request" aria-label="Cancel request" onClick={cancelOperation}>
           <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true">

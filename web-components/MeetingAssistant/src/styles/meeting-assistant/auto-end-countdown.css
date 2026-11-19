@@ -1,0 +1,68 @@
+/* The countdown sits under the recording buttons and borrows the recording-red used by End and the discard confirmation, so it reads as part of ending the meeting. */
+.meeting-auto-end {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--recording-base);
+  border-radius: 8px;
+  background: var(--background-primary);
+  box-shadow: var(--shadow-light);
+  color: var(--text-primary);
+}
+
+.meeting-auto-end-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.meeting-auto-end-text {
+  display: flex;
+  flex: 1 1 220px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.meeting-auto-end-headline {
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-callout);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.meeting-auto-end-detail {
+  font-size: var(--font-size-caption);
+  color: var(--text-primary);
+}
+
+.meeting-auto-end .meeting-record-button {
+  flex: 0 0 auto;
+}
+
+.meeting-auto-end-bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--recording-base) 18%, var(--background-primary));
+}
+
+.meeting-auto-end-bar-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--recording-base);
+  transform-origin: left center;
+  transition: transform 250ms linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meeting-auto-end-bar-fill {
+    transition: none;
+  }
+}

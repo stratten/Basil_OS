@@ -27,14 +27,14 @@ vi.mock('./components/WindowChrome', () => ({
   ),
 }));
 
-vi.mock('./companion/useCompanion', () => ({
+vi.mock('./companion/hooks/useCompanion', () => ({
   useCompanion: (args: unknown) => {
     hoisted.useCompanionSpy(args);
     return { state: { phase: 'ready', baselineSeq: 0, timeline: { items: [], chat: [] }, status: { mode: 'active' } }, isEnabled: true, setMode: vi.fn() };
   },
 }));
 
-vi.mock('./companion/CompanionPane', () => ({
+vi.mock('./companion/components/CompanionPane', () => ({
   default: ({ variant, isTargetRecording }: { variant: string; isTargetRecording: boolean }) => (
     <output data-testid="pane">{`${variant}|${String(isTargetRecording)}`}</output>
   ),

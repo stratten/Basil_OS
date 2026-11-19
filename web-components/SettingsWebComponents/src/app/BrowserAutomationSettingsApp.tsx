@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Switch } from '@shared/Switch'
+import { Switch } from '@shared/inputs/Switch'
 import { PolicyRadioGroup, type PolicyRadioOption } from '../components/PolicyRadioGroup'
 import { useOptimisticSettings } from './useOptimisticSettings'
 import {

@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApproveCircleIcon } from '@shared/CircleControlIcons';
+import { ApproveCircleIcon } from '@shared/windowChrome/CircleControlIcons';
 import { DecisionActions, DecisionButton } from './DecisionButton';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
@@ -127,7 +127,7 @@ describe('decision button stylesheet', () => {
   });
 
   it('uses the stop tone, not a blue neutral one, for every button that ends the task or a delegation', () => {
-    for (const file of ['../ApprovalOverlay.tsx', '../ApprovalSetOverlay.tsx', '../approval/ApprovalDock.tsx', '../CheckpointFlow.tsx']) {
+    for (const file of ['../approval/ApprovalOverlay.tsx', '../approval/ApprovalSetOverlay.tsx', '../approval/ApprovalDock.tsx', '../checkpoint/CheckpointFlow.tsx']) {
       const source = readFileSync(resolve(here, file), 'utf8');
       expect(source, file).toMatch(/tone="stop"\s+icon=\{<StopCircleIcon \/>\}/);
       expect(source, file).not.toMatch(/tone="neutral"\s+icon=\{<StopCircleIcon \/>\}/);

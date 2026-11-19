@@ -11,6 +11,7 @@ import {
   toggleRecording,
 } from '../bridge/meetingBridge';
 import { useMeetingMeter } from '../bridge/meetingMeterStore';
+import AutoEndCountdown from './AutoEndCountdown';
 import CloudTranscription from '../cloud/CloudTranscription';
 import { useCloudTranscription } from '../cloud/useCloudTranscription';
 import { companionPort } from '../companion/companionTarget';
@@ -110,6 +111,7 @@ function RecordingControls({ ui }: RecordingControlsProps) {
               <RecordingIndicators ui={ui} />
             </div>
           </div>
+          {ui.autoEndCountdown && <AutoEndCountdown countdown={ui.autoEndCountdown} />}
           <ResourceAdvice port={companionPort(ui)} recording={ui.isRecording} thermalState={ui.thermalState} />
           {isConfirmingCancel && (
             <div className="meeting-cancel-confirmation" role="alertdialog" aria-labelledby="meeting-cancel-confirmation-message">

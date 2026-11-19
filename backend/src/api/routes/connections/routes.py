@@ -86,6 +86,7 @@ from .connection_route_helpers import (
     save_connection_preferences,
 )
 from .gmail_transport_routes import register_gmail_transport_routes
+from api.services.mcp_connectors.local_server_lifecycle import purge_local_server_resources
 from .local_server_routes import register_local_server_routes
 from .metadata_routes import register_metadata_routes
 from .reconnect_support import load_reconnect_target, reauthorize_connection
@@ -401,6 +402,10 @@ async def delete_connection(
     """Remove a connection, its audit history, and notify the client to
     purge its Keychain entry."""
     prefs = load_connection_preferences()
+    removed_local_spec = next(
+        (r.stdio for r in prefs.connections.mcp_connections if r.id == connection_id and r.stdio is not None),
+        None,
+    )
     before = len(prefs.connections.mcp_connections)
     prefs.connections.mcp_connections = [
         r for r in prefs.connections.mcp_connections if r.id != connection_id
@@ -411,6 +416,8 @@ async def delete_connection(
 
     await knowledge_service.mcp_call_log_repository.delete_for_connection(connection_id)
     await _push_token_delete_to_swift(connection_id)
+    if removed_local_spec is not None:
+        await purge_local_server_resources(connection_id, removed_local_spec)
     return {"status": "deleted", "connection_id": connection_id}
 
 

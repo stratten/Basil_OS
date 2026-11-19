@@ -127,32 +127,53 @@ export function deriveAgentTaskRunFocusSummaries(
     modelUsed: item.modelUsed,
   }));
   const ordinal = historicalRuns.length + 1;
+  const currentRunId = displaySource.currentTurnTaskId || displaySource.agentTaskId;
 
-  return [
-    ...historicalRuns,
-    {
-      id: displaySource.currentTurnTaskId || displaySource.agentTaskId,
-      kind: historicalRuns.length === 0 ? 'root' : 'follow_up',
-      ordinal,
-      displayNumber: numbers[historicalRuns.length],
-      label: labels[historicalRuns.length],
-      requestText: displaySource.originalPrompt,
-      resultText: displaySource.result,
-      timestamp: displaySource.timestamp || '',
-      taskStatus: displaySource.isCanceled ? 'canceled' : displaySource.status,
-      outcome: displaySource.outcome,
-      resultSeverity: displaySource.resultSeverity,
-      isProcessing,
-      documentCount: documentCount(displaySource.structuredFiles, displaySource.executionTimeline),
-      hasVerifiedArtifactOutput: hasVerifiedArtifactOutput(
-        displaySource.structuredFiles,
-        displaySource.executionTimeline,
-      ),
-      structuredFiles: displaySource.structuredFiles,
-      executionTimeline: displaySource.executionTimeline,
-      modelUsed: displaySource.modelUsed ?? displaySource.originalModelId,
-    },
-  ];
+  const currentRun: AgentTaskRunFocusSummary = {
+    id: currentRunId,
+    kind: historicalRuns.length === 0 ? 'root' : 'follow_up',
+    ordinal,
+    displayNumber: numbers[historicalRuns.length],
+    label: labels[historicalRuns.length],
+    requestText: displaySource.originalPrompt,
+    resultText: displaySource.result,
+    timestamp: displaySource.timestamp || '',
+    taskStatus: displaySource.isCanceled ? 'canceled' : displaySource.status,
+    outcome: displaySource.outcome,
+    resultSeverity: displaySource.resultSeverity,
+    isProcessing,
+    documentCount: documentCount(displaySource.structuredFiles, displaySource.executionTimeline),
+    hasVerifiedArtifactOutput: hasVerifiedArtifactOutput(
+      displaySource.structuredFiles,
+      displaySource.executionTimeline,
+    ),
+    structuredFiles: displaySource.structuredFiles,
+    executionTimeline: displaySource.executionTimeline,
+    modelUsed: displaySource.modelUsed ?? displaySource.originalModelId,
+  };
+
+  // A run id must appear once: the rail, the focus lookup and the expanded group all find a run by id, so a repeat would draw a second copy under the first one's label. The current turn replaces a history item with the same id, in that item's place and under its label and number, because it is the fresher copy of the same turn. Of two history items sharing an id the first is kept.
+  const runs: AgentTaskRunFocusSummary[] = [];
+  const positionById = new Map<string, number>();
+  for (const run of historicalRuns) {
+    if (positionById.has(run.id)) continue;
+    positionById.set(run.id, runs.length);
+    runs.push(run);
+  }
+  const replacedPosition = positionById.get(currentRunId);
+  if (replacedPosition === undefined) {
+    runs.push(currentRun);
+  } else {
+    const replaced = runs[replacedPosition];
+    runs[replacedPosition] = {
+      ...currentRun,
+      kind: replaced.kind,
+      ordinal: replaced.ordinal,
+      displayNumber: replaced.displayNumber,
+      label: replaced.label,
+    };
+  }
+  return runs;
 }
 
 export function resolveFocusedRun(

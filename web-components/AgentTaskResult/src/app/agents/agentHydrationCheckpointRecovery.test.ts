@@ -332,7 +332,7 @@ describe('hydrateAgentFromBackend checkpoint recovery', () => {
     });
   });
 
-  it('retires an approval orphaned by backend restart without rendering its command', async () => {
+  it('leaves an approval the backend lists as orphaned alone and does not cancel it or fail the task', async () => {
     agentStore.registerAgent('orphaned-approval-task');
     vi.spyOn(api, 'getAgentTaskDetail').mockResolvedValue(makeDetail({
       id: 'orphaned-approval-task',
@@ -346,14 +346,14 @@ describe('hydrateAgentFromBackend checkpoint recovery', () => {
       canceled_approval_ids: ['approval-orphaned'],
     });
 
-    hydrateAgentFromBackend('orphaned-approval-task');
+    await hydrateAgentFromBackend('orphaned-approval-task');
 
-    await vi.waitFor(() => {
-      expect(agentStore.getAgent('orphaned-approval-task')?.errorMessage)
-        .toContain('restarted while waiting for command approval');
-    });
-    expect(recover).toHaveBeenCalledWith('orphaned-approval-task', ['approval-orphaned']);
-    expect(agentStore.getAgent('orphaned-approval-task')?.approvalRequests).toEqual([]);
+    expect(api.getPendingExecutionApprovals).toHaveBeenCalledWith('orphaned-approval-task');
+    expect(recover).not.toHaveBeenCalled();
+    const agent = agentStore.getAgent('orphaned-approval-task');
+    expect(agent?.errorMessage).toBeFalsy();
+    expect(agent?.status).not.toBe('failed');
+    expect(agent?.approvalRequests).toEqual([]);
   });
 
   it('uses a safe free-text recovery prompt only for a resumable legacy checkpoint', async () => {
@@ -499,6 +499,139 @@ describe('hydrateAgentFromBackend checkpoint recovery', () => {
       expect(agent?.result).toBe('Run 3 is ready for history review.');
       expect(agent?.status).toBe('completed');
       expect(agent?.currentTurnTaskId).toBe('follow-up-2');
+    });
+  });
+
+  describe('a question waiting inside a follow-up turn', () => {
+    beforeEach(() => {
+      agentStore.removeAgent('waiting-root');
+    });
+
+    const waitingChain = (followUpStatus: string) => makeDetail({
+      id: 'waiting-root',
+      status: 'completed',
+      result_message: 'Run 1 is done.',
+      follow_ups: [{
+        id: 'waiting-turn-1',
+        original_prompt: 'Draft the reply.',
+        timestamp: '2026-08-16T00:01:00.000Z',
+        status: followUpStatus,
+        result_message: 'Approve this reply-all to Brian and Mariam, or tell me what to change?',
+        files: [],
+        reference_paths: [],
+        root_task_id: 'waiting-root',
+        previous_task_id: 'waiting-root',
+        chain_sequence_number: 1,
+      }],
+    });
+    const waitingTurnDetail = (status: string) => makeDetail({
+      id: 'waiting-turn-1',
+      status,
+      result_message: 'Approve this reply-all to Brian and Mariam, or tell me what to change?',
+      checkpoint_data: {
+        checkpoint_id: 'approve-reply',
+        prompt: 'Approve this reply-all to Brian and Mariam, or tell me what to change?',
+        input_type: 'selection',
+        options: ['Approve', 'Change it'],
+        details_markdown: '**To:** brian@example.com, mariam@example.com\n\nHi both, the storage limit is 50 GB.',
+      },
+    });
+    const byId = (chain: AgentTaskDetail, turn: AgentTaskDetail | 'unreadable') => (id: string) => {
+      if (id === 'waiting-root') return Promise.resolve(chain);
+      return turn === 'unreadable' ? Promise.reject(new Error('offline')) : Promise.resolve(turn);
+    };
+
+    it('shows the question the turn is really waiting on, with its options and the content to approve, not a bare answer box', async () => {
+      agentStore.registerAgent('waiting-root');
+      vi.spyOn(api, 'getAgentTaskDetail').mockImplementation(byId(waitingChain('awaiting_user_input'), waitingTurnDetail('awaiting_user_input')));
+      const getCheckpointStatus = vi.spyOn(api, 'getCheckpointStatus');
+
+      hydrateAgentFromBackend('waiting-root');
+
+      await vi.waitFor(() => {
+        const checkpoint = agentStore.getAgent('waiting-root')?.currentCheckpoint;
+        expect(checkpoint?.checkpoint_id).toBe('approve-reply');
+        expect(checkpoint?.input_type).toBe('choice');
+        expect(checkpoint?.options?.map(option => option.value)).toEqual(['Approve', 'Change it']);
+        expect(checkpoint?.details_markdown).toContain('brian@example.com');
+        expect(checkpoint?.session_agent_task_id).toBe('waiting-turn-1');
+      });
+      expect(getCheckpointStatus).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the plain recovery prompt when the waiting turn cannot be read', async () => {
+      agentStore.registerAgent('waiting-root');
+      vi.spyOn(api, 'getAgentTaskDetail').mockImplementation(byId(waitingChain('awaiting_user_input'), 'unreadable'));
+      vi.spyOn(api, 'getCheckpointStatus').mockResolvedValue({
+        agent_task_id: 'waiting-turn-1', has_checkpoint: true, can_resume: true, message: 'Checkpoint is available',
+      });
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      hydrateAgentFromBackend('waiting-root');
+
+      await vi.waitFor(() => {
+        expect(agentStore.getAgent('waiting-root')?.currentCheckpoint).toMatchObject({
+          checkpoint_id: 'recovered-waiting-turn-1',
+          input_type: 'data',
+          metadata: { source: 'checkpoint_recovery' },
+        });
+      });
+    });
+
+    it('replaces the plain recovery prompt with the real question once it can be read, but leaves any other card alone', async () => {
+      agentStore.registerAgent('waiting-root');
+      agentStore.showCheckpoint('waiting-root', {
+        checkpoint_id: 'recovered-waiting-turn-1',
+        session_agent_task_id: 'waiting-turn-1',
+        prompt: 'Approve this reply-all to Brian and Mariam, or tell me what to change?',
+        input_type: 'data',
+        metadata: { source: 'checkpoint_recovery' },
+      });
+      vi.spyOn(api, 'getAgentTaskDetail').mockImplementation(byId(waitingChain('awaiting_user_input'), waitingTurnDetail('awaiting_user_input')));
+
+      await hydrateAgentFromBackend('waiting-root');
+
+      expect(agentStore.getAgent('waiting-root')?.currentCheckpoint?.checkpoint_id).toBe('approve-reply');
+
+      agentStore.removeAgent('waiting-root');
+      agentStore.registerAgent('waiting-root');
+      agentStore.showCheckpoint('waiting-root', { checkpoint_id: 'other-question', prompt: 'Another question?', input_type: 'data' });
+
+      await hydrateAgentFromBackend('waiting-root');
+
+      expect(agentStore.getAgent('waiting-root')?.currentCheckpoint?.checkpoint_id).toBe('other-question');
+    });
+
+    it('keeps the recovery prompt on screen when the real question still cannot be read', async () => {
+      agentStore.registerAgent('waiting-root');
+      agentStore.showCheckpoint('waiting-root', {
+        checkpoint_id: 'recovered-waiting-turn-1',
+        session_agent_task_id: 'waiting-turn-1',
+        prompt: 'Approve this reply-all to Brian and Mariam, or tell me what to change?',
+        input_type: 'data',
+        metadata: { source: 'checkpoint_recovery' },
+      });
+      vi.spyOn(api, 'getAgentTaskDetail').mockImplementation(byId(waitingChain('awaiting_user_input'), 'unreadable'));
+      const getCheckpointStatus = vi.spyOn(api, 'getCheckpointStatus');
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      await hydrateAgentFromBackend('waiting-root');
+
+      expect(agentStore.getAgent('waiting-root')?.currentCheckpoint?.checkpoint_id).toBe('recovered-waiting-turn-1');
+      expect(getCheckpointStatus).not.toHaveBeenCalled();
+    });
+
+    it('does not apply a question from a turn that is no longer waiting', async () => {
+      agentStore.registerAgent('waiting-root');
+      vi.spyOn(api, 'getAgentTaskDetail').mockImplementation(byId(waitingChain('awaiting_user_input'), waitingTurnDetail('processing')));
+      vi.spyOn(api, 'getCheckpointStatus').mockResolvedValue({
+        agent_task_id: 'waiting-turn-1', has_checkpoint: false, can_resume: false, message: 'No checkpoint is available',
+      });
+
+      hydrateAgentFromBackend('waiting-root');
+
+      await vi.waitFor(() => expect(api.getCheckpointStatus).toHaveBeenCalled());
+      expect(agentStore.getAgent('waiting-root')?.currentCheckpoint?.checkpoint_id).not.toBe('approve-reply');
     });
   });
 

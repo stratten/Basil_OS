@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { ModalCloseButton } from '@shared/dialogs/ModalCloseButton';
 import type { ChecklistItem } from '../../services/checklistApi';
 import { checklistActions, useChecklist, useChecklistCounts } from '../../store/checklistStore';
 import { closeChecklistWindow, useChecklistWindowItemId, useChecklistWindowRoot } from '../../store/checklistViewStore';
@@ -6,7 +7,7 @@ import ChecklistAddForm from './ChecklistAddForm';
 import ChecklistItemDetail from './ChecklistItemDetail';
 import ChecklistNotesEditor from './ChecklistNotesEditor';
 import ChecklistStatusGlyph from './ChecklistStatusGlyph';
-import { checklistItemAriaLabel, isOpenStatus, prioritizeChecklistItems } from './checklistPresentation';
+import { checklistItemAriaLabel, isInferredDone, isOpenStatus, prioritizeChecklistItems } from './checklistPresentation';
 
 interface Props {
   rootTaskId: string;
@@ -108,12 +109,10 @@ export default function ChecklistWindow({ rootTaskId, onNavigateRun, yielding = 
           onKeyDown={handleKeyDown}
         >
           <header className="checklist-window__header">
+            <ModalCloseButton onClose={closeChecklistWindow} closeOnEscape={false} />
             <div className="checklist-window__heading">
               <h2 id="checklist-window-title" className="overlay-title checklist-window__title">Checklist</h2>
               <span className="checklist-window__count">{counts.done} of {counts.total} done{snapshot?.closed_at ? ', tracking stopped' : ''}</span>
-            </div>
-            <div className="checklist-window__header-actions">
-              <button type="button" className="checklist-button checklist-button--primary" onClick={closeChecklistWindow}>Close window</button>
             </div>
           </header>
 
@@ -162,6 +161,7 @@ export default function ChecklistWindow({ rootTaskId, onNavigateRun, yielding = 
                                 <span className="checklist-row__sub">{item.waiting_on}</span>
                               )}
                             </span>
+                            {isInferredDone(item) && <span className="checklist-row__tag" title="Basil marked this done from what it could see. Open it to confirm or reopen it.">Inferred</span>}
                             {item.required && <span className="checklist-row__tag">Required</span>}
                             {item.origin === 'carried' && <span className="checklist-row__tag checklist-row__tag--quiet">Carried</span>}
                           </button>

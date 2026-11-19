@@ -5,7 +5,7 @@ import {
   FULL_THEME_TOKENS,
   assertAppliesFontTokens,
   assertAppliesThemeTokens,
-} from '@shared/webThemeContractSuite';
+} from '@shared/theme/webThemeContractSuite';
 
 describe('Meeting Assistant host appearance contract', () => {
   it('forwards the full theme contract to the shared applier', () => {

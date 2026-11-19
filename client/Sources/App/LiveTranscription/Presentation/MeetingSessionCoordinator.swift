@@ -312,6 +312,14 @@ final class MeetingSessionCoordinator {
         model.systemAudioCaptureMode = .globalOutput
         model.statusMessage = "Recording microphone and system audio. Join the call; remote audio will be captured once it starts playing."
         model.startRecording()
+        // Joining opens the same microphone and system audio as a detected meeting, so the call's app will appear in the audio probe; wait for it so the recording can end with the call.
+        model.isAwaitingAutoEndSource = true
+    }
+
+    /// An audio-sourced detection arrived while this launch or recording was active. Bind its app to a calendar-launched recording that has none yet; any other detection is ignored.
+    @discardableResult
+    func adoptDetectedMeetingAudioSource(bundleID: String) -> Bool {
+        viewModel?.adoptAutoEndSource(bundleID: bundleID) ?? false
     }
 
     func selectMeeting(_ meetingId: String) async {
@@ -321,14 +329,21 @@ final class MeetingSessionCoordinator {
 
     @discardableResult
     func finalizeForEndedMeeting(bundleID: String) -> Bool {
-        guard let viewModel,
-              viewModel.isRecording,
-              let started = viewModel.autoStartedBundleID,
-              started == bundleID else {
+        guard let viewModel, viewModel.shouldFinalizeForAutoEnd(bundleID: bundleID) else {
             return false
         }
         viewModel.stopRecording()
         return true
+    }
+
+    /// The backend announced when the detected meeting will end; show it on the recording that detection started.
+    func beginAutoEndCountdown(bundleID: String, deadline: Date, totalSeconds: Double) {
+        viewModel?.beginAutoEndCountdown(bundleID: bundleID, deadline: deadline, totalSeconds: totalSeconds)
+    }
+
+    /// The backend reported the meeting app's audio is back, so its countdown is called off.
+    func endAutoEndCountdown(bundleID: String) {
+        viewModel?.endAutoEndCountdown(bundleID: bundleID)
     }
 
     var isSessionActive: Bool { viewModel != nil }

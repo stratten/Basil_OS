@@ -37,7 +37,7 @@ export const AssistantSessionLayout = {
 } as const;
 
 /** User-configurable colors are delivered at runtime through AssistantSessionThemePayload, mirroring AgentTaskResult's established theme-change bridge because AestheticSystem settings are dynamic per user. */
-import type { ThemeConfig } from '@shared/webTheme';
+import type { ThemeConfig } from '@shared/theme/webTheme';
 
 export type AssistantSessionThemePayload = ThemeConfig & {
   primary: string;

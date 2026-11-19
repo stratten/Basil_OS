@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import CrossfadeStack from '@shared/CrossfadeStack';
-import PresenceRegion from '@shared/PresenceRegion';
-import { WindowControlButton } from '@shared/WindowControlButton';
-import { useCollapseShortcut } from '@shared/useCollapseShortcut';
-import { useSettledExpand } from '@shared/useSettledExpand';
+import CrossfadeStack from '@shared/motion/CrossfadeStack';
+import PresenceRegion from '@shared/motion/PresenceRegion';
+import { WindowControlButton } from '@shared/windowChrome/WindowControlButton';
+import { WindowMoveHandle } from '@shared/windowChrome/WindowMoveHandle';
+import { useCollapseShortcut } from '@shared/disclosure/useCollapseShortcut';
+import { useSettledExpand } from '@shared/disclosure/useSettledExpand';
 import { closeWindow, minimizeWindow, onHistoryEvent, reportHistoryReady, toggleChromeCollapse } from '../bridge/historyBridge';
 import { deleteHistoryEntry, fetchHistory, fetchHistoryDetail, type AssistantOutputHistoryDetail, type AssistantOutputHistoryEntry } from '../services/historyApi';
 import { HistorySidebar, type HistoryModalityFilter } from '../components/history/HistorySidebar';
 import { HistoryDetail } from '../components/history/HistoryDetail';
 import { applyAssistantSessionTheme } from './themeCssVars';
-import { plainMarkdownText } from '@shared/plainMarkdownText';
+import { plainMarkdownText } from '@shared/text/plainMarkdownText';
 import { BASIL_TEAM } from '@shared/teamIdentity';
 import type { AssistantSessionThemePayload } from '../bridge/types';
 
@@ -166,7 +167,8 @@ export function AssistantOutputHistoryApp() {
   return (
     <div className="basil-webkit-window-frame" data-blueprint-pending={loadState === 'loading' ? 'true' : undefined}>
       <div className="assistant-output-history-shell basil-webkit-window-surface">
-        <div className="assistant-output-history-shell__titlebar">
+        <div className="assistant-output-history-shell__titlebar window-move-host">
+          <WindowMoveHandle />
           <div className="assistant-output-history-shell__titlebar-actions">
             <WindowControlButton kind="close" label="Close" onClick={closeWindow} />
             <WindowControlButton kind="minimize" label="Minimize" onClick={minimizeWindow} />

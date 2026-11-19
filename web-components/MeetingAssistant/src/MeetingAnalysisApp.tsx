@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { copyText, exportAnalysis, toggleWindowCollapse, viewAnalysis } from './bridge/meetingBridge';
 import { useMeetingBridgeState } from './state/useMeetingBridgeState';
 import AnalysisResults from './components/AnalysisResults';
-import { useCollapseShortcut } from '@shared/useCollapseShortcut';
+import { useCollapseShortcut } from '@shared/disclosure/useCollapseShortcut';
 import { useCopiedFlag } from '@shared/useCopyFeedback';
-import { useSettledExpand } from '@shared/useSettledExpand';
+import { useSettledExpand } from '@shared/disclosure/useSettledExpand';
 import WindowChrome from './components/WindowChrome';
 import {
   analysisExportFilename,

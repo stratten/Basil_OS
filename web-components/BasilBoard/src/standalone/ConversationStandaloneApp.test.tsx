@@ -31,7 +31,7 @@ vi.mock('../services/websocket', () => ({
   },
 }));
 
-vi.mock('../capabilities/ConversationWorkspace', () => ({
+vi.mock('../capabilities/conversation/ConversationWorkspace', () => ({
   default: ({
     originNavigation,
     detachedConversationIds,

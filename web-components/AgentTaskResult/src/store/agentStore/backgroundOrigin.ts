@@ -1,5 +1,5 @@
 /** Origins of runs that Basil starts on its own. A run like that must never take the reader away from what they are looking at or discard what they are typing. */
-const BACKGROUND_ORIGIN_TYPES: ReadonlySet<string> = new Set(['scheduled_task', 'agent_follow_up']);
+const BACKGROUND_ORIGIN_TYPES: ReadonlySet<string> = new Set(['scheduled_task', 'agent_follow_up', 'scheduled_follow_up']);
 
 export function isBackgroundOriginType(originType: unknown): boolean {
   return typeof originType === 'string' && BACKGROUND_ORIGIN_TYPES.has(originType);

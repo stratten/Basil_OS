@@ -1,8 +1,8 @@
 // web-components/TranscriptionWidget/src/components/TranscriptionModelPickerMenu.tsx
 
 import { selectTranscriptionModel, showTranscriptionModelMenu } from '../bridge/transcriptionWidgetBridge';
-import ReasoningModelPicker from '../../../shared/ReasoningModelPicker';
-import type { SharedReasoningModel } from '../../../shared/ReasoningModelPicker';
+import ReasoningModelPicker from '../../../shared/inputs/ReasoningModelPicker';
+import type { SharedReasoningModel } from '../../../shared/inputs/ReasoningModelPicker';
 import type { TranscriptionState } from '../state/transcriptionReducer';
 import { TranscriptionSymbol } from './TranscriptionSymbol';
 

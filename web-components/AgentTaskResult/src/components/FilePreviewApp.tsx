@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { WindowControlButton } from '@shared/WindowControlButton';
+import { WindowControlButton } from '@shared/windowChrome/WindowControlButton';
+import { WindowMoveHandle } from '@shared/windowChrome/WindowMoveHandle';
 import MarkdownRenderer from './MarkdownRenderer';
 import {
   filePreviewKindForReviewKind,
@@ -23,7 +24,7 @@ import {
 import { getAgentTaskDetail, setBaseUrl } from '../services/api';
 import { applyHostFonts, applyHostTheme } from '../app/host/themeBootstrap';
 import type { AgentTaskEventSubscriber } from '../services/websocket';
-import CrossfadeStack from '@shared/CrossfadeStack';
+import CrossfadeStack from '@shared/motion/CrossfadeStack';
 import { useManagedVersionHistory } from './artifacts/managedHistory/useManagedVersionHistory';
 import { ManagedVersionControls, ManagedVersionRestoreError } from './artifacts/managedHistory/ManagedVersionControls';
 import { diffLines, type DiffLine } from './artifacts/diffLines';
@@ -229,7 +230,8 @@ export default function FilePreviewApp() {
   return (
     <div className="basil-webkit-window-frame">
       <div className="file-preview-window basil-webkit-window-surface">
-      <header className="file-preview-window-header">
+      <header className="file-preview-window-header window-move-host">
+        <WindowMoveHandle />
         <div className="file-preview-window-controls" aria-label="Window controls">
           <WindowControlButton kind="close" label="Close preview window" className="file-preview-window-control header-btn" onClick={closeWidget} />
           <WindowControlButton kind="minimize" label="Minimize preview window" className="file-preview-window-control header-btn" onClick={minimizeWidget} />

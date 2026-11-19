@@ -1,5 +1,5 @@
-import { formatTimestampForDisplay } from '@shared/timestampDisplay'
-import { requestRefreshCallLog } from '../services/connectionsBridge'
+import { formatTimestampForDisplay } from '@shared/format/timestampDisplay'
+import { requestRefreshCallLog } from '../services/connections/connectionsBridge'
 import type { DateDisplayStyle, MCPCallLogEntry, MCPConnection } from '../types'
 
 interface CallLogPanelProps {

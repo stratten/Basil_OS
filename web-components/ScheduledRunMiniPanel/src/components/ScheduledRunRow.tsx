@@ -1,6 +1,6 @@
 import { memo, type MouseEvent } from 'react';
 import type { MiniPanelRow } from '../types';
-import { plainMarkdownText } from '@shared/plainMarkdownText';
+import { plainMarkdownText } from '@shared/text/plainMarkdownText';
 import { dotClassOfPhase, phaseOfRow, stepTextOfRow } from '../runPresentation';
 
 interface ScheduledRunRowProps {

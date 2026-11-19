@@ -1,7 +1,7 @@
-@import '../../../shared/basil-modal-dialog.css';
-@import '../../../shared/expandable-list.css';
-@import '../../../shared/expandable-clamp.css';
-@import '../../../shared/switch.css';
+@import '../../../shared/dialogs/basil-modal-dialog.css';
+@import '../../../shared/disclosure/expandable-list.css';
+@import '../../../shared/disclosure/expandable-clamp.css';
+@import '../../../shared/inputs/switch.css';
 @import '../../../shared/search/search-highlight.css';
 @import '../../../shared/search/navigation-flash.css';
 @import './components/shell-and-sidebar.css';

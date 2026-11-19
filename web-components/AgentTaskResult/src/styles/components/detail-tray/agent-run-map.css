@@ -157,6 +157,17 @@ button.agent-run-map-turn-toggle:focus-visible {
   border-radius: 999px;
 }
 
+.agent-run-map-ordinal .scheduled-check-glyph {
+  display: block;
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
 .agent-run-map-turn.is-location .agent-run-map-ordinal {
   background: var(--secondary);
   color: var(--background-primary);

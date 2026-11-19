@@ -177,6 +177,24 @@ api_logger = setup_api_logger(
     level=logging.DEBUG if settings.DEBUG else logging.INFO
 )
 
+
+def route_module_loggers_to_handlers(source_logger: logging.Logger, parent_name: str = "api") -> logging.Logger:
+    """Give every module logger under ``parent_name`` the same handlers and level as ``source_logger``.
+
+    The backend's handlers sit on "api.main", which does not propagate, so a module that names its logger after itself (``logging.getLogger(__name__)``) wrote to a logger with no handler and its lines never reached the log file. Those modules all sit under "api", so attaching the handlers there routes them. Loggers that already own their handlers do not propagate and are unaffected, so nothing is logged twice.
+    """
+    parent = logging.getLogger(parent_name)
+    for handler in source_logger.handlers:
+        if handler not in parent.handlers:
+            parent.addHandler(handler)
+    parent.setLevel(source_logger.level)
+    return parent
+
+
+# Skipped under pytest so test runs keep their quiet, caplog-driven logging.
+if "pytest" not in sys.modules:
+    route_module_loggers_to_handlers(api_logger)
+
 # Custom filter to block raw WebSocket frame payload logs while keeping
 # connection events, handshake diagnostics, and errors visible. DEBUG frame
 # dumps can include access tokens before application-level redaction runs.

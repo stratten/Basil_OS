@@ -20,7 +20,7 @@ import { SetupCardReveal } from './SetupCardReveal'
 import { SetupConversationMarkdown } from './SetupConversationMarkdown'
 import { hasCompletedReveal, usePacedText } from './usePacedText'
 import { prefersReducedMotion } from '@/components/motion/prefersReducedMotion'
-import { plainMarkdownText } from '@shared/plainMarkdownText'
+import { plainMarkdownText } from '@shared/text/plainMarkdownText'
 
 interface SetupConversationMessageRowProps {
   message: SetupConversationMessage

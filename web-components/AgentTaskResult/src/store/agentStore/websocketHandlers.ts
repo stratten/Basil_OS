@@ -138,6 +138,14 @@ export class AgentStore extends BlockerEventAgentStore {
     });
   }
 
+  // The backend writes a task's short title a few seconds after the task starts. Until this event arrives the sidebar row and header show the prompt text. Only the entry for this very task takes the title: a follow-up turn routes to its chain root, whose title is the first one it received.
+  private handleTaskTitleEvent(event: WSEvent) {
+    const taskId = event.agent_task_id;
+    if (typeof taskId !== 'string' || typeof event.title !== 'string') return;
+    if (this.followUpToParent.has(taskId) || !this.agents.has(taskId)) return;
+    this.updateAgentTaskTitle(taskId, event.title);
+  }
+
   // --- WebSocket event handling ---
 
   handleWSEvent(event: WSEvent) {
@@ -149,6 +157,12 @@ export class AgentStore extends BlockerEventAgentStore {
 
     // These announce a schedule's run to the Scheduled Runs panel and the missed-run toast, which read the socket themselves. They carry the run's task id and arrive before agent_task_origin, so treating one as a task event would register the run and select it ahead of the event that marks it as Basil's own, pulling the reader away from whatever they have open.
     if (SCHEDULED_RUN_ENVELOPE_EVENTS.has(eventType)) return;
+
+    // A generated title only renames a task this window already holds, so it is handled before the routing below, which would register an unknown task and select it.
+    if (eventType === 'agent_task_title') {
+      this.handleTaskTitleEvent(event);
+      return;
+    }
 
     const sourceAgentTaskId = event.agent_task_id;
     if (typeof sourceAgentTaskId !== 'string' || !sourceAgentTaskId.trim()) return;
@@ -474,7 +488,18 @@ export class AgentStore extends BlockerEventAgentStore {
       return;
     }
 
-    if (error && result) {
+    if (error && result && resultPayload?.verification_status === 'pending') {
+      // The provisional verdict is the finalizer's mechanical check, made before any model has read the result, and it calls a run failed when any step went unrecovered even if the answer is complete. The verifier's outcome update follows within seconds and settles it (five of five such runs in one session's log settled as completed, after a median of 6 seconds), so showing "failed" here made a finished task flash red. Show the answer as a neutral, still-being-verified result instead; the outcome update is what turns it red.
+      this.setResult(agentTaskId, result, files);
+      this.updateAgent(agentTaskId, a => {
+        a.errorMessage = undefined;
+        a.outcome = undefined;
+        a.resultSeverity = 'neutral';
+        a.verificationStatus = 'pending';
+        a.suggestedFollowUps = undefined;
+        a.timestamp = now;
+      });
+    } else if (error && result) {
       this.updateAgent(agentTaskId, a => {
         a.errorMessage = error;
         a.result = result;

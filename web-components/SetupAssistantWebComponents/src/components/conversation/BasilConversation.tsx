@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { SetupWorkingIndicator } from '@/components/motion/SetupWorkingIndicator'
-import { useStickToBottom } from '@shared/useStickToBottom'
+import { useStickToBottom } from '@shared/motion/useStickToBottom'
 import type {
   SetupAgendaConfirmationResolution,
   SetupConversationMessage,
@@ -18,7 +18,7 @@ import type {
 import { AnswerGuide } from './AnswerGuide'
 import { SetupConversationMarkdown } from './SetupConversationMarkdown'
 import { SetupConversationMessageRow } from './SetupConversationMessageRow'
-import { plainMarkdownText } from '@shared/plainMarkdownText'
+import { plainMarkdownText } from '@shared/text/plainMarkdownText'
 import { useHasUnfinishedReveal } from './usePacedText'
 
 // The pause between the last word of a message and its suggested next steps appearing, so the chips land as a deliberate beat rather than alongside the text.

@@ -1,5 +1,5 @@
-import AttachmentList from '@shared/AttachmentList';
-import { pathEntries } from '@shared/attachmentPaths';
+import AttachmentList from '@shared/attachments/AttachmentList';
+import { pathEntries } from '@shared/attachments/attachmentPaths';
 import { openContainingFolder, openFile } from '../../services/bridge';
 
 interface Props {

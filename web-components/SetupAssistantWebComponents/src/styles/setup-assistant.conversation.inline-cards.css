@@ -527,21 +527,22 @@
   text-align: center;
 }
 
+/* The shared window-control close glyph at the top left of the image, like a Basil window's close button, on a solid circle so it stays visible over any image. */
 .setup-image-lightbox-close {
-  background: var(--primary);
-  border: 1px solid color-mix(in srgb, var(--primary) 82%, var(--text-primary));
+  align-items: center;
+  background: var(--background-primary);
+  border: 1px solid var(--separator-color, var(--field-border));
   border-radius: 999px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
-  color: var(--text-on-primary, var(--background-primary));
   cursor: pointer;
-  font: inherit;
-  font-size: var(--font-size-title2);
-  height: 32px;
-  line-height: 1;
+  display: inline-flex;
+  height: 28px;
+  justify-content: center;
+  left: -10px;
+  padding: 0;
   position: absolute;
-  right: -10px;
   top: -10px;
-  width: 32px;
+  width: 28px;
   z-index: 1;
 }
 

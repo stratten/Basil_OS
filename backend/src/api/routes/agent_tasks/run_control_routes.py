@@ -13,7 +13,13 @@ from api.services.agent_processing.lifecycle.runtime.user_interaction_timeline i
     resolve_latest_waiting_user_interaction,
 )
 from api.services.agent_processing.lifecycle.runtime.workflow_coordinator import WorkflowCoordinator
-from api.services.agent_processing.shared.agent_run_control import existing_run_control, note_with_references
+from api.services.agent_processing.shared.agent_run_control import (
+    clear_run_ended,
+    existing_run_control,
+    note_with_references,
+    run_control_for,
+    run_has_ended,
+)
 
 from .session_control_routes import _get_agent_task_or_raise
 
@@ -21,6 +27,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# What a note send answers when the run it was meant for has already finished. The caller sends the note as a follow-up instead (see RunControlComposer).
+RUN_NOT_WORKING_STATUS = "run_not_working"
+FINISHED_TASK_STATUSES = frozenset({"completed", "failed", "canceled"})
 MAX_RUN_NOTE_LENGTH = 4000
 MAX_REFERENCE_PATHS = 20
 MAX_REFERENCE_PATH_LENGTH = 1024
@@ -134,6 +143,8 @@ async def resume_session(agent_task_id: str, request: Request, body: ResumeRunRe
     switch_model_id = await _validated_switch_model(body.model_id)
     note = note_with_references(body.note or "", body.reference_paths)
     _resuming_agent_task_ids.add(agent_task_id)
+    # Notes sent from now on belong to the resumed run, even before its loop attaches.
+    clear_run_ended(agent_task_id)
     try:
         await resolve_latest_waiting_user_interaction(
             agent_task_id,
@@ -235,13 +246,24 @@ async def send_run_message(agent_task_id: str, request: Request, body: RunMessag
     text = body.text.strip()
     if not text:
         raise HTTPException(status_code=422, detail="Write a note before sending it.")
-    await _get_agent_task_or_raise(agent_task_id)
-    control = existing_run_control(agent_task_id)
-    queued = control.enqueue(note_with_references(text, body.reference_paths)) if control is not None else None
-    if queued is None:
+    agent_task_record = await _get_agent_task_or_raise(agent_task_id)
+    if agent_task_record.status in FINISHED_TASK_STATUSES or (
+        agent_task_record.status == "processing" and run_has_ended(agent_task_id)
+    ):
+        # Nothing will read this note, but the caller does not have to lose it: it can send the same words as a follow-up.
+        logger.info("📝 Not holding a note for %s: its run has finished", agent_task_id)
+        return RunControlResponse(success=False, status=RUN_NOT_WORKING_STATUS)
+    if agent_task_record.status != "processing":
         raise HTTPException(
             status_code=409,
-            detail="Basil isn't at a point where it can read notes yet. Try again in a moment.",
+            detail="Basil isn't taking notes in this state. Answer its question or resume it first.",
         )
+    # A task is marked as processing from the moment it is submitted or resumed, but its loop attaches a few seconds later, once routing, prompt building, and the model connection are done. A note sent in that gap is held, and the loop's first model call delivers it.
+    queued = run_control_for(agent_task_id).enqueue(
+        note_with_references(text, body.reference_paths),
+        hold_until_attached=True,
+    )
+    if queued is None:
+        raise HTTPException(status_code=409, detail="Basil could not take your note. Try sending it again.")
     logger.info("📝 Queued a note for %s", agent_task_id)
     return RunControlResponse(success=True, status="queued", message_id=queued.message_id)

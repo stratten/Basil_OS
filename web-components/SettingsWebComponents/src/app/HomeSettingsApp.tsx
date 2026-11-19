@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Switch } from '@shared/Switch'
-import TokenizedSelect from '@shared/TokenizedSelect'
+import { Switch } from '@shared/inputs/Switch'
+import TokenizedSelect from '@shared/inputs/TokenizedSelect'
 import { HintTooltip } from '../components/HintTooltip'
 import {
   notifyHomeSettingsReady,

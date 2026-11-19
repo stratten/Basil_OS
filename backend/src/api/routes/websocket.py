@@ -34,7 +34,7 @@ from api.services.websocket_connection_manager import (
     remove_connection,
     subscribe_heartbeat,
 )
-from api.services.host_connection_channel import is_host_connection
+from api.services.host_connection_channel import is_host_connection, note_host_connected
 from api.services.mcp_connectors.connection_secret_bridge import handle_connection_secret_result
 from api.services.provider_keys_bridge import (
     PROVIDER_KEY_RESPONSE_TYPES,
@@ -204,6 +204,9 @@ async def websocket_endpoint(
     add_connection(websocket)
     # Ask the native app for the provider keys in its Keychain vault. Does nothing unless the app hosts the credentials and this is a host connection, so every existing test and headless run is unaffected.
     start_provider_key_sync(websocket)
+    if is_host_connection(websocket):
+        # Lets a local server's background program that needs Keychain secrets start now that the app that holds them is here.
+        note_host_connected()
     logger.info(f"WebSocket client connected. Active connections: {len(active_connections)}")
     
     # Log system permissions and state

@@ -2,6 +2,7 @@
 
 from .follow_up_scheduler import (
     FOLLOW_UP_ORIGIN_TYPE,
+    SCHEDULED_FOLLOW_UP_ORIGIN_TYPE,
     AgentFollowUpScheduler,
     start_agent_follow_up_scheduler,
     stop_agent_follow_up_scheduler,
@@ -9,6 +10,7 @@ from .follow_up_scheduler import (
 
 __all__ = [
     "FOLLOW_UP_ORIGIN_TYPE",
+    "SCHEDULED_FOLLOW_UP_ORIGIN_TYPE",
     "AgentFollowUpScheduler",
     "start_agent_follow_up_scheduler",
     "stop_agent_follow_up_scheduler",

@@ -1,4 +1,4 @@
-@import '../../../shared/webkit-window-chrome.css';
+@import '../../../shared/windowChrome/webkit-window-chrome.css';
 
 :root {
   --background-primary: #ffffff;
@@ -35,9 +35,9 @@ body { color: var(--text-primary); font-family: var(--font-family-light); }
 .pug-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 10px;
   flex: 0 0 44px;
-  padding: 0 12px 0 16px;
+  padding: 0 16px 0 12px;
   border-bottom: 1px solid color-mix(in srgb, var(--text-primary) 8%, transparent);
 }
 
@@ -48,22 +48,26 @@ body { color: var(--text-primary); font-family: var(--font-family-light); }
   color: var(--text-primary);
 }
 
+/* The shared window-control close glyph, first in the header at the top left like every other Basil window. */
 .pug-header-close {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   display: grid;
   place-items: center;
+  padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: 50%;
   background: transparent;
-  color: var(--text-secondary, rgba(60, 60, 67, 0.6));
-  font-size: calc(12px * var(--text-scale, 1));
   cursor: pointer;
 }
 
 .pug-header-close:hover {
-  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
-  color: var(--text-primary);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+.pug-header-close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 24%, transparent);
 }
 
 .pug-sidebar {

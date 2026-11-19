@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 
-import { applyHostFonts, applyHostTheme } from '@shared/webTheme'
-import type { FontConfig, ThemeConfig } from '@shared/webTheme'
+import { applyHostFonts, applyHostTheme } from '@shared/theme/webTheme'
+import type { FontConfig, ThemeConfig } from '@shared/theme/webTheme'
 
 export type { FontConfig, ThemeConfig }
 export { applyHostFonts, applyHostTheme }

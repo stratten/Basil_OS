@@ -31,6 +31,7 @@ final class ReactConnectionsSettingsWebView: NSObject {
     var onRequestCreateWorkspaceGrant: ((String, String, String, String, String?, [String]) -> Void)?
     var onRequestUpdateWorkspaceGrant: ((String, String, String, Int, String, String?, [String]) -> Void)?
     var onRequestRevokeWorkspaceGrant: ((String, String, String, Int) -> Void)?
+    var onLocalServerIntent: ((LocalServerIntent) -> Void)?
     var onMalformedIntent: ((String) -> Void)?
 
     init(webView: WKWebView) {
@@ -272,7 +273,15 @@ final class ReactConnectionsSettingsWebView: NSObject {
             }
             onRequestRevokeWorkspaceGrant?(requestId, profileId, grantId, expectedRevision)
         default:
-            onMalformedIntent?(type)
+            guard LocalServerIntentParsing.messageTypes.contains(type) else {
+                onMalformedIntent?(type)
+                return
+            }
+            guard let intent = LocalServerIntentParsing.intent(type: type, body: body) else {
+                onMalformedIntent?(type)
+                return
+            }
+            onLocalServerIntent?(intent)
         }
     }
 }

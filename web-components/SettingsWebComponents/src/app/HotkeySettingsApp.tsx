@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Switch } from '@shared/Switch'
-import { HotkeyRow } from '../components/HotkeyRow'
+import { Switch } from '@shared/inputs/Switch'
+import { HotkeyRow } from '../components/hotkeys/HotkeyRow'
 import {
   cancelHotkeyCapture,
   notifyHotkeySettingsReady,
@@ -8,7 +8,7 @@ import {
   saveHotkeyBinding,
   startHotkeyCapture,
   toggleEnableMonitoringAtStartup,
-} from '../services/hotkeyBridge'
+} from '../services/hotkeys/hotkeyBridge'
 import type { HotkeyBinding, HotkeyRowSnapshot, HotkeySystemConflict } from '../types'
 
 interface PendingBinding {

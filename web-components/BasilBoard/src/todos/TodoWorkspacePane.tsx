@@ -7,11 +7,11 @@ import type {
   WSEvent,
 } from '../contracts';
 import { basilBoardWebSocket } from '../services/websocket';
-import RichTextComposer from '../../../shared/RichTextComposer';
-import ConversationModelPicker from '../capabilities/ConversationModelPicker';
-import AttachmentDropZone from '../../../shared/AttachmentDropZone';
-import AttachmentList from '../../../shared/AttachmentList';
-import { pathEntries } from '../../../shared/attachmentPaths';
+import RichTextComposer from '../../../shared/text/RichTextComposer';
+import ConversationModelPicker from '../capabilities/conversation/ConversationModelPicker';
+import AttachmentDropZone from '../../../shared/attachments/AttachmentDropZone';
+import AttachmentList from '../../../shared/attachments/AttachmentList';
+import { pathEntries } from '../../../shared/attachments/attachmentPaths';
 import { getReasoningModels, type ReasoningModel } from '../services/api';
 import {
   pickTodoWorkspaceFiles,
@@ -28,7 +28,7 @@ import {
   type WorkspaceState,
 } from './todoState';
 import { useTodoWorkspacePaneResize } from './useTodoWorkspacePaneResize';
-import { plainMarkdownText } from '@shared/plainMarkdownText';
+import { plainMarkdownText } from '@shared/text/plainMarkdownText';
 import HomeMarkdown from '../home/HomeMarkdown';
 
 interface TodoWorkspacePaneProps {

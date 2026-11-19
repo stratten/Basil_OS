@@ -113,6 +113,16 @@ extension AgentTaskResultWebView {
             if let height = dict["height"] as? CGFloat {
                 updateDragAreaHeight(height)
             }
+        case "widgetHeaderDragGeometry":
+            if let height = dict["height"] as? CGFloat, let ranges = dict["interactiveRanges"] as? [[String: Any]] {
+                updateDragAreaGeometry(
+                    height: height,
+                    interactiveRanges: ranges.compactMap { range in
+                        guard let start = range["start"] as? CGFloat, let end = range["end"] as? CGFloat else { return nil }
+                        return (start: start, end: end)
+                    }
+                )
+            }
         case "requestResize":
             if let width = dict["width"] as? CGFloat, let height = dict["height"] as? CGFloat {
                 let intent = AgentTaskResultResizeIntent(

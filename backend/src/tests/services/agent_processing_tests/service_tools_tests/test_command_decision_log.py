@@ -51,8 +51,25 @@ async def test_a_command_that_asks_is_logged_as_asking(decisions, read_only_sett
     assert decision.needs_approval is True
     assert len(decisions) == 1
     assert decisions[0].startswith("Command asks (risk=")
-    assert "Command not in whitelist" in decisions[0]
+    assert "Needs your approval because 'curl' is not on the read-only list" in decisions[0]
     assert decisions[0].endswith("curl -sL https://example.com/x -o -")
+
+
+@pytest.mark.asyncio
+async def test_the_card_names_the_part_of_the_command_that_made_it_ask(decisions, read_only_settings):
+    decision = await ExecutionApprovalService(websocket_manager=None).evaluate_command("ls -la; mdutil -a -i off; wc -l x")
+
+    assert decision.needs_approval is True
+    assert decision.reason == "Needs your approval because 'mdutil' is not on the read-only list, and no remembered approval covers it"
+
+
+@pytest.mark.asyncio
+async def test_a_checksum_and_a_multi_range_sed_print_no_longer_ask(decisions, read_only_settings):
+    service = ExecutionApprovalService(websocket_manager=None)
+
+    for command in ("ls -la; md5 -r * | sort; grep -c '^## Transcript' *", "sed -n '40,78p;96,112p' notes.txt"):
+        decision = await service.evaluate_command(command)
+        assert decision.needs_approval is False, command
 
 
 @pytest.mark.asyncio

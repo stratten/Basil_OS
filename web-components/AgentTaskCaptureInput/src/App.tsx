@@ -1,6 +1,6 @@
 import { useEffect, useState, type DragEvent } from 'react';
-import { useCollapseShortcut } from '@shared/useCollapseShortcut';
-import { useSettledExpand } from '@shared/useSettledExpand';
+import { useCollapseShortcut } from '@shared/disclosure/useCollapseShortcut';
+import { useSettledExpand } from '@shared/disclosure/useSettledExpand';
 import type { CaptureSnapshot } from './types';
 import {
   registerFontsHandler,

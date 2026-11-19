@@ -12,7 +12,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Dict, Optional
 
-logger = logging.getLogger(__name__)
+# The backend's handlers sit on the "api.main" logger and it does not propagate, so only its children reach the log file. A logger named after this module's path would drop the TURN_TIMING summary without a trace.
+logger = logging.getLogger("api.main.turn_timing")
 
 TURN_TIMING_CONTEXT_KEY = "turn_timing"
 

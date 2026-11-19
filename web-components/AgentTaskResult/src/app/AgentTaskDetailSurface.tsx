@@ -7,17 +7,17 @@ import type {
   StepDetailEntry,
   ValidationRunFocusRequest,
 } from '../types';
-import ResultContent from '../components/ResultContent';
-import ApprovalSetOverlay from '../components/ApprovalSetOverlay';
-import ConnectionTokenOverlay from '../components/ConnectionTokenOverlay';
-import CheckpointFlow from '../components/CheckpointFlow';
-import CheckpointReopenCard from '../components/CheckpointReopenCard';
-import CheckpointRecoveryCard from '../components/CheckpointRecoveryCard';
+import ResultContent from '../components/result/ResultContent';
+import ApprovalSetOverlay from '../components/approval/ApprovalSetOverlay';
+import ConnectionTokenOverlay from '../components/interaction/ConnectionTokenOverlay';
+import CheckpointFlow from '../components/checkpoint/CheckpointFlow';
+import CheckpointReopenCard from '../components/checkpoint/CheckpointReopenCard';
+import CheckpointRecoveryCard from '../components/checkpoint/CheckpointRecoveryCard';
 import { questionNeedsRecovery } from '../components/interaction/pendingQuestion';
 import InlineCapture from '../components/InlineCapture';
-import TextFollowUp from '../components/TextFollowUp';
+import TextFollowUp from '../components/followUp/TextFollowUp';
 import ChecklistWindow from '../components/checklist/ChecklistWindow';
-import RunControlComposer from '../components/RunControlComposer';
+import RunControlComposer from '../components/followUp/RunControlComposer';
 import { checkpointAcceptsTypedNote } from '../components/interaction/answerWithNote';
 import { userInteractionsFromTimeline } from '../components/interaction/userInteractions';
 import ExecutionDetailTray from '../components/ExecutionDetailTray';
@@ -37,8 +37,9 @@ import { deriveAgentTaskRunFocusSummaries, resolveFocusedRun } from '../componen
 import { AgentRunRail } from '../components/run/AgentRunRail';
 import type { RunNavigationRequest, RunNavigationTarget } from '../components/run/runNavigation';
 import { checkFilePreviewAvailability, reportValidationRunFocused } from '../services/bridge';
-import { usePresenceTransition } from '@shared/usePresenceTransition';
+import { usePresenceTransition } from '@shared/motion/usePresenceTransition';
 import { useSearchFocus } from '@shared/search/searchFocusStore';
+import { chainKeyOf } from '../store/chainKey';
 
 interface Props {
   displaySource: DisplayableAgentTask;
@@ -221,8 +222,9 @@ export function AgentTaskDetailSurface({
   const retainedRunControlMode = useRef<'running' | 'paused' | 'awaiting'>(runControlMode ?? 'running');
   if (runControlMode) retainedRunControlMode.current = runControlMode;
   const runControlTurnId = displaySource.currentTurnTaskId || displaySource.agentTaskId;
-  // The checklist belongs to the whole chain, so every surface keys it by the chain's root.
-  const checklistRootId = displaySource.rootTaskId || displaySource.agentTaskId;
+  // The checklist, the follow-up and note boxes, and their fold state belong to the whole chain, so every surface keys them the same way, through one function.
+  const chainKey = chainKeyOf(displaySource);
+  const checklistRootId = chainKey;
   const connectionLost = useMemo(
     () => displaySource.status === 'paused'
       && userInteractionsFromTimeline(displaySource.executionTimeline)
@@ -292,7 +294,7 @@ export function AgentTaskDetailSurface({
 
     reportValidationRunFocused({
       requestId: validationRunRequest.requestId,
-      rootTaskId: displaySource.rootTaskId || displaySource.agentTaskId,
+      rootTaskId: chainKey,
       runId: focusedRun.id,
       requestText: focusedRun.requestText,
       resultText: focusedRun.resultText,
@@ -471,7 +473,7 @@ export function AgentTaskDetailSurface({
   // A sidebar search result opens its chain at the first turn that matched, once per selection.
   const publishedSearchFocus = useSearchFocus();
   const searchFocus = publishedSearchFocus
-    && publishedSearchFocus.scopeId === (displaySource.rootTaskId || displaySource.agentTaskId)
+    && publishedSearchFocus.scopeId === chainKey
     ? publishedSearchFocus
     : null;
   const firstMatchedRunId = searchFocus?.matchedIds.find(id => runs.some(run => run.id === id));
@@ -560,7 +562,7 @@ export function AgentTaskDetailSurface({
           >
             <TextFollowUp
               agentTaskId={displaySource.agentTaskId}
-              rootTaskId={displaySource.rootTaskId}
+              rootTaskId={chainKey}
               displaySource={!selectedAgent ? displaySource : undefined}
               onCancel={onCancelTextFollowUp}
               isProcessing={isProcessing}
@@ -583,7 +585,7 @@ export function AgentTaskDetailSurface({
             <RunControlComposer
               key={runControlTurnId}
               turnTaskId={runControlTurnId}
-              rootTaskId={displaySource.rootTaskId}
+              rootTaskId={chainKey}
               mode={retainedRunControlMode.current}
               awaitingCheckpoint={awaitingNoteCheckpoint}
               deliveredNoteIds={deliveredNoteIds}
@@ -684,7 +686,7 @@ export function AgentTaskDetailSurface({
         isProcessing={isProcessing}
         terminalStatus={displaySource.status}
         agentTaskId={focusedRun.id}
-        rootTaskId={displaySource.rootTaskId || displaySource.agentTaskId}
+        rootTaskId={chainKey}
         focusedRunId={focusedRun.id}
         previewArtifact={previewArtifact}
         isPreviewArtifactFileAvailable={isPreviewArtifactFileAvailable}

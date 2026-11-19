@@ -1,4 +1,4 @@
-import AttachmentList from '@shared/AttachmentList';
+import AttachmentList from '@shared/attachments/AttachmentList';
 import type { ReferencePathEntry } from '../types';
 import { openReferencePath, removeReferencePath } from '../services/bridge';
 

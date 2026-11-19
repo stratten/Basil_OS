@@ -620,6 +620,11 @@ export function reportWidgetHeaderHeight(height: number) {
   postToSwift({ type: 'widgetHeaderHeight', height });
 }
 
+/** Reports how far down the window a mouse-down drags it, and the horizontal spans (window coordinates) where it must reach the page instead. */
+export function reportWidgetHeaderDragGeometry(height: number, interactiveRanges: Array<{ start: number; end: number }>) {
+  postToSwift({ type: 'widgetHeaderDragGeometry', height, interactiveRanges });
+}
+
 export function setInlineNativePreviewFrame(requestId: string, frame: InlineNativePreviewFrame) {
   agentTaskArtifactPreviewTransport.setInlineNativePreviewFrame(requestId, frame);
 }

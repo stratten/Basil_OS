@@ -270,7 +270,7 @@
         "value": "var(--background-primary, #fff)"
       }
     ],
-    "web-components/shared/basil-modal-dialog.css": [
+    "web-components/shared/dialogs/basil-modal-dialog.css": [
       {
         "property": "background",
         "reason": "Accepted in the original literal-color audit (Packages 4B/5/6). The dim backdrop moved from checkpoint-flow.css into the shared modal stylesheet unchanged.",
@@ -278,7 +278,7 @@
         "value": "rgba(0, 0, 0, 0.18)"
       }
     ],
-    "web-components/shared/context-import-panel.css": [
+    "web-components/shared/contextImport/context-import-panel.css": [
       {
         "property": "background",
         "reason": "The moving highlight on the import progress bar is white at partial opacity over the bar fill in both themes. It is a light sweep, not a surface color, so no theme token applies.",
@@ -286,7 +286,7 @@
         "value": "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent)"
       }
     ],
-    "web-components/shared/expandable-list.css": [
+    "web-components/shared/disclosure/expandable-list.css": [
       {
         "property": "-webkit-mask-image",
         "reason": "The #000 in a mask-image gradient is an alpha mask for the fade, not a visible color, so it has no theme token.",
@@ -300,7 +300,7 @@
         "value": "linear-gradient(to bottom, #000 calc(100% - var(--basil-expandable-list-fade, 28px)), transparent)"
       }
     ],
-    "web-components/shared/history-sidebar-controls.css": [
+    "web-components/shared/history/history-sidebar-controls.css": [
       {
         "property": "background",
         "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
@@ -308,7 +308,7 @@
         "value": "var(--background-primary, #fff)"
       }
     ],
-    "web-components/shared/rich-text-followup.css": [
+    "web-components/shared/text/rich-text-followup.css": [
       {
         "property": "background",
         "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",
@@ -316,7 +316,7 @@
         "value": "var(--background-primary, #ffffff)"
       }
     ],
-    "web-components/shared/switch.css": [
+    "web-components/shared/inputs/switch.css": [
       {
         "property": "background",
         "reason": "Accepted in the original literal-color audit (Packages 4B/5/6).",

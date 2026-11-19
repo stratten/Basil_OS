@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { StatusIcon } from '@agent-task/components/sidebar/SidebarIcons';
-import AgentTaskActiveIndicator from '@shared/AgentTaskActiveIndicator';
+import AgentTaskActiveIndicator from '@shared/status/AgentTaskActiveIndicator';
 import { agentTaskIndicatorStatus } from './agentTaskIndicatorStatus';
 import type { TodoItemSummary } from '../contracts';
-import { useHistoryRowRevealDelete } from '../../../shared/useHistoryRowRevealDelete';
+import { useHistoryRowRevealDelete } from '../../../shared/history/useHistoryRowRevealDelete';
 import type { TodoSortBy } from '../services/api';
 import TodoDeleteConfirmation from './TodoDeleteConfirmation';
 import type { TodoListFilter } from './todoState';
 import { formatTodoDateOnly, isTodoDueDateOverdue } from './todoDates';
 import TodoSortMenu from './TodoSortMenu';
-import { plainMarkdownText } from '@shared/plainMarkdownText';
+import { plainMarkdownText } from '@shared/text/plainMarkdownText';
 
 const FILTERS: { id: TodoListFilter; label: string }[] = [
   { id: 'all', label: 'All' },

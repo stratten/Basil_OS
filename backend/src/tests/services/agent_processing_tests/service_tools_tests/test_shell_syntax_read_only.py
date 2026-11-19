@@ -34,10 +34,25 @@ READ_ONLY_COMMANDS = [
     "/bin/ls -la",
     "/usr/bin/find . -name x",
     "echo a # delete everything",
+    # A variable kept for later is data, not a write.
+    "f=$(ls | head -1); echo $f",
+    'count=$(ls | wc -l); echo "$count files"',
+    "n=3; ls | head -$n",
+    "dirs=(a b); ls $dirs",
+    "a=x; b=$a; echo $b",
+    "name=$(date); cat notes.txt",
     "find . \\( -name a \\) -print",
     "echo '\\(' \"\\(\" x",
     "sed -n '1,20p' notes.txt",
+    "sed -n '40,78p;96,112p' notes.txt",
+    "sed -n '1p;$p;/Transcript/p' notes.txt",
     "sed 's/old/new/' notes.txt",
+    "md5 -r *",
+    "ls -la; md5 -r * | sort; grep -c '^## Transcript' *",
+    "md5sum a b | cut -d' ' -f1",
+    "sha256sum notes.txt",
+    "shasum -a 256 notes.txt",
+    "cksum notes.txt",
     "git status",
     "git log --oneline",
     "cd data 2>/dev/null || exit 1; ls",
@@ -101,8 +116,31 @@ NOT_READ_ONLY_COMMANDS = [
     "for f in $(ls); do echo $f; done",
     # Shell constructs that are not on the list.
     "A=1 ls",
+    "f=1 ls",
     "A=1",
     "export A=1",
+    "export f=1; ls",
+    # An assignment is allowed only to a plain lowercase scratch variable, and only with a value that is itself read-only.
+    "PATH=/tmp/evil:$PATH; ls",
+    "HOME=/tmp; ls",
+    "IFS=x; ls",
+    "LD_PRELOAD=/tmp/x.so; ls",
+    "PAGER=/tmp/evil; git log",
+    "Foo=1; ls",
+    "path=(/tmp/evil); ls",
+    "fpath=/tmp/evil; ls",
+    "http_proxy=http://x; ls",
+    "a[0]=1; ls",
+    "f=$(rm x); ls",
+    "f=$(touch x); ls",
+    "f=`date`; ls",
+    "f=$((1+2)); ls",
+    "f=${x:-y}; ls",
+    # What a stored value is later used for is still checked where it is used.
+    "f=ls; $f -la",
+    "f=-delete; find . $f",
+    "f=x; bash -c \"ls $f\"",
+    "f=1; echo hi > $f",
     "f() { ls; }",
     "case x in a) ls;; esac",
     "[[ -f a ]]",
@@ -126,6 +164,12 @@ NOT_READ_ONLY_COMMANDS = [
     "sed -i s/a/b/ f",
     "sed 's/a/b/w out' f",
     "sed -n '1w out' f",
+    "sed -n '1p;2w out' f",
+    "sed -n '1p;e ls' f",
+    "sed -n '1p;;2p' f",
+    "sed -n '1p;' f",
+    "sed -n '1p 2p' f",
+    "sed -n '1,2p;3,4d' f",
     "sort -o out f",
     "sort --out=out f",
     "uniq a b",
@@ -155,6 +199,22 @@ NOT_READ_ONLY_COMMANDS = [
 @pytest.mark.parametrize("command", NOT_READ_ONLY_COMMANDS)
 def test_a_command_that_could_change_something_is_not_read_only(command: str) -> None:
     assert classify_read_only(command).is_read_only is False
+
+
+def test_a_variable_assignment_inside_a_wrapper_is_read_only_when_everything_in_it_is() -> None:
+    script = "f=$(ls -d ~/.basil/*/ 2>/dev/null | head -0); find / -name 'r-4d51d2a1*' -not -path '*/proc/*' 2>/dev/null | head -3"
+    assert classify_read_only("bash -lc " + shlex.quote(script)).is_read_only
+
+
+def test_a_variable_assignment_inside_a_wrapper_is_refused_when_its_value_is_not() -> None:
+    script = "f=$(rm x); ls"
+    assert not classify_read_only("bash -lc " + shlex.quote(script)).is_read_only
+
+
+def test_the_reason_names_a_variable_the_shell_reads() -> None:
+    verdict = classify_read_only("path=(/tmp/evil); ls")
+    assert not verdict.is_read_only
+    assert "'path'" in verdict.reason
 
 
 def test_three_nested_wrappers_pass_and_a_fourth_is_refused() -> None:

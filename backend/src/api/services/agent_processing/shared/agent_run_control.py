@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Sequence
@@ -67,9 +68,13 @@ class AgentRunControl:
         with self._lock:
             self._pause_requested = False
 
-    def enqueue(self, text: str) -> Optional[QueuedRunMessage]:
+    def enqueue(self, text: str, *, hold_until_attached: bool = False) -> Optional[QueuedRunMessage]:
+        """Queue a note for the loop's next model call.
+
+        A run whose loop is not attached refuses the note, unless the caller knows the task is active and its loop is about to attach (it is still being set up, or is picking up after a resume). Then the note is held, attach() leaves the queue alone, and the first model call delivers it.
+        """
         with self._lock:
-            if not self._attached:
+            if not self._attached and not hold_until_attached:
                 return None
             message = QueuedRunMessage(
                 message_id=f"note_{uuid4().hex}",
@@ -88,6 +93,28 @@ class AgentRunControl:
 
 _controls_lock = threading.Lock()
 _controls: Dict[str, AgentRunControl] = {}
+
+# Tasks whose agent loop has finished. The task is still "processing" while the final summary is streamed and the result is saved, but nothing reads notes any more, so a note sent then must not be held. The mark is cleared when the same task starts a loop again (a resume, or an answer to a question). Only the most recent ones are remembered, so the table cannot grow without bound.
+MAX_ENDED_RUNS_REMEMBERED = 256
+_ended_runs: "OrderedDict[str, None]" = OrderedDict()
+
+
+def mark_run_ended(agent_task_id: str) -> None:
+    with _controls_lock:
+        _ended_runs.pop(agent_task_id, None)
+        _ended_runs[agent_task_id] = None
+        while len(_ended_runs) > MAX_ENDED_RUNS_REMEMBERED:
+            _ended_runs.popitem(last=False)
+
+
+def clear_run_ended(agent_task_id: str) -> None:
+    with _controls_lock:
+        _ended_runs.pop(agent_task_id, None)
+
+
+def run_has_ended(agent_task_id: str) -> bool:
+    with _controls_lock:
+        return agent_task_id in _ended_runs
 
 
 def run_control_for(agent_task_id: str) -> AgentRunControl:

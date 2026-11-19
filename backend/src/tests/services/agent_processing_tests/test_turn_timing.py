@@ -50,3 +50,44 @@ def test_get_or_create_turn_timing_returns_same_instance():
 def test_get_or_create_turn_timing_none_for_non_dict():
     assert get_or_create_turn_timing(None) is None
     assert get_or_create_turn_timing("not-a-dict") is None
+
+
+def test_the_summary_is_logged_where_the_backend_log_handlers_listen():
+    import logging
+
+    from api.services.agent_processing.lifecycle.runtime import turn_timing as turn_timing_module
+
+    assert turn_timing_module.logger.name.startswith("api.main.")
+    main_logger = logging.getLogger("api.main")
+    assert turn_timing_module.logger.parent is main_logger or turn_timing_module.logger.name.rsplit(".", 1)[0] == main_logger.name
+
+
+def test_emit_writes_one_summary_line_with_the_task_ids():
+    import logging
+
+    from api.services.agent_processing.lifecycle.runtime import turn_timing as turn_timing_module
+
+    messages: list[str] = []
+
+    class _Collect(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            messages.append(record.getMessage())
+
+    handler = _Collect(level=logging.INFO)
+    previous_level = turn_timing_module.logger.level
+    turn_timing_module.logger.addHandler(handler)
+    turn_timing_module.logger.setLevel(logging.INFO)
+    try:
+        timing = TurnTiming(agent_task_id="task-9", root_task_id="root-9")
+        timing.start("agent_loop")
+        timing.stop("agent_loop")
+        timing.emit()
+    finally:
+        turn_timing_module.logger.removeHandler(handler)
+        turn_timing_module.logger.setLevel(previous_level)
+    summaries = [message for message in messages if "TURN_TIMING" in message]
+    assert len(summaries) == 1
+    assert "agent_task_id=task-9" in summaries[0]
+    assert "root=root-9" in summaries[0]
+    assert "agent_loop=" in summaries[0]
+    assert "total=" in summaries[0]

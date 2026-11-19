@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 
-import { ProfileImportPanel } from '@shared/ProfileImportPanel'
-import type { ProfileImportOutcome } from '@shared/ProfileImportPanel'
+import { ProfileImportPanel } from '@shared/contextImport/ProfileImportPanel'
+import type { ProfileImportOutcome } from '@shared/contextImport/ProfileImportPanel'
 
 import { setupContextImportClient } from '@/services/api'
 import type { SetupImportedContextSummary } from '@/state/setupAssistantStore'

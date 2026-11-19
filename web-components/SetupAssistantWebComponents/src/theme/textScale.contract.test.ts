@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useSetupAssistantTheme } from './themeBootstrap'
 
 const stylesDirectory = join(__dirname, '../styles')
-const sharedTokensFile = join(__dirname, '../../../shared/theme-layout-tokens.css')
+const sharedTokensFile = join(__dirname, '../../../shared/theme/theme-layout-tokens.css')
 
 function ThemeHost() {
   useSetupAssistantTheme()
@@ -70,6 +70,6 @@ describe('Setup text size scaling (Command-plus and Command-minus)', () => {
 
   it('reaches the shared font size tokens through the import chain the setup stylesheet already uses', () => {
     expect(strippedCss(join(stylesDirectory, 'setup-assistant.shared.css'))).toContain("@import '../../../AgentTaskResult/src/styles/theme.css';")
-    expect(strippedCss(join(stylesDirectory, '../../../AgentTaskResult/src/styles/theme.css'))).toContain("@import '../../../shared/theme-layout-tokens.css';")
+    expect(strippedCss(join(stylesDirectory, '../../../AgentTaskResult/src/styles/theme.css'))).toContain("@import '../../../shared/theme/theme-layout-tokens.css';")
   })
 })

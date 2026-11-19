@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import ExpandableClamp from '@shared/ExpandableClamp';
+import ExpandableClamp from '@shared/disclosure/ExpandableClamp';
 import type { ScheduledAgentTaskRun } from '../../types';
 import MarkdownRenderer from '../MarkdownRenderer';
 import { formatRunDuration, formatTimestamp12h } from './scheduledAgentTaskHelpers';

@@ -16,8 +16,8 @@ const PLAN_STYLESHEETS = [
   './setup-assistant.express.css',
   './setup-assistant.hotkeys.css',
   './setup-assistant.model-choice.css',
-  '../../../shared/context-import-panel.css',
-  '../../../shared/basil-modal-dialog.css',
+  '../../../shared/contextImport/context-import-panel.css',
+  '../../../shared/dialogs/basil-modal-dialog.css',
   '../../../SettingsWebComponents/src/styles/home-settings.css',
   '../../../SettingsWebComponents/src/styles/hotkey-settings.css',
 ]
@@ -57,7 +57,7 @@ describe('download progress and route option color', () => {
   }
 
   it('draws the shared progress track slim and borderless, with the amount and percentage in the light weight', () => {
-    const shared = read('../../../shared/download-progress.css')
+    const shared = read('../../../shared/status/download-progress.css')
     const track = rule(shared, '.download-progress__track')
     expect(track).toContain('var(--download-progress-track-height, 6px)')
     expect(track).not.toContain('border:')
@@ -100,8 +100,8 @@ describe('plan components use classes, not inline styles', () => {
     '../components/intro/ModelComparison.tsx',
     '../components/layout/LocalModelFailureBanner.tsx',
     '../components/conversation/AnswerGuide.tsx',
-    '../../../shared/ContextImportPanel.tsx',
-    '../../../shared/BasilModalDialog.tsx',
+    '../../../shared/contextImport/ContextImportPanel.tsx',
+    '../../../shared/dialogs/BasilModalDialog.tsx',
   ])('%s sets no inline style', (file) => {
     expect(read(file)).not.toContain('style={{')
   })
@@ -117,7 +117,7 @@ describe('plan components use classes, not inline styles', () => {
   })
 
   it('uses no 600 or 700 font weight in the shared import panel, the learning step toggles, or the approval note', () => {
-    const importPanel = read('../../../shared/context-import-panel.css')
+    const importPanel = read('../../../shared/contextImport/context-import-panel.css')
     expect(importPanel).not.toMatch(/font-weight:\s*[67]00/)
     const guide = read('./setup-assistant.answer-guide.css')
     const trustNote = guide.slice(guide.indexOf('.intro-trust-note {'))
@@ -129,7 +129,7 @@ describe('plan components use classes, not inline styles', () => {
   })
 
   it('keeps the import title out of reach of the step heading rule, so it has no extra top margin or headline size', () => {
-    const importPanel = read('../../../shared/context-import-panel.css')
+    const importPanel = read('../../../shared/contextImport/context-import-panel.css')
     expect(importPanel).toContain('.context-import .context-import-title {')
     const title = importPanel.slice(importPanel.indexOf('.context-import .context-import-title {'))
     expect(title.slice(0, title.indexOf('}'))).toMatch(/margin: 0;/)
@@ -144,7 +144,7 @@ describe('plan components use classes, not inline styles', () => {
   })
 
   it('sizes the route notice to its text and keeps a visible thin border', () => {
-    const importPanel = read('../../../shared/context-import-panel.css')
+    const importPanel = read('../../../shared/contextImport/context-import-panel.css')
     const notice = importPanel.slice(importPanel.indexOf('.context-import-route-notice {'))
     const body = notice.slice(0, notice.indexOf('}'))
     expect(body).toContain('width: fit-content;')
@@ -152,21 +152,21 @@ describe('plan components use classes, not inline styles', () => {
   })
 
   it('never shows the browser file control, whose system button, text and file icon match nothing else in the app', () => {
-    const importPanel = read('../../../shared/context-import-panel.css')
+    const importPanel = read('../../../shared/contextImport/context-import-panel.css')
     expect(importPanel).not.toContain('file-selector-button')
     const hidden = importPanel.slice(importPanel.indexOf('.context-import-file {'))
     expect(hidden.slice(0, hidden.indexOf('}'))).toContain('display: none;')
-    const source = read('../../../shared/ImportSourceInput.tsx')
+    const source = read('../../../shared/contextImport/ImportSourceInput.tsx')
     expect(source).toContain('fileInputRef.current?.click()')
     expect(source).toContain('Choose a file')
   })
 
   it('writes no doubled percent sign in the shared import stylesheet, which would make the declaration invalid and silently drop it', () => {
-    expect(read('../../../shared/context-import-panel.css')).not.toContain('%%')
+    expect(read('../../../shared/contextImport/context-import-panel.css')).not.toContain('%%')
   })
 
   it('spaces the review and done blocks as columns, so no button touches the outline of the card above it', () => {
-    const importPanel = read('../../../shared/context-import-panel.css')
+    const importPanel = read('../../../shared/contextImport/context-import-panel.css')
     const start = importPanel.indexOf('.context-import-review-panel,')
     const body = importPanel.slice(start, importPanel.indexOf('}', start))
     expect(body).toContain('.context-import-done {')
@@ -178,7 +178,7 @@ describe('plan components use classes, not inline styles', () => {
   })
 
   it('stacks Now and After in one column so a Markdown profile gets the full dialog width', () => {
-    const importPanel = read('../../../shared/context-import-panel.css')
+    const importPanel = read('../../../shared/contextImport/context-import-panel.css')
     const start = importPanel.indexOf('.context-import-profile-columns {')
     const body = importPanel.slice(start, importPanel.indexOf('}', start))
     expect(body).toContain('grid-template-columns: minmax(0, 1fr);')
@@ -186,7 +186,7 @@ describe('plan components use classes, not inline styles', () => {
   })
 
   it('keeps the thinking panel bordered, capped in height and scrollable, so long thinking never grows the dialog', () => {
-    const importPanel = read('../../../shared/context-import-panel.css')
+    const importPanel = read('../../../shared/contextImport/context-import-panel.css')
     const start = importPanel.indexOf('.context-import-thinking {')
     const body = importPanel.slice(start, importPanel.indexOf('}', start))
     expect(body).toContain('border: var(--border-thin, 1px) solid')
@@ -196,7 +196,7 @@ describe('plan components use classes, not inline styles', () => {
   })
 
   it('stops the progress motion for people who ask for reduced motion', () => {
-    const importPanel = read('../../../shared/context-import-panel.css')
+    const importPanel = read('../../../shared/contextImport/context-import-panel.css')
     const media = importPanel.slice(importPanel.indexOf('@media (prefers-reduced-motion: reduce)'))
     const body = media.slice(0, media.indexOf('\n}\n'))
     expect(body).toContain('.context-import-progress-fill::after')
@@ -233,6 +233,6 @@ describe('plan components use classes, not inline styles', () => {
 
   it('sets no inline style in the download rows, because the shared progress sets its own fill width', () => {
     expect(read('../components/layout/ModelDownloadRows.tsx')).not.toContain('style={{')
-    expect(read('../../../shared/DownloadProgress.tsx').split('style={{')).toHaveLength(2)
+    expect(read('../../../shared/status/DownloadProgress.tsx').split('style={{')).toHaveLength(2)
   })
 })

@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import type { BasilBoardTab } from '../contracts';
-import { settleHostWindowResize } from '@shared/settleHostWindowResize';
+import { settleHostWindowResize } from '@shared/motion/settleHostWindowResize';
 import BoardChrome from './BoardChrome';
 
 vi.mock('@shared/bubble/AnimatedBubble', () => ({

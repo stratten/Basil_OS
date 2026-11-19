@@ -30,6 +30,7 @@ def get_agent_checklist_schema_statements() -> List[str]:
             title TEXT NOT NULL,
             detail TEXT NOT NULL DEFAULT '',
             status TEXT NOT NULL DEFAULT 'pending',
+            done_basis TEXT NOT NULL DEFAULT '',
             required INTEGER NOT NULL DEFAULT 0,
             note TEXT NOT NULL DEFAULT '',
             waiting_on TEXT NOT NULL DEFAULT '',

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import ExecutionDisclosureChevron from '@shared/ExecutionDisclosureChevron';
-import PresenceRegion from '@shared/PresenceRegion';
+import ExecutionDisclosureChevron from '@shared/disclosure/ExecutionDisclosureChevron';
+import PresenceRegion from '@shared/motion/PresenceRegion';
 import { cancelOperation, submitTypedInstruction } from '../bridge/assistantSessionBridge';
 import type { AssistantSessionState } from '../state/assistantSessionReducer';
 import { ModelPickerMenu } from './ModelPickerMenu';

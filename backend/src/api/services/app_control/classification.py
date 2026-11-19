@@ -149,7 +149,7 @@ _add("browser_automation", "preferred_user_browser show_action_highlights", _B)
 # tool_execution: all of it is the permission system
 _add(
     "tool_execution",
-    "approval_mode whitelisted_commands show_full_command_in_prompt remember_choice_option auto_approve_read_only block_dangerous_patterns dangerous_patterns safe_execution_mode approval_timeout_seconds timeout_behavior",
+    "approval_mode whitelisted_commands show_full_command_in_prompt remember_choice_option auto_approve_read_only model_judges_command_safety block_dangerous_patterns dangerous_patterns safe_execution_mode approval_timeout_seconds timeout_behavior",
     _H,
     reason=_REASON_AUTHORITY,
 )

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { plainMarkdownText } from '@shared/plainMarkdownText';
-import { formatClockSeconds } from '@shared/formatClockSeconds';
+import { plainMarkdownText } from '@shared/text/plainMarkdownText';
+import { formatClockSeconds } from '@shared/format/formatClockSeconds';
 import type { MeetingActionProposalDTO } from '../bridge/types';
 import { MeetingMarkdown } from '../lib/markdown';
 import { dismissProposal, openProposalAgentTask, openProposalTodo, promoteAllProposalsToTodos, promoteProposalToTodo, restoreProposal, startProposalNow, updateProposal } from '../bridge/meetingBridge';

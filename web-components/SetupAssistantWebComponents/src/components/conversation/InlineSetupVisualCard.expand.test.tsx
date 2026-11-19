@@ -65,7 +65,10 @@ describe('InlineSetupVisualCard image expansion', () => {
     expect(dialog?.querySelector('img')?.getAttribute('src')).toBe('/images/setup/activity_capture.png')
     expect(dialog?.textContent).toContain('This is what a day of captured activity looks like.')
 
-    click(document.body.querySelector('button[aria-label="Close image"]') as HTMLElement)
+    const closeButton = document.body.querySelector('button[aria-label="Close image"]') as HTMLElement
+    expect(closeButton.querySelector('.basil-window-control-circle')).not.toBeNull()
+    expect(dialog?.firstElementChild).toBe(closeButton)
+    click(closeButton)
     expect(lightbox()).toBeNull()
   })
 

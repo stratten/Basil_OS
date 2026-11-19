@@ -51,6 +51,12 @@ extension MeetingSessionCoordinator {
                 return
             }
             Task { await viewModel.resumeCapture() }
+        case .dismissAutoEnd:
+            guard viewModel.isRecording, viewModel.autoEndCountdown != nil else {
+                publishValidationError("auto_end_unavailable", "There is no automatic end to cancel.")
+                return
+            }
+            viewModel.dismissAutoEnd()
         case .cancelRecording:
             guard viewModel.isRecording else {
                 publishValidationError("cancel_unavailable", "There is no active recording to cancel.")

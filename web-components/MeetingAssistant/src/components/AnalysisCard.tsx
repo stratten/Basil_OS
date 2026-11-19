@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import PresenceRegion from '@shared/PresenceRegion';
-import { InlineDeleteConfirm } from '@shared/InlineDeleteConfirm';
-import NativeSymbolIcon, { type NativeSymbolName } from '../../../shared/NativeSymbolIcon';
-import ReasoningModelPicker from '../../../shared/ReasoningModelPicker';
+import PresenceRegion from '@shared/motion/PresenceRegion';
+import { InlineDeleteConfirm } from '@shared/dialogs/InlineDeleteConfirm';
+import NativeSymbolIcon, { type NativeSymbolName } from '../../../shared/icons/NativeSymbolIcon';
+import ReasoningModelPicker from '../../../shared/inputs/ReasoningModelPicker';
 import { groupedAnalysisModels } from '../lib/analysisModelOptions';
 import type { AnalysisMetadataEntryDTO, MeetingUIStateDTO } from '../bridge/types';
 import { deleteAnalysis, setAnalysisConfiguration, startAnalysis, viewAnalysis } from '../bridge/meetingBridge';

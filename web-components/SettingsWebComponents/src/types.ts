@@ -1501,6 +1501,7 @@ export interface ApprovalSettingsFields {
   showFullCommandInPrompt: boolean
   rememberChoiceOption: boolean
   autoApproveReadOnly: boolean
+  modelJudgesCommandSafety: boolean
   blockDangerousPatterns: boolean
   whitelistedCount: number
   safeExecutionMode: boolean
@@ -1557,6 +1558,7 @@ export interface ApprovalSettingsPatch {
   approvalMode?: ApprovalMode
   safeExecutionMode?: boolean
   autoApproveReadOnly?: boolean
+  modelJudgesCommandSafety?: boolean
   blockDangerousPatterns?: boolean
   approvalTimeoutSeconds?: number
   timeoutBehavior?: ApprovalTimeoutBehavior
@@ -1578,6 +1580,110 @@ export interface MCPConnectionTool {
 
 export type MCPConnectionAuthKind = 'oauth' | 'slack' | 'github_device' | 'manual_token' | 'local'
 
+export type CompanionStatus = 'stopped' | 'starting' | 'running' | 'failed' | 'needs_secrets' | 'stopping'
+
+/** One secret variable a local server or its background program declares. `saved` is true when the Keychain holds a value for it. */
+export interface LocalServerSecret {
+  name: string
+  saved: boolean
+}
+
+/** The live state of a local server's background program, as the backend reports it. `logTail` is only filled while the status is `failed`. */
+export interface CompanionInfo {
+  status: CompanionStatus
+  port: number | null
+  lastError: string | null
+  logTail: string
+  restartCount: number
+  startWithBasil: boolean
+  fixedPort: number | null
+  secretEnv: LocalServerSecret[]
+  commandSummary: string
+  /** True when the program has a status page Basil reads to tell whether it is ready or waiting for the person. */
+  hasProbe?: boolean
+  health?: CompanionHealth | null
+}
+
+export type CompanionHealthPhase = 'starting' | 'ready' | 'needs_action' | 'failed'
+
+/** What the background program's own status page says. `actionValue` is a code to scan; it is held in memory by the backend and is never stored. */
+export interface CompanionHealth {
+  phase: CompanionHealthPhase
+  message: string
+  actionKind: string | null
+  actionValue: string | null
+  actionExpiresAt: string | null
+}
+
+/** A program a local server's setup recipe needs installed. `installCommand` is the exact command Basil runs when the person chooses Install, or null when they must install it themselves. */
+export interface LocalServerRequirement {
+  name: string
+  reason: string
+  forMethod: string
+  installCommand: string | null
+}
+
+/** One file a recipe puts in place. `sources` lists, in the order they are tried, every address, hash, commit and command that may produce it. */
+export interface LocalServerArtifact {
+  name: string
+  expects: string
+  ready: boolean
+  sources: string[]
+}
+
+export type LocalServerInstallPhase = 'idle' | 'checking' | 'needs_requirement' | 'installing' | 'downloading' | 'verifying' | 'extracting' | 'building' | 'ready' | 'failed' | 'canceled'
+
+/** A local server's setup recipe and how far its preparation has got. */
+export interface LocalServerInstall {
+  phase: LocalServerInstallPhase
+  message: string
+  ready: boolean
+  active: boolean
+  artifact: string | null
+  requirement: string | null
+  canInstall: boolean
+  detail: string | null
+  requirements: LocalServerRequirement[]
+  artifacts: LocalServerArtifact[]
+}
+
+/** What Settings shows for a connection that is a program on this Mac. */
+export interface LocalServerInfo {
+  commandSummary: string
+  sourceUrl: string | null
+  secretEnv: LocalServerSecret[]
+  companion: CompanionInfo | null
+  /** Present only when the server was added with a setup recipe. */
+  install?: LocalServerInstall | null
+}
+
+export interface LocalServerCompanionRegistration {
+  command: string
+  args: string[]
+  cwd?: string
+  env: Record<string, string>
+  secretEnv: string[]
+  startWithBasil: boolean
+  fixedPort?: number
+  /** The status page Basil reads, as the backend's probe object. Present only for a pasted recipe. */
+  probe?: Record<string, unknown>
+}
+
+/** The definition the Add Local Server form sends. Secret values travel separately and are never part of it. */
+export interface LocalServerRegistration {
+  friendlyName: string
+  description?: string
+  command: string
+  args: string[]
+  cwd?: string
+  env: Record<string, string>
+  secretEnv: string[]
+  sourceUrl?: string
+  companion: LocalServerCompanionRegistration | null
+  /** The setup recipe, as the backend's install object. Present only for a pasted recipe. */
+  install?: Record<string, unknown>
+}
+
 export interface MCPConnection {
   id: string
   friendlyName: string
@@ -1594,6 +1700,8 @@ export interface MCPConnection {
   serverInstructions: string | null
   authKind: MCPConnectionAuthKind
   tools: MCPConnectionTool[]
+  /** Present only for a connection that is a program on this Mac. */
+  localServer?: LocalServerInfo | null
 }
 
 export interface MCPCallLogEntry {

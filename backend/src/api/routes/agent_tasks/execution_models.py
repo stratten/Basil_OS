@@ -170,6 +170,7 @@ class ApprovalSettingsResponse(BaseModel):
     show_full_command_in_prompt: bool
     remember_choice_option: bool
     auto_approve_read_only: bool
+    model_judges_command_safety: bool
     block_dangerous_patterns: bool
     whitelisted_count: int
     safe_execution_mode: bool
@@ -183,6 +184,7 @@ class UpdateApprovalSettingsRequest(BaseModel):
     show_full_command_in_prompt: Optional[bool] = None
     remember_choice_option: Optional[bool] = None
     auto_approve_read_only: Optional[bool] = None
+    model_judges_command_safety: Optional[bool] = None
     block_dangerous_patterns: Optional[bool] = None
     safe_execution_mode: Optional[bool] = None
     approval_timeout_seconds: Optional[int] = None

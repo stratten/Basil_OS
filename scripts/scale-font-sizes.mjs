@@ -6,7 +6,7 @@
 //   line-height: 18px                        -> line-height: calc(18px * var(--text-scale, 1))
 //   font-size: var(--font-size-body, 13px)   -> font-size: var(--font-size-body, calc(13px * var(--text-scale, 1)))
 //   --font-size-callout: 13px                -> --font-size-callout: calc(13px * var(--text-scale, 1))
-// What it leaves alone: unitless and relative values (1.4, 1em, inherit), values already scaled, and anything inside a comment. Values it cannot rewrite mechanically (for example `clamp(...)`) are reported by the contract test `web-components/shared/fontScale.contract.test.ts` and edited by hand.
+// What it leaves alone: unitless and relative values (1.4, 1em, inherit), values already scaled, and anything inside a comment. Values it cannot rewrite mechanically (for example `clamp(...)`) are reported by the contract test `web-components/shared/theme/fontScale.contract.test.ts` and edited by hand.
 //
 // Usage:
 //   node scripts/scale-font-sizes.mjs          rewrite the files in place and print what changed

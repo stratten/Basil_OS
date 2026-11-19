@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import type { DisplayableAgentTask, StepDetailEntry } from '../../types';
-import { plainMarkdownText } from '@shared/plainMarkdownText';
+import { plainMarkdownText } from '@shared/text/plainMarkdownText';
 import MarkdownRenderer from '../MarkdownRenderer';
-import ReasoningModelPicker from '../../../../shared/ReasoningModelPicker';
-import { ContinueCircleIcon, ReportCircleIcon, RetryCircleIcon, WorkLogCircleIcon } from '../../../../shared/CircleControlIcons';
+import ReasoningModelPicker from '../../../../shared/inputs/ReasoningModelPicker';
+import { ContinueCircleIcon, ReportCircleIcon, RetryCircleIcon, WorkLogCircleIcon } from '../../../../shared/windowChrome/CircleControlIcons';
 import { getReasoningModels, type ReasoningModel } from '../../services/api';
 import { reportProblem, showDiagnosticLogs } from '../../services/bridge';
 import { DecisionButton } from '../interaction/DecisionButton';

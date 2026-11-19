@@ -510,7 +510,7 @@ final class ConnectionsSettingsViewModel: ObservableObject {
         }
     }
 
-    private func replaceConnection(_ updated: APIClient.MCPConnection) {
+    func replaceConnection(_ updated: APIClient.MCPConnection) {
         if let idx = connections.firstIndex(where: { $0.id == updated.id }) {
             connections[idx] = updated
         } else {

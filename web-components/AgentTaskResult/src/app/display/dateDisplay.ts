@@ -1,9 +1,9 @@
 import { useSyncExternalStore } from 'react';
-import { normalizeDateDisplayStyle, type DateDisplayStyle } from '@shared/timestampDisplay';
+import { normalizeDateDisplayStyle, type DateDisplayStyle } from '@shared/format/timestampDisplay';
 
 // The formatter and style type live in shared so the Settings web view renders timestamps identically.
-export { formatTimestampForDisplay } from '@shared/timestampDisplay';
-export type { DateDisplayStyle } from '@shared/timestampDisplay';
+export { formatTimestampForDisplay } from '@shared/format/timestampDisplay';
+export type { DateDisplayStyle } from '@shared/format/timestampDisplay';
 
 // Module-level store for the host-provided date display preference.
 // Mirrors themeBootstrap's host-driven application of theme/fonts, but exposes

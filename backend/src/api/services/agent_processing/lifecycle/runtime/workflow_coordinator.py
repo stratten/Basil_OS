@@ -21,6 +21,7 @@ from collections.abc import Mapping, Sequence
 
 from ..planning.request_analyzer import RequestAnalyzer
 from ...service_capabilities.service_method_planner import ServiceMethodPlanner, ServiceCapabilityCache
+from ...shared.agent_run_control import clear_run_ended
 from .checkpoint_workflow_service import WorkflowCheckpointWorkflowService
 from .session_context_service import WorkflowSessionContextService
 from .workflow_status_notifier import WorkflowStatusNotifier
@@ -317,6 +318,8 @@ class WorkflowCoordinator:
         Returns:
             WorkflowExecutionResult with the final execution results
         """
+        # The task is about to run a loop again, so notes sent from here on belong to it (see agent_run_control).
+        clear_run_ended(agent_task_id)
         return await self.checkpoint_workflow_service.resume_workflow(
             agent_task_id=agent_task_id,
             user_response=user_response,
@@ -330,6 +333,7 @@ class WorkflowCoordinator:
         child_outcomes: Sequence[Mapping[str, object]],
     ) -> WorkflowExecutionResult:
         """Resume one primary workflow from every settled delegated-child outcome."""
+        clear_run_ended(parent_agent_task_id)
         return await self.checkpoint_workflow_service.resume_workflow_after_provider_delegation(
             parent_agent_task_id=parent_agent_task_id,
             child_outcomes=child_outcomes,
@@ -343,6 +347,7 @@ class WorkflowCoordinator:
         report_card: Mapping[str, object],
     ) -> WorkflowExecutionResult:
         """Resume one paused parent so it may supervise a live ACP child turn."""
+        clear_run_ended(parent_agent_task_id)
         return await self.checkpoint_workflow_service.resume_workflow_for_delegated_supervision(
             parent_agent_task_id=parent_agent_task_id,
             delegated_agent_run=delegated_agent_run,

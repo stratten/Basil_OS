@@ -7,6 +7,7 @@ export function makeChecklistItem(overrides: Partial<ChecklistItem> = {}): Check
     title: 'Book a GP visit',
     detail: '',
     status: 'pending',
+    done_basis: '',
     required: false,
     note: '',
     waiting_on: '',

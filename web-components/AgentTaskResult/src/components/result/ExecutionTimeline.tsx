@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { ProgressStep, StepDetailEntry, TimelineEntry } from '../../types';
-import ExecutionDisclosureChevron from '@shared/ExecutionDisclosureChevron';
-import { plainMarkdownText } from '@shared/plainMarkdownText';
-import { usePresenceTransition } from '@shared/usePresenceTransition';
+import ExecutionDisclosureChevron from '@shared/disclosure/ExecutionDisclosureChevron';
+import { plainMarkdownText } from '@shared/text/plainMarkdownText';
+import { usePresenceTransition } from '@shared/motion/usePresenceTransition';
 import { normalizeProgressStepText } from './progressStepText';
 import { conciseExecutionStepText, selectActivityTrail } from './activityPresentation';
 import {

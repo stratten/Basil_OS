@@ -1,10 +1,10 @@
 """Agent task summary and search-index backfill helpers."""
 
-import json
 import logging
 import sqlite3
 from typing import Any, Dict, List, Optional, Tuple
 
+from api.core.agent_task_search_text import append_search_value, build_search_document  # noqa: F401
 from api.core.json_helpers import json_loads_or_empty as safe_json_loads  # noqa: F401
 
 logger = logging.getLogger(__name__)
@@ -99,34 +99,8 @@ def extract_agent_task_preview(result_data: Any) -> Tuple[Optional[str], int]:
     return preview, file_count
 
 
-def append_search_value(parts: List[str], value: Any) -> None:
-    if value is None:
-        return
-    if isinstance(value, str):
-        if value.strip():
-            parts.append(value)
-        return
-    if isinstance(value, (dict, list)):
-        parts.append(json.dumps(value, ensure_ascii=False))
-        return
-    parts.append(str(value))
-
-
 def build_agent_task_search_document(rows: List[sqlite3.Row]) -> str:
-    parts: List[str] = []
-    for row in rows:
-        for key in (
-            "title", "original_prompt", "transcribed_prompt",
-            "app_name", "window_title", "screen_text",
-            "result_preview", "result_data", "accumulated_artifacts",
-            "execution_timeline",
-        ):
-            if key in row.keys():
-                value = row[key]
-                if key in {"result_data", "accumulated_artifacts", "execution_timeline"}:
-                    value = safe_json_loads(value)
-                append_search_value(parts, value)
-    return "\n".join(parts)
+    return build_search_document(rows)
 
 
 def agent_task_summary_backfill_needed(conn: sqlite3.Connection) -> bool:

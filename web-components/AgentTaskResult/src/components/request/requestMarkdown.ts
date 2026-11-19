@@ -1,1 +1,1 @@
-export { editorHtmlToDisplayMarkdown } from '../../../../shared/editorMarkdown';
+export { editorHtmlToDisplayMarkdown } from '../../../../shared/text/editorMarkdown';

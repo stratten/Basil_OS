@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { WindowControlButton } from '@shared/WindowControlButton';
+import { WindowControlButton } from '@shared/windowChrome/WindowControlButton';
+import { WindowMoveHandle } from '@shared/windowChrome/WindowMoveHandle';
 import AnimatedBubble from '@shared/bubble/AnimatedBubble';
-import { useCollapseShortcut } from '@shared/useCollapseShortcut';
-import { useSettledExpand } from '@shared/useSettledExpand';
+import { useCollapseShortcut } from '@shared/disclosure/useCollapseShortcut';
+import { useSettledExpand } from '@shared/disclosure/useSettledExpand';
 import type { BasilBoardTab, BasilBoardTabDetachBehavior, TodoBadgeCounts } from '../contracts';
 import { useHomeRuntime } from '../home/HomeRuntimeContext';
 import {
@@ -167,7 +168,8 @@ export default function BoardChrome({
   return (
     <div className="basil-webkit-window-frame">
       <div className={`basil-board-root basil-webkit-window-surface${isContentCollapsed ? ' is-collapsed' : ''}`}>
-      <header className="basil-board-header" ref={headerRef}>
+      <header className="basil-board-header window-move-host" ref={headerRef}>
+        <WindowMoveHandle />
         <div className="basil-board-header-left">
           <div className="basil-board-window-controls">
             <WindowControlButton kind="close" label="Close" className="basil-board-window-control" onClick={requestWindowClose} />

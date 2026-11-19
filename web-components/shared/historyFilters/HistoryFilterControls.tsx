@@ -1,5 +1,5 @@
-import PresenceRegion from '../PresenceRegion';
-import TokenizedSelect from '../TokenizedSelect';
+import PresenceRegion from '../motion/PresenceRegion';
+import TokenizedSelect from '../inputs/TokenizedSelect';
 import './history-filters.css';
 
 export interface HistoryFilterOption {

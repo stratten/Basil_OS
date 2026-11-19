@@ -7,6 +7,8 @@ import { TimerDisplay } from './TimerDisplay';
 import { TranscriptionModelPickerMenu } from './TranscriptionModelPickerMenu';
 import { TranscriptBody } from './TranscriptBody';
 import { TranscriptionSymbol } from './TranscriptionSymbol';
+import { WindowControlButton } from '@shared/windowChrome/WindowControlButton';
+import { WindowMoveHandle } from '@shared/windowChrome/WindowMoveHandle';
 import type { TranscriptionState } from '../state/transcriptionReducer';
 import { resolveDisplayText, isStatusMessage } from '../lib/widgetPhase';
 
@@ -23,14 +25,11 @@ export const FullWidget = memo(function FullWidget({ state }: { state: Transcrip
 
   return (
     <div className="transcription-widget transcription-widget--full">
-      <div className="transcription-widget__header">
+      <div className="transcription-widget__header window-move-host">
+        <WindowMoveHandle />
         <div className="transcription-widget__header-left">
-          <button type="button" className="transcription-widget__icon-button transcription-widget__icon-button--close" aria-label="Close" onClick={handleCloseClick}>
-            <TranscriptionSymbol name="close" size={18} />
-          </button>
-          <button type="button" className="transcription-widget__icon-button" aria-label="Minimize widget" onClick={() => toggleMinimizedState()}>
-            <TranscriptionSymbol name="minimize" size={13} />
-          </button>
+          <WindowControlButton kind="close" label="Close" className="transcription-widget__icon-button transcription-widget__icon-button--close" onClick={handleCloseClick} />
+          <WindowControlButton kind="minimize" label="Minimize widget" className="transcription-widget__icon-button" onClick={() => toggleMinimizedState()} />
           <span className="transcription-widget__mic-icon"><TranscriptionSymbol name="micFill" size={16} /></span>
           <span className="transcription-widget__title">Transcription</span>
         </div>

@@ -1,6 +1,6 @@
-import IconChipList, { type IconChipEntry } from '@shared/IconChipList';
-import { ConnectionGlyph } from '@shared/attachmentGlyphs';
-import { connectionIconSources } from '@shared/connectionIcons';
+import IconChipList, { type IconChipEntry } from '@shared/icons/IconChipList';
+import { ConnectionGlyph } from '@shared/attachments/attachmentGlyphs';
+import { connectionIconSources } from '@shared/icons/connectionIcons';
 import type { ScheduleConnection } from '../../services/api';
 import Dropdown, { type DropdownOption } from '../Dropdown';
 import ScheduledField from './ScheduledField';

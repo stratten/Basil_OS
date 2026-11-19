@@ -57,6 +57,7 @@ extension APIClient {
         let serverInstructions: String?
         let authKind: String?
         let tools: [MCPConnectionTool]
+        let localServer: LocalServerDetails?
 
         enum CodingKeys: String, CodingKey {
             case id
@@ -74,6 +75,7 @@ extension APIClient {
             case serverInstructions = "server_instructions"
             case authKind = "auth_kind"
             case tools
+            case localServer = "local_server"
         }
     }
 

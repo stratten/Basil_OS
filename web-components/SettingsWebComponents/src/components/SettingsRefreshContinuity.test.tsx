@@ -2,14 +2,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, type ReactElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { ConnectionsPanel } from './ConnectionsPanel'
-import { ConnectionRow } from './ConnectionRow'
+import { ConnectionsPanel } from './connections/ConnectionsPanel'
+import { ConnectionRow } from './connections/ConnectionRow'
 import { CallLogPanel } from './CallLogPanel'
-import { ProviderProfilesPanel } from './ProviderProfilesPanel'
-import { TranscriptionHistoryPanel } from './TranscriptionHistoryPanel'
-import { PermissionsCommandSecurityPanel } from './PermissionsCommandSecurityPanel'
-import { ReasoningApiModelsPanel } from './ReasoningApiModelsPanel'
-import { TranscriptionApiModelsPanel } from './TranscriptionApiModelsPanel'
+import { ProviderProfilesPanel } from './providers/ProviderProfilesPanel'
+import { TranscriptionHistoryPanel } from './transcription/TranscriptionHistoryPanel'
+import { PermissionsCommandSecurityPanel } from './permissions/PermissionsCommandSecurityPanel'
+import { ReasoningApiModelsPanel } from './models/ReasoningApiModelsPanel'
+import { TranscriptionApiModelsPanel } from './transcription/TranscriptionApiModelsPanel'
 import { ModelsSettingsApp } from '../app/ModelsSettingsApp'
 import type { ConnectionsSettingsFields, MCPCallLogEntry, MCPConnection, ProviderProfileSummary } from '../types'
 
@@ -193,6 +193,7 @@ describe('Settings refresh continuity', () => {
       showFullCommandInPrompt: true,
       rememberChoiceOption: true,
       autoApproveReadOnly: false,
+      modelJudgesCommandSafety: false,
       blockDangerousPatterns: true,
       whitelistedCount: 0,
       safeExecutionMode: false,

@@ -1,0 +1,31 @@
+/* The header a WindowMoveHandle sits in carries this class: the grip is positioned against it. */
+.window-move-host {
+  position: relative;
+}
+
+/* Two hairlines that say the whole header drags the window, in the same plain hairline language as the composer and pane resize handles. They show on hover or keyboard focus, the way Pause and Stop do, and are otherwise invisible. They only advertise the native drag area, so they take no pointer events, and they sit out of the header's flow so the title never shifts when they appear. They are centered across the whole window rather than beside the title, and as far below the top edge as the two lines are apart. */
+.window-move-handle {
+  position: absolute;
+  top: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  width: 16px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-quick, 120ms) var(--motion-ease, ease);
+}
+
+.window-move-handle i {
+  display: block;
+  height: 1px;
+  background: var(--text-secondary);
+}
+
+.window-move-host:hover > .window-move-handle,
+.window-move-host:focus-within > .window-move-handle {
+  opacity: 1;
+}

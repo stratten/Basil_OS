@@ -354,7 +354,6 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: var(--padding-s);
 }
 
@@ -373,12 +372,6 @@
   color: var(--text-primary);
   font-family: var(--font-family-light);
   font-size: var(--font-size-footnote);
-}
-
-.checklist-window__header-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--padding-s);
 }
 
 .checklist-window__panel {

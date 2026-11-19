@@ -220,6 +220,12 @@ def migrate_agent_work_session_tables(conn: sqlite3.Connection) -> None:
                 "material_write": "material_write INTEGER NOT NULL DEFAULT 0",
             },
         )
+    if _table_exists(conn, "agent_checklist_items"):
+        _add_missing_columns(
+            conn,
+            "agent_checklist_items",
+            {"done_basis": "done_basis TEXT NOT NULL DEFAULT ''"},
+        )
     _backfill_legacy_items(conn)
     conn.execute("DROP INDEX IF EXISTS idx_agent_work_sessions_root")
     conn.execute("DROP INDEX IF EXISTS idx_agent_work_items_external")

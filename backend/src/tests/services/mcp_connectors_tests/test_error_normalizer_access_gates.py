@@ -47,3 +47,45 @@ def test_a_signed_out_failure_still_asks_for_a_reconnect():
     error = normalizer.normalize_call_tool_result(_failed_result("Token expired, unauthorized."))["error"]
 
     assert error["kind"] == "auth_expired"
+
+
+VALIDATION_WINDOW_ERROR = (
+    "Validation window is not open or has expired. The window only lasts a couple of minutes and is not kept across restarts. "
+    "This request is currently ready_for_final_review."
+)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        VALIDATION_WINDOW_ERROR,
+        "The approval card has expired",
+        "Invalid approval token supplied",
+        "author field is required",
+        "Not authorized to approve this item",
+        "token has expired for this checkout session",
+        "Request 4010 failed",
+    ],
+)
+def test_a_business_failure_that_merely_contains_an_auth_word_is_not_a_credential_failure(text):
+    envelope = normalizer.normalize_call_tool_result(_failed_result(text))
+
+    assert envelope["error"]["kind"] != "auth_expired"
+    assert envelope["error"]["message"] == text
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["Unauthorized", "HTTP 401 from upstream", "The access token expired", "invalid_token", "Authentication failed", "Authentication required", "OAuth token is invalid"],
+)
+def test_a_message_that_says_the_credentials_were_rejected_is_a_credential_failure(text):
+    envelope = normalizer.normalize_call_tool_result(_failed_result(text))
+
+    assert envelope["error"]["kind"] == "auth_expired"
+    assert envelope["error"]["user_action_required"] == "Reconnect this server in Settings → Connections."
+
+
+def test_a_kind_guessed_from_message_text_is_tagged_so_it_is_never_recorded_as_a_dead_connection():
+    guessed = normalizer.normalize_call_tool_result(_failed_result("Unauthorized"))["error"]["raw"]
+    assert guessed["source"] == normalizer.SOURCE_TOOL_TEXT
+

@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { HomeVoiceCaptureState } from '../contracts';
-import { editorHtmlToDisplayMarkdown } from '../../../shared/editorMarkdown';
-import RichTextComposer from '../../../shared/RichTextComposer';
-import AttachmentDropZone from '../../../shared/AttachmentDropZone';
-import AttachmentList from '../../../shared/AttachmentList';
-import { pathEntries } from '../../../shared/attachmentPaths';
+import { editorHtmlToDisplayMarkdown } from '../../../shared/text/editorMarkdown';
+import RichTextComposer from '../../../shared/text/RichTextComposer';
+import AttachmentDropZone from '../../../shared/attachments/AttachmentDropZone';
+import AttachmentList from '../../../shared/attachments/AttachmentList';
+import { pathEntries } from '../../../shared/attachments/attachmentPaths';
 import { getReasoningModels, type ReasoningModel } from '../services/api';
-import ConversationModelPicker from '../capabilities/ConversationModelPicker';
+import ConversationModelPicker from '../capabilities/conversation/ConversationModelPicker';
 import {
   cancelHomeVoiceCapture,
   pickHomeFiles,

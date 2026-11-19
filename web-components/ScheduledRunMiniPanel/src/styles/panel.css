@@ -1,5 +1,5 @@
-@import '../../../shared/webkit-window-chrome.css';
-@import '../../../shared/semantic-state.css';
+@import '../../../shared/windowChrome/webkit-window-chrome.css';
+@import '../../../shared/theme/semantic-state.css';
 
 :root {
   --background-primary: #ffffff;
@@ -70,7 +70,7 @@ body {
 .mini-panel-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 10px;
   padding: 10px 14px;
   border-bottom: 1px solid var(--separator-color);
   font-family: var(--font-family-medium);
@@ -103,29 +103,35 @@ body {
   font-family: var(--font-family-bold);
 }
 
-/* Cluster the minimize + dismiss controls on the right side of the
-   header so they read as a single window-controls group instead of
-   two unrelated affordances. */
+/* Cluster the close + minimize controls at the top left of the header
+   so they read as a single window-controls group, like every other
+   Basil window. */
 .mini-panel-header-actions {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 6px;
 }
 
 .mini-panel-dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
   background: transparent;
   border: none;
-  color: var(--text-secondary);
+  border-radius: 50%;
   cursor: pointer;
-  font-size: calc(16px * var(--text-scale, 1));
-  line-height: 1;
-  padding: 2px 6px;
-  border-radius: 4px;
 }
 
 .mini-panel-dismiss:hover {
-  background: color-mix(in srgb, var(--text-primary) 7%, transparent);
-  color: var(--text-primary);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+.mini-panel-dismiss:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 24%, transparent);
 }
 
 .mini-panel-rows {
@@ -187,7 +193,7 @@ body {
   background: var(--error-base);
 }
 
-/* The same outcome language as every other window: a partial result is the half-filled green circle (see shared/semantic-state.css), never red. */
+/* The same outcome language as every other window: a partial result is the half-filled green circle (see shared/theme/semantic-state.css), never red. */
 .mini-panel-row-status.partial {
   --outcome-mark-size: 10px;
 }

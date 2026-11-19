@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import ExpandableList from '@shared/ExpandableList';
+import ExpandableList from '@shared/disclosure/ExpandableList';
 import type { DerivedAgentTaskArtifact } from './artifactDerivation';
 import { classifyArtifactFileType } from './artifactFileType';
 import {

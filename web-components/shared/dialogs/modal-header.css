@@ -1,0 +1,41 @@
+/* The shared modal header (see ModalHeader.tsx): the circular close control at the top left with the title beside it, matching a Basil window header. The button is the same 20px circle the window controls use; the header never shrinks, so it stays put while the dialog body scrolls. */
+.basil-modal-header {
+  align-items: center;
+  display: flex;
+  flex: none;
+  gap: 10px;
+  min-width: 0;
+}
+
+.basil-modal-close {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  display: inline-flex;
+  flex: none;
+  height: 20px;
+  justify-content: center;
+  padding: 0;
+  width: 20px;
+}
+
+.basil-modal-close:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+.basil-modal-close:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 24%, transparent);
+  outline: none;
+}
+
+.basil-modal-close:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.basil-modal-header > h3 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

@@ -6,7 +6,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import type { InitMessage, StepDetailEntry, TimelineEntry } from '../types';
 import ExecutionDetailTray from './ExecutionDetailTray';
-import NativeSymbolIcon, { type NativeSymbolName } from '@shared/NativeSymbolIcon';
+import NativeSymbolIcon, { type NativeSymbolName } from '@shared/icons/NativeSymbolIcon';
 import { deriveAgentRunPresentation } from './run/agentRunPresentation';
 import type { AgentTaskRunFocusSummary } from './run/agentTaskRunFocus';
 import * as bridge from '../services/bridge';
@@ -296,6 +296,31 @@ describe('ExecutionDetailTray artifact detail', () => {
 
     expect(markup).not.toContain('Preview static page');
     expect(markup).not.toContain('Preview with local server');
+  });
+
+  it('closes a step detail from the shared close glyph at the top left of its header, ahead of the title', () => {
+    const onClose = vi.fn();
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    act(() => {
+      root.render(tray({ onClose }));
+    });
+    try {
+      const header = container.querySelector('.detail-tray-header')!;
+      const close = header.querySelector<HTMLButtonElement>('button[aria-label="Close detail tray"]')!;
+
+      expect(header.firstElementChild).toBe(close);
+      expect(close.querySelector('.basil-window-control-circle')).not.toBeNull();
+      expect(container.querySelector('.detail-tray-header-actions')).toBeNull();
+
+      act(() => { close.click(); });
+
+      expect(onClose).toHaveBeenCalledTimes(1);
+    } finally {
+      act(() => root.unmount());
+      container.remove();
+    }
   });
 
   it('keeps non-artifact detail metadata and markdown rendering unchanged', () => {

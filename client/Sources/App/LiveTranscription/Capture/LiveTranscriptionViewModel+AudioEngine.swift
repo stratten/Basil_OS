@@ -445,6 +445,9 @@ extension LiveTranscriptionViewModel {
                     if isRecording {
                         stopRecording()
                     }
+                    // A start that never reached recording must not leave a meeting app bound for the next, manual one.
+                    isAwaitingAutoEndSource = false
+                    autoStartedBundleID = nil
                     updateMicrophoneAudioLevel(0.0)
                     connectionState = .error
                     handleError(error)

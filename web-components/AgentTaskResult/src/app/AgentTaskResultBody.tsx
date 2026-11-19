@@ -7,15 +7,15 @@ import type {
   StepDetailEntry,
   ValidationRunFocusRequest,
 } from '../types';
-import Header from '../components/Header';
-import Sidebar from '../components/Sidebar';
-import ScheduledAgentTaskDetail from '../components/ScheduledAgentTaskDetail';
+import Header from '../components/header/Header';
+import Sidebar from '../components/sidebar/Sidebar';
+import ScheduledAgentTaskDetail from '../components/scheduled/ScheduledAgentTaskDetail';
 import { activityStatusSnapshot } from '../components/result/activityPresentation';
 import type { MissedRunToast } from './host/useHostBridge';
 import { AgentTaskDetailSurface } from './AgentTaskDetailSurface';
 import DetachedTaskPlaceholder from '../components/DetachedTaskPlaceholder';
 import { SurfaceActivityContext } from '../services/useFilesPickedHandler';
-import { plainMarkdownText } from '../../../shared/plainMarkdownText';
+import { plainMarkdownText } from '../../../shared/text/plainMarkdownText';
 import { agentStore } from '../store/agentStore';
 import { taskNeedsCollapsedAttention } from './host/useUnfocusedTaskAttention';
 

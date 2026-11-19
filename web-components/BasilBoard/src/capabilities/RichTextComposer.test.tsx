@@ -2,7 +2,7 @@ import { createRef, type ComponentProps } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import RichTextComposer from '../../../shared/RichTextComposer';
+import RichTextComposer from '../../../shared/text/RichTextComposer';
 
 function renderComposer(overrides: Partial<ComponentProps<typeof RichTextComposer>> = {}) {
   const onSubmit = vi.fn();

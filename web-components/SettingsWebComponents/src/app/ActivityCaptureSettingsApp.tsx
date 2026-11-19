@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import IconChipList from '@shared/IconChipList'
-import { Switch } from '@shared/Switch'
-import TokenizedSelect from '@shared/TokenizedSelect'
+import IconChipList from '@shared/icons/IconChipList'
+import { Switch } from '@shared/inputs/Switch'
+import TokenizedSelect from '@shared/inputs/TokenizedSelect'
 import {
   notifyActivityCaptureSettingsReady,
   onActivityCaptureEvent,

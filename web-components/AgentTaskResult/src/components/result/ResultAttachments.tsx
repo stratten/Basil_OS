@@ -3,9 +3,9 @@ import type { ConnectionReference, StructuredFile } from '../../types';
 import { openFile, openContainingFolder, openFilePreviewWindow } from '../../services/bridge';
 import { presentFileArtifact } from './fileArtifactPresentation';
 import { normalizeFileReference } from './resultContentUtils';
-import ExpandableList from '@shared/ExpandableList';
-import AttachmentList from '@shared/AttachmentList';
-import { pathEntries, type AttachmentEntry } from '@shared/attachmentPaths';
+import ExpandableList from '@shared/disclosure/ExpandableList';
+import AttachmentList from '@shared/attachments/AttachmentList';
+import { pathEntries, type AttachmentEntry } from '@shared/attachments/attachmentPaths';
 
 // Beyond this many rows (including the Retrieved heading) the list collapses so a long run does not push the rest of the result off screen.
 const FILES_COLLAPSED_COUNT = 5;

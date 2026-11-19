@@ -101,11 +101,22 @@
   font-size: var(--font-size-status-small);
 }
 
-/* Folded, the note box is one bar and Pause sits beneath it at the same right edge it has inside the open box. */
+/* Folded, the note bar and the Stop and Pause buttons share one row: the bar takes the width the buttons leave and the buttons keep the right edge they have inside the open box. The fold region spans the full width on the row below, which is empty height while it is folded and the whole box when it is open. */
+.run-control-collapsible {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--padding-xs);
+  align-items: center;
+}
+
+.run-control-collapsible > .basil-collapsible-region {
+  grid-column: 1 / -1;
+}
+
 .run-control-collapsed-actions {
   display: flex;
   justify-content: flex-end;
-  padding: var(--padding-xs) 3px 0;
+  padding-right: 3px;
 }
 
 .text-followup-action-btn.run-control-pause {

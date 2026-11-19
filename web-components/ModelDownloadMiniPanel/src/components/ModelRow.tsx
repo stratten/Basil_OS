@@ -1,5 +1,5 @@
 import type { ModelRowSnapshot } from '../types'
-import { DownloadProgress } from '@shared/DownloadProgress'
+import { DownloadProgress } from '@shared/status/DownloadProgress'
 
 import { displayInfoForModel } from '../helpers/modelDisplay'
 

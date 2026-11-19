@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import { plainMarkdownText } from '@shared/plainMarkdownText'
+import { plainMarkdownText } from '@shared/text/plainMarkdownText'
 import { SetupConversationMarkdown } from '@/components/conversation/SetupConversationMarkdown'
 import { SetupWorkingIndicator } from '@/components/motion/SetupWorkingIndicator'
 import type { SetupImportedContextSummary } from '@/state/setupAssistantStore'

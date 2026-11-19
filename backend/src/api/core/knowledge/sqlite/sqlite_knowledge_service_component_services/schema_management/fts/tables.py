@@ -16,6 +16,15 @@ def ensure_agent_task_search_fts(conn: sqlite3.Connection) -> None:
         )
         """
     )
+    # Records which builder version produced each chain's search entry, so startup housekeeping can find entries written by an older builder (or never recorded) and rebuild them a few at a time.
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS agent_task_search_index_state (
+            root_task_id TEXT PRIMARY KEY,
+            builder_version INTEGER NOT NULL
+        )
+        """
+    )
 
 
 def ensure_meeting_transcript_fts(conn: sqlite3.Connection) -> None:

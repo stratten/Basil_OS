@@ -1,4 +1,4 @@
-import { deriveRunPhase, type RunPhase } from '@shared/runPhase';
+import { deriveRunPhase, type RunPhase } from '@shared/status/runPhase';
 import type { MiniPanelRow } from './types';
 
 // The row's agent task status, with the approval flag taking priority because an approval request reaches the panel before the stored task status reads as waiting.

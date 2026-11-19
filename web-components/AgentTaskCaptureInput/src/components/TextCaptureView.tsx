@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CaptureSnapshot } from '../types';
-import RichTextComposer from '../../../shared/RichTextComposer';
+import RichTextComposer from '../../../shared/text/RichTextComposer';
 import CaptureModelPickerMenu from './CaptureModelPickerMenu';
 import { pickReferenceFiles, showNativeModelPicker, submitTextPrompt, updateTextDraft } from '../services/bridge';
 

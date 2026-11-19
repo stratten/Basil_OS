@@ -228,6 +228,7 @@ class AgentChecklistRepository:
         actor: Optional[str] = None,
         agent_task_id: Optional[str] = None,
         event_text: str = "",
+        done_basis: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         item_actor = normalize_actor(actor)
         with get_sync_connection(self.db_path) as conn:
@@ -264,6 +265,15 @@ class AgentChecklistRepository:
             status_after = sets.get("status", current["status"])
             if status_after not in ("waiting_user", "waiting_external") and "waiting_on" not in changes and current["waiting_on"]:
                 sets["waiting_on"] = ""
+            basis_after = current["done_basis"]
+            if status_after != "done":
+                basis_after = ""
+            elif done_basis is not None:
+                basis_after = "inferred" if done_basis == "inferred" else ""
+            elif "status" in sets or (item_actor == "user" and changes.get("status") == "done"):
+                basis_after = ""
+            if basis_after != current["done_basis"]:
+                sets["done_basis"] = basis_after
             if not sets:
                 return {"item": current, "changed": False}
             assignments = ", ".join(f"{field} = ?" for field in sets)
@@ -278,6 +288,8 @@ class AgentChecklistRepository:
             )
             if "status" in sets:
                 kind, text = "status", f"{current['status']} to {sets['status']}"
+            elif set(sets) == {"done_basis"}:
+                kind, text = "status", "done (inferred)" if sets["done_basis"] else "done (confirmed)"
             elif set(sets) == {"note"}:
                 kind, text = "note", sets["note"]
             else:

@@ -1,4 +1,5 @@
-import { WindowControlButton } from '@shared/WindowControlButton';
+import { WindowControlButton } from '@shared/windowChrome/WindowControlButton';
+import { WindowMoveHandle } from '@shared/windowChrome/WindowMoveHandle';
 
 interface HeaderProps {
   summary: string;
@@ -10,7 +11,8 @@ interface HeaderProps {
 
 export function Header({ summary, isCollapsed, onMinimize, onClose, onToggleCollapse }: HeaderProps) {
   return (
-    <div className="widget-header">
+    <div className="widget-header window-move-host">
+      <WindowMoveHandle />
       <div className="header-left">
         <WindowControlButton kind="close" label="Close" className="header-btn" onClick={onClose} />
         <WindowControlButton kind="minimize" label="Minimize" className="header-btn" onClick={onMinimize} />

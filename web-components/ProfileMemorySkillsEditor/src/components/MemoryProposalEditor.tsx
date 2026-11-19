@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import TokenizedSelect from '../../../shared/TokenizedSelect';
+import TokenizedSelect from '../../../shared/inputs/TokenizedSelect';
 import { approveMemoryProposal, declineMemoryProposal, getMemoryProposal } from '../services/api';
 import { notifyDeclined, notifySaved } from '../services/bridge';
 

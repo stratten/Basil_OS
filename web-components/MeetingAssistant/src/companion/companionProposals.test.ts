@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emptyTimelineState } from './companionReducer';
+import { emptyTimelineState } from './state/companionReducer';
 import {
   MAX_ASSISTANT_CONTEXT_CHARS,
   MAX_INVESTIGATION_QUESTION_CHARS,

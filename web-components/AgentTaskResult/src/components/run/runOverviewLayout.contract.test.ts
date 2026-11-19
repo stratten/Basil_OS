@@ -45,6 +45,6 @@ describe('Run overview layout contract', () => {
 
   it('loads the panel and shared list styles from the component entry', () => {
     expect(entryCss).toContain("./components/detail-tray/run-overview-panel.css");
-    expect(entryCss).toContain('shared/expandable-list.css');
+    expect(entryCss).toContain('shared/disclosure/expandable-list.css');
   });
 });

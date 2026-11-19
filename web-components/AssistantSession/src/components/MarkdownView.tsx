@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { externalLinkTarget } from '@shared/markdownSafety';
+import { externalLinkTarget } from '@shared/text/markdownSafety';
 import { postToSwiftHandler } from '@shared/swiftBridge';
 import { markdownToHTML } from '../lib/markdownToHtml';
 

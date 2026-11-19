@@ -125,6 +125,11 @@ extension ReactConnectionsSettingsWebView: ReactConnectionsSettingsBridgeOutput 
             "serverName": connection.serverName as Any,
             "serverInstructions": connection.serverInstructions as Any,
             "authKind": connection.authKind ?? "manual_token",
+            "localServer": LocalServerPayload.payload(
+                for: connection.localServer,
+                connectionId: connection.id,
+                isSecretSaved: { MCPTokenStore.shared.accessToken(connectionId: $0) != nil }
+            ) as Any,
             "tools": connection.tools.map { tool -> [String: Any] in
                 [
                     "name": tool.name,

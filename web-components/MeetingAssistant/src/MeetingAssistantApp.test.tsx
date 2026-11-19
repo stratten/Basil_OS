@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { settleHostWindowResize } from '@shared/settleHostWindowResize';
+import { settleHostWindowResize } from '@shared/motion/settleHostWindowResize';
 import MeetingAssistantApp from './MeetingAssistantApp';
 import type { MeetingBridgeEvent } from './bridge/types';
 import { publishMeetingMeter } from './bridge/meetingMeterStore';

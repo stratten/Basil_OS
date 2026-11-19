@@ -1,7 +1,7 @@
-@import '../../../shared/semantic-state.css';
-@import '../../../shared/presence-motion.css';
-@import '../../../shared/reduced-motion.css';
-@import '../../../shared/collapsible-sidebar.css';
+@import '../../../shared/theme/semantic-state.css';
+@import '../../../shared/motion/presence-motion.css';
+@import '../../../shared/motion/reduced-motion.css';
+@import '../../../shared/disclosure/collapsible-sidebar.css';
 @import './assistant-output-history/shell.css';
 @import './assistant-output-history/sidebar.css';
 @import './assistant-output-history/detail.css';

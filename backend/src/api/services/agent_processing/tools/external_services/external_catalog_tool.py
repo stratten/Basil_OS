@@ -46,6 +46,8 @@ from .external_catalog.actions import (
 from .external_catalog.approval import request_external_catalog_user_approval as _request_user_approval
 from .external_catalog.connect import connect_external_catalog_server as _connect_server
 from .external_catalog.token_connect import connect_external_catalog_server_with_token as _connect_with_token
+from .external_catalog.local_server_recipe_actions import local_server_status_action as _local_server_status
+from .external_catalog.local_server_register import register_external_catalog_local_server as _register_local_server
 from .external_catalog.descriptions import (
     SLIM_DESCRIPTION,
     build_full_external_catalog_description,
@@ -72,6 +74,8 @@ ACTION_DESCRIBE = "describe_server"
 ACTION_CALL = "call_tool"
 ACTION_CONNECT = "connect_server"
 ACTION_CONNECT_WITH_TOKEN = "connect_with_token"
+ACTION_REGISTER_LOCAL_SERVER = "register_local_server"
+ACTION_LOCAL_SERVER_STATUS = "local_server_status"
 
 
 class ExternalCatalogInput(BaseModel):
@@ -83,19 +87,21 @@ class ExternalCatalogInput(BaseModel):
     the model can correct itself from a clear error rather than a
     Pydantic stack trace.
     """
-    action: Literal["list_servers", "describe_server", "call_tool", "connect_server", "connect_with_token"] = Field(
+    action: Literal["list_servers", "describe_server", "call_tool", "connect_server", "connect_with_token", "register_local_server", "local_server_status"] = Field(
         description=(
             "Which catalog operation to perform: "
             f"'{ACTION_LIST}' (no other fields), "
             f"'{ACTION_DESCRIBE}' (requires connection_id), "
             f"'{ACTION_CALL}' (requires connection_id, tool_name, arguments), "
             f"'{ACTION_CONNECT}' (requires server_url; optional friendly_name), "
-            f"'{ACTION_CONNECT_WITH_TOKEN}' (requires server_url; optional friendly_name; shows an overlay in Paprika where the user types the service's token and can edit the connection's name and description; optional description)."
+            f"'{ACTION_CONNECT_WITH_TOKEN}' (requires server_url; optional friendly_name; shows an overlay in Paprika where the user types the service's token and can edit the connection's name and description; optional description), "
+            f"'{ACTION_REGISTER_LOCAL_SERVER}' (requires friendly_name and arguments with command, args, cwd, env, secret_env, source_url, companion; sets up a program on this Mac as a server after the user approves it; name credentials in secret_env, never put their values in arguments; install is an optional recipe of programs to install and files to download or build, replace is the connection_id of a local server to rewrite), "
+            f"'{ACTION_LOCAL_SERVER_STATUS}' (requires connection_id; reports a local server's setup step, whether its background program needs the user, and recent output)."
         )
     )
     connection_id: Optional[str] = Field(
         default=None,
-        description="Connection id from list_servers; required for describe_server and call_tool."
+        description="Connection id from list_servers; required for describe_server, call_tool and local_server_status."
     )
     tool_name: Optional[str] = Field(
         default=None,
@@ -103,7 +109,11 @@ class ExternalCatalogInput(BaseModel):
     )
     arguments: Optional[Dict[str, Any]] = Field(
         default=None,
-        description="JSON object of arguments to pass to the tool; required for call_tool."
+        description=(
+            "JSON object of arguments to pass to the tool; required for call_tool. "
+            "For register_local_server it is the server definition: command (the program), args (a list, one item per argument), cwd (absolute folder), env (non-secret settings only), "
+            "secret_env (credential variable names, never values), source_url, companion (a background program the server needs running first, optionally with a probe that reads its status page), install (a recipe) and replace (a connection_id)."
+        )
     )
     purpose: Optional[str] = Field(
         default=None,
@@ -121,11 +131,11 @@ class ExternalCatalogInput(BaseModel):
     )
     friendly_name: Optional[str] = Field(
         default=None,
-        description="connect_server and connect_with_token: optional display name for the service, such as 'Notion'. For connect_with_token it is only a suggestion the user can change in the overlay.",
+        description="connect_server and connect_with_token: optional display name for the service, such as 'Notion'. For connect_with_token it is only a suggestion the user can change in the overlay. register_local_server: required, a short name for the server.",
     )
     description: Optional[str] = Field(
         default=None,
-        description="connect_with_token only: optional one-line note about what this connection is for, such as 'Work account, read and write'. It is only a suggestion the user can change in the overlay.",
+        description="connect_with_token and register_local_server: optional one-line note about what this connection is for, such as 'Work account, read and write'. For connect_with_token it is only a suggestion the user can change in the overlay.",
     )
 
 
@@ -256,6 +266,10 @@ async def _external_catalog_impl(
             return _encode(await _connect_server(server_url, friendly_name))
         if action == ACTION_CONNECT_WITH_TOKEN:
             return _encode(await _connect_with_token(server_url, friendly_name, description))
+        if action == ACTION_REGISTER_LOCAL_SERVER:
+            return _encode(await _register_local_server(arguments, friendly_name, description))
+        if action == ACTION_LOCAL_SERVER_STATUS:
+            return _encode(await _local_server_status(connection_id))
         return _encode(_envelope_invalid(f"Unknown action '{action}'"))
     except Exception as exc:
         logger.exception("external_catalog dispatch crashed")

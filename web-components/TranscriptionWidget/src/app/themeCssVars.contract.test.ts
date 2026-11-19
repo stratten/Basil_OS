@@ -7,7 +7,7 @@ import {
   CONTRACT_THEME_FIXTURE,
   FULL_THEME_TOKENS,
   assertAppliesThemeTokens,
-} from '@shared/webThemeContractSuite';
+} from '@shared/theme/webThemeContractSuite';
 
 const NON_DERIVED_TOKENS = FULL_THEME_TOKENS.filter((token) => token !== 'separatorColor');
 

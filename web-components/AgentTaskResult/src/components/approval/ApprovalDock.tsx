@@ -1,4 +1,4 @@
-import { ContinueCircleIcon, StopCircleIcon } from '@shared/CircleControlIcons';
+import { ContinueCircleIcon, StopCircleIcon } from '@shared/windowChrome/CircleControlIcons';
 import { DecisionActions, DecisionButton } from '../interaction/DecisionButton';
 
 interface Props {

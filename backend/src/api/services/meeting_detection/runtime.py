@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import math
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
@@ -36,6 +37,8 @@ class MeetingDetectionRuntime:
         # Edge-detection state.
         self._active_bundle_ids: set[str] = set()
         self._missing_counts: Dict[str, int] = {}
+        # Apps whose end countdown the client has been told about, so a later return of audio can say it was called off.
+        self._announced_endings: set[str] = set()
         # bundle_id -> datetime a detection was last surfaced (cooldown gate).
         self._last_surfaced: Dict[str, datetime] = {}
         # calendar_event_id -> datetime a join prompt was last surfaced.
@@ -74,6 +77,7 @@ class MeetingDetectionRuntime:
         # Reset edge state so a restart re-surfaces an in-progress call.
         self._active_bundle_ids.clear()
         self._missing_counts.clear()
+        self._announced_endings.clear()
         self._surfaced_calendar_event_ids.clear()
         self._surfaced_calendar_event_end_times.clear()
         self._ignored_calendar_event_ids.clear()
@@ -130,6 +134,9 @@ class MeetingDetectionRuntime:
         # Reset debounce for apps still producing audio.
         for bundle_id in still_active:
             self._missing_counts.pop(bundle_id, None)
+            if bundle_id in self._announced_endings:
+                self._announced_endings.discard(bundle_id)
+                await self._surface_end_canceled(bundle_id)
 
         # Rising edges: surface (respecting cooldown).
         for bundle_id in rising:
@@ -149,9 +156,14 @@ class MeetingDetectionRuntime:
         for bundle_id in list(possibly_gone):
             count = self._missing_counts.get(bundle_id, 0) + 1
             self._missing_counts[bundle_id] = count
+            if count == 1 and end_ticks > 1 and self.settings.auto_end:
+                # The end fires on the end_ticks-th missed probe, so it is (end_ticks - 1) probes after this first one.
+                self._announced_endings.add(bundle_id)
+                await self._surface_ending(bundle_id, (end_ticks - 1) * max(self.settings.poll_seconds, 1.0))
             if count >= end_ticks:
                 self._active_bundle_ids.discard(bundle_id)
                 self._missing_counts.pop(bundle_id, None)
+                self._announced_endings.discard(bundle_id)
                 if self.settings.auto_end:
                     await self._surface_ended(bundle_id)
 
@@ -259,7 +271,11 @@ class MeetingDetectionRuntime:
     def _end_debounce_ticks(self) -> int:
         poll_seconds = max(self.settings.poll_seconds, 1.0)
         inactivity_seconds = max(self.settings.inactivity_timeout_minutes, 0.0) * 60
-        return max(1, math.ceil(inactivity_seconds / poll_seconds))
+        ticks = max(1, math.ceil(inactivity_seconds / poll_seconds))
+        if self.settings.auto_end:
+            # The end is announced at the first quiet probe, and the configured inactivity period starts counting from that probe, so the end fires one full period later: `ticks` further quiet probes after the first. Counting the first quiet probe as part of the period would shorten every countdown by one probe interval and, for a period of a single probe, end the meeting at the very moment it was announced, with no countdown at all.
+            ticks += 1
+        return ticks
 
     async def _surface_detected(self, app: dict, calendar_event: Optional[dict]) -> None:
         meeting = {
@@ -306,6 +322,27 @@ class MeetingDetectionRuntime:
         )
         await broadcast_json_text(
             {"event_type": "meeting_detected", "meeting": meeting},
+            log=self.logger,
+        )
+
+    async def _surface_ending(self, bundle_id: str, seconds_until_end: float) -> None:
+        """Tell the client the meeting app has gone quiet and the recording will end at `ends_at` unless its audio returns first."""
+        self.logger.info("Meeting end countdown started: %s (%.0fs)", bundle_id, seconds_until_end)
+        await broadcast_json_text(
+            {
+                "event_type": "meeting_ending",
+                "bundle_id": bundle_id,
+                "seconds_until_end": seconds_until_end,
+                "ends_at": time.time() + seconds_until_end,
+            },
+            log=self.logger,
+        )
+
+    async def _surface_end_canceled(self, bundle_id: str) -> None:
+        """Tell the client the meeting app's audio came back, so the end countdown it was showing no longer applies."""
+        self.logger.info("Meeting end countdown called off: %s (audio returned)", bundle_id)
+        await broadcast_json_text(
+            {"event_type": "meeting_end_canceled", "bundle_id": bundle_id},
             log=self.logger,
         )
 

@@ -67,4 +67,35 @@ final class APIErrorServerFailureTests: XCTestCase {
         }
         XCTAssertEqual(statusCode, 503)
     }
+
+    func testAnObjectDetailShowsItsMessageAndTheActionToTake() {
+        let error = APIError.serverFailure(
+            statusCode: 502,
+            body: body("{\"detail\": {\"kind\": \"companion_not_running\", \"message\": \"The background program did not start.\", \"user_action_required\": \"Check its command and try again.\"}}")
+        )
+
+        guard case .serverMessage(let statusCode, let message) = error else {
+            return XCTFail("Expected a serverMessage, got \(error)")
+        }
+        XCTAssertEqual(statusCode, 502)
+        XCTAssertEqual(message, "The background program did not start. Check its command and try again.")
+    }
+
+    func testAnObjectDetailWithoutAnActionShowsJustItsMessage() {
+        let error = APIError.serverFailure(statusCode: 502, body: body("{\"detail\": {\"message\": \"It did not start.\"}}"))
+
+        guard case .serverMessage(_, let message) = error else {
+            return XCTFail("Expected a serverMessage, got \(error)")
+        }
+        XCTAssertEqual(message, "It did not start.")
+    }
+
+    func testAnObjectDetailWithoutAMessageStaysAStatusOnlyError() {
+        let error = APIError.serverFailure(statusCode: 502, body: body("{\"detail\": {\"kind\": \"companion_not_running\"}}"))
+
+        guard case .serverError(let statusCode) = error else {
+            return XCTFail("Expected a serverError, got \(error)")
+        }
+        XCTAssertEqual(statusCode, 502)
+    }
 }

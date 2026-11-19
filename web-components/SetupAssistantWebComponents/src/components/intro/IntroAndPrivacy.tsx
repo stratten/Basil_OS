@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 
-import { DownloadProgress } from '@shared/DownloadProgress'
-import { ignoreLabelClickWhileSelectingText } from '@shared/labelTextSelection'
-import TokenizedSelect from '@shared/TokenizedSelect'
+import { DownloadProgress } from '@shared/status/DownloadProgress'
+import { ignoreLabelClickWhileSelectingText } from '@shared/text/labelTextSelection'
+import TokenizedSelect from '@shared/inputs/TokenizedSelect'
 
 import { reportedBytes } from '@/components/layout/starterDownloads'
 import { SetupStepActions } from '@/components/layout/SetupStepActions'

@@ -1,4 +1,4 @@
-import type { CompanionTimelineState } from './companionReducer';
+import type { CompanionTimelineState } from './state/companionReducer';
 import { MAX_INVESTIGATION_QUESTION_CHARS, unresolvedInvestigations } from './companionProposals';
 import type { ChatMessage } from './types';
 

@@ -1,6 +1,6 @@
-import CollapsibleSidebar from '@shared/CollapsibleSidebar';
-import { useHistoryRowRevealDelete } from '@shared/useHistoryRowRevealDelete';
-import { plainMarkdownText } from '@shared/plainMarkdownText';
+import CollapsibleSidebar from '@shared/disclosure/CollapsibleSidebar';
+import { useHistoryRowRevealDelete } from '@shared/history/useHistoryRowRevealDelete';
+import { plainMarkdownText } from '@shared/text/plainMarkdownText';
 import type { AssistantOutputHistoryEntry } from '../../services/historyApi';
 import { formatSidebarTimestamp } from '../../lib/historyTimestamps';
 import { NativeSymbol } from '../NativeSymbol';

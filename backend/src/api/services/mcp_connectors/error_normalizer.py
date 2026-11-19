@@ -36,6 +36,7 @@ into the agent's transcript anyway.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any, Dict, Optional
 
 import httpx
@@ -59,6 +60,23 @@ ERROR_KIND_SERVER_ERROR = "server_error"
 ERROR_KIND_NETWORK_ERROR = "network_error"
 ERROR_KIND_TIMEOUT = "timeout"
 ERROR_KIND_UNKNOWN = "unknown"
+
+# Marks an envelope whose kind was guessed from a server's failure message rather than learned from the transport (an HTTP 401, a failed token exchange). A guess is enough to tell the agent what the message seems to say, but never enough to record that the saved credentials are dead.
+SOURCE_TOOL_TEXT = "tool_text"
+
+# Wording that says the server rejected who is calling. A single word such as "auth", "token" or "expired" is deliberately not enough, because ordinary business messages carry them ("author", "this approval token", "the validation window has expired"). A server that ran the tool at all accepted the credentials, so the text has to say otherwise in so many words.
+_CREDENTIAL_FAILURE_TEXT = re.compile(
+    r"\b(?:"
+    r"unauthori[sz]ed|unauthenticated|not authenticated"
+    r"|invalid[_ ]token|invalid[_ ]grant|invalid[_ ]credentials?|invalid[_ ]client"
+    r"|(?:access|refresh|oauth|bearer|api|id)[_ ]token(?: has| is|\s)*(?:expired|invalid|revoked|missing|rejected)"
+    r"|authentication(?: has| is|\s)*(?:failed|required|expired|error)"
+    r"|authorization(?: has| is|\s)*(?:failed|required|expired)"
+    r"|re-?authenticate"
+    r"|http 401|status 401|error 401|401 unauthori[sz]ed"
+    r")\b",
+    re.IGNORECASE,
+)
 
 
 def make_envelope(
@@ -194,7 +212,7 @@ def normalize_call_tool_result(result: Any) -> Dict[str, Any]:
         message=text_payload or "Tool reported a failure.",
         retryable=kind in {ERROR_KIND_RATE_LIMITED, ERROR_KIND_SERVER_ERROR, ERROR_KIND_TIMEOUT},
         user_action_required=action,
-        raw={"structured": structured},
+        raw={"structured": structured, "source": SOURCE_TOOL_TEXT},
     )
 
 
@@ -219,8 +237,7 @@ def _classify_tool_failure_text(text: str) -> tuple:
             "Google has not enabled this tool for the Google Cloud project Basil signs in with. That project must be enrolled in the Google Workspace Developer Preview Program (developers.google.com/workspace/preview). Signing in again will not fix it.",
         )
 
-    auth_phrases = ("unauthorized", "auth", "token", "expired", "invalid_token", "401")
-    if any(p in lower for p in auth_phrases):
+    if _CREDENTIAL_FAILURE_TEXT.search(text):
         return ERROR_KIND_AUTH_EXPIRED, "Reconnect this server in Settings → Connections."
 
     if "rate" in lower and "limit" in lower:

@@ -1,5 +1,5 @@
-@import '../../../../shared/rich-text-followup.css';
-@import '../../../../shared/markdown-table.css';
+@import '../../../../shared/text/rich-text-followup.css';
+@import '../../../../shared/text/markdown-table.css';
 
 /* Content area wrapper — constrains height so .main-content scrolls.
    `overflow: clip` instead of `hidden`: a clipped box cannot be scrolled by script, focus, or scrollIntoView, so nothing can leave the result surface offset sideways. */
@@ -279,7 +279,7 @@
   word-break: break-word;
 }
 
-/* Table shape, borders, rounded corners, and column minimums come from shared/markdown-table.css, the same as every other Markdown surface; only this view's width and colors are set here. */
+/* Table shape, borders, rounded corners, and column minimums come from shared/text/markdown-table.css, the same as every other Markdown surface; only this view's width and colors are set here. */
 .result-section table {
   width: 100%;
   background: var(--background-primary);

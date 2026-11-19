@@ -1,4 +1,4 @@
-import type { SharedReasoningModel } from '../../../shared/ReasoningModelPicker';
+import type { SharedReasoningModel } from '../../../shared/inputs/ReasoningModelPicker';
 import type { MeetingUIStateDTO } from '../bridge/types';
 
 /** The model list the shared reasoning picker shows, identical for the Analysis card and the Companion pane. */

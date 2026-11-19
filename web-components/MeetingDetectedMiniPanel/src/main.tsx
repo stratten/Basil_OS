@@ -2,8 +2,8 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './styles/panel.css'
-import { installBlueprintReveal } from '@shared/blueprintController'
-import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish'
+import { installBlueprintReveal } from '@shared/blueprint/blueprintController'
+import { enableBackdropSurfaceFinish } from '@shared/theme/surfaceFinish'
 import { installBasilTooltips } from '@shared/tooltip/basilTooltip'
 
 enableBackdropSurfaceFinish()

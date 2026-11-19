@@ -7,7 +7,7 @@ import type {
 } from './contracts';
 import { hydrateBasilBoard, configureApiBaseUrl, submitHomeTurn, websocketUrl } from './services/api';
 import { basilBoardWebSocket } from './services/websocket';
-import { BackendLivenessBanner } from '../../shared/BackendLivenessBanner';
+import { BackendLivenessBanner } from '../../shared/status/BackendLivenessBanner';
 import {
   notifyReady,
   registerAgentTaskOriginNavigationHandler,
@@ -17,7 +17,7 @@ import { applyHostFonts, applyHostTheme } from './theme/agentTaskTheme';
 import BasilBoardShell from './shell/BasilBoardShell';
 import DetachedCapabilityShell from './shell/DetachedCapabilityShell';
 import { HomeRuntimeContext, type HomeVoiceTurn } from './home/HomeRuntimeContext';
-import { plainTextToDisplayMarkdown } from '../../shared/editorMarkdown';
+import { plainTextToDisplayMarkdown } from '../../shared/text/editorMarkdown';
 
 export default function App() {
   const [initialized, setInitialized] = useState(false);

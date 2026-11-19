@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type FocusEvent, type KeyboardEvent } from 'react';
 import type { TodoItemDetail, TodoStatus } from '../contracts';
-import RichTextComposer from '../../../shared/RichTextComposer';
-import TokenizedSelect from '../../../shared/TokenizedSelect';
+import RichTextComposer from '../../../shared/text/RichTextComposer';
+import TokenizedSelect from '../../../shared/inputs/TokenizedSelect';
 import {
   openMeetingWorkspace,
   pickTodoReferenceFiles,
   registerTodoReferenceFilesPickedHandler,
   setBoardFileDropTarget,
 } from '../services/bridge';
-import AttachmentArea from '../../../shared/AttachmentArea';
+import AttachmentArea from '../../../shared/attachments/AttachmentArea';
 import { sanitizeRichText } from './richTextSanitize';
 import { formatTodoDateOnly, isTodoDueDateOverdue, todoDateOnly } from './todoDates';
 import TodoDateField from './TodoDateField';

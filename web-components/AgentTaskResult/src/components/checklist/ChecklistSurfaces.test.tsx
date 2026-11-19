@@ -325,7 +325,7 @@ describe('checklist surfaces', () => {
       await click(Array.from(container.querySelectorAll('.checklist-detail__actions button')).find(node => node.textContent === 'Archive')!);
       expect(api.archiveChecklistItem).toHaveBeenCalledWith('root-1', 'a', true);
 
-      expect(Array.from(container.querySelectorAll('.checklist-window__header-actions button')).map(node => node.textContent)).toEqual(['Close window']);
+      expect(container.querySelector('.checklist-window__header-actions')).toBeNull();
       await click(Array.from(container.querySelectorAll('.checklist-window__footer button')).find(node => node.textContent === 'Stop tracking')!);
       expect(api.closeChecklist).toHaveBeenCalledWith('root-1', true);
     });
@@ -376,6 +376,16 @@ describe('checklist surfaces', () => {
 
       await act(async () => { openChecklistWindow('root-1'); });
       await click(q('.checklist-window-backdrop'));
+      expect(q('.checklist-window')).toBeNull();
+    });
+
+    it('closes from the shared close button at the top left of the header, ahead of the title', async () => {
+      await mountWindow();
+      const close = q<HTMLButtonElement>('.checklist-window__header button[aria-label="Close"]');
+      expect(q('.checklist-window__header').firstElementChild).toBe(close);
+
+      await click(close);
+
       expect(q('.checklist-window')).toBeNull();
     });
 

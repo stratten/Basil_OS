@@ -7,7 +7,16 @@ import SwiftUI
 class LiveTranscriptionViewModel: ObservableObject {
     // MARK: - Published Properties
     @Published var isRecording = false {
-        didSet { systemAudioSender.updateGate { $0.isRecording = isRecording } }
+        didSet {
+            systemAudioSender.updateGate { $0.isRecording = isRecording }
+            if !isRecording {
+                autoEndCountdown = nil
+                isAutoEndDismissed = false
+                isAwaitingAutoEndSource = false
+                // The binding belongs to the recording that ended, so a later manual recording is not matched to the same app.
+                autoStartedBundleID = nil
+            }
+        }
     }
     @Published var statusMessage = "Ready to start transcription"
     @Published var transcriptionLines: [TranscriptionLine] = []  // Combined view (interleaved by timestamp)
@@ -65,6 +74,12 @@ class LiveTranscriptionViewModel: ObservableObject {
     // match a backend `meeting_ended` event so auto-end only finalizes the
     // recording that the detection actually started.
     var autoStartedBundleID: String?
+    /// Set while the backend has announced that this auto-started recording will end soon; drives the countdown in the meeting window.
+    @Published var autoEndCountdown: AutoEndCountdown?
+    /// True once the user dismissed the countdown, so the automatic stop is ignored until this recording ends.
+    var isAutoEndDismissed = false
+    /// True for a recording that a calendar event started, until the call's own app shows up in the audio probe and `autoStartedBundleID` is bound to it. Only such a recording may adopt a detected app, so one you start by hand is never ended automatically.
+    var isAwaitingAutoEndSource = false
     
     // MARK: - Recording-part / resume context
     // Drives whether the next recording starts a fresh meeting or resumes an

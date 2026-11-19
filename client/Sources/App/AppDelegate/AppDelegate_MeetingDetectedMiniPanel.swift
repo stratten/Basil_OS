@@ -75,6 +75,16 @@ extension AppDelegate {
                 return
             }
             if statusBarManager?.windowCoordinator.meetingSessionCoordinator.shouldSuppressDetectedMeetingPrompt == true {
+                // The call a calendar launch just joined shows up here as an audio detection; tie it to that recording so it can end automatically.
+                if meeting.calendarEventID == nil,
+                   statusBarManager?.windowCoordinator.meetingSessionCoordinator.adoptDetectedMeetingAudioSource(bundleID: meeting.bundleID) == true {
+                    #if DEBUG
+                    DevLogger.shared.info(
+                        "[MeetingDetectedMiniPanel] Bound \(meeting.bundleID) to the calendar-launched recording for automatic end",
+                        context: "MeetingDetectedMiniPanel"
+                    )
+                    #endif
+                }
                 #if DEBUG
                 DevLogger.shared.info(
                     "[MeetingDetectedMiniPanel] Suppressed detected meeting while another detected meeting is launching or recording",
@@ -98,6 +108,24 @@ extension AppDelegate {
             let bundleID = json["bundle_id"] as? String ?? ""
             guard !bundleID.isEmpty else { return }
             statusBarManager?.windowCoordinator.finalizeLiveTranscription(forEndedBundleID: bundleID)
+
+        case "meeting_ending":
+            // The meeting app went quiet and the backend will end the meeting at `ends_at`. Show the countdown on the
+            // recording detection started; the backend's later `meeting_ended` still decides when it actually stops.
+            let bundleID = json["bundle_id"] as? String ?? ""
+            guard !bundleID.isEmpty,
+                  let endsAt = (json["ends_at"] as? NSNumber)?.doubleValue,
+                  let totalSeconds = (json["seconds_until_end"] as? NSNumber)?.doubleValue else { return }
+            statusBarManager?.windowCoordinator.meetingSessionCoordinator.beginAutoEndCountdown(
+                bundleID: bundleID,
+                deadline: Date(timeIntervalSince1970: endsAt),
+                totalSeconds: totalSeconds
+            )
+
+        case "meeting_end_canceled":
+            let bundleID = json["bundle_id"] as? String ?? ""
+            guard !bundleID.isEmpty else { return }
+            statusBarManager?.windowCoordinator.meetingSessionCoordinator.endAutoEndCountdown(bundleID: bundleID)
 
         case "meeting_prompt_expired":
             // Backend determined the calendar event backing an open join prompt

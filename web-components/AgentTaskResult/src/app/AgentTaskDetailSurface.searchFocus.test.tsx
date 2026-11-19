@@ -18,13 +18,13 @@ const { resultContentProps } = vi.hoisted(() => ({
   }>,
 }));
 
-vi.mock('../components/ResultContent', () => ({
+vi.mock('../components/result/ResultContent', () => ({
   default: (props: (typeof resultContentProps)[number]) => {
     resultContentProps.push(props);
     return null;
   },
 }));
-vi.mock('../components/TextFollowUp', () => ({ default: () => null }));
+vi.mock('../components/followUp/TextFollowUp', () => ({ default: () => null }));
 vi.mock('../services/bridge', () => ({
   checkFilePreviewAvailability: vi.fn((paths: string[]) => Promise.resolve(new Set(paths))),
   reportValidationRunFocused: vi.fn(),

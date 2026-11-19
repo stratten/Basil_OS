@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type { DisplayableAgentTask } from '../../types';
 import {
   agentTaskRunLabels,
+  agentTaskRunLabelsForTask,
   agentTaskRunNumbers,
+  agentTaskRunNumbersForTask,
   isRevisionNumber,
   deriveAgentTaskRunFocusSummaries,
   resolveFocusedRun,
@@ -267,6 +269,35 @@ describe('agent task run focus', () => {
 
     expect(runs[0].hasVerifiedArtifactOutput).toBe(false);
     expect(runs[2].hasVerifiedArtifactOutput).toBe(true);
+  });
+
+  it('lists the current turn once when history already holds the same turn, keeping that turn\'s label and the fresher data', () => {
+    const runs = deriveAgentTaskRunFocusSummaries(displaySource({
+      agentTaskId: 'root-task',
+      currentTurnTaskId: 'follow-up-1',
+      originalPrompt: 'Compare alternatives (live)',
+      result: 'Live comparison.',
+    }), true);
+
+    expect(runs.map(run => run.id)).toEqual(['root-task', 'follow-up-1']);
+    const turn = runs[1];
+    expect(turn.requestText).toBe('Compare alternatives (live)');
+    expect(turn.resultText).toBe('Live comparison.');
+    expect(turn.isProcessing).toBe(true);
+    expect(turn.ordinal).toBe(2);
+    expect(turn.label).toBe(agentTaskRunLabelsForTask(displaySource())[1]);
+    expect(turn.displayNumber).toBe(agentTaskRunNumbersForTask(displaySource())[1]);
+  });
+
+  it('keeps the first of two history items that share an id', () => {
+    const source = displaySource();
+    const runs = deriveAgentTaskRunFocusSummaries(displaySource({
+      agentTaskHistory: [source.agentTaskHistory[0], source.agentTaskHistory[1], { ...source.agentTaskHistory[1], result: 'Stale copy.' }],
+      agentTaskId: 'follow-up-2',
+    }), false);
+
+    expect(runs.map(run => run.id)).toEqual(['root-task', 'follow-up-1', 'follow-up-2']);
+    expect(runs[1].resultText).toBe('Comparison complete.');
   });
 
   it('defaults to the latest run when the requested focus is absent or stale', () => {

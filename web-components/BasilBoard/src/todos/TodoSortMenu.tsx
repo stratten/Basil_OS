@@ -1,4 +1,4 @@
-import TokenizedSelect, { type TokenizedSelectOption } from '../../../shared/TokenizedSelect';
+import TokenizedSelect, { type TokenizedSelectOption } from '../../../shared/inputs/TokenizedSelect';
 import type { TodoSortBy, TodoSortColumn, TodoSortDirection } from '../services/api';
 
 const COLUMN_OPTIONS: readonly TokenizedSelectOption<TodoSortColumn>[] = [

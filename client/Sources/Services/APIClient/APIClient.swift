@@ -55,12 +55,20 @@ extension APIError: LocalizedError {
 }
 
 extension APIError {
-    /// Builds the error for a failed HTTP response. The backend sends a reason written for the person using the app as `{"detail": "..."}`, and keeping it lets the screen that made the request say why, such as that a model needs more free disk space, instead of only an HTTP status. A response without a plain-text `detail`, such as a request validation failure, stays a status-only `serverError`.
+    /// Builds the error for a failed HTTP response. The backend sends a reason written for the person using the app as `{"detail": "..."}`, and keeping it lets the screen that made the request say why, such as that a model needs more free disk space, instead of only an HTTP status. A `detail` that is an object with a `message`, as a local server that fails to start returns, is shown as that message followed by its `user_action_required` text when there is one. A response without either, such as a request validation failure, stays a status-only `serverError`.
     static func serverFailure(statusCode: Int, body: Data) -> APIError {
-        if let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
-           let detail = object["detail"] as? String,
+        guard let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any] else {
+            return .serverError(statusCode: statusCode)
+        }
+        if let detail = object["detail"] as? String,
            !detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return .serverMessage(statusCode: statusCode, message: detail)
+        }
+        if let detail = object["detail"] as? [String: Any],
+           let message = (detail["message"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !message.isEmpty {
+            let action = (detail["user_action_required"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return .serverMessage(statusCode: statusCode, message: action.isEmpty ? message : "\(message) \(action)")
         }
         return .serverError(statusCode: statusCode)
     }

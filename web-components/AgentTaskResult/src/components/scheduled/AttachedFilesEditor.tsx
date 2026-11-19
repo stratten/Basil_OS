@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
-import AttachmentArea from '@shared/AttachmentArea';
-import { mergeAttachmentPaths, pathEntries } from '@shared/attachmentPaths';
+import AttachmentArea from '@shared/attachments/AttachmentArea';
+import { mergeAttachmentPaths, pathEntries } from '@shared/attachments/attachmentPaths';
 import { pickFiles } from '../../services/bridge';
 import { useFilesPickedHandler } from '../../services/useFilesPickedHandler';
 

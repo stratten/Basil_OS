@@ -5,11 +5,13 @@ A command is read-only only when every node of its syntax tree is a shape this m
 What the walk accepts:
 - Commands joined by `;`, newlines, `&&`, `||`, `&`, and pipes, in `( ... )` and `{ ...; }` groups, behind `!`, and in `if`, `while`, and `for` statements whose parts are themselves accepted.
 - A command by a bare name on the read-only list, or by an absolute path in a system folder. A program named by any other path, a quoted or computed name, and a variable set for one command (`A=1 ls`) are refused.
+- A plain variable assigned on its own statement (`f=$(ls | head -1)`, `count=3`): the name must be lowercase and not one a shell reads for itself, and the value must be plain text, a plain variable, or a `$(...)` whose body is itself read-only. Nothing is written, and the value cannot become an option (a computed argument of `find`, `sed`, or `git` is refused where it is used) or a command (a computed command name is refused). A variable set for one command (`A=1 ls`), `export`, and any other name are refused.
 - `$(...)` only as an argument of `echo` or `printf`, with a body that is itself read-only. Backticks, `$((...))`, and any expansion other than a plain variable are refused.
 - `<(...)` with a read-only body. `>(...)` is refused.
 - Redirections that write nothing: to `/dev/null`, onto another descriptor (`2>&1`), and input from a file. Every other output redirection, here-document, and here-string is refused.
 - `[ ... ]` tests with no substitution inside. `[[ ... ]]` is refused because its operators can evaluate text as code.
 - Shell wrappers (`bash -lc '...'`) whose one script argument can be rebuilt as plain text, with that script checked in full.
+- When the caller passes `remembered`, a command that is not on the read-only list but that the user has already approved and remembered as a pattern. The command is judged on its own, wherever it sits in the script, so a script made only of read-only commands and remembered commands needs no new approval. Its name and the words the pattern requires must be plain text; the rest of its arguments get the same checks as any other argument (a substitution or an expansion other than a plain variable is refused), and its redirections and surroundings are checked like every other command's.
 
 For `find`, `sed`, `git`, `defaults`, `env`, `date`, `file`, `history`, `sort`, `hostname`, `uniq`, and `command`, whose safety depends on the value of an argument, every argument must be plain text the parser can read (see command_policy.ARGUMENT_POLICY_COMMANDS), because a value the shell computes could be an option that changes what the command does.
 """
@@ -18,7 +20,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Tuple
+from typing import Callable, List, Optional, Tuple
 
 from tree_sitter import Node
 
@@ -39,6 +41,14 @@ _TRUSTED_SCRIPT_VARIABLES = frozenset({'HOME'})
 # The one computed argument a policy-bearing command may take: a path under the home folder, such as `find "$HOME/Downloads" -name x`. It starts with `$HOME`, so it can never itself be an option.
 _HOME_PATH_ARGUMENT = re.compile(r'^"?\$\{?HOME\}?(?:/[A-Za-z0-9_./@+ -]*)?"?$')
 
+# The names a script may assign for its own use: lowercase, so never one of the uppercase variables the shell and programs read (`PATH`, `HOME`, `IFS`, `BASH_ENV`, `LD_PRELOAD`, `PAGER`, `GIT_*`).
+_SCRATCH_VARIABLE_NAME = re.compile(r'^[a-z][a-z0-9_]*$')
+# The lowercase names some shells read for themselves, which are therefore not scratch variables: zsh ties `path` to `PATH`, `fpath` and `module_path` to where it loads code, `prompt` and `psvar` to what it runs when it draws a prompt, `argv` to the arguments, and bash and zsh read `histchars` and `auto_resume`. A name ending in `_proxy` is the lowercase form of a variable programs use to pick where to connect.
+_SHELL_SPECIAL_LOWERCASE_VARIABLES = frozenset({
+    'aliases', 'argv', 'auto_resume', 'cdpath', 'commands', 'fignore', 'fpath', 'functions', 'histchars', 'histfile',
+    'mail', 'mailpath', 'manpath', 'module_path', 'options', 'path', 'prompt', 'psvar', 'watch',
+})
+
 # Nodes whose named children are all statements the walk checks in turn.
 _STATEMENT_CONTAINERS = frozenset({
     'program', 'list', 'pipeline', 'subshell', 'compound_statement', 'do_group',
@@ -56,7 +66,14 @@ def _key(node: Node) -> Tuple[int, int, str]:
     return (node.start_byte, node.end_byte, node.type)
 
 
+# Answers whether the user has remembered an approval that covers a command. It receives the command's name and its arguments as plain text, with None in place of any word the shell computes.
+RememberedCommand = Callable[[List[Optional[str]]], bool]
+
+
 class _Checker:
+    def __init__(self, remembered: Optional[RememberedCommand] = None) -> None:
+        self._remembered = remembered
+
     def check_script(self, text: str, depth: int) -> None:
         """Check one shell script. `depth` counts the substitutions and wrapper scripts already entered."""
         if len(text) > MAX_COMMAND_CHARACTERS:
@@ -91,10 +108,31 @@ class _Checker:
         if kind == 'for_statement':
             self._for_loop(parsed, node, depth)
             return
+        if kind == 'variable_assignment':
+            self._assignment(parsed, node, depth)
+            return
         if kind == 'test_command':
             self._bracket_test(parsed, node)
             return
         raise _Refusal(f'it uses {kind.replace("_", " ")}, which is not on the read-only list')
+
+    def _assignment(self, parsed: ParsedShell, node: Node, depth: int) -> None:
+        """Accept `name=value` for a scratch variable. Storing text changes nothing on disk; what could do harm is a name the shell or a program reads, or a value computed by something that is not itself read-only, and both are refused here. Where the variable is later used is checked by the walk at that use."""
+        name_node = node.child_by_field_name('name')
+        if name_node is None or name_node.type != 'variable_name':
+            raise _Refusal('it assigns to something other than a plain variable name')
+        name = parsed.text(name_node)
+        if not _SCRATCH_VARIABLE_NAME.match(name) or name in _SHELL_SPECIAL_LOWERCASE_VARIABLES or name.endswith('_proxy'):
+            raise _Refusal(f"it sets '{name}', a variable the shell or a program may read")
+        value = node.child_by_field_name('value')
+        known = {_key(name_node)}
+        if value is not None:
+            known.add(_key(value))
+            # The value is stored, not run, so a substitution in it is allowed when its body is itself read-only.
+            self._check_dynamic(parsed, value, True, depth)
+        for child in node.named_children:
+            if _key(child) not in known and child.type != 'comment':
+                raise _Refusal('an assignment has a part the checker does not recognize')
 
     def _for_loop(self, parsed: ParsedShell, node: Node, depth: int) -> None:
         body = node.child_by_field_name('body')
@@ -134,12 +172,25 @@ class _Checker:
             self._wrapper(parsed, node, depth)
             return
         if base not in policy.READ_ONLY_COMMANDS and base not in policy.CONDITIONALLY_READ_ONLY_COMMANDS:
+            if self._is_remembered(parsed, name, arguments, depth):
+                return
             raise _Refusal(f"'{base}' is not on the read-only list")
         prints_only = base in policy.PRINT_ONLY_COMMANDS
         argument_policy = base in policy.ARGUMENT_POLICY_COMMANDS
         values = [self._argument(parsed, argument, base, prints_only, argument_policy, depth) for argument in arguments]
         if argument_policy and policy.violates_argument_policy(base, values):
             raise _Refusal(f"the arguments of '{base}' can change something")
+
+    def _is_remembered(self, parsed: ParsedShell, name: str, arguments: List[Node], depth: int) -> bool:
+        """Whether the user has remembered an approval that covers this command. The caller's answer only counts when the words it matched are plain text, and every argument still gets the ordinary argument check, so a computed value or a substitution refuses the command here as it would anywhere else."""
+        if self._remembered is None:
+            return False
+        words: List[Optional[str]] = [name] + [literal_text(parsed, argument) for argument in arguments]
+        if not self._remembered(words):
+            return False
+        for argument in arguments:
+            self._argument(parsed, argument, name, False, False, depth)
+        return True
 
     def _program_name(self, name: str) -> str:
         """The program a command name runs: a bare name as written, or the last part of an absolute path in a system folder."""
@@ -245,10 +296,10 @@ class _Checker:
                 raise _Refusal('a test contains an expansion other than a plain variable')
 
 
-def classify_read_only(command: str) -> ReadOnlyVerdict:
-    """Whether `command` only reads, and the first reason when it does not. Any failure of the walk itself counts as not read-only."""
+def classify_read_only(command: str, remembered: Optional[RememberedCommand] = None) -> ReadOnlyVerdict:
+    """Whether `command` only reads, and the first reason when it does not. Any failure of the walk itself counts as not read-only. With `remembered`, a command the user has already approved and remembered also counts, so the verdict then means that nothing in the command is new to the user."""
     try:
-        _Checker().check_script(command, 0)
+        _Checker(remembered).check_script(command, 0)
     except _Refusal as refusal:
         return ReadOnlyVerdict(False, str(refusal))
     except RecursionError:

@@ -1,4 +1,4 @@
-import { plainMarkdownText } from '../../../../shared/plainMarkdownText';
+import { plainMarkdownText } from '../../../../shared/text/plainMarkdownText';
 import {
   deriveAgentRunOverviewPresentation,
   deriveAgentRunPresentation,

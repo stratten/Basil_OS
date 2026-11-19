@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { SettingsSubTabs, type SettingsSubTabDefinition } from '@shared/SettingsSubTabs'
-import { notifyConnectionsSettingsReady, onConnectionsEvent } from '../services/connectionsBridge'
+import { SettingsSubTabs, type SettingsSubTabDefinition } from '@shared/inputs/SettingsSubTabs'
+import { notifyConnectionsSettingsReady, onConnectionsEvent } from '../services/connections/connectionsBridge'
 import type {
   ConnectionsInitEvent,
   ConnectionsProviderProfileConfigurationEvent,
@@ -8,10 +8,11 @@ import type {
   ConnectionsSnapshotEvent,
   ConnectionsWorkspaceFolderChosenEvent,
 } from '../types'
-import { ConnectionsPanel } from '../components/ConnectionsPanel'
+import { ConnectionsPanel } from '../components/connections/ConnectionsPanel'
 import { CallLogPanel } from '../components/CallLogPanel'
-import { ProviderProfilesPanel } from '../components/ProviderProfilesPanel'
+import { ProviderProfilesPanel } from '../components/providers/ProviderProfilesPanel'
 import '../styles/connections-settings.css'
+import '../styles/local-servers.css'
 
 export type ConnectionsSubTab = 'servers' | 'providerProfiles'
 
@@ -168,7 +169,7 @@ export function ConnectionsSettingsApp({
 
       {subTab === 'servers' ? (
         <div id={connectionsPanelId('servers')} role="tabpanel" aria-labelledby={connectionsTabId('servers')}>
-          <ConnectionsPanel fields={f} pendingId={pendingId} onTrackRequest={trackRequest} onTrackPolicyRequest={trackPolicyRequest} />
+          <ConnectionsPanel fields={f} pendingId={pendingId} onTrackRequest={trackRequest} onTrackPolicyRequest={trackPolicyRequest} requestError={requestError} />
           <CallLogPanel dateDisplayStyle={f.dateDisplayStyle ?? 'relative'} entries={f.callLogEntries} connections={f.connections} isLoading={f.isLoadingCallLog} pendingId={pendingId} onTrackRequest={trackRequest} />
         </div>
       ) : (

@@ -1,1 +1,1 @@
-export { applyHostFonts, applyHostTheme } from '@shared/webTheme';
+export { applyHostFonts, applyHostTheme } from '@shared/theme/webTheme';

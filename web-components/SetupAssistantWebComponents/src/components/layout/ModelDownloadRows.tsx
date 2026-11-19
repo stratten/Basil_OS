@@ -1,4 +1,4 @@
-import { DownloadProgress } from '@shared/DownloadProgress'
+import { DownloadProgress } from '@shared/status/DownloadProgress'
 
 import { startableRows, type StarterDownloadRow, type StarterDownloadState } from './starterDownloads'
 

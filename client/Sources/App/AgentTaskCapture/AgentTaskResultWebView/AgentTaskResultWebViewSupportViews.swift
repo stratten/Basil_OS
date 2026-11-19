@@ -33,6 +33,9 @@ class WindowDragAreaView: NSView {
     private let leadingInteractiveWidth: CGFloat
     private let trailingInteractiveWidth: CGFloat
 
+    /// Horizontal spans, in this view's coordinates, that pass clicks through to the page. When the page has reported them they replace the fixed leading and trailing widths, so the overlay follows what the header actually contains (for example a collapsed widget with no run active has nothing clickable on its right).
+    var interactiveRanges: [Range<CGFloat>]?
+
     init(leadingInteractiveWidth: CGFloat = 120, trailingInteractiveWidth: CGFloat = 136) {
         self.leadingInteractiveWidth = leadingInteractiveWidth
         self.trailingInteractiveWidth = trailingInteractiveWidth
@@ -50,6 +53,9 @@ class WindowDragAreaView: NSView {
     override func hitTest(_ point: NSPoint) -> NSView? {
         let local = point
         guard bounds.contains(local) else { return nil }
+        if let interactiveRanges {
+            return interactiveRanges.contains(where: { $0.contains(local.x) }) ? nil : self
+        }
         if local.x < leadingInteractiveWidth || local.x >= bounds.width - trailingInteractiveWidth {
             return nil
         }

@@ -83,6 +83,7 @@ def row_to_item(row: sqlite3.Row) -> Dict[str, Any]:
         "title": row["title"],
         "detail": row["detail"],
         "status": row["status"],
+        "done_basis": row["done_basis"],
         "required": bool(row["required"]),
         "note": row["note"],
         "waiting_on": row["waiting_on"],

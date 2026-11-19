@@ -11,7 +11,7 @@ import type {
   TodoWorkspaceHydration,
 } from '../contracts';
 import type { AgentTaskDetail } from '@agent-task/types';
-import type { ConversationFilterParams } from '../capabilities/conversationFilters';
+import type { ConversationFilterParams } from '../capabilities/conversation/conversationFilters';
 import { setBaseUrl as setAgentTaskApiBaseUrl } from '@agent-task/services/api';
 
 let apiBaseUrl = 'http://127.0.0.1:8000';

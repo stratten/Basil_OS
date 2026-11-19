@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import { BasilModalDialog } from '@shared/BasilModalDialog'
+import { BasilModalDialog } from '@shared/dialogs/BasilModalDialog'
 
 import { BasilCloudAccountPanel, type AccountFormMode } from './BasilCloudAccountPanel'
 import type { SetupAgentModelAccessOption } from '@/types'

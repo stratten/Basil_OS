@@ -52,6 +52,24 @@
   margin-top: var(--padding-xs);
 }
 
+/* The approval's command box is the same box as the collapsed command in the conversation history (.interaction-exchange-command): the secondary color mixed toward the text color, with the page background as the text. That is what shows the two are the same command when the history one is opened. */
+.command-display.approval-command-display {
+  background: color-mix(in srgb, var(--secondary) 60%, var(--text-primary));
+  color: var(--background-primary);
+  border-color: transparent;
+}
+
+/* The kind tag stands alone in its row now that the risk badge is in the title, so it has no badge before it to keep apart from. */
+.approval-section > .approval-tag:first-child {
+  margin-left: 0;
+}
+
+/* The toggle belongs to the note it opens, so it sits tight against it and the space above it stays the separation from the block before. */
+.approval-link-button.approval-note-toggle {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
 /* Needs a numeric line height: the clamp measures one line of it, and "normal" cannot be measured. */
 .approval-command-clamp {
   line-height: 1.4;
@@ -169,7 +187,7 @@
   margin-top: var(--padding-m);
 }
 
-/* The agent's explanation and recommendation. Primary text on the card surface keeps these legible; the full tinted border, like the other panels in this card, marks them as the agent's words rather than Basil's own risk assessment. */
+/* The agent's explanation. Primary text on the card surface keeps these legible; the full tinted border, like the other panels in this card, marks them as the agent's words rather than Basil's own risk assessment. */
 .approval-explanation {
   padding: var(--padding-s) var(--padding-m);
   border: var(--border-thin) solid color-mix(in srgb, var(--primary) 45%, transparent);
@@ -202,23 +220,11 @@
   font-weight: 600;
 }
 
-.approval-explanation__advice {
-  margin-top: var(--padding-s);
-  padding-top: var(--padding-s);
-  border-top: var(--border-thin) solid var(--separator-color);
+.approval-remember-advice {
+  margin: var(--padding-xs) 0 0;
   color: var(--text-primary);
-  font-size: var(--font-size-footnote);
-  overflow-wrap: anywhere;
-}
-
-.approval-explanation__advice-label {
-  color: var(--text-secondary);
-}
-
-.approval-explanation__downgraded {
-  margin-top: var(--padding-xs);
-  color: var(--text-secondary);
   font-size: var(--font-size-status-small);
+  overflow-wrap: anywhere;
 }
 
 .approval-script-path {

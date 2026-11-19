@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { chatResearchTarget, replyQuote } from './companionChatResearch';
-import { emptyTimelineState, type CompanionTimelineState } from './companionReducer';
+import { emptyTimelineState, type CompanionTimelineState } from './state/companionReducer';
 import type { ChatMessage, CompanionItem, TimelineEvent } from './types';
 
 const message = (id: string, seq: number, role: ChatMessage['role'], text: string, overrides: Partial<ChatMessage> = {}): ChatMessage => ({

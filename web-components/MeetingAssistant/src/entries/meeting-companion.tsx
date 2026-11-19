@@ -6,8 +6,8 @@ import '../styles/companion.css';
 import '../styles/companion-ledger.css';
 import '../styles/companion-audit.css';
 import '../styles/meeting-assistant-surface-finish.css';
-import { installBlueprintReveal } from '@shared/blueprintController';
-import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish';
+import { installBlueprintReveal } from '@shared/blueprint/blueprintController';
+import { enableBackdropSurfaceFinish } from '@shared/theme/surfaceFinish';
 import { installBasilTooltips } from '@shared/tooltip/basilTooltip';
 
 enableBackdropSurfaceFinish();

@@ -52,7 +52,7 @@ from .error_normalizer import (
     normalize_exception,
 )
 from .server_icon import attach_server_icon, serialize_icons
-from .stdio_transport import is_stdio_url, load_stdio_spec, run_stdio_session
+from .stdio_transport import connection_id_from_url, is_stdio_url, load_stdio_spec, run_stdio_session
 
 logger = logging.getLogger(__name__)
 
@@ -357,7 +357,13 @@ class MCPClientService:
                     user_action_required="Remove it from Settings → Connections and add it again.",
                     raw={"server_url": server_url},
                 )
-            return await run_stdio_session(spec, op, timeout_seconds=deadline, envelope_success=envelope_success)
+            return await run_stdio_session(
+                spec,
+                op,
+                timeout_seconds=deadline,
+                envelope_success=envelope_success,
+                connection_id=connection_id_from_url(server_url),
+            )
         headers = self._build_auth_headers(access_token)
 
         try:

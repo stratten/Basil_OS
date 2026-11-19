@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { applyProposalUpdate, applyTimelineEvent, emptyTimelineState, reduceTimeline } from './companionReducer';
+import { applyProposalUpdate, applyTimelineEvent, emptyTimelineState, reduceTimeline } from './state/companionReducer';
 import type { CompanionItem, CompanionProposalInfo, TimelineEvent } from './types';
 
 const FIXTURE_PATH = resolve(

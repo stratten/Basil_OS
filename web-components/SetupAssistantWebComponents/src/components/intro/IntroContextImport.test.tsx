@@ -4,8 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 
-import type { ProfileDraft } from '@shared/contextImportClient'
-import { advancePolls, clickIn, jobStatus, makeClient, typeInto } from '@shared/contextImportTestSupport'
+import type { ProfileDraft } from '@shared/contextImport/contextImportClient'
+import { advancePolls, clickIn, jobStatus, makeClient, typeInto } from '@shared/contextImport/contextImportTestSupport'
 
 import { initialState, reducer } from '@/state/setupAssistantStore/reducer'
 import type { SetupAgentModelAccess } from '@/types'

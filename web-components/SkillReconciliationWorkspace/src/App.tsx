@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
-import { useCollapseShortcut } from '@shared/useCollapseShortcut';
-import { useSettledExpand } from '@shared/useSettledExpand';
+import { useCollapseShortcut } from '@shared/disclosure/useCollapseShortcut';
+import { useSettledExpand } from '@shared/disclosure/useSettledExpand';
 import { useReconciliationBridge } from './app/useReconciliationBridge';
 import { store } from './app/reconciliationStore';
 import { closeWorkspace, collapseWorkspace, expandWorkspace, minimizeWorkspace } from './services/bridge';
-import { BackendLivenessBanner } from '@shared/BackendLivenessBanner';
+import { BackendLivenessBanner } from '@shared/status/BackendLivenessBanner';
 import { wsManager } from './services/websocket';
 import { Header } from './components/Header';
 import { ProgressBanner } from './components/ProgressBanner';

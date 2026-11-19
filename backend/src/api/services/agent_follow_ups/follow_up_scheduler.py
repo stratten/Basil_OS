@@ -17,7 +17,10 @@ FOLLOW_UP_POLL_SECONDS = 30.0
 FOLLOW_UP_BUSY_DEFER_SECONDS = 60
 FOLLOW_UP_MAX_DEFERS = 60
 FOLLOW_UP_MISSED_AFTER = timedelta(hours=24)
+# A turn Basil began on its own because the outcome check found a gap. It amends the run it follows, so it is shown as an agent revision.
 FOLLOW_UP_ORIGIN_TYPE = "agent_follow_up"
+# A turn that carries out a check the agent scheduled for itself. It is not an amendment, so it is shown as a scheduled check.
+SCHEDULED_FOLLOW_UP_ORIGIN_TYPE = "scheduled_follow_up"
 GAP_CONTINUATION_REASON = "Scheduled automatically: the outcome check found a gap the agent can close."
 _TERMINAL_TASK_STATUSES = frozenset({"completed", "failed", "canceled"})
 
@@ -165,7 +168,12 @@ class AgentFollowUpScheduler:
             )
             return "missed"
 
-        existing = await self._chain_reader.list_agent_tasks_by_origin(FOLLOW_UP_ORIGIN_TYPE, follow_up_id)
+        # Both types are checked because a scheduled check submitted before it had its own type was recorded as "agent_follow_up".
+        existing: Any = []
+        for origin_type in (SCHEDULED_FOLLOW_UP_ORIGIN_TYPE, FOLLOW_UP_ORIGIN_TYPE):
+            existing = await self._chain_reader.list_agent_tasks_by_origin(origin_type, follow_up_id)
+            if existing:
+                break
         if existing:
             await self._repository.mark_submitted(follow_up_id, follow_up_agent_task_id=str(existing[0].id))
             return "submitted"
@@ -200,7 +208,7 @@ class AgentFollowUpScheduler:
             "display_prompt_markdown": build_follow_up_display_markdown(follow_up),
             "agent_task_id": agent_task_id,
             "root_task_id": follow_up["root_task_id"],
-            "origin_type": FOLLOW_UP_ORIGIN_TYPE,
+            "origin_type": FOLLOW_UP_ORIGIN_TYPE if is_gap_continuation(follow_up) else SCHEDULED_FOLLOW_UP_ORIGIN_TYPE,
             "origin_id": follow_up_id,
         }
         # The turn continues the chain's own work, so it runs on the model the chain was started with rather than whatever the default is now.

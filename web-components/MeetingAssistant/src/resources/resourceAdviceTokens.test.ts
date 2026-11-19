@@ -19,7 +19,7 @@ const definedTokens = new Set<string>();
 for (const file of [...cssFiles(resolve(SRC, 'styles')), ...cssFiles(SHARED), resolve(AGENT_TASK_RESULT_STYLES, 'theme.css')]) {
   for (const match of readFileSync(file, 'utf8').matchAll(/(--[a-z0-9-]+)\s*:/g)) definedTokens.add(match[1]);
 }
-for (const match of readFileSync(resolve(SHARED, 'webTheme.ts'), 'utf8').matchAll(/'(--[a-z0-9-]+)'/g)) definedTokens.add(match[1]);
+for (const match of readFileSync(resolve(SHARED, 'theme/webTheme.ts'), 'utf8').matchAll(/'(--[a-z0-9-]+)'/g)) definedTokens.add(match[1]);
 
 describe('the resource advice styles come from the central tokens', () => {
   it('writes no color literal', () => {

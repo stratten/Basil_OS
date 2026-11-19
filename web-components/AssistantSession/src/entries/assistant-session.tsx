@@ -3,8 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { AssistantSessionApp } from '../app/AssistantSessionApp';
 import '../styles/assistant-session.css';
 import '../styles/assistant-session-surface-finish.css';
-import { installBlueprintReveal } from '@shared/blueprintController';
-import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish';
+import { installBlueprintReveal } from '@shared/blueprint/blueprintController';
+import { enableBackdropSurfaceFinish } from '@shared/theme/surfaceFinish';
 import { installBasilTooltips } from '@shared/tooltip/basilTooltip';
 
 enableBackdropSurfaceFinish();

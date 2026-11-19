@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { SettingsSubTabs, type SettingsSubTabDefinition } from '@shared/SettingsSubTabs'
-import { PermissionsApplicationPanel } from '../components/PermissionsApplicationPanel'
-import { PermissionsCommandSecurityPanel } from '../components/PermissionsCommandSecurityPanel'
-import { PermissionsYourDataPanel } from '../components/PermissionsYourDataPanel'
+import { SettingsSubTabs, type SettingsSubTabDefinition } from '@shared/inputs/SettingsSubTabs'
+import { PermissionsApplicationPanel } from '../components/permissions/PermissionsApplicationPanel'
+import { PermissionsCommandSecurityPanel } from '../components/permissions/PermissionsCommandSecurityPanel'
+import { PermissionsYourDataPanel } from '../components/permissions/PermissionsYourDataPanel'
 import '../styles/permissions-settings.css'
 import '../styles/permissions-your-data.css'
 

@@ -275,7 +275,9 @@ export function AgentRunRail({
     );
   }
 
-  const expandedRun = runs.find(run => run.id === expandedRunId);
+  // The expanded group belongs to exactly one entry. Should two entries ever share an id, only the first becomes the group and the rest stay plain dots, and every key carries the position so repeats cannot collide.
+  const expandedIndex = expandedRunId === undefined ? -1 : runs.findIndex(run => run.id === expandedRunId);
+  const expandedRun = expandedIndex >= 0 ? runs[expandedIndex] : undefined;
   const expandedStatus = expandedRun ? presentRunStatus(expandedRun) : undefined;
   const expandedTurn = (
     <div className="agent-run-rail-turn-expanded" ref={expandedRef}>
@@ -305,16 +307,16 @@ export function AgentRunRail({
     >
       {checklistRootId && <ChecklistRailPill rootTaskId={checklistRootId} />}
       <nav className="agent-run-rail-turns" aria-label="Turns" onScroll={event => trackFollowing(event.currentTarget)}>
-        {runs.map(run => {
-          if (run.id === expandedRunId) {
-            return <Fragment key={run.id}>{expandedTurn}</Fragment>;
+        {runs.map((run, index) => {
+          if (index === expandedIndex) {
+            return <Fragment key={`${run.id}:${index}`}>{expandedTurn}</Fragment>;
           }
           const status = presentRunStatus(run);
           const isLocation = run.id === locationRunId;
           return (
             <button
               type="button"
-              key={run.id}
+              key={`${run.id}:${index}`}
               className={`agent-run-rail-turn ${RUN_STATUS_TONE_CLASS[status.tone]}${isLocation ? ' is-location' : ''}${isRevisionNumber(run.displayNumber) ? ' is-revision' : ''}`}
               aria-current={isLocation ? 'location' : undefined}
               aria-label={`Go to ${run.label}, ${status.label}`}

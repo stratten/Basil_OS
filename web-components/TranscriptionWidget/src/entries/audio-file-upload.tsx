@@ -1,11 +1,11 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { AudioFileUploadApp } from '../app/AudioFileUploadApp';
-import '@shared/reduced-motion.css';
+import '@shared/motion/reduced-motion.css';
 import '../styles/audio-file-upload.css';
 import '../styles/audio-file-upload-surface-finish.css';
-import { installBlueprintReveal } from '@shared/blueprintController';
-import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish';
+import { installBlueprintReveal } from '@shared/blueprint/blueprintController';
+import { enableBackdropSurfaceFinish } from '@shared/theme/surfaceFinish';
 import { installBasilTooltips } from '@shared/tooltip/basilTooltip';
 
 enableBackdropSurfaceFinish();

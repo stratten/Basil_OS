@@ -7,7 +7,7 @@ import {
   CONTRACT_THEME_FIXTURE,
   SETTINGS_THEME_TOKENS,
   assertAppliesThemeTokens,
-} from '@shared/webThemeContractSuite';
+} from '@shared/theme/webThemeContractSuite';
 
 describe('Settings host theme contract', () => {
   it('applies every verbatim-echoed field of its own 15-field ThemePayload plus the shared font contract', () => {

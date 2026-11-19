@@ -23,6 +23,14 @@ from mcp.client.stdio import get_default_environment, stdio_client
 from api.core.models.preferences import MCPStdioSpec
 
 from .error_normalizer import ERROR_KIND_SERVER_ERROR, ERROR_KIND_TIMEOUT, make_envelope, make_success, normalize_exception
+from .local_server_placeholders import (
+    PROBE_DIRECTORY,
+    PROBE_PORT,
+    PROBE_RUN_SECRET,
+    PlaceholderError,
+    contains_path_placeholder,
+    substitute_placeholders,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -91,19 +99,48 @@ def resolve_command(command: str, path: str) -> str:
     return found
 
 
-def build_parameters(spec: MCPStdioSpec, *, base_env: Optional[Dict[str, str]] = None) -> StdioServerParameters:
-    """The launch parameters for ``spec``. Raises StdioSpecError when it cannot run."""
+def build_parameters(
+    spec: MCPStdioSpec,
+    *,
+    base_env: Optional[Dict[str, str]] = None,
+    port: Optional[int] = None,
+    extra_env: Optional[Dict[str, str]] = None,
+    run_secret: Optional[str] = None,
+    data_dir: Optional[str] = None,
+    install_dir: Optional[str] = None,
+    check_paths: bool = True,
+) -> StdioServerParameters:
+    """The launch parameters for ``spec``. Raises StdioSpecError when it cannot run.
+
+    ``port`` fills ``{port}``, ``run_secret`` fills ``{run_secret}``, and ``data_dir`` and ``install_dir`` fill the folder placeholders, in the command, arguments, working folder and environment values. ``extra_env`` holds secret values read from the Keychain; it is added last and is never written anywhere. ``check_paths`` False skips the check that the command and folder exist, for a spec being validated before its files have been prepared.
+    """
+    def fill(value: str) -> str:
+        return substitute_placeholders(value, port=port, run_secret=run_secret, data_dir=data_dir, install_dir=install_dir)
+
     environment = dict(base_env if base_env is not None else get_default_environment())
     environment["PATH"] = search_path(environment.get("PATH"))
-    executable = resolve_command(spec.command, environment["PATH"])
     working_directory: Optional[str] = None
-    if spec.cwd:
-        directory = Path(spec.cwd).expanduser()
-        if not directory.is_absolute() or not directory.is_dir():
-            raise StdioSpecError(f"The folder {spec.cwd} does not exist.")
-        working_directory = str(directory)
-    environment.update(spec.env)
-    return StdioServerParameters(command=executable, args=list(spec.args), env=environment, cwd=working_directory)
+    try:
+        command = fill(spec.command)
+        cwd = fill(spec.cwd) if spec.cwd else None
+        arguments = [fill(argument) for argument in spec.args]
+        spec_env = {key: fill(value) for key, value in spec.env.items()}
+    except PlaceholderError as exc:
+        raise StdioSpecError(str(exc)) from exc
+    if check_paths:
+        executable = resolve_command(command, environment["PATH"])
+        if cwd:
+            directory = Path(cwd).expanduser()
+            if not directory.is_absolute() or not directory.is_dir():
+                raise StdioSpecError(f"The folder {cwd} does not exist.")
+            working_directory = str(directory)
+    else:
+        executable = command
+        working_directory = cwd
+    environment.update(spec_env)
+    if extra_env:
+        environment.update(extra_env)
+    return StdioServerParameters(command=executable, args=arguments, env=environment, cwd=working_directory)
 
 
 def _read_tail(error_log: Any) -> str:
@@ -121,13 +158,22 @@ async def run_stdio_session(
     *,
     timeout_seconds: float,
     envelope_success: bool,
+    connection_id: Optional[str] = None,
 ) -> Any:
     """Launch the server, run ``op`` in one MCP session, stop the server, and return the result or an error envelope.
 
     ``envelope_success`` follows ``MCPClientService._run_in_session``: True wraps the result in a success envelope, False returns it raw so ``call_tool`` can normalize it.
     """
     try:
-        parameters = build_parameters(spec)
+        from .local_server_launch import needs_prepared_launch, prepare_stdio_launch
+
+        if connection_id is not None and needs_prepared_launch(spec):
+            prepared = await prepare_stdio_launch(spec, connection_id)
+            if prepared.error is not None:
+                return prepared.error
+            parameters = prepared.parameters
+        else:
+            parameters = build_parameters(spec)
     except StdioSpecError as exc:
         return make_envelope(
             kind=ERROR_KIND_SERVER_ERROR,
@@ -210,5 +256,12 @@ def validate_spec_fields(command: str, args: List[str], cwd: Optional[str], env:
         if not key or "=" in key or "\0" in key or "\0" in str(value):
             raise StdioSpecError("An environment variable name cannot be empty or contain an equals sign.")
     spec = MCPStdioSpec(command=cleaned_command, args=list(args), cwd=(cwd or "").strip() or None, env={str(k): str(v) for k, v in env.items()})
-    build_parameters(spec)
+    build_parameters(
+        spec,
+        port=PROBE_PORT,
+        run_secret=PROBE_RUN_SECRET,
+        data_dir=PROBE_DIRECTORY,
+        install_dir=PROBE_DIRECTORY,
+        check_paths=not contains_path_placeholder([cleaned_command, spec.cwd or ""]),
+    )
     return spec

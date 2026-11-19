@@ -1,7 +1,7 @@
-import type { ThemeConfig as SharedThemeConfig } from '@shared/webTheme';
+import type { ThemeConfig as SharedThemeConfig } from '@shared/theme/webTheme';
 
 /**
- * ``processingRgb`` has no equivalent in the canonical `@shared/webTheme`
+ * ``processingRgb`` has no equivalent in the canonical `@shared/theme/webTheme`
  * contract -- it is this panel's own derived helper for the CSS
  * ``rgba(var(--processing-rgb), alpha)`` pulse-halo effect, published
  * alongside the canonical hex tokens by

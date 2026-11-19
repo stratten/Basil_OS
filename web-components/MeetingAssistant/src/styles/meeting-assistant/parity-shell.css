@@ -532,7 +532,7 @@
   opacity: 0.45;
 }
 
-/* Inline "Delete this meeting?" confirmation, rendered in place of the row's normal content (no overlay). The label, buttons, and layout come from shared/inline-delete-confirm.css; the history row only adds its padding. */
+/* Inline "Delete this meeting?" confirmation, rendered in place of the row's normal content (no overlay). The label, buttons, and layout come from shared/dialogs/inline-delete-confirm.css; the history row only adds its padding. */
 .meeting-history-confirm {
   padding: 8px 12px;
 }

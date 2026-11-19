@@ -221,7 +221,7 @@ describe('Settings element primitives', () => {
   })
 
   it('finds every leaf stylesheet', () => {
-    expect(leafStylesheetNames).toHaveLength(26)
+    expect(leafStylesheetNames).toHaveLength(27)
   })
 
   it.each(leafStylesheetNames)('%s leaves element defaults to the shared stylesheet', (fileName) => {
@@ -250,7 +250,7 @@ describe('Meetings detection layout', () => {
   })
 
   it('lays the automation mode switches out in two columns that collapse on narrow widths', () => {
-    const source = readFileSync('src/components/MeetingAutomationPanel.tsx', 'utf8')
+    const source = readFileSync('src/components/meetings/MeetingAutomationPanel.tsx', 'utf8')
     expect(source.indexOf('<legend>Modes</legend>')).toBeLessThan(source.indexOf('className="meetings-automation-mode-grid"'))
     expect(source.indexOf('className="meetings-automation-mode-grid"')).toBeLessThan(source.indexOf('className="meetings-automation-mode-toggle"'))
     const css = readStylesheet('meetings-settings.css')

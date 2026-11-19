@@ -43,6 +43,14 @@ describe('AgentTaskOriginChip', () => {
     expect(markup).toBe('');
   });
 
+  it('renders no chip for a scheduled check because its turn label already names it', () => {
+    const markup = renderToStaticMarkup(
+      <AgentTaskOriginChip originType="scheduled_follow_up" originId="follow-up-1" />,
+    );
+
+    expect(markup).toBe('');
+  });
+
   it('renders an unknown source as a disabled chip', () => {
     const markup = renderToStaticMarkup(
       <AgentTaskOriginChip originType="unrecognized_source" originId="source-123" />,

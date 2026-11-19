@@ -8,8 +8,8 @@ import '../styles/companion-audit.css';
 import '../styles/resource-advice.css';
 import '../styles/cloud-transcription.css';
 import '../styles/meeting-assistant-surface-finish.css';
-import { installBlueprintReveal } from '@shared/blueprintController';
-import { enableBackdropSurfaceFinish } from '@shared/surfaceFinish';
+import { installBlueprintReveal } from '@shared/blueprint/blueprintController';
+import { enableBackdropSurfaceFinish } from '@shared/theme/surfaceFinish';
 import { installBasilTooltips } from '@shared/tooltip/basilTooltip';
 
 enableBackdropSurfaceFinish();

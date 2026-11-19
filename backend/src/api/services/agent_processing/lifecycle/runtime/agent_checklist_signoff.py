@@ -8,7 +8,10 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
+from api.core.logging.api_logger import api_logger
+
 logger = logging.getLogger(__name__)
+decision_logger = api_logger.getChild("checklist_signoff")
 
 SIGNOFF_ACTOR = "system"
 SIGNOFF_EVENT_PREFIX = "Outcome check"
@@ -23,12 +26,14 @@ NEW_ITEM_STATUSES = ("pending", "in_progress", "waiting_external", "waiting_user
 
 SIGNOFF_RULES = (
     "You also sign off on this checklist. It records what still needs to happen as a result of the request and of what the agent or the user found, not a log of what the agent did. "
-    "Judge each item against the DELIVERED RESPONSE, the tool trace, and what the user said in this chain. "
-    "Mark an item done only when its outcome verifiably happened: a write the tool trace shows succeeded, or a decision the user stated. The agent's own judgment that nothing is needed does not complete an item: the user must have said so, or the action must have been carried out. "
-    "A proposal, draft, or recommendation does not complete an item, so an item the agent only proposed on must be waiting_user, with waiting_on saying what the user must decide. "
-    "Use pending or in_progress when the next step is the agent's, waiting_external when someone else must act, and dropped only when the outcome no longer applies. "
+    "Go through EVERY open item in the block on every pass, not only the items this turn touched. For each one, ask whether anything you can see (the DELIVERED RESPONSE, the tool trace, what the user said in this chain, and the chain context) shows that its outcome happened, was decided, no longer applies, or is now blocked on something different. "
+    "Mark an item done with basis verified when its outcome verifiably happened: a write the tool trace shows succeeded, or a decision the user stated. "
+    "Mark an item done with basis inferred when what you can see states positively that the outcome happened or the user plainly indicated it, such as the response reporting the thread archived or the user's later message saying to leave it alone. Say in the reason what you relied on, because the user sees inferred items marked and can reopen them. Never infer done from silence, or from an item merely no longer being mentioned. "
+    "A proposal, draft, or recommendation does not complete an item. The agent's own judgment that nothing is needed does not complete an item: the user must have said so, or the action must have been carried out. "
+    "Use waiting_user only when the agent cannot take the next step without a specific decision, approval, or piece of information from the user that the response asked for, and put that question in waiting_on. If the agent has a next step of its own, or only proposed something and has not asked the user to decide it, use pending or in_progress instead. "
+    "Use waiting_external when someone else must act, and dropped only when the outcome no longer applies. "
     "Add an entry to new_items for each outcome the request or the findings imply that no item covers, such as a follow-up the delivered response asks the user to do. Never add an item for something the agent merely did, and a request that was a single quick action implies no outcomes to add. "
-    "In checklist_review.items list only items whose status should change, using the id exactly as shown, with a one-sentence reason; leave correct items out. Items marked (edited by the user) cannot be changed. "
+    "In checklist_review.items list only items whose status should change, using the id exactly as shown, with a one-sentence reason, and include basis (verified or inferred) when the status is done; leave correct items out. Items marked (edited by the user) cannot be changed. An item marked (inferred done) was closed on judgment earlier: reopen it only when what you can see contradicts that. "
     "checklist_review never changes outcome, should_retry, or continuation_instructions."
 )
 
@@ -51,7 +56,11 @@ def parse_checklist_review(evaluation: Dict[str, Any]) -> Optional[Dict[str, Lis
         reason = _clip(entry.get("reason"), MAX_REASON_CHARS)
         if not item or status not in UPDATE_STATUSES or not reason:
             continue
-        updates.append({"item": item, "status": status, "reason": reason, "waiting_on": _clip(entry.get("waiting_on"), MAX_REASON_CHARS)})
+        basis = str(entry.get("basis") or "").strip().lower()
+        updates.append({
+            "item": item, "status": status, "reason": reason, "waiting_on": _clip(entry.get("waiting_on"), MAX_REASON_CHARS),
+            "basis": basis if basis in ("verified", "inferred") else "",
+        })
     additions: List[Dict[str, str]] = []
     for entry in raw.get("new_items") or []:
         if not isinstance(entry, dict) or len(additions) >= MAX_REVIEW_NEW_ITEMS:
@@ -63,7 +72,7 @@ def parse_checklist_review(evaluation: Dict[str, Any]) -> Optional[Dict[str, Lis
         additions.append({
             "title": title,
             "detail": _clip(entry.get("detail"), MAX_DETAIL_CHARS),
-            "status": status if status in NEW_ITEM_STATUSES else "waiting_user",
+            "status": status if status in NEW_ITEM_STATUSES else "pending",
             "waiting_on": _clip(entry.get("waiting_on"), MAX_REASON_CHARS),
         })
     if not updates and not additions:
@@ -115,9 +124,12 @@ async def apply_checklist_review(
             changes: Dict[str, Any] = {"status": entry["status"]}
             if entry["status"] in ("waiting_user", "waiting_external") and entry["waiting_on"]:
                 changes["waiting_on"] = entry["waiting_on"]
+            inferred = entry["status"] == "done" and entry.get("basis") == "inferred"
+            event_prefix = f"{SIGNOFF_EVENT_PREFIX} (inferred)" if inferred else SIGNOFF_EVENT_PREFIX
             result = await repository.update_item(
                 session_id=session["id"], item_id=item["id"], changes=changes, expected_revision=item["revision"],
-                actor=SIGNOFF_ACTOR, agent_task_id=agent_task_id, event_text=f"{SIGNOFF_EVENT_PREFIX}: {entry['reason']}",
+                actor=SIGNOFF_ACTOR, agent_task_id=agent_task_id, event_text=f"{event_prefix}: {entry['reason']}",
+                done_basis=("inferred" if inferred else "") if entry["status"] == "done" else None,
             )
             if not result:
                 summary["skipped"].append(f"{entry['item']}: item no longer exists")
@@ -125,6 +137,9 @@ async def apply_checklist_review(
                 summary["skipped"].append(f"{entry['item']}: changed while the outcome check ran")
             elif result.get("changed"):
                 summary["updated"] += 1
+                decision_logger.info(
+                    "Checklist item %s set to %s%s: %s", str(item["id"])[:8], entry["status"], " (inferred)" if inferred else "", entry["reason"]
+                )
         known_titles = {" ".join(str(item["title"]).split()).lower() for item in items}
         for entry in review.get("new_items", []):
             if entry["title"].lower() in known_titles:
@@ -141,6 +156,7 @@ async def apply_checklist_review(
             if result.get("created"):
                 summary["created"] += 1
                 known_titles.add(entry["title"].lower())
+        decision_logger.info("Checklist sign-off for %s: %s", agent_task_id, summary)
         if summary["updated"] or summary["created"]:
             await service.publish(session["id"], ids)
     except Exception:

@@ -265,7 +265,8 @@ final class PermissionsSettingsViewModel: ObservableObject {
             whitelistedCount: whitelistCount,
             safeExecutionMode: settings.safeExecutionMode,
             approvalTimeoutSeconds: settings.approvalTimeoutSeconds,
-            timeoutBehavior: settings.timeoutBehavior
+            timeoutBehavior: settings.timeoutBehavior,
+            modelJudgesCommandSafety: settings.modelJudgesCommandSafety
         )
     }
 }

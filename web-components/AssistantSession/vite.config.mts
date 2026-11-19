@@ -38,6 +38,6 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     globals: true,
-    include: ['src/**/*.{test,spec}.{ts,tsx}', '../shared/ExecutionDisclosureChevron.test.tsx', '../shared/CollapsibleSidebar.test.tsx', '../shared/blueprintMeasure.test.ts', '../shared/blueprintController.test.ts', '../shared/blueprintOverlay.test.ts', '../shared/blueprintReveal.contract.test.ts'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}', '../shared/disclosure/ExecutionDisclosureChevron.test.tsx', '../shared/disclosure/CollapsibleSidebar.test.tsx', '../shared/blueprint/blueprintMeasure.test.ts', '../shared/blueprint/blueprintController.test.ts', '../shared/blueprint/blueprintOverlay.test.ts', '../shared/blueprint/blueprintReveal.contract.test.ts'],
   },
 })

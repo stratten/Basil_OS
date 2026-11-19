@@ -5,6 +5,7 @@ struct PermissionsCommandSecurityPatch {
     let approvalMode: String?
     let safeExecutionMode: Bool?
     let autoApproveReadOnly: Bool?
+    let modelJudgesCommandSafety: Bool?
     let blockDangerousPatterns: Bool?
     let approvalTimeoutSeconds: Int?
     let timeoutBehavior: String?
@@ -14,6 +15,7 @@ struct PermissionsCommandSecurityPatch {
         approvalMode = payload["approvalMode"] as? String
         safeExecutionMode = (payload["safeExecutionMode"] as? NSNumber)?.boolValue
         autoApproveReadOnly = (payload["autoApproveReadOnly"] as? NSNumber)?.boolValue
+        modelJudgesCommandSafety = (payload["modelJudgesCommandSafety"] as? NSNumber)?.boolValue
         blockDangerousPatterns = (payload["blockDangerousPatterns"] as? NSNumber)?.boolValue
         if let timeoutValue = payload["approvalTimeoutSeconds"] as? NSNumber {
             guard timeoutValue.doubleValue.rounded(.towardZero) == timeoutValue.doubleValue else { return nil }
@@ -28,6 +30,7 @@ struct PermissionsCommandSecurityPatch {
         approvalMode == nil
             && safeExecutionMode == nil
             && autoApproveReadOnly == nil
+            && modelJudgesCommandSafety == nil
             && blockDangerousPatterns == nil
             && approvalTimeoutSeconds == nil
             && timeoutBehavior == nil
@@ -37,6 +40,7 @@ struct PermissionsCommandSecurityPatch {
         UpdateApprovalSettingsRequest(
             approvalMode: approvalMode,
             autoApproveReadOnly: autoApproveReadOnly,
+            modelJudgesCommandSafety: modelJudgesCommandSafety,
             blockDangerousPatterns: blockDangerousPatterns,
             safeExecutionMode: safeExecutionMode,
             approvalTimeoutSeconds: approvalTimeoutSeconds,

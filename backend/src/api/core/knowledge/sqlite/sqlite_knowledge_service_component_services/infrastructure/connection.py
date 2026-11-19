@@ -45,6 +45,7 @@ from typing import Awaitable, Callable, Deque, Optional, ParamSpec, TypeVar
 import aiosqlite
 
 from ...schema import get_schema_statements
+from .write_telemetry import AdmissionInfo, HoldStats, WriteTelemetry, report_release, report_wait
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,8 @@ REQUIRED_TABLES = [
 
 DEFAULT_BUSY_TIMEOUT_MS = 5000
 DEFAULT_SYNCHRONOUS_MODE = "NORMAL"
+# After a checkpoint finishes, SQLite truncates the write-ahead log back to this size instead of leaving it at the largest size a burst of writes ever reached (it was seen at about 300 MB).
+WAL_JOURNAL_SIZE_LIMIT_BYTES = 64 * 1024 * 1024
 MAX_WRITE_RETRY_ATTEMPTS = 5
 INITIAL_RETRY_DELAY_SECONDS = 0.01
 MAX_RETRY_DELAY_SECONDS = 0.5
@@ -209,6 +212,7 @@ class _WriteCoordinator:
         self._condition = threading.Condition()
         self._queue: Deque[object] = collections.deque()
         self._holder: Optional[_WriteHolder] = None
+        self.telemetry = WriteTelemetry(db_path)
 
     def acquire(
         self,
@@ -217,8 +221,12 @@ class _WriteCoordinator:
         *,
         operation_name: str = "unspecified_write",
         statement_summary: str = "(write statement unavailable)",
-    ) -> None:
+    ) -> AdmissionInfo:
         with self._condition:
+            enqueued_at = time.monotonic()
+            queued_ahead = len(self._queue)
+            blocker = self._holder
+            blocked_by_held = (enqueued_at - blocker.acquired_at) if blocker is not None else None
             self._queue.append(token)
             while True:
                 if self._holder is None and self._queue and self._queue[0] is token:
@@ -232,7 +240,13 @@ class _WriteCoordinator:
                         task_name=_current_task_name(),
                     )
                     self._queue.popleft()
-                    return
+                    return AdmissionInfo(
+                        wait_seconds=max(0.0, self._holder.acquired_at - enqueued_at),
+                        queued_ahead=queued_ahead,
+                        blocked_by_operation=blocker.operation_name if blocker is not None else None,
+                        blocked_by_statement=blocker.statement_summary if blocker is not None else None,
+                        blocked_by_held_seconds=blocked_by_held,
+                    )
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     try:
@@ -247,6 +261,11 @@ class _WriteCoordinator:
             if self._holder is not None and self._holder.token is token:
                 self._holder = None
             self._condition.notify_all()
+
+    def queue_depth(self) -> int:
+        """How many writers are waiting right now."""
+        with self._condition:
+            return len(self._queue)
 
     def timeout_diagnostics(self) -> dict[str, object]:
         """Return non-sensitive holder state after an admission timeout."""
@@ -286,6 +305,28 @@ def _coordinator_for(db_path: str) -> _WriteCoordinator:
         return coordinator
 
 
+class _TimedCursor(sqlite3.Cursor):
+    """Cursor that reports its statement time to the owning coordinated connection, so writes issued through a cursor (which aiosqlite always uses) are counted in the slot's hold breakdown."""
+
+    def execute(self, sql, parameters=()):
+        owner = self.connection
+        if isinstance(owner, _CoordinatedConnection):
+            return owner._basil_timed(super().execute, sql, parameters)
+        return super().execute(sql, parameters)
+
+    def executemany(self, sql, parameters):
+        owner = self.connection
+        if isinstance(owner, _CoordinatedConnection):
+            return owner._basil_timed(super().executemany, sql, parameters)
+        return super().executemany(sql, parameters)
+
+    def executescript(self, sql_script):
+        owner = self.connection
+        if isinstance(owner, _CoordinatedConnection):
+            return owner._basil_timed(super().executescript, sql_script)
+        return super().executescript(sql_script)
+
+
 class _CoordinatedConnection(sqlite3.Connection):
     """``sqlite3.Connection`` that joins the shared per-database-file write
     coordinator before any mutating statement or explicit ``BEGIN`` executes,
@@ -300,6 +341,8 @@ class _CoordinatedConnection(sqlite3.Connection):
         self._basil_write_token: Optional[object] = None
         self._basil_pending_timeout_error: Optional[SQLiteWriteTimeoutError] = None
         self._basil_statement_summary = "(write statement unavailable)"
+        self._basil_hold_stats: Optional[HoldStats] = None
+        self._basil_call_wait_seconds = 0.0
         self.set_authorizer(self._basil_authorize)
 
     def _basil_authorize(self, action, arg1, arg2, db_name, trigger_name):
@@ -319,7 +362,7 @@ class _CoordinatedConnection(sqlite3.Connection):
         deadline = time.monotonic() + budget_seconds
         token = object()
         try:
-            coordinator.acquire(
+            admission = coordinator.acquire(
                 token,
                 deadline,
                 operation_name=self._basil_operation_name,
@@ -347,32 +390,90 @@ class _CoordinatedConnection(sqlite3.Connection):
             )
             return _AUTHORIZER_DENY
         self._basil_write_token = token
+        try:
+            self._basil_hold_stats = HoldStats(
+                acquired_at=time.monotonic(),
+                wait_seconds=admission.wait_seconds,
+                first_statement=self._basil_statement_summary,
+            )
+            self._basil_call_wait_seconds = admission.wait_seconds
+            report_wait(
+                coordinator.db_path,
+                admission,
+                operation_name=self._basil_operation_name,
+                statement=self._basil_statement_summary,
+                on_event_loop=on_event_loop,
+                thread_name=threading.current_thread().name,
+                task_name=_current_task_name(),
+            )
+        except Exception:
+            self._basil_hold_stats = None
         return _AUTHORIZER_OK
 
     def _basil_release_write_token(self) -> None:
         token = self._basil_write_token
         if token is not None:
             self._basil_write_token = None
-            _coordinator_for(self._basil_db_path).release(token)
+            stats = self._basil_hold_stats
+            self._basil_hold_stats = None
+            coordinator = _coordinator_for(self._basil_db_path)
+            measured: Optional[tuple[float, int]] = None
+            try:
+                if stats is not None:
+                    measured = (time.monotonic() - stats.acquired_at, coordinator.queue_depth())
+            except Exception:
+                measured = None
+            # Release before logging so the telemetry never lengthens the hold it reports.
+            coordinator.release(token)
+            if stats is not None and measured is not None:
+                report_release(
+                    coordinator.telemetry,
+                    stats,
+                    hold_seconds=measured[0],
+                    queued_behind=measured[1],
+                    operation_name=self._basil_operation_name,
+                    statement=stats.first_statement or self._basil_statement_summary,
+                    thread_name=threading.current_thread().name,
+                    task_name=_current_task_name(),
+                )
+
+    def _basil_timed(self, call, *args):
+        """Run one statement and, while this connection holds the write slot, add its time to the hold breakdown. The wait for the slot is subtracted, because the first write statement is the one that queues."""
+        started = time.perf_counter()
+        self._basil_call_wait_seconds = 0.0
+        try:
+            return call(*args)
+        finally:
+            try:
+                stats = self._basil_hold_stats
+                if stats is not None:
+                    elapsed = time.perf_counter() - started - self._basil_call_wait_seconds
+                    stats.statements += 1
+                    stats.statement_seconds += max(0.0, elapsed)
+            except Exception:
+                pass
+
+    def cursor(self, factory=None):
+        return super().cursor(factory if factory is not None else _TimedCursor)
 
     def execute(self, sql, parameters=()):
         self._basil_statement_summary = _summarize_write_statement(sql)
         try:
-            return super().execute(sql, parameters)
+            return self._basil_timed(super().execute, sql, parameters)
         except sqlite3.DatabaseError as exc:
             self._basil_raise_pending_timeout(exc)
 
     def executemany(self, sql, parameters):
         self._basil_statement_summary = _summarize_write_statement(sql)
         try:
-            return super().executemany(sql, parameters)
+            return self._basil_timed(super().executemany, sql, parameters)
         except sqlite3.DatabaseError as exc:
             self._basil_raise_pending_timeout(exc)
 
     def executescript(self, sql_script):
         self._basil_statement_summary = _summarize_write_statement(sql_script)
         try:
-            return super().executescript(sql_script)
+            return self._basil_timed(super().executescript, sql_script)
         except sqlite3.DatabaseError as exc:
             self._basil_raise_pending_timeout(exc)
 
@@ -384,9 +485,16 @@ class _CoordinatedConnection(sqlite3.Connection):
         raise exc
 
     def commit(self) -> None:
+        started = time.perf_counter()
         try:
             super().commit()
         finally:
+            try:
+                stats = self._basil_hold_stats
+                if stats is not None:
+                    stats.commit_seconds += time.perf_counter() - started
+            except Exception:
+                pass
             self._basil_release_write_token()
 
     def rollback(self) -> None:
@@ -434,6 +542,7 @@ def _configure_sync_connection(conn: sqlite3.Connection) -> None:
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute(f"PRAGMA busy_timeout = {DEFAULT_BUSY_TIMEOUT_MS}")
     conn.execute(f"PRAGMA synchronous = {DEFAULT_SYNCHRONOUS_MODE}")
+    conn.execute(f"PRAGMA journal_size_limit = {WAL_JOURNAL_SIZE_LIMIT_BYTES}")
 
 
 async def _configure_async_connection(
@@ -443,6 +552,7 @@ async def _configure_async_connection(
         await conn.execute("PRAGMA foreign_keys = ON")
     await conn.execute(f"PRAGMA busy_timeout = {DEFAULT_BUSY_TIMEOUT_MS}")
     await conn.execute(f"PRAGMA synchronous = {DEFAULT_SYNCHRONOUS_MODE}")
+    await conn.execute(f"PRAGMA journal_size_limit = {WAL_JOURNAL_SIZE_LIMIT_BYTES}")
 
 
 _initialized_wal_databases: set[str] = set()

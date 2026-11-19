@@ -1,7 +1,7 @@
 import type { FontPayload, ThemePayload } from '../types'
-import { applySurfaceFinish } from '@shared/surfaceFinish'
-import { markHostThemeApplied } from '@shared/hostThemeSignal'
-import { applyTextOnColorTokens, normalizeTextScale } from '@shared/webTheme'
+import { applySurfaceFinish } from '@shared/theme/surfaceFinish'
+import { markHostThemeApplied } from '@shared/theme/hostThemeSignal'
+import { applyTextOnColorTokens, normalizeTextScale } from '@shared/theme/webTheme'
 
 /**
  * Applies native-supplied theme colors and fonts as CSS custom properties on

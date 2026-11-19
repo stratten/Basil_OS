@@ -4,13 +4,13 @@ import { SmoothReveal } from '@/components/intro/SmoothReveal'
 import { SetupStepActions } from '@/components/layout/SetupStepActions'
 import { prefersReducedMotion } from '@/components/motion/prefersReducedMotion'
 import { SetupWorkingIndicator } from '@/components/motion/SetupWorkingIndicator'
-import { useStickToBottom } from '@shared/useStickToBottom'
+import { useStickToBottom } from '@shared/motion/useStickToBottom'
 import type { SetupImportedContextSummary, SetupProgressNarration } from '@/state/setupAssistantStore'
 import type { SetupOrientationObservation } from '@/types'
 
 import { describeImportedContext } from './importedContextCard'
 import { deriveOrientationProgress } from './orientationProgressSteps'
-import { plainMarkdownText } from '@shared/plainMarkdownText'
+import { plainMarkdownText } from '@shared/text/plainMarkdownText'
 
 interface Props {
   observations: SetupOrientationObservation[]

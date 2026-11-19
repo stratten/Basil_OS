@@ -6,6 +6,6 @@ export {
   normalizeProgressStepText,
   selectActivityTrail,
   timelineEntryReadableText,
-} from '../../../../shared/activityText';
+} from '../../../../shared/status/activityText';
 
-export type { ActivityTextEntry } from '../../../../shared/activityText';
+export type { ActivityTextEntry } from '../../../../shared/status/activityText';

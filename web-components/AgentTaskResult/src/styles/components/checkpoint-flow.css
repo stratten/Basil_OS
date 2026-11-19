@@ -20,7 +20,7 @@
   pointer-events: none;
 }
 
-/* The backdrop and card look (blur, 1px border, radius, shadow, entrance) comes from shared/basil-modal-dialog.css via the basil-modal-backdrop and basil-modal-dialog classes. Only this dialog's own layout is here. */
+/* The backdrop and card look (blur, 1px border, radius, shadow, entrance) comes from shared/dialogs/basil-modal-dialog.css via the basil-modal-backdrop and basil-modal-dialog classes. Only this dialog's own layout is here. */
 .agent-task-input-backdrop {
   pointer-events: auto;
 }
@@ -141,6 +141,46 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-right: var(--padding-xs);
+}
+
+.checkpoint-recovery-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--padding-s);
+  padding: var(--padding-s) var(--padding-m);
+  border: 2px solid var(--warning-base);
+  border-radius: var(--corner-radius-medium);
+  background: var(--background-primary);
+}
+
+.checkpoint-recovery-notice__text {
+  margin: 0;
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-footnote);
+  line-height: 1.35;
+  color: var(--text-primary);
+}
+
+.checkpoint-recovery-notice__retry {
+  padding: var(--padding-xs) var(--padding-m);
+  border: 1px solid var(--primary);
+  border-radius: var(--corner-radius-small);
+  background: var(--primary);
+  color: var(--text-on-primary, var(--background-primary));
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-footnote);
+  cursor: pointer;
+}
+
+.checkpoint-recovery-notice__retry:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+}
+
+.checkpoint-recovery-notice__retry:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .checkpoint-response-controls {

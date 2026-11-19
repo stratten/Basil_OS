@@ -196,6 +196,7 @@ async def get_approval_settings():
             show_full_command_in_prompt=settings.show_full_command_in_prompt,
             remember_choice_option=settings.remember_choice_option,
             auto_approve_read_only=settings.auto_approve_read_only,
+            model_judges_command_safety=settings.model_judges_command_safety,
             block_dangerous_patterns=settings.block_dangerous_patterns,
             whitelisted_count=len(settings.whitelisted_commands),
             safe_execution_mode=settings.safe_execution_mode,
@@ -250,6 +251,8 @@ async def update_approval_settings(
             settings.remember_choice_option = request.remember_choice_option
         if request.auto_approve_read_only is not None:
             settings.auto_approve_read_only = request.auto_approve_read_only
+        if request.model_judges_command_safety is not None:
+            settings.model_judges_command_safety = request.model_judges_command_safety
         if request.block_dangerous_patterns is not None:
             settings.block_dangerous_patterns = request.block_dangerous_patterns
         if request.safe_execution_mode is not None:
@@ -268,6 +271,7 @@ async def update_approval_settings(
             show_full_command_in_prompt=settings.show_full_command_in_prompt,
             remember_choice_option=settings.remember_choice_option,
             auto_approve_read_only=settings.auto_approve_read_only,
+            model_judges_command_safety=settings.model_judges_command_safety,
             block_dangerous_patterns=settings.block_dangerous_patterns,
             whitelisted_count=len(settings.whitelisted_commands),
             safe_execution_mode=settings.safe_execution_mode,

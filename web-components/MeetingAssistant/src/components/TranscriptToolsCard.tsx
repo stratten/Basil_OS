@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
-import ReasoningModelPicker, { type SharedReasoningModel } from '../../../shared/ReasoningModelPicker';
-import { formatClockSeconds } from '@shared/formatClockSeconds';
+import ReasoningModelPicker, { type SharedReasoningModel } from '../../../shared/inputs/ReasoningModelPicker';
+import { formatClockSeconds } from '@shared/format/formatClockSeconds';
 import type { MeetingUIStateDTO } from '../bridge/types';
 import { setAutomation, setPostProcessingModel, startPostProcessing } from '../bridge/meetingBridge';
 import MeetingSwitch from './MeetingSwitch';

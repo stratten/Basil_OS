@@ -1,4 +1,4 @@
-import TokenizedSelect from '@shared/TokenizedSelect'
+import TokenizedSelect from '@shared/inputs/TokenizedSelect'
 
 import type { SetupLocalModelChoice } from '@/types'
 

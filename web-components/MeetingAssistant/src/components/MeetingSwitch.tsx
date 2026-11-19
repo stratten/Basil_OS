@@ -1,4 +1,4 @@
-import { ignoreLabelClickWhileSelectingText } from '@shared/labelTextSelection';
+import { ignoreLabelClickWhileSelectingText } from '@shared/text/labelTextSelection';
 
 interface MeetingSwitchProps {
   label: string;

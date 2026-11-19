@@ -1,11 +1,11 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent, MouseEvent } from 'react';
 import type { ScheduledRunNowOutcome } from '../../services/scheduledRunNow';
-import { useHistoryRowRevealDelete } from '@shared/useHistoryRowRevealDelete';
-import { InlineDeleteConfirm } from '@shared/InlineDeleteConfirm';
-import AgentTaskActiveIndicator from '@shared/AgentTaskActiveIndicator';
-import NativeSymbolIcon from '@shared/NativeSymbolIcon';
-import { PlayCircleIcon } from '@shared/CircleControlIcons';
+import { useHistoryRowRevealDelete } from '@shared/history/useHistoryRowRevealDelete';
+import { InlineDeleteConfirm } from '@shared/dialogs/InlineDeleteConfirm';
+import AgentTaskActiveIndicator from '@shared/status/AgentTaskActiveIndicator';
+import NativeSymbolIcon from '@shared/icons/NativeSymbolIcon';
+import { PlayCircleIcon } from '@shared/windowChrome/CircleControlIcons';
 import {
   BranchIcon,
   ConversationOriginIcon,

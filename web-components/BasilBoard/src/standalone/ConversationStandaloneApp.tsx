@@ -9,7 +9,7 @@ import {
   registerDetachedConversationsChangedHandler,
 } from '../services/bridge';
 import { applyHostFonts, applyHostTheme } from '../theme/agentTaskTheme';
-import ConversationWorkspace from '../capabilities/ConversationWorkspace';
+import ConversationWorkspace from '../capabilities/conversation/ConversationWorkspace';
 import ConversationWindowChrome from './ConversationWindowChrome';
 
 export default function ConversationStandaloneApp() {

@@ -11,18 +11,18 @@ import CollapsedRecordingActions from './components/CollapsedRecordingActions';
 import TranscriptPanel from './components/TranscriptPanel';
 import TranscriptToolsCard from './components/TranscriptToolsCard';
 import AnalysisCard from './components/AnalysisCard';
-import { CollapsedHistoryRail } from '../../shared/HistorySidebarControls';
-import CollapsibleSidebar from '@shared/CollapsibleSidebar';
+import { CollapsedHistoryRail } from '../../shared/history/HistorySidebarControls';
+import CollapsibleSidebar from '@shared/disclosure/CollapsibleSidebar';
 import AnimatedBubble from '../../shared/bubble/AnimatedBubble';
 import { useMeetingMeter } from './bridge/meetingMeterStore';
-import { useCollapseShortcut } from '@shared/useCollapseShortcut';
-import { useSettledExpand } from '@shared/useSettledExpand';
-import CompanionPane from './companion/CompanionPane';
+import { useCollapseShortcut } from '@shared/disclosure/useCollapseShortcut';
+import { useSettledExpand } from '@shared/disclosure/useSettledExpand';
+import CompanionPane from './companion/components/CompanionPane';
 import { CompanionLinksProvider, useCompanionLinksValue } from './companion/companionLinks';
-import CompanionRail from './companion/CompanionRail';
-import CompanionSetupPane from './companion/CompanionSetupPane';
+import CompanionRail from './companion/components/CompanionRail';
+import CompanionSetupPane from './companion/components/CompanionSetupPane';
 import { COMPANION_PANE_WIDTH, COMPANION_RAIL_WIDTH } from './companion/companionLayout';
-import { useEmbeddedCompanion } from './companion/useEmbeddedCompanion';
+import { useEmbeddedCompanion } from './companion/hooks/useEmbeddedCompanion';
 
 export default function MeetingAssistantApp() {
   const state = useMeetingBridgeState();

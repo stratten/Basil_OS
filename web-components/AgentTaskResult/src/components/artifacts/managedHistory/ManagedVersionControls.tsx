@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import TokenizedSelect from '@shared/TokenizedSelect';
+import TokenizedSelect from '@shared/inputs/TokenizedSelect';
 import { registerValidationManagedHistoryRestoreHandler } from '../../../services/bridge';
 import type { ManagedVersionHistoryState } from './useManagedVersionHistory';
 import { managedVersionLabel } from './managedVersionPresentation';

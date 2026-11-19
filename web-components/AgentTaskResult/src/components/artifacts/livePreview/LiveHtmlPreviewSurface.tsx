@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import NativeSymbolIcon from '../../../../../shared/NativeSymbolIcon';
+import NativeSymbolIcon from '../../../../../shared/icons/NativeSymbolIcon';
 import { sandboxedHtmlDocument } from '../managedHistory/managedVersionPresentation';
 import { DiffView } from '../DiffView';
 import type { UseLiveHtmlPreviewResult } from './useLiveHtmlPreview';

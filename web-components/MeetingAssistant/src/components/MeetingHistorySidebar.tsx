@@ -1,9 +1,9 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { HistorySidebarHeader } from '../../../shared/HistorySidebarControls';
-import PresenceRegion from '@shared/PresenceRegion';
-import TokenizedSelect from '@shared/TokenizedSelect';
-import { useHistoryRowRevealDelete } from '@shared/useHistoryRowRevealDelete';
-import { InlineDeleteConfirm } from '@shared/InlineDeleteConfirm';
+import { HistorySidebarHeader } from '../../../shared/history/HistorySidebarControls';
+import PresenceRegion from '@shared/motion/PresenceRegion';
+import TokenizedSelect from '@shared/inputs/TokenizedSelect';
+import { useHistoryRowRevealDelete } from '@shared/history/useHistoryRowRevealDelete';
+import { InlineDeleteConfirm } from '@shared/dialogs/InlineDeleteConfirm';
 import type { MeetingHistorySearchFiltersDTO, MeetingListItemDTO, MeetingSearchTermModeDTO } from '../bridge/types';
 import { deleteMeeting, loadMoreMeetings, selectMeeting, setMeetingSearch, setMeetingSearchFilters, setSidebarCollapsed, startNewMeeting, viewAnalysis } from '../bridge/meetingBridge';
 

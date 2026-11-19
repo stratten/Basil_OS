@@ -1,1 +1,1 @@
-export { normalizeProgressStepText } from '../../../../shared/activityText';
+export { normalizeProgressStepText } from '../../../../shared/status/activityText';

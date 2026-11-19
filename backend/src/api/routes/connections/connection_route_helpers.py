@@ -14,6 +14,7 @@ from api.core.models.preferences import (
 from api.services.mcp_connectors.github_device_flow_coordinator import GITHUB_OAUTH_CLIENT_ID
 from api.services.mcp_connectors.slack_token_service import is_slack_connection
 
+from .local_server_dto import build_local_server_dto
 from .models import CachedToolDTO, ConnectionAuthKind, ConnectionDTO
 
 
@@ -88,6 +89,7 @@ def connection_to_dto(record: MCPConnectionRecord) -> ConnectionDTO:
         server_icon_data_url=record.server_icon_data_url,
         auth_kind=connection_auth_kind(record),
         tools=tools,
+        local_server=build_local_server_dto(record),
     )
 
 

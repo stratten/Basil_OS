@@ -444,6 +444,14 @@ struct MeetingUIStateDTO: Codable, Equatable {
     var thermalState: String?
     /// True while the detached Companion window is open, so every Notetaker presentation can fold its embedded Companion column into a rail until that window closes.
     var isCompanionWindowOpen: Bool = false
+    /// Present while a detected meeting is about to be ended automatically; absent otherwise.
+    var autoEndCountdown: AutoEndCountdownDTO? = nil
+}
+
+/// Wall-clock countdown to an automatic end, in epoch milliseconds so the web UI can compare it with `Date.now()`.
+struct AutoEndCountdownDTO: Codable, Equatable {
+    var deadlineEpochMs: Double
+    var totalSeconds: Double
 }
 
 // MARK: - Outbound event envelope (Swift -> React)
@@ -560,6 +568,7 @@ enum MeetingBridgeIntent: String {
     case pauseRecording // {}
     case resumeRecording // {}
     case cancelRecording // {}
+    case dismissAutoEnd // {}
     case setLiveTranscription // { enabled: Bool }
     case setLiveEngine // { engine: String? } (nil restores the saved default)
     case selectMeeting // { meetingId: String }

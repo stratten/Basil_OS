@@ -1,4 +1,4 @@
-import type { AgentTaskActiveIndicatorStatus } from '@shared/AgentTaskActiveIndicator';
+import type { AgentTaskActiveIndicatorStatus } from '@shared/status/AgentTaskActiveIndicator';
 
 const RUNNING_STATUSES = new Set([
   'capturing',

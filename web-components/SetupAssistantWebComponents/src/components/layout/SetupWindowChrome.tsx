@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-import { BasilWindowChrome } from '../../../../shared/BasilWindowChrome'
+import { BasilWindowChrome } from '../../../../shared/windowChrome/BasilWindowChrome'
 import { closeSetupAssistant, collapseSetupAssistant, expandSetupAssistant, minimizeSetupAssistant } from '@/services/bridge'
 import { useSetupAssistantTheme } from '@/theme/themeBootstrap'
 

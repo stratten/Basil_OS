@@ -1,6 +1,6 @@
 export type ProfileEditorMode = 'memory_file' | 'skill' | 'memory_proposal' | 'skill_candidate';
 
-import type { FontConfig as SharedFontConfig, ThemeConfig as SharedThemeConfig } from '@shared/webTheme';
+import type { FontConfig as SharedFontConfig, ThemeConfig as SharedThemeConfig } from '@shared/theme/webTheme';
 
 export type ThemeConfig = SharedThemeConfig;
 

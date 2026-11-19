@@ -255,7 +255,7 @@ export interface TranscriptionModelInfoDTO {
   category: 'local' | 'api' | 'custom';
 }
 
-import type { FontConfig, ThemeConfig } from '@shared/webTheme';
+import type { FontConfig, ThemeConfig } from '@shared/theme/webTheme';
 
 export interface MeetingThemePayloadDTO extends Partial<ThemeConfig> {
   [key: string]: string | number | undefined;
@@ -348,10 +348,18 @@ export interface MeetingUIStateDTO {
   companionApiPort?: number;
   /** True while the detached Companion window is open; the Notetaker folds its embedded column to a rail until it closes. Absent from older native clients. */
   isCompanionWindowOpen?: boolean;
+  /** Present while a detected meeting is about to be ended automatically; absent or null otherwise, and from older native clients. */
+  autoEndCountdown?: AutoEndCountdownDTO | null;
   /** The meeting being recorded right now (microphone id, else system-audio id); null or absent when not recording. */
   recordingMeetingId?: string | null;
   /** macOS thermal pressure for the resource advisor; absent from older native clients. */
   thermalState?: string | null;
+}
+
+/** Wall-clock countdown to an automatic end: `deadlineEpochMs` compares with `Date.now()`, and `totalSeconds` is the countdown's full length. */
+export interface AutoEndCountdownDTO {
+  deadlineEpochMs: number;
+  totalSeconds: number;
 }
 
 export type MeetingSearchTermModeDTO = 'and' | 'or';
@@ -431,6 +439,7 @@ export type MeetingBridgeIntent =
   | { type: 'pauseRecording' }
   | { type: 'resumeRecording' }
   | { type: 'cancelRecording' }
+  | { type: 'dismissAutoEnd' }
   | { type: 'setLiveTranscription'; enabled: boolean }
   | { type: 'setLiveEngine'; engine: string | null }
   | { type: 'selectMeeting'; meetingId: string }

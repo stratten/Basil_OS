@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { MeetingUIStateDTO } from '../bridge/types';
 import { setAudioSource } from '../bridge/meetingBridge';
-import CompanionToggle, { type CompanionToggleProps } from '../companion/CompanionToggle';
+import CompanionToggle, { type CompanionToggleProps } from '../companion/components/CompanionToggle';
 
 export interface AudioSourceCompanionProps extends CompanionToggleProps {
   /** The last failed switch action; the Companion pane can be hidden, so the failure is reported here beside the switch. */

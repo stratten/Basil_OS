@@ -1,4 +1,4 @@
-import type { CompanionTimelineState } from './companionReducer';
+import type { CompanionTimelineState } from './state/companionReducer';
 import type { CompanionItem, CompanionProposalAction } from './types';
 
 /** The backend refuses a longer question (`MAX_QUESTION_CHARS` in the investigator models). */

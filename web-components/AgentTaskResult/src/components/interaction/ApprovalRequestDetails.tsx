@@ -1,13 +1,14 @@
-import { useState } from 'react';
-import { previewCommand } from '../approval/commandPreview';
+import { useId, useState } from 'react';
+import CollapsibleRegion from '@shared/disclosure/CollapsibleRegion';
 import type { UserInteraction } from './userInteractions';
 
-/** The body of a "Basil asked to run" card: the agent's explanation first, then a short command preview that expands to the full command and any script. */
+/** The body of a "Basil asked to run" card: the agent's explanation first, then a "Show command" button that opens the full command, and any script, which opens the same way. No one-line preview of the command is shown, since it was visual noise in the middle of every card. */
 export default function ApprovalRequestDetails({ interaction }: { interaction: UserInteraction }) {
   const [commandExpanded, setCommandExpanded] = useState(false);
   const [scriptExpanded, setScriptExpanded] = useState(false);
+  const scriptRegionId = useId();
   const commandText = interaction.prompt;
-  const { preview, previewable } = previewCommand(commandText);
+  const commandRegionId = useId();
   const scriptContent = interaction.scriptContent;
   const scriptLineCount = scriptContent ? scriptContent.split('\n').length : 0;
 
@@ -25,17 +26,19 @@ export default function ApprovalRequestDetails({ interaction }: { interaction: U
         </p>
       ) : null}
 
-      <pre className="interaction-exchange-command">{commandExpanded || !previewable ? commandText : preview}</pre>
-      {previewable && (
-        <button
-          type="button"
-          className="interaction-approval-toggle"
-          aria-expanded={commandExpanded}
-          onClick={() => setCommandExpanded(!commandExpanded)}
-        >
-          {commandExpanded ? 'Hide full command' : 'Show full command'}
-        </button>
-      )}
+      {/* The command region is the zero-height case of the height animation the script uses, so opening it grows the full command from nothing. */}
+      <button
+        type="button"
+        className="interaction-approval-toggle"
+        aria-expanded={commandExpanded}
+        aria-controls={commandRegionId}
+        onClick={() => setCommandExpanded(!commandExpanded)}
+      >
+        {commandExpanded ? 'Hide command' : 'Show command'}
+      </button>
+      <CollapsibleRegion expanded={commandExpanded} id={commandRegionId}>
+        <div className="interaction-exchange-command">{commandText}</div>
+      </CollapsibleRegion>
 
       {interaction.scriptPath && !scriptContent && (
         <div className="interaction-approval-script-path">
@@ -52,6 +55,7 @@ export default function ApprovalRequestDetails({ interaction }: { interaction: U
             type="button"
             className="interaction-approval-toggle"
             aria-expanded={scriptExpanded}
+            aria-controls={scriptRegionId}
             onClick={() => setScriptExpanded(!scriptExpanded)}
           >
             {`${scriptExpanded ? 'Hide' : 'View'} full script (${scriptLineCount} lines${interaction.scriptTruncated ? ', shortened' : ''})`}
@@ -65,9 +69,9 @@ export default function ApprovalRequestDetails({ interaction }: { interaction: U
           {interaction.scriptNotice && (
             <p className="interaction-approval-script-notice" role="note">{interaction.scriptNotice}</p>
           )}
-          {scriptExpanded && (
+          <CollapsibleRegion expanded={scriptExpanded} id={scriptRegionId}>
             <pre className="interaction-exchange-command interaction-approval-script-text">{scriptContent}</pre>
-          )}
+          </CollapsibleRegion>
         </div>
       )}
     </div>

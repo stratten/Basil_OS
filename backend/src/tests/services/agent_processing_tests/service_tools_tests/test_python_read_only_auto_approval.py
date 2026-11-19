@@ -104,7 +104,7 @@ async def test_a_python_script_that_writes_still_asks(workspace, use_settings):
     decision = await _evaluate(argv, _context(workspace, argv))
 
     assert decision.needs_approval is True
-    assert decision.reason == "Command not in whitelist"
+    assert decision.reason.startswith("Needs your approval because ")
 
 
 @pytest.mark.asyncio
@@ -182,7 +182,7 @@ async def test_other_interpreters_are_unaffected(workspace, use_settings):
     decision = await _evaluate(argv, _context(workspace, argv))
 
     assert decision.needs_approval is True
-    assert decision.reason == "Command not in whitelist"
+    assert decision.reason == "Needs your approval because 'node' is not on the read-only list, and no remembered approval covers it"
 
 
 @pytest.mark.asyncio

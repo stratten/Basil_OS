@@ -39,6 +39,6 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     globals: true,
-    include: ['src/**/*.{test,spec}.{ts,tsx}', '../shared/useStickToBottom.test.tsx', '../shared/NewItemsPill.test.tsx', '../shared/CollapsibleRegion.test.tsx', '../shared/UndoNotice.test.tsx'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}', '../shared/motion/useStickToBottom.test.tsx', '../shared/status/NewItemsPill.test.tsx', '../shared/disclosure/CollapsibleRegion.test.tsx', '../shared/dialogs/UndoNotice.test.tsx'],
   },
 });

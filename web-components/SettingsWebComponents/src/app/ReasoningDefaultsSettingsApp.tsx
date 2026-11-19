@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Switch } from '@shared/Switch'
+import { Switch } from '@shared/inputs/Switch'
 import { BASIL_TEAM } from '@shared/teamIdentity'
-import TokenizedSelect from '@shared/TokenizedSelect'
+import TokenizedSelect from '@shared/inputs/TokenizedSelect'
 import { PolicyRadioGroup, type PolicyRadioOption } from '../components/PolicyRadioGroup'
 import { useOptimisticSettings } from './useOptimisticSettings'
 import {
@@ -22,7 +22,7 @@ import {
   requestUpdateModelUnloadDelay,
   requestUpdateSelectedModel,
   requestUpdateUseRegionSelection,
-} from '../services/reasoningDefaultsBridge'
+} from '../services/models/reasoningDefaultsBridge'
 import type {
   AgentTaskInputModality,
   AssistantOutputPasteMode,

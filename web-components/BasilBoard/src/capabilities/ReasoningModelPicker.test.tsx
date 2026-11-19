@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import ReasoningModelPicker from '../../../shared/ReasoningModelPicker';
+import ReasoningModelPicker from '../../../shared/inputs/ReasoningModelPicker';
 
 describe('ReasoningModelPicker', () => {
   it('renders its menu in a fixed-position document portal', () => {

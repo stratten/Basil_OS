@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { ActionDecision, ActionEditFields, ProposedAction, SessionSnapshot } from '../types';
 import { KIND_LABELS, KINDS_WITH_BODY } from '../app/actionMeta';
 import { DiffView } from './DiffView';
-import { plainMarkdownText } from '@shared/plainMarkdownText';
+import { plainMarkdownText } from '@shared/text/plainMarkdownText';
 
 interface ActionDetailProps {
   action: ProposedAction;

@@ -6,6 +6,8 @@ import asyncio
 import logging
 from typing import Any, Awaitable, Callable, Dict, Optional
 
+from api.services.mcp_connectors.error_normalizer import SOURCE_TOOL_TEXT
+
 logger = logging.getLogger(__name__)
 
 _token_resolver_lock = asyncio.Lock()
@@ -41,11 +43,16 @@ def invalidate_cached_access_token_on_auth_error(connection_id: str, envelope: D
 
 
 def record_connection_auth_rejection(connection_id: str, envelope: Dict[str, Any]) -> None:
-    """Mark the connection as needing reconnect when the final dispatch result is still a rejected credential."""
+    """Mark the connection as needing reconnect when the final dispatch result is still a rejected credential.
+
+    The mark is saved and then makes every later call fail without reaching the server, so it needs real evidence: an HTTP 401 or a failed token exchange. A kind guessed from a failure message is not that. A server that ran the tool accepted the credentials, so the message is about the request, and marking the connection dead on it would block every call that follows.
+    """
     if envelope.get("ok") is not False:
         return
     error = envelope.get("error") or {}
     if error.get("kind") != "auth_expired":
+        return
+    if (error.get("raw") or {}).get("source") == SOURCE_TOOL_TEXT:
         return
     try:
         from api.services.mcp_connectors.connection_status_service import (

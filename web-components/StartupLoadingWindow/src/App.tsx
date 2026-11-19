@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { BasilWindowChrome } from '@shared/BasilWindowChrome'
+import { BasilWindowChrome } from '@shared/windowChrome/BasilWindowChrome'
 import {
   closeWindow,
   collapseWindow,

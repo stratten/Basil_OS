@@ -30,6 +30,29 @@ final class PermissionsSettingsPayloadTests: XCTestCase {
         XCTAssertNil(patch?.timeoutBehavior)
     }
 
+    func testModelJudgeSettingTravelsThroughThePatchAndTheUpdateRequest() throws {
+        let patch = PermissionsCommandSecurityPatch(payload: ["modelJudgesCommandSafety": true])
+        XCTAssertEqual(patch?.modelJudgesCommandSafety, true)
+        XCTAssertFalse(patch!.isEmpty)
+
+        let request = patch!.updateRequest()
+        XCTAssertEqual(request.modelJudgesCommandSafety, true)
+        let encoded = try JSONEncoder().encode(request)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        XCTAssertEqual(json["model_judges_command_safety"] as? Bool, true)
+    }
+
+    func testModelJudgeSettingIsOffWhenAnOlderBackendDoesNotSendIt() throws {
+        let body = """
+        {"approval_mode": "whitelist_only", "show_full_command_in_prompt": true, "remember_choice_option": true, "auto_approve_read_only": true, "block_dangerous_patterns": true, "whitelisted_count": 0}
+        """
+        let settings = try JSONDecoder().decode(ExecutionApprovalSettings.self, from: Data(body.utf8))
+        XCTAssertFalse(settings.modelJudgesCommandSafety)
+
+        let withIt = body.replacingOccurrences(of: "\"whitelisted_count\": 0", with: "\"whitelisted_count\": 0, \"model_judges_command_safety\": true")
+        XCTAssertTrue(try JSONDecoder().decode(ExecutionApprovalSettings.self, from: Data(withIt.utf8)).modelJudgesCommandSafety)
+    }
+
     func testCommandSecurityPatchReturnsNilForMissingPayload() {
         XCTAssertNil(PermissionsCommandSecurityPatch(payload: nil))
     }

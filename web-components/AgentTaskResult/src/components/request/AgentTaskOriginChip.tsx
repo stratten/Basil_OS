@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ConversationOriginIcon } from '../sidebar/SidebarIcons';
 import { openAgentTaskOrigin } from '../../services/bridge';
 import { getTodoOriginDetail } from '../../services/api';
-import { AGENT_REVISION_ORIGIN_TYPE } from '../run/agentTaskRunFocus';
+import { AGENT_REVISION_ORIGIN_TYPE, SCHEDULED_CHECK_ORIGIN_TYPE } from '../run/agentTaskRunFocus';
 
 interface AgentTaskOriginChipProps {
   originType?: string;
@@ -85,8 +85,8 @@ export default function AgentTaskOriginChip({ originType, originId }: AgentTaskO
     return () => { isCurrent = false; };
   }, [originId, originType]);
 
-  // An agent revision is already named by its turn label, and it has no destination to open.
-  if (!originType || originType === AGENT_REVISION_ORIGIN_TYPE) return null;
+  // An agent revision or a scheduled check is already named by its turn label, and neither has a destination to open.
+  if (!originType || originType === AGENT_REVISION_ORIGIN_TYPE || originType === SCHEDULED_CHECK_ORIGIN_TYPE) return null;
 
   const label = ORIGIN_LABELS[originType] || `From ${originType.replace(/_/g, ' ')}`;
   return (

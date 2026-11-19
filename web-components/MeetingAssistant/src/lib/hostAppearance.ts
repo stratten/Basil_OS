@@ -1,5 +1,5 @@
 import type { MeetingFontPayloadDTO, MeetingThemePayloadDTO } from '../bridge/types';
-import { applyHostFonts, applyHostTheme } from '@shared/webTheme';
+import { applyHostFonts, applyHostTheme } from '@shared/theme/webTheme';
 
 export function applyMeetingHostTheme(theme: MeetingThemePayloadDTO | null): void {
   applyHostTheme(theme ?? undefined);

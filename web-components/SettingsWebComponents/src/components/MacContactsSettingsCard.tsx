@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Switch } from '@shared/Switch'
+import { Switch } from '@shared/inputs/Switch'
 import { notifyMacContactsSettingsReady, onMacContactsSettingsEvent, updateMacContactsEnabled } from '../services/macContactsBridge'
 import type { MacContactsSettingsFields } from '../types'
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { Switch } from '@shared/Switch'
+import { Switch } from '@shared/inputs/Switch'
 import { AppExclusionPicker } from '../components/AppExclusionPicker'
-import { MeetingAutomationPanel } from '../components/MeetingAutomationPanel'
+import { MeetingAutomationPanel } from '../components/meetings/MeetingAutomationPanel'
 import { PolicyRadioGroup, type PolicyRadioOption } from '../components/PolicyRadioGroup'
 import { useOptimisticSettings } from './useOptimisticSettings'
 import {
@@ -20,7 +20,7 @@ import {
   requestUpdateMeetingDetectionPollSeconds,
   requestUpdateRequireCalendarMatch,
   requestUpdateUseCalendarEnrichment,
-} from '../services/meetingDetectionBridge'
+} from '../services/meetings/meetingDetectionBridge'
 import type { MeetingDetectionAppOption, MeetingDetectionSettingsFields } from '../types'
 
 const MODE_OPTIONS: readonly PolicyRadioOption<'prompt' | 'auto_start'>[] = [

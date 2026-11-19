@@ -10,6 +10,7 @@ import {
   startMeeting,
 } from './services/bridge';
 import { applyHostTheme } from './app/themeBootstrap';
+import { WindowMoveHandle } from '@shared/windowChrome/WindowMoveHandle';
 
 const PANEL_WIDTH = 340;
 const SYSTEM_FONT_FALLBACK = '-apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif';
@@ -85,7 +86,8 @@ export default function App() {
   return (
     <div className="basil-webkit-window-frame">
       <div className="mini-panel basil-webkit-window-surface" role="region" aria-label="Meeting/call detected" ref={panelRef}>
-      <div className="mini-panel-header">
+      <div className="mini-panel-header window-move-host">
+        <WindowMoveHandle />
         <div className="mini-panel-header-title">
           <span className="meeting-status-dot" aria-hidden="true" />
           <span>Meeting/call detected</span>

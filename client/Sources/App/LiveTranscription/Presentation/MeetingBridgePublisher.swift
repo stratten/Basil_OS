@@ -376,7 +376,10 @@ final class MeetingBridgePublisher {
             companionApiPort: APIClient.shared.currentPort,
             recordingMeetingId: viewModel.isRecording ? viewModel.currentMeetingId : nil,
             thermalState: MeetingThermalStateName.name(for: ProcessInfo.processInfo.thermalState),
-            isCompanionWindowOpen: isCompanionWindowOpen
+            isCompanionWindowOpen: isCompanionWindowOpen,
+            autoEndCountdown: viewModel.autoEndCountdown.map {
+                AutoEndCountdownDTO(deadlineEpochMs: $0.deadline.timeIntervalSince1970 * 1000, totalSeconds: $0.totalSeconds)
+            }
         )
     }
 

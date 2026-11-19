@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ContinueCircleIcon } from '@shared/CircleControlIcons';
+import { ContinueCircleIcon } from '@shared/windowChrome/CircleControlIcons';
 import { DecisionButton } from './interaction/DecisionButton';
 
 interface Props {

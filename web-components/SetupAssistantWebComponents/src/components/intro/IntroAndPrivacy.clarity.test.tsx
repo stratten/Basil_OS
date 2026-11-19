@@ -123,11 +123,11 @@ describe('Basil Cloud account dialog', () => {
     expect(dialog.querySelectorAll('.basil-cloud-modal-trust li')).toHaveLength(3)
     expect(dialog.querySelector('button[type="submit"]')?.className).toBe('basil-modal-button')
     expect(dialog.closest('.basil-modal-backdrop')).not.toBeNull()
-    // One Sign in action, a quiet Cancel, and no separate close glyph, no check marks used as bullets.
+    // One Sign in action, a quiet Cancel, the shared close glyph first in the header at the top left, and no check marks used as bullets.
     const labels = Array.from(dialog.querySelectorAll('button')).map(button => button.textContent)
     expect(labels.filter(label => label === 'Sign in')).toHaveLength(1)
     expect(labels).toContain('Create account')
-    expect(dialog.querySelector('button[aria-label="Close"]')).toBeNull()
+    expect(dialog.querySelector('.basil-modal-header')?.firstElementChild).toBe(dialog.querySelector('button[aria-label="Close"]'))
     expect(dialog.textContent).not.toContain('✓')
   })
 

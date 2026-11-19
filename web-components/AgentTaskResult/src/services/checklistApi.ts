@@ -32,6 +32,8 @@ export interface ChecklistItem {
   title: string;
   detail: string;
   status: ChecklistStatus;
+  /** Set to 'inferred' when Basil closed the item on judgment rather than on evidence; empty otherwise. */
+  done_basis: string;
   required: boolean;
   note: string;
   waiting_on: string;

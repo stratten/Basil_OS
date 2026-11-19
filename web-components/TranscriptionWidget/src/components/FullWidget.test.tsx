@@ -60,6 +60,16 @@ describe('FullWidget', () => {
     expect(bridge.closeWidget).toHaveBeenCalledOnce();
   });
 
+  it('puts the shared close and minimize glyphs first in the header, at the top left, ahead of the title', () => {
+    const { container } = render(<FullWidget state={{ ...initialTranscriptionState }} />);
+
+    const headerLeft = container.querySelector('.transcription-widget__header-left')!;
+    const buttons = Array.from(headerLeft.querySelectorAll('button'));
+    expect(buttons.map(button => button.getAttribute('aria-label'))).toEqual(['Close', 'Minimize widget']);
+    expect(headerLeft.firstElementChild).toBe(buttons[0]);
+    expect(headerLeft.querySelectorAll('.basil-window-control-circle')).toHaveLength(2);
+  });
+
   it('renders the hotkey badge on the record button when present', () => {
     render(<FullWidget state={{ ...initialTranscriptionState, hotkeyDisplayString: '⌥⇧D' }} />);
     expect(screen.getByText('(⌥⇧D)')).toBeInTheDocument();

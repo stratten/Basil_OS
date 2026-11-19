@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import IconChipList, { type IconChipEntry } from '@shared/IconChipList'
+import IconChipList, { type IconChipEntry } from '@shared/icons/IconChipList'
 import type { MeetingDetectionAppOption } from '../types'
 
 interface AppExclusionPickerProps {

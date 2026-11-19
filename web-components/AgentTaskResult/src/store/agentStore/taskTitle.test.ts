@@ -52,6 +52,62 @@ describe('AgentStore generated task title', () => {
     expect(store.getAgent('root-task')?.taskTitle).toBe('Original Root Title');
   });
 
+  describe('agent_task_title event', () => {
+    function titleEvent(agentTaskId: string, title: unknown) {
+      return { event_type: 'agent_task_title' as const, agent_task_id: agentTaskId, title };
+    }
+
+    it('names the task the window already shows, replacing the prompt text in the sidebar', () => {
+      const store = new AgentStore();
+      store.registerAgent('task-1', "Complete this to-do on the user's behalf: triage the inbox");
+
+      store.handleWSEvent(titleEvent('task-1', 'Weekly Inbox Triage'));
+
+      expect(store.getAgent('task-1')?.taskTitle).toBe('Weekly Inbox Triage');
+    });
+
+    it('keeps the first title the task received', () => {
+      const store = new AgentStore();
+      store.registerAgent('task-1');
+      store.updateAgentTaskTitle('task-1', 'Original Title');
+
+      store.handleWSEvent(titleEvent('task-1', 'Later Title'));
+
+      expect(store.getAgent('task-1')?.taskTitle).toBe('Original Title');
+    });
+
+    it('does not open, register or select a task this window does not hold', () => {
+      const store = new AgentStore();
+      store.registerAgent('task-1');
+      const before = store.getAllAgents().map((agent) => agent.agentTaskId);
+
+      store.handleWSEvent(titleEvent('unknown-task', 'Stray Title'));
+
+      expect(store.getAgent('unknown-task')).toBeUndefined();
+      expect(store.getAllAgents().map((agent) => agent.agentTaskId)).toEqual(before);
+      expect(store.getSelectedAgentId()).toBe('task-1');
+    });
+
+    it('ignores a follow-up turn title, which belongs to a different request than the chain title', () => {
+      const store = new AgentStore();
+      store.beginFollowUpTurn('follow-up-1', 'root-task');
+
+      store.handleWSEvent(titleEvent('follow-up-1', 'Follow-up Title'));
+
+      expect(store.getAgent('root-task')?.taskTitle).toBeUndefined();
+    });
+
+    it('ignores a missing or blank title', () => {
+      const store = new AgentStore();
+      store.registerAgent('task-1');
+
+      store.handleWSEvent(titleEvent('task-1', undefined));
+      store.handleWSEvent(titleEvent('task-1', '   '));
+
+      expect(store.getAgent('task-1')?.taskTitle).toBeUndefined();
+    });
+  });
+
   const presentationSummary: AgentTaskPresentationSummary = {
     agentTaskId: 'root-task',
     lifecycle: 'completed',

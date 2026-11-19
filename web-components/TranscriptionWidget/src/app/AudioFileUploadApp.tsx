@@ -1,8 +1,8 @@
 // web-components/TranscriptionWidget/src/app/AudioFileUploadApp.tsx
 
 import { useEffect, useReducer } from 'react';
-import TokenizedSelect from '@shared/TokenizedSelect';
-import { BasilWindowChrome } from '@shared/BasilWindowChrome';
+import TokenizedSelect from '@shared/inputs/TokenizedSelect';
+import { BasilWindowChrome } from '@shared/windowChrome/BasilWindowChrome';
 import {
   cancelAudioUpload,
   clearSelectedFile,
@@ -21,7 +21,7 @@ import {
 import { applyAudioFileUploadEvent, initialAudioFileUploadState, resolveAudioUploadTheme } from '../state/audioFileUploadReducer';
 import { AUDIO_UPLOAD_LANGUAGE_OPTIONS } from '../bridge/audioFileUploadTypes';
 import { TranscriptionSymbol } from '../components/TranscriptionSymbol';
-import { applyHostFonts, applyHostTheme } from '@shared/webTheme';
+import { applyHostFonts, applyHostTheme } from '@shared/theme/webTheme';
 
 export function AudioFileUploadApp() {
   const [state, dispatch] = useReducer(applyAudioFileUploadEvent, initialAudioFileUploadState);

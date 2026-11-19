@@ -47,6 +47,19 @@ function scheduleHydrationRetry(agentTaskId: string): void {
   }, 1500);
 }
 
+// The question a follow-up turn is waiting on. The chain list carries no `checkpoint_data` for a follow-up (only a turn's own detail does), so a reopened window that rebuilt the card from the chain alone showed a bare answer box with no options and none of the content being approved. Reading the waiting turn itself gives the same question the live event carried. A failed read returns nothing and leaves the caller on its recovery path.
+async function readFollowUpCheckpointData(
+  followUpId: string,
+): Promise<Record<string, unknown> | undefined> {
+  try {
+    const own = await api.getAgentTaskDetail(followUpId);
+    return own.status === 'awaiting_user_input' ? own.checkpoint_data : undefined;
+  } catch (error) {
+    console.warn('[AgentTaskResult] Could not read the waiting turn for its question', { followUpId, error });
+    return undefined;
+  }
+}
+
 async function restoreAwaitingCheckpoint(
   storeAgentTaskId: string,
   sessionAgentTaskId: string,
@@ -57,13 +70,19 @@ async function restoreAwaitingCheckpoint(
   if (detail.status !== 'awaiting_user_input' && detail.status !== 'needs_clarification') return;
 
   const currentAgent = agentStore.getAgent(storeAgentTaskId);
-  if (!currentAgent || currentAgent.status === 'completed' || currentAgent.status === 'failed' || currentAgent.currentCheckpoint) return;
+  if (!currentAgent || currentAgent.status === 'completed' || currentAgent.status === 'failed') return;
+  // A card already on screen is left alone, except the plain recovery prompt: it was only a stand-in for a question that could not be read, so the real question replaces it as soon as one can be.
+  const shownCheckpoint = currentAgent.currentCheckpoint;
+  const showsRecoveryPrompt = shownCheckpoint?.metadata?.source === 'checkpoint_recovery';
+  if (shownCheckpoint && !showsRecoveryPrompt) return;
 
   const checkpoint = normalizeCheckpointData(sessionAgentTaskId, detail.checkpoint_data);
   if (checkpoint) {
     agentStore.showCheckpoint(storeAgentTaskId, checkpoint);
     return;
   }
+  // Nothing better than the stand-in is available yet, so it stays.
+  if (showsRecoveryPrompt) return;
 
   try {
     const checkpointStatus = await api.getCheckpointStatus(sessionAgentTaskId);
@@ -109,22 +128,12 @@ async function restorePendingExecutionApproval(
   }
 
   try {
-    const { approvals, orphaned_approval_ids: orphanedApprovalIds } = await api.getPendingExecutionApprovals(sessionAgentTaskId);
+    // Refreshing only reads. An approval the backend lists as orphaned is not shown, and nothing is canceled or failed from here: a restart retires its own leftovers at startup, and a refresh that lands while a new approval is still being registered would otherwise cancel a live one and fail the running task.
+    const { approvals } = await api.getPendingExecutionApprovals(sessionAgentTaskId);
     if (!isCurrent()) return false;
     const latestAgent = agentStore.getAgent(storeAgentTaskId);
     if (!latestAgent || latestAgent.status === 'completed' || latestAgent.status === 'failed') {
       return false;
-    }
-    if (orphanedApprovalIds.length > 0) {
-      await api.recoverOrphanedExecutionApprovals(sessionAgentTaskId, orphanedApprovalIds);
-      if (!isCurrent()) return false;
-      if (approvals.length === 0) {
-        agentStore.setError(
-          storeAgentTaskId,
-          'Basil restarted while waiting for command approval. Retry the task to reassess the command safely.',
-        );
-        return false;
-      }
     }
     for (const approval of approvals) {
       agentStore.showApproval(storeAgentTaskId, {
@@ -394,7 +403,14 @@ export function hydrateAgentFromBackend(agentTaskId: string): Promise<HydrationO
 
       const localStatus = backendStatusToAgentStatus(turn.status);
       if (localStatus && localStatus !== 'completed' && localStatus !== 'failed') {
-        agentStore.updateStatus(agentTaskId, localStatus);
+        // A shell approval wait never changes the backend status, so the backend keeps reporting the task as running while the card is on screen. Applying that would drop the task out of its waiting state until the pending-approval read below put it back, and for that moment the run overview showed a running step and the rail replayed it. The status is held while an approval is showing and applied only if that read finds nothing left to wait on.
+        const heldAgent = agentStore.getAgent(agentTaskId);
+        const holdsApprovalWait = isInFlightAgentStatus(localStatus)
+          && heldAgent?.status === 'awaitingInput'
+          && heldAgent.showApprovalPrompt === true;
+        if (!holdsApprovalWait) {
+          agentStore.updateStatus(agentTaskId, localStatus);
+        }
         const presentationSummary = parseAgentTaskPresentationSummaryForTask(
           agentTaskId,
           turn.agent_task_presentation_summary,
@@ -427,14 +443,15 @@ export function hydrateAgentFromBackend(agentTaskId: string): Promise<HydrationO
           if (!restoredApproval) {
             await restorePendingProviderInteraction(agentTaskId, sessionAgentTaskId, isCurrentRequest);
             if (!isCurrentRequest()) return 'superseded';
+            // The chain list returns checkpoint_data only for the root, and the root's own checkpoint would be stale for an active follow-up, so a follow-up's question is read from that turn itself.
+            const waitingCheckpointData = mostRecentFollowUp
+              ? await readFollowUpCheckpointData(mostRecentFollowUp.id)
+              : detail.checkpoint_data;
+            if (!isCurrentRequest()) return 'superseded';
             await restoreAwaitingCheckpoint(agentTaskId, sessionAgentTaskId, {
               status: turn.status,
               result_message: turn.result_message,
-              // The chain-list endpoint returns checkpoint_data only for the
-              // root, not per follow-up -- fall back to the getCheckpointStatus
-              // recovery path below instead of applying the root's stale
-              // checkpoint onto an active follow-up turn.
-              checkpoint_data: mostRecentFollowUp ? undefined : detail.checkpoint_data,
+              checkpoint_data: waitingCheckpointData,
             }, isCurrentRequest);
             if (!isCurrentRequest()) return 'superseded';
           }
@@ -447,6 +464,9 @@ export function hydrateAgentFromBackend(agentTaskId: string): Promise<HydrationO
           const restoredApproval = await restorePendingExecutionApproval(agentTaskId, sessionAgentTaskId, isCurrentRequest);
           if (!isCurrentRequest()) return 'superseded';
           if (!restoredApproval) {
+            if (holdsApprovalWait) {
+              agentStore.updateStatus(agentTaskId, localStatus);
+            }
             await restorePendingProviderInteraction(agentTaskId, sessionAgentTaskId, isCurrentRequest);
             if (!isCurrentRequest()) return 'superseded';
           }

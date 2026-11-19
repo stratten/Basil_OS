@@ -35,9 +35,9 @@ body,
      writes to --text-primary/--separator-color/--field-border and delete this
      rule block. */
   --text-primary: color-mix(in srgb, var(--secondary) 14%, var(--host-text-primary, #000000));
-  /* Same derivation as shared/webTheme.ts deriveSeparatorColor (keep the 18% in step): the host's system separator color is far heavier on current macOS and is no longer used for dividers. */
+  /* Same derivation as shared/theme/webTheme.ts deriveSeparatorColor (keep the 18% in step): the host's system separator color is far heavier on current macOS and is no longer used for dividers. */
   --separator-color: color-mix(in srgb, var(--secondary) 18%, transparent);
-  /* Same derivation as shared/webTheme.ts deriveFieldBorder (keep the 20% in step): the host's field border arrives as an opaque hex color. */
+  /* Same derivation as shared/theme/webTheme.ts deriveFieldBorder (keep the 20% in step): the host's field border arrives as an opaque hex color. */
   --field-border: color-mix(in srgb, var(--secondary) 20%, transparent);
 }
 

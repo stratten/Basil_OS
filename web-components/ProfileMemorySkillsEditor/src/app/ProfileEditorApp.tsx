@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { WindowControlButton } from '@shared/WindowControlButton';
+import { WindowControlButton } from '@shared/windowChrome/WindowControlButton';
+import { WindowMoveHandle } from '@shared/windowChrome/WindowMoveHandle';
 import { MemoryFileEditor } from '../components/MemoryFileEditor';
 import { MemoryProposalEditor } from '../components/MemoryProposalEditor';
 import { SkillCandidateEditor } from '../components/SkillCandidateEditor';
@@ -27,7 +28,8 @@ export function ProfileEditorApp({ initialConfig }: Props) {
   return (
     <div className="basil-webkit-window-frame">
       <main className="profile-editor-window basil-webkit-window-surface">
-      <header className="profile-editor-window-header">
+      <header className="profile-editor-window-header window-move-host">
+        <WindowMoveHandle />
         <div className="profile-editor-window-controls" aria-label="Window controls">
           <WindowControlButton kind="close" label="Close profile editor" className="profile-editor-window-control header-btn" onClick={closeEditor} />
           <WindowControlButton kind="minimize" label="Minimize profile editor" className="profile-editor-window-control header-btn" onClick={minimizeEditor} />

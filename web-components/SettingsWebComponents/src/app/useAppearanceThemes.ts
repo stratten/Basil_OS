@@ -4,7 +4,7 @@ import {
   notifyAppearanceThemesReady,
   onAppearanceThemesEvent,
   saveAppearanceTheme,
-} from '../services/appearanceThemesBridge'
+} from '../services/appearance/appearanceThemesBridge'
 import type { CustomAppearanceTheme, CustomAppearanceThemeInput } from '../types'
 
 export type AppearanceThemeOperation = 'save' | 'delete'

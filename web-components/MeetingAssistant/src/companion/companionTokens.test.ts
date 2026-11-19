@@ -20,11 +20,12 @@ const definedTokens = new Set<string>();
 for (const file of [...cssFiles(resolve(SRC, 'styles')), ...cssFiles(SHARED), resolve(AGENT_TASK_RESULT_STYLES, 'theme.css')]) {
   for (const match of readFileSync(file, 'utf8').matchAll(/(--[a-z0-9-]+)\s*:/g)) definedTokens.add(match[1]);
 }
-for (const match of readFileSync(resolve(SHARED, 'webTheme.ts'), 'utf8').matchAll(/'(--[a-z0-9-]+)'/g)) definedTokens.add(match[1]);
+for (const match of readFileSync(resolve(SHARED, 'theme/webTheme.ts'), 'utf8').matchAll(/'(--[a-z0-9-]+)'/g)) definedTokens.add(match[1]);
 
-const COMPANION_SOURCES = readdirSync(__dirname)
+const COMPONENTS_DIR = join(__dirname, 'components');
+const COMPANION_SOURCES = readdirSync(COMPONENTS_DIR)
   .filter((name) => /^Companion.*\.tsx$/.test(name) && !name.endsWith('.test.tsx'))
-  .map((name) => ({ name, text: readFileSync(join(__dirname, name), 'utf8') }));
+  .map((name) => ({ name, text: readFileSync(join(COMPONENTS_DIR, name), 'utf8') }));
 
 describe('the Companion styles come from the central tokens', () => {
   it('writes no color literal in companion.css', () => {
@@ -54,9 +55,9 @@ describe('the Companion styles come from the central tokens', () => {
   });
 
   it('reuses the Notetaker button, switch and heading classes for the new cards', () => {
-    const card = readFileSync(join(__dirname, 'CompanionProposalCard.tsx'), 'utf8');
+    const card = readFileSync(join(COMPONENTS_DIR, 'CompanionProposalCard.tsx'), 'utf8');
     expect(card).toContain('meeting-record-button');
     expect(card).toContain('meeting-history-load-more-button');
-    expect(readFileSync(join(__dirname, 'CompanionProposalSettings.tsx'), 'utf8')).toContain('MeetingSwitch');
+    expect(readFileSync(join(COMPONENTS_DIR, 'CompanionProposalSettings.tsx'), 'utf8')).toContain('MeetingSwitch');
   });
 });

@@ -99,6 +99,7 @@ extension SettingsShellWindowController {
         if let approvalMode = patch.approvalMode, settings.approvalMode.rawValue != approvalMode { return false }
         if let safeExecutionMode = patch.safeExecutionMode, settings.safeExecutionMode != safeExecutionMode { return false }
         if let autoApproveReadOnly = patch.autoApproveReadOnly, settings.autoApproveReadOnly != autoApproveReadOnly { return false }
+        if let modelJudgesCommandSafety = patch.modelJudgesCommandSafety, settings.modelJudgesCommandSafety != modelJudgesCommandSafety { return false }
         if let blockDangerousPatterns = patch.blockDangerousPatterns, settings.blockDangerousPatterns != blockDangerousPatterns { return false }
         if let approvalTimeoutSeconds = patch.approvalTimeoutSeconds, settings.approvalTimeoutSeconds != approvalTimeoutSeconds { return false }
         if let timeoutBehavior = patch.timeoutBehavior, settings.timeoutBehavior.rawValue != timeoutBehavior { return false }

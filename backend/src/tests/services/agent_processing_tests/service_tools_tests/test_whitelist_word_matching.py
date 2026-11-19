@@ -166,6 +166,23 @@ async def test_a_high_risk_command_is_asked_about_again_even_when_a_pattern_matc
     assert forced_in_wrapper.needs_approval is True
 
 
+@pytest.mark.asyncio
+async def test_an_older_remembered_applescript_entry_never_approves_a_script(monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_store(monkeypatch, [_prefix("AppleScript:"), _prefix("gh gist view")])
+    service = ExecutionApprovalService()
+    context = {"execution_type": "applescript"}
+
+    script = await service.evaluate_command("AppleScript: AppleScript automation", context)
+    other_script = await service.evaluate_command("AppleScript: Search for and play an album in the Music app", context)
+    without_type = await service.evaluate_command("AppleScript: AppleScript automation")
+    shell = await service.evaluate_command(GIST_VIEW, {"execution_type": "shell"})
+
+    assert script.needs_approval is True and script.matched_pattern is None
+    assert other_script.needs_approval is True and other_script.matched_pattern is None
+    assert without_type.needs_approval is False, "only a call that says it is an AppleScript is protected; other callers keep their behavior"
+    assert shell.needs_approval is False and shell.matched_pattern is not None
+
+
 def test_the_agent_proposal_is_used_only_when_it_is_the_commands_own_leading_words() -> None:
     generalizer = CommandGeneralizer()
 
@@ -301,3 +318,105 @@ def test_a_blocked_command_anywhere_in_a_chain_is_blocked(command: str) -> None:
 @pytest.mark.parametrize("command", ["ls -la /tmp", "git commit -m 'remove; rm later'", "gh gist view abc", "bash -lc 'gh gist view abc'"])
 def test_ordinary_commands_are_not_blocked(command: str) -> None:
     assert RiskAssessor().check_blocked_commands(command) == (False, None)
+
+
+def _install_store_with_read_only_auto_approval(monkeypatch: pytest.MonkeyPatch, patterns: list[CommandPattern]) -> None:
+    store = _install_store(monkeypatch, patterns)
+    store.preferences.tool_execution.auto_approve_read_only = True
+
+
+REMEMBERED_RAILWAY = [_prefix("railway whoami", "who"), _prefix("railway list", "list")]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "command",
+    [
+        "bash -lc 'railway whoami 2>&1; railway list 2>&1'",
+        "bash -lc 'cd /tmp && railway whoami 2>&1 | head -5; ls'",
+        "bash -lc 'for i in 1 2; do echo \"=== $i\"; railway list 2>&1 | head -3; done'",
+        "bash -lc 'name=value; railway whoami $name'",
+    ],
+)
+async def test_a_script_of_read_only_and_remembered_commands_runs_without_asking(monkeypatch: pytest.MonkeyPatch, command: str) -> None:
+    _install_store_with_read_only_auto_approval(monkeypatch, REMEMBERED_RAILWAY)
+
+    decision = await ExecutionApprovalService().evaluate_command(command)
+
+    assert decision.needs_approval is False, decision.reason
+    assert "remembered" in decision.reason
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "command",
+    [
+        # One command in the script was never remembered.
+        "bash -lc 'railway whoami; railway up'",
+        "bash -lc 'railway whoami; railway link -p x'",
+        # The pattern words must be plain text, so a computed subcommand cannot ride on a remembered one.
+        "bash -lc 'sub=whoami; railway $sub'",
+        # A substitution inside a remembered command's arguments is refused like it is anywhere else.
+        "bash -lc 'railway whoami $(ls)'",
+        "bash -lc 'railway whoami `ls`'",
+        # Redirection to a file, and a remembered command next to a command that changes things.
+        "bash -lc 'railway whoami > out.txt'",
+        "bash -lc 'railway whoami; mkdir probe'",
+        "bash -lc 'railway whoami | tee out.txt'",
+        # A variable set for one command, and a path program that only looks like the remembered one.
+        "bash -lc 'A=1 railway whoami'",
+        "bash -lc './railway whoami'",
+    ],
+)
+async def test_a_script_with_anything_new_in_it_still_asks(monkeypatch: pytest.MonkeyPatch, command: str) -> None:
+    _install_store_with_read_only_auto_approval(monkeypatch, REMEMBERED_RAILWAY)
+
+    decision = await ExecutionApprovalService().evaluate_command(command)
+
+    assert decision.needs_approval is True, command
+
+
+@pytest.mark.asyncio
+async def test_remembered_commands_in_a_script_do_not_help_when_read_only_auto_approval_is_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_store(monkeypatch, REMEMBERED_RAILWAY)
+
+    decision = await ExecutionApprovalService().evaluate_command("bash -lc 'railway whoami; railway list'")
+
+    assert decision.needs_approval is True
+
+
+@pytest.mark.asyncio
+async def test_an_exact_pattern_does_not_cover_a_command_inside_a_script(monkeypatch: pytest.MonkeyPatch) -> None:
+    exact = CommandPattern(id="e", pattern="railway whoami", pattern_type="exact", description="test")
+    _install_store_with_read_only_auto_approval(monkeypatch, [exact])
+
+    decision = await ExecutionApprovalService().evaluate_command("bash -lc 'railway whoami; ls'")
+
+    assert decision.needs_approval is True
+
+
+@pytest.mark.asyncio
+async def test_a_high_risk_command_inside_a_remembered_script_is_asked_about(monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_store_with_read_only_auto_approval(monkeypatch, [_prefix("git push")])
+
+    decision = await ExecutionApprovalService().evaluate_command("bash -lc 'ls; git push --force origin main'")
+
+    assert decision.needs_approval is True
+
+
+@pytest.mark.asyncio
+async def test_a_blocked_command_stays_blocked_next_to_remembered_ones(monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_store_with_read_only_auto_approval(monkeypatch, REMEMBERED_RAILWAY)
+
+    decision = await ExecutionApprovalService().evaluate_command("bash -lc 'railway whoami; rm -rf x'")
+
+    assert decision.is_blocked is True or decision.needs_approval is True
+
+
+def test_a_stored_pattern_that_can_never_be_remembered_does_not_cover_a_command_in_a_script() -> None:
+    matcher = PatternMatcher()
+    patterns = [_prefix("python3 -c", "py"), _prefix("bash -lc", "wrap"), _prefix("sudo", "sudo")]
+
+    assert matcher.covers_words(["python3", "-c", "print(1)"], patterns) is False
+    assert matcher.covers_words(["sudo", "ls"], patterns) is False
+    assert matcher.covers_words([None, "whoami"], [_prefix("railway whoami")]) is False

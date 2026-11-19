@@ -10,7 +10,7 @@ const read = (relative: string) => readFileSync(resolve(here, relative), 'utf8')
 const COMPONENTS = {
   'result/HistoryCard.tsx': read('result/HistoryCard.tsx'),
   'sidebar/AgentTaskRow.tsx': read('sidebar/AgentTaskRow.tsx'),
-  'ApprovalOverlay.tsx': read('ApprovalOverlay.tsx'),
+  'approval/ApprovalOverlay.tsx': read('approval/ApprovalOverlay.tsx'),
   'result/ResultAttachments.tsx': read('result/ResultAttachments.tsx'),
 };
 
@@ -31,7 +31,7 @@ describe('AgentTaskResult inline-style cleanup contract', () => {
     const inline = Object.entries(COMPONENTS).flatMap(([file, source]) =>
       (source.match(/style=\{/g) ?? []).map(() => file),
     );
-    expect(inline.sort()).toEqual(['ApprovalOverlay.tsx', 'sidebar/AgentTaskRow.tsx']);
+    expect(inline.sort()).toEqual(['approval/ApprovalOverlay.tsx', 'sidebar/AgentTaskRow.tsx']);
   });
 
   it.each(Object.keys(COMPONENTS))('%s has no literal colors', (file) => {
@@ -72,7 +72,7 @@ describe('AgentTaskResult inline-style cleanup contract', () => {
 
   it('does not reference the undefined --border and --surface tokens', () => {
     expect(ALL_CSS).not.toMatch(/var\(--(?:border|surface)[,)]/);
-    expect(COMPONENTS['ApprovalOverlay.tsx']).not.toMatch(/var\(--(?:border|surface)[,)]/);
+    expect(COMPONENTS['approval/ApprovalOverlay.tsx']).not.toMatch(/var\(--(?:border|surface)[,)]/);
   });
 
   it('imports all four stylesheets from components.css', () => {
@@ -85,14 +85,13 @@ describe('AgentTaskResult inline-style cleanup contract', () => {
 
 // The scheduled-task surface: the detail view, every component in scheduled/, and the shared icon chip it draws connections with.
 const SCHEDULED_COMPONENTS: Record<string, string> = Object.fromEntries([
-  ['ScheduledAgentTaskDetail.tsx', read('ScheduledAgentTaskDetail.tsx')],
   ...readdirSync(resolve(here, 'scheduled'))
     .filter((file) => file.endsWith('.tsx') && !file.endsWith('.test.tsx'))
     .map((file) => [`scheduled/${file}`, read(`scheduled/${file}`)]),
-  ['../../../shared/IconChipList.tsx', read('../../../shared/IconChipList.tsx')],
+  ['../../../shared/icons/IconChipList.tsx', read('../../../shared/icons/IconChipList.tsx')],
 ]);
 const SCHEDULED_CSS = read('../styles/components/scheduled.css');
-const ICON_CHIP_CSS = read('../../../shared/icon-chip.css');
+const ICON_CHIP_CSS = read('../../../shared/icons/icon-chip.css');
 const SCHEDULED_CLASS_TOKEN = /\b(?:scheduled-[a-z_-]+|icon-chip[a-z_-]*|smart-prompt-interpreting)\b/g;
 
 describe('scheduled-task surface style contract', () => {
@@ -153,9 +152,9 @@ describe('scheduled-task surface style contract', () => {
   it('imports the scheduled sheet, the switch sheet and the chip sheet', () => {
     const entry = read('../styles/components.css');
     expect(entry).toContain("@import './components/scheduled.css';");
-    expect(entry).toContain("@import '../../../shared/switch.css';");
+    expect(entry).toContain("@import '../../../shared/inputs/switch.css';");
     expect(ICON_CHIP_CSS.length).toBeGreaterThan(0);
-    expect(SCHEDULED_COMPONENTS['../../../shared/IconChipList.tsx']).toContain("import './icon-chip.css';");
+    expect(SCHEDULED_COMPONENTS['../../../shared/icons/IconChipList.tsx']).toContain("import './icon-chip.css';");
   });
 
   it('does not let the run list scroll inside the page or cap the connection chips', () => {

@@ -112,10 +112,11 @@ export function buildHistoryItems({
       const scheduledSource = scheduledHistoryById.get(rootId) ?? scheduledHistoryById.get(agent.agentTaskId);
       return {
         id: agent.agentTaskId,
-        title: agent.agentTaskHistory.length > 0 && agent.agentTaskHistory[0].agentTaskText
-          ? truncateTitle(plainSidebarText(agent.agentTaskHistory[0].agentTaskText))
-          : agent.taskTitle
-            ? truncateTitle(plainSidebarText(agent.taskTitle))
+        // The generated title always wins once the task has one, as it does for the same task in the history list. Until then the row shows the first prompt that is in memory, then the newest one.
+        title: agent.taskTitle
+          ? truncateTitle(plainSidebarText(agent.taskTitle))
+          : agent.agentTaskHistory.length > 0 && agent.agentTaskHistory[0].agentTaskText
+            ? truncateTitle(plainSidebarText(agent.agentTaskHistory[0].agentTaskText))
             : agent.originalPrompt
               ? truncateTitle(plainSidebarText(agent.originalPrompt))
               : 'Processing...',

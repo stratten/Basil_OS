@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { WindowControlButton } from '@shared/windowChrome/WindowControlButton'
 
 interface Props {
   src: string
@@ -46,9 +47,7 @@ export function SetupImageLightbox({ src, alt, caption, onClose }: Props) {
         aria-label={alt}
         tabIndex={-1}
       >
-        <button type="button" className="setup-image-lightbox-close" aria-label="Close image" onClick={onClose}>
-          ×
-        </button>
+        <WindowControlButton kind="close" label="Close image" className="setup-image-lightbox-close" onClick={onClose} />
         <img className="setup-image-lightbox-image" src={src} alt={alt} />
         {caption ? <p className="setup-image-lightbox-caption">{caption}</p> : null}
       </div>

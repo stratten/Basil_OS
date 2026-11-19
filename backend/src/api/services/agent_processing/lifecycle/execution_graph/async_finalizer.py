@@ -228,6 +228,8 @@ async def _run_outcome_verification(
     checklist_review = refined.pop("checklist_review", None)
     if isinstance(checklist_review, dict):
         await _apply_checklist_signoff(checklist_review, root_task_id, agent_task_id)
+    else:
+        _log_no_checklist_decisions(agent_task_id)
     if isinstance(pending_work, dict):
         follow_up = await schedule_follow_up_for_pending_work(
             root_task_id=root_task_id,
@@ -254,6 +256,16 @@ async def _run_outcome_verification(
         previous_task_id=previous_task_id,
         refined=refined,
     )
+
+
+def _log_no_checklist_decisions(agent_task_id: Optional[str]) -> None:
+    """Record that the verifier changed nothing on the checklist, so a checklist that stays stale can be told apart from one the verifier never reached."""
+    try:
+        from ..runtime.agent_checklist_signoff import decision_logger
+
+        decision_logger.info("Checklist sign-off for %s: the verifier made no checklist decisions", agent_task_id)
+    except Exception:
+        logger.debug("Could not log the empty checklist sign-off for %s", agent_task_id, exc_info=True)
 
 
 async def _apply_checklist_signoff(review: Dict[str, Any], root_task_id: Optional[str], agent_task_id: Optional[str]) -> None:
