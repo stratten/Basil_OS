@@ -567,6 +567,9 @@ def initialize_sqlite_database_mode(db_path: str) -> None:
         conn = sqlite3.connect(db_path)
         try:
             conn.execute("PRAGMA foreign_keys = ON")
+            # A new, empty file is created in incremental auto-vacuum mode, which SQLite only allows before the first page is written (turning on WAL writes the header). That way it never needs the one-time full rewrite an existing file needs to switch modes, and free pages are returned in small slices instead.
+            if conn.execute("PRAGMA page_count").fetchone()[0] == 0:
+                conn.execute("PRAGMA auto_vacuum = INCREMENTAL")
             cursor = conn.execute("PRAGMA journal_mode = WAL")
             mode = cursor.fetchone()[0]
             if str(mode).lower() != "wal":

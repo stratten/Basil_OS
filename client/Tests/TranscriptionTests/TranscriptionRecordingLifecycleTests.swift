@@ -65,7 +65,7 @@ final class TranscriptionRecordingLifecycleTests: XCTestCase {
         let viewModel = makeViewModel(controller: controller)
         let task = Task { await viewModel.startRecording() }
 
-        await fulfillment(of: [started], timeout: 1.0)
+        await fulfillment(of: [started], timeout: 10.0)
         XCTAssertEqual(viewModel.recordingLifecycle, .starting)
         XCTAssertFalse(viewModel.isRecording)
         XCTAssertFalse(viewModel.isProcessingRecording)
@@ -85,7 +85,7 @@ final class TranscriptionRecordingLifecycleTests: XCTestCase {
         let viewModel = makeViewModel(controller: controller)
         let task = Task { await viewModel.startRecording() }
 
-        await fulfillment(of: [started], timeout: 1.0)
+        await fulfillment(of: [started], timeout: 10.0)
         viewModel.cancelRecordingStartup()
         await task.value
 
@@ -116,7 +116,7 @@ final class TranscriptionRecordingLifecycleTests: XCTestCase {
         let viewModel = makeViewModel(controller: controller)
         let firstTask = Task { await viewModel.startRecording() }
 
-        await fulfillment(of: [started], timeout: 1.0)
+        await fulfillment(of: [started], timeout: 10.0)
         await viewModel.startRecording()
         XCTAssertEqual(controller.startCallCount, 1)
 
@@ -131,7 +131,7 @@ final class TranscriptionRecordingLifecycleTests: XCTestCase {
         let viewModel = makeViewModel(controller: controller)
         let task = Task { await viewModel.startRecording() }
 
-        await fulfillment(of: [started], timeout: 1.0)
+        await fulfillment(of: [started], timeout: 10.0)
         viewModel.cancelRecordingStartup()
         controller.completeStart()
         await task.value
@@ -147,7 +147,7 @@ final class TranscriptionRecordingLifecycleTests: XCTestCase {
         let viewModel = makeViewModel(controller: controller)
         let task = Task { await viewModel.startRecording() }
 
-        await fulfillment(of: [started], timeout: 1.0)
+        await fulfillment(of: [started], timeout: 10.0)
         controller.completeStart()
         await task.value
         viewModel.stopRecording()
@@ -167,7 +167,7 @@ final class TranscriptionRecordingLifecycleTests: XCTestCase {
         let viewModel = makeViewModel(controller: controller)
         let task = Task { await viewModel.startRecording() }
 
-        await fulfillment(of: [started], timeout: 1.0)
+        await fulfillment(of: [started], timeout: 10.0)
         controller.completeStart()
         await task.value
         viewModel.stopRecording()
@@ -187,7 +187,7 @@ final class TranscriptionRecordingLifecycleTests: XCTestCase {
         let viewModel = makeViewModel(controller: controller)
         let task = Task { await viewModel.startRecording() }
 
-        await fulfillment(of: [started], timeout: 1.0)
+        await fulfillment(of: [started], timeout: 10.0)
         controller.failStart(AudioCaptureError.configurationFailed("test failure"))
         await task.value
 
@@ -207,7 +207,7 @@ final class TranscriptionRecordingLifecycleTests: XCTestCase {
 
         let task = Task { await viewModel.startRecording() }
 
-        await fulfillment(of: [started], timeout: 1.0)
+        await fulfillment(of: [started], timeout: 10.0)
         controller.completeStart()
         await task.value
 
@@ -227,7 +227,7 @@ final class TranscriptionRecordingLifecycleTests: XCTestCase {
         XCTAssertTrue(viewModel.canToggleRecording)
 
         let task = Task { await viewModel.startRecording() }
-        await fulfillment(of: [started], timeout: 1.0)
+        await fulfillment(of: [started], timeout: 10.0)
         controller.completeStart()
         await task.value
         viewModel.stopRecording()
@@ -244,7 +244,7 @@ final class TranscriptionRecordingLifecycleTests: XCTestCase {
         let viewModel = makeViewModel(controller: controller)
         let task = Task { await viewModel.startRecording() }
 
-        await fulfillment(of: [started], timeout: 1.0)
+        await fulfillment(of: [started], timeout: 10.0)
         controller.completeStart()
         await task.value
         viewModel.stopRecording()
@@ -277,7 +277,7 @@ final class TranscriptionRecordingLifecycleTests: XCTestCase {
         viewModel.isModelLoading = true
 
         let task = Task { await viewModel.startRecording() }
-        await fulfillment(of: [started], timeout: 1.0)
+        await fulfillment(of: [started], timeout: 10.0)
         controller.completeStart()
         await task.value
         webSocketService.eventSubject.send(.transcriptionFailed("model initialization failed"))

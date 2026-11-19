@@ -358,10 +358,12 @@ async def startup_event():
                 def _report_housekeeping_status(message: str) -> None:
                     asyncio.run_coroutine_threadsafe(_update_startup_status_file(message), startup_loop)
 
+                # The search re-index runs in the background after startup (see below), so it never holds startup up.
                 await asyncio.to_thread(
                     run_startup_housekeeping,
                     sqlite_service.db_path,
                     status=_report_housekeeping_status,
+                    defer_reindex=True,
                 )
             except Exception as error:
                 logger.error(
@@ -837,6 +839,25 @@ async def startup_event():
         except Exception as companion_exc:
             logger.error("Startup: failed to start local server background programs: %s", companion_exc, exc_info=True)
 
+        try:
+            import threading
+
+            from .core.knowledge.sqlite.sqlite_knowledge_service_component_services.infrastructure.startup_housekeeping import (
+                run_background_reindex,
+            )
+
+            # Rebuilds search entries written by an older builder until none is left, resting between entries so the app's own writes are not held up. It resumes at the next launch if the app quits first.
+            app.state.search_reindex_stop = threading.Event()
+            app.state.search_reindex_task = asyncio.create_task(
+                asyncio.to_thread(
+                    run_background_reindex,
+                    get_sqlite_knowledge_service().db_path,
+                    app.state.search_reindex_stop,
+                )
+            )
+        except Exception as reindex_exc:
+            logger.error("Startup: failed to start the background search re-index: %s", reindex_exc, exc_info=True)
+
         await _update_startup_status_file("Launching interface...")
     except Exception as e:
         logger.error(f"🚨 Startup event error: {e}", exc_info=True)
@@ -846,6 +867,9 @@ async def startup_event():
 async def shutdown_event():
     """Perform cleanup tasks on application shutdown."""
     logger.info("💤 Shutdown event: beginning cleanup")
+    reindex_stop = getattr(app.state, "search_reindex_stop", None)
+    if reindex_stop is not None:
+        reindex_stop.set()
     try:
         from .core.runtime.event_loop_watchdog import stop_event_loop_watchdog
 

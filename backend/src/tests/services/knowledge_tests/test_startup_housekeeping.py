@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
+import threading
 from pathlib import Path
 
 import pytest
@@ -34,8 +36,25 @@ LOST_TEXT = "QUOKKA-ONLY-IN-THE-COPY"
 
 @pytest.fixture
 def db_path(tmp_path: Path) -> str:
+    """A database file made by an older build: it already has a page, so it stays in the default auto-vacuum mode."""
     reset_sqlite_connection_state_for_tests()
     path = str(tmp_path / "housekeeping.db")
+    legacy = sqlite3.connect(path)
+    try:
+        legacy.execute("CREATE TABLE made_by_an_older_build(id INTEGER)")
+        legacy.commit()
+    finally:
+        legacy.close()
+    initialize_sqlite_database_mode(path)
+    SchemaManager(path).initialize_db()
+    return path
+
+
+@pytest.fixture
+def fresh_db_path(tmp_path: Path) -> str:
+    """A database file this build creates from nothing."""
+    reset_sqlite_connection_state_for_tests()
+    path = str(tmp_path / "fresh.db")
     initialize_sqlite_database_mode(path)
     SchemaManager(path).initialize_db()
     return path
@@ -192,6 +211,172 @@ def test_a_chain_whose_newest_turn_is_in_flight_is_not_stale(db_path):
     _seed(db_path, {"root-running": 2}, status="processing")
 
     assert housekeeping.reindex_stale_search_entries(db_path, budget_seconds=30) == (0, 0)
+
+
+def test_a_new_database_is_created_in_incremental_auto_vacuum_mode(fresh_db_path):
+    conn = sqlite3.connect(fresh_db_path)
+    try:
+        assert conn.execute("PRAGMA auto_vacuum").fetchone()[0] == housekeeping.AUTO_VACUUM_INCREMENTAL
+        assert conn.execute("PRAGMA journal_mode").fetchone()[0].lower() == "wal"
+    finally:
+        conn.close()
+
+
+def test_an_existing_database_keeps_its_auto_vacuum_mode(tmp_path):
+    reset_sqlite_connection_state_for_tests()
+    path = str(tmp_path / "existing.db")
+    legacy = sqlite3.connect(path)
+    try:
+        legacy.execute("CREATE TABLE already_here(id INTEGER)")
+        legacy.commit()
+    finally:
+        legacy.close()
+
+    initialize_sqlite_database_mode(path)
+
+    conn = sqlite3.connect(path)
+    try:
+        assert conn.execute("PRAGMA auto_vacuum").fetchone()[0] == housekeeping.AUTO_VACUUM_NONE
+    finally:
+        conn.close()
+
+
+def test_a_new_database_has_free_pages_returned_in_slices_with_no_rewrite(fresh_db_path):
+    conn = sqlite3.connect(fresh_db_path)
+    try:
+        conn.execute("CREATE TABLE junk(b BLOB)")
+        for _ in range(40):
+            conn.execute("INSERT INTO junk VALUES (zeroblob(100000))")
+        conn.commit()
+        conn.execute("DROP TABLE junk")
+        conn.commit()
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    finally:
+        conn.close()
+
+    outcome, returned = housekeeping.reclaim_free_space(fresh_db_path, search_entries_remaining=0)
+
+    assert outcome == "returned free pages in slices"
+    assert returned > 0
+
+
+def test_no_budget_rebuilds_every_stale_entry(db_path):
+    _seed(db_path, {"root-a": 3, "root-b": 2, "root-c": 1})
+
+    assert housekeeping.reindex_stale_search_entries(db_path, None) == (3, 0)
+    for root_id in ("root-a", "root-b", "root-c"):
+        assert _entry(db_path, root_id)[1] == SEARCH_BUILDER_VERSION
+
+
+def test_a_stop_signal_ends_the_run_before_the_next_entry(db_path):
+    _seed(db_path, {"root-a": 3, "root-b": 2})
+    stop = threading.Event()
+    stop.set()
+
+    assert housekeeping.reindex_stale_search_entries(db_path, None, stop_event=stop) == (0, 2)
+    assert _entry(db_path, "root-a")[1] is None
+
+
+def test_a_stop_signal_during_the_rest_between_entries_ends_the_run(db_path, monkeypatch):
+    _seed(db_path, {"root-a": 3, "root-b": 2})
+    stop = threading.Event()
+    real_wait = stop.wait
+
+    def wait_then_stop(timeout=None):
+        stop.set()
+        return real_wait(0)
+
+    monkeypatch.setattr(stop, "wait", wait_then_stop)
+
+    rebuilt, remaining = housekeeping.reindex_stale_search_entries(db_path, None, stop_event=stop, pause_ratio=1.0)
+
+    assert (rebuilt, remaining) == (1, 1)
+
+
+def test_the_rest_between_entries_is_capped(db_path, monkeypatch):
+    _seed(db_path, {"root-a": 2})
+    rests = []
+    monkeypatch.setattr(housekeeping.time, "sleep", rests.append)
+
+    housekeeping.reindex_stale_search_entries(db_path, None, pause_ratio=1e9)
+
+    assert rests == [housekeeping.REINDEX_MAX_PAUSE_SECONDS]
+
+
+def test_counting_stale_entries_rebuilds_none(db_path):
+    _seed(db_path, {"root-a": 3, "root-b": 2})
+
+    assert housekeeping.count_stale_search_entries(db_path) == 2
+    assert _entry(db_path, "root-a")[1] is None
+
+
+def test_a_deferred_run_counts_the_stale_entries_and_leaves_the_rewrite_waiting(db_path):
+    _seed(db_path, {"root-a": 3, "root-b": 2})
+
+    report = housekeeping.run_startup_housekeeping(db_path, defer_reindex=True)
+
+    assert report.search_entries_rebuilt == 0
+    assert report.search_entries_remaining == 2
+    assert _entry(db_path, "root-a")[1] is None
+
+
+def test_a_deferred_run_on_an_unusable_database_does_not_raise(tmp_path):
+    reset_sqlite_connection_state_for_tests()
+    broken = tmp_path / "broken.db"
+    broken.write_bytes(b"this is not a sqlite database" * 100)
+
+    report = housekeeping.run_startup_housekeeping(str(broken), defer_reindex=True)
+
+    assert report.search_entries_remaining == -1
+
+
+class _Messages(logging.Handler):
+    def __init__(self) -> None:
+        super().__init__(logging.INFO)
+        self.lines: list[str] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.lines.append(record.getMessage())
+
+
+@pytest.fixture
+def housekeeping_log():
+    handler = _Messages()
+    previous_level = housekeeping.logger.level
+    housekeeping.logger.addHandler(handler)
+    housekeeping.logger.setLevel(logging.INFO)
+    try:
+        yield handler.lines
+    finally:
+        housekeeping.logger.removeHandler(handler)
+        housekeeping.logger.setLevel(previous_level)
+
+
+def test_the_background_run_finishes_every_entry_and_reports_it(db_path, housekeeping_log):
+    _seed(db_path, {"root-a": 3, "root-b": 2})
+
+    assert housekeeping.run_background_reindex(db_path) == (2, 0)
+
+    assert _entry(db_path, "root-b")[1] == SEARCH_BUILDER_VERSION
+    assert any("Background search re-index finished: rebuilt=2 remaining=0" in line for line in housekeeping_log)
+
+
+def test_the_background_run_reports_an_early_stop(db_path, housekeeping_log):
+    _seed(db_path, {"root-a": 3})
+    stop = threading.Event()
+    stop.set()
+
+    assert housekeeping.run_background_reindex(db_path, stop) == (0, 1)
+
+    assert any("Background search re-index stopped early: rebuilt=0 remaining=1" in line for line in housekeeping_log)
+
+
+def test_the_background_run_never_raises_on_an_unusable_database(tmp_path):
+    reset_sqlite_connection_state_for_tests()
+    broken = tmp_path / "broken.db"
+    broken.write_bytes(b"this is not a sqlite database" * 100)
+
+    assert housekeeping.run_background_reindex(str(broken)) == (0, -1)
 
 
 def test_the_write_ahead_log_is_truncated_when_it_is_over_the_threshold(db_path):

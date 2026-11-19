@@ -13,6 +13,7 @@ import logging
 import os
 import shutil
 import sqlite3
+import threading
 import time
 from dataclasses import dataclass
 from typing import Callable, Optional
@@ -23,6 +24,8 @@ logger = logging.getLogger("api.main.db_housekeeping")
 
 WAL_TRUNCATE_THRESHOLD_BYTES = 64 * 1024 * 1024
 REINDEX_BUDGET_SECONDS = 30.0
+REINDEX_BACKGROUND_PAUSE_RATIO = 1.0
+REINDEX_MAX_PAUSE_SECONDS = 1.0
 INCREMENTAL_VACUUM_PAGES_PER_STEP = 2000
 INCREMENTAL_VACUUM_BUDGET_SECONDS = 10.0
 MIN_RECLAIMABLE_BYTES = 256 * 1024 * 1024
@@ -89,8 +92,26 @@ def stale_search_roots(connection: sqlite3.Connection) -> list[str]:
     return [row[0] for row in rows]
 
 
-def reindex_stale_search_entries(db_path: str, budget_seconds: float = REINDEX_BUDGET_SECONDS) -> tuple[int, int]:
-    """Rebuild stale search entries until the time budget is spent. Returns how many were rebuilt and how many are still stale."""
+def count_stale_search_entries(db_path: str) -> int:
+    """How many search entries are stale right now, without rebuilding any."""
+    reader = get_sync_connection(db_path, ensure_schema=False)
+    try:
+        return len(stale_search_roots(reader))
+    finally:
+        reader.close()
+
+
+def reindex_stale_search_entries(
+    db_path: str,
+    budget_seconds: Optional[float] = REINDEX_BUDGET_SECONDS,
+    *,
+    stop_event: Optional[threading.Event] = None,
+    pause_ratio: float = 0.0,
+) -> tuple[int, int]:
+    """Rebuild stale search entries until the time budget is spent, or until all are done when ``budget_seconds`` is None. Returns how many were rebuilt and how many are still stale.
+
+    ``stop_event`` ends the loop between two entries. ``pause_ratio`` rests after each rebuild for that multiple of the time the rebuild took (at most ``REINDEX_MAX_PAUSE_SECONDS``), so a background run leaves the database free for the app's own writes.
+    """
     from ..agent_tasks.mutations.root_summary import recompute_root_summary
 
     reader = get_sync_connection(db_path, ensure_schema=False)
@@ -99,11 +120,14 @@ def reindex_stale_search_entries(db_path: str, budget_seconds: float = REINDEX_B
     finally:
         reader.close()
 
-    deadline = time.monotonic() + budget_seconds
+    deadline = None if budget_seconds is None else time.monotonic() + budget_seconds
     rebuilt = 0
     for root_id in stale:
-        if time.monotonic() >= deadline:
+        if stop_event is not None and stop_event.is_set():
             break
+        if deadline is not None and time.monotonic() >= deadline:
+            break
+        started = time.monotonic()
         try:
             run_write_transaction(
                 db_path,
@@ -113,6 +137,12 @@ def reindex_stale_search_entries(db_path: str, budget_seconds: float = REINDEX_B
             rebuilt += 1
         except Exception:
             logger.warning("Search re-index failed for chain %s; it is tried again at the next launch", root_id, exc_info=True)
+        if pause_ratio > 0:
+            rest = min(REINDEX_MAX_PAUSE_SECONDS, (time.monotonic() - started) * pause_ratio)
+            if stop_event is not None:
+                stop_event.wait(rest)
+            else:
+                time.sleep(rest)
 
     reader = get_sync_connection(db_path, ensure_schema=False)
     try:
@@ -198,8 +228,12 @@ def run_startup_housekeeping(
     *,
     status: Optional[Callable[[str], None]] = None,
     reindex_budget_seconds: float = REINDEX_BUDGET_SECONDS,
+    defer_reindex: bool = False,
 ) -> HousekeepingReport:
-    """Run every housekeeping step once. Never raises."""
+    """Run every housekeeping step once. Never raises.
+
+    With ``defer_reindex`` the search re-index is not run here: the stale entries are only counted, so startup is not held up, and the caller runs ``run_background_reindex`` after startup. The one-time rewrite in the next step waits while any entry is stale, so it happens at the first launch after the re-index has finished.
+    """
     report = HousekeepingReport()
 
     try:
@@ -208,11 +242,14 @@ def run_startup_housekeeping(
         logger.warning("[Housekeeping] Truncating the write-ahead log failed", exc_info=True)
 
     try:
-        if status is not None:
-            status("Tidying the database...")
-        report.search_entries_rebuilt, report.search_entries_remaining = reindex_stale_search_entries(
-            db_path, reindex_budget_seconds
-        )
+        if defer_reindex:
+            report.search_entries_remaining = count_stale_search_entries(db_path)
+        else:
+            if status is not None:
+                status("Tidying the database...")
+            report.search_entries_rebuilt, report.search_entries_remaining = reindex_stale_search_entries(
+                db_path, reindex_budget_seconds
+            )
     except Exception:
         logger.warning("[Housekeeping] The search re-index failed", exc_info=True)
         report.search_entries_remaining = -1
@@ -238,3 +275,26 @@ def run_startup_housekeeping(
         report.pages_returned,
     )
     return report
+
+
+def run_background_reindex(db_path: str, stop_event: Optional[threading.Event] = None) -> tuple[int, int]:
+    """Rebuild every stale search entry, resting between entries, until none is left or ``stop_event`` is set. Meant to run on a worker thread after startup. Never raises. Returns how many were rebuilt and how many are still stale (-1 when that could not be read)."""
+    started = time.monotonic()
+    try:
+        rebuilt, remaining = reindex_stale_search_entries(
+            db_path,
+            None,
+            stop_event=stop_event,
+            pause_ratio=REINDEX_BACKGROUND_PAUSE_RATIO,
+        )
+    except Exception:
+        logger.warning("[Housekeeping] The background search re-index failed; it is tried again at the next launch", exc_info=True)
+        return 0, -1
+    logger.info(
+        "[Housekeeping] Background search re-index %s: rebuilt=%d remaining=%d seconds=%.0f",
+        "finished" if remaining == 0 else "stopped early",
+        rebuilt,
+        remaining,
+        time.monotonic() - started,
+    )
+    return rebuilt, remaining
