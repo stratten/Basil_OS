@@ -96,6 +96,34 @@ final class CaptureSnapshotMappingTests: XCTestCase {
     }
 
     @MainActor
+    func testAutoApproveStateIsMappedIntoSnapshotAndJsonObject() throws {
+        let viewModel = AgentTaskCaptureViewModel()
+        viewModel.taskAutoApproveEnabled = true
+        viewModel.taskAutoApprovePending = true
+        viewModel.taskAutoApproveError = "Auto-approve could not be changed."
+
+        let snapshot = CaptureSnapshot.from(viewModel: viewModel, isDraggingOver: false, revision: 1)
+        let data = try JSONSerialization.data(withJSONObject: snapshot.jsonObject)
+        let decoded = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+
+        XCTAssertEqual(decoded?["taskAutoApproveEnabled"] as? Bool, true)
+        XCTAssertEqual(decoded?["taskAutoApprovePending"] as? Bool, true)
+        XCTAssertEqual(decoded?["taskAutoApproveError"] as? String, "Auto-approve could not be changed.")
+    }
+
+    @MainActor
+    func testAutoApproveDefaultsToOffWithNoErrorAndTheErrorIsNullNotMissing() throws {
+        let viewModel = AgentTaskCaptureViewModel()
+
+        let snapshot = CaptureSnapshot.from(viewModel: viewModel, isDraggingOver: false, revision: 1)
+        let decoded = snapshot.jsonObject
+
+        XCTAssertEqual(decoded["taskAutoApproveEnabled"] as? Bool, false)
+        XCTAssertEqual(decoded["taskAutoApprovePending"] as? Bool, false)
+        XCTAssertTrue(decoded["taskAutoApproveError"] is NSNull)
+    }
+
+    @MainActor
     func testFallbackCaptureStateMapsTimerAndConfiguredHotkeyFields() throws {
         let viewModel = AgentTaskCaptureViewModel()
         viewModel.useIntelligentCapture = false

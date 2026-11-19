@@ -150,6 +150,11 @@ export async function getPendingFollowUps(): Promise<PendingFollowUpsResponse> {
   return request('GET', '/api/v1/agent-tasks/follow-ups/pending');
 }
 
+/** Whether the chain's auto-approve switch is on. Reading is open to this window; changing it goes through native, which holds the credential and asks the user to confirm. */
+export async function getTaskAutoApprove(rootTaskId: string): Promise<{ enabled: boolean }> {
+  return request('GET', `/api/v1/agent-tasks/auto-approve/${encodeURIComponent(rootTaskId)}`);
+}
+
 /** Stops every still-scheduled follow-up check for one chain; resolves with how many were canceled. */
 export async function cancelPendingFollowUps(rootTaskId: string): Promise<{ success: boolean; canceled_count: number }> {
   return request('DELETE', `/api/v1/agent-tasks/follow-ups/${encodeURIComponent(rootTaskId)}`);

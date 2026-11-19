@@ -17,6 +17,8 @@ import {
   registerCaptureHandler,
   registerExpandChromeForTaskCompletionHandler,
   registerFilesPickedHandler,
+  registerTaskAutoApproveResultHandler,
+  requestTaskAutoApprove,
   registerShowScheduledAgentTaskHandler,
   registerValidationManagedHistoryRestoreHandler,
   registerValidationRunFocusHandler,
@@ -438,5 +440,39 @@ describe('files picked handler registration', () => {
     window.basilAgentTask?.onFilesPicked(['/tmp/a.txt']);
 
     expect(second).toHaveBeenCalledWith(['/tmp/a.txt']);
+  });
+});
+
+describe('task auto-approve bridge', () => {
+  it('posts a request for native to confirm and apply', () => {
+    const postMessage = vi.fn();
+    window.webkit = { messageHandlers: { agentTaskBridge: { postMessage } } };
+
+    requestTaskAutoApprove({ requestId: 'req-1', rootTaskId: 'root-1', enabled: true });
+
+    expect(postMessage).toHaveBeenCalledWith({
+      type: 'setTaskAutoApprove',
+      requestId: 'req-1',
+      rootTaskId: 'root-1',
+      enabled: true,
+    });
+  });
+
+  it("delivers native's answer to every listener until each one unsubscribes", () => {
+    const first = vi.fn();
+    const second = vi.fn();
+    const stopFirst = registerTaskAutoApproveResultHandler(first);
+    const stopSecond = registerTaskAutoApproveResultHandler(second);
+    const answer = { requestId: 'req-1', rootTaskId: 'root-1', status: 'applied' as const, enabled: true };
+
+    window.basilAgentTask?.onTaskAutoApproveResult(answer);
+    expect(first).toHaveBeenCalledWith(answer);
+    expect(second).toHaveBeenCalledWith(answer);
+
+    stopFirst();
+    window.basilAgentTask?.onTaskAutoApproveResult(answer);
+    expect(first).toHaveBeenCalledTimes(1);
+    expect(second).toHaveBeenCalledTimes(2);
+    stopSecond();
   });
 });

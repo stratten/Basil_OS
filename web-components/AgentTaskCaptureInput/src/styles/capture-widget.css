@@ -259,6 +259,13 @@
   right: 0;
 }
 
+/* Mirrors the model picker's corner. The window is too narrow for the labeled chip, so only the switch is drawn. */
+.voice-capture-body__auto-approve {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
 .voice-capture-body__model-picker .capture-model-picker {
   min-width: 14px;
   max-width: 14px;

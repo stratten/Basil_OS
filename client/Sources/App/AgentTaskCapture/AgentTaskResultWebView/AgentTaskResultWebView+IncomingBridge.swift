@@ -359,6 +359,17 @@ extension AgentTaskResultWebView {
                     args: ["requestId": requestId, "status": "canceled"]
                 )
             }
+        case "setTaskAutoApprove":
+            // Changing a task's auto-approve switch is a host-credential action: this native side holds the credential and, when the switch is being turned on, asks the user to confirm in its own alert. The web page never reaches the route itself.
+            guard let requestId = dict["requestId"] as? String, !requestId.isEmpty,
+                  let rootTaskId = dict["rootTaskId"] as? String, !rootTaskId.isEmpty,
+                  let enabled = dict["enabled"] as? Bool else {
+                return
+            }
+            Task { @MainActor [weak self] in
+                let result = await TaskAutoApproveBridge.perform(requestId: requestId, rootTaskId: rootTaskId, enabled: enabled)
+                self?.callJS("window.basilAgentTask.onTaskAutoApproveResult", args: result.jsonObject)
+            }
         case "validationRunFocused":
             if let state = AgentTaskValidationRunFocusState(bridgePayload: dict) {
                 onValidationRunFocused?(state)

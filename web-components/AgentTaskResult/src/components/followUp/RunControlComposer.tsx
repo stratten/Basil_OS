@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import * as api from '../../services/api';
 import ReasoningModelPicker from '../../../../shared/inputs/ReasoningModelPicker';
+import TaskAutoApproveToggle from '../../../../shared/inputs/TaskAutoApproveToggle';
+import { useTaskAutoApprove } from '../../store/taskAutoApproveStore';
 import { pickFiles } from '../../services/bridge';
 import type { CheckpointData } from '../../types';
 import { answerQuestionWithNote } from '../interaction/answerWithNote';
@@ -85,6 +87,7 @@ function ResumeGlyph() {
 export default function RunControlComposer({ turnTaskId, rootTaskId, mode, awaitingCheckpoint, deliveredNoteIds, connectionLost = false, onCancelRunning, isCanceling = false }: Props) {
   const editorRef = useRef<HTMLDivElement>(null);
   const draftKey = chainKeyOf({ rootTaskId, agentTaskId: turnTaskId });
+  const autoApprove = useTaskAutoApprove(draftKey);
   const [folded, setFolded] = useFollowUpComposerCollapsed(draftKey);
   // Only a running box folds. Paused, the box carries the Resume control and the note for resuming, so it always opens.
   const collapsed = folded && mode === 'running';
@@ -315,6 +318,15 @@ export default function RunControlComposer({ turnTaskId, rootTaskId, mode, await
       <StopCircleIcon />
     </button>
   ) : null;
+  // Beside where the follow-up box keeps its model picker, and under the bar when the box is folded, because a run held up by an approval card is exactly when someone reaches for it.
+  const autoApproveToggle = (
+    <TaskAutoApproveToggle
+      enabled={autoApprove.enabled}
+      pending={autoApprove.pending}
+      error={autoApprove.error}
+      onChange={autoApprove.setEnabled}
+    />
+  );
   const runControls = (
     <span className="run-control-buttons">
       {stopButton}
@@ -340,7 +352,7 @@ export default function RunControlComposer({ turnTaskId, rootTaskId, mode, await
             <span className="text-followup-bar-title">Note for Basil</span>
             {draftPreviewText !== '' && <span className="text-followup-bar-draft">Draft: {draftPreviewText}</span>}
           </button>
-          <div className="run-control-collapsed-actions">{runControls}</div>
+          <div className="run-control-collapsed-actions">{autoApproveToggle}{runControls}</div>
         </>
       )}
       <CollapsibleRegion expanded={!collapsed} id={bodyId}>
@@ -415,10 +427,14 @@ export default function RunControlComposer({ turnTaskId, rootTaskId, mode, await
                         {switching ? 'Use the same model' : 'Continue with a different model…'}
                       </button>
                     )}
+                    {autoApproveToggle}
                   </>
                 ) : isAwaiting ? (
-                  <span className="run-control-status" role="status">Waiting for your answer</span>
-                ) : undefined}
+                  <>
+                    <span className="run-control-status" role="status">Waiting for your answer</span>
+                    {autoApproveToggle}
+                  </>
+                ) : autoApproveToggle}
                 bottomEnd={isPaused ? (connectionLost && switching ? (
                   <ReasoningModelPicker
                     models={models}

@@ -129,6 +129,11 @@ export function setSelectedModel(modelId: string | null) {
   postCaptureIntent({ type: 'setSelectedModel', modelId });
 }
 
+/** Asks native to turn auto-approve on or off for the task this capture starts. Turning it on is confirmed in native's own dialog; the result arrives in the next snapshot. */
+export function setTaskAutoApprove(enabled: boolean) {
+  postCaptureIntent({ type: 'setTaskAutoApprove', enabled });
+}
+
 export function showNativeModelPicker(
   models: CaptureModelPickerOption[],
   selectedModelId: string | null,

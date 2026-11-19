@@ -60,6 +60,8 @@ class InteractiveApprovalManager:
     _processing_approvals: set = set()
     # The optional note the user typed with a decision, keyed by approval id. It is stored just before the waiting run is released and removed by that run, so it never outlives the approval.
     _decision_notes: Dict[str, str] = {}
+    # Waiting cards that a task's auto-approve switch may approve, mapped to the chain root they belong to. Whether a card qualifies is decided when it is created, while its full context is still in hand, because the stored record does not keep flags such as require_explicit_approval.
+    _auto_approvable_roots: Dict[str, str] = {}
 
     def __init__(self, websocket_manager, generalizer):
         self.websocket_manager = websocket_manager
@@ -81,8 +83,11 @@ class InteractiveApprovalManager:
         decision: ExecutionApprovalDecision,
         context: Dict[str, Any],
         note_sink: Optional[Dict[str, str]] = None,
+        auto_approve_root: Optional[str] = None,
     ) -> Tuple[bool, bool, str]:
         """Request user approval for a command via WebSocket and wait for response.
+
+        ``auto_approve_root`` names the chain whose auto-approve switch may approve this card if the user turns the switch on while the card is waiting. It is the root the approval service resolved, which can come from the running agent when the caller's context does not carry one, so it is passed in rather than re-derived here. ``None`` marks a card the switch may never approve.
 
         When the user typed a note with their decision it is placed in ``note_sink["user_note"]``.
         """
@@ -159,6 +164,8 @@ class InteractiveApprovalManager:
 
             future = asyncio.Future()
             InteractiveApprovalManager._pending_approvals[approval_id] = future
+            if auto_approve_root:
+                InteractiveApprovalManager._auto_approvable_roots[approval_id] = auto_approve_root
 
             try:
                 await persist_timeline_entry(
@@ -358,6 +365,7 @@ class InteractiveApprovalManager:
                 del InteractiveApprovalManager._pending_approvals[approval_id]
             if approval_id:
                 InteractiveApprovalManager._decision_notes.pop(approval_id, None)
+                InteractiveApprovalManager._auto_approvable_roots.pop(approval_id, None)
 
     async def handle_approval_response(
         self,
@@ -478,6 +486,15 @@ class InteractiveApprovalManager:
         if not future.done():
             future.cancel()
         return True
+
+    @classmethod
+    def auto_approvable_pending_ids(cls, root_task_id: str) -> list[str]:
+        """The cards still waiting for this chain that its auto-approve switch may approve."""
+        return [
+            approval_id
+            for approval_id, root in list(cls._auto_approvable_roots.items())
+            if root == root_task_id and cls.has_pending_future(approval_id)
+        ]
 
     @classmethod
     def has_pending_future(cls, approval_id: str) -> bool:

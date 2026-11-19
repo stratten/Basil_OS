@@ -24,6 +24,9 @@ export function baseVoiceSnapshot(overrides: Partial<CaptureSnapshot> = {}): Cap
     selectedModelId: null,
     referencePaths: [],
     isDraggingOver: false,
+    taskAutoApproveEnabled: false,
+    taskAutoApprovePending: false,
+    taskAutoApproveError: null,
     ...overrides,
   };
 }

@@ -12,6 +12,7 @@ import {
 } from '../../store/followUpComposerViewStore';
 import { requestFollowUpLineAdded, requestFollowUpPrefill, resetFollowUpPrefillRequests } from '../../store/followUpPrefillStore';
 import { discardComposerDraft, loadComposerDraft, resetComposerDrafts } from '../../store/composerDraftStore';
+import { resetTaskAutoApproveStore } from '../../store/taskAutoApproveStore';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -40,6 +41,8 @@ const mocks = vi.hoisted(() => ({
   pickFiles: vi.fn(),
   requestResize: vi.fn(),
   openChecklistWindow: vi.fn(),
+  getTaskAutoApprove: vi.fn().mockResolvedValue({ enabled: false }),
+  requestTaskAutoApprove: vi.fn(),
 }));
 
 vi.mock('../../store/checklistViewStore', () => ({
@@ -49,6 +52,7 @@ vi.mock('../../store/checklistViewStore', () => ({
 vi.mock('../../services/api', () => ({
   getReasoningModels: mocks.getReasoningModels,
   processAgentTask: mocks.processAgentTask,
+  getTaskAutoApprove: mocks.getTaskAutoApprove,
 }));
 
 vi.mock('../../store/agentStore', () => ({
@@ -71,12 +75,15 @@ vi.mock('../../services/bridge', () => ({
   registerFilesPickedHandler: mocks.registerFilesPickedHandler,
   pickFiles: mocks.pickFiles,
   requestResize: mocks.requestResize,
+  requestTaskAutoApprove: mocks.requestTaskAutoApprove,
+  registerTaskAutoApproveResultHandler: () => () => {},
 }));
 
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 
 afterEach(() => {
+  resetTaskAutoApproveStore();
   resetComposerDrafts();
   resetFollowUpComposerViews();
   resetFollowUpPrefillRequests();
@@ -744,5 +751,57 @@ describe('TextFollowUp keeps what was typed', () => {
 
     expect(editor().textContent).toContain('My own line');
     expect(editor().textContent).toContain('Suggested line');
+  });
+});
+
+describe('TextFollowUp auto-approve switch', () => {
+  async function mountFollowUp(props: { agentTaskId: string; rootTaskId?: string }) {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    await act(async () => {
+      root.render(<TextFollowUp {...props} onCancel={vi.fn()} alwaysVisible />);
+    });
+  }
+
+  function autoApproveSwitch(): HTMLButtonElement | null {
+    return container.querySelector<HTMLButtonElement>('button[role="switch"]');
+  }
+
+  it('sits in the same row as the model picker and starts off', async () => {
+    await mountFollowUp({ agentTaskId: 'task-1' });
+
+    const toggle = autoApproveSwitch();
+    expect(toggle).not.toBeNull();
+    expect(toggle?.getAttribute('aria-checked')).toBe('false');
+    expect(toggle?.textContent).toBe('Auto-approve');
+    const picker = container.querySelector('.rich-text-model-picker');
+    expect(picker?.parentElement).toBe(toggle?.parentElement);
+  });
+
+  it("shows on when the chain's switch was already turned on", async () => {
+    mocks.getTaskAutoApprove.mockResolvedValueOnce({ enabled: true });
+
+    await mountFollowUp({ agentTaskId: 'task-1' });
+
+    expect(mocks.getTaskAutoApprove).toHaveBeenCalledWith('task-1');
+    expect(autoApproveSwitch()?.getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('asks native, keyed by the chain root rather than the turn, and waits for the answer', async () => {
+    await mountFollowUp({ agentTaskId: 'turn-3', rootTaskId: 'root-1' });
+
+    await act(async () => {
+      autoApproveSwitch()?.click();
+    });
+
+    expect(mocks.requestTaskAutoApprove).toHaveBeenCalledWith({
+      requestId: expect.any(String),
+      rootTaskId: 'root-1',
+      enabled: true,
+    });
+    expect(autoApproveSwitch()?.getAttribute('aria-checked')).toBe('false');
+    expect(autoApproveSwitch()?.disabled).toBe(true);
+    expect(autoApproveSwitch()?.getAttribute('aria-busy')).toBe('true');
   });
 });

@@ -115,7 +115,9 @@
 
 .run-control-collapsed-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: var(--padding-xs);
   padding-right: 3px;
 }
 

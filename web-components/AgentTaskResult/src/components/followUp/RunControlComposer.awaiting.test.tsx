@@ -24,6 +24,10 @@ vi.mock('../../services/api', () => ({
   getReasoningModels: vi.fn(),
 }));
 
+vi.mock('../../store/taskAutoApproveStore', () => ({
+  useTaskAutoApprove: () => ({ enabled: false, pending: false, error: null, setEnabled: vi.fn() }),
+}));
+
 vi.mock('../../services/bridge', () => ({
   pickFiles: vi.fn(),
   registerFilesPickedHandler: () => () => undefined,

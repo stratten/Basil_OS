@@ -55,6 +55,7 @@ ROUTE_RULES: Tuple[RouteRule, ...] = (
     _rule(r"/api/v1/agent-tasks/approval/.*", HUMAN_ONLY, "Command approval decisions and the approval mode."),
     _rule(r"/api/v1/agent-tasks/whitelist(/.*)?", HUMAN_ONLY, "The remembered-approval list is the permission system."),
     _rule(r"/api/v1/agent-tasks/command-input/.*", HUMAN_ONLY, "Answers a command's request for input on the user's behalf."),
+    _rule(r"/api/v1/agent-tasks/auto-approve/\{root_task_id\}", HUMAN_ONLY, "Turns on approving every command of one task without asking; only the host credential and the user's risk confirmation can change it, so an agent cannot approve itself."),
     _rule(r"/api/v1/agent-tasks/\{agent_task_id\}/execution-approvals/recover", HUMAN_ONLY, "Recovers a pending approval."),
     _rule(r"/api/v1/agent-tasks/\{agent_task_id\}/provider-interactions/.*", HUMAN_ONLY, "Answers a delegated provider's permission and input prompts."),
     _rule(r"/api/v1/agent-tasks/managed-file-history/restore", HUMAN_ONLY, "Restores earlier file contents; no approval path exists for an agent yet."),

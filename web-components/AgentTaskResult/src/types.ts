@@ -804,6 +804,7 @@ export type SwiftMessage =
     }
   | { type: 'requestTokenConnect'; requestId: string; friendlyName: string; description?: string; token: string }
   | { type: 'requestTokenConnectCancel'; requestId: string }
+  | { type: 'setTaskAutoApprove'; requestId: string; rootTaskId: string; enabled: boolean }
   | { type: 'reportProblem'; source: string; detail?: string }
   | { type: 'showDiagnosticLogs'; source: string; detail?: string };
 
@@ -820,6 +821,17 @@ export interface TokenConnectRequest {
 export interface TokenConnectResult {
   requestId: string;
   status: 'connected' | 'canceled' | 'failed';
+  message?: string;
+}
+
+/** Native's answer to a request to turn a task's auto-approve switch on or off. `enabled` is the switch's state after the attempt, so a declined or failed request leaves the control where it was. */
+export interface TaskAutoApproveResult {
+  requestId: string;
+  rootTaskId: string;
+  status: 'applied' | 'declined' | 'failed';
+  enabled: boolean;
+  /** How many cards the task was already waiting on that turning the switch on approved. */
+  approvedWaiting?: number;
   message?: string;
 }
 

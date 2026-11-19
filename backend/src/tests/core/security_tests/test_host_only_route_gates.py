@@ -12,6 +12,7 @@ HOST_ONLY_ROUTES = [
     ("POST", "/api/v1/agent-tasks/approval/settings"),
     ("POST", "/api/v1/agent-tasks/whitelist"),
     ("PUT", "/api/v1/agent-tasks/whitelist/pattern-1"),
+    ("POST", "/api/v1/agent-tasks/auto-approve/task-1"),
     ("POST", "/settings/provider-profiles"),
     ("PUT", "/settings/provider-profiles/profile-1"),
     ("POST", "/settings/provider-profiles/profile-1/enable"),

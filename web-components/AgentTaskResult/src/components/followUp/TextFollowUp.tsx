@@ -11,6 +11,8 @@ import FollowUpReferences from './FollowUpReferences';
 import { scrollVerticallyIntoView } from '../scrollVerticallyIntoView';
 import RichTextComposer from '../../../../shared/text/RichTextComposer';
 import ReasoningModelPicker from '../../../../shared/inputs/ReasoningModelPicker';
+import TaskAutoApproveToggle from '../../../../shared/inputs/TaskAutoApproveToggle';
+import { useTaskAutoApprove } from '../../store/taskAutoApproveStore';
 import AttachmentDropZone from '../../../../shared/attachments/AttachmentDropZone';
 import CollapsibleRegion from '../../../../shared/disclosure/CollapsibleRegion';
 import ExecutionDisclosureChevron from '../../../../shared/disclosure/ExecutionDisclosureChevron';
@@ -59,6 +61,7 @@ export default function TextFollowUp({
   const [referencePaths, setReferencePaths] = useState<string[]>(
     () => loadComposerDraft('follow-up', rootIdForModelPreference)?.referencePaths ?? [],
   );
+  const autoApprove = useTaskAutoApprove(rootIdForModelPreference);
   const [availableModels, setAvailableModels] = useState<ReasoningModel[]>([]);
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [defaultModelId, setDefaultModelId] = useState<string | null>(null);
@@ -309,15 +312,24 @@ export default function TextFollowUp({
                 </>
               )}
               bottomStart={(
-                <ReasoningModelPicker
-                  models={availableModels}
-                  selectedModelId={selectedModelId ?? undefined}
-                  disabled={inputDisabled}
-                  onModelChange={(modelId) => {
-                    setSelectedModelId(modelId ?? null);
-                    agentStore.setSelectedModelId(rootIdForModelPreference, modelId);
-                  }}
-                />
+                <>
+                  <ReasoningModelPicker
+                    models={availableModels}
+                    selectedModelId={selectedModelId ?? undefined}
+                    disabled={inputDisabled}
+                    onModelChange={(modelId) => {
+                      setSelectedModelId(modelId ?? null);
+                      agentStore.setSelectedModelId(rootIdForModelPreference, modelId);
+                    }}
+                  />
+                  <TaskAutoApproveToggle
+                    enabled={autoApprove.enabled}
+                    pending={autoApprove.pending}
+                    error={autoApprove.error}
+                    disabled={exiting}
+                    onChange={autoApprove.setEnabled}
+                  />
+                </>
               )}
               bottomEnd={(
                 onStartVoiceFollowUp ? (

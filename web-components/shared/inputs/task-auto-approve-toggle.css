@@ -1,0 +1,103 @@
+.task-auto-approve-toggle {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border: 1px solid var(--separator-color);
+  border-radius: var(--corner-radius-small);
+  background: var(--background-primary);
+  color: var(--text-secondary);
+  font-family: var(--font-family-medium);
+  font-size: var(--font-size-status-tiny);
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.task-auto-approve-toggle:focus-visible {
+  outline: 2px solid var(--secondary, var(--primary));
+  outline-offset: 1px;
+}
+
+.task-auto-approve-toggle:disabled {
+  cursor: default;
+}
+
+.task-auto-approve-toggle:disabled:not(.is-pending) {
+  opacity: 0.45;
+}
+
+.task-auto-approve-toggle.is-pending {
+  cursor: progress;
+}
+
+.task-auto-approve-toggle__track {
+  position: relative;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--text-tertiary, #6b7280);
+  transition: background-color var(--motion-quick, 150ms) var(--motion-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
+}
+
+.task-auto-approve-toggle__track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--background-primary);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--text-primary) 40%, transparent);
+  transition: transform var(--motion-quick, 150ms) var(--motion-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
+}
+
+/* On is a standing risk, so it reads as a notice: a solid track and a tinted chip that cannot be mistaken for the quiet off state. */
+.task-auto-approve-toggle.is-on {
+  border-color: var(--notice-base, #b45309);
+  background: color-mix(in srgb, var(--notice-base, #b45309) 18%, var(--background-primary));
+  color: var(--text-primary);
+}
+
+.task-auto-approve-toggle.is-on .task-auto-approve-toggle__track {
+  background: var(--notice-base, #b45309);
+}
+
+.task-auto-approve-toggle.is-on .task-auto-approve-toggle__track::after {
+  transform: translateX(10px);
+}
+
+.task-auto-approve-toggle.has-error {
+  border-color: var(--error-text, #b42318);
+}
+
+.task-auto-approve-toggle__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Compact: just the switch. The label stays in the DOM, hidden from sight, as the switch's accessible name. */
+.task-auto-approve-toggle--compact,
+.task-auto-approve-toggle--compact.is-on {
+  padding: 0;
+  border-color: transparent;
+  background: none;
+}
+
+.task-auto-approve-toggle--compact.has-error {
+  border-color: var(--error-text, #b42318);
+}
+
+.task-auto-approve-toggle--compact .task-auto-approve-toggle__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

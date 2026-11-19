@@ -36,6 +36,10 @@ vi.mock('../../store/agentStore', () => ({
   },
 }));
 
+vi.mock('../../store/taskAutoApproveStore', () => ({
+  useTaskAutoApprove: () => ({ enabled: false, pending: false, error: null, setEnabled: vi.fn() }),
+}));
+
 vi.mock('../../services/bridge', () => ({
   registerFilesPickedHandler: () => () => {},
   pickFiles: vi.fn(),

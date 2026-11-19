@@ -3,6 +3,7 @@ import { deriveBubbleColors, deriveBubbleMode } from '../types';
 import AnimatedBubble from '../../../shared/bubble/AnimatedBubble';
 import CaptureProgressRing from './CaptureProgressRing';
 import CaptureModelPickerMenu from './CaptureModelPickerMenu';
+import CaptureAutoApproveToggle from './CaptureAutoApproveToggle';
 import { useCaptureAudioLevel } from './useCaptureAudioLevel';
 import { pickReferenceFiles, showNativeModelPicker } from '../services/bridge';
 
@@ -81,6 +82,9 @@ export default function VoiceCaptureView({ snapshot, selectedModelId, onModelCha
           </svg>
           <span>Attach</span>
         </button>
+        <div className="voice-capture-body__auto-approve">
+          <CaptureAutoApproveToggle snapshot={snapshot} compact />
+        </div>
         <div className="voice-capture-body__model-picker">
           <CaptureModelPickerMenu
             disabled={snapshot.hasCompleted}

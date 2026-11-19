@@ -67,6 +67,27 @@ final class AgentTaskCaptureInputMessageParsingTests: XCTestCase {
         XCTAssertEqual(parsed, .submitTextPrompt(text: "hello", modelId: nil))
     }
 
+    func testParsesSetTaskAutoApprove() {
+        XCTAssertEqual(
+            CaptureInputMessage.parse(body: ["type": "setTaskAutoApprove", "enabled": true]),
+            .setTaskAutoApprove(enabled: true)
+        )
+        XCTAssertEqual(
+            CaptureInputMessage.parse(body: ["type": "setTaskAutoApprove", "enabled": false]),
+            .setTaskAutoApprove(enabled: false)
+        )
+    }
+
+    func testRejectsSetTaskAutoApproveWithoutABooleanEnabled() {
+        for body: [String: Any] in [
+            ["type": "setTaskAutoApprove"],
+            ["type": "setTaskAutoApprove", "enabled": "true"],
+            ["type": "setTaskAutoApprove", "enabled": NSNull()],
+        ] {
+            XCTAssertEqual(CaptureInputMessage.parse(body: body), .unknown(rawType: "setTaskAutoApprove"))
+        }
+    }
+
     func testParsesSelectedModelAndExplicitClear() {
         XCTAssertEqual(
             CaptureInputMessage.parse(body: ["type": "setSelectedModel", "modelId": "reasoning-model-123"]),

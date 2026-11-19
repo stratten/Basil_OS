@@ -21,6 +21,9 @@ struct CaptureSnapshot {
     let selectedModelId: String?
     let referencePaths: [ReferencePathEntry]
     let isDraggingOver: Bool
+    let taskAutoApproveEnabled: Bool
+    let taskAutoApprovePending: Bool
+    let taskAutoApproveError: String?
 
     /// `path`/`isDirectory` pair mirroring the TypeScript `ReferencePathEntry`.
     struct ReferencePathEntry {
@@ -54,6 +57,9 @@ struct CaptureSnapshot {
             "selectedModelId": selectedModelId ?? NSNull(),
             "referencePaths": referencePaths.map { $0.jsonObject },
             "isDraggingOver": isDraggingOver,
+            "taskAutoApproveEnabled": taskAutoApproveEnabled,
+            "taskAutoApprovePending": taskAutoApprovePending,
+            "taskAutoApproveError": taskAutoApproveError ?? NSNull(),
         ]
     }
 
@@ -86,7 +92,10 @@ struct CaptureSnapshot {
                 FileManager.default.fileExists(atPath: $0.path, isDirectory: &isDir)
                 return ReferencePathEntry(path: $0.path, isDirectory: isDir.boolValue)
             },
-            isDraggingOver: isDraggingOver
+            isDraggingOver: isDraggingOver,
+            taskAutoApproveEnabled: viewModel.taskAutoApproveEnabled,
+            taskAutoApprovePending: viewModel.taskAutoApprovePending,
+            taskAutoApproveError: viewModel.taskAutoApproveError
         )
     }
 }
@@ -116,6 +125,7 @@ enum CaptureInputMessage: Equatable {
     case updateTextDraft(text: String)
     case submitTextPrompt(text: String, modelId: String?)
     case setSelectedModel(modelId: String?)
+    case setTaskAutoApprove(enabled: Bool)
     case showNativeModelPicker(models: [CaptureModelPickerOption], selectedModelId: String?, anchorRect: CaptureModelPickerAnchorRect)
     case cancelCapture
     case pickReferenceFiles
@@ -172,6 +182,9 @@ enum CaptureInputMessage: Equatable {
                 return .unknown(rawType: type)
             }
             return .setSelectedModel(modelId: modelId)
+        case "setTaskAutoApprove":
+            guard let enabled = dict["enabled"] as? Bool else { return .unknown(rawType: type) }
+            return .setTaskAutoApprove(enabled: enabled)
         case "showNativeModelPicker":
             guard let rawModels = dict["models"] as? [[String: Any]], !rawModels.isEmpty,
                   let rawAnchorRect = dict["anchorRect"] as? [String: Any] else {

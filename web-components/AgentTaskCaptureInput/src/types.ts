@@ -27,6 +27,12 @@ export interface CaptureSnapshot {
   selectedModelId: string | null;
   referencePaths: ReferencePathEntry[];
   isDraggingOver: boolean;
+  /** Whether the task this capture starts has its auto-approve switch on. Native owns the change and reports the result here. */
+  taskAutoApproveEnabled: boolean;
+  /** A change is waiting on the user's confirmation in native's own dialog. */
+  taskAutoApprovePending: boolean;
+  /** Why the last change did not happen, or null. A change the user declined is not an error. */
+  taskAutoApproveError: string | null;
 }
 
 // This package's own local copy, matching `AgentTaskResult/src/types.ts`'s
@@ -90,6 +96,7 @@ export type CaptureInputMessage =
   | { type: 'updateTextDraft'; text: string }
   | { type: 'submitTextPrompt'; text: string; modelId?: string }
   | { type: 'setSelectedModel'; modelId: string | null }
+  | { type: 'setTaskAutoApprove'; enabled: boolean }
   | { type: 'showNativeModelPicker'; models: CaptureModelPickerOption[]; selectedModelId: string | null; anchorRect: CaptureModelPickerAnchorRect }
   | { type: 'cancelCapture' }
   | { type: 'pickReferenceFiles' }

@@ -11,6 +11,7 @@ from .local_preview_routes import router as local_preview_router
 from .managed_file_history_routes import router as managed_file_history_router
 from .provider_interaction_routes import router as provider_interaction_router
 from .schedule_routes import run_router, schedule_router
+from .task_auto_approve_routes import router as task_auto_approve_router
 
 router.include_router(audio_router)
 router.include_router(checklist_router)
@@ -19,6 +20,7 @@ router.include_router(command_input_router)
 router.include_router(provider_interaction_router)
 router.include_router(local_preview_router)
 router.include_router(managed_file_history_router)
+router.include_router(task_auto_approve_router)
 # history_router's GET /{agent_task_id} is a catch-all single-segment path.
 # It must be included last so it never shadows the specific literal routes
 # above (e.g. GET /whitelist, GET /examples) that Starlette would otherwise

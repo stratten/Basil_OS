@@ -380,6 +380,9 @@ final class AgentTaskCaptureInputWindowController: NSObject, NSWindowDelegate, A
             Task { await viewModel.submitTextPrompt(modelId: modelId) }
         case .setSelectedModel(let modelId):
             viewModel.selectedAgentTaskModelId = modelId
+        case .setTaskAutoApprove(let enabled):
+            // The change is host-credential-only and asks the user to confirm in a native alert when turning on, so it runs here rather than in the page. The view model publishes the outcome back through the snapshot.
+            Task { await viewModel.setTaskAutoApprove(enabled) }
         case .showNativeModelPicker(let models, let selectedModelId, let anchorRect):
             presentNativeModelPicker(models: models, selectedModelId: selectedModelId, anchorRect: anchorRect, viewModel: viewModel)
         case .cancelCapture:

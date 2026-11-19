@@ -45,6 +45,7 @@ export default defineConfig({
       '../shared/icons/connectionIcons.test.ts',
       '../shared/search/*.test.{ts,tsx}',
       '../shared/historyFilters/*.test.{ts,tsx}',
+      '../shared/inputs/TaskAutoApproveToggle.test.tsx',
     ],
   },
   server: {

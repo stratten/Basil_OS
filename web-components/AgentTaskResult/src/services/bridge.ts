@@ -9,6 +9,7 @@ import type {
   ValidationRunFocusRequest,
   ValidationRunFocusState,
   TokenConnectResult,
+  TaskAutoApproveResult,
 } from '../types';
 import {
   createFilePreviewRequestManager,
@@ -89,6 +90,7 @@ declare global {
       onFilePreviewUpdated: (payload: FilePreviewPayload) => void;
       onFilePreviewAvailability: (payload: FilePreviewAvailabilityPayload) => void;
       onTokenConnectResult: (result: TokenConnectResult) => void;
+      onTaskAutoApproveResult: (result: TaskAutoApproveResult) => void;
     };
   }
 }
@@ -130,6 +132,8 @@ const pendingFilePreviewAvailabilityRequests = new Map<
 let filePreviewReadyCallback: ((payload: FilePreviewPayload) => void) | null = null;
 let filePreviewUpdatedCallback: ((payload: FilePreviewPayload) => void) | null = null;
 let tokenConnectResultCallback: ((result: TokenConnectResult) => void) | null = null;
+// Several composers can be listening at once (the one on screen and the one a run replaces it with), so these are a set rather than one callback.
+const taskAutoApproveResultListeners = new Set<(result: TaskAutoApproveResult) => void>();
 
 export const agentTaskArtifactPreviewTransport: ArtifactPreviewTransport = createFilePreviewRequestManager(
   (message) => postToSwift(message),
@@ -439,6 +443,9 @@ window.basilAgentTask = {
   onTokenConnectResult: (result: TokenConnectResult) => {
     tokenConnectResultCallback?.(result);
   },
+  onTaskAutoApproveResult: (result: TaskAutoApproveResult) => {
+    for (const listener of Array.from(taskAutoApproveResultListeners)) listener(result);
+  },
 };
 
 const swiftBridge = createSwiftBridge<SwiftMessage>('agentTaskBridge', {
@@ -745,6 +752,18 @@ export function requestTokenConnect(payload: {
 
 export function requestTokenConnectCancel(requestId: string) {
   postToSwift({ type: 'requestTokenConnectCancel', requestId });
+}
+
+/** Asks native to turn a task's auto-approve switch on or off. Turning it on is a privileged change, so native asks the user to confirm in its own dialog before the backend accepts it; the answer comes back through `onTaskAutoApproveResult`. */
+export function requestTaskAutoApprove(payload: { requestId: string; rootTaskId: string; enabled: boolean }) {
+  postToSwift({ type: 'setTaskAutoApprove', ...payload });
+}
+
+export function registerTaskAutoApproveResultHandler(cb: (result: TaskAutoApproveResult) => void): () => void {
+  taskAutoApproveResultListeners.add(cb);
+  return () => {
+    taskAutoApproveResultListeners.delete(cb);
+  };
 }
 
 export function registerTokenConnectResultHandler(cb: (result: TokenConnectResult) => void): () => void {

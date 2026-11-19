@@ -17,6 +17,7 @@ import {
   requestSnapshot,
   sendCaptureInputReady,
   setSelectedModel,
+  setTaskAutoApprove,
   showNativeModelPicker,
   showHistory,
   submitTextPrompt,
@@ -81,6 +82,12 @@ describe('outgoing capture intents', () => {
       type: 'setSelectedModel',
       modelId: null,
     });
+
+    setTaskAutoApprove(true);
+    expect(postMessage).toHaveBeenLastCalledWith({ type: 'setTaskAutoApprove', enabled: true });
+
+    setTaskAutoApprove(false);
+    expect(postMessage).toHaveBeenLastCalledWith({ type: 'setTaskAutoApprove', enabled: false });
 
     showNativeModelPicker(
       [{ id: 'local-reasoning', displayName: 'Local Reasoning', category: 'local' }],

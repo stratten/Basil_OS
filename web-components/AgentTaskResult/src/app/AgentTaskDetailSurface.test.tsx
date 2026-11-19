@@ -13,6 +13,10 @@ import { isFollowUpComposerCollapsed, resetFollowUpComposerViews } from '../stor
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
+vi.mock('../store/taskAutoApproveStore', () => ({
+  useTaskAutoApprove: () => ({ enabled: false, pending: false, error: null, setEnabled: vi.fn() }),
+}));
+
 vi.mock('../services/bridge', () => ({
   openExternalUrl: vi.fn(),
   openFile: vi.fn(),

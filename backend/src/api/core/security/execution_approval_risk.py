@@ -41,6 +41,16 @@ def approval_settings_change_risk(
     return RiskConfirmation(title="Lower command-approval protection?", message="\n\n".join(reasons))
 
 
+def task_auto_approve_risk() -> RiskConfirmation:
+    return RiskConfirmation(
+        title="Approve every command for this task?",
+        message=(
+            "Basil will run every command this task proposes without asking you first, including commands that change or delete files, until you turn this off or Basil restarts.\n\n"
+            "Blocked commands, connected tools with their own approval setting, and actions that grant Basil access to a service still ask."
+        ),
+    )
+
+
 def added_whitelist_pattern_risk(pattern: str, pattern_type: str) -> RiskConfirmation:
     return RiskConfirmation(
         title="Allow this command without asking?",

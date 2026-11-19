@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { CaptureSnapshot } from '../types';
 import RichTextComposer from '../../../shared/text/RichTextComposer';
 import CaptureModelPickerMenu from './CaptureModelPickerMenu';
+import CaptureAutoApproveToggle from './CaptureAutoApproveToggle';
 import { pickReferenceFiles, showNativeModelPicker, submitTextPrompt, updateTextDraft } from '../services/bridge';
 
 interface Props {
@@ -70,28 +71,31 @@ export default function TextCaptureView({ snapshot, selectedModelId, onModelChan
           </button>
         )}
         bottomStart={(
-          <CaptureModelPickerMenu
-            disabled={inputDisabled}
-            selectedModelId={selectedModelId}
-            onModelChange={onModelChange}
-            variant="default"
-            onRequestNativeMenu={(models, currentModelId, anchorRect) => {
-              showNativeModelPicker(
-                models.map((model) => ({
-                  id: model.id,
-                  displayName: model.display_name,
-                  category: model.category,
-                })),
-                currentModelId,
-                {
-                  x: anchorRect.x,
-                  y: anchorRect.y,
-                  width: anchorRect.width,
-                  height: anchorRect.height,
-                },
-              );
-            }}
-          />
+          <>
+            <CaptureModelPickerMenu
+              disabled={inputDisabled}
+              selectedModelId={selectedModelId}
+              onModelChange={onModelChange}
+              variant="default"
+              onRequestNativeMenu={(models, currentModelId, anchorRect) => {
+                showNativeModelPicker(
+                  models.map((model) => ({
+                    id: model.id,
+                    displayName: model.display_name,
+                    category: model.category,
+                  })),
+                  currentModelId,
+                  {
+                    x: anchorRect.x,
+                    y: anchorRect.y,
+                    width: anchorRect.width,
+                    height: anchorRect.height,
+                  },
+                );
+              }}
+            />
+            <CaptureAutoApproveToggle snapshot={snapshot} />
+          </>
         )}
       />
     </div>

@@ -5,6 +5,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadComposerDraft, resetComposerDrafts } from '../../store/composerDraftStore';
 import { setFollowUpComposerCollapsed } from '../../store/followUpComposerViewStore';
+import { resetTaskAutoApproveStore } from '../../store/taskAutoApproveStore';
 
 const mocks = vi.hoisted(() => ({
   pauseSession: vi.fn(),
@@ -15,6 +16,8 @@ const mocks = vi.hoisted(() => ({
   holdNoteForFollowUp: vi.fn(),
   trackSentNote: vi.fn(),
   filesPicked: null as ((paths: string[]) => void) | null,
+  getTaskAutoApprove: vi.fn().mockResolvedValue({ enabled: false }),
+  requestTaskAutoApprove: vi.fn(),
 }));
 
 vi.mock('../../services/api', () => ({
@@ -22,6 +25,7 @@ vi.mock('../../services/api', () => ({
   resumeSession: mocks.resumeSession,
   sendRunMessage: mocks.sendRunMessage,
   getReasoningModels: mocks.getReasoningModels,
+  getTaskAutoApprove: mocks.getTaskAutoApprove,
 }));
 
 vi.mock('../../store/lateNoteStore', () => ({
@@ -37,6 +41,8 @@ vi.mock('../../services/bridge', () => ({
       if (mocks.filesPicked === handler) mocks.filesPicked = null;
     };
   },
+  requestTaskAutoApprove: mocks.requestTaskAutoApprove,
+  registerTaskAutoApproveResultHandler: () => () => {},
 }));
 
 let RunControlComposer: typeof import('./RunControlComposer').default;
@@ -62,6 +68,8 @@ beforeAll(async () => {
 beforeEach(() => {
   [mocks.pauseSession, mocks.resumeSession, mocks.sendRunMessage, mocks.getReasoningModels, mocks.pickFiles, mocks.holdNoteForFollowUp, mocks.trackSentNote].forEach(mock => mock.mockReset());
   mocks.filesPicked = null;
+  mocks.requestTaskAutoApprove.mockReset();
+  resetTaskAutoApproveStore();
   resetComposerDrafts();
   resetFollowUpComposerViews();
   // A run folds its box when it starts. Most tests here are about the open box, so turn-1 starts as one the run has already folded and the reader has opened again. The tests that are about the fold at run start use their own turns.
@@ -805,3 +813,68 @@ describe('RunControlComposer Stop beside Pause', () => {
   });
 });
 
+
+describe('RunControlComposer auto-approve switch', () => {
+  function autoApproveSwitch(): HTMLButtonElement | null {
+    return container.querySelector<HTMLButtonElement>('button[role="switch"]');
+  }
+
+  it.each(['running', 'paused'] as const)('is offered while the run is %s, off by default', (mode) => {
+    render(mode);
+
+    const toggle = autoApproveSwitch();
+    expect(toggle).not.toBeNull();
+    expect(toggle?.getAttribute('aria-checked')).toBe('false');
+    expect(container.querySelector('.rich-text-composer-actions-start')?.contains(toggle)).toBe(true);
+  });
+
+  it('is offered while the run waits on a question', () => {
+    act(() => {
+      root.render(
+        <RunControlComposer
+          turnTaskId="turn-1"
+          rootTaskId="root-1"
+          mode="awaiting"
+          awaitingCheckpoint={{ checkpoint_id: 'cp-1', prompt: 'How should I proceed?', input_type: 'data' }}
+          deliveredNoteIds={NONE}
+        />,
+      );
+    });
+
+    expect(autoApproveSwitch()).not.toBeNull();
+  });
+
+  it('stays reachable beside Stop and Pause when the box is folded', () => {
+    setFollowUpComposerCollapsed('root-1', true);
+    render('running');
+
+    const collapsedActions = container.querySelector('.run-control-collapsed-actions');
+    expect(collapsedActions?.querySelector('button[role="switch"]')).not.toBeNull();
+    expect(collapsedActions?.querySelector('button[aria-label="Pause"]')).not.toBeNull();
+  });
+
+  it("asks native to change the chain's switch, keyed by the chain root", async () => {
+    render('running');
+
+    await act(async () => {
+      autoApproveSwitch()?.click();
+    });
+
+    expect(mocks.requestTaskAutoApprove).toHaveBeenCalledWith({
+      requestId: expect.any(String),
+      rootTaskId: 'root-1',
+      enabled: true,
+    });
+  });
+
+  it('reads the chain\'s switch from the backend so a box that appears later shows it on', async () => {
+    mocks.getTaskAutoApprove.mockResolvedValueOnce({ enabled: true });
+
+    await act(async () => {
+      root.render(<RunControlComposer turnTaskId="turn-1" rootTaskId="root-1" mode="running" deliveredNoteIds={NONE} />);
+    });
+
+    expect(mocks.getTaskAutoApprove).toHaveBeenCalledWith('root-1');
+    expect(autoApproveSwitch()?.getAttribute('aria-checked')).toBe('true');
+  });
+});

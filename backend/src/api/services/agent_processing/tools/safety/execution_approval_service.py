@@ -21,6 +21,7 @@ from api.core.security.protected_runtime_paths import (
     log_protected_runtime_refusal,
     references_protected_runtime_path,
 )
+from api.services.agent_processing.shared.agent_runtime_context import get_current_agent_context
 
 from .command_safety_judge import UNSURE, judge_command_safety
 from .models import ExecutionApprovalDecision, ExecutionApprovalOutcome
@@ -28,6 +29,7 @@ from .risk_assessment import RiskAssessor
 from .python_read_only_command import classify_python_command_read_only
 from .shell_syntax import classify_read_only
 from .workspace_scope import judge_workspace_command
+from .task_auto_approve import is_task_auto_approve_enabled
 from .command_generalization import CommandGeneralizer
 from .pattern_matcher import PatternMatcher
 from .whitelist_eligibility import CONNECTED_TOOL_ASK_REASON, is_connected_tool_command
@@ -107,6 +109,25 @@ class ExecutionApprovalService:
                     needs_approval=True,
                     reason="This action always needs the user's explicit approval",
                     risk_level='high',
+                )
+
+            if self.task_auto_approve_may_apply(command, context) and is_task_auto_approve_enabled(self.task_root_id(context)):
+                # The user turned on auto-approve for this task. It overrides Safe Execution Mode, Always Prompt, and the whitelist, but the dangerous-pattern block above everything else still holds, and so do the exclusions in task_auto_approve_may_apply.
+                if settings.block_dangerous_patterns:
+                    blocked, block_reason = self.risk_assessor.check_dangerous_patterns(command, settings)
+                    if blocked:
+                        logger.warning(f"Command blocked (auto-approve on, dangerous pattern): {command}")
+                        return ExecutionApprovalDecision(
+                            needs_approval=False,
+                            reason=block_reason,
+                            risk_level='critical',
+                            is_blocked=True,
+                            block_reason=block_reason
+                        )
+                return ExecutionApprovalDecision(
+                    needs_approval=False,
+                    reason="Auto-approve is on for this task",
+                    risk_level=self.risk_assessor.assess_risk_level(command)
                 )
 
             if settings.safe_execution_mode:
@@ -283,6 +304,44 @@ class ExecutionApprovalService:
                 risk_level='high'
             )
 
+    @staticmethod
+    def task_root_id(context: Optional[Dict[str, Any]] = None) -> Optional[str]:
+        """The chain root an approval belongs to: the caller's context first, then the running agent's context, so every caller is covered without each one naming it."""
+        run_context = get_current_agent_context() or {}
+        supplied = context or {}
+        for candidate in (
+            supplied.get("root_task_id"),
+            run_context.get("root_task_id"),
+            supplied.get("agent_task_id"),
+            run_context.get("agent_task_id"),
+        ):
+            if isinstance(candidate, str) and candidate.strip():
+                return candidate.strip()
+        return None
+
+    @staticmethod
+    def task_auto_approve_may_apply(command: str, context: Optional[Dict[str, Any]] = None) -> bool:
+        """Whether a task's auto-approve switch may approve this request when it is on.
+
+        A trust-granting action (marked require_explicit_approval) and a connected tool, which has its own always-ask policy, are never covered. Settings changes, requests for typed input, and sensitive browser fills do not pass through this service at all, so they keep asking whatever the switch says.
+        """
+        if (context or {}).get("require_explicit_approval") is True:
+            return False
+        return not is_connected_tool_command(command)
+
+    async def approve_waiting_for_task(self, root_task_id: str) -> int:
+        """Approve the cards this task is already waiting on, which the switch would have approved. Returns how many were approved."""
+        from .interactive_approval import InteractiveApprovalManager
+
+        approved = 0
+        for approval_id in InteractiveApprovalManager.auto_approvable_pending_ids(root_task_id):
+            try:
+                await self.handle_approval_response(approval_id, True, False, "exact")
+                approved += 1
+            except Exception as error:  # a card the user just answered, or one retired meanwhile, is simply skipped
+                logger.info("Skipped approving waiting card %s for task %s: %s", approval_id, root_task_id, error)
+        return approved
+
     async def request_approval(
         self,
         command: str,
@@ -342,7 +401,11 @@ class ExecutionApprovalService:
 
         note_sink: Dict[str, str] = {}
         approved, remember, pattern_type = await self.interactive_manager.request_approval(
-            command, decision, context or {}, note_sink=note_sink
+            command,
+            decision,
+            context or {},
+            note_sink=note_sink,
+            auto_approve_root=self.task_root_id(context) if self.task_auto_approve_may_apply(command, context) else None,
         )
         user_note = note_sink.get("user_note", "")
         if approved:

@@ -27,6 +27,14 @@ final class AgentTaskCaptureViewModel: ObservableObject {
     /// Optional per-capture reasoning-model override shared by voice and text submission paths.
     @Published var selectedAgentTaskModelId: String?
 
+    // MARK: - Auto-approve Properties
+    /// Whether the task this capture starts has its auto-approve switch on. The backend owns the real switch; this mirrors it so the capture window can show it, and is only set from the backend's answer.
+    @Published var taskAutoApproveEnabled: Bool = false
+    /// A change is waiting on the user's confirmation or on the backend.
+    @Published var taskAutoApprovePending: Bool = false
+    /// Why the last change did not happen. A change the user declined leaves nothing here.
+    @Published var taskAutoApproveError: String?
+
     // MARK: - Reference Materials Properties
     /// File or folder paths dropped onto the widget as context for the AgentTask.
     @Published var referencePaths: [URL] = []
